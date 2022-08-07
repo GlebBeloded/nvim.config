@@ -45,6 +45,7 @@ return packer.startup(function(use)
 	use "lewis6991/impatient.nvim" -- load plugins faster
   use "folke/lua-dev.nvim" -- autocomplete for nvim development
   use "antoinemadec/FixCursorHold.nvim" -- fix hold cursor bugs
+  use "nathom/filetype.nvim" -- allows to override file type
 
   -- colorschemes
   use 'folke/tokyonight.nvim'

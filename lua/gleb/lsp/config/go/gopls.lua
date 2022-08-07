@@ -1,8 +1,6 @@
 local lspconfig = require("lspconfig")
 
 local config = {
-  settings = {
-  },
 }
 
 
