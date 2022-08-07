@@ -38,7 +38,7 @@ keymap("n", "<A-q>", ":bdelete<CR>", opts)
 -- keymap("n", "<A-k>", "<Esc>:m .-2<CR>==gi", opts)
 
 -- Insert --
--- Press jk fast to exit insert mode 
+-- Press jk fast to exit insert mode
 keymap("i", "jk", "<ESC>", opts)
 
 -- Visual --
@@ -68,19 +68,15 @@ keymap("x", "<A-k>", ":move '<-2<CR>gv-gv", opts)
 -- Nvimtree
 keymap("n", "<A-e>", ":NvimTreeToggle<cr>", opts)
 
+-- telescope 
+keymap("n", "<A-F>", ":Treesitter live_grep<cr>", opts)
+
 -- code actions
 keymap("n", "<A-CR>", ":lua vim.lsp.buf.code_action()<cr>", opts)
 keymap("i", "<A-CR>", ":lua vim.lsp.buf.code_action()<cr>", opts)
 
 keymap("v", "<A-CR>", ":lua vim.lsp.buf.range_code_action()<cr>", opts)
 keymap("x", "<A-CR>", ":lua vim.lsp.buf.range_code_action()<cr>", opts)
-
-
--- disable replace mode
-vim.cmd [[ map R <Nop> ]]
-vim.cmd [[ map r <Nop> ]]
-
-
 
 -- lsp keymaps
 keymap("n", "gD", "<cmd>lua vim.lsp.buf.declaration()<CR>", opts)
@@ -93,12 +89,7 @@ keymap("n", "gr", "<cmd>lua vim.lsp.buf.references()<CR>", opts)
 keymap("n", "<A-f>", "<cmd>lua vim.lsp.buf.code_action()<CR>", opts)
 keymap("n", "<A-f>", "<cmd>lua vim.diagnostic.open_float()<CR>", opts)
 keymap("n", "[d", '<cmd>lua vim.diagnostic.goto_prev({ border = "rounded" })<CR>', opts)
-keymap(
-    "n",
-    "gl",
-    '<cmd>lua vim.diagnostic.open_float({ border = "rounded" })<CR>',
-    opts
-)
+keymap("n", "gl", '<cmd>lua vim.diagnostic.open_float({ border = "rounded" })<CR>', opts)
 
 keymap("n", "]d", '<cmd>lua vim.diagnostic.goto_next({ border = "rounded" })<CR>', opts)
 keymap("n", "<leader>q", "<cmd>lua vim.diagnostic.setloclist()<CR>", opts)
