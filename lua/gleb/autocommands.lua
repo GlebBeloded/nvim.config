@@ -31,6 +31,7 @@ vim.cmd [[
   
   augroup _lsp
     autocmd!
+    autocmd CursorHold * silent!lua vim.lsp.buf.hover() 
   augroup end
 ]]
 
@@ -38,5 +39,4 @@ vim.cmd [[
 -- augroup _lsp
 --   autocmd!
 --   autocmd BufWritePre * lua vim.lsp.buf.formatting()
---   autocmd CursorHold * silent!lua vim.lsp.buf.hover()
 -- augroup end
