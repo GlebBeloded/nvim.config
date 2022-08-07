@@ -69,7 +69,7 @@ keymap("x", "<A-k>", ":move '<-2<CR>gv-gv", opts)
 keymap("n", "<A-e>", ":NvimTreeToggle<cr>", opts)
 
 -- telescope 
-keymap("n", "<A-F>", ":Treesitter live_grep<cr>", opts)
+keymap("n", "<A-F>", ":Telescope live_grep<cr>", opts)
 
 -- code actions
 keymap("n", "<A-CR>", ":lua vim.lsp.buf.code_action()<cr>", opts)
