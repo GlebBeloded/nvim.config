@@ -34,7 +34,7 @@ local options = {
   sidescrolloff = 8,
   guifont = "monospace:h17",               -- the font used in graphical neovim applications
   termguicolors = true,                    -- more color options
-  guicursor = "",                          -- blinking cursor
+  -- guicursor = "i:ver25",                          -- blinking cursor
 }
 
 vim.opt.shortmess:append "c"

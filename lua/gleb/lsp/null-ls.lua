@@ -12,5 +12,7 @@ null_ls.setup({
 	debug = false,
 	sources = {
     diagnostics.golangci_lint,
+    diagnostics.shellcheck,
+    formatting.shfmt,
 	},
 })
