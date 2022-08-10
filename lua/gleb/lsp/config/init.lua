@@ -19,6 +19,7 @@ require("lspconfig")[go_config.lsp_name()].setup(merge(config, go_config.lsp_con
 local null_ls = require("null-ls")
 null_ls.setup({
 	debug = false,
+  update_in_insert = false,
 	sources = go_config.null_ls(null_ls),
 })
 
