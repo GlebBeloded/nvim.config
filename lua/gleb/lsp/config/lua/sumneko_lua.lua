@@ -21,7 +21,4 @@ local config = {
 
 config = vim.tbl_deep_extend("force", config, luadev)
 
-config.on_attach = require("gleb/lsp/config/handlers").on_attach
-config.capabilities = require("gleb/lsp/config/handlers").capabilities
-
 lspconfig.sumneko_lua.setup(config)

@@ -1,5 +1,3 @@
-require("gleb.lsp.config").setup()
-require("gleb.lsp.null-ls")
-require("gleb.lsp.fmt")
+require("gleb.lsp.config")
 require("lsp_lines").setup()
 require("gleb.lsp.lightbulb")

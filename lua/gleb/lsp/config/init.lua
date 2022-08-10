@@ -1,20 +1,28 @@
--- this file includes lsp configs for all the linetrs / lsp clients
+local config = require("gleb/lsp/config/handlers")
+config.setup()
+local go_config = require("gleb/lsp/config/go")
 
-vim.cmd [[ set updatetime=1000 ]] -- this variable configures how long does it tike before CursorHold event fires
-
-local M = {}
-
-M.setup = function()
-  require("mason").setup()
-  local servers = { "jsonls", "sumneko_lua", "gopls", "golangci-lint-langserver" }
-  require("mason-lspconfig").setup {
-    ensure_installed = servers,
-  }
-
-  require("gleb/lsp/config/handlers").setup()
-  require("gleb/lsp/config/go")
-  require("gleb/lsp/config/json")
-  require("gleb/lsp/config/lua")
+local function merge(...)
+  return vim.tbl_deep_extend("force", ...)
 end
 
-return M
+
+require("mason").setup()
+require("mason-lspconfig").setup {
+  -- A list of servers to automatically install if they're not already installed. Example: { "rust_analyzer@nightly", "sumneko_lua" }
+  -- This setting has no relation with the `automatic_installation` setting.
+  ensure_installed = go_config.mason(),
+}
+
+require("lspconfig")[go_config.lsp_name()].setup(merge(config, go_config.lsp_config()))
+
+local null_ls = require("null-ls")
+null_ls.setup({
+	debug = false,
+	sources = go_config.null_ls(null_ls),
+})
+
+require("gleb/lsp/config/json")
+require("gleb/lsp/config/lua")
+
+vim.cmd [[ set updatetime=1000 ]] -- this variable configures how long does it tike before CursorHold event fires

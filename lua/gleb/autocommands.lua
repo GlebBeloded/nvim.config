@@ -32,12 +32,5 @@ vim.cmd [[
   augroup _lsp
     autocmd!
     autocmd CursorHold * silent!lua vim.lsp.buf.hover() -- display help after howering for some thime
-    autocmd TextChangedI * silent!lua vim.lsp.buf.signature_help() -- display signature help while typing
   augroup end
 ]]
-
--- Autoformat
--- augroup _lsp
---   autocmd!
---   autocmd BufWritePre * lua vim.lsp.buf.formatting()
--- augroup end

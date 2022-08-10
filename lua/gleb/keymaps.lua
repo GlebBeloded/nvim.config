@@ -1,7 +1,5 @@
 local opts = { noremap = true, silent = true }
 
-local term_opts = { silent = true }
-
 -- Shorten function name
 local keymap = vim.api.nvim_set_keymap
 
@@ -20,6 +18,10 @@ keymap("n", "<C-h>", "<C-w>h", opts)
 keymap("n", "<C-j>", "<C-w>j", opts)
 keymap("n", "<C-k>", "<C-w>k", opts)
 keymap("n", "<C-l>", "<C-w>l", opts)
+
+keymap("n", "gb", "<C-O>", opts) -- prevous location
+keymap("n", "gB", "<C-I>", opts) -- next location
+
 
 -- Resize with arrows
 keymap("n", "<C-Up>", ":resize +2<CR>", opts)
@@ -58,13 +60,6 @@ keymap("x", "K", ":move '<-2<CR>gv-gv", opts)
 keymap("x", "<A-j>", ":move '>+1<CR>gv-gv", opts)
 keymap("x", "<A-k>", ":move '<-2<CR>gv-gv", opts)
 
--- Terminal --
--- Better terminal navigation
--- keymap("t", "<C-h>", "<C-\\><C-N><C-w>h", term_opts)
--- keymap("t", "<C-j>", "<C-\\><C-N><C-w>j", term_opts)
--- keymap("t", "<C-k>", "<C-\\><C-N><C-w>k", term_opts)
--- keymap("t", "<C-l>", "<C-\\><C-N><C-w>l", term_opts)
-
 -- Nvimtree
 keymap("n", "<A-e>", ":NvimTreeToggle<cr>", opts)
 
@@ -78,12 +73,17 @@ keymap("i", "<A-CR>", ":lua vim.lsp.buf.code_action()<cr>", opts)
 keymap("v", "<A-CR>", ":lua vim.lsp.buf.range_code_action()<cr>", opts)
 keymap("x", "<A-CR>", ":lua vim.lsp.buf.range_code_action()<cr>", opts)
 
+
+-- comments
+keymap("n", "gc", ":lua require('Comment.api').toggle_current_linewise({})<CR>", opts) -- line comment for <c-/> idk why it's mapped to gc
+keymap('x', 'gc', '<ESC><CMD>lua require("Comment.api").toggle_linewise_op(vim.fn.visualmode())<CR>', opts) -- multiline comment for <c-/>
+
+
 -- lsp keymaps
 keymap("n", "gD", "<cmd>lua vim.lsp.buf.declaration()<CR>", opts)
 keymap("n", "gd", "<cmd>lua vim.lsp.buf.definition()<CR>", opts)
 keymap("n", "K", "<cmd>lua vim.lsp.buf.hover()<CR>", opts)
 keymap("n", "gi", "<cmd>lua vim.lsp.buf.implementation()<CR>", opts)
-keymap("n", "<C-k>", "<cmd>lua vim.lsp.buf.signature_help()<CR>", opts)
 keymap("n", "<A-r>", "<cmd>lua vim.lsp.buf.rename()<CR>", opts)
 keymap("n", "gr", "<cmd>lua vim.lsp.buf.references()<CR>", opts)
 keymap("n", "<A-f>", "<cmd>lua vim.lsp.buf.code_action()<CR>", opts)
