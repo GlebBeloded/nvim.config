@@ -68,17 +68,15 @@ keymap("n", "<A-F>", ":Telescope live_grep<cr>", opts)
 
 -- code actions
 keymap("n", "<A-CR>", ":lua vim.lsp.buf.code_action()<cr>", opts)
+keymap("x", "<A-CR>", ":lua vim.lsp.buf.code_action()<cr>", opts)
+keymap("v", "<A-CR>", ":lua vim.lsp.buf.code_action()<cr>", opts)
 keymap("i", "<A-CR>", ":lua vim.lsp.buf.code_action()<cr>", opts)
-
-keymap("v", "<A-CR>", ":lua vim.lsp.buf.range_code_action()<cr>", opts)
-keymap("x", "<A-CR>", ":lua vim.lsp.buf.range_code_action()<cr>", opts)
-
 
 -- comments
 keymap("n", "gc", ":lua require('Comment.api').toggle_current_linewise({})<CR>", opts) -- line comment for <c-/> idk why it's mapped to gc
 keymap('x', 'gc', '<ESC><CMD>lua require("Comment.api").toggle_linewise_op(vim.fn.visualmode())<CR>', opts) -- multiline comment for <c-/>
 
-
+keymap("n", "<A-w>", "<cmd>lua vim.diagnostic.goto_next()<CR>", opts)
 -- lsp keymaps
 keymap("n", "gD", "<cmd>lua vim.lsp.buf.declaration()<CR>", opts)
 keymap("n", "gd", "<cmd>lua vim.lsp.buf.definition()<CR>", opts)
