@@ -10,7 +10,6 @@ local on_attach = function(client, buffer)
     hint_scheme = "Comment", -- how your parameter will be highlight (highlight color)
   }
 
-  print(lsp_lines_config.hi_parameter)
   require "lsp-format".on_attach(client) -- fmt on file save
   require "lsp_signature".on_attach(lsp_lines_config, buffer) -- pretty signatures
 end
@@ -25,17 +24,31 @@ end
 
 -- this function sets up native lsp to use go
 M.lsp_config = function()
-  return { on_attach = on_attach }
+  return {
+    settings = {
+      gopls = {
+        buildFlags = { "-tags=integration" },
+        gofumpt = false,
+      }
+    },
+    on_attach = on_attach
+  }
 end
 
 -- table returned by this function is passed to null_ls(linter) setup
 M.null_ls = function(null_ls)
-  return {
-    null_ls.builtins.diagnostics.golangci_lint.with({
+  return null_ls.builtins.diagnostics.golangci_lint.with({
       method = null_ls.methods.DIAGNOSTICS,
-      args = { "run", "--fix=false", "--enable-all", "--out-format=json", "$DIRNAME", "--path-prefix", "$ROOT" }
-    }),
-  }
+      args = {
+        "run",
+        "--fix=false",
+        "--enable-all",
+        "--out-format=json",
+        "$DIRNAME",
+        "--path-prefix",
+        "$ROOT"
+      }
+    })
 end
 
 -- this function returns string array that is passed to mason.EnsureInstalled method
