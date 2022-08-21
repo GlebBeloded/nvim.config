@@ -98,7 +98,7 @@ return packer.startup(function(use)
 	use "goolord/alpha-nvim" -- greeting screen
 
   -- file tabs 
-  use "akinsho/bufferline.nvim"
+  use {"akinsho/bufferline.nvim", tag = "v2.4.0"} -- TODO: fix
   use "moll/vim-bbye"
 
   -- Automatically set up your configuration after cloning packer.nvim
