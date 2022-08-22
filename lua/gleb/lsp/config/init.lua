@@ -22,6 +22,7 @@ end
 local langauge_configs = {
 	require("gleb/lsp/config/go"), -- golang
 	require("gleb/lsp/config/lua"), -- lua
+	require("gleb/lsp/config/json"), -- json
 }
 
 require("mason").setup()
