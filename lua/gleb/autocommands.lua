@@ -1,4 +1,4 @@
-vim.cmd [[
+vim.cmd([[
   augroup _general_settings
     autocmd!
     autocmd FileType qf,help,man,lspinfo nnoremap <silent> <buffer> q :close<CR> 
@@ -31,6 +31,6 @@ vim.cmd [[
   
   augroup _lsp
     autocmd!
-    autocmd CursorHold * silent!lua vim.lsp.buf.hover() -- display help after howering for some thime
+    autocmd BufWritePre * lua vim.lsp.buf.formatting_sync()
   augroup end
-]]
+]])
