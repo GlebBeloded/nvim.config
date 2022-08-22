@@ -19,11 +19,4 @@ M.lsp_config = {
 	},
 }
 
-
-M.null_ls = function(null_ls)
-	return {
-		null_ls.builtins.formatting.prettier,
-	}
-end
-
 return M

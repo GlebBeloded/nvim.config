@@ -23,6 +23,7 @@ local langauge_configs = {
 	require("gleb/lsp/config/go"), -- golang
 	require("gleb/lsp/config/lua"), -- lua
 	require("gleb/lsp/config/json"), -- json
+	require("gleb/lsp/config/yaml"), -- yaml
 }
 
 require("mason").setup()
@@ -44,7 +45,7 @@ end
 
 local null_ls = require("null-ls")
 
-local diagnostics = {}
+local diagnostics = { null_ls.builtins.formatting.prettier }
 for _, language in ipairs(langauge_configs) do
 	if language.null_ls then
 		for _, builtin in ipairs(language.null_ls(null_ls)) do
@@ -66,19 +67,4 @@ null_ls.setup({
 --   update_in_insert = false,
 
 --   sources = { null_ls.builtins.diagnostics.zsh, null_ls.builtins.formatting.beautysh,
---     null_ls.builtins.formatting.prettier },
 -- })
---
--- require("gleb/lsp/config/json")
---
--- require("lspconfig").yamlls.setup({
---   settings = {
---     yaml = {
---       schemas = {
---         ["https://gitlab.com/gitlab-org/gitlab/-/raw/master/app/assets/javascripts/editor/schema/ci.json?inline=false"] = "*/.gitlab-ci.yaml",
---       }
---     }
---   }
--- })
---
--- require("lspconfig").jsonls.setup(merge(global_config, require("gleb.lsp.config.json")))
