@@ -1,7 +1,7 @@
 local M = {}
 
 -- lsp_name is server name, to be passed as lspconfig["M.lsp_name"] = M.lsp_config
-M.lsp_name = "sumneko_lua"
+M.lsp_name = "lua"
 
 -- table returned by this function is passed to null_ls(linter) setup
 -- table should contain list of diagnostics to use

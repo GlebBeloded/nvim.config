@@ -7,12 +7,17 @@ local on_attach = function(client, buffer)
     hint_scheme = "Comment", -- how your parameter will be highlight (highlight color)
   }
 
-  require "lsp-format".on_attach(client) -- fmt on file save
-  require "lsp_signature".on_attach(lsp_lines_config, buffer) -- pretty signatures
+  require("lsp-format").on_attach(client) -- fmt on file save
+  require("lsp_signature").on_attach(lsp_lines_config, buffer) -- pretty signatures
 end
 
 local function merge(...)
-  return vim.tbl_deep_extend("force", ...)
+  local tbl = vim.tbl_deep_extend("force", ...)
+  if tbl == nil then
+    return {}
+  end
+
+  return table
 end
 
 -- fieldToList accepts a list of objects and returns field fieldName from those objects
@@ -69,7 +74,6 @@ null_ls.setup({
 })
 
 -- OLD CODE
-
 
 -- null_ls.setup({
 --   debug = false,

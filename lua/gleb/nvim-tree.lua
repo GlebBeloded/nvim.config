@@ -21,7 +21,7 @@ nvim_tree.setup {
     update_cwd = true,
   },
   filters = {
-    dotfiles = true, -- hide dotfiles (git directory)
+    dotfiles = false, -- display dotfiles
   },
   renderer = {
     indent_markers = {
