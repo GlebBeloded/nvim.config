@@ -14,6 +14,7 @@ M.null_ls = function(null_ls)
 		null_ls.builtins.diagnostics.shellcheck,
 		null_ls.builtins.code_actions.shellcheck,
 		null_ls.builtins.formatting.shfmt,
+		null_ls.builtins.formatting.shellharden,
 	}
 end
 
@@ -22,6 +23,7 @@ M.mason = {
 	"bash-language-server",
 	"shellcheck",
 	"shfmt",
+	"shellharden",
 }
 
 return M
