@@ -24,6 +24,7 @@ local langauge_configs = {
 	require("gleb/lsp/config/lua"), -- lua
 	require("gleb/lsp/config/json"), -- json
 	require("gleb/lsp/config/yaml"), -- yaml
+	require("gleb/lsp/config/shell"), -- sh,bash,zsh
 }
 
 require("mason").setup()
@@ -59,12 +60,3 @@ null_ls.setup({
 	update_in_insert = false,
 	sources = diagnostics,
 })
-
--- OLD CODE
-
--- null_ls.setup({
---   debug = false,
---   update_in_insert = false,
-
---   sources = { null_ls.builtins.diagnostics.zsh, null_ls.builtins.formatting.beautysh,
--- })
