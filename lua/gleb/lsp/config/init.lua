@@ -1,14 +1,10 @@
-local on_attach = function(client)
-	require("lsp-format").on_attach(client) -- fmt on file save
-end
-
 local function merge(...)
 	local tbl = vim.tbl_deep_extend("force", ...)
 	if tbl == nil then
 		return {}
 	end
 
-	return table
+	return tbl
 end
 
 -- fieldToList accepts a list of objects and returns field fieldName from those objects
@@ -38,8 +34,6 @@ vim.api.nvim_create_user_command("MasonSync", update, {})
 
 local lsp = require("lspconfig")
 local global_config = require("gleb/lsp/config/handlers")
-global_config.setup()
-global_config.on_attach = on_attach
 
 for _, language in ipairs(langauge_configs) do
 	if language.lsp_name then
@@ -69,13 +63,12 @@ null_ls.setup({
 -- null_ls.setup({
 --   debug = false,
 --   update_in_insert = false,
+
 --   sources = { null_ls.builtins.diagnostics.zsh, null_ls.builtins.formatting.beautysh,
 --     null_ls.builtins.formatting.prettier },
 -- })
 --
 -- require("gleb/lsp/config/json")
---
--- vim.cmd [[ set updatetime=1000 ]] -- this variable configures how long does it tike before CursorHold event fires
 --
 -- require("lspconfig").yamlls.setup({
 --   settings = {
