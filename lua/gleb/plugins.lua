@@ -1,5 +1,7 @@
 local fn = vim.fn
 
+local PACKER_BOOTSTRAP = nil
+
 local install_path = fn.stdpath("data") .. "/site/pack/packer/start/packer.nvim"
 if fn.empty(fn.glob(install_path)) > 0 then
 	PACKER_BOOTSTRAP = fn.system({
@@ -66,7 +68,6 @@ return packer.startup(function(use)
 	use("williamboman/mason.nvim") -- stuff for managins linters, lsp, formatters, example: MasonInstall golint, :Mason will show all installed linetrs and lsps
 	use("jose-elias-alvarez/null-ls.nvim") -- formatters and linters for lsp
 	use("lukas-reineke/lsp-format.nvim") -- format code on save
-	use("https://git.sr.ht/~whynothugo/lsp_lines.nvim") -- pretty diagnostics rendering
 	use("kosayoda/nvim-lightbulb") -- show lightbulb for code actions
 	use("ray-x/lsp_signature.nvim") -- fancy function completion plugin
 

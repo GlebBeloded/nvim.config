@@ -1,46 +1,37 @@
-local on_attach = function(client, buffer)
-  local lsp_lines_config = {
-    bind = true,
-    hint_enable = true, -- virtal text hint
-    floating_window = false, -- floating window hint
-    hint_prefix = "",
-    hint_scheme = "Comment", -- how your parameter will be highlight (highlight color)
-  }
-
-  require("lsp-format").on_attach(client) -- fmt on file save
-  require("lsp_signature").on_attach(lsp_lines_config, buffer) -- pretty signatures
+local on_attach = function(client)
+	require("lsp-format").on_attach(client) -- fmt on file save
 end
 
 local function merge(...)
-  local tbl = vim.tbl_deep_extend("force", ...)
-  if tbl == nil then
-    return {}
-  end
+	local tbl = vim.tbl_deep_extend("force", ...)
+	if tbl == nil then
+		return {}
+	end
 
-  return table
+	return table
 end
 
 -- fieldToList accepts a list of objects and returns field fieldName from those objects
 local function fieldToList(fieldName, ...)
-  local fields = {}
-  for _, value in ipairs(...) do
-    if value[fieldName] then
-      table.insert(fields, value[fieldName])
-    end
-  end
+	local fields = {}
+	for _, value in ipairs(...) do
+		if value[fieldName] then
+			table.insert(fields, value[fieldName])
+		end
+	end
 
-  return fields
+	return fields
 end
 
 local langauge_configs = {
-  require("gleb/lsp/config/go"), -- golang
-  require("gleb/lsp/config/lua"), -- lua
+	require("gleb/lsp/config/go"), -- golang
+	require("gleb/lsp/config/lua"), -- lua
 }
 
 require("mason").setup()
 
 local function update()
-  vim.cmd(":MasonInstall " .. table.concat(merge(unpack(fieldToList("mason", langauge_configs))), " "))
+	vim.cmd(":MasonInstall " .. table.concat(merge(unpack(fieldToList("mason", langauge_configs))), " "))
 end
 
 vim.api.nvim_create_user_command("MasonSync", update, {})
@@ -51,26 +42,26 @@ global_config.setup()
 global_config.on_attach = on_attach
 
 for _, language in ipairs(langauge_configs) do
-  if language.lsp_name then
-    lsp[language.lsp_name].setup(merge(global_config, language.lsp_config))
-  end
+	if language.lsp_name then
+		lsp[language.lsp_name].setup(merge(global_config, language.lsp_config))
+	end
 end
 
 local null_ls = require("null-ls")
 
 local diagnostics = {}
 for _, language in ipairs(langauge_configs) do
-  if language.null_ls then
-    for _, builtin in ipairs(language.null_ls(null_ls)) do
-      table.insert(diagnostics, builtin)
-    end
-  end
+	if language.null_ls then
+		for _, builtin in ipairs(language.null_ls(null_ls)) do
+			table.insert(diagnostics, builtin)
+		end
+	end
 end
 
 null_ls.setup({
-  debug = false,
-  update_in_insert = false,
-  sources = diagnostics,
+	debug = false,
+	update_in_insert = false,
+	sources = diagnostics,
 })
 
 -- OLD CODE
