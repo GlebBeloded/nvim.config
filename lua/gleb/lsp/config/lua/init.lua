@@ -36,6 +36,9 @@ local config = {
 			},
 		},
 	},
+	on_attach = function(client, bufnr)
+		client.server_capabilities.document_formatting = false
+	end,
 }
 
 -- lua nvim autocomplitions stuff
