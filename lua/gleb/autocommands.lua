@@ -34,3 +34,5 @@ vim.cmd([[
     autocmd BufWritePre * silent!lua vim.lsp.buf.format({})
   augroup end
 ]])
+
+vim.cmd([[ command! Format execute 'lua vim.lsp.buf.format{async=true}' ]])

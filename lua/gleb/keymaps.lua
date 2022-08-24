@@ -3,7 +3,6 @@ local opts = { noremap = true, silent = true }
 -- Shorten function name
 local keymap = vim.api.nvim_set_keymap
 
-
 -- Modes
 --   normal_mode = "n",
 --   insert_mode = "i",
@@ -22,7 +21,6 @@ keymap("n", "<C-l>", "<C-w>l", opts)
 keymap("n", "gb", "<C-O>", opts) -- prevous location
 keymap("n", "gB", "<C-I>", opts) -- next location
 
-
 -- Resize with arrows
 keymap("n", "<C-Up>", ":resize +2<CR>", opts)
 keymap("n", "<C-Down>", ":resize -2<CR>", opts)
@@ -33,7 +31,6 @@ keymap("n", "<C-Right>", ":vertical resize +2<CR>", opts)
 keymap("n", "<A-l>", ":bnext<CR>", opts)
 keymap("n", "<A-h>", ":bprevious<CR>", opts)
 keymap("n", "<A-q>", ":bdelete<CR>", opts)
-
 
 -- Move text up and down
 -- keymap("n", "<A-j>", "<Esc>:m .+1<CR>==gi", opts)
@@ -63,7 +60,7 @@ keymap("x", "<A-k>", ":move '<-2<CR>gv-gv", opts)
 -- Nvimtree
 keymap("n", "<A-e>", ":NvimTreeToggle<cr>", opts)
 
--- telescope 
+-- telescope
 keymap("n", "<A-F>", ":Telescope live_grep<cr>", opts)
 
 -- code actions
@@ -73,8 +70,8 @@ keymap("v", "<A-CR>", ":lua vim.lsp.buf.code_action()<cr>", opts)
 keymap("i", "<A-CR>", ":lua vim.lsp.buf.code_action()<cr>", opts)
 
 -- comments
-keymap("n", "gc", ":lua require('Comment.api').toggle_current_linewise({})<CR>", opts) -- line comment for <c-/> idk why it's mapped to gc
-keymap('x', 'gc', '<ESC><CMD>lua require("Comment.api").toggle_linewise_op(vim.fn.visualmode())<CR>', opts) -- multiline comment for <c-/>
+keymap("n", "gc", ":lua require('Comment.api').toggle.linewise.current({})<CR>", opts) -- line comment for <c-/> idk why it's mapped to gc
+keymap("x", "gc", '<ESC><CMD>lua require("Comment.api").toggle.linewise(vim.fn.visualmode())<CR>', opts) -- multiline comment for <c-/>
 
 keymap("n", "<A-w>", "<cmd>lua vim.diagnostic.goto_next()<CR>", opts)
 -- lsp keymaps
@@ -91,4 +88,6 @@ keymap("n", "gl", '<cmd>lua vim.diagnostic.open_float({ border = "rounded" })<CR
 
 keymap("n", "]d", '<cmd>lua vim.diagnostic.goto_next({ border = "rounded" })<CR>', opts)
 keymap("n", "<leader>q", "<cmd>lua vim.diagnostic.setloclist()<CR>", opts)
-vim.cmd([[ command! Format execute 'lua vim.lsp.buf.format{async=true}' ]])
+
+-- std stuff
+keymap("n", "q", "<Nop>", opts) -- disable recording feature
