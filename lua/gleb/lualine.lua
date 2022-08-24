@@ -21,7 +21,7 @@ local diff = {
 	"diff",
 	colored = false,
 	symbols = { added = " ", modified = " ", removed = " " }, -- changes diff symbols
-  cond = hide_in_width
+	cond = hide_in_width,
 }
 
 local mode = {
@@ -55,7 +55,7 @@ end
 lualine.setup({
 	options = {
 		icons_enabled = true,
-		theme = "tokyonight",
+		--theme = "gruvbox_material",
 		component_separators = { left = "", right = "" },
 		section_separators = { left = "", right = "" },
 		disabled_filetypes = { "alpha", "dashboard", "Outline" },
@@ -81,8 +81,6 @@ lualine.setup({
 	extensions = {},
 })
 
-
 -- make bufferline global (same bufferline for all windows)
 -- must be after lualine setup
-vim.opt.laststatus=3
-
+vim.opt.laststatus = 3

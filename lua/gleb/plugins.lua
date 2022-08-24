@@ -51,8 +51,10 @@ return packer.startup(function(use)
 	use("antoinemadec/FixCursorHold.nvim") -- fix hold cursor bugs
 	use("nathom/filetype.nvim") -- allows to override file type
 
-	-- colorschemes
+	-- colors
 	use("folke/tokyonight.nvim")
+	use("sainnhe/gruvbox-material")
+	use("NvChad/nvim-colorizer.lua")
 
 	-- cmp plugins
 	use("hrsh7th/nvim-cmp") -- The completion plugin
@@ -88,6 +90,7 @@ return packer.startup(function(use)
 
 	-- treesitter (rich syntax highlighting)
 	use({ "nvim-treesitter/nvim-treesitter", run = ":TSUpdate" })
+	use("nvim-treesitter/playground")
 
 	-- git
 	use("lewis6991/gitsigns.nvim")
