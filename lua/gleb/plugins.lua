@@ -72,6 +72,7 @@ return packer.startup(function(use)
 	use("lukas-reineke/lsp-format.nvim") -- format code on save
 	use("kosayoda/nvim-lightbulb") -- show lightbulb for code actions
 	use("ray-x/lsp_signature.nvim") -- fancy function completion plugin
+	use({ "kevinhwang91/nvim-ufo", requires = "kevinhwang91/promise-async" }) -- better folding
 
 	-- snippets
 	use("L3MON4D3/LuaSnip") --snippet engine

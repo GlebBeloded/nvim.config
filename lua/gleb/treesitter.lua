@@ -1,7 +1,4 @@
-local status_ok, configs = pcall(require, "nvim-treesitter.configs")
-if not status_ok then
-	return
-end
+configs = require("nvim-treesitter.configs")
 
 configs.setup({
 	ensure_installed = "all", -- one of "all" or a list of languages
@@ -19,7 +16,3 @@ configs.setup({
 		enable = true,
 	},
 })
-
-vim.cmd([[ set foldlevel=20 ]])
-vim.cmd([[ set foldmethod=expr ]])
-vim.cmd([[ set foldexpr=nvim_treesitter#foldexpr() ]])
