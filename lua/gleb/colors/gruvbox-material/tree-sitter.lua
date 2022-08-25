@@ -20,5 +20,6 @@ vim.api.nvim_set_hl(0, "TSConstBuiltin", { fg = palette.foreground.orange }) -- 
 vim.api.nvim_set_hl(0, "TSOperator", { fg = palette.foreground.red }) -- operators
 vim.api.nvim_set_hl(0, "TSKeyword", { fg = palette.foreground.red }) -- keywords
 vim.api.nvim_set_hl(0, "TSKeywordReturn", { fg = palette.foreground.red }) -- return keyword
+vim.api.nvim_set_hl(0, "TSPunctDelimiter", { fg = palette.foreground.red }) -- yaml ":"
 -- strings
 vim.api.nvim_set_hl(0, "TSString", { fg = palette.foreground.yellow }) -- basic strings
