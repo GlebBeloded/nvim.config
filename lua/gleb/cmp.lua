@@ -8,34 +8,34 @@ local check_backspace = function()
 	return col == 0 or vim.fn.getline("."):sub(col, col):match("%s")
 end
 
-local cmp_kinds = {
-	Text = "  ",
-	Method = "  ",
-	Function = "  ",
-	Constructor = "  ",
-	Field = "  ",
-	Variable = "  ",
-	Class = "  ",
-	Interface = "  ",
-	Module = "  ",
-	Property = "  ",
-	Unit = "  ",
-	Value = "  ",
-	Enum = "  ",
-	Keyword = "  ",
-	Snippet = "  ",
-	Color = "  ",
-	File = "  ",
-	Reference = "  ",
-	Folder = "  ",
-	EnumMember = "  ",
-	Constant = "  ",
-	Struct = "  ",
-	Event = "  ",
-	Operator = "  ",
-	TypeParameter = "  ",
-}
 -- find more here: https://www.nerdfonts.com/cheat-sheet
+local cmp_kinds = {
+	Text = "",
+	Constant = "",
+	Method = "",
+	Function = "",
+	Constructor = "",
+	Field = "",
+	Variable = "",
+	Class = " ",
+	Interface = "",
+	Module = "",
+	Property = "",
+	Unit = "塞",
+	Value = " ",
+	Enum = "練",
+	EnumMember = " ",
+	Keyword = " ",
+	Snippet = "",
+	Color = "",
+	File = "",
+	Reference = "",
+	Folder = "",
+	Struct = "",
+	Event = "",
+	Operator = "",
+	TypeParameter = "",
+}
 
 cmp.setup({
 	snippet = {
@@ -88,12 +88,14 @@ cmp.setup({
 	},
 
 	formatting = {
-		fields = { "kind", "abbr", "menu" },
+		fields = { "kind", "abbr" },
 		format = function(entry, vim_item)
 			-- Kind icons
 			vim_item.kind = string.format("%s", cmp_kinds[vim_item.kind])
 
-			vim_item.menu = entry:get_completion_item().detail
+			-- this will show more description for the item
+			-- also you must add to fields list above
+			-- vim_item.menu = entry:get_completion_item().detail
 
 			return vim_item
 		end,
@@ -102,7 +104,6 @@ cmp.setup({
 		{ name = "nvim_lsp" },
 		{ name = "nvim_lua" },
 		{ name = "luasnip" },
-		{ name = "buffer" },
 		{ name = "path" },
 		{ name = "cmdline" },
 	},

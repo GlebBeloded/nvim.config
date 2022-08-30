@@ -7,7 +7,7 @@ require("gleb.lsp")
 require("gleb.telescope")
 require("gleb.treesitter")
 require("gleb.folding") -- must be after treesitter
-require("gleb.autopairs")
+require("gleb.autopairs") -- must be after treesitter
 require("gleb.gitsigns")
 require("gleb.nvim-tree")
 require("gleb.bufferline")
