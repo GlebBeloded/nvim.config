@@ -8,3 +8,4 @@ pcall(vim.cmd, "colorscheme " .. colorscheme)
 
 require("gleb.colors.gruvbox-material.tree-sitter")
 require("gleb.colors.gruvbox-material.lsp")
+require("gleb.colors.gruvbox-material.cmp")
