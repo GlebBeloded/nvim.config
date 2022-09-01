@@ -25,6 +25,7 @@ local langauge_configs = {
 	require("gleb/lsp/config/json"), -- json
 	require("gleb/lsp/config/yaml"), -- yaml
 	require("gleb/lsp/config/shell"), -- sh,bash,zsh
+	require("gleb/lsp/config/terraform"), -- hashicorp yucky
 }
 
 require("mason").setup()

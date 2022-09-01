@@ -95,10 +95,16 @@ return packer.startup(function(use)
 
 	-- git
 	use("lewis6991/gitsigns.nvim")
+	use("f-person/git-blame.nvim")
+
+	-- comments
+	use("numToStr/Comment.nvim") -- smart comments
+
+	-- notifications
+	use("rcarriga/nvim-notify") -- pretty notifications
 
 	-- miscalenious stuff
 	use("windwp/nvim-autopairs") -- autocomplete braces pairs
-	use("numToStr/Comment.nvim") -- smart comments
 	use("JoosepAlviste/nvim-ts-context-commentstring") -- even smarter comments for files with multiple languages in them (like react)
 	use("lukas-reineke/indent-blankline.nvim") -- lines for indenting
 	use("goolord/alpha-nvim") -- greeting screen
