@@ -74,6 +74,11 @@ return packer.startup(function(use)
 	use("ray-x/lsp_signature.nvim") -- fancy function completion plugin
 	use({ "kevinhwang91/nvim-ufo", requires = "kevinhwang91/promise-async" }) -- better folding
 
+	-- debugging plugins
+	use("mfussenegger/nvim-dap")
+	use("leoluz/nvim-dap-go") -- golang
+	use({ "rcarriga/nvim-dap-ui", requires = { "mfussenegger/nvim-dap" } }) -- ui (splits) for dap
+
 	-- snippets
 	use("L3MON4D3/LuaSnip") --snippet engine
 
