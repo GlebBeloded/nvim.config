@@ -21,6 +21,8 @@ local function handler(virtText, lnum, endLnum, width, truncate)
 
 	if filetype == "go" then
 		virtText = require("gleb.folding.go"):handle(virtText, lnum, endLnum, width, truncate)
+	elseif filetype == "lua" then
+		virtText = require("gleb.folding.lua"):handle(virtText, lnum, endLnum, width, truncate)
 	else
 		table.insert(virtText, { " ... " }) -- default text
 	end
