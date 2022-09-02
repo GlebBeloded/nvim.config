@@ -112,7 +112,7 @@ cmp.setup({
 		select = true,
 	},
 	window = {
-		documentation = false,
+		documentation = {},
 	},
 	experimental = {
 		ghost_text = false,
