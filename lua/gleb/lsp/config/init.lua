@@ -38,6 +38,7 @@ vim.api.nvim_create_user_command("MasonSync", update, {})
 
 local lsp = require("lspconfig")
 local global_config = require("gleb/lsp/config/handlers")
+global_config.setup()
 
 for _, language in ipairs(langauge_configs) do
 	if language.lsp_name then
