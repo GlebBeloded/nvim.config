@@ -5,6 +5,7 @@ require("gleb.plugins")
 require("gleb.cmp")
 require("gleb.lsp")
 require("gleb.telescope")
+require("gleb.select")
 require("gleb.treesitter")
 require("gleb.folding") -- must be after treesitter
 require("gleb.autopairs") -- must be after treesitter
