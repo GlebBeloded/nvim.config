@@ -2,6 +2,7 @@ local opts = { noremap = true, silent = true }
 
 -- Shorten function name
 local keymap = vim.api.nvim_set_keymap
+local keymap_lua = vim.keymap.set
 
 -- Modes
 --   normal_mode = "n",
@@ -28,10 +29,10 @@ keymap("n", "<C-Left>", ":vertical resize -2<CR>", opts)
 keymap("n", "<C-Right>", ":vertical resize +2<CR>", opts)
 
 -- Navigate buffers
-keymap("n", "<A-l>", ":bnext<CR>", opts)
-keymap("n", "<A-h>", ":bprevious<CR>", opts)
-keymap("n", "<A-q>", ":bdelete<CR>", opts)
-keymap("n", "<A-Q>", ":bufdo bwipeout<CR>", opts)
+keymap("n", "<C-l>", ":bnext<CR>", opts)
+keymap("n", "<C-h>", ":bprevious<CR>", opts)
+keymap("n", "<C-w>", ":bdelete<CR>", opts)
+keymap("n", "<C-W>", ":bufdo bwipeout<CR>", opts)
 
 -- Move text up and down
 -- keymap("n", "<A-j>", "<Esc>:m .+1<CR>==gi", opts)
@@ -65,10 +66,10 @@ keymap("n", "<A-e>", ":NvimTreeToggle<cr>", opts)
 keymap("n", "<A-F>", ":Telescope live_grep<cr>", opts)
 
 -- code actions
-keymap("n", "<A-CR>", ":lua vim.lsp.buf.code_action()<cr>", opts)
-keymap("x", "<A-CR>", ":lua vim.lsp.buf.code_action()<cr>", opts)
-keymap("v", "<A-CR>", ":lua vim.lsp.buf.code_action()<cr>", opts)
-keymap("i", "<A-CR>", ":lua vim.lsp.buf.code_action()<cr>", opts)
+keymap("n", "<C-CR>", ":lua vim.lsp.buf.code_action()<cr>", opts)
+keymap("x", "<C-CR>", ":lua vim.lsp.buf.code_action()<cr>", opts)
+keymap("v", "<C-CR>", ":lua vim.lsp.buf.code_action()<cr>", opts)
+keymap("i", "<C-CR>", ":lua vim.lsp.buf.code_action()<cr>", opts)
 
 keymap("n", "<A-w>", "<cmd>lua vim.diagnostic.goto_next()<CR>", opts)
 -- lsp keymaps
@@ -88,3 +89,13 @@ keymap("n", "<leader>q", "<cmd>lua vim.diagnostic.setloclist()<CR>", opts)
 
 -- std stuff
 keymap("n", "q", "<Nop>", opts) -- disable recording feature
+
+vim.g.mapleader = "<Space>"
+keymap("n", "<Leader-e>", ":NvimTreeToggle<CR>", opts)
+
+keymap("n", "<D-s>", ":NvimTreeToggle<CR>", opts)
+keymap("n", "<M-s>", ":NvimTreeToggle<CR>", opts)
+
+local refs = require("telescope.builtin").lsp_references
+
+keymap_lua("n", "gr", refs, opts)

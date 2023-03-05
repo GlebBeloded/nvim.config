@@ -9,3 +9,8 @@ vim.api.nvim_set_hl(0, "DiagnosticVirtualTextWarn", { fg = palette.background.bg
 -- set lighbulb color to yellow
 vim.cmd([[highlight LightBulbFloatWin guifg=#e0af68 ]])
 vim.cmd([[highlight LightBulbVirtualText guifg=#e0af68 ]])
+
+vim.api.nvim_set_hl(0, "SpellBad", { cterm = { undercurl = true }, fg = palette.foreground.red })
+vim.api.nvim_set_hl(0, "SpellCap", { cterm = { undercurl = true }, fg = palette.foreground.yellow })
+vim.api.nvim_set_hl(0, "SpellLocal", { cterm = { undercurl = true }, fg = palette.foreground.blue })
+vim.api.nvim_set_hl(0, "SpellRare", { cterm = { undercurl = true }, fg = palette.foreground.purple })

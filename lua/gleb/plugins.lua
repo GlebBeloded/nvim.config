@@ -41,13 +41,13 @@ packer.init({
 
 -- Install your plugins here
 return packer.startup(function(use)
-	-- utility plugins plugins
+	-- utility plugins
 	use("wbthomason/packer.nvim") -- Have packer manage itself
 	use("nvim-lua/popup.nvim") -- An implementation of the Popup API from vim in Neovim
 	use("nvim-lua/plenary.nvim") -- Useful lua functions used ny lots of plugins
 	use("MunifTanjim/nui.nvim") -- ui library for other plugins
 	use("lewis6991/impatient.nvim") -- load plugins faster
-	use("folke/lua-dev.nvim") -- autocomplete for nvim development
+	use("folke/neodev.nvim") -- autocomplete for nvim development
 	use("antoinemadec/FixCursorHold.nvim") -- fix hold cursor bugs
 	use("nathom/filetype.nvim") -- allows to override file type
 
@@ -60,7 +60,6 @@ return packer.startup(function(use)
 	use("hrsh7th/nvim-cmp") -- The completion plugin
 	use("hrsh7th/cmp-buffer") -- buffer completions
 	use("hrsh7th/cmp-path") -- path completions
-	use("hrsh7th/cmp-cmdline") -- cmdline completions
 	use("saadparwaiz1/cmp_luasnip") -- snippet completions
 	use("hrsh7th/cmp-nvim-lsp") -- enables lsp in cmp
 	use("hrsh7th/cmp-nvim-lua") -- adds autocomplete for nvim lua api
@@ -73,6 +72,26 @@ return packer.startup(function(use)
 	use("kosayoda/nvim-lightbulb") -- show lightbulb for code actions
 	use("ray-x/lsp_signature.nvim") -- fancy function completion plugin
 	use({ "kevinhwang91/nvim-ufo", requires = "kevinhwang91/promise-async" }) -- better folding
+
+	-- copilot
+	use({
+		"zbirenbaum/copilot.lua",
+		cmd = "Copilot",
+		event = "InsertEnter",
+		config = function()
+			require("copilot").setup({
+				suggestion = { enabled = false },
+				panel = { enabled = false },
+			})
+		end,
+	})
+	use({
+		"zbirenbaum/copilot-cmp",
+		after = { "copilot.lua" },
+		config = function()
+			require("copilot_cmp").setup()
+		end,
+	})
 
 	-- debugging plugins
 	use("mfussenegger/nvim-dap")
@@ -104,9 +123,6 @@ return packer.startup(function(use)
 
 	-- comments
 	use("numToStr/Comment.nvim") -- smart comments
-
-	-- notifications
-	use("rcarriga/nvim-notify") -- pretty notifications
 
 	-- miscalenious stuff
 	use("windwp/nvim-autopairs") -- autocomplete braces pairs

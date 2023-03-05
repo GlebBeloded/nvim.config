@@ -18,3 +18,4 @@ vim.api.nvim_set_hl(0, "CmpItemKindConstant", { bg = "none", fg = palette.foregr
 vim.api.nvim_set_hl(0, "CmpItemKindEnum", { bg = "none", fg = palette.foreground.purple })
 vim.api.nvim_set_hl(0, "CmpItemKindClass", { bg = "none", fg = palette.foreground.green })
 vim.api.nvim_set_hl(0, "CmpItemKindStruct", { bg = "none", fg = palette.foreground.green })
+vim.api.nvim_set_hl(0, "CmpItemKindCopilot", { bg = "none", fg = palette.foreground.red })

@@ -1,7 +1,12 @@
+-- IMPORTANT: make sure to setup neodev BEFORE lspconfig
+require("neodev").setup({
+	-- add any options here, or leave empty to use the default settings
+})
+
 local M = {}
 
 -- lsp_name is server name, to be passed as lspconfig["M.lsp_name"] = M.lsp_config
-M.lsp_name = "sumneko_lua"
+M.lsp_name = "lua_ls"
 
 -- table returned by this function is passed to null_ls(linter) setup
 -- table should contain list of diagnostics to use
@@ -21,28 +26,12 @@ M.mason = {
 local config = {
 	settings = {
 		Lua = {
-			runtime = {
-				version = "LuaJIT",
-			},
-			diagnostics = {
-				-- Get the language server to recognize the `vim` global
-				globals = { "vim" },
-			},
-			workspace = {
-				library = {
-					[vim.fn.expand("$VIMRUNTIME/lua")] = true,
-					[vim.fn.stdpath("config") .. "/lua"] = true,
-				},
+			completion = {
+				callSnippet = "Replace",
 			},
 		},
 	},
-	on_attach = function(client, bufnr)
-		client.server_capabilities.document_formatting = false
-	end,
 }
-
--- lua nvim autocomplitions stuff
-config = vim.tbl_deep_extend("force", config, require("lua-dev").setup())
 
 -- native lsp config
 M.lsp_config = config

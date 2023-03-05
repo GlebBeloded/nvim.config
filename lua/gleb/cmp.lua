@@ -1,12 +1,6 @@
-local cmp = require("cmp")
 local luasnip = require("luasnip")
-
-require("luasnip/loaders/from_vscode").lazy_load()
-
-local check_backspace = function()
-	local col = vim.fn.col(".") - 1
-	return col == 0 or vim.fn.getline("."):sub(col, col):match("%s")
-end
+local cmp = require("cmp")
+local types = require("cmp.types")
 
 -- find more here: https://www.nerdfonts.com/cheat-sheet
 local cmp_kinds = {
@@ -35,60 +29,39 @@ local cmp_kinds = {
 	Event = "",
 	Operator = "",
 	TypeParameter = "",
+	Copilot = "󰚩",
+}
+
+local has_words_before = function()
+	if vim.api.nvim_buf_get_option(0, "buftype") == "prompt" then
+		return false
+	end
+	local line, col = unpack(vim.api.nvim_win_get_cursor(0))
+	return col ~= 0 and vim.api.nvim_buf_get_text(0, line - 1, 0, line - 1, col, {})[1]:match("^%s*$") == nil
+end
+
+local mapping = {
+	["<Tab>"] = vim.schedule_wrap(function(fallback)
+		if cmp.visible() and has_words_before() then
+			cmp.select_next_item({ behavior = cmp.SelectBehavior.Select })
+		else
+			fallback()
+		end
+	end),
+	["<S-Tab>"] = cmp.mapping.select_prev_item({ behavior = types.cmp.SelectBehavior.Select }),
+	["<CR>"] = cmp.mapping.confirm(),
 }
 
 cmp.setup({
-	snippet = {
+	mapping = mapping,
+	preselect = types.cmp.PreselectMode.Item,
+	snippet = { -- cmp does not work without snippet engine
 		expand = function(args)
-			luasnip.lsp_expand(args.body) -- For `luasnip` users.
+			luasnip.lsp_expand(args.body)
 		end,
 	},
-	mapping = {
-		["<C-k>"] = cmp.mapping.select_prev_item(),
-		["<C-j>"] = cmp.mapping.select_next_item(),
-		["<C-b>"] = cmp.mapping(cmp.mapping.scroll_docs(-1), { "i", "c" }),
-		["<C-f>"] = cmp.mapping(cmp.mapping.scroll_docs(1), { "i", "c" }),
-		["<C-Space>"] = cmp.mapping(cmp.mapping.complete(), { "i", "c" }),
-		["<C-y>"] = cmp.config.disable, -- Specify `cmp.config.disable` if you want to remove the default `<C-y>` mapping.
-		["<C-e>"] = cmp.mapping({
-			i = cmp.mapping.abort(),
-			c = cmp.mapping.close(),
-		}),
-		-- Accept currently selected item. If none selected, `select` first item.
-		-- Set `select` to `false` to only confirm explicitly selected items.
-		["<CR>"] = cmp.mapping.confirm({ select = true }),
-		["<Tab>"] = cmp.mapping(function(fallback)
-			if cmp.visible() then
-				cmp.select_next_item()
-			elseif luasnip.expandable() then
-				luasnip.expand()
-			elseif luasnip.expand_or_jumpable() then
-				luasnip.expand_or_jump()
-			elseif check_backspace() then
-				fallback()
-			else
-				fallback()
-			end
-		end, {
-			"i",
-			"s",
-		}),
-		["<S-Tab>"] = cmp.mapping(function(fallback)
-			if cmp.visible() then
-				cmp.select_prev_item()
-			elseif luasnip.jumpable(-1) then
-				luasnip.jump(-1)
-			else
-				fallback()
-			end
-		end, {
-			"i",
-			"s",
-		}),
-	},
-
 	formatting = {
-		fields = { "kind", "abbr" },
+		fields = { types.cmp.ItemField.Kind, types.cmp.ItemField.Abbr, types.cmp.ItemField.Menu },
 		format = function(entry, vim_item)
 			-- Kind icons
 			vim_item.kind = string.format("%s", cmp_kinds[vim_item.kind])
@@ -97,24 +70,29 @@ cmp.setup({
 			-- also you must add to fields list above
 			-- vim_item.menu = entry:get_completion_item().detail
 
+			-- this will show what plugin provided the suggestion
+			-- also you must add to fields list above
+			-- vim_item.menu = entry.source.name
+
 			return vim_item
 		end,
 	},
 	sources = {
-		{ name = "nvim_lsp" },
-		{ name = "nvim_lua" },
-		{ name = "luasnip" },
-		{ name = "path" },
-		{ name = "cmdline" },
+		-- Copilot Source
+		{ name = "nvim_lsp", group_index = 1 },
+		{ name = "nvim_lua", group_index = 1 },
+		{ name = "path", group_index = 1 },
+		{ name = "copilot", group_index = 1 }, -- for some reason copilot doesn't work if there is not enough lines
+		{ name = "cmdline", group_index = 2 }, -- this will enable completion for neovim cmdline(:)
 	},
 	confirm_opts = {
-		behavior = cmp.ConfirmBehavior.Replace,
-		select = true,
+		behavior = types.cmp.ConfirmBehavior.Replace,
+		select = false,
 	},
 	window = {
 		documentation = {},
 	},
 	experimental = {
-		ghost_text = false,
+		ghost_text = true,
 	},
 })
