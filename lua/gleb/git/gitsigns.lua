@@ -16,4 +16,10 @@ gitsigns.setup({
 	numhl = false, -- Toggle with `:Gitsigns toggle_numhl`
 	linehl = false, -- Toggle with `:Gitsigns toggle_linehl`
 	word_diff = false, -- Toggle with `:Gitsigns toggle_word_diff`
+	current_line_blame = true, -- The highlight group used for the text is `GitSignsCurrentLineBlame`.
+	current_line_blame_opts = {
+		virt_text = true,
+		virt_text_pos = "eol", -- 'eol' | 'overlay' | 'right_align'
+		delay = 300,
+	},
 })

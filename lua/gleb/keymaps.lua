@@ -101,17 +101,19 @@ local refs = require("telescope.builtin").lsp_references
 
 keymap_lua("n", "gr", refs, opts)
 
+local definitions = require("telescope.builtin").lsp_definitions
+keymap_lua("n", "gd", definitions, opts)
+
 local opened = false
 
 local function gitView()
-  vim.pretty_print(opened)
-  if not opened then
-    require("diffview").open()
-  else
-    require("diffview").close()
-  end
+	if not opened then
+		require("diffview").open()
+	else
+		require("diffview").close()
+	end
 
-  opened = not opened
+	opened = not opened
 end
 
 keymap_lua("n", "<A-g>", gitView, opts)
