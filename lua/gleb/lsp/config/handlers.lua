@@ -14,7 +14,10 @@ M.setup = function()
 	end
 
 	local config = {
-		virtual_text = false, -- disable virtual text
+		virtual_text = { -- errors and warnings
+			prefix = "",
+			spacing = 0,
+		},
 		signs = {
 			active = true,
 		},

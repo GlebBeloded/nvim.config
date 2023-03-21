@@ -6,12 +6,12 @@ local opts = { noremap = true, silent = true }
 
 -- keymaps
 -- line comment for <c-/> idk why it's mapped to gc
-vim.api.nvim_set_keymap("n", "gc", ":lua require('Comment.api').toggle.linewise.current({})<CR>", opts)
+vim.api.nvim_set_keymap("n", "<A-/>", ":lua require('Comment.api').toggle.linewise.current({})<CR>", opts)
 
 -- multiline comment for <c-/>
 vim.api.nvim_set_keymap(
 	"x",
-	"gc",
+	"<A-/>",
 	'<ESC><CMD>lua require("Comment.api").toggle.linewise(vim.fn.visualmode())<CR>',
 	opts
 )

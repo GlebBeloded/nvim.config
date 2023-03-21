@@ -14,6 +14,6 @@ vim.ui.select = function(items, opts, on_choice)
 	if opts.kind == "codeaction" then
 		codeAction:new(items, opts, on_choice):select()
 	else
-		-- defaultSelect(items, opts, on_choice)
+		defaultSelect(items, opts, on_choice)
 	end
 end

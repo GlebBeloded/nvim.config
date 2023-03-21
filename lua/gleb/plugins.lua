@@ -46,6 +46,7 @@ return packer.startup(function(use)
 	use("nvim-lua/popup.nvim") -- An implementation of the Popup API from vim in Neovim
 	use("nvim-lua/plenary.nvim") -- Useful lua functions used ny lots of plugins
 	use("MunifTanjim/nui.nvim") -- ui library for other plugins
+	use("ray-x/guihua.lua") -- ui library
 	use("lewis6991/impatient.nvim") -- load plugins faster
 	use("folke/neodev.nvim") -- autocomplete for nvim development
 	use("antoinemadec/FixCursorHold.nvim") -- fix hold cursor bugs
@@ -79,23 +80,12 @@ return packer.startup(function(use)
 		cmd = "Copilot",
 		event = "InsertEnter",
 		config = function()
-			require("copilot").setup({
-				suggestion = { enabled = false },
-				panel = { enabled = false },
-			})
-		end,
-	})
-	use({
-		"zbirenbaum/copilot-cmp",
-		after = { "copilot.lua" },
-		config = function()
-			require("copilot_cmp").setup()
+			require("copilot").setup({ suggestion = { auto_trigger = true } })
 		end,
 	})
 
 	-- debugging plugins
 	use("mfussenegger/nvim-dap")
-	use("leoluz/nvim-dap-go") -- golang
 	use({ "rcarriga/nvim-dap-ui", requires = { "mfussenegger/nvim-dap" } }) -- ui (splits) for dap
 
 	-- snippets
@@ -120,6 +110,7 @@ return packer.startup(function(use)
 	-- git
 	use("lewis6991/gitsigns.nvim")
 	use("f-person/git-blame.nvim")
+	use({ "sindrets/diffview.nvim", requires = "nvim-lua/plenary.nvim" })
 
 	-- comments
 	use("numToStr/Comment.nvim") -- smart comments

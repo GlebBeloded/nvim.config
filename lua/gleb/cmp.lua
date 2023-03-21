@@ -78,11 +78,9 @@ cmp.setup({
 		end,
 	},
 	sources = {
-		-- Copilot Source
 		{ name = "nvim_lsp", group_index = 1 },
 		{ name = "nvim_lua", group_index = 1 },
 		{ name = "path", group_index = 1 },
-		{ name = "copilot", group_index = 1 }, -- for some reason copilot doesn't work if there is not enough lines
 		{ name = "cmdline", group_index = 2 }, -- this will enable completion for neovim cmdline(:)
 	},
 	confirm_opts = {

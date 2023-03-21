@@ -31,8 +31,9 @@ keymap("n", "<C-Right>", ":vertical resize +2<CR>", opts)
 -- Navigate buffers
 keymap("n", "<C-l>", ":bnext<CR>", opts)
 keymap("n", "<C-h>", ":bprevious<CR>", opts)
-keymap("n", "<C-w>", ":bdelete<CR>", opts)
-keymap("n", "<C-W>", ":bufdo bwipeout<CR>", opts)
+keymap("n", "<C-q>", ":bdelete<CR>", opts)
+-- TODO: make is a callble command: e.g CloseAllBuffers() or CloseAllBuffersExceptThisOne()
+-- keymap("n", "<C-W>", ":bufdo bwipeout<CR>", opts)
 
 -- Move text up and down
 -- keymap("n", "<A-j>", "<Esc>:m .+1<CR>==gi", opts)
@@ -79,12 +80,12 @@ keymap("n", "K", "<cmd>lua vim.lsp.buf.hover()<CR>", opts)
 keymap("n", "gi", "<cmd>lua vim.lsp.buf.implementation()<CR>", opts)
 keymap("n", "<A-r>", "<cmd>lua vim.lsp.buf.rename()<CR>", opts)
 keymap("n", "gr", "<cmd>lua vim.lsp.buf.references()<CR>", opts)
-keymap("n", "<A-f>", "<cmd>lua vim.lsp.buf.code_action()<CR>", opts)
 keymap("n", "<A-f>", "<cmd>lua vim.diagnostic.open_float()<CR>", opts)
 keymap("n", "[d", '<cmd>lua vim.diagnostic.goto_prev({ border = "rounded" })<CR>', opts)
 keymap("n", "gl", '<cmd>lua vim.diagnostic.open_float({ border = "rounded" })<CR>', opts)
 
-keymap("n", "]d", '<cmd>lua vim.diagnostic.goto_next({ border = "rounded" })<CR>', opts)
+keymap("n", "ge", '<cmd>lua vim.diagnostic.goto_next({ border = "rounded" })<CR>', opts)
+keymap("i", "<A-c>", '<cmd>lua require("copilot.suggestion").accept()<CR>', opts)
 keymap("n", "<leader>q", "<cmd>lua vim.diagnostic.setloclist()<CR>", opts)
 
 -- std stuff
@@ -99,3 +100,18 @@ keymap("n", "<M-s>", ":NvimTreeToggle<CR>", opts)
 local refs = require("telescope.builtin").lsp_references
 
 keymap_lua("n", "gr", refs, opts)
+
+local opened = false
+
+local function gitView()
+  vim.pretty_print(opened)
+  if not opened then
+    require("diffview").open()
+  else
+    require("diffview").close()
+  end
+
+  opened = not opened
+end
+
+keymap_lua("n", "<A-g>", gitView, opts)

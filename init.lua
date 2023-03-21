@@ -1,10 +1,12 @@
+-- https://github.com/nanotee/nvim-lua-guide#tips-2
+-- if ever lost, user :help lua-guide
+
 require("gleb.impatient") -- speed up vim
 require("gleb.filetype") -- also speed up vim
 require("gleb.options")
 require("gleb.plugins")
 require("gleb.cmp")
 require("gleb.lsp")
-require("gleb.copilot")
 require("gleb.telescope")
 require("gleb.select")
 require("gleb.treesitter")
@@ -19,8 +21,9 @@ require("gleb.bufferline")
 require("gleb.project")
 require("gleb.indentline")
 require("gleb.alpha-nvim")
-require("gleb.whichkey")
 require("gleb.autocommands")
 require("gleb.keymaps")
 require("gleb.colors")
 require("gleb.lualine") -- try to put after plugins that create splits
+
+-- require("gleb.whichkey") TODO: configure and enable
