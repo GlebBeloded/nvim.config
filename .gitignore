@@ -43,3 +43,7 @@ luac.out
 # nvim files
 plugin/
 .netrwhist
+
+
+# idk where that bullshit comes from
+.luarc.json
