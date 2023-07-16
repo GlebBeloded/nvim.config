@@ -17,6 +17,8 @@ vim.api.nvim_set_hl(0, "TSFunction", { fg = palette.foreground.blue }) -- functi
 
 -- types
 vim.api.nvim_set_hl(0, "TSType", { fg = palette.foreground.green }) -- type name
+vim.api.nvim_set_hl(0, "TSTypeDefinition", { fg = palette.foreground.fg1 }) -- type name
+vim.api.nvim_set_hl(0, "TSSpell", { fg = palette.foreground.fg1 }) -- type name
 vim.api.nvim_set_hl(0, "TSTypeBuiltin", { fg = palette.foreground.green }) -- built in types(int,any)
 
 -- builtins
@@ -25,9 +27,9 @@ vim.api.nvim_set_hl(0, "TSConstant", { fg = palette.foreground.red }) -- undersc
 vim.api.nvim_set_hl(0, "TSOperator", { fg = palette.foreground.red }) -- operators
 vim.api.nvim_set_hl(0, "TSKeyword", { fg = palette.foreground.red }) -- keywords
 vim.api.nvim_set_hl(0, "TSKeywordReturn", { fg = palette.foreground.red }) -- return keyword
-vim.api.nvim_set_hl(0, "TSPunctDelimiter", { fg = palette.foreground.red }) -- yaml ":"
+vim.api.nvim_set_hl(0, "TSPunctDelimiter", { fg = palette.foreground.yellow }) -- yaml ":"
 vim.api.nvim_set_hl(0, "TSWarning", { fg = palette.foreground.red, bg = none }) -- this will highlight todo's in red
 vim.api.nvim_set_hl(0, "TSNote", { bg = none }) -- don't change background color for notes
 
 -- strings
-vim.api.nvim_set_hl(0, "TSString", { fg = palette.foreground.yellow }) -- basic strings
+vim.api.nvim_set_hl(0, "TSString", { fg = palette.foreground.bg_yellow }) -- basic strings

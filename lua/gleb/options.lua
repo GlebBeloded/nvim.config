@@ -48,3 +48,7 @@ vim.cmd([[set formatoptions-=cro]]) -- TODO: this doesn't seem to work
 
 -- remove tilde from blank lines (formatters take care of that)
 vim.o.fillchars = "eob: "
+
+-- lua-based filetype detection
+vim.g.do_filetype_lua = true
+vim.g.did_load_filetypes = false

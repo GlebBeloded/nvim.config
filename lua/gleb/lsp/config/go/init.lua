@@ -7,7 +7,7 @@ M.lsp_name = "gopls"
 M.lsp_config = {
 	settings = {
 		gopls = {
-			buildFlags = { "-tags=integration" },
+			--			buildFlags = { "-tags=integration" },
 			gofumpt = false,
 		},
 	},

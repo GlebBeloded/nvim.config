@@ -2,7 +2,6 @@
 -- if ever lost, user :help lua-guide
 
 require("gleb.impatient") -- speed up vim
-require("gleb.filetype") -- also speed up vim
 require("gleb.options")
 require("gleb.plugins")
 require("gleb.cmp")

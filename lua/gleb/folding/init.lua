@@ -34,3 +34,5 @@ ufo.setup({
 	provider_selector = provider,
 	fold_virt_text_handler = handler,
 })
+
+require("foldsigns").setup()

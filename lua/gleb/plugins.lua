@@ -50,7 +50,6 @@ return packer.startup(function(use)
 	use("lewis6991/impatient.nvim") -- load plugins faster
 	use("folke/neodev.nvim") -- autocomplete for nvim development
 	use("antoinemadec/FixCursorHold.nvim") -- fix hold cursor bugs
-	use("nathom/filetype.nvim") -- allows to override file type
 
 	-- colors
 	use("folke/tokyonight.nvim")
@@ -72,7 +71,10 @@ return packer.startup(function(use)
 	use("lukas-reineke/lsp-format.nvim") -- format code on save
 	use("kosayoda/nvim-lightbulb") -- show lightbulb for code actions
 	use("ray-x/lsp_signature.nvim") -- fancy function completion plugin
+
+	-- folding
 	use({ "kevinhwang91/nvim-ufo", requires = "kevinhwang91/promise-async" }) -- better folding
+	use("lewis6991/foldsigns.nvim") -- show lsp signs on folds
 
 	-- copilot
 	use({
@@ -94,7 +96,6 @@ return packer.startup(function(use)
 	-- telescope (finder ui)
 	use("nvim-telescope/telescope.nvim")
 	use("ahmedkhalf/project.nvim")
-	use("folke/which-key.nvim")
 
 	-- file explorer
 	use("kyazdani42/nvim-web-devicons")
@@ -121,7 +122,7 @@ return packer.startup(function(use)
 	use("goolord/alpha-nvim") -- greeting screen
 
 	-- file tabs
-	use({ "akinsho/bufferline.nvim", tag = "v2.4.0" }) -- TODO: fix
+	use({ "akinsho/bufferline.nvim" })
 	use("moll/vim-bbye")
 
 	-- Automatically set up your configuration after cloning packer.nvim

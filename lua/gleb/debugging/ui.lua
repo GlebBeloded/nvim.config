@@ -6,7 +6,7 @@ dapui.setup({
 		-- Use a table to apply multiple mappings
 		open = "o",
 		remove = "d",
-		edit = "e",
+		expand = "e",
 		repl = "r",
 		toggle = "t",
 	},

@@ -33,8 +33,22 @@ keymap("n", "<C-l>", ":bnext<CR>", opts)
 keymap("n", "<C-h>", ":bprevious<CR>", opts)
 keymap("n", "<C-q>", ":bdelete<CR>", opts)
 -- TODO: make is a callble command: e.g CloseAllBuffers() or CloseAllBuffersExceptThisOne()
--- keymap("n", "<C-W>", ":bufdo bwipeout<CR>", opts)
+-- TODO: move to separate file ?
+local function closeAllOtherBuffers()
+	local currentBuffer = vim.api.nvim_get_current_buf()
+	local buffers = vim.api.nvim_list_bufs()
+	for _, buffer in ipairs(buffers) do
+		if buffer ~= currentBuffer then
+			require("bufferline").unpin_and_close(buffer)
+		end
+	end
+end
 
+-- TODO: conflicts with lowercase <C-q> (can't distinct) :(
+-- keymap_lua("n", "<C-S-q>", closeAllOtherBuffers, opts)
+
+-- TODO: make <A-q> close Diffview instead of closing just diff buffer
+-- TODO: make <A-q> close file isntead of closing explorer
 -- Move text up and down
 -- keymap("n", "<A-j>", "<Esc>:m .+1<CR>==gi", opts)
 -- keymap("n", "<A-k>", "<Esc>:m .-2<CR>==gi", opts)
@@ -67,6 +81,9 @@ keymap("n", "<A-e>", ":NvimTreeToggle<cr>", opts)
 keymap("n", "<A-F>", ":Telescope live_grep<cr>", opts)
 
 -- code actions
+--TODO: if two only code actions are import based,
+-- just apply the organize imports one
+-- even better, autoapply this code action if it is available
 keymap("n", "<C-CR>", ":lua vim.lsp.buf.code_action()<cr>", opts)
 keymap("x", "<C-CR>", ":lua vim.lsp.buf.code_action()<cr>", opts)
 keymap("v", "<C-CR>", ":lua vim.lsp.buf.code_action()<cr>", opts)
