@@ -117,6 +117,7 @@ return packer.startup(function(use)
 
 	-- miscalenious stuff
 	use("windwp/nvim-autopairs") -- autocomplete braces pairs
+	use("windwp/nvim-ts-autotag") -- autoclose html tags
 	use("JoosepAlviste/nvim-ts-context-commentstring") -- even smarter comments for files with multiple languages in them (like react)
 	use("lukas-reineke/indent-blankline.nvim") -- lines for indenting
 	use("goolord/alpha-nvim") -- greeting screen
