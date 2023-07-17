@@ -107,6 +107,11 @@ return packer.startup(function(use)
 	-- treesitter (rich syntax highlighting)
 	use({ "nvim-treesitter/nvim-treesitter", run = ":TSUpdate" })
 	use("nvim-treesitter/playground")
+	use({ -- Syntax aware text-objects, select, move, swap, and peek support.
+		"nvim-treesitter/nvim-treesitter-textobjects",
+		after = "nvim-treesitter",
+		requires = "nvim-treesitter/nvim-treesitter",
+	})
 
 	-- git
 	use("lewis6991/gitsigns.nvim")
@@ -117,6 +122,15 @@ return packer.startup(function(use)
 
 	-- miscalenious stuff
 	use("windwp/nvim-autopairs") -- autocomplete braces pairs
+	use({ -- surround selected code by braces/html tags: https://github.com/kylechui/nvim-surround#rocket-usage
+		"kylechui/nvim-surround",
+		tag = "*", -- Use for stability; omit to use `main` branch for the latest features
+		config = function()
+			require("nvim-surround").setup({
+				-- Configuration here, or leave empty to use defaults
+			})
+		end,
+	})
 	use("windwp/nvim-ts-autotag") -- autoclose html tags
 	use("JoosepAlviste/nvim-ts-context-commentstring") -- even smarter comments for files with multiple languages in them (like react)
 	use("lukas-reineke/indent-blankline.nvim") -- lines for indenting
