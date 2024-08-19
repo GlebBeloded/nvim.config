@@ -23,11 +23,13 @@ local langauge_configs = {
 	require("gleb/lsp/config/go"), -- golang
 	require("gleb/lsp/config/lua"), -- lua
 	require("gleb/lsp/config/html"), -- html
+	require("gleb/lsp/config/css"), -- css
 	require("gleb/lsp/config/js"), -- javascript
 	require("gleb/lsp/config/json"), -- json
 	require("gleb/lsp/config/yaml"), -- yaml
 	require("gleb/lsp/config/shell"), -- sh,bash,zsh
 	require("gleb/lsp/config/terraform"), -- hashicorp yucky
+	require("gleb/lsp/config/rust"), -- rust
 }
 
 require("mason").setup()
