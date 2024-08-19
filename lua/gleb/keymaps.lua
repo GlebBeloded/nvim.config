@@ -105,7 +105,7 @@ keymap_old("n", "[d", ':lua vim.diagnostic.goto_prev({ border = "rounded" })<CR>
 keymap_old("n", "gl", ':lua vim.diagnostic.open_float({ border = "rounded" })<CR>', opts)
 
 keymap_old("n", "ge", '<cmd>lua vim.diagnostic.goto_next({ border = "rounded" })<CR>', opts)
-kmap("i", "<C-CR>", copilot.accept, opts)
+kmap("i", "<S-CR>", copilot.accept, opts)
 kmap("n", "<leader>q", vim.diagnostic.setloclist, opts)
 
 -- std stuff

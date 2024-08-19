@@ -52,7 +52,7 @@ return packer.startup(function(use)
 	use("antoinemadec/FixCursorHold.nvim") -- fix hold cursor bugs
 
 	-- colors
-	use("folke/tokyonight.nvim")
+	-- use("folke/tokyonight.nvim") disabled because of nvim-tree transparency bug
 	use("sainnhe/gruvbox-material")
 	use("NvChad/nvim-colorizer.lua")
 
@@ -116,6 +116,10 @@ return packer.startup(function(use)
 	-- git
 	use("lewis6991/gitsigns.nvim")
 	use({ "sindrets/diffview.nvim", requires = "nvim-lua/plenary.nvim" })
+	use({ -- generate links to code
+		"ruifm/gitlinker.nvim",
+		requires = "nvim-lua/plenary.nvim",
+	})
 
 	-- comments
 	use("numToStr/Comment.nvim") -- smart comments

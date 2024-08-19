@@ -9,4 +9,6 @@ if not initialized then
 	initialized = true
 end
 
+require("gleb.colors." .. "transparency")
+
 return require("gleb.colors." .. colorscheme .. ".palette")
