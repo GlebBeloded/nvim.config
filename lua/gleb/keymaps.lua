@@ -112,6 +112,7 @@ kmap("n", "<leader>q", vim.diagnostic.setloclist, opts)
 keymap_old("n", "q", "<Nop>", opts) -- disable recording feature
 
 vim.g.mapleader = "<Space>"
+vim.g.maplocalleader = "\\"
 keymap_old("n", "<Leader-e>", ":NvimTreeToggle<CR>", opts)
 
 keymap_old("n", "<D-s>", ":NvimTreeToggle<CR>", opts)
