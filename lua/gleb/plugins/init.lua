@@ -35,7 +35,7 @@ local config = {
 	-- colorscheme that will be used when installing plugins.
 	install = { colorscheme = { "gruvbox-material" } },
 	-- automatically check for plugin updates
-	checker = { enabled = true },
+	checker = { enabled = false },
 }
 
 -- Setup lazy.nvim

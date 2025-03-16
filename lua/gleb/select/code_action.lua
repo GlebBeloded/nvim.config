@@ -31,13 +31,13 @@ end
 
 -- @return nubmer
 function codeAction:longestEntryLength()
-	local length = 0
+	local length = 255
 
-	for _, value in pairs(self.items) do
-		if #value[2].title > length then
-			length = #value[2].title
-		end
-	end
+	-- for _, value in pairs(self.items) do
+	-- 	if #value[2].title > length then
+	-- 		length = #value[2].title
+	-- 	end
+	-- end
 
 	return length
 end

@@ -53,8 +53,9 @@ local plugins = {
 	"mfussenegger/nvim-dap",
 	{
 		"rcarriga/nvim-dap-ui",
-		dependencies = { "mfussenegger/nvim-dap" }, -- UI (splits) for DAP
+		dependencies = { "mfussenegger/nvim-dap", "nvim-neotest/nvim-nio" }, -- UI (splits) for DAP
 	},
+	"leoluz/nvim-dap-go",
 
 	-- snippets
 	"L3MON4D3/LuaSnip", -- Snippet engine
@@ -124,7 +125,7 @@ local plugins = {
 
 			-- optional
 			"nvim-treesitter/nvim-treesitter",
-			"rcarriga/nvim-notify",
+			-- "rcarriga/nvim-notify",
 			"nvim-tree/nvim-web-devicons",
 		},
 		opts = {
