@@ -77,8 +77,8 @@ keymap_old("x", "K", ":move '<-2<CR>gv-gv", opts)
 keymap_old("x", "<A-j>", ":move '>+1<CR>gv-gv", opts)
 keymap_old("x", "<A-k>", ":move '<-2<CR>gv-gv", opts)
 
--- Nvimtree
-keymap_old("n", "<A-e>", ":NvimTreeToggle<cr>", opts)
+-- NvimTree
+keymap_old("n", "<D-e>", ":NvimTreeToggle<cr>", opts)
 
 -- telescope
 keymap_old("n", "<A-F>", ":Telescope live_grep<cr>", opts)
@@ -111,21 +111,15 @@ kmap("n", "<leader>q", vim.diagnostic.setloclist, opts)
 -- std stuff
 keymap_old("n", "q", "<Nop>", opts) -- disable recording feature
 
-vim.g.mapleader = "<Space>"
+vim.g.mapleader = "<D->"
 vim.g.maplocalleader = "\\"
-keymap_old("n", "<Leader-e>", ":NvimTreeToggle<CR>", opts)
-
-keymap_old("n", "<D-s>", ":NvimTreeToggle<CR>", opts)
-keymap_old("n", "<M-s>", ":NvimTreeToggle<CR>", opts)
 
 local refs = require("telescope.builtin").lsp_references
 
 kmap("n", "gr", refs, opts)
 
-local definitions = require("telescope.builtin").lsp_definitions
-kmap("n", "gd", definitions, opts)
-
-local opened = false
+keymap_old("n", "<Leader-e>", ":NvimTreeToggle<CR>", opts)
+kmap("n", "<leader>e", ":NvimTreeToggle<CR>", { desc = "Toggle file tree", noremap = true, silent = true })
 
 local function gitView()
 	if not opened then
@@ -138,3 +132,4 @@ local function gitView()
 end
 
 kmap("n", "<A-g>", gitView, opts)
+kmap("i", "<Esc>[13;2u", copilot.accept, opts) -- ESC is \27

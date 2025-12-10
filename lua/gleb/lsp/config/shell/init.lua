@@ -9,21 +9,18 @@ M.lsp_config = {}
 -- table returned by this function is passed to null_ls(linter) setup
 -- table should contain list of diagnostics to use
 M.null_ls = function(null_ls)
-	return {
-		null_ls.builtins.diagnostics.zsh,
-		null_ls.builtins.diagnostics.shellcheck,
-		null_ls.builtins.code_actions.shellcheck,
-		null_ls.builtins.formatting.shfmt,
-		null_ls.builtins.formatting.shellharden,
-	}
+  return {
+    null_ls.builtins.diagnostics.zsh,
+    null_ls.builtins.formatting.shfmt,
+    null_ls.builtins.formatting.shellharden,
+  }
 end
 
 -- string array that is passed to mason.EnsureInstalled method
 M.mason = {
-	"bash-language-server",
-	"shellcheck",
-	"shfmt",
-	"shellharden",
+  "bash-language-server",
+  "shfmt",
+  "shellharden",
 }
 
 return M
