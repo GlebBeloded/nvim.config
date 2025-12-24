@@ -8,9 +8,10 @@ M.lsp_config = {}
 
 -- table returned by this function is passed to null_ls(linter) setup
 -- table should contain list of diagnostics to use
+-- Note: eslint_d builtin was removed from none-ls
+-- ESLint diagnostics are now provided by eslint-lsp via native LSP
 M.null_ls = function(null_ls)
   return {
-    null_ls.builtins.diagnostics.eslint_d,
     null_ls.builtins.code_actions.refactoring,
   }
 end

@@ -19,6 +19,7 @@ end
 
 -- string array that is passed to mason.EnsureInstalled method
 M.mason = {
+	"lua_ls", -- language server
 	"selene", -- linter
 	"stylua", -- formatter
 }

@@ -75,6 +75,15 @@ local plugins = {
     -- git
     "lewis6991/gitsigns.nvim",
     {
+        "NeogitOrg/neogit",
+        dependencies = {
+            "nvim-lua/plenary.nvim",
+            "sindrets/diffview.nvim",
+            "nvim-telescope/telescope.nvim",
+        },
+        config = true,
+    },
+    {
         "sindrets/diffview.nvim",
         dependencies = "nvim-lua/plenary.nvim",
     },

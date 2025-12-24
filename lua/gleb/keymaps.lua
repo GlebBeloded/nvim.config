@@ -77,8 +77,8 @@ keymap_old("x", "K", ":move '<-2<CR>gv-gv", opts)
 keymap_old("x", "<A-j>", ":move '>+1<CR>gv-gv", opts)
 keymap_old("x", "<A-k>", ":move '<-2<CR>gv-gv", opts)
 
--- NvimTree
-keymap_old("n", "<D-e>", ":NvimTreeToggle<cr>", opts)
+-- NvimTree (Cmd+E via Alt+E escape sequence from Alacritty)
+kmap("n", "<A-e>", ":NvimTreeToggle<cr>", opts)
 
 -- telescope
 keymap_old("n", "<A-F>", ":Telescope live_grep<cr>", opts)
@@ -117,9 +117,6 @@ vim.g.maplocalleader = "\\"
 local refs = require("telescope.builtin").lsp_references
 
 kmap("n", "gr", refs, opts)
-
-keymap_old("n", "<Leader-e>", ":NvimTreeToggle<CR>", opts)
-kmap("n", "<leader>e", ":NvimTreeToggle<CR>", { desc = "Toggle file tree", noremap = true, silent = true })
 
 local function gitView()
 	if not opened then
