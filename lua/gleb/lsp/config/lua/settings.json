@@ -1,0 +1,19 @@
+{
+  "$schema": "https://raw.githubusercontent.com/LuaLS/vscode-lua/master/setting/schema.json",
+  "completion": {
+    "callSnippet": "Replace"
+  },
+  "diagnostics": {
+    "enable": true,
+    "groupFileStatus": {
+      "luadoc": "Opened"
+    }
+  },
+  "hint": {
+    "enable": true,
+    "setType": true,
+    "paramType": true,
+    "paramName": "All",
+    "arrayIndex": "Disable"
+  }
+}

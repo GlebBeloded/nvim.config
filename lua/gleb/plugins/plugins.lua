@@ -6,7 +6,16 @@ local plugins = {
     "MunifTanjim/nui.nvim", -- UI library for other plugins
     "ray-x/guihua.lua", -- UI library
     "lewis6991/impatient.nvim", -- Load plugins faster
-    "folke/neodev.nvim", -- Autocomplete for nvim development
+    {
+        "folke/lazydev.nvim",
+        ft = "lua", -- only load on lua files
+        opts = {
+            library = {
+                -- Load luvit types when the `vim.uv` word is found
+                { path = "${3rd}/luv/library", words = { "vim%.uv" } },
+            },
+        },
+    },
 
     -- colors
     -- "folke/tokyonight.nvim", -- disabled because of nvim-tree transparency bug
@@ -22,7 +31,6 @@ local plugins = {
     "hrsh7th/cmp-path", -- Path completions
     "saadparwaiz1/cmp_luasnip", -- Snippet completions
     "hrsh7th/cmp-nvim-lsp", -- Enables LSP in cmp
-    "hrsh7th/cmp-nvim-lua", -- Adds autocomplete for nvim lua API
 
     -- lsp stuff
     "neovim/nvim-lspconfig", -- Enable LSP

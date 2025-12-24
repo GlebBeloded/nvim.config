@@ -41,6 +41,7 @@ local has_words_before = function()
 end
 
 local mapping = {
+	["<C-Space>"] = cmp.mapping.complete(),
 	["<Tab>"] = vim.schedule_wrap(function(fallback)
 		if cmp.visible() and has_words_before() then
 			cmp.select_next_item({ behavior = cmp.SelectBehavior.Select })
@@ -78,8 +79,8 @@ cmp.setup({
 		end,
 	},
 	sources = {
+		{ name = "lazydev", group_index = 0 }, -- lazydev for neovim lua API (higher priority)
 		{ name = "nvim_lsp", group_index = 1 },
-		{ name = "nvim_lua", group_index = 1 },
 		{ name = "path", group_index = 1 },
 		{ name = "cmdline", group_index = 2 }, -- this will enable completion for neovim cmdline(:)
 	},

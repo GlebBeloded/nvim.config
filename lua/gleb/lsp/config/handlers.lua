@@ -45,6 +45,9 @@ M.setup = function()
 		border = "rounded",
 		width = 60,
 	})
+
+	-- enable inlay hints globally
+	vim.lsp.inlay_hint.enable(true)
 end
 
 M.capabilities = require("cmp_nvim_lsp").default_capabilities(vim.lsp.protocol.make_client_capabilities())

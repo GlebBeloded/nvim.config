@@ -20,7 +20,6 @@ end
 M.mason = {
   "eslint-lsp",
   "eslint_d",
-  "sonarlint-language-server",
   "typescript-language-server",
 }
 

@@ -1,8 +1,3 @@
--- IMPORTANT: make sure to setup neodev BEFORE lspconfig
-require("neodev").setup({
-	-- add any options here, or leave empty to use the default settings
-})
-
 local M = {}
 
 -- lsp_name is server name, to be passed as lspconfig["M.lsp_name"] = M.lsp_config
@@ -19,18 +14,18 @@ end
 
 -- string array that is passed to mason.EnsureInstalled method
 M.mason = {
-	"lua_ls", -- language server
+	"lua-language-server", -- language server (mason package name)
 	"selene", -- linter
 	"stylua", -- formatter
 }
 
+-- load settings from JSON
+-- some black magic to get relative path to json schema file
+local settings_path = vim.fn.fnamemodify(debug.getinfo(1, "S").source:sub(2), ":h") .. "/settings.json"
+
 local config = {
 	settings = {
-		Lua = {
-			completion = {
-				callSnippet = "Replace",
-			},
-		},
+		Lua = vim.json.decode(table.concat(vim.fn.readfile(settings_path), "\n")),
 	},
 }
 
