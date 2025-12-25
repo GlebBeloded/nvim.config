@@ -1,7 +1,27 @@
 local palette = require("gleb.colors.gruvbox-material.palette")
 
-vim.api.nvim_set_hl(0, "PmenuSel", { fg = "none", bg = palette.background.bg5 }) -- this preserves cmp colors for completion menu
+vim.api.nvim_set_hl(0, "PmenuSel", { fg = "none", bg = palette.background.bg5 })
 
+-- blink.cmp highlight groups
+vim.api.nvim_set_hl(0, "BlinkCmpLabelDeprecated", { bg = "none", fg = palette.background.bg5 })
+vim.api.nvim_set_hl(0, "BlinkCmpLabelMatch", { bg = "none", fg = palette.foreground.blue })
+vim.api.nvim_set_hl(0, "BlinkCmpKindVariable", { bg = "none", fg = palette.foreground.aqua })
+vim.api.nvim_set_hl(0, "BlinkCmpKindInterface", { bg = "none", fg = palette.foreground.blue })
+vim.api.nvim_set_hl(0, "BlinkCmpKindText", { bg = "none", fg = palette.foreground.blue })
+vim.api.nvim_set_hl(0, "BlinkCmpKindFunction", { bg = "none", fg = palette.foreground.blue })
+vim.api.nvim_set_hl(0, "BlinkCmpKindMethod", { bg = "none", fg = palette.foreground.blue })
+vim.api.nvim_set_hl(0, "BlinkCmpKindKeyword", { bg = "none", fg = palette.foreground.red })
+vim.api.nvim_set_hl(0, "BlinkCmpKindProperty", { bg = "none", fg = palette.foreground.aqua })
+vim.api.nvim_set_hl(0, "BlinkCmpKindField", { bg = "none", fg = palette.foreground.aqua })
+vim.api.nvim_set_hl(0, "BlinkCmpKindUnit", { bg = "none", fg = palette.foreground.purple })
+vim.api.nvim_set_hl(0, "BlinkCmpKindConstant", { bg = "none", fg = palette.foreground.purple })
+vim.api.nvim_set_hl(0, "BlinkCmpKindEnum", { bg = "none", fg = palette.foreground.purple })
+vim.api.nvim_set_hl(0, "BlinkCmpKindClass", { bg = "none", fg = palette.foreground.red })
+vim.api.nvim_set_hl(0, "BlinkCmpKindStruct", { bg = "none", fg = palette.foreground.red })
+vim.api.nvim_set_hl(0, "BlinkCmpKindSnippet", { bg = "none", fg = palette.foreground.green })
+vim.api.nvim_set_hl(0, "BlinkCmpKindModule", { bg = "none", fg = palette.foreground.yellow })
+
+-- nvim-cmp fallbacks (kept for compatibility with use_nvim_cmp_as_default)
 vim.api.nvim_set_hl(0, "CmpItemAbbrDeprecated", { bg = "none", fg = palette.background.bg5 })
 vim.api.nvim_set_hl(0, "CmpItemAbbrMatch", { bg = "none", fg = palette.foreground.blue })
 vim.api.nvim_set_hl(0, "CmpItemAbbrMatchFuzzy", { bg = "none", fg = palette.foreground.blue })
@@ -18,4 +38,3 @@ vim.api.nvim_set_hl(0, "CmpItemKindConstant", { bg = "none", fg = palette.foregr
 vim.api.nvim_set_hl(0, "CmpItemKindEnum", { bg = "none", fg = palette.foreground.purple })
 vim.api.nvim_set_hl(0, "CmpItemKindClass", { bg = "none", fg = palette.foreground.red })
 vim.api.nvim_set_hl(0, "CmpItemKindStruct", { bg = "none", fg = palette.foreground.red })
-vim.api.nvim_set_hl(0, "CmpItemKindCopilot", { bg = "none", fg = palette.foreground.red })

@@ -25,12 +25,107 @@ local plugins = {
     },
     "NvChad/nvim-colorizer.lua",
 
-    -- cmp plugins
-    "hrsh7th/nvim-cmp", -- The completion plugin
-    "hrsh7th/cmp-buffer", -- Buffer completions
-    "hrsh7th/cmp-path", -- Path completions
-    "saadparwaiz1/cmp_luasnip", -- Snippet completions
-    "hrsh7th/cmp-nvim-lsp", -- Enables LSP in cmp
+    -- Completion: blink.cmp (modern, fast alternative to nvim-cmp)
+    -- Docs: https://cmp.saghen.dev
+    --
+    -- How it works:
+    --   1. As you type, blink.cmp gathers suggestions from multiple sources (LSP, snippets, etc.)
+    --   2. Fuzzy matching ranks results by relevance, allowing typos
+    --   3. Menu appears after typing keywords (letters/numbers), NOT on special chars like "."
+    --   4. Copilot shows ghost text only when completion menu is hidden (see copilot.lua autocmds)
+    --
+    -- Keybinds:
+    --   Tab        = Select next completion OR accept Copilot (smart: menu > copilot > indent)
+    --   S-Tab      = Select previous completion
+    --   Enter      = Accept selected completion
+    --   C-Space    = Manually trigger completion menu
+    --   C-e        = Close menu
+    --   C-b / C-f  = Scroll documentation
+    ---@type LazyPluginSpec
+    {
+        "saghen/blink.cmp",
+        version = "*",
+        dependencies = {
+            "rafamadriz/friendly-snippets", -- snippet collection
+            "Kaiser-Yang/blink-cmp-avante", -- avante.nvim @ mentions/commands
+        },
+        opts = {
+            -- Custom keymap: Tab is "super key" for both completions and Copilot
+            keymap = {
+                preset = "none", -- disable defaults, define our own
+                ["<C-Space>"] = { "show" },
+                ["<Tab>"] = {
+                    -- Priority: completion menu > copilot > normal tab
+                    function(cmp)
+                        if cmp.is_visible() then
+                            return cmp.select_next()
+                        elseif require("copilot.suggestion").is_visible() then
+                            require("copilot.suggestion").accept()
+                            return true -- handled, don't fallback
+                        end
+                        -- return nil = fallback to normal tab (indent)
+                    end,
+                    "fallback",
+                },
+                ["<S-Tab>"] = { "select_prev", "fallback" },
+                ["<CR>"] = { "accept", "fallback" },
+                ["<C-e>"] = { "cancel", "fallback" },
+                ["<C-b>"] = { "scroll_documentation_up", "fallback" },
+                ["<C-f>"] = { "scroll_documentation_down", "fallback" },
+            },
+
+            appearance = {
+                nerd_font_variant = "mono", -- "mono" for Nerd Font Mono, "normal" otherwise
+            },
+
+            -- Rust-based fuzzy matcher for speed (falls back to Lua if unavailable)
+            fuzzy = { implementation = "prefer_rust_with_warning" },
+
+            -- Completion sources in priority order (first = highest priority)
+            sources = {
+                default = { "lazydev", "lsp", "path", "snippets", "buffer", "avante" },
+                providers = {
+                    lazydev = {
+                        name = "LazyDev",
+                        module = "lazydev.integrations.blink",
+                        score_offset = 100, -- boost priority for Neovim Lua API completions
+                    },
+                    avante = {
+                        module = "blink-cmp-avante",
+                        name = "Avante", -- enables @mentions and /commands in avante.nvim
+                    },
+                },
+            },
+
+            completion = {
+                -- Auto-insert brackets for functions/methods
+                accept = { auto_brackets = { enabled = true } },
+
+                -- Disabled: Copilot provides ghost text instead
+                ghost_text = { enabled = false },
+
+                -- Show docs automatically when item selected
+                documentation = { auto_show = true },
+
+                trigger = {
+                    -- Don't auto-show on ".", ":", etc. - only on keywords
+                    -- Use C-Space to manually trigger after special chars
+                    show_on_trigger_character = false,
+                },
+
+                menu = {
+                    draw = {
+                        -- Menu columns: [icon] [label + description]
+                        columns = { { "kind_icon" }, { "label", "label_description", gap = 1 } },
+                    },
+                },
+            },
+
+            -- Show function signature help while typing arguments
+            signature = { enabled = true },
+        },
+        opts_extend = { "sources.default" }, -- allow other plugins to extend sources
+    },
 
     -- lsp stuff
     "neovim/nvim-lspconfig", -- Enable LSP
@@ -165,7 +260,7 @@ local plugins = {
             --- The below dependencies are optional,
             "echasnovski/mini.pick", -- for file_selector provider mini.pick
             "nvim-telescope/telescope.nvim", -- for file_selector provider telescope
-            "hrsh7th/nvim-cmp", -- autocompletion for avante commands and mentions
+            -- blink.cmp is used for autocompletion (configured separately)
             "ibhagwan/fzf-lua", -- for file_selector provider fzf
             "nvim-tree/nvim-web-devicons", -- or echasnovski/mini.icons
             {
@@ -193,12 +288,54 @@ local plugins = {
                 },
                 ft = { "markdown", "Avante" },
             },
+            -- AI Code Completion: copilot.lua (GitHub Copilot integration)
+            -- Docs: https://github.com/zbirenbaum/copilot.lua
+            --
+            -- How it integrates with blink.cmp:
+            --   1. Copilot shows ghost text suggestions when you pause typing
+            --   2. When blink.cmp menu opens, Copilot hides (via BlinkCmpMenuOpen autocmd)
+            --   3. When blink.cmp menu closes, Copilot can show again
+            --   4. Tab accepts Copilot when no completion menu is visible (see blink.cmp keymap)
+            --
+            -- Keybinds:
+            --   Tab      = Accept suggestion (when no completion menu)
+            --   M-]      = Next suggestion
+            --   M-[      = Previous suggestion
+            --   C-]      = Dismiss suggestion
+            ---@type LazyPluginSpec
             {
                 "zbirenbaum/copilot.lua",
                 cmd = "Copilot",
                 event = "InsertEnter",
                 config = function()
-                    require("copilot").setup({ suggestion = { auto_trigger = true } })
+                    require("copilot").setup({
+                        suggestion = {
+                            auto_trigger = true, -- show suggestions automatically
+                            keymap = {
+                                -- Accept is handled by Tab in blink.cmp (see keymap above)
+                                accept = false,
+                                next = "<M-]>",
+                                prev = "<M-[>",
+                                dismiss = "<C-]>",
+                            },
+                        },
+                    })
+
+                    -- Autocmds to hide Copilot when blink.cmp menu is open
+                    -- This prevents both showing suggestions at the same time
+                    vim.api.nvim_create_autocmd("User", {
+                        pattern = "BlinkCmpMenuOpen",
+                        callback = function()
+                            require("copilot.suggestion").dismiss()
+                            vim.b.copilot_suggestion_hidden = true
+                        end,
+                    })
+                    vim.api.nvim_create_autocmd("User", {
+                        pattern = "BlinkCmpMenuClose",
+                        callback = function()
+                            vim.b.copilot_suggestion_hidden = false
+                        end,
+                    })
                 end,
             },
         },

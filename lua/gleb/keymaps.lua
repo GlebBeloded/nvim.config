@@ -1,8 +1,5 @@
 local opts = { noremap = true, silent = true }
 
--- pacakges used in keymaps
-local copilot = require("copilot.suggestion")
-
 -- Shorten function name
 local keymap_old = vim.api.nvim_set_keymap
 local kmap = vim.keymap.set
@@ -105,7 +102,7 @@ keymap_old("n", "[d", ':lua vim.diagnostic.goto_prev({ border = "rounded" })<CR>
 keymap_old("n", "gl", ':lua vim.diagnostic.open_float({ border = "rounded" })<CR>', opts)
 
 keymap_old("n", "ge", '<cmd>lua vim.diagnostic.goto_next({ border = "rounded" })<CR>', opts)
-kmap("i", "<S-CR>", copilot.accept, opts)
+-- Copilot accept is handled by Tab in blink.cmp config (plugins.lua)
 kmap("n", "<leader>q", vim.diagnostic.setloclist, opts)
 
 -- std stuff
@@ -129,4 +126,3 @@ local function gitView()
 end
 
 kmap("n", "<A-g>", gitView, opts)
-kmap("i", "<Esc>[13;2u", copilot.accept, opts) -- ESC is \27

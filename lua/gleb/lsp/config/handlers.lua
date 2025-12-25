@@ -50,6 +50,7 @@ M.setup = function()
 	vim.lsp.inlay_hint.enable(true)
 end
 
-M.capabilities = require("cmp_nvim_lsp").default_capabilities(vim.lsp.protocol.make_client_capabilities())
+-- blink.cmp provides its own capabilities
+M.capabilities = require("blink.cmp").get_lsp_capabilities(vim.lsp.protocol.make_client_capabilities())
 
 return M

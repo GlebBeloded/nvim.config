@@ -47,3 +47,7 @@ plugin/
 
 # idk where that bullshit comes from
 .luarc.json
+
+# IDE files
+.vscode/
+.idea/
