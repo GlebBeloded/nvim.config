@@ -1,128 +1,105 @@
 local opts = { noremap = true, silent = true }
-
--- Shorten function name
-local keymap_old = vim.api.nvim_set_keymap
 local kmap = vim.keymap.set
 
--- Modes
---   normal_mode = "n",
---   insert_mode = "i",
---   visual_mode = "v",
---   visual_block_mode = "x",
---   term_mode = "t",
---   command_mode = "c",
+-- Modes: n=normal, i=insert, v=visual, x=visual_block, t=term, c=command
 
--- Normal --
--- Better window navigation
-keymap_old("n", "<C-h>", "<C-w>h", opts)
-keymap_old("n", "<C-j>", "<C-w>j", opts)
-keymap_old("n", "<C-k>", "<C-w>k", opts)
-keymap_old("n", "<C-l>", "<C-w>l", opts)
+-- Window navigation
+kmap("n", "<C-h>", "<C-w>h", opts)
+kmap("n", "<C-j>", "<C-w>j", opts)
+kmap("n", "<C-k>", "<C-w>k", opts)
+kmap("n", "<C-l>", "<C-w>l", opts)
 
-keymap_old("n", "gb", "<C-O>", opts) -- prevous location
-keymap_old("n", "gB", "<C-I>", opts) -- next location
+-- Jump list navigation
+kmap("n", "gb", "<C-O>", opts)
+kmap("n", "gB", "<C-I>", opts)
 
--- Resize with arrows
-keymap_old("n", "<C-Up>", ":resize +2<CR>", opts)
-keymap_old("n", "<C-Down>", ":resize -2<CR>", opts)
-keymap_old("n", "<C-Left>", ":vertical resize -2<CR>", opts)
-keymap_old("n", "<C-Right>", ":vertical resize +2<CR>", opts)
+-- Resize windows
+kmap("n", "<C-Up>", ":resize +2<CR>", opts)
+kmap("n", "<C-Down>", ":resize -2<CR>", opts)
+kmap("n", "<C-Left>", ":vertical resize -2<CR>", opts)
+kmap("n", "<C-Right>", ":vertical resize +2<CR>", opts)
 
--- Navigate buffers
-keymap_old("n", "<C-l>", ":bnext<CR>", opts)
-keymap_old("n", "<C-h>", ":bprevious<CR>", opts)
-keymap_old("n", "<C-q>", ":bdelete<CR>", opts)
--- TODO: make is a callble command: e.g CloseAllBuffers() or CloseAllBuffersExceptThisOne()
--- TODO: move to separate file ?
-local function closeAllOtherBuffers()
-	local currentBuffer = vim.api.nvim_get_current_buf()
-	local buffers = vim.api.nvim_list_bufs()
-	for _, buffer in ipairs(buffers) do
-		if buffer ~= currentBuffer then
-			require("bufferline").unpin_and_close(buffer)
+-- Buffer management
+kmap("n", "<C-q>", ":bdelete<CR>", opts)
+
+-- Insert mode
+kmap("i", "jk", "<ESC>", opts)
+
+-- Visual mode: stay in indent mode
+kmap("v", "<", "<gv", opts)
+kmap("v", ">", ">gv", opts)
+
+-- Visual mode: move text and paste without yanking
+kmap("v", "<A-j>", ":m .+1<CR>==", opts)
+kmap("v", "<A-k>", ":m .-2<CR>==", opts)
+kmap("v", "p", '"_dP', opts)
+
+-- Visual block: move text
+kmap("x", "J", ":move '>+1<CR>gv-gv", opts)
+kmap("x", "K", ":move '<-2<CR>gv-gv", opts)
+kmap("x", "<A-j>", ":move '>+1<CR>gv-gv", opts)
+kmap("x", "<A-k>", ":move '<-2<CR>gv-gv", opts)
+
+-- Smart neo-tree toggle: switch source, close if same & focused, focus if not
+local function smart_toggle_neotree(source)
+	local current_win = vim.api.nvim_get_current_win()
+	local current_buf = vim.api.nvim_win_get_buf(current_win)
+	local current_ft = vim.api.nvim_get_option_value("filetype", { buf = current_buf })
+
+	if current_ft == "neo-tree" then
+		local bufname = vim.api.nvim_buf_get_name(current_buf)
+		local current_source = bufname:match("neo%-tree ([%w_]+)")
+
+		if current_source == source then
+			vim.cmd("Neotree close")
+		else
+			vim.cmd("Neotree " .. source)
+		end
+	else
+		if source == "filesystem" then
+			local current_file = vim.fn.expand("%:p")
+			if current_file ~= "" then
+				vim.cmd("Neotree reveal_file=" .. vim.fn.fnameescape(current_file) .. " filesystem")
+			else
+				vim.cmd("Neotree focus filesystem")
+			end
+		else
+			vim.cmd("Neotree focus " .. source)
 		end
 	end
 end
 
--- TODO: conflicts with lowercase <C-q> (can't distinct) :(
--- keymap_lua("n", "<C-S-q>", closeAllOtherBuffers, opts)
+-- Neo-tree (Cmd+E/G via Alt escape sequences from Alacritty)
+kmap("n", "<A-e>", function() smart_toggle_neotree("filesystem") end, opts)
+kmap("n", "<A-g>", function() smart_toggle_neotree("git_status") end, opts)
 
--- TODO: make <A-q> close Diffview instead of closing just diff buffer
--- TODO: make <A-q> close file isntead of closing explorer
--- Move text up and down
--- keymap("n", "<A-j>", "<Esc>:m .+1<CR>==gi", opts)
--- keymap("n", "<A-k>", "<Esc>:m .-2<CR>==gi", opts)
+-- Telescope
+kmap("n", "<A-F>", ":Telescope live_grep<cr>", opts)
 
--- Insert --
--- Press jk fast to exit insert mode
-keymap_old("i", "jk", "<ESC>", opts)
-
--- Visual --
--- Stay in indent mode
-keymap_old("v", "<", "<gv", opts)
-keymap_old("v", ">", ">gv", opts)
-
--- Move text up and down
-keymap_old("v", "<A-j>", ":m .+1<CR>==", opts)
-keymap_old("v", "<A-k>", ":m .-2<CR>==", opts)
-keymap_old("v", "p", '"_dP', opts)
-
--- Visual Block --
--- Move text up and down
-keymap_old("x", "J", ":move '>+1<CR>gv-gv", opts)
-keymap_old("x", "K", ":move '<-2<CR>gv-gv", opts)
-keymap_old("x", "<A-j>", ":move '>+1<CR>gv-gv", opts)
-keymap_old("x", "<A-k>", ":move '<-2<CR>gv-gv", opts)
-
--- NvimTree (Cmd+E via Alt+E escape sequence from Alacritty)
-kmap("n", "<A-e>", ":NvimTreeToggle<cr>", opts)
-
--- telescope
-keymap_old("n", "<A-F>", ":Telescope live_grep<cr>", opts)
-
--- code actions
---TODO: if two only code actions are import based,
--- just apply the organize imports one
--- even better, autoapply this code action if it is available
+-- Code actions
 kmap("n", "<C-CR>", vim.lsp.buf.code_action, opts)
 kmap("x", "<C-CR>", vim.lsp.buf.code_action, opts)
 kmap("v", "<C-CR>", vim.lsp.buf.code_action, opts)
--- keymap("i", "<C-CR>", ":lua vim.lsp.buf.code_action()<cr>", opts)
 
-kmap("n", "<A-w>", vim.diagnostic.goto_next, opts)
--- lsp keymaps
+-- LSP navigation
 kmap("n", "gD", vim.lsp.buf.declaration, opts)
 kmap("n", "gd", vim.lsp.buf.definition, opts)
 kmap("n", "K", vim.lsp.buf.hover, opts)
 kmap("n", "gi", vim.lsp.buf.implementation, opts)
+kmap("n", "gr", require("telescope.builtin").lsp_references, opts)
 kmap("n", "<A-r>", vim.lsp.buf.rename, opts)
-kmap("n", "gr", vim.lsp.buf.references, opts)
-kmap("n", "<A-f>", vim.diagnostic.open_float, opts)
-keymap_old("n", "[d", ':lua vim.diagnostic.goto_prev({ border = "rounded" })<CR>', opts)
-keymap_old("n", "gl", ':lua vim.diagnostic.open_float({ border = "rounded" })<CR>', opts)
 
-keymap_old("n", "ge", '<cmd>lua vim.diagnostic.goto_next({ border = "rounded" })<CR>', opts)
--- Copilot accept is handled by Tab in blink.cmp config (plugins.lua)
+-- Diagnostics
+kmap("n", "<A-f>", vim.diagnostic.open_float, opts)
+kmap("n", "<A-w>", vim.diagnostic.goto_next, opts)
+kmap("n", "[d", function() vim.diagnostic.goto_prev({ border = "rounded" }) end, opts)
+kmap("n", "gl", function() vim.diagnostic.open_float({ border = "rounded" }) end, opts)
+kmap("n", "ge", function() vim.diagnostic.goto_next({ border = "rounded" }) end, opts)
 kmap("n", "<leader>q", vim.diagnostic.setloclist, opts)
 
--- std stuff
-keymap_old("n", "q", "<Nop>", opts) -- disable recording feature
+-- Disable recording
+kmap("n", "q", "<Nop>", opts)
 
+-- Leader keys
 vim.g.mapleader = "<D->"
 vim.g.maplocalleader = "\\"
-
-local refs = require("telescope.builtin").lsp_references
-
-kmap("n", "gr", refs, opts)
-
-local function gitView()
-	if not opened then
-		require("diffview").open()
-	else
-		require("diffview").close()
-	end
-
-	opened = not opened
-end
-
-kmap("n", "<A-g>", gitView, opts)

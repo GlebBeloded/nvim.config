@@ -35,8 +35,8 @@ local plugins = {
     --   4. Copilot shows ghost text only when completion menu is hidden (see copilot.lua autocmds)
     --
     -- Keybinds:
-    --   Tab        = Select next completion OR accept Copilot (smart: menu > copilot > indent)
-    --   S-Tab      = Select previous completion
+    --   Tab / Down = Select next completion (Tab also accepts Copilot if no menu)
+    --   S-Tab / Up = Select previous completion
     --   Enter      = Accept selected completion
     --   C-Space    = Manually trigger completion menu
     --   C-e        = Close menu
@@ -68,6 +68,8 @@ local plugins = {
                     "fallback",
                 },
                 ["<S-Tab>"] = { "select_prev", "fallback" },
+                ["<Down>"] = { "select_next", "fallback" },
+                ["<Up>"] = { "select_prev", "fallback" },
                 ["<CR>"] = { "accept", "fallback" },
                 ["<C-e>"] = { "cancel", "fallback" },
                 ["<C-b>"] = { "scroll_documentation_up", "fallback" },
@@ -123,6 +125,19 @@ local plugins = {
 
             -- Show function signature help while typing arguments
             signature = { enabled = true },
+
+            -- Command-line completion (:, /, ?)
+            cmdline = {
+                keymap = {
+                    preset = "none",
+                    ["<Tab>"] = { "show", "select_next", "fallback" },
+                    ["<S-Tab>"] = { "show", "select_prev", "fallback" },
+                    ["<Down>"] = { "select_next", "fallback" },
+                    ["<Up>"] = { "select_prev", "fallback" },
+                    ["<CR>"] = { "accept", "fallback" },
+                    ["<C-e>"] = { "cancel", "fallback" },
+                },
+            },
         },
         opts_extend = { "sources.default" }, -- allow other plugins to extend sources
     },
@@ -159,7 +174,15 @@ local plugins = {
 
     -- file explorer
     "nvim-tree/nvim-web-devicons",
-    "nvim-tree/nvim-tree.lua",
+    {
+        "nvim-neo-tree/neo-tree.nvim",
+        branch = "v3.x",
+        dependencies = {
+            "nvim-lua/plenary.nvim",
+            "nvim-tree/nvim-web-devicons",
+            "MunifTanjim/nui.nvim",
+        },
+    },
 
     -- buffer line (bottom line)
     "nvim-lualine/lualine.nvim",
@@ -178,13 +201,15 @@ local plugins = {
     -- git
     "lewis6991/gitsigns.nvim",
     {
-        "NeogitOrg/neogit",
-        dependencies = {
-            "nvim-lua/plenary.nvim",
-            "sindrets/diffview.nvim",
-            "nvim-telescope/telescope.nvim",
-        },
-        config = true,
+        "echasnovski/mini.diff",
+        version = false,
+        config = function()
+            require("mini.diff").setup({
+                view = {
+                    style = "sign", -- default to sign, toggle overlay when needed
+                },
+            })
+        end,
     },
     {
         "sindrets/diffview.nvim",
@@ -305,6 +330,7 @@ local plugins = {
             ---@type LazyPluginSpec
             {
                 "zbirenbaum/copilot.lua",
+                dir = "/Users/hlebbeladzed/Work/personal/nvim-plugins/copilot.lua", -- local dev version
                 cmd = "Copilot",
                 event = "InsertEnter",
                 config = function()
