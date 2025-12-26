@@ -5,30 +5,37 @@ local M = {}
 local function get_commit_context()
 	local diff = vim.fn.system("git diff --cached")
 	local history = vim.fn.system("git log --oneline -5 2>/dev/null")
+
+	-- Truncate diff if too long (prevents model confusion)
+	local max_lines = 200
+	local diff_lines = vim.split(diff, "\n")
+	if #diff_lines > max_lines then
+		diff = table.concat(vim.list_slice(diff_lines, 1, max_lines), "\n") .. "\n... (truncated)"
+	end
+
 	return diff, history
 end
 
 -- Build prompt for AI
-local function build_prompt(user_hint)
+local function build_prompt()
 	local diff, history = get_commit_context()
 	if diff == "" then return nil end
 
-	local hint_section = ""
-	if user_hint and user_hint ~= "" then
-		hint_section = string.format("\nUser's hint (HIGH PRIORITY - incorporate this): %s\n", user_hint)
-	end
+	return string.format([[You are a git commit message generator. Output ONLY a single line commit message.
 
-	return string.format([[Generate a semantic commit message for these staged changes.
 Format: <type>(<scope>): <subject>
-Types: feat, fix, docs, style, refactor, test, chore
-Scope: general area like "git", "ui", "lsp", "config" - NOT filenames. Omit if unclear.
-Subject: present tense, lowercase, no period, max 50 chars.
-Return ONLY the commit message, no quotes, no explanation, no markdown.
+Types: feat|fix|docs|style|refactor|test|chore
+Scope: optional, general area (git, ui, lsp, config), NOT filenames
+Subject: present tense, lowercase, no period, max 50 chars
+
+Example output: feat(ui): add dark mode toggle
+
+IMPORTANT: Output ONLY the commit message. No JSON, no explanation, no markdown, no quotes.
+
+Recent commits:
 %s
-Recent commits for style reference:
-%s
-Staged diff:
-%s]], hint_section, history, diff)
+Diff:
+%s]], history, diff)
 end
 
 -- Call Ollama CLI directly (using stdin to avoid shell escaping issues)
@@ -75,7 +82,7 @@ local function call_ai(prompt, callback, on_error)
 	return job_id
 end
 
--- Show commit input with AI hint (multiline popup)
+-- Show commit popup with auto-generated AI message
 function M.show_commit_input(on_commit)
 	local Popup = require("nui.popup")
 	local event = require("nui.utils.autocmd").event
@@ -83,13 +90,13 @@ function M.show_commit_input(on_commit)
 	local popup = Popup({
 		relative = "editor",
 		position = "50%",
-		size = { width = 50, height = 5 },
+		size = { width = 60, height = 3 },
 		border = {
 			style = "rounded",
 			text = {
-				top = " Commit Message ",
+				top = " 🦙 Generating... ",
 				top_align = "center",
-				bottom = " <A-c> 🦙 │ <S-CR> ✓ │ <S-Esc> ✗ ",
+				bottom = " <CR> ✓ │ i edit │ q ✗ ",
 				bottom_align = "center",
 			},
 		},
@@ -108,7 +115,7 @@ function M.show_commit_input(on_commit)
 
 	popup:mount()
 	local bufnr = popup.bufnr
-	vim.cmd("startinsert")
+	local winid = popup.winid
 
 	-- Track active job
 	local active_job = nil
@@ -130,15 +137,12 @@ function M.show_commit_input(on_commit)
 		popup:unmount()
 	end
 
-	-- Shift+Enter = commit
-	popup:map("i", "<S-CR>", function()
-		local text = get_text()
-		if text ~= "" then
-			close()
-			on_commit(text)
-		end
-	end, { noremap = true })
+	-- Helper: update title
+	local function set_title(title)
+		popup.border:set_text("top", title, "center")
+	end
 
+	-- Enter in normal mode = commit
 	popup:map("n", "<CR>", function()
 		local text = get_text()
 		if text ~= "" then
@@ -147,42 +151,31 @@ function M.show_commit_input(on_commit)
 		end
 	end, { noremap = true })
 
-	-- AI generate (Alt+C)
-	popup:map("i", "<A-c>", function()
-		local current_text = get_text()
-		local prompt = build_prompt(current_text)
-		if not prompt then
-			vim.notify("No staged changes", vim.log.levels.WARN)
-			return
-		end
-
-		vim.notify("🦙 Generating...", vim.log.levels.INFO)
-
-		active_job = call_ai(prompt, function(result)
-			active_job = nil
-			if result and result ~= "" and vim.api.nvim_buf_is_valid(bufnr) then
-				local lines = vim.split(result, "\n")
-				vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
-				-- Move cursor to end
-				local win = vim.fn.bufwinid(bufnr)
-				if win ~= -1 then
-					local last_line = #lines
-					vim.api.nvim_win_set_cursor(win, { last_line, #lines[last_line] })
-				end
-				vim.notify("🦙 Done", vim.log.levels.INFO)
-			end
-		end, function(err)
-			active_job = nil
-			vim.notify("🦙 " .. err, vim.log.levels.ERROR)
-		end)
-	end, { noremap = true })
-
-	-- Escape = normal mode (default), Shift+Escape = discard
-	popup:map("i", "<S-Esc>", close, { noremap = true })
-	popup:map("n", "<S-Esc>", close, { noremap = true })
+	-- q in normal mode = discard
 	popup:map("n", "q", close, { noremap = true })
 
 	popup:on(event.BufLeave, close)
+
+	-- Auto-generate commit message
+	local prompt = build_prompt()
+	if not prompt then
+		set_title(" Commit Message ")
+		vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { "# No staged changes" })
+		return
+	end
+
+	active_job = call_ai(prompt, function(result)
+		active_job = nil
+		if result and result ~= "" and vim.api.nvim_buf_is_valid(bufnr) then
+			local lines = vim.split(result, "\n")
+			vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
+			set_title(" Commit Message ")
+		end
+	end, function(err)
+		active_job = nil
+		set_title(" Commit Message ")
+		vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { "# Error: " .. err })
+	end)
 end
 
 return M
