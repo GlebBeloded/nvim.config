@@ -204,11 +204,9 @@ local plugins = {
         "echasnovski/mini.diff",
         version = false,
         config = function()
-            require("mini.diff").setup({
-                view = {
-                    style = "sign", -- default to sign, toggle overlay when needed
-                },
-            })
+            -- Disable globally - only enable manually for neo-tree overlay preview
+            vim.g.minidiff_disable = true
+            require("mini.diff").setup({})
         end,
     },
     {
@@ -279,7 +277,16 @@ local plugins = {
         -- build = "powershell -ExecutionPolicy Bypass -File Build.ps1 -BuildFromSource false" -- for windows
         dependencies = {
             "nvim-treesitter/nvim-treesitter",
-            "stevearc/dressing.nvim",
+            {
+                "stevearc/dressing.nvim",
+                opts = {
+                    input = {
+                        relative = "editor",  -- center in editor, not current window
+                        prefer_width = 60,
+                        min_width = 40,
+                    },
+                },
+            },
             "nvim-lua/plenary.nvim",
             "MunifTanjim/nui.nvim",
             --- The below dependencies are optional,

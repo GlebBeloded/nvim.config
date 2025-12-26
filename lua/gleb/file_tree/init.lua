@@ -9,6 +9,74 @@ local last_previewed_file = nil
 -- Track which buffers have overlay enabled
 local overlay_enabled_bufs = {}
 
+-- Clean fold text for diff preview
+local function diff_fold_text()
+	local line_count = vim.v.foldend - vim.v.foldstart + 1
+	return "··· " .. line_count .. " lines ···"
+end
+-- Make it global so foldtext option can reference it
+_G.diff_fold_text = diff_fold_text
+
+-- Fold unchanged regions in diff preview (keeps N lines of context)
+local function fold_unchanged_regions(buf, path, context)
+	context = context or 3
+	local relative_path = vim.fn.fnamemodify(path, ":.")
+	local diff_output = vim.fn.system("git diff HEAD -- " .. vim.fn.shellescape(relative_path))
+
+	-- Parse diff hunks: @@ -old_start,old_count +new_start,new_count @@
+	local changed_ranges = {}
+	for new_start, new_count in diff_output:gmatch("@@ %-%d+,?%d* %+(%d+),?(%d*) @@") do
+		new_start = tonumber(new_start)
+		new_count = tonumber(new_count) or 1
+		table.insert(changed_ranges, { new_start, new_start + new_count - 1 })
+	end
+
+	if #changed_ranges == 0 then return end
+
+	local total_lines = vim.api.nvim_buf_line_count(buf)
+
+	-- Build list of unchanged regions (gaps between changed hunks)
+	local fold_regions = {}
+	local prev_end = 0
+
+	for _, range in ipairs(changed_ranges) do
+		local hunk_start, hunk_end = range[1], range[2]
+		local fold_start = prev_end + context + 1
+		local fold_end = hunk_start - context - 1
+		if fold_end >= fold_start + 2 then
+			table.insert(fold_regions, { fold_start, fold_end })
+		end
+		prev_end = hunk_end
+	end
+
+	-- Region after last hunk
+	local fold_start = prev_end + context + 1
+	local fold_end = total_lines
+	if fold_end >= fold_start + 2 then
+		table.insert(fold_regions, { fold_start, fold_end })
+	end
+
+	-- Apply folds in the preview window
+	for _, win in ipairs(vim.api.nvim_list_wins()) do
+		if vim.api.nvim_win_get_buf(win) == buf then
+			vim.api.nvim_win_call(win, function()
+				-- Use absolute line numbers for diff preview
+				vim.wo.number = true
+				vim.wo.relativenumber = false
+				vim.wo.foldmethod = "manual"
+				vim.wo.foldenable = true
+				vim.wo.foldlevel = 0
+				vim.wo.foldtext = "v:lua.diff_fold_text()"
+				vim.cmd("normal! zE")
+				for _, region in ipairs(fold_regions) do
+					pcall(vim.cmd, region[1] .. "," .. region[2] .. "fold")
+				end
+			end)
+			break
+		end
+	end
+end
+
 -- Preview file with mini.diff overlay (shows deleted lines as virtual text)
 local function preview_git_diff(path)
 	if not path or last_previewed_file == path then
@@ -80,18 +148,20 @@ local function preview_git_diff(path)
 		buf = vim.fn.bufnr(path, false)
 	end
 
-	-- Enable mini.diff overlay for inline diff view
+	-- Enable mini.diff overlay and fold unchanged regions
 	vim.defer_fn(function()
 		if vim.api.nvim_buf_is_valid(buf) and not overlay_enabled_bufs[buf] then
 			local md_ok, mini_diff = pcall(require, "mini.diff")
 			if md_ok then
-				-- Enable mini.diff on buffer first (needed since we use noautocmd)
+				-- Override global disable for this buffer
+				vim.api.nvim_buf_set_var(buf, "minidiff_disable", false)
 				mini_diff.enable(buf)
-				-- Small delay for diff to compute, then toggle overlay
 				vim.defer_fn(function()
 					if vim.api.nvim_buf_is_valid(buf) then
 						pcall(mini_diff.toggle_overlay, buf)
 						overlay_enabled_bufs[buf] = true
+						-- Fold unchanged regions (3 lines context)
+						fold_unchanged_regions(buf, path, 3)
 					end
 				end, 100)
 			end
@@ -139,22 +209,26 @@ local function git_nav_up(state)
 	end
 end
 
--- Git status keymap: open file in preview window, keep tree open
+-- Git status keymap: open file, switch tree to filesystem
 local function git_open_file(state)
 	local node = state.tree:get_node()
 	if node and node.type == "file" and node.path then
 		disable_all_overlays()
+		local path = node.path
 		for _, win in ipairs(vim.api.nvim_list_wins()) do
 			local buf = vim.api.nvim_win_get_buf(win)
 			local ft = vim.api.nvim_get_option_value("filetype", { buf = buf })
 			if ft ~= "neo-tree" then
 				vim.api.nvim_set_current_win(win)
-				vim.cmd("edit " .. vim.fn.fnameescape(node.path))
+				vim.cmd("edit " .. vim.fn.fnameescape(path))
+				-- Switch tree to filesystem, reveal opened file
+				vim.cmd("Neotree reveal_file=" .. vim.fn.fnameescape(path) .. " filesystem")
 				return
 			end
 		end
 		vim.cmd("wincmd l")
-		vim.cmd("edit " .. vim.fn.fnameescape(node.path))
+		vim.cmd("edit " .. vim.fn.fnameescape(path))
+		vim.cmd("Neotree reveal_file=" .. vim.fn.fnameescape(path) .. " filesystem")
 	end
 end
 
@@ -184,18 +258,27 @@ local function git_toggle_stage(state)
 	end
 end
 
--- Git status keymap: commit with message prompt
+-- Git status keymap: commit with floating input (Alt+C for AI)
 local function git_commit()
-	local msg = vim.fn.input("Commit message: ")
-	if msg and msg ~= "" then
+	require("gleb.git.ai_commit").show_commit_input(function(msg)
 		vim.fn.system("git commit -m " .. vim.fn.shellescape(msg))
 		require("neo-tree.sources.manager").refresh("git_status")
-	end
+		vim.notify("Committed: " .. msg, vim.log.levels.INFO)
+	end)
 end
 
--- Git status keymap: push to remote
+-- Git status keymap: push to remote with notification
 local function git_push()
-	vim.cmd("!git push")
+	vim.notify("Pushing...", vim.log.levels.INFO)
+	vim.fn.jobstart("git push", {
+		on_exit = function(_, code)
+			if code == 0 then
+				vim.notify("Pushed successfully", vim.log.levels.INFO)
+			else
+				vim.notify("Push failed", vim.log.levels.ERROR)
+			end
+		end,
+	})
 end
 
 neo_tree.setup({
@@ -314,7 +397,7 @@ neo_tree.setup({
 				["<cr>"] = git_open_file,
 				["q"] = git_close_tree,
 				["<space>"] = git_toggle_stage,
-				["c"] = git_commit,
+				["c"] = git_commit,  -- Alt+C inside input for AI
 				["P"] = git_push,
 				["A"] = "git_add_all",
 				["gr"] = "git_revert_file",
