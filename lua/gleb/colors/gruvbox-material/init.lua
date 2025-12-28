@@ -26,4 +26,12 @@ vim.api.nvim_set_hl(0, "NeoTreeEndOfBuffer", { bg = palette.background.bg0, fg =
 
 -- Thicker window separator
 vim.api.nvim_set_hl(0, "WinSeparator", { fg = palette.background.bg3 })
-vim.opt.fillchars:append({ vert = "┃", horiz = "━", verthoriz = "╋", horizup = "┻", horizdown = "┳", vertleft = "┫", vertright = "┣" })
+vim.opt.fillchars:append({
+	vert = "┃",
+	horiz = "━",
+	verthoriz = "╋",
+	horizup = "┻",
+	horizdown = "┳",
+	vertleft = "┫",
+	vertright = "┣",
+})
