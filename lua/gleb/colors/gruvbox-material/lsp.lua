@@ -1,6 +1,5 @@
 local palette = require("gleb.colors.gruvbox-material.palette")
 
-local fg = palette.foreground
 local bg = palette.background
 
 -- remove background colors from lsp diagnotics

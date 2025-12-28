@@ -28,8 +28,8 @@ vim.api.nvim_set_hl(0, "TSOperator", { fg = palette.foreground.red }) -- operato
 vim.api.nvim_set_hl(0, "TSKeyword", { fg = palette.foreground.red }) -- keywords
 vim.api.nvim_set_hl(0, "TSKeywordReturn", { fg = palette.foreground.red }) -- return keyword
 vim.api.nvim_set_hl(0, "TSPunctDelimiter", { fg = palette.foreground.yellow }) -- yaml ":"
-vim.api.nvim_set_hl(0, "TSWarning", { fg = palette.foreground.red, bg = none }) -- this will highlight todo's in red
-vim.api.nvim_set_hl(0, "TSNote", { bg = none }) -- don't change background color for notes
+vim.api.nvim_set_hl(0, "TSWarning", { fg = palette.foreground.red }) -- this will highlight todo's in red
+vim.api.nvim_set_hl(0, "TSNote", {}) -- don't change background color for notes
 
 -- strings
 vim.api.nvim_set_hl(0, "TSString", { fg = palette.foreground.bg_yellow }) -- basic strings
