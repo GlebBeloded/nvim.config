@@ -70,8 +70,12 @@ local function smart_toggle_neotree(source)
 end
 
 -- Neo-tree (Cmd+E/G via Alt escape sequences from Alacritty)
-kmap("n", "<A-e>", function() smart_toggle_neotree("filesystem") end, opts)
-kmap("n", "<A-g>", function() smart_toggle_neotree("git_status") end, opts)
+kmap("n", "<A-e>", function()
+	smart_toggle_neotree("filesystem")
+end, opts)
+kmap("n", "<A-g>", function()
+	smart_toggle_neotree("git_status")
+end, opts)
 
 -- Telescope
 kmap("n", "<A-F>", ":Telescope live_grep<cr>", opts)
@@ -92,9 +96,15 @@ kmap("n", "<A-r>", vim.lsp.buf.rename, opts)
 -- Diagnostics
 kmap("n", "<A-f>", vim.diagnostic.open_float, opts)
 kmap("n", "<A-w>", vim.diagnostic.goto_next, opts)
-kmap("n", "[d", function() vim.diagnostic.goto_prev({ border = "rounded" }) end, opts)
-kmap("n", "gl", function() vim.diagnostic.open_float({ border = "rounded" }) end, opts)
-kmap("n", "ge", function() vim.diagnostic.goto_next({ border = "rounded" }) end, opts)
+kmap("n", "[d", function()
+	vim.diagnostic.goto_prev({ border = "rounded" })
+end, opts)
+kmap("n", "gl", function()
+	vim.diagnostic.open_float({ border = "rounded" })
+end, opts)
+kmap("n", "ge", function()
+	vim.diagnostic.goto_next({ border = "rounded" })
+end, opts)
 kmap("n", "<leader>q", vim.diagnostic.setloclist, opts)
 
 -- Disable recording

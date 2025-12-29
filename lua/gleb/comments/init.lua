@@ -1,7 +1,5 @@
 -- for comment colorschemes refer to gleb.colors.[theme].comments
 
--- pluggin for better comments (especially in multilang files)
-local comments = require("Comment.api")
 local opts = { noremap = true, silent = true }
 
 -- keymaps
