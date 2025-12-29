@@ -74,10 +74,7 @@ function handler:handle(virtText, lnum, endLnum, width, truncate)
 	elseif handler:isImport() or handler:isVar() or handler:isConst() then
 		table.insert(virtText, { " ... " })
 		table.insert(self.virtText, { ")" })
-	elseif self:isFunction() then -- if this is a go function
-		table.insert(virtText, { " ... " })
-		table.insert(self.virtText, { "}" })
-	else
+	else -- functions and default
 		table.insert(virtText, { " ... " })
 		table.insert(self.virtText, { "}" })
 	end

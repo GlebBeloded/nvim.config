@@ -11,7 +11,7 @@ vim.keymap.set("n", "<A-_>", ufo.closeAllFolds)
 vim.keymap.set("n", "<A-=>", "zo<CR>")
 vim.keymap.set("n", "<A-->", "zc<CR>")
 
-local function provider(bufnr, filetype, buftype)
+local function provider(_, _, _)
 	return { "treesitter", "indent" }
 end
 

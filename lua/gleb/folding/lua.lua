@@ -10,7 +10,7 @@ function handler:nThWordOfLine(n)
 end
 
 -- returns nth word of the handler.virtText
-function handler:lastWordOfLine(n)
+function handler:lastWordOfLine(_)
 	return self.virtText[#self.virtText][1]
 end
 
