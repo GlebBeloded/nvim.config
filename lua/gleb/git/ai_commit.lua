@@ -1,10 +1,9 @@
 -- AI-assisted commit message generation
 local M = {}
 
--- Get commit context (diff + history)
-local function get_commit_context()
+-- Get staged diff
+local function get_staged_diff()
 	local diff = vim.fn.system("git diff --cached")
-	local history = vim.fn.system("git log --oneline -5 2>/dev/null")
 
 	-- Truncate diff if too long (prevents model confusion)
 	local max_lines = 200
@@ -13,35 +12,36 @@ local function get_commit_context()
 		diff = table.concat(vim.list_slice(diff_lines, 1, max_lines), "\n") .. "\n... (truncated)"
 	end
 
-	return diff, history
+	return diff
 end
 
 -- Build prompt for AI
 local function build_prompt()
-	local diff, history = get_commit_context()
-	if diff == "" then return nil end
+	local diff = get_staged_diff()
+	if diff == "" then
+		return nil
+	end
 
-	return string.format([[You are a git commit message generator. Output ONLY a single line commit message.
+	return string.format(
+		[[Generate a git commit message for this diff. Output ONLY the message, nothing else.
 
 Format: <type>(<scope>): <subject>
 Types: feat|fix|docs|style|refactor|test|chore
 Scope: optional, general area (git, ui, lsp, config), NOT filenames
 Subject: present tense, lowercase, no period, max 50 chars
 
-Example output: feat(ui): add dark mode toggle
+Example: feat(ui): add dark mode toggle
 
-IMPORTANT: Output ONLY the commit message. No JSON, no explanation, no markdown, no quotes.
-
-Recent commits:
-%s
 Diff:
-%s]], history, diff)
+%s]],
+		diff
+	)
 end
 
 -- Call Ollama CLI directly (using stdin to avoid shell escaping issues)
 local function call_ai(prompt, callback, on_error)
 	local stdout_chunks = {}
-	local job_id = vim.fn.jobstart({ "ollama", "run", "qwen2.5-coder:1.5b" }, {
+	local job_id = vim.fn.jobstart({ "ollama", "run", "tavernari/git-commit-message" }, {
 		stdin = "pipe",
 		stdout_buffered = false,
 		on_stdout = function(_, data)
@@ -115,7 +115,6 @@ function M.show_commit_input(on_commit)
 
 	popup:mount()
 	local bufnr = popup.bufnr
-	local winid = popup.winid
 
 	-- Track active job
 	local active_job = nil
@@ -140,6 +139,25 @@ function M.show_commit_input(on_commit)
 	-- Helper: update title
 	local function set_title(title)
 		popup.border:set_text("top", title, "center")
+	end
+
+	-- Helper: resize popup to fit content
+	local function resize_to_content()
+		local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+		local max_width = 40 -- minimum width
+		for _, line in ipairs(lines) do
+			max_width = math.max(max_width, vim.fn.strdisplaywidth(line))
+		end
+		local width = math.min(max_width + 4, math.floor(vim.o.columns * 0.8))
+		local height = math.max(#lines, 1)
+
+		vim.api.nvim_win_set_config(popup.winid, {
+			width = width,
+			height = height,
+			relative = "editor",
+			row = math.floor((vim.o.lines - height) / 2),
+			col = math.floor((vim.o.columns - width) / 2),
+		})
 	end
 
 	-- Enter in normal mode = commit
@@ -170,11 +188,13 @@ function M.show_commit_input(on_commit)
 			local lines = vim.split(result, "\n")
 			vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
 			set_title(" Commit Message ")
+			resize_to_content()
 		end
 	end, function(err)
 		active_job = nil
 		set_title(" Commit Message ")
 		vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { "# Error: " .. err })
+		resize_to_content()
 	end)
 end
 
