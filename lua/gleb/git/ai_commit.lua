@@ -35,60 +35,6 @@ Diff:
 	)
 end
 
--- Wrap text at specified width, preserving existing newlines
-local function wrap_text(text, width)
-	local result = {}
-	-- Process each existing line separately
-	for _, paragraph in ipairs(vim.split(text, "\n")) do
-		local line = ""
-		for word in paragraph:gmatch("%S+") do
-			if #line + #word + 1 > width then
-				table.insert(result, line)
-				line = word
-			else
-				line = line == "" and word or line .. " " .. word
-			end
-		end
-		if line ~= "" then
-			table.insert(result, line)
-		end
-	end
-	return result
-end
-
--- Format commit message: fix spacing, extract subject, wrap body
-local function format_commit_message(raw)
-	-- Fix missing spaces before capital letters (e.g., "fooBar" -> "foo Bar")
-	local fixed = raw:gsub("([a-z])([A-Z])", "%1 %2")
-	-- Fix missing spaces after periods
-	fixed = fixed:gsub("%.([A-Z])", ". %1")
-	-- Put bullet points on new lines (handles "text- " and "text - ")
-	fixed = fixed:gsub("([^%s\n])%s*%-(%s)", "%1\n-%2")
-
-	-- Extract subject: either "type(scope): subject" or first sentence
-	local subject, body
-	local type_match = fixed:match("^([%w]+%([%w%-]+%):%s*[^.!?\n]+)")
-	if type_match then
-		subject = type_match
-		body = fixed:sub(#subject + 1)
-	else
-		-- Fallback: first sentence or 50 chars
-		subject = fixed:match("^([^.!?\n]+)") or fixed:sub(1, 50)
-		body = fixed:sub(#subject + 1)
-	end
-
-	subject = subject:gsub("^%s+", ""):gsub("%s+$", "")
-	body = body:gsub("^[.!?%s]+", ""):gsub("%s+$", "")
-
-	if body == "" then
-		return subject
-	end
-
-	-- Wrap body at 72 chars
-	local wrapped = wrap_text(body, 72)
-	return subject .. "\n\n" .. table.concat(wrapped, "\n")
-end
-
 -- Call Ollama CLI directly (using stdin to avoid shell escaping issues)
 local function call_ai(prompt, callback, on_error)
 	local stdout_chunks = {}
@@ -117,7 +63,6 @@ local function call_ai(prompt, callback, on_error)
 					response = response:gsub("^%s*```[%w]*%s*", ""):gsub("%s*```%s*$", "")
 					response = response:gsub("^%s+", ""):gsub("%s+$", "")
 					if response ~= "" then
-						response = format_commit_message(response)
 						callback(response)
 					end
 				end
