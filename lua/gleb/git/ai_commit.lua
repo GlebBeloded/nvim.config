@@ -23,14 +23,11 @@ local function build_prompt()
 	end
 
 	return string.format(
-		[[Generate a git commit message for this diff. Output ONLY the message, nothing else.
+		[[Write a concise commit message for this diff.
 
-Format: <type>(<scope>): <subject>
-Types: feat|fix|docs|style|refactor|test|chore
-Scope: optional, general area (git, ui, lsp, config), NOT filenames
-Subject: present tense, lowercase, no period, max 50 chars
-
-Example: feat(ui): add dark mode toggle
+Format: <type>(<scope>): <description>
+Types: feat|fix|refactor|chore|docs|test
+Keep it under 50 chars. No body, no explanation.
 
 Diff:
 %s]],
@@ -38,10 +35,64 @@ Diff:
 	)
 end
 
+-- Wrap text at specified width, preserving existing newlines
+local function wrap_text(text, width)
+	local result = {}
+	-- Process each existing line separately
+	for _, paragraph in ipairs(vim.split(text, "\n")) do
+		local line = ""
+		for word in paragraph:gmatch("%S+") do
+			if #line + #word + 1 > width then
+				table.insert(result, line)
+				line = word
+			else
+				line = line == "" and word or line .. " " .. word
+			end
+		end
+		if line ~= "" then
+			table.insert(result, line)
+		end
+	end
+	return result
+end
+
+-- Format commit message: fix spacing, extract subject, wrap body
+local function format_commit_message(raw)
+	-- Fix missing spaces before capital letters (e.g., "fooBar" -> "foo Bar")
+	local fixed = raw:gsub("([a-z])([A-Z])", "%1 %2")
+	-- Fix missing spaces after periods
+	fixed = fixed:gsub("%.([A-Z])", ". %1")
+	-- Put bullet points on new lines (handles "text- " and "text - ")
+	fixed = fixed:gsub("([^%s\n])%s*%-(%s)", "%1\n-%2")
+
+	-- Extract subject: either "type(scope): subject" or first sentence
+	local subject, body
+	local type_match = fixed:match("^([%w]+%([%w%-]+%):%s*[^.!?\n]+)")
+	if type_match then
+		subject = type_match
+		body = fixed:sub(#subject + 1)
+	else
+		-- Fallback: first sentence or 50 chars
+		subject = fixed:match("^([^.!?\n]+)") or fixed:sub(1, 50)
+		body = fixed:sub(#subject + 1)
+	end
+
+	subject = subject:gsub("^%s+", ""):gsub("%s+$", "")
+	body = body:gsub("^[.!?%s]+", ""):gsub("%s+$", "")
+
+	if body == "" then
+		return subject
+	end
+
+	-- Wrap body at 72 chars
+	local wrapped = wrap_text(body, 72)
+	return subject .. "\n\n" .. table.concat(wrapped, "\n")
+end
+
 -- Call Ollama CLI directly (using stdin to avoid shell escaping issues)
 local function call_ai(prompt, callback, on_error)
 	local stdout_chunks = {}
-	local job_id = vim.fn.jobstart({ "ollama", "run", "tavernari/git-commit-message" }, {
+	local job_id = vim.fn.jobstart({ "ollama", "run", "tavernari/git-commit-message:sp_commit_mini" }, {
 		stdin = "pipe",
 		stdout_buffered = false,
 		on_stdout = function(_, data)
@@ -66,6 +117,7 @@ local function call_ai(prompt, callback, on_error)
 					response = response:gsub("^%s*```[%w]*%s*", ""):gsub("%s*```%s*$", "")
 					response = response:gsub("^%s+", ""):gsub("%s+$", "")
 					if response ~= "" then
+						response = format_commit_message(response)
 						callback(response)
 					end
 				end
@@ -143,20 +195,26 @@ function M.show_commit_input(on_commit)
 
 	-- Helper: resize popup to fit content
 	local function resize_to_content()
-		local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-		local max_width = 40 -- minimum width
-		for _, line in ipairs(lines) do
-			max_width = math.max(max_width, vim.fn.strdisplaywidth(line))
+		if not popup.winid or not vim.api.nvim_win_is_valid(popup.winid) then
+			return
 		end
-		local width = math.min(max_width + 4, math.floor(vim.o.columns * 0.8))
-		local height = math.max(#lines, 1)
+		local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
 
-		vim.api.nvim_win_set_config(popup.winid, {
-			width = width,
-			height = height,
-			relative = "editor",
-			row = math.floor((vim.o.lines - height) / 2),
-			col = math.floor((vim.o.columns - width) / 2),
+		-- Use fixed width (72 = standard commit msg width)
+		local width = 72
+		local max_screen_width = math.floor(vim.o.columns * 0.8)
+		width = math.min(width, max_screen_width)
+
+		-- Calculate height accounting for wrapped lines
+		local height = 0
+		for _, line in ipairs(lines) do
+			local line_width = vim.fn.strdisplaywidth(line)
+			height = height + math.max(1, math.ceil(line_width / width))
+		end
+		height = math.min(height, 10) -- cap at 10 lines
+
+		popup:update_layout({
+			size = { width = width, height = height },
 		})
 	end
 
