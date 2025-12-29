@@ -3,246 +3,64 @@ if not status_ok then
 	return
 end
 
--- Track state for auto-preview
-local last_previewed_file = nil
+local diff_preview = require("gleb.file_tree.diff_preview")
 
--- Track which buffers have overlay enabled
-local overlay_enabled_bufs = {}
-
--- Clean fold text for diff preview
-local function diff_fold_text()
-	local line_count = vim.v.foldend - vim.v.foldstart + 1
-	return "··· " .. line_count .. " lines ···"
-end
--- Make it global so foldtext option can reference it
-_G.diff_fold_text = diff_fold_text
-
--- Fold unchanged regions in diff preview (keeps N lines of context)
-local function fold_unchanged_regions(buf, path, context)
-	context = context or 3
-	local relative_path = vim.fn.fnamemodify(path, ":.")
-	local diff_output = vim.fn.system("git diff HEAD -- " .. vim.fn.shellescape(relative_path))
-
-	-- Parse diff hunks: @@ -old_start,old_count +new_start,new_count @@
-	local changed_ranges = {}
-	for new_start, new_count in diff_output:gmatch("@@ %-%d+,?%d* %+(%d+),?(%d*) @@") do
-		new_start = tonumber(new_start)
-		new_count = tonumber(new_count) or 1
-		table.insert(changed_ranges, { new_start, new_start + new_count - 1 })
-	end
-
-	if #changed_ranges == 0 then return end
-
-	local total_lines = vim.api.nvim_buf_line_count(buf)
-
-	-- Build list of unchanged regions (gaps between changed hunks)
-	local fold_regions = {}
-	local prev_end = 0
-
-	for _, range in ipairs(changed_ranges) do
-		local hunk_start, hunk_end = range[1], range[2]
-		local fold_start = prev_end + context + 1
-		local fold_end = hunk_start - context - 1
-		if fold_end >= fold_start + 2 then
-			table.insert(fold_regions, { fold_start, fold_end })
-		end
-		prev_end = hunk_end
-	end
-
-	-- Region after last hunk
-	local fold_start = prev_end + context + 1
-	local fold_end = total_lines
-	if fold_end >= fold_start + 2 then
-		table.insert(fold_regions, { fold_start, fold_end })
-	end
-
-	-- Apply folds in the preview window
-	for _, win in ipairs(vim.api.nvim_list_wins()) do
-		if vim.api.nvim_win_get_buf(win) == buf then
-			vim.api.nvim_win_call(win, function()
-				-- Use absolute line numbers for diff preview
-				vim.wo.number = true
-				vim.wo.relativenumber = false
-				vim.wo.foldmethod = "manual"
-				vim.wo.foldenable = true
-				vim.wo.foldlevel = 0
-				vim.wo.foldtext = "v:lua.diff_fold_text()"
-				vim.cmd("normal! zE")
-				for _, region in ipairs(fold_regions) do
-					pcall(vim.cmd, region[1] .. "," .. region[2] .. "fold")
-				end
-			end)
-			break
-		end
-	end
-end
-
--- Preview file with mini.diff overlay (shows deleted lines as virtual text)
-local function preview_git_diff(path)
-	if not path or last_previewed_file == path then
-		return
-	end
-	last_previewed_file = path
-
-	local neo_tree_win = vim.api.nvim_get_current_win()
-
-	-- Find or create preview window
-	local preview_win = nil
-	for _, win in ipairs(vim.api.nvim_list_wins()) do
-		local ft = vim.api.nvim_get_option_value("filetype", { buf = vim.api.nvim_win_get_buf(win) })
-		if ft ~= "neo-tree" and win ~= neo_tree_win then
-			preview_win = win
-			break
-		end
-	end
-
-	if not preview_win then
-		vim.cmd("belowright vsplit")
-		preview_win = vim.api.nvim_get_current_win()
-		vim.api.nvim_set_current_win(neo_tree_win)
-	end
-
-	-- Check if file exists (not deleted)
-	local file_exists = vim.fn.filereadable(path) == 1
-
-	if not file_exists then
-		-- File was deleted - show git HEAD version in red
-		local relative_path = vim.fn.fnamemodify(path, ":.")
-		local content = vim.fn.system("git show HEAD:" .. vim.fn.shellescape(relative_path))
-
-		-- Create scratch buffer for deleted file
-		local buf = vim.api.nvim_create_buf(false, true)
-		vim.api.nvim_buf_set_lines(buf, 0, -1, false, vim.split(content, "\n"))
-		vim.api.nvim_set_option_value("buftype", "nofile", { buf = buf })
-		vim.api.nvim_set_option_value("modifiable", false, { buf = buf })
-		vim.api.nvim_win_set_buf(preview_win, buf)
-
-		-- Detect filetype from extension and highlight in red
-		local ext = vim.fn.fnamemodify(path, ":e")
-		if ext and ext ~= "" then
-			vim.api.nvim_set_option_value("filetype", ext, { buf = buf })
-		end
-
-		-- Highlight entire buffer in red (full line background)
-		local ns = vim.api.nvim_create_namespace("deleted_file_hl")
-		for i = 0, vim.api.nvim_buf_line_count(buf) - 1 do
-			vim.api.nvim_buf_set_extmark(buf, ns, i, 0, {
-				line_hl_group = "DiffDelete",
-				priority = 1000,
-			})
-		end
-		return
-	end
-
-	-- Check if buffer already exists
-	local buf = vim.fn.bufnr(path, false)
-	if buf ~= -1 then
-		-- Buffer exists, just switch to it (fast)
-		vim.api.nvim_win_set_buf(preview_win, buf)
-	else
-		-- Load new buffer, then detect filetype for syntax highlighting
-		vim.api.nvim_win_call(preview_win, function()
-			vim.cmd("noautocmd edit " .. vim.fn.fnameescape(path))
-			vim.cmd("filetype detect")
-		end)
-		buf = vim.fn.bufnr(path, false)
-	end
-
-	-- Enable mini.diff overlay and fold unchanged regions
-	vim.defer_fn(function()
-		if vim.api.nvim_buf_is_valid(buf) and not overlay_enabled_bufs[buf] then
-			local md_ok, mini_diff = pcall(require, "mini.diff")
-			if md_ok then
-				-- Override global disable for this buffer
-				vim.api.nvim_buf_set_var(buf, "minidiff_disable", false)
-				mini_diff.enable(buf)
-				vim.defer_fn(function()
-					if vim.api.nvim_buf_is_valid(buf) then
-						pcall(mini_diff.toggle_overlay, buf)
-						overlay_enabled_bufs[buf] = true
-						-- Fold unchanged regions (3 lines context)
-						fold_unchanged_regions(buf, path, 3)
-					end
-				end, 100)
-			end
-		end
-	end, 50)
-end
-
--- Disable overlay on all tracked buffers
-local function disable_all_overlays()
-	local md_ok, mini_diff = pcall(require, "mini.diff")
-	if md_ok then
-		for buf, _ in pairs(overlay_enabled_bufs) do
-			if vim.api.nvim_buf_is_valid(buf) then
-				pcall(mini_diff.toggle_overlay, buf)
-			end
-		end
-	end
-	overlay_enabled_bufs = {}
-end
-
--- Git status keymap: navigate down, skip directories, preview file
+-- Navigate down, skip directories, preview file
 local function git_nav_down(state)
 	local last_row = vim.api.nvim_buf_line_count(0)
 	repeat
 		vim.cmd("normal! j")
 		local cursor = vim.api.nvim_win_get_cursor(0)
-		if cursor[1] >= last_row then break end
+		if cursor[1] >= last_row then
+			break
+		end
 	until state.tree:get_node().type == "file"
 	local node = state.tree:get_node()
 	if node and node.type == "file" and node.path then
-		preview_git_diff(node.path)
+		diff_preview.open_diff(node.path)
 	end
 end
 
--- Git status keymap: navigate up, skip directories, preview file
+-- Navigate up, skip directories, preview file
 local function git_nav_up(state)
 	repeat
 		vim.cmd("normal! k")
 		local cursor = vim.api.nvim_win_get_cursor(0)
-		if cursor[1] <= 1 then break end
+		if cursor[1] <= 1 then
+			break
+		end
 	until state.tree:get_node().type == "file"
 	local node = state.tree:get_node()
 	if node and node.type == "file" and node.path then
-		preview_git_diff(node.path)
+		diff_preview.open_diff(node.path)
 	end
 end
 
--- Git status keymap: open file, switch tree to filesystem
+-- Open file and switch to filesystem tree
 local function git_open_file(state)
 	local node = state.tree:get_node()
 	if node and node.type == "file" and node.path then
-		disable_all_overlays()
-		local path = node.path
-		for _, win in ipairs(vim.api.nvim_list_wins()) do
-			local buf = vim.api.nvim_win_get_buf(win)
-			local ft = vim.api.nvim_get_option_value("filetype", { buf = buf })
-			if ft ~= "neo-tree" then
-				vim.api.nvim_set_current_win(win)
-				vim.cmd("edit " .. vim.fn.fnameescape(path))
-				-- Switch tree to filesystem, reveal opened file
-				vim.cmd("Neotree reveal_file=" .. vim.fn.fnameescape(path) .. " filesystem")
-				return
-			end
-		end
+		diff_preview.close_all_diffs()
+		vim.cmd("Neotree reveal_file=" .. vim.fn.fnameescape(node.path) .. " filesystem")
 		vim.cmd("wincmd l")
-		vim.cmd("edit " .. vim.fn.fnameescape(path))
-		vim.cmd("Neotree reveal_file=" .. vim.fn.fnameescape(path) .. " filesystem")
+		vim.cmd("edit " .. vim.fn.fnameescape(node.path))
 	end
 end
 
--- Git status keymap: close tree and disable overlays
-local function git_close_tree()
-	disable_all_overlays()
+-- Close diff and return to original tab
+local function git_close()
+	diff_preview.return_to_original()
 	vim.cmd("Neotree close")
 end
 
--- Git status keymap: toggle stage/unstage file
+-- Git status: toggle stage/unstage file
 local function git_toggle_stage(state)
 	local node = state.tree:get_node()
 	if node and node.path then
 		local handle = io.popen("git diff --cached --name-only")
+		if not handle then
+			return
+		end
 		local staged_files = handle:read("*a")
 		handle:close()
 
@@ -258,16 +76,17 @@ local function git_toggle_stage(state)
 	end
 end
 
--- Git status keymap: commit with floating input (Alt+C for AI)
+-- Git status: commit with floating input (Alt+C for AI)
 local function git_commit()
 	require("gleb.git.ai_commit").show_commit_input(function(msg)
 		vim.fn.system("git commit -m " .. vim.fn.shellescape(msg))
 		require("neo-tree.sources.manager").refresh("git_status")
-		vim.notify("Committed: " .. msg, vim.log.levels.INFO)
+		local subject = vim.split(msg, "\n")[1]
+		vim.notify("Committed: " .. subject, vim.log.levels.INFO)
 	end)
 end
 
--- Git status keymap: push to remote with notification
+-- Git status: push to remote
 local function git_push()
 	vim.notify("Pushing...", vim.log.levels.INFO)
 	vim.fn.jobstart("git push", {
@@ -311,8 +130,8 @@ neo_tree.setup({
 		},
 		git_status = {
 			symbols = {
-				unstaged = " ",    -- empty (no indicator)
-				staged = "»",      -- chevron (queued/ready to commit)
+				unstaged = " ", -- empty (no indicator)
+				staged = "»", -- chevron (queued/ready to commit)
 				unmerged = "",
 				renamed = "➜",
 				untracked = "?",
@@ -373,7 +192,6 @@ neo_tree.setup({
 	},
 
 	git_status = {
-		-- Put git_status (checkbox) before filename
 		renderers = {
 			file = {
 				{ "indent" },
@@ -395,43 +213,21 @@ neo_tree.setup({
 				["j"] = git_nav_down,
 				["k"] = git_nav_up,
 				["<cr>"] = git_open_file,
-				["q"] = git_close_tree,
 				["<space>"] = git_toggle_stage,
-				["c"] = git_commit,  -- Alt+C inside input for AI
+				["c"] = git_commit,
 				["P"] = git_push,
 				["A"] = "git_add_all",
 				["gr"] = "git_revert_file",
+				["q"] = git_close,
 			},
 		},
 	},
 })
 
 -- Custom git status colors for filenames (gruvbox-material palette)
-vim.api.nvim_set_hl(0, "NeoTreeGitAdded", { fg = "#a9b665" })       -- green for new files
-vim.api.nvim_set_hl(0, "NeoTreeGitModified", { fg = "#7daea3" })    -- blue for modified
-vim.api.nvim_set_hl(0, "NeoTreeGitDeleted", { fg = "#ea6962" })     -- red for deleted
-vim.api.nvim_set_hl(0, "NeoTreeGitUntracked", { fg = "#928374" })   -- gray for untracked
-vim.api.nvim_set_hl(0, "NeoTreeGitConflict", { fg = "#d8a657" })    -- yellow for conflicts
-vim.api.nvim_set_hl(0, "NeoTreeGitStaged", { fg = "#a9b665" })      -- green for staged
-
--- Reset state when neo-tree window is closed
-vim.api.nvim_create_autocmd("WinClosed", {
-	callback = function()
-		vim.schedule(function()
-			local has_neotree = false
-			for _, win in ipairs(vim.api.nvim_list_wins()) do
-				local buf = vim.api.nvim_win_get_buf(win)
-				local ft = vim.api.nvim_get_option_value("filetype", { buf = buf })
-				if ft == "neo-tree" then
-					has_neotree = true
-					break
-				end
-			end
-			if not has_neotree then
-				last_previewed_file = nil
-				overlay_enabled_bufs = {}
-			end
-		end)
-	end,
-})
-
+vim.api.nvim_set_hl(0, "NeoTreeGitAdded", { fg = "#a9b665" }) -- green for new files
+vim.api.nvim_set_hl(0, "NeoTreeGitModified", { fg = "#7daea3" }) -- blue for modified
+vim.api.nvim_set_hl(0, "NeoTreeGitDeleted", { fg = "#ea6962" }) -- red for deleted
+vim.api.nvim_set_hl(0, "NeoTreeGitUntracked", { fg = "#928374" }) -- gray for untracked
+vim.api.nvim_set_hl(0, "NeoTreeGitConflict", { fg = "#d8a657" }) -- yellow for conflicts
+vim.api.nvim_set_hl(0, "NeoTreeGitStaged", { fg = "#a9b665" }) -- green for staged
