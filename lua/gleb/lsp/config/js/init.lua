@@ -11,16 +11,16 @@ M.lsp_config = {}
 -- Note: eslint_d builtin was removed from none-ls
 -- ESLint diagnostics are now provided by eslint-lsp via native LSP
 M.null_ls = function(null_ls)
-  return {
-    null_ls.builtins.code_actions.refactoring,
-  }
+	return {
+		null_ls.builtins.code_actions.refactoring,
+	}
 end
 
 -- string array that is passed to mason.EnsureInstalled method
 M.mason = {
-  "eslint-lsp",
-  "eslint_d",
-  "typescript-language-server",
+	"eslint-lsp",
+	"eslint_d",
+	"typescript-language-server",
 }
 
 return M

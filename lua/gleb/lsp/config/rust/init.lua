@@ -12,7 +12,7 @@ M.lsp_config = {
 -- table should contain list of diagnostics to use
 -- Note: rustfmt builtin was removed from none-ls
 -- Rust formatting is now handled by rust-analyzer LSP
-M.null_ls = function(null_ls)
+M.null_ls = function(_)
 	return {}
 end
 

@@ -3,12 +3,18 @@ local M = {}
 -- lsp_name is server name, to be passed as lspconfig["M.lsp_name"] = M.lsp_config
 M.lsp_name = "gopls"
 
--- native lsp config
+-- gopls settings: https://go.dev/gopls/settings
 M.lsp_config = {
 	settings = {
 		gopls = {
-			--			buildFlags = { "-tags=integration" },
 			gofumpt = false,
+			hints = {
+				assignVariableTypes = true,
+				compositeLiteralFields = true,
+				constantValues = true,
+				parameterNames = true,
+			},
+			semanticTokens = true,
 		},
 	},
 }
