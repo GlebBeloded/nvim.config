@@ -24,6 +24,12 @@ local plugins = {
 		priorty = 1000, -- make sure to load this before all the other start plugins
 	},
 	"NvChad/nvim-colorizer.lua",
+	{
+		"xiyaowong/transparent.nvim",
+		config = function()
+			require("gleb.colors.transparency")
+		end,
+	},
 
 	-- Completion: blink.cmp (modern, fast alternative to nvim-cmp)
 	-- Docs: https://cmp.saghen.dev
