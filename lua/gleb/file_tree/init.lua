@@ -16,7 +16,7 @@ local function git_nav_down(state)
 		end
 	until state.tree:get_node().type == "file"
 	local node = state.tree:get_node()
-	if node and node.type == "file" and node.path then
+	if node and node.type == "file" and node.path and vim.fn.filereadable(node.path) == 1 then
 		diff_preview.open_diff(node.path)
 	end
 end
@@ -31,7 +31,7 @@ local function git_nav_up(state)
 		end
 	until state.tree:get_node().type == "file"
 	local node = state.tree:get_node()
-	if node and node.type == "file" and node.path then
+	if node and node.type == "file" and node.path and vim.fn.filereadable(node.path) == 1 then
 		diff_preview.open_diff(node.path)
 	end
 end
@@ -223,11 +223,3 @@ neo_tree.setup({
 		},
 	},
 })
-
--- Custom git status colors for filenames (gruvbox-material palette)
-vim.api.nvim_set_hl(0, "NeoTreeGitAdded", { fg = "#a9b665" }) -- green for new files
-vim.api.nvim_set_hl(0, "NeoTreeGitModified", { fg = "#7daea3" }) -- blue for modified
-vim.api.nvim_set_hl(0, "NeoTreeGitDeleted", { fg = "#ea6962" }) -- red for deleted
-vim.api.nvim_set_hl(0, "NeoTreeGitUntracked", { fg = "#928374" }) -- gray for untracked
-vim.api.nvim_set_hl(0, "NeoTreeGitConflict", { fg = "#d8a657" }) -- yellow for conflicts
-vim.api.nvim_set_hl(0, "NeoTreeGitStaged", { fg = "#a9b665" }) -- green for staged
