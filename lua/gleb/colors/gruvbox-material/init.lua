@@ -1,4 +1,6 @@
 local colorscheme = "gruvbox-material"
+-- TODO: must be not inside gruvbox
+local utils = require("gleb.colors.gruvbox-material.util")
 
 -- for dark theme
 -- should be called before colorscheme
@@ -35,3 +37,8 @@ vim.opt.fillchars:append({
 	vertleft = "┫",
 	vertright = "┣",
 })
+
+-- Search highlighting: preserve treesitter colors, only change background
+vim.api.nvim_set_hl(0, "Search", { bg = utils.darken(palette.foreground.yellow, 0.3) })
+vim.api.nvim_set_hl(0, "IncSearch", { bg = utils.darken(palette.foreground.blue, 0.3) })
+vim.api.nvim_set_hl(0, "CurSearch", { bg = utils.darken(palette.foreground.blue, 0.3) })
