@@ -244,6 +244,21 @@ local plugins = {
 	-- comments
 	"numToStr/Comment.nvim", -- Smart comments
 
+	-- smart splits for seamless navigation between nvim and zellij
+	-- Works with vim-zellij-navigator Zellij plugin
+	{
+		"mrjones2014/smart-splits.nvim",
+		lazy = false,
+		config = function()
+			require("smart-splits").setup({
+				ignored_filetypes = { "nofile", "quickfix", "qf", "prompt" },
+				ignored_buftypes = { "nofile" },
+				-- Ensure multiplexer detection is enabled
+				at_edge = "stop", -- don't wrap at edges
+			})
+		end,
+	},
+
 	-- miscellaneous stuff
 	"windwp/nvim-autopairs", -- Autocomplete brace pairs
 	{

@@ -6,7 +6,7 @@ local options = {
 	completeopt = { "menuone", "noselect", "menu" }, -- mostly just for cmp
 	conceallevel = 0, -- so that `` is visible in markdown files
 	fileencoding = "utf-8", -- the encoding written to a file
-	hlsearch = false, -- highlight all matches on previous search pattern
+	hlsearch = true, -- highlight all matches on previous search pattern
 	ignorecase = true, -- ignore case in search patterns
 	mouse = "a", -- allow the mouse to be used in neovim
 	pumheight = 10, -- pop up menu height
@@ -36,7 +36,10 @@ local options = {
 	termguicolors = true, -- more color options
 }
 
-vim.opt.shortmess:append("c")
+-- :h shortmess
+-- c - don't give ins-completion-menu messages
+-- s - don't give "search hit BOTTOM, continuing at TOP" or "search hit TOP, continuing at BOTTOM" messages
+vim.opt.shortmess:append("cs")
 
 for k, v in pairs(options) do
 	vim.opt[k] = v
