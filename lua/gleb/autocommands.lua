@@ -41,3 +41,20 @@ vim.cmd([[
 vim.cmd([[ command! Format execute 'lua vim.lsp.buf.format{async=true}' ]])
 
 vim.cmd([[ command! Pwd execute ':cd %:p:h' ]])
+
+-- TODO: move to separate search file
+vim.api.nvim_create_autocmd("CmdlineEnter", {
+	callback = function()
+		if vim.v.event.cmdtype == "/" or vim.v.event.cmdtype == "?" then
+			vim.opt.hlsearch = true
+		end
+	end,
+})
+
+vim.api.nvim_create_autocmd("CmdlineLeave", {
+	callback = function()
+		if vim.v.event.cmdtype == "/" or vim.v.event.cmdtype == "?" then
+			vim.opt.hlsearch = false
+		end
+	end,
+})
