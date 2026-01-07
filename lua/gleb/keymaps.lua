@@ -3,11 +3,13 @@ local kmap = vim.keymap.set
 
 -- Modes: n=normal, i=insert, v=visual, x=visual_block, t=term, c=command
 
--- Window navigation
-kmap("n", "<C-h>", "<C-w>h", opts)
-kmap("n", "<C-j>", "<C-w>j", opts)
-kmap("n", "<C-k>", "<C-w>k", opts)
-kmap("n", "<C-l>", "<C-w>l", opts)
+-- Window navigation (seamless with Zellij via smart-splits)
+-- Cmd+H sends Ctrl+H, Cmd+L sends Ctrl+L
+-- Cmd+J sends Alt+j, Cmd+K sends Alt+k (to avoid terminal conflicts)
+kmap("n", "<C-h>", require("smart-splits").move_cursor_left, opts)
+kmap("n", "<A-j>", require("smart-splits").move_cursor_down, opts)
+kmap("n", "<A-k>", require("smart-splits").move_cursor_up, opts)
+kmap("n", "<C-l>", require("smart-splits").move_cursor_right, opts)
 
 -- Jump list navigation
 kmap("n", "gb", "<C-O>", opts)
@@ -18,6 +20,13 @@ kmap("n", "<C-Up>", ":resize +2<CR>", opts)
 kmap("n", "<C-Down>", ":resize -2<CR>", opts)
 kmap("n", "<C-Left>", ":vertical resize -2<CR>", opts)
 kmap("n", "<C-Right>", ":vertical resize +2<CR>", opts)
+
+-- Resize with Cmd+Shift+H/J/K/L (via smart-splits)
+-- Cmd+Shift sends Alt+Shift sequences (ESC + uppercase letter)
+kmap("n", "<A-H>", require("smart-splits").resize_left, opts) -- Cmd+Shift+H
+kmap("n", "<A-J>", require("smart-splits").resize_down, opts) -- Cmd+Shift+J
+kmap("n", "<A-K>", require("smart-splits").resize_up, opts) -- Cmd+Shift+K
+kmap("n", "<A-L>", require("smart-splits").resize_right, opts) -- Cmd+Shift+L
 
 -- Buffer management
 kmap("n", "<C-q>", ":bdelete<CR>", opts)
@@ -95,18 +104,13 @@ kmap("n", "gr", require("telescope.builtin").lsp_references, opts)
 kmap("n", "<A-r>", vim.lsp.buf.rename, opts)
 
 -- Diagnostics
-kmap("n", "<A-f>", vim.diagnostic.open_float, opts)
 kmap("n", "<A-w>", vim.diagnostic.goto_next, opts)
 kmap("n", "[d", function()
 	vim.diagnostic.goto_prev({ border = "rounded" })
 end, opts)
-kmap("n", "gl", function()
-	vim.diagnostic.open_float({ border = "rounded" })
-end, opts)
 kmap("n", "ge", function()
 	vim.diagnostic.goto_next({ border = "rounded" })
 end, opts)
-kmap("n", "<leader>q", vim.diagnostic.setloclist, opts)
 
 -- Disable recording
 kmap("n", "q", "<Nop>", opts)
