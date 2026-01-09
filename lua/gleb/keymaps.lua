@@ -112,9 +112,6 @@ kmap("n", "ge", function()
 	vim.diagnostic.goto_next({ border = "rounded" })
 end, opts)
 
--- Disable recording
-kmap("n", "q", "<Nop>", opts)
-
 -- Leader keys
 vim.g.mapleader = "<D->"
 vim.g.maplocalleader = "\\"

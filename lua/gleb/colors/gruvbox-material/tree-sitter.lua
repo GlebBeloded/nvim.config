@@ -33,3 +33,38 @@ vim.api.nvim_set_hl(0, "TSNote", {}) -- don't change background color for notes
 
 -- strings
 vim.api.nvim_set_hl(0, "TSString", { fg = palette.foreground.bg_yellow }) -- basic strings
+
+-- Semantic color roles (what each color means)
+local semantic_colors = {
+	constant = palette.foreground.orange,
+	readonly = palette.foreground.orange,
+	mutable_variable = palette.foreground.fg1,
+	deprecated = { strikethrough = true },
+	builtin = palette.foreground.blue,
+}
+
+-- Define your LSP semantic token overrides using semantic meanings
+local lsp_overrides = {
+	-- Types
+	-- ["@lsp.type.variable"] = { fg = semantic_colors.mutable_variable },
+	-- ["@lsp.type.constant"] = { fg = semantic_colors.constant },
+	-- ["@lsp.type.enumMember"] = { fg = semantic_colors.constant },
+	-- ["@lsp.type.parameter"] = { link = "@variable.parameter" },
+	-- ["@lsp.type.function"] = { link = "@function" },
+	-- ["@lsp.type.method"] = { link = "@function.method" },
+	-- ["@lsp.type.class"] = { link = "@type" },
+	-- ["@lsp.type.struct"] = { link = "@type" },
+
+	-- Modifiers
+	["@lsp.mod.readonly"] = { fg = semantic_colors.readonly },
+	-- ["@lsp.mod.deprecated"] = semantic_colors.deprecated,
+	-- ["@lsp.mod.defaultLibrary"] = { link = "@function.builtin" },
+
+	-- Combined type+modifier for highest priority
+	-- ["@lsp.typemod.variable.readonly"] = { fg = semantic_colors.constant },
+}
+
+-- Apply all overrides
+for group, opts in pairs(lsp_overrides) do
+	vim.api.nvim_set_hl(0, group, opts)
+end

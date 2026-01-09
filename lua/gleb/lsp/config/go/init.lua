@@ -4,15 +4,16 @@ local M = {}
 M.lsp_name = "gopls"
 
 -- gopls settings: https://go.dev/gopls/settings
+-- https://github.com/golang/tools/blob/master/gopls/doc/inlayHints.md
 M.lsp_config = {
 	settings = {
 		gopls = {
 			gofumpt = false,
 			hints = {
-				assignVariableTypes = true,
+				assignVariableTypes = false,
 				compositeLiteralFields = true,
 				constantValues = true,
-				parameterNames = true,
+				parameterNames = false,
 			},
 			semanticTokens = true,
 		},
@@ -24,12 +25,10 @@ M.lsp_config = {
 M.null_ls = function(null_ls)
 	return {
 		null_ls.builtins.diagnostics.golangci_lint.with({
-			method = null_ls.methods.DIAGNOSTICS,
 			args = {
 				"run",
-				"--fix=false",
-				"--enable-all",
-				"--out-format=json",
+				"--output.json.path=stdout",
+				"--show-stats=false",
 				"$DIRNAME",
 				"--path-prefix",
 				"$ROOT",
