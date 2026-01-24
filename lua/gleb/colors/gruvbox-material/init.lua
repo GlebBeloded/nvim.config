@@ -38,7 +38,7 @@ vim.opt.fillchars:append({
 	vertright = "┣",
 })
 
--- Search highlighting: preserve treesitter colors, only change background
+-- search highlighting: preserve treesitter colors, only change background
 vim.api.nvim_set_hl(0, "Search", { bg = utils.darken(palette.foreground.yellow, 0.3) })
 vim.api.nvim_set_hl(0, "IncSearch", { bg = utils.darken(palette.foreground.blue, 0.3) })
 vim.api.nvim_set_hl(0, "CurSearch", { bg = utils.darken(palette.foreground.blue, 0.3) })

@@ -5,11 +5,11 @@ end
 
 transparent.setup({
 	extra_groups = {
-		'Folded',
-		'NormalFloat',
-		'FloatBorder',
+		"Folded",
+		"NormalFloat",
+		"FloatBorder",
 	},
 })
 
-transparent.clear_prefix('lualine')
-transparent.clear_prefix('NeoTree')
+transparent.clear_prefix("lualine")
+transparent.clear_prefix("NeoTree")

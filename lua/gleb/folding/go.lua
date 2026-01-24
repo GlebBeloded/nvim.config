@@ -1,3 +1,4 @@
+-- TODO: use tree-sitter for this
 local handler = { virtText = nil, lnum = nil, endLnum = nil, width = nil, truncate = nil }
 
 function handler:getFoldText() -- returns array of lines
