@@ -27,8 +27,8 @@ end
 
 -- Internal: actually open the diff (called after debounce)
 local function do_open_diff(path)
-	local git = require("vscode-diff.git")
-	local view = require("vscode-diff.render.view")
+	local git = require("codediff.core.git")
+	local view = require("codediff.ui.view")
 
 	-- Async chain: get_git_root -> resolve_revision -> create/update view
 	git.get_git_root(path, function(err_root, git_root)

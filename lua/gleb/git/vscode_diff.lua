@@ -1,9 +1,9 @@
-local status_ok, vscode_diff = pcall(require, "vscode-diff")
+local status_ok, codediff = pcall(require, "codediff")
 if not status_ok then
 	return
 end
 
-vscode_diff.setup({
+codediff.setup({
 	-- Explorer disabled - we use neo-tree for file navigation
 	explorer = {
 		position = "left",
