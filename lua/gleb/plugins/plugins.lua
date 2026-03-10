@@ -148,6 +148,9 @@ local plugins = {
 		opts_extend = { "sources.default" }, -- allow other plugins to extend sources
 	},
 
+	-- yaml schema detection (kubernetes, etc.)
+	"mosheavni/yaml-companion.nvim",
+
 	-- lsp stuff
 	"neovim/nvim-lspconfig", -- Enable LSP
 	"williamboman/mason.nvim", -- Manage linters, LSP, formatters
@@ -155,6 +158,12 @@ local plugins = {
 	"lukas-reineke/lsp-format.nvim", -- Format code on save
 	"kosayoda/nvim-lightbulb", -- Show lightbulb for code actions
 	"ray-x/lsp_signature.nvim", -- Fancy function completion plugin
+	"yioneko/nvim-vtsls", -- vtsls commands (organize imports, rename file, etc.)
+	{
+		"dmmulroy/tsc.nvim", -- Project-wide TypeScript type checking
+		cmd = "TSC",
+		opts = {},
+	},
 
 	-- folding
 	{

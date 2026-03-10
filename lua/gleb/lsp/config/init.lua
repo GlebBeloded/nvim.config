@@ -18,6 +18,7 @@ local langauge_configs = {
 	require("gleb/lsp/config/shell"), -- sh,bash,zsh
 	require("gleb/lsp/config/terraform"), -- hashicorp yucky
 	require("gleb/lsp/config/rust"), -- rust
+	require("gleb/lsp/config/python"), -- python
 }
 
 require("mason").setup()
@@ -40,10 +41,13 @@ local global_config = require("gleb/lsp/config/handlers")
 global_config.setup()
 
 for _, language in ipairs(langauge_configs) do
-	if language.lsp_name then
+	local names = language.lsp_names or (language.lsp_name and { language.lsp_name })
+	if names then
 		local config = merge(global_config, language.lsp_config)
-		vim.lsp.config(language.lsp_name, config)
-		vim.lsp.enable(language.lsp_name)
+		for _, name in ipairs(names) do
+			vim.lsp.config(name, config)
+			vim.lsp.enable(name)
+		end
 	end
 end
 
