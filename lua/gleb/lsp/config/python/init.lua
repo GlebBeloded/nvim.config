@@ -1,5 +1,8 @@
 local M = {}
 
+-- :PyTypeCheckOn / :PyTypeCheckOff toggle basedpyright type checking
+require("gleb.lsp.config.python.typecheck").setup()
+
 -- lsp_names: servers configured via vim.lsp.config + vim.lsp.enable
 M.lsp_names = { "basedpyright", "ruff" }
 
