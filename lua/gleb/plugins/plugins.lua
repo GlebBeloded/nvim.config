@@ -317,6 +317,33 @@ local plugins = {
 		ft = { "markdown" },
 	},
 
+	-- Rust: rich rust-analyzer integration (runnables, debuggables, expand macro,
+	-- grouped code actions, hover actions). Replaces lspconfig's rust_analyzer.
+	{
+		"mrcjkb/rustaceanvim",
+		version = "^6",
+		lazy = false, -- plugin self-lazies via ftplugin/rust
+		init = function()
+			vim.g.rustaceanvim = {
+				server = {
+					default_settings = {
+						["rust-analyzer"] = {
+							check = { command = "clippy" },
+							cargo = { allFeatures = true },
+						},
+					},
+				},
+			}
+		end,
+	},
+
+	-- Rust: Cargo.toml dependency hints, completion, upgrade actions
+	{
+		"saecki/crates.nvim",
+		event = { "BufRead Cargo.toml" },
+		opts = {},
+	},
+
 	-- AI Code Completion: copilot.lua (GitHub Copilot integration)
 	-- Keybinds: Tab=accept, M-]=next, M-[=prev, C-]=dismiss
 	{

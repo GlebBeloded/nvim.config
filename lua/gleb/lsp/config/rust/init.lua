@@ -1,22 +1,13 @@
 local M = {}
 
--- lsp_name is server name, to be passed as lspconfig["M.lsp_name"] = M.lsp_config
-M.lsp_name = "rust_analyzer"
+-- rust-analyzer is managed by rustaceanvim (see lua/gleb/plugins/plugins.lua),
+-- so we intentionally don't expose lsp_name here — the lspconfig loop will skip it.
 
--- native lsp config
-M.lsp_config = {
-	settings = {},
-}
-
--- table returned by this function is passed to null_ls(linter) setup
--- table should contain list of diagnostics to use
--- Note: rustfmt builtin was removed from none-ls
--- Rust formatting is now handled by rust-analyzer LSP
 M.null_ls = function(_)
 	return {}
 end
 
--- string array that is passed to mason.EnsureInstalled method
+-- mason still installs the binaries; rustaceanvim picks rust-analyzer up from PATH.
 M.mason = {
 	"rust-analyzer",
 	"rustfmt",
