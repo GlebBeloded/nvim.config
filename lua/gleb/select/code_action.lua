@@ -29,17 +29,9 @@ function codeAction:popupName()
 	return self.opts.prompt
 end
 
--- @return nubmer
+-- @return number
 function codeAction:longestEntryLength()
-	local length = 255
-
-	-- for _, value in pairs(self.items) do
-	-- 	if #value[2].title > length then
-	-- 		length = #value[2].title
-	-- 	end
-	-- end
-
-	return length
+	return 255
 end
 
 -- popupUnderCursorOptions returns popupOptions for menu under cursor
