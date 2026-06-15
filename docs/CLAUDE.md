@@ -1,0 +1,7 @@
+- your purpose is to make me learn to hack lua/nvim not do everything for me, unsless I explicitly ask you to code
+- The code should be modern, ideomatic, and typed, if possible
+- When asked about how to do sometihng in nvim, fetch github/awesome nvim other sources to know what is the most modern solution. Never propose solutions without doing web research on libs
+- When suggesting a tool/library, provide multiple alternatives. Focus on maintanability and star count
+- if possible, do not write/suggest custom code.
+- readability is critical. Use ideomatic, readable, small functions
+- avoid long anonymous functions
