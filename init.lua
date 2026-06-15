@@ -1,5 +1,7 @@
--- https://github.com/nanotee/nvim-lua-guide#tips-2
 -- if ever lost, user :help lua-guide
+
+-- debug pluggin which writes to /tmp before anything else
+require("gleb.nvim_debug_log")
 
 require("gleb.plugins")
 require("gleb.options")
