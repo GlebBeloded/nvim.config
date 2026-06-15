@@ -53,7 +53,6 @@ local plugins = {
 		version = "*",
 		dependencies = {
 			"rafamadriz/friendly-snippets", -- snippet collection
-			"Kaiser-Yang/blink-cmp-avante", -- avante.nvim @ mentions/commands
 		},
 		opts = {
 			-- Custom keymap: Tab is "super key" for both completions and Copilot
@@ -91,16 +90,12 @@ local plugins = {
 
 			-- Completion sources in priority order (first = highest priority)
 			sources = {
-				default = { "lazydev", "lsp", "path", "snippets", "buffer", "avante" },
+				default = { "lazydev", "lsp", "path", "snippets", "buffer" },
 				providers = {
 					lazydev = {
 						name = "LazyDev",
 						module = "lazydev.integrations.blink",
 						score_offset = 100, -- boost priority for Neovim Lua API completions
-					},
-					avante = {
-						module = "blink-cmp-avante",
-						name = "Avante", -- enables @mentions and /commands in avante.nvim
 					},
 				},
 			},
@@ -286,115 +281,76 @@ local plugins = {
 	"akinsho/bufferline.nvim",
 	"moll/vim-bbye",
 
+	-- AI: ThePrimeagen/99 — search, visual, vibe, worker via Claude Code
 	{
-		"yetone/avante.nvim",
+		"ThePrimeagen/99",
 		event = "VeryLazy",
-		version = false, -- Never set this value to "*"! Never!
-		opts = {
-			-- add any opts here
-			provider = "copilot",
-			providers = {},
-		},
-		-- if you want to build from source then do `make BUILD_FROM_SOURCE=true`
-		build = "make BUILD_FROM_SOURCE=true",
-		-- build = "powershell -ExecutionPolicy Bypass -File Build.ps1 -BuildFromSource false" -- for windows
 		dependencies = {
-			"nvim-treesitter/nvim-treesitter",
-			{
-				"stevearc/dressing.nvim",
-				opts = {
-					input = {
-						relative = "editor", -- center in editor, not current window
-						prefer_width = 60,
-						min_width = 40,
-					},
-				},
-			},
-			"nvim-lua/plenary.nvim",
-			"MunifTanjim/nui.nvim",
-			--- The below dependencies are optional,
-			"echasnovski/mini.pick", -- for file_selector provider mini.pick
-			"nvim-telescope/telescope.nvim", -- for file_selector provider telescope
-			-- blink.cmp is used for autocompletion (configured separately)
-			"ibhagwan/fzf-lua", -- for file_selector provider fzf
-			"nvim-tree/nvim-web-devicons", -- or echasnovski/mini.icons
-			{
-				-- support for image pasting
-				"HakonHarnes/img-clip.nvim",
-				event = "VeryLazy",
-				opts = {
-					-- recommended settings
-					default = {
-						embed_image_as_base64 = false,
-						prompt_for_file_name = false,
-						drag_and_drop = {
-							insert_mode = true,
-						},
-						-- required for Windows users
-						use_absolute_path = true,
-					},
-				},
-			},
-			{
-				-- Make sure to set this up properly if you have lazy=true
-				"MeanderingProgrammer/render-markdown.nvim",
-				opts = {
-					file_types = { "markdown", "Avante" },
-				},
-				ft = { "markdown", "Avante" },
-			},
-			-- AI Code Completion: copilot.lua (GitHub Copilot integration)
-			-- Docs: https://github.com/zbirenbaum/copilot.lua
-			--
-			-- How it integrates with blink.cmp:
-			--   1. Copilot shows ghost text suggestions when you pause typing
-			--   2. When blink.cmp menu opens, Copilot hides (via BlinkCmpMenuOpen autocmd)
-			--   3. When blink.cmp menu closes, Copilot can show again
-			--   4. Tab accepts Copilot when no completion menu is visible (see blink.cmp keymap)
-			--
-			-- Keybinds:
-			--   Tab      = Accept suggestion (when no completion menu)
-			--   M-]      = Next suggestion
-			--   M-[      = Previous suggestion
-			--   C-]      = Dismiss suggestion
-			---@type LazyPluginSpec
-			{
-				"GlebBeloded/copilot.lua",
-				branch = "feat/syntax-highlighted-suggestions",
-				cmd = "Copilot",
-				event = "InsertEnter",
-				config = function()
-					require("copilot").setup({
-						suggestion = {
-							auto_trigger = true, -- show suggestions automatically
-							keymap = {
-								-- Accept is handled by Tab in blink.cmp (see keymap above)
-								accept = false,
-								next = "<M-]>",
-								prev = "<M-[>",
-								dismiss = "<C-]>",
-							},
-						},
-					})
-
-					-- Autocmds to hide Copilot when blink.cmp menu is open
-					-- This prevents both showing suggestions at the same time
-					vim.api.nvim_create_autocmd("User", {
-						pattern = "BlinkCmpMenuOpen",
-						callback = function()
-							require("copilot.suggestion").dismiss()
-							vim.b.copilot_suggestion_hidden = true
-						end,
-					})
-					vim.api.nvim_create_autocmd("User", {
-						pattern = "BlinkCmpMenuClose",
-						callback = function()
-							vim.b.copilot_suggestion_hidden = false
-						end,
-					})
-				end,
-			},
+			"nvim-telescope/telescope.nvim",
 		},
+		config = function()
+			local nn = require("99")
+			nn.setup({
+				provider = nn.Providers.ClaudeCodeProvider,
+				model = "claude-sonnet-4-5",
+			})
+
+			local function normal_menu()
+				vim.api.nvim_echo({ { "99> [s]earch [v]ibe: ", "Question" } }, false, {})
+				local key = vim.fn.nr2char(vim.fn.getchar())
+				vim.cmd("redraw")
+				local fns = { s = nn.search, v = nn.vibe }
+				if fns[key] then
+					fns[key]()
+				end
+			end
+
+			vim.keymap.set("n", "<A-9>", normal_menu, { desc = "99: Menu" })
+			vim.keymap.set("v", "<A-9>", nn.visual, { desc = "99: Visual" })
+		end,
+	},
+
+	-- Markdown rendering
+	{
+		"MeanderingProgrammer/render-markdown.nvim",
+		opts = { file_types = { "markdown" } },
+		ft = { "markdown" },
+	},
+
+	-- AI Code Completion: copilot.lua (GitHub Copilot integration)
+	-- Keybinds: Tab=accept, M-]=next, M-[=prev, C-]=dismiss
+	{
+		"GlebBeloded/copilot.lua",
+		branch = "feat/syntax-highlighted-suggestions",
+		cmd = "Copilot",
+		event = "InsertEnter",
+		config = function()
+			require("copilot").setup({
+				suggestion = {
+					auto_trigger = true,
+					keymap = {
+						accept = false,
+						next = "<M-]>",
+						prev = "<M-[>",
+						dismiss = "<C-]>",
+					},
+				},
+			})
+
+			vim.api.nvim_create_autocmd("User", {
+				pattern = "BlinkCmpMenuOpen",
+				callback = function()
+					require("copilot.suggestion").dismiss()
+					vim.b.copilot_suggestion_hidden = true
+				end,
+			})
+			vim.api.nvim_create_autocmd("User", {
+				pattern = "BlinkCmpMenuClose",
+				callback = function()
+					vim.b.copilot_suggestion_hidden = false
+				end,
+			})
+		end,
 	},
 }
 
