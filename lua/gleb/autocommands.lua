@@ -33,9 +33,28 @@ vim.cmd([[
 
   augroup _lsp
     autocmd!
-    autocmd BufWritePre * silent!lua vim.lsp.buf.format({})
+    autocmd BufWritePre * if !get(g:, 'format_on_save_disabled') | silent!lua vim.lsp.buf.format({}) | endif
   augroup end
 ]])
+
+-- Format only on a manual :w, never on auto-save.nvim writes. auto-save runs
+-- with autocmds enabled, so it would otherwise reformat mid-edit; flag its
+-- write cycle so the BufWritePre format above skips it.
+local autosave_format = vim.api.nvim_create_augroup("_autosave_format", { clear = true })
+vim.api.nvim_create_autocmd("User", {
+	group = autosave_format,
+	pattern = "AutoSaveWritePre",
+	callback = function()
+		vim.g.format_on_save_disabled = true
+	end,
+})
+vim.api.nvim_create_autocmd("User", {
+	group = autosave_format,
+	pattern = "AutoSaveWritePost",
+	callback = function()
+		vim.g.format_on_save_disabled = false
+	end,
+})
 
 -- TODO: move to separate files
 vim.cmd([[ command! Format execute 'lua vim.lsp.buf.format{async=true}' ]])

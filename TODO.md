@@ -116,9 +116,3 @@ show LSP status at the bottom (statusline)
 
 ## [2026-06-05 16:34]
 Integrate fusen.nvim (walkersumida/fusen.nvim) for out-of-band sticky-note comments anchored to lines, stored in JSON outside source (per git branch), rendered as eol virtual text / float window. Goal: comments not in git diff, readable by AI agents from the JSON.
-
-## [2026-06-15 11:57]
-research nvim zellij recovery
-
-## [2026-06-15 13:08]
-Disable mouse completely in nvim (accidental inserts/selection from trackpad). Likely `set mouse=` (empty) in init.lua; confirm it kills all mouse modes incl. visual-select and scroll.

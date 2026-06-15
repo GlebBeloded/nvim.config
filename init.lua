@@ -21,6 +21,7 @@ require("gleb.debugging")
 require("gleb.bufferline")
 require("gleb.project")
 require("gleb.indentline")
+require("gleb.session") -- before alpha-nvim: restored buffers make alpha self-skip
 require("gleb.alpha-nvim")
 require("gleb.autocommands")
 require("gleb.lualine") -- try to put after plugins that create splits

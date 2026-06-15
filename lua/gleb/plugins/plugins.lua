@@ -245,6 +245,26 @@ local plugins = {
 		dependencies = "nvim-lua/plenary.nvim",
 	},
 
+	-- session recovery: named, zellij-aware sessions (see lua/gleb/session)
+	"stevearc/resession.nvim",
+
+	-- unsaved-buffer safety: auto-save so resession never loses live edits
+	-- (resession only restores file paths/layout, not unwritten content)
+	{
+		"okuuva/auto-save.nvim",
+		version = "^1",
+		config = function()
+			require("auto-save").setup({
+				-- only touch real, normal files — never terminals, prompts, etc.
+				condition = function(buf)
+					return vim.bo[buf].buftype == ""
+						and not vim.tbl_contains({ "gitcommit", "gitrebase" }, vim.bo[buf].filetype)
+				end,
+				debounce_delay = 1000, -- wait out bursts of typing before writing
+			})
+		end,
+	},
+
 	-- comments
 	"numToStr/Comment.nvim", -- Smart comments
 
