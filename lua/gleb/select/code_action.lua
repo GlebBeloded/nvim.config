@@ -69,7 +69,8 @@ end
 function codeAction:menu()
 	local options = {}
 	for key, value in pairs(self.items) do
-		table.insert(options, Menu.item(value[2].title, { index = key, data = value }))
+		local text = self.opts.format_item and self.opts.format_item(value) or tostring(value)
+		table.insert(options, Menu.item(text, { index = key, data = value }))
 	end
 
 	return {
@@ -77,7 +78,7 @@ function codeAction:menu()
 		max_width = 20,
 		keymap = codeAction.keymap,
 		on_submit = function(item)
-			self.on_choice(item.data, item.key)
+			self.on_choice(item.data, item.index)
 		end,
 	}
 end
