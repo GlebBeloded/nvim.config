@@ -12,7 +12,7 @@ local diagnostics = {
 	sources = { "nvim_diagnostic" },
 	sections = { "error", "warn" },
 	symbols = { error = " ", warn = " " },
-	colored = false,
+	colored = true,
 	update_in_insert = false,
 	always_visible = true,
 }
@@ -26,15 +26,6 @@ local diff = {
 
 local mode = {
 	"mode",
-	fmt = function(str)
-		return "-- " .. str .. " --"
-	end,
-}
-
-local filetype = {
-	"filetype",
-	icons_enabled = false,
-	icon = nil,
 }
 
 local branch = {
@@ -43,31 +34,50 @@ local branch = {
 	icon = "",
 }
 
-local location = {
-	"location",
+-- self-contained block: "<status dot> <language logo> <language>", e.g. "●  lua"
+-- (dot green/red by LSP health). Owns its own background; see the module.
+local lsp_status = {
+	require("gleb.statusline.language").component,
 	padding = 0,
+	separator = { left = "", right = "" },
 }
 
-local spaces = function()
-	return "spaces: " .. vim.api.nvim_buf_get_option(0, "shiftwidth")
-end
+-- code context breadcrumb (e.g. "Server ▸ Handle ▸ if") from the LSP, shown on the left
+local navic = {
+	function()
+		return require("nvim-navic").get_location()
+	end,
+	cond = function()
+		local ok, mod = pcall(require, "nvim-navic")
+		return ok and mod.is_available()
+	end,
+}
+
+-- LSP progress: spinner + readable label, only for tasks running > 500ms (see module)
+local lsp_progress = require("gleb.statusline.lsp_progress").progress
+
+-- Copilot: red glyph only when Copilot is NOT working, hidden otherwise
+local copilot = {
+	require("gleb.statusline.copilot").component,
+	color = { fg = require("gleb.statusline.palette").err },
+}
 
 lualine.setup({
 	options = {
 		icons_enabled = true,
-		-- theme = "gruvbox_material",
+		theme = require("gleb.statusline.theme"),
 		component_separators = { left = "", right = "" },
 		section_separators = { left = "", right = "" },
 		disabled_filetypes = { "alpha", "dashboard", "Outline" },
 		always_divide_middle = true,
 	},
 	sections = {
-		lualine_a = { branch, diagnostics },
-		lualine_b = { mode },
-		lualine_c = {},
-		-- lualine_x = { "encoding", "fileformat", "filetype" },
-		lualine_x = { diff, spaces, "encoding", filetype },
-		lualine_y = { location },
+		lualine_a = { mode },
+		lualine_b = { branch, diff },
+		lualine_c = { navic },
+		lualine_x = { lsp_progress, copilot, diagnostics, lsp_status },
+		lualine_y = {},
+		lualine_z = {},
 	},
 	inactive_sections = {
 		lualine_a = {},

@@ -211,6 +211,17 @@ local plugins = {
 	-- buffer line (bottom line)
 	"nvim-lualine/lualine.nvim",
 
+	-- statusline extras
+	{
+		"SmiteshP/nvim-navic", -- LSP breadcrumb / code context (left of statusline)
+		dependencies = "neovim/nvim-lspconfig",
+		opts = {
+			lsp = { auto_attach = true }, -- attach to every LSP client automatically
+			highlight = true,
+			depth_limit = 5,
+		},
+	},
+
 	-- treesitter (rich syntax highlighting)
 	{
 		"nvim-treesitter/nvim-treesitter",

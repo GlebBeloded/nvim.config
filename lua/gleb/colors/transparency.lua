@@ -11,5 +11,6 @@ transparent.setup({
 	},
 })
 
-transparent.clear_prefix("lualine")
+-- keep lualine section backgrounds (the colored mode/position blocks);
+-- clearing them makes the statusline text barely readable on a transparent bg
 transparent.clear_prefix("NeoTree")

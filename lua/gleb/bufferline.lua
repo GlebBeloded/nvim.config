@@ -3,6 +3,10 @@ if not status_ok then
 	return
 end
 
+-- share the statusline's derived palette so the top (bufferline) and bottom
+-- (lualine) lines are the same color and blend in together
+local c = require("gleb.statusline.palette")
+
 local function buferFilter(buf_number)
 	-- filter out filetypes you don't want to see
 	if vim.bo[buf_number].filetype == "dap-repl" then
@@ -64,5 +68,25 @@ bufferline.setup({
 		--   -- add custom logic
 		--   return buffer_a.modified > buffer_b.modified
 		-- end
+	},
+	-- match the statusline: bar fill everywhere, active buffer faintly lifted
+	highlights = {
+		fill = { bg = c.bar },
+		background = { fg = c.muted, bg = c.bar },
+		buffer_visible = { fg = c.text, bg = c.bar },
+		buffer_selected = { fg = c.text_hi, bg = c.bar_sel, bold = true, italic = false },
+		duplicate = { fg = c.muted, bg = c.bar },
+		duplicate_visible = { fg = c.muted, bg = c.bar },
+		duplicate_selected = { fg = c.text, bg = c.bar_sel },
+		separator = { fg = c.bar, bg = c.bar },
+		separator_visible = { fg = c.bar, bg = c.bar },
+		separator_selected = { fg = c.bar, bg = c.bar_sel },
+		indicator_selected = { fg = c.mode.normal, bg = c.bar_sel },
+		modified = { fg = c.mode.normal, bg = c.bar },
+		modified_visible = { fg = c.mode.normal, bg = c.bar },
+		modified_selected = { fg = c.mode.normal, bg = c.bar_sel },
+		close_button = { fg = c.muted, bg = c.bar },
+		close_button_visible = { fg = c.muted, bg = c.bar },
+		close_button_selected = { fg = c.err, bg = c.bar_sel },
 	},
 })
