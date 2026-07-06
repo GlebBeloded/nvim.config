@@ -30,15 +30,8 @@ M.setup = function()
 
 	vim.diagnostic.config(config)
 
-	vim.lsp.handlers["textDocument/hover"] = vim.lsp.with(vim.lsp.handlers.hover, {
-		border = "rounded",
-		width = 60,
-	})
-
-	vim.lsp.handlers["textDocument/signatureHelp"] = vim.lsp.with(vim.lsp.handlers.signature_help, {
-		border = "rounded",
-		width = 60,
-	})
+	-- nvim 0.11+: vim.o.winborder applies to all floating windows (hover, signature_help, etc.)
+	vim.o.winborder = "rounded"
 
 	-- enable inlay hints globally
 	vim.lsp.inlay_hint.enable(true)

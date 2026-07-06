@@ -277,7 +277,14 @@ local plugins = {
 	},
 
 	-- comments
-	"numToStr/Comment.nvim", -- Smart comments
+	{
+		"numToStr/Comment.nvim", -- Smart comments
+		opts = {
+			pre_hook = function(ctx)
+				return require("ts_context_commentstring.integrations.comment_nvim").create_pre_hook()(ctx)
+			end,
+		},
+	},
 
 	-- smart splits for seamless navigation between nvim and zellij
 	-- Works with vim-zellij-navigator Zellij plugin
@@ -304,7 +311,10 @@ local plugins = {
 		end,
 	},
 	"windwp/nvim-ts-autotag", -- Autoclose HTML tags
-	"JoosepAlviste/nvim-ts-context-commentstring", -- Smarter comments for files with multiple languages
+	{
+		"JoosepAlviste/nvim-ts-context-commentstring", -- Smarter comments for files with multiple languages
+		opts = { enable_autocmd = false },
+	},
 	"lukas-reineke/indent-blankline.nvim", -- Lines for indenting
 	"goolord/alpha-nvim", -- Greeting screen
 

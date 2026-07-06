@@ -2,7 +2,7 @@ vim.cmd([[
   augroup _general_settings
     autocmd!
     autocmd FileType qf,help,man,lspinfo nnoremap <silent> <buffer> q :close<CR>
-    autocmd TextYankPost * silent!lua require('vim.highlight').on_yank({higroup = 'Visual', timeout = 200})
+    autocmd TextYankPost * silent!lua vim.hl.on_yank({higroup = 'Visual', timeout = 200})
     autocmd BufWinEnter * :set formatoptions-=cro
     autocmd FileType qf set nobuflisted
     autocmd BufNewFile,BufRead ~/.zshrc :setl ft=sh
@@ -31,11 +31,17 @@ vim.cmd([[
     autocmd User AlphaReady set showtabline=0 | autocmd BufUnload <buffer> set showtabline=2
   augroup end
 
-  augroup _lsp
-    autocmd!
-    autocmd BufWritePre * if !get(g:, 'format_on_save_disabled') | silent!lua vim.lsp.buf.format({}) | endif
-  augroup end
 ]])
+
+local lsp_format = vim.api.nvim_create_augroup("_lsp", { clear = true })
+vim.api.nvim_create_autocmd("BufWritePre", {
+	group = lsp_format,
+	callback = function()
+		if not vim.g.format_on_save_disabled then
+			vim.lsp.buf.format({})
+		end
+	end,
+})
 
 -- Format only on a manual :w, never on auto-save.nvim writes. auto-save runs
 -- with autocmds enabled, so it would otherwise reformat mid-edit; flag its

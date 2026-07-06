@@ -116,3 +116,6 @@ show LSP status at the bottom (statusline)
 
 ## [2026-06-05 16:34]
 Integrate fusen.nvim (walkersumida/fusen.nvim) for out-of-band sticky-note comments anchored to lines, stored in JSON outside source (per git branch), rendered as eol virtual text / float window. Goal: comments not in git diff, readable by AI agents from the JSON.
+
+## [2026-06-23 12:39]
+In the diff tree view, show an indication when I am unable to push because I am not on the latest commit (local branch is behind remote / HEAD detached from branch tip)
