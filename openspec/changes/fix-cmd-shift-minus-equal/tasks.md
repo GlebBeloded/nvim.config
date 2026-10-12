@@ -22,3 +22,7 @@ Layers (docs/testing.md, Shortcut layers): the Alacritty config checks go in cha
 ## 4. Gate
 
 - [ ] 4.1 `make trace` reports no orphans; `make check E2E=1` is green; `openspec validate fix-cmd-shift-minus-equal --strict` passes; `git diff openspec/specs/shortcuts/spec.md` matches the delta plus the table/Known-gaps edits from 2.1.
+
+## Blocked
+
+- 4.1 `make check E2E=1` is red only in two cases this change does not touch (design.md, Non-Goals: owned by `fix-cmd-q-shortcut`): "Cmd+H never reaches Neovim from a real key press" (gets `<C-H>`) and "Cmd+Q quits Alacritty from a real key press" (Alacritty does not exit). Cause: the shared sandbox VM is provisioned by the unmerged `loop/fix-cmd-q-shortcut` branch: `defaults read org.alacritty NSUserKeyEquivalents` in the guest gives `"Hide alacritty" = "@~^h"; "Quit alacritty" = "@~^q"`, so Cmd+H/Cmd+Q now reach the terminal, which is what that branch's rewritten scenarios expect and what this branch's (auto's) scenarios forbid. All scenarios of this change pass in the same run. Unblock: merge `fix-cmd-q-shortcut` into `auto` first, then merge `auto` into this branch and rerun the gate. Not done here: resetting the VM's defaults would break the other branch, and editing the Cmd+H/Cmd+Q cases would change another change's scenarios.
