@@ -29,7 +29,16 @@ Scenarios: "Space stages an unstaged file", "Space unstages a staged file" (exis
   - `file-tree: Space unstages a staged file`: modified staged `a.lua`; after `<space>`, `staged(dir)` does not contain `a.lua`.
   - Regression guards for behaviour that already holds; check each one fails when its assertion is inverted, then restore it. Both pass on the task 1 code.
 
-## 3. Gate
+## 3. Nested path staging from a subdirectory cwd
 
-- [x] 3.1 `make quick` green (lint, types, trace lists all six scenarios as tested).
-- [x] 3.2 `make check` green.
+Scenarios: "Space stages from a subdirectory cwd", "Space unstages from a subdirectory cwd".
+
+- [x] 3.1 Tests in `test_stage.lua` with `sub/x.lua` committed, cwd = `<repo>/sub`, `:Neotree git_status`, cursor on the `x.lua` node:
+  - `file-tree: Space stages from a subdirectory cwd`: modified unstaged `sub/x.lua`; after `<space>`, `staged(dir)` contains `sub/x.lua`.
+  - `file-tree: Space unstages from a subdirectory cwd`: modified staged `sub/x.lua`; after `<space>`, `staged(dir)` does not contain `sub/x.lua`.
+  - Regression guards like 2.1: each fails when its assertion is inverted. Both pass on the task 1 code.
+
+## 4. Gate
+
+- [x] 4.1 `make quick` green (lint, types, trace lists all eight scenarios as tested).
+- [x] 4.2 `make check` green.

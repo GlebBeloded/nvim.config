@@ -25,6 +25,7 @@ local function staging_repo(files)
 	local dir = vim.fn.tempname()
 	vim.fn.mkdir(dir, "p")
 	for _, name in ipairs(files) do
+		vim.fn.mkdir(vim.fs.dirname(vim.fs.joinpath(dir, name)), "p")
 		vim.fn.writefile({ "one" }, vim.fs.joinpath(dir, name))
 	end
 	git({ "init", "-q" }, dir)
@@ -68,10 +69,22 @@ local function open_from_outside(dir)
 	child.cmd("cd " .. outside .. " | enew | Neotree git_status dir=" .. dir)
 end
 
-local function press_space_on_a_lua()
-	eq(child.wait([[vim.bo.filetype == "neo-tree" and vim.fn.search("a.lua", "nw") > 0]], ASYNC_MS), true)
-	child.fn.search([[\<a\.lua$]], "w")
+---@param dir string
+local function open_in_subdir(dir)
+	child.cmd("cd " .. vim.fs.joinpath(dir, "sub") .. " | enew | Neotree git_status")
+end
+
+--- Wait until the tree lists `name`, put the cursor on its node line and press `<space>`.
+---@param name string
+local function press_space_on(name)
+	local escaped = vim.fn.escape(name, [[.\]])
+	eq(child.wait(("vim.bo.filetype == 'neo-tree' and vim.fn.search(%q, 'nw') > 0"):format(escaped), ASYNC_MS), true)
+	child.fn.search([[\<]] .. escaped .. "$", "w")
 	child.type_keys(" ")
+end
+
+local function press_space_on_a_lua()
+	press_space_on("a.lua")
 end
 
 local T = H.child_set(child, start)
@@ -129,6 +142,27 @@ T["file-tree: Space unstages when cwd is outside the repository"] = function()
 	press_space_on_a_lua()
 
 	eq(wait_staged(dir, "a.lua", false), true)
+end
+
+T["file-tree: Space stages from a subdirectory cwd"] = function()
+	local dir = staging_repo({ "sub/x.lua" })
+	modify(dir, "sub/x.lua")
+	open_in_subdir(dir)
+
+	press_space_on("x.lua")
+
+	eq(wait_staged(dir, "sub/x.lua", true), true)
+end
+
+T["file-tree: Space unstages from a subdirectory cwd"] = function()
+	local dir = staging_repo({ "sub/x.lua" })
+	modify(dir, "sub/x.lua")
+	git({ "add", "sub/x.lua" }, dir)
+	open_in_subdir(dir)
+
+	press_space_on("x.lua")
+
+	eq(wait_staged(dir, "sub/x.lua", false), true)
 end
 
 T["file-tree: Space reports a staging failure"] = function()

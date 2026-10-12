@@ -96,7 +96,7 @@ In the `git_status` tree, normal-mode mappings SHALL be: `<cr>` closes any diff 
 
 #### Scenario: Space unstages a staged file
 - **WHEN** the cursor is on a file node whose repository path is in `git diff --cached --name-only` and `<space>` is pressed in normal mode
-- **THEN** `git reset -- <path>` is run and the path no longer appears in `git diff --cached --name-only`
+- **THEN** `git reset -q -- <path>` is run and the path no longer appears in `git diff --cached --name-only`
 
 ### Requirement: Git status staging matches exact paths
 In the `git_status` tree, `<space>` on a file node SHALL treat the file as staged only if git reports staged changes for the exact pathspec of its absolute path (`git diff --cached --quiet -- <path>` run in the tree root), independent of the current working directory. It SHALL run `git add` or `git reset` with an argument list (no shell) and, on a non-zero exit, notify `Stage failed: <stderr>` or `Unstage failed: <stderr>` at ERROR.
@@ -112,6 +112,14 @@ In the `git_status` tree, `<space>` on a file node SHALL treat the file as stage
 #### Scenario: Space unstages when cwd is outside the repository
 - **WHEN** the cwd is a directory outside the repository, the tree was opened with `:Neotree git_status dir=<repo>`, `a.lua` is staged, the cursor is on its file node and `<space>` is pressed in normal mode
 - **THEN** `a.lua` no longer appears in `git diff --cached --name-only` run in the repository
+
+#### Scenario: Space stages from a subdirectory cwd
+- **WHEN** the cwd is the subdirectory `sub` of the repository, `sub/x.lua` is modified and unstaged, the cursor is on its file node and `<space>` is pressed in normal mode
+- **THEN** `sub/x.lua` appears in `git diff --cached --name-only`
+
+#### Scenario: Space unstages from a subdirectory cwd
+- **WHEN** the cwd is the subdirectory `sub` of the repository, `sub/x.lua` is staged, the cursor is on its file node and `<space>` is pressed in normal mode
+- **THEN** `sub/x.lua` no longer appears in `git diff --cached --name-only`
 
 #### Scenario: Space reports a staging failure
 - **WHEN** `.git/index.lock` exists, the cursor is on an unstaged file node and `<space>` is pressed in normal mode
