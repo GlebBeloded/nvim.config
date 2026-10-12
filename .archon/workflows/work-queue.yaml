@@ -1,0 +1,99 @@
+name: work-queue
+description: |
+  Work the local queue (docs/loop.md): take one pending change from openspec/changes/ (input
+  `change`, or the oldest untaken one), complete its artifacts when it is only a proposal, preview +
+  approval for features and visible-UI/architecture fixes, then nvim-deliver into auto.
+  `make queue` picks the change and names the branch loop/<change>.
+interactive: true
+worktree:
+  enabled: true
+inputs:
+  change:
+    default: ""
+    description: Change id to work on; empty picks the oldest untaken one
+nodes:
+  - id: pick
+    script: queue_pick
+    runtime: uv
+    with:
+      change: $INPUTS.change
+    output_format:
+      type: object
+      properties:
+        found: { type: boolean }
+        change: { type: string }
+        kind: { type: string }
+        has_tasks: { type: boolean }
+      required: [found, change, kind, has_tasks]
+
+  - id: empty
+    cancel: "Queue is empty: no pending change in openspec/changes/."
+    depends_on: [pick]
+    when: "$pick.output.found == false"
+
+  # --- Specify: complete a queued proposal ------------------------------------------------------------
+  - id: complete
+    command: queue-spec
+    depends_on: [pick]
+    when: "$pick.output.found == true"
+    with:
+      change: $pick.output.change
+    skills: [openspec-continue-change, superpowers:systematic-debugging]
+    output_format:
+      type: object
+      properties:
+        visible_ui: { type: boolean }
+        architecture: { type: boolean }
+      required: [visible_ui, architecture]
+
+  - id: spec-gate
+    bash: openspec validate $pick.output.change --strict --no-interactive
+    depends_on: [complete]
+
+  # --- Preview + approval: always for features, else only for visible UI / architecture ----------------
+  - id: preview
+    bash: make -s preview CHANGE=$pick.output.change OPEN=1
+    depends_on: [spec-gate]
+    when: "$pick.output.kind == 'feature' || $complete.output.visible_ui == true || $complete.output.architecture == true"
+
+  - id: design-gate
+    depends_on: [preview]
+    approval:
+      message: |
+        Queued change $pick.output.change ($pick.output.kind) is ready to build.
+        Preview (opened in the browser): $preview.output
+        Approve to build; put the picked render option or corrections in the comment.
+      decisions:
+        - { id: approve, label: Build it }
+        - { id: reject, label: Stop }
+
+  - id: design-decide
+    script: decide
+    runtime: uv
+    depends_on: [spec-gate, design-gate]
+    trigger_rule: all_done
+    with:
+      needed: { from: $preview.output, if_skipped: "" }
+      decision: { from: $design-gate.output.decision, if_skipped: auto }
+      feedback: { from: $design-gate.output.text, if_skipped: "" }
+    output_format:
+      type: object
+      properties:
+        go: { type: boolean }
+        decision: { type: string }
+        feedback: { type: string }
+      required: [go, decision, feedback]
+
+  - id: stop
+    cancel: "Stopped at the design gate."
+    depends_on: [design-decide]
+    when: "$design-decide.output.go == false"
+
+  - id: deliver
+    include: nvim-deliver
+    depends_on: [design-decide]
+    when: "$design-decide.output.go == true"
+    with:
+      change: $pick.output.change
+      feedback: $design-decide.output.feedback
+      message: "$pick.output.kind: $pick.output.change"

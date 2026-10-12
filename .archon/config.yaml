@@ -1,0 +1,19 @@
+# Archon project config for the local AI loop (docs/loop.md). Everything stays on this machine:
+# no pushes, no PRs. Each run gets a worktree under ~/.archon/workspaces/…/worktrees/<branch>,
+# cut from `auto`, and the ship step merges it back into `auto` with --no-ff.
+assistant: claude
+assistants:
+  claude:
+    settingSources: [project, user] # project: .claude/settings.json hooks + superpowers plugin
+worktree:
+  baseBranch: auto
+  # Archon cuts worktrees from <remote>/<baseBranch>. `local` is a self-remote (the repo itself,
+  # added by `make loop-setup`), so `auto` never has to exist on GitHub.
+  remote: local
+docs:
+  path: docs
+defaults:
+  loadDefaultWorkflows: false # only the workflows in .archon/workflows/
+  loadDefaultCommands: false
+env:
+  NVIM_LOOP: "1" # .claude/hooks/stop-check.sh skips: workflows run make check as their own gate

@@ -1,0 +1,80 @@
+name: fix-bug
+description: |
+  Local loop for a bug (docs/loop.md). Input: a bug description or an existing OpenSpec change id.
+  Explore (root cause) -> Specify (scenario delta, validate --strict) -> [preview + approval only
+  for visible UI or architecture] -> nvim-deliver (plan, TDD build, make check, trace, verify,
+  review, escalation check, ship into auto).
+interactive: true
+worktree:
+  enabled: true
+nodes:
+  # --- Specify ------------------------------------------------------------------------------------
+  - id: explore
+    command: explore-bug
+    skills: [superpowers:systematic-debugging]
+    idle_timeout: 900000
+
+  - id: spec
+    command: spec-bug
+    depends_on: [explore]
+    skills: [openspec-propose, openspec-continue-change]
+    output_format:
+      type: object
+      properties:
+        change: { type: string }
+        visible_ui: { type: boolean }
+        architecture: { type: boolean }
+      required: [change, visible_ui, architecture]
+
+  - id: spec-gate
+    bash: openspec validate $spec.output.change --strict --no-interactive
+    depends_on: [spec]
+
+  # --- Preview + approval (only for visible UI or architecture changes) -----------------------------
+  - id: preview
+    bash: make -s preview CHANGE=$spec.output.change OPEN=1
+    depends_on: [spec-gate]
+    when: "$spec.output.visible_ui == true || $spec.output.architecture == true"
+
+  - id: design-gate
+    depends_on: [preview]
+    approval:
+      message: |
+        Change $spec.output.change touches visible UI or architecture.
+        Preview: $preview.output
+        Approve to build. Put the chosen render option or corrections in the comment.
+      decisions:
+        - { id: approve, label: Build it }
+        - { id: reject, label: Stop }
+
+  - id: design-decide
+    script: decide
+    runtime: uv
+    depends_on: [spec-gate, design-gate]
+    trigger_rule: all_done
+    with:
+      needed: { from: $preview.output, if_skipped: "" }
+      decision: { from: $design-gate.output.decision, if_skipped: auto }
+      feedback: { from: $design-gate.output.text, if_skipped: "" }
+    output_format:
+      type: object
+      properties:
+        go: { type: boolean }
+        decision: { type: string }
+        feedback: { type: string }
+      required: [go, decision, feedback]
+
+  - id: stop
+    cancel: "Stopped at the design gate. The change folder is kept on the run branch."
+    depends_on: [design-decide]
+    when: "$design-decide.output.go == false"
+
+  # --- Plan -> Build -> Verify -> Align -> Review -> Escalate -> Ship -------------------------------
+  - id: deliver
+    include: nvim-deliver
+    depends_on: [design-decide]
+    when: "$design-decide.output.go == true"
+    with:
+      change: $spec.output.change
+      feedback: $design-decide.output.feedback
+      message: "fix: $spec.output.change"

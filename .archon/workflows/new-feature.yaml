@@ -1,0 +1,84 @@
+name: new-feature
+description: |
+  Local loop for a feature idea (docs/loop.md). Explore + brainstorm -> propose with Current and
+  Proposed A/B renders -> preview.html -> ALWAYS an approval gate (pick a render option, revise, or
+  stop) -> nvim-deliver (plan, TDD build, make check, trace, verify, review, escalation, ship).
+interactive: true
+worktree:
+  enabled: true
+nodes:
+  - id: explore
+    command: explore-feature
+    skills: [openspec-explore, superpowers:brainstorming]
+    idle_timeout: 900000
+
+  # --- Specify + preview + approval; "revise" runs the proposal again with the user's comment -------
+  - id: design
+    depends_on: [explore]
+    loop_group:
+      max_iterations: 5
+      until_bash: test $design-gate.output.decision != revise
+      nodes:
+        - id: spec
+          command: spec-feature
+          skills: [openspec-propose, openspec-continue-change]
+          output_format:
+            type: object
+            properties:
+              change: { type: string }
+            required: [change]
+
+        - id: spec-gate
+          bash: openspec validate $spec.output.change --strict --no-interactive && printf %s $spec.output.change >"$ARTIFACTS_DIR/change-id"
+          depends_on: [spec]
+
+        - id: preview
+          bash: make -s preview CHANGE=$spec.output.change OPEN=1
+          depends_on: [spec-gate]
+
+        - id: design-gate
+          depends_on: [preview]
+          approval:
+            message: |
+              Proposal $spec.output.change is ready.
+              Preview (opened in the browser): $preview.output
+              approve: build it; put the picked option (e.g. "Proposed B") and any corrections in the comment.
+              revise: rewrite the proposal using your comment. reject: stop.
+            decisions:
+              - { id: approve, label: Build it }
+              - { id: revise, label: Revise the proposal }
+              - { id: reject, label: Stop }
+
+  - id: change
+    bash: cat "$ARTIFACTS_DIR/change-id" # written by design.spec-gate
+    depends_on: [design]
+
+  - id: design-decide
+    script: decide
+    runtime: uv
+    depends_on: [design]
+    with:
+      needed: "true"
+      decision: $design.output.decision # the body's sink is design-gate: {decision, text}
+      feedback: $design.output.text
+    output_format:
+      type: object
+      properties:
+        go: { type: boolean }
+        decision: { type: string }
+        feedback: { type: string }
+      required: [go, decision, feedback]
+
+  - id: stop
+    cancel: "Stopped at the design gate. The change folder is kept on the run branch."
+    depends_on: [design-decide]
+    when: "$design-decide.output.go == false"
+
+  - id: deliver
+    include: nvim-deliver
+    depends_on: [design-decide, change]
+    when: "$design-decide.output.go == true"
+    with:
+      change: $change.output
+      feedback: $design-decide.output.feedback
+      message: "feat: $change.output"

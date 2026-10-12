@@ -1,0 +1,179 @@
+name: nvim-deliver
+description: |
+  Building block of the local loop (docs/loop.md), included by fix-bug, new-feature and work-queue:
+  Plan -> Build TDD -> Verify -> Align -> Review -> escalation check -> Ship into `auto`.
+  Input: an OpenSpec change id whose proposal/specs/tasks exist. Run it via work-queue.
+inputs:
+  change:
+    required: true
+    description: OpenSpec change id under openspec/changes/
+  feedback:
+    default: ""
+    description: User text from an earlier approval gate
+  message:
+    default: ""
+    description: Commit message for the ship commit
+returns: ship
+nodes:
+  # --- Plan ---------------------------------------------------------------------------------------
+  - id: plan
+    command: plan
+    context: fresh
+    skills: [superpowers:writing-plans]
+
+  - id: plan-gate
+    bash: openspec validate "$INPUTS_CHANGE" --strict --no-interactive
+    depends_on: [plan]
+
+  # --- Build (TDD) -> Verify -> Align -> Review, max 3 passes ---------------------------------------
+  - id: build
+    depends_on: [plan-gate]
+    loop_group:
+      max_iterations: 3
+      fresh_context: true
+      until_bash: test $verdict.output.done = true
+      nodes:
+        - id: implement
+          command: implement
+          idle_timeout: 900000
+          skills: [openspec-apply-change, superpowers:test-driven-development, superpowers:systematic-debugging]
+
+        - id: gate # make check (incl. make trace) + openspec validate --strict + tasks ticked
+          script: gate
+          runtime: uv
+          timeout: 1200000
+          depends_on: [implement]
+          with:
+            change: $INPUTS.change
+          output_format:
+            type: object
+            properties:
+              green: { type: boolean }
+              spec_ok: { type: boolean }
+              tasks_done: { type: boolean }
+              attempt: { type: integer }
+              failures: { type: string }
+            required: [green, spec_ok, tasks_done, attempt, failures]
+
+        - id: verify # /opsx:verify + make trace; CRITICAL findings send the next pass back to implement
+          command: verify
+          context: fresh
+          depends_on: [gate]
+          when: "$gate.output.green == true && $gate.output.spec_ok == true"
+          skills: [openspec-verify-change]
+          output_format:
+            type: object
+            properties:
+              critical: { type: integer }
+              findings: { type: string }
+            required: [critical, findings]
+
+        - id: review # consistency, scope creep, test integrity, reuse
+          command: review
+          context: fresh
+          depends_on: [verify]
+          when: "$verify.output.critical == 0"
+          skills: [superpowers:requesting-code-review]
+          output_format:
+            type: object
+            properties:
+              approve: { type: boolean }
+              findings: { type: string }
+              weakened_scenario: { type: boolean }
+              weakened_test: { type: boolean }
+            required: [approve, findings, weakened_scenario, weakened_test]
+
+        - id: verdict
+          script: verdict
+          runtime: uv
+          depends_on: [gate, verify, review]
+          trigger_rule: all_done
+          with:
+            green: $gate.output.green
+            spec_ok: $gate.output.spec_ok
+            tasks_done: $gate.output.tasks_done
+            attempt: $gate.output.attempt
+            critical: { from: $verify.output.critical, if_skipped: -1 }
+            approve: { from: $review.output.approve, if_skipped: false }
+            weakened_scenario: { from: $review.output.weakened_scenario, if_skipped: false }
+            weakened_test: { from: $review.output.weakened_test, if_skipped: false }
+          output_format:
+            type: object
+            properties:
+              done: { type: boolean }
+              passed: { type: boolean }
+              exhausted: { type: boolean }
+              attempt: { type: integer }
+              failed_gates: { type: string }
+              weakened_scenario: { type: boolean }
+              weakened_test: { type: boolean }
+            required: [done, passed, exhausted, attempt, failed_gates, weakened_scenario, weakened_test]
+
+  # --- Escalation check: ping the user only for the cases in docs/loop.md ---------------------------
+  - id: escalation
+    script: escalation
+    runtime: uv
+    depends_on: [build]
+    with:
+      exhausted: $build.output.exhausted
+      failed_gates: $build.output.failed_gates
+      weakened_scenario: $build.output.weakened_scenario
+      weakened_test: $build.output.weakened_test
+    output_format:
+      type: object
+      properties:
+        escalate: { type: boolean }
+        reasons: { type: string }
+      required: [escalate, reasons]
+
+  - id: ship-gate
+    depends_on: [escalation]
+    when: "$escalation.output.escalate == true"
+    approval:
+      message: |
+        Escalation for change $INPUTS.change:
+        $escalation.output.reasons
+        Inspect the run worktree (archon workflow get <run-id>) before deciding.
+      decisions:
+        - { id: approve, label: Ship into auto }
+        - { id: reject, label: "Stop (keep the branch for manual work)" }
+
+  - id: ship-decide
+    script: decide
+    runtime: uv
+    depends_on: [escalation, ship-gate]
+    trigger_rule: all_done
+    with:
+      needed: $escalation.output.escalate
+      decision: { from: $ship-gate.output.decision, if_skipped: auto }
+      feedback: { from: $ship-gate.output.text, if_skipped: "" }
+    output_format:
+      type: object
+      properties:
+        go: { type: boolean }
+        decision: { type: string }
+        feedback: { type: string }
+      required: [go, decision, feedback]
+
+  - id: stop
+    cancel: "Not shipped: escalation rejected. The branch and worktree are kept."
+    depends_on: [ship-decide]
+    when: "$ship-decide.output.go == false"
+
+  # --- Ship: /opsx:archive, commit, merge --no-ff into auto ----------------------------------------
+  - id: ship
+    script: ship
+    runtime: uv
+    timeout: 300000
+    depends_on: [ship-decide]
+    when: "$ship-decide.output.go == true"
+    with:
+      change: $INPUTS.change
+      message: $INPUTS.message
+    output_format:
+      type: object
+      properties:
+        merged: { type: boolean }
+        branch: { type: string }
+        commit: { type: string }
+      required: [merged, branch, commit]

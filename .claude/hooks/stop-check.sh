@@ -2,9 +2,12 @@
 # Stop: run `make check`; exit 2 (block stopping) with the failing tail if red.
 # Skips when the work tree is clean, and lets Claude stop on the second
 # attempt (stop_hook_active) so a red gate cannot loop forever.
+# Skips inside Archon loop runs, whose workflows gate with make check themselves.
 set -u
 
 input=$(cat)
+# Archon loop nodes (NVIM_LOOP=1, .archon/config.yaml env) gate with make check themselves.
+[ "${NVIM_LOOP:-}" = "1" ] && exit 0
 [ "$(printf '%s' "$input" | jq -r '.stop_hook_active // false')" = "true" ] && exit 0
 
 cd "${CLAUDE_PROJECT_DIR:-.}" || exit 0

@@ -5,3 +5,4 @@
 - Prefer existing plugins/built-ins over custom code.
 - Readability is critical: idiomatic, small, named functions.
 - Avoid long anonymous functions.
+- The loop runs as local Archon workflows (`.archon/workflows/`, how-to in docs/loop.md). Follow the stages in docs/architecture/README.md, the rules in docs/architecture/conventions.md and openspec/config.yaml. Never push. Never delete or weaken a test or scenario to get green.

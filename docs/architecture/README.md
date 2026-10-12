@@ -124,27 +124,33 @@ before lazy.nvim but loads after it (lazy uses `install.colorscheme` only while 
 
 ```mermaid
 flowchart TD
-    idea(["Idea, finding or bug"])
-    spec["Specify: /opsx:explore, /opsx:propose — proposal, spec delta, design.md with renders"]
-    esc{"New behaviour, new plugin or core keymap?"}
-    user["User approves"]
+    idea(["Idea, finding, bug or queued change"])
+    spec["Specify: /opsx:explore, /opsx:propose — proposal, spec delta, design.md with renders; openspec validate --strict"]
+    esc{"Feature, visible UI or architecture?"}
+    user["Preview (preview.html) + user approves"]
     plan["Plan: tasks.md, each task lists its scenario titles"]
     build["Build TDD: failing test first, then /opsx:apply"]
-    verify["Verify: make check, /opsx:verify"]
+    verify["Verify: make check (incl. make trace), /opsx:verify"]
     green{"Tests and lint green, no CRITICAL?"}
-    align["Align: consistency gate against conventions.md, /opsx:sync"]
+    align["Align: AI review against conventions.md and specs"]
     ok{"Conventions hold?"}
-    ship(["Ship: merge feature branch into auto, /opsx:archive"])
+    gate{"Escalation: new plugin, core keymap, scenario or test removed, loop exhausted?"}
+    ship(["Ship: /opsx:archive, merge feature branch into auto"])
 
     idea --> spec --> esc
     esc -- "yes" --> user --> plan
     esc -- "no" --> plan
     plan --> build --> verify --> green
-    green -- "no" --> build
+    green -- "no (max 3 passes)" --> build
     green -- "yes" --> align --> ok
-    ok -- "no" --> build
-    ok -- "yes" --> ship
+    ok -- "no (max 3 passes)" --> build
+    ok -- "yes" --> gate
+    gate -- "yes: user approves" --> ship
+    gate -- "no" --> ship
 ```
+
+The loop runs locally as Archon workflows (`fix-bug`, `new-feature`, `work-queue`, `weekly-upkeep` in
+`.archon/workflows/`); how to run them and when you get pinged: [../loop.md](../loop.md).
 
 - **OpenSpec** holds the specs, change proposals and project rules (`openspec/config.yaml`). The
   `/opsx:*` commands live in `.claude/commands/opsx/`.

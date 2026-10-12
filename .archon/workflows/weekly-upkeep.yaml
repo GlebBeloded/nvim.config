@@ -1,0 +1,79 @@
+name: weekly-upkeep
+description: |
+  Weekly plugin upkeep (docs/loop.md), unattended (launchd, `make schedule`). `:Lazy! update` in a
+  private plugin copy -> make check. Green: commit lazy-lock.json and merge into auto. Red: bisect
+  the plugin updates, pin the breaking ones back in lazy-lock.json, queue an OpenSpec change per
+  breakage (worked later by work-queue), commit and merge.
+worktree:
+  enabled: true
+nodes:
+  - id: update
+    script: upkeep
+    runtime: uv
+    timeout: 2400000
+    with:
+      mode: update
+    output_format:
+      type: object
+      properties:
+        changed: { type: boolean }
+        plugins: { type: array, items: { type: string } }
+        green: { type: boolean }
+      required: [changed, plugins, green]
+
+  - id: nothing
+    cancel: "No plugin updates this week."
+    depends_on: [update]
+    when: "$update.output.changed == false"
+
+  - id: bisect
+    script: upkeep
+    runtime: uv
+    timeout: 7200000
+    depends_on: [update]
+    when: "$update.output.changed == true && $update.output.green == false"
+    with:
+      mode: bisect
+    output_format:
+      type: object
+      properties:
+        green: { type: boolean }
+        culprits:
+          type: array
+          items:
+            type: object
+            properties: { plugin: { type: string }, old: { type: string }, new: { type: string } }
+            required: [plugin, old, new]
+        summary: { type: string }
+      required: [green, culprits, summary]
+
+  - id: unresolved
+    cancel: "make check stays red with the breaking updates pinned back; see the check-*.log artifacts."
+    depends_on: [bisect]
+    when: "$bisect.output.green == false"
+
+  - id: queue
+    command: upkeep-queue
+    depends_on: [bisect]
+    when: "$bisect.output.green == true"
+    with:
+      culprits: $bisect.output.summary
+    skills: [openspec-new-change]
+
+  - id: ship
+    script: ship
+    runtime: uv
+    timeout: 300000
+    depends_on: [update, queue]
+    trigger_rule: none_failed_min_one_success
+    when: "$update.output.changed == true"
+    with:
+      change: ""
+      message: "chore(deps): weekly lazy.nvim update"
+    output_format:
+      type: object
+      properties:
+        merged: { type: boolean }
+        branch: { type: string }
+        commit: { type: string }
+      required: [merged, branch, commit]
