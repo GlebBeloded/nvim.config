@@ -65,6 +65,22 @@ local function prompt_buffers()
 	end):totable()]])
 end
 
+--- Fill the current buffer with lines and select line 2 linewise.
+---@return integer buf the buffer holding the selection
+local function select_second_line()
+	child.api.nvim_buf_set_lines(0, 0, -1, false, { "one", "two", "three" })
+	child.api.nvim_win_set_cursor(0, { 2, 0 })
+	child.type_keys("V")
+	return child.api.nvim_get_current_buf()
+end
+
+--- Lines of the visual selection marks in `buf`.
+---@param buf integer
+---@return integer[]
+local function selection_lines(buf)
+	return { child.api.nvim_buf_get_mark(buf, "<")[1], child.api.nvim_buf_get_mark(buf, ">")[1] }
+end
+
 --- Wait until the message row starts with the menu prompt.
 ---@return string row
 local function wait_menu_row()
@@ -107,6 +123,31 @@ T["ai: Menu ignores other keys"] = function()
 	wait_keys_done()
 
 	eq({ prompt_buffers(), child.api.nvim_get_mode().mode }, { 0, "n" })
+end
+
+T["ai: Shift-Enter opens vibe prompt"] = function()
+	child.type_keys("<S-CR>")
+	wait_prompt()
+
+	eq(focused_prompt(), expected_prompt("Vibe"))
+end
+
+T["ai: Visual Alt-9 opens visual prompt"] = function()
+	local buf = select_second_line()
+	child.type_keys("<A-9>")
+	wait_prompt()
+
+	eq(focused_prompt(), expected_prompt("Visual"))
+	eq(selection_lines(buf), { 2, 2 })
+end
+
+T["ai: Visual Shift-Enter opens visual prompt"] = function()
+	local buf = select_second_line()
+	child.type_keys("<S-CR>")
+	wait_prompt()
+
+	eq(focused_prompt(), expected_prompt("Visual"))
+	eq(selection_lines(buf), { 2, 2 })
 end
 
 return T
