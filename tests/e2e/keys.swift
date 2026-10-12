@@ -4,8 +4,12 @@
 //   keys launch <app.app> <args>   start a new instance without activating it, print its pid
 //   keys frontmost                 pid of the frontmost app
 //   keys focus <pid>               make <pid> frontmost (AX), print the previous frontmost pid
+//   keys denied <chord>...         exit 0 if any chord is on the denylist (the harness skips those rows)
 //   keys press <pid> <chord>...    post key events to <pid> (CGEventPostToPid), e.g. cmd+shift+h ctrl+return
 // Chords use US ANSI key positions (virtual key codes), so the layout's own letters do not matter.
+// Safety: press/focus refuse to run unless this is a virtual machine (kern.hv_vmm_present == 1,
+// fail closed), and DENIED system-wide chords (log out, force quit, lock screen, app switcher, ...)
+// are refused everywhere. There is no override: e2e runs only in the Lume sandbox VM (make sandbox-up).
 import ApplicationServices
 import Cocoa
 
@@ -14,6 +18,48 @@ setvbuf(stdout, nil, _IOLBF, 0)
 func fail(_ message: String) -> Never {
 	FileHandle.standardError.write((message + "\n").data(using: .utf8)!)
 	exit(2)
+}
+
+/// true only if the kernel says it runs under a hypervisor; any error means "not a VM".
+func insideVM() -> Bool {
+	var value: Int32 = 0
+	var size = MemoryLayout<Int32>.size
+	return sysctlbyname("kern.hv_vmm_present", &value, &size, nil, 0) == 0 && value == 1
+}
+
+func requireVM(_ command: String) {
+	if !insideVM() {
+		fail("keys \(command): refused, not running inside a VM (kern.hv_vmm_present != 1); e2e runs in the sandbox VM (make sandbox-up)")
+	}
+}
+
+// System-wide chords that must never be pressed anywhere (normalized: sorted modifiers + key).
+let DENIED: Set<String> = [
+	"cmd+shift+q", "cmd+opt+shift+q", // log out
+	"cmd+opt+escape", "cmd+opt+shift+escape", // force quit
+	"cmd+ctrl+q", // lock screen
+	"cmd+ctrl+power", "cmd+ctrl+eject", "cmd+ctrl+opt+power", "cmd+ctrl+opt+eject", "cmd+opt+power", "cmd+opt+eject",
+	"ctrl+power", "ctrl+eject", "ctrl+shift+power", "ctrl+shift+eject", "power", "eject", // restart, sleep, shut down
+	"cmd+opt+h", "cmd+opt+m", // hide / minimize all other apps
+	"cmd+tab", "cmd+shift+tab", "cmd+`", "cmd+shift+`", // app/window switcher
+	"cmd+space", "cmd+opt+space", "ctrl+space", "ctrl+opt+space", // Spotlight, input sources
+	"cmd+opt+d", // Dock
+	"cmd+shift+3", "cmd+shift+4", "cmd+shift+5", "cmd+ctrl+shift+3", "cmd+ctrl+shift+4", // screenshots
+	"cmd+ctrl+space", // character viewer
+	"cmd+opt+ctrl+8", "cmd+opt+8", // invert colors / zoom
+	"cmd+f5", "cmd+opt+f5", // VoiceOver, accessibility shortcuts
+]
+
+func normalized(_ chord: String) -> String {
+	let order = ["cmd", "ctrl", "opt", "shift"]
+	let parts = chord.lowercased().split(separator: "+", omittingEmptySubsequences: false).map(String.init)
+	guard let key = parts.last else { return chord }
+	let mods = Set(parts.dropLast())
+	return (order.filter { mods.contains($0) } + [key]).joined(separator: "+")
+}
+
+func denied(_ chord: String) -> Bool {
+	DENIED.contains(normalized(chord))
 }
 
 func spin(_ seconds: Double) {
@@ -135,13 +181,21 @@ case "launch":
 case "frontmost":
 	print(frontmost())
 case "focus":
+	requireVM(command)
 	guard let pid = args.first.flatMap({ pid_t($0) }) else { fail("usage: keys focus <pid>") }
 	let previous = frontmost()
 	if !focus(pid) { fail("could not make pid \(pid) frontmost (previous \(previous))") }
 	print(previous)
 case "press":
+	let chords = Array(args.dropFirst())
+	if let bad = chords.first(where: denied) { fail("keys press: refused, \(bad) is a denied system-wide chord") }
+	requireVM(command)
 	guard let pid = args.first.flatMap({ pid_t($0) }) else { fail("usage: keys press <pid> <chord>...") }
-	for chord in args.dropFirst() { press(pid, chord) }
+	for chord in chords { press(pid, chord) }
+case "denied":
+	let bad = args.filter(denied)
+	print(bad.joined(separator: " "))
+	exit(bad.isEmpty ? 1 : 0)
 default:
 	fail("unknown command " + command)
 }
