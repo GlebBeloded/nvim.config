@@ -142,6 +142,8 @@ flowchart LR
   tab to the terminal.
 - Shifted special characters (`+`, `_`, …) with Cmd arrive as `<S-D-…>`, not `<A-…>`; map what Neovim
   actually receives.
+- macOS offers a key to the app menu before Alacritty sees it, so Alacritty's Quit and Hide would take
+  Cmd+Q and Cmd+H; `terminal/macos_menu_keys.sh` moves them to Cmd+Option+Control+Q/H.
 - The Alacritty and zellij configs live outside this repo. The [shortcuts spec](../openspec/specs/shortcuts/spec.md)
   is the source of truth for the key table and collisions, and its tests read the real configs.
 

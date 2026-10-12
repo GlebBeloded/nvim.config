@@ -158,10 +158,11 @@ Keys pass macOS → Alacritty → zellij → Neovim ([terminal stack](architectu
 [shortcuts spec](../openspec/specs/shortcuts/spec.md) holds the key table; `make chain` and `make stack`
 check it against the real configs. When a key does nothing, test bottom up:
 
-1. macOS: System Settings → Keyboard → App Shortcuts may own it (Cmd+H hides the app until remapped there).
+1. macOS: the app menu or System Settings → Keyboard → App Shortcuts may own it. `make menu-keys` moves
+   Alacritty's Quit and Hide to Cmd+Option+Control+Q/H so Cmd+Q and Cmd+H reach the terminal; relaunch Alacritty.
 2. Alacritty: `alacritty --print-events | grep KeyboardInput` shows the key; `xxd` outside zellij shows the
    bytes sent (`1b 64` = Alt+d). Config: `~/.config/alacritty/keymaps_macos.toml`; quit Alacritty fully
-   (Cmd+Q) after edits.
+   (Cmd+Option+Control+Q) after edits.
 3. zellij: a bind in `shared_except "locked"` always wins, even over Neovim. KDL writes `bind "Alt d"`,
    not escape codes. `zellij setup --check` validates the config.
 4. Neovim: `:verbose map <A-d>`, and `i<C-v>` then the key shows what Neovim really receives. Map that
