@@ -184,6 +184,21 @@ local function make_conflict(name)
 	assert(merge.code ~= 0, "merge did not conflict")
 end
 
+--- Twelve numbered lines, so line 10 and the range 3-5 exist.
+local NUMBERED = table.concat(vim.fn.range(1, 12), "\n") .. "\n"
+
+--- Repo with `a.txt` (NUMBERED) whose `origin` is `remote` and whose HEAD is
+--- on `origin/main` (a local ref, no fetch), as gitlinker links only
+--- commits a remote branch contains; `a.txt` is opened.
+---@param remote string
+---@return string sha of HEAD
+local function use_linked_repo(remote)
+	use_repo({ ["a.txt"] = NUMBERED }, { remote = remote })
+	H.git(repo, { "update-ref", "refs/remotes/origin/main", "HEAD" })
+	edit("a.txt")
+	return vim.trim(H.git(repo, { "rev-parse", "HEAD" }))
+end
+
 local T = H.child_set(child, start)
 
 T["git: Git commands are available after startup"] = function()
@@ -302,6 +317,33 @@ T["git: dx drops both conflict sides"] = function()
 	child.type_keys("dx")
 
 	eq(child.api.nvim_buf_get_lines(child.api.nvim_win_get_buf(win), 0, -1, false), { "top", "bottom" })
+end
+
+T["git: Gitlink copies current line URL"] = function()
+	local sha = use_linked_repo("https://github.com/owner/repo.git")
+	child.api.nvim_win_set_cursor(0, { 10, 0 })
+	child.cmd("Gitlink")
+
+	eq(child.fn.getreg("+"), ("https://github.com/owner/repo/blob/%s/a.txt#L10"):format(sha))
+end
+
+T["git: Gitlink copies range URL"] = H.xfail(
+	"fix-gitlink-visual-range: :'<,'>Gitlink links only the range's first line",
+	function()
+		local sha = use_linked_repo("https://github.com/owner/repo.git")
+		child.api.nvim_win_set_cursor(0, { 3, 0 })
+		child.type_keys("V", "2j", ":Gitlink<CR>")
+
+		eq(child.fn.getreg("+"), ("https://github.com/owner/repo/blob/%s/a.txt#L3-L5"):format(sha))
+	end
+)
+
+T["git: pgw.dev remote uses GitHub URL format"] = function()
+	local sha = use_linked_repo("git@pgw.dev:owner/repo.git")
+	child.api.nvim_win_set_cursor(0, { 7, 0 })
+	child.cmd("Gitlink")
+
+	eq(child.fn.getreg("+"), ("https://pgw.dev/owner/repo/blob/%s/a.txt#L7"):format(sha))
 end
 
 return T
