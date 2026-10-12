@@ -51,3 +51,4 @@ plugin/
 # IDE files
 .vscode/
 .idea/
+claude-obsidian.db

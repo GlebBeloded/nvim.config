@@ -83,7 +83,9 @@ end
 kmap("n", "<A-e>", function()
 	smart_toggle_neotree("filesystem")
 end, opts)
-kmap("n", "<A-g>", function()
+-- <A-g>: differ.nvim (new). <A-G>: old neo-tree git_status + vscode-diff preview.
+kmap("n", "<A-g>", ":Differ<cr>", opts)
+kmap("n", "<A-G>", function()
 	smart_toggle_neotree("git_status")
 end, opts)
 

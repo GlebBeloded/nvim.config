@@ -241,6 +241,11 @@ local plugins = {
 		end,
 	},
 	{
+		"undont/differ.nvim", -- unified diffs, staging, PR review, merge conflicts
+		build = "make go-build", -- Go sidecar; only needed for PR review
+	}, -- configured in lua/gleb/git/differ.lua
+	-- kept installed so the old flow stays comparable against differ.nvim
+	{
 		"sindrets/diffview.nvim",
 		dependencies = "nvim-lua/plenary.nvim",
 	},
@@ -276,16 +281,6 @@ local plugins = {
 		end,
 	},
 
-	-- comments
-	{
-		"numToStr/Comment.nvim", -- Smart comments
-		opts = {
-			pre_hook = function(ctx)
-				return require("ts_context_commentstring.integrations.comment_nvim").create_pre_hook()(ctx)
-			end,
-		},
-	},
-
 	-- smart splits for seamless navigation between nvim and zellij
 	-- Works with vim-zellij-navigator Zellij plugin
 	{
@@ -311,10 +306,6 @@ local plugins = {
 		end,
 	},
 	"windwp/nvim-ts-autotag", -- Autoclose HTML tags
-	{
-		"JoosepAlviste/nvim-ts-context-commentstring", -- Smarter comments for files with multiple languages
-		opts = { enable_autocmd = false },
-	},
 	"lukas-reineke/indent-blankline.nvim", -- Lines for indenting
 	"goolord/alpha-nvim", -- Greeting screen
 
@@ -322,7 +313,7 @@ local plugins = {
 	"akinsho/bufferline.nvim",
 	"moll/vim-bbye",
 
-	-- AI: ThePrimeagen/99 — search, visual, vibe, worker via Claude Code
+	-- AI: ThePrimeagen/99 — search, visual, vibe, worker via Pi
 	{
 		"ThePrimeagen/99",
 		event = "VeryLazy",
@@ -332,22 +323,38 @@ local plugins = {
 		config = function()
 			local nn = require("99")
 			nn.setup({
-				provider = nn.Providers.ClaudeCodeProvider,
-				model = "claude-sonnet-4-5",
+				provider = require("gleb.ai.pi_provider"),
+				model = "openai-codex/gpt-5.6-sol",
 			})
+			require("gleb.ai.prompt_keymaps").setup()
+
+			local function enter_prompt(action)
+				action()
+				vim.schedule(vim.cmd.startinsert)
+			end
 
 			local function normal_menu()
 				vim.api.nvim_echo({ { "99> [s]earch [v]ibe: ", "Question" } }, false, {})
 				local key = vim.fn.nr2char(vim.fn.getchar())
 				vim.cmd("redraw")
-				local fns = { s = nn.search, v = nn.vibe }
-				if fns[key] then
-					fns[key]()
+				local actions = { s = nn.search, v = nn.vibe }
+				if actions[key] then
+					enter_prompt(actions[key])
 				end
 			end
 
+			local function vibe_prompt()
+				enter_prompt(nn.vibe)
+			end
+
+			local function visual_prompt()
+				enter_prompt(nn.visual)
+			end
+
 			vim.keymap.set("n", "<A-9>", normal_menu, { desc = "99: Menu" })
-			vim.keymap.set("v", "<A-9>", nn.visual, { desc = "99: Visual" })
+			vim.keymap.set("n", "<S-CR>", vibe_prompt, { desc = "99: Vibe" })
+			vim.keymap.set("v", "<A-9>", visual_prompt, { desc = "99: Visual" })
+			vim.keymap.set("v", "<S-CR>", visual_prompt, { desc = "99: Visual" })
 		end,
 	},
 

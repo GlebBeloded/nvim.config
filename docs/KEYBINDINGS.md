@@ -74,6 +74,9 @@ This document explains how keyboard shortcuts flow through the terminal stack an
 | Cmd+G | `\u001Bg` (Alt+g) | Neovim | Neo-tree git status |
 | Cmd+R | `\u001Br` (Alt+r) | Neovim | LSP rename |
 | Cmd+W | `\u001Bw` (Alt+w) | Neovim | Next diagnostic |
+| Cmd+/ | `\u001B/` (Alt+/) | Neovim | Toggle comment |
+| Cmd+9 | `\u001B9` (Alt+9) | Neovim | Open 99 menu / transform visual selection |
+| Shift+Enter | `\u001B[13;2u` (Shift+Enter) | Neovim | Open 99 Vibe/Visual prompt; submit inside it |
 | Cmd+Shift+F | `\u001BF` (Alt+F) | Neovim | Telescope live grep |
 | Cmd+[ | `\u001B[` (Alt+[) | Zellij | Previous tab |
 | Cmd+] | `\u001B]` (Alt+]) | Zellij | Next tab |

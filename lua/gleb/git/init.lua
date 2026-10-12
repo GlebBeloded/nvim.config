@@ -1,3 +1,4 @@
 require("gleb.git.gitsigns")
-require("gleb.git.diffview")
+require("gleb.git.differ")
+require("gleb.git.diffview") -- kept alongside differ for comparison
 require("gleb.git.gitlink")
