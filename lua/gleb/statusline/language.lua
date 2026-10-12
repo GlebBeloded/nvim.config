@@ -61,12 +61,18 @@ local function dot()
 	return hl(has_running_client() and "StatuslineLspOk" or "StatuslineLspError", "●")
 end
 
+---@param filetype string
+---@return string
+local function logo_group(filetype)
+	return "StatuslineLang_" .. (filetype:gsub("[^%w_]", "_"))
+end
+
 local function logo(filetype)
 	local glyph, color = devicons.get_icon_color_by_filetype(filetype, { default = true })
 	if not glyph then
 		return ""
 	end
-	local group = "StatuslineLang_" .. filetype
+	local group = logo_group(filetype)
 	if not logo_defined[filetype] then
 		vim.api.nvim_set_hl(0, group, { fg = color, bg = BLOCK_BG })
 		logo_defined[filetype] = true

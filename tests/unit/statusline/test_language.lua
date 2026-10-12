@@ -66,6 +66,15 @@ T["statusline: chip logo highlight per filetype"] = function()
 	eq(string.format("#%06x", hl_bg), chip_bg:lower())
 end
 
+T["statusline: chip logo highlight name sanitized"] = function()
+	child.bo.filetype = "foo-bar.baz"
+	component()
+
+	local chip_bg = child.lua_get([[require("gleb.statusline.palette").chip_bg]])
+	local hl_bg = child.lua_get([[vim.api.nvim_get_hl(0, { name = "StatuslineLang_foo_bar_baz" }).bg]])
+	eq(string.format("#%06x", hl_bg), chip_bg:lower())
+end
+
 T["statusline: chip colorscheme autocmd not duplicated on reload"] = function()
 	child.lua([[
         package.loaded["gleb.statusline.language"] = nil

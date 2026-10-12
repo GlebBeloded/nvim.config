@@ -11,6 +11,6 @@ Scenarios: "statusline: chip colorscheme autocmd not duplicated on reload", "sta
 
 Scenarios: "statusline: chip logo highlight name sanitized", "statusline: chip logo highlight per filetype"
 
-- [ ] 2.1 Add the failing unit test "statusline: chip logo highlight name sanitized" to `tests/unit/statusline/test_language.lua`: `filetype=foo-bar.baz`, call `component()`, assert `nvim_get_hl(0, { name = "StatuslineLang_foo_bar_baz" }).bg` equals the palette `chip_bg` (same shape as "chip logo highlight per filetype"). Run it; it fails (only `StatuslineLang_foo-bar.baz` is defined).
-- [ ] 2.2 In `logo()`, build the group name with a small named helper `logo_group(filetype)` returning `"StatuslineLang_" .. filetype:gsub("[^%w_]", "_")` (wrap the `gsub` in parentheses to drop its count); keep `logo_defined` keyed by filetype.
-- [ ] 2.3 Run `make test CASE=chip`, then `make check`; all pass, including "chip logo highlight per filetype", and `make trace` shows both new scenarios as tested with no orphans.
+- [x] 2.1 Add the failing unit test "statusline: chip logo highlight name sanitized" to `tests/unit/statusline/test_language.lua`: `filetype=foo-bar.baz`, call `component()`, assert `nvim_get_hl(0, { name = "StatuslineLang_foo_bar_baz" }).bg` equals the palette `chip_bg` (same shape as "chip logo highlight per filetype"). Run it; it fails (only `StatuslineLang_foo-bar.baz` is defined).
+- [x] 2.2 In `logo()`, build the group name with a small named helper `logo_group(filetype)` returning `"StatuslineLang_" .. filetype:gsub("[^%w_]", "_")` (wrap the `gsub` in parentheses to drop its count); keep `logo_defined` keyed by filetype.
+- [x] 2.3 Run `make test CASE=chip`, then `make check`; all pass, including "chip logo highlight per filetype", and `make trace` shows both new scenarios as tested with no orphans.
