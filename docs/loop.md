@@ -110,7 +110,10 @@ are shown in color too.
   workflows. Archon cuts worktrees from `<remote>/<baseBranch>`. `local` points at this repo, so `auto`
   never has to exist on GitHub.
 - Claude runs with `bypassPermissions` and project settings, so the hooks and the superpowers plugin
-  (`.claude/settings.json`) are active. `NVIM_LOOP=1` makes the Stop hook skip, because the workflows
-  run `make check` themselves.
+  (`.claude/settings.json`) are active. With `ARCHON_RUN=1` the Stop hook lints only the changed Lua
+  files. The full `make check` runs once per build pass, in the `gate` script. Inside `implement`,
+  agents run only the targeted test file or case (`make test FILE=… CASE=…`).
 - AI nodes can use only the skills they declare (`skills:` on the node). Add a skill there before a
   prompt mentions it.
+- `--dry-run` auto-approves gates with the plain string `approved`, so the nodes that read
+  `$gate.output.decision` fail in a dry run. Pass `--pause-at-gates`, or stub the nodes after the gate.

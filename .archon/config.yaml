@@ -16,4 +16,4 @@ defaults:
   loadDefaultWorkflows: false # only the workflows in .archon/workflows/
   loadDefaultCommands: false
 env:
-  NVIM_LOOP: "1" # .claude/hooks/stop-check.sh skips: workflows run make check as their own gate
+  ARCHON_RUN: "1" # .claude/hooks/stop-check.sh lints changed files only; the workflow gate runs make check once

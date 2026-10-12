@@ -37,7 +37,7 @@ def base_checkout() -> str | None:
 
 
 if change and os.path.isdir(f"openspec/changes/{change}"):
-    subprocess.run(["openspec", "archive", change, "--yes"], check=True)
+    subprocess.run(["openspec", "archive", change, "--yes"], check=True, stdout=sys.stderr)  # stdout is the JSON result
 
 branch = git("rev-parse", "--abbrev-ref", "HEAD")
 git("add", "-A")

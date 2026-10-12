@@ -60,8 +60,9 @@ def write_lock(lock: dict[str, dict]) -> None:
 def update() -> dict:
     if not DATA.exists():
         DATA.mkdir(parents=True)
-        subprocess.run(["cp", "-cR", str(LIVE_DATA / "lazy"), str(DATA / "lazy")], check=True)  # APFS clone
-        (DATA / "site").symlink_to(LIVE_DATA / "site")
+        # APFS clones (instant, no extra space): build hooks such as :TSUpdate write parsers to site/
+        for sub in ("lazy", "site"):
+            subprocess.run(["cp", "-cR", str(LIVE_DATA / sub), str(DATA / sub)], check=True)
     shutil.copy(LOCK, BEFORE)
     lazy("update")
     old, new = json.loads(BEFORE.read_text()), read_lock()
