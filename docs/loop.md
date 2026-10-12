@@ -34,7 +34,7 @@ another shell with `archon workflow approve|reject|respond <run-id> [text]`.
 | Preview + approval | only for visible UI or architecture changes | always. Choices: approve (name the option in the comment), revise (runs Specify again with your comment), reject | features, and visible UI or architecture changes | you |
 | Plan | `plan` (writing-plans) rewrites `tasks.md`. Each task lists its scenario titles, and its first step is a failing test | same | same | bash: `openspec validate --strict` |
 | Build TDD | `implement` (opsx apply, TDD): the failing test `"<capability>: <scenario title>"` first, then the fix, one commit per task | same | same | |
-| Verify | `gate` script: `make check` (which includes `make trace`), `openspec validate --strict`, every task ticked | same | same | must be green |
+| Verify | `gate` script: `make check` (which includes `make trace`), `openspec validate --strict` on the change and on the main specs after a trial archive, every task ticked | same | same | must be green |
 | Align | `verify` (opsx verify plus `make trace VERBOSE=1`) | same | same | no CRITICAL findings |
 | Review | `review` (requesting-code-review): conventions.md, scope creep, test integrity, reuse | same | same | `approve` |
 | Escalation check | `escalation` script on the diff against `auto` | same | same | see below |
