@@ -5,6 +5,7 @@ local eq = MiniTest.expect.equality
 local child = H.new_child()
 
 local OLLAMA_CMD = { "ollama", "run", "tavernari/git-commit-message:sp_commit_mini" }
+local ASYNC_MS = 2000
 
 ---@type string
 local repo
@@ -37,6 +38,8 @@ function FinishJob(text, code)
 	vim.schedule(function()
 		job(id).opts.on_stdout(id, vim.split(text, "\n"))
 		job(id).opts.on_exit(id, code)
+		-- queued after anything on_exit schedules, so it runs once that is done
+		vim.schedule(function() job(id).handled = true end)
 	end)
 end]]
 
@@ -85,6 +88,27 @@ local function stage(files)
 	H.git(repo, { "add", "-A" })
 end
 
+---@return string[]
+local function popup_lines()
+	return child.lua_get("vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(PopupWin), 0, -1, false)")
+end
+
+--- Replay the job's stdout `text` and exit `code`, and wait until the popup
+--- has handled them.
+---@param text string
+---@param code integer
+local function finish_job(text, code)
+	child.lua("FinishJob(...)", { text, code })
+	assert(child.wait("Jobs[#Jobs].handled", ASYNC_MS), "job result was not handled")
+end
+
+--- Open the popup with a staged change, so the AI job is running.
+local function show_generating()
+	stage({ ["a.txt"] = "a\nb\n" })
+	record_jobstart()
+	show_commit_input()
+end
+
 local T = H.child_set(child, start)
 
 T["git: No staged changes"] = function()
@@ -119,6 +143,33 @@ T["git: Long diff is truncated"] = function()
 	local stdin = jobs()[1].stdin
 	local sent = stdin:sub(assert(stdin:find("\nDiff:\n", 1, true)) + #"\nDiff:\n")
 	eq(sent, table.concat(vim.list_slice(diff_lines, 1, 200), "\n") .. "\n... (truncated)")
+end
+
+T["git: Generated message fills popup"] = H.xfail(
+	"fix-ai-commit-stdout-lines: stdout lines are joined without newlines, the fence strip eats `feat`",
+	function()
+		show_generating()
+		finish_job("```\nfeat(git): add x\n```", 0)
+
+		eq(popup_lines(), { "feat(git): add x" })
+		eq(child.lua_get("PopupTitle()"), " Commit Message ")
+	end
+)
+
+T["git: Popup resizes to content"] = function()
+	child.o.columns = 200
+	show_generating()
+	finish_job("feat(git): add x\n", 0)
+
+	eq(child.lua_get("{ vim.api.nvim_win_get_width(PopupWin), vim.api.nvim_win_get_height(PopupWin) }"), { 72, 1 })
+end
+
+T["git: Ollama failure is shown"] = function()
+	show_generating()
+	finish_job("", 1)
+
+	eq(popup_lines(), { "# Error: Ollama exited with code 1" })
+	eq(child.lua_get("PopupTitle()"), " Commit Message ")
 end
 
 return T
