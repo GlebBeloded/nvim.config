@@ -22,9 +22,14 @@ local OWN_CASE = { ["Cmd+Shift+-"] = true, ["Cmd+Shift+="] = true }
 local stack
 ---@type string?
 local skipped
+---@type string? preflight failure: the VM is set up wrong
+local broken
 
 ---@return e2e.Stack
 local function get()
+	if broken then
+		error("e2e: " .. broken, 0)
+	end
 	if skipped then
 		MiniTest.skip("SKIPPED (reason on the first line)")
 	end
@@ -32,7 +37,13 @@ local function get()
 end
 
 local function start()
-	skipped = E.preflight()
+	local reason, fatal = E.preflight()
+	if fatal then
+		broken = reason
+		io.write("\ne2e: FAILED: " .. reason .. "\n")
+		return
+	end
+	skipped = reason
 	if not skipped then
 		stack = E.start()
 		if not stack.background and vim.env.E2E ~= "1" then
@@ -67,7 +78,7 @@ end
 
 --- Real mappings, one Neovim window, zellij focus on Neovim, normal mode.
 local function reset()
-	if skipped then
+	if skipped or broken then
 		return
 	end
 	local s = ensure_alive()

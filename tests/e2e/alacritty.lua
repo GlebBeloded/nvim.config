@@ -30,6 +30,8 @@ M.NO_HIT_MS = 300 -- how long a row waits for a key that never comes
 -- chords whose keyDown CGEventPostToPid loses (Alacritty sees only the key-up);
 -- posted at the HID tap with the window focused instead, as a keyboard would
 M.HID = { ["ctrl+return"] = true }
+-- app-menu key equivalents terminal/macos_menu_keys.sh sets, so Cmd+Q and Cmd+H reach the terminal
+local MENU_KEYS = { ["Quit alacritty"] = "@~^q", ["Hide alacritty"] = "@~^h" }
 
 ---@type string[] keys the recorders pushed since the last clear (on_hit)
 M.events = {}
@@ -72,8 +74,20 @@ function M.app()
 	return real and real:match("^(.*%.app)/Contents/MacOS/")
 end
 
---- nil when e2e can run, else a one-line reason with the fix.
+--- The menu entry the guest's org.alacritty defaults lack, if any.
 ---@return string?
+local function missing_menu_key()
+	local current = vim.fn.system({ "defaults", "read", "org.alacritty", "NSUserKeyEquivalents" })
+	for title, chord in pairs(MENU_KEYS) do
+		if not current:find(string.format('"%s" = "%s";', title, chord), 1, true) then
+			return title
+		end
+	end
+end
+
+--- nil when e2e can run, else a one-line reason with the fix; `fatal` when the
+--- VM is set up wrong (a failure, not a skip).
+---@return string? reason, boolean? fatal
 function M.preflight()
 	if vim.env.E2E == "0" then
 		return "E2E=0"
@@ -99,6 +113,14 @@ function M.preflight()
 			"Accessibility not granted to %s; fix: System Settings > Privacy & Security > Accessibility, enable it (restart it if e2e still skips)",
 			who ~= "" and who or "the app running make"
 		)
+	end
+	local title = missing_menu_key()
+	if title then
+		return string.format(
+			"org.alacritty NSUserKeyEquivalents lacks %q (app menu would take Cmd+Q/Cmd+H); fix: make sandbox-provision",
+			title
+		),
+			true
 	end
 end
 
