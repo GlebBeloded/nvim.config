@@ -106,13 +106,31 @@ kmap("n", "gr", require("telescope.builtin").lsp_references, opts)
 kmap("n", "<A-r>", vim.lsp.buf.rename, opts)
 
 -- Diagnostics
-kmap("n", "<A-w>", vim.diagnostic.goto_next, opts)
-kmap("n", "[d", function()
-	vim.diagnostic.goto_prev({ border = "rounded" })
-end, opts)
-kmap("n", "ge", function()
-	vim.diagnostic.goto_next({ border = "rounded" })
-end, opts)
+--- Open the diagnostic float at the cursor after a jump (`on_jump` of `vim.diagnostic.jump`).
+---@param diagnostic vim.Diagnostic?
+---@param bufnr integer
+local function open_float_on_jump(diagnostic, bufnr)
+	if not diagnostic then
+		return
+	end
+	vim.diagnostic.open_float({ bufnr = bufnr, scope = "cursor", focus = false })
+end
+
+--- Jump to the next diagnostic.
+local function jump_next()
+	vim.diagnostic.jump({ count = 1, on_jump = open_float_on_jump })
+end
+
+--- Jump to the previous diagnostic.
+local function jump_prev()
+	vim.diagnostic.jump({ count = -1, on_jump = open_float_on_jump })
+end
+
+local jump_next_opts = vim.tbl_extend("force", opts, { desc = "Diagnostics: Next" })
+local jump_prev_opts = vim.tbl_extend("force", opts, { desc = "Diagnostics: Previous" })
+kmap("n", "<A-w>", jump_next, jump_next_opts)
+kmap("n", "ge", jump_next, jump_next_opts)
+kmap("n", "[d", jump_prev, jump_prev_opts)
 
 -- Leader keys
 vim.g.mapleader = "<D->"
