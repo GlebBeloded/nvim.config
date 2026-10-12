@@ -77,16 +77,46 @@ end
 ---@field wait_very_lazy fun() Fire UIEnter (absent headless) and wait for VeryLazy.
 ---@field wait fun(expr: string, timeout?: integer): boolean Wait until Lua `expr` is truthy in the child.
 
+--- Lua run in a full-config Neovim to remove lazy.nvim load handlers of the
+--- plugin named by its first argument.
+M.DISABLE_PLUGIN_LUA = [[local plugin = require("lazy.core.config").plugins[...]
+if plugin then require("lazy.core.handler").disable(plugin) end]]
+
+--- Plugins disabled in every full-config Neovim (copilot.lua lazy-loads on
+--- InsertEnter and talks to the network).
+M.DISABLED_PLUGINS = { "copilot.lua" }
+
+--- nvim-debug-log writes /tmp/nvim/<time>_<pid>.txt (hard-coded path).
+---@param pid integer
+function M.delete_debug_log(pid)
+	for _, file in ipairs(vim.fn.glob("/tmp/nvim/*_" .. pid .. ".txt", false, true)) do
+		vim.fn.delete(file)
+	end
+end
+
 ---@param child MiniTest.child
-local function delete_debug_log(child)
+local function delete_child_debug_log(child)
 	local ok, pid = pcall(function()
-		return child.fn.getpid()
+		return child.fn.getpid() -- indexing child.fn already talks to the child
 	end)
 	if ok then
-		for _, file in ipairs(vim.fn.glob("/tmp/nvim/*_" .. pid .. ".txt", false, true)) do
-			vim.fn.delete(file)
-		end
+		M.delete_debug_log(pid)
 	end
+end
+
+--- Neovim arguments that load the real config from the sandbox symlink
+--- (needed because mini.test and the render harness pass --clean).
+---@return string[]
+function M.config_args()
+	local config = vim.fs.joinpath(vim.env.XDG_CONFIG_HOME, "nvim")
+	return {
+		"--cmd",
+		"set rtp^=" .. config,
+		"--cmd",
+		"luafile " .. vim.fs.joinpath(M.root, "tests/child_init.lua"),
+		"-u",
+		vim.fs.joinpath(config, "init.lua"),
+	}
 end
 
 --- New child Neovim with config/bare start helpers.
@@ -98,7 +128,7 @@ function M.new_child()
 
 	function child.stop()
 		if child.is_running() then
-			delete_debug_log(child)
+			delete_child_debug_log(child)
 		end
 		stop()
 	end
@@ -106,25 +136,12 @@ function M.new_child()
 	function child.start_config()
 		-- mini.test always passes --clean, which drops stdpath("config") from rtp
 		M.isolate()
-		local config = vim.fs.joinpath(vim.env.XDG_CONFIG_HOME, "nvim")
-		child.restart({
-			"--cmd",
-			"set rtp^=" .. config,
-			"--cmd",
-			"luafile " .. vim.fs.joinpath(M.root, "tests/child_init.lua"),
-			"-u",
-			vim.fs.joinpath(config, "init.lua"),
-		})
-		-- copilot.lua lazy-loads on InsertEnter and talks to the network
-		child.disable_plugin("copilot.lua")
+		child.restart(M.config_args())
+		vim.iter(M.DISABLED_PLUGINS):each(child.disable_plugin)
 	end
 
 	function child.disable_plugin(name)
-		child.lua(
-			[[local plugin = require("lazy.core.config").plugins[...]
-			if plugin then require("lazy.core.handler").disable(plugin) end]],
-			{ name }
-		)
+		child.lua(M.DISABLE_PLUGIN_LUA, { name })
 	end
 
 	function child.start_bare(plugins)
@@ -213,6 +230,60 @@ function M.screen_rows(child, from, to)
 	end
 	full.text, full.attr = text, encode_attr(attr)
 	return full
+end
+
+---@class test.Colors
+---@field fg? string "#rrggbb"
+---@field bg? string "#rrggbb"
+---@field bold? boolean
+---@field italic? boolean
+
+--- Child-side: the combined highlight of the statusline segment that holds
+--- the first occurrence of the text given as first argument (vim.NIL when the
+--- text is not in the statusline). Groups stack like Neovim draws them
+--- (StatusLine, then the segment's group), resolved through links.
+local STATUSLINE_HL_LUA = [[
+local status = vim.api.nvim_eval_statusline(vim.o.statusline, { highlights = true })
+local start = status.str:find(..., 1, true)
+if not start then return vim.NIL end
+local groups = {}
+for _, segment in ipairs(status.highlights) do
+	if segment.start < start then groups = segment.groups end
+end
+local combined = {}
+for _, group in ipairs(groups) do
+	combined = vim.tbl_extend("force", combined, vim.api.nvim_get_hl(0, { name = group, link = false }))
+end
+return combined]]
+
+---@param color? integer
+---@return string?
+local function hex(color)
+	return color and ("#%06x"):format(color)
+end
+
+--- Colors of the statusline segment that shows `text`, so screen tests catch
+--- color regressions that the attribute-identity screenshots cannot.
+---@param child MiniTest.child
+---@param text string
+---@return test.Colors?
+function M.statusline_colors(child, text)
+	local hl = child.lua(STATUSLINE_HL_LUA, { text })
+	if hl == vim.NIL then
+		return nil
+	end
+	return { fg = hex(hl.fg), bg = hex(hl.bg), bold = hl.bold or false, italic = hl.italic or false }
+end
+
+--- Assert the given fields of `expected` (others are ignored).
+---@param actual? test.Colors
+---@param expected test.Colors
+function M.expect_colors(actual, expected)
+	local subset = {}
+	for key in pairs(expected) do
+		subset[key] = (actual or {})[key]
+	end
+	MiniTest.expect.equality(subset, expected)
 end
 
 --- `expect.reference_screenshot` that honours UPDATE_SCREENSHOTS=1.

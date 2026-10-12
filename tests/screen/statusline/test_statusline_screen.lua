@@ -24,15 +24,22 @@ local function expect_statusline_screenshot(mode_label)
 	H.expect_screenshot(H.screen_rows(child, -1))
 end
 
+-- gruvbox-material (medium, dark) colors the screenshots cannot see.
+local DARK = "#282828"
+local CHIP = { fg = "#ddc7a1", bg = "#413a36" } -- language chip (palette chip_bg / text_hi)
+
 local T = H.child_set(child, start)
 
 T["statusline: statusline matches reference screenshot"] = function()
 	expect_statusline_screenshot("NORMAL")
+	H.expect_colors(H.statusline_colors(child, "NORMAL"), { fg = DARK, bg = "#a9b665", bold = true })
+	H.expect_colors(H.statusline_colors(child, " lua"), CHIP)
 end
 
 T["statusline: insert mode accent matches reference screenshot"] = function()
 	child.type_keys("i")
 	expect_statusline_screenshot("INSERT")
+	H.expect_colors(H.statusline_colors(child, "INSERT"), { fg = DARK, bg = "#7daea3", bold = true })
 end
 
 return T

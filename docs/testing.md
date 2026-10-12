@@ -1,6 +1,6 @@
 # Testing
 
-`make check` is the gate. It runs every layer below in pyramid order, and CI (`.github/workflows/check.yml`) and the Claude Code Stop hook both run it.
+`make check` is the gate. It runs every layer below in pyramid order, and the Claude Code Stop hook runs it. The loop is fully local; there is no hosted CI.
 
 | Layer | Command | What it checks |
 |---|---|---|
@@ -27,7 +27,7 @@ tests/
   <layer>/<capability>/test_<topic>.lua
   screenshots/          reference screenshots (text, committed)
   smoke/                make smoke (run.lua outside, probe.lua inside nvim)
-  render/               make render setups
+  render/               make render / make colorize (cases.lua, tmux capture, mockup colorizer)
   trace.lua             make trace
 ```
 
@@ -37,7 +37,7 @@ tests/
 
 Every child gets its own sandbox (`tests/helpers.lua`), so tests never touch your sessions, shada, undo files or clipboard:
 - `XDG_CONFIG_HOME/nvim` is a symlink to this checkout, so `stdpath("config")` is the worktree and not `~/.config/nvim`.
-- `XDG_DATA_HOME` and `XDG_STATE_HOME` are fresh temp dirs for each child start. Only `lazy/` (plugins) and `site/` (treesitter parsers) are symlinked from `NVIM_TEST_DATA_DIR` (default `~/.local/share/nvim`; CI points it at the dir where `Lazy! restore` installed plugins). `XDG_CACHE_HOME` is a temp dir shared by one run.
+- `XDG_DATA_HOME` and `XDG_STATE_HOME` are fresh temp dirs for each child start. Only `lazy/` (plugins) and `site/` (treesitter parsers) are symlinked from `NVIM_TEST_DATA_DIR` (default `~/.local/share/nvim`; point it at any dir where `Lazy! restore` installed the plugins). `XDG_CACHE_HOME` is a temp dir shared by one run.
 - mini.test passes `--clean`, so the child reads and writes no shada.
 - Multiplexer env vars (`ZELLIJ*`, `TMUX*`, `WEZTERM_PANE`, `KITTY_*`) are unset, so smart-splits never moves your terminal panes.
 - `g:clipboard` is an in-memory provider (`tests/child_init.lua`).
@@ -90,15 +90,19 @@ Specs describe current behaviour, and tests assert the spec.
 Screen tests call `H.expect_screenshot(...)` (mini.test `reference_screenshot`). The references are plain text in `tests/screenshots/`, named after the case, with one block for text and one for attribute identity. They are committed.
 - A missing reference is created on the first run, and the case passes with a note. Review the new file and commit it.
 - After an intended visual change, run `make screenshots` (`UPDATE_SCREENSHOTS=1`) and review `git diff tests/screenshots`.
-- Attributes are compared by identity, not by color.
+- Attributes are compared by identity, not by color. For colors, assert the resolved highlight of a statusline segment: `H.expect_colors(H.statusline_colors(child, "NORMAL"), { bg = "#a9b665", bold = true })` compares only the given fields (`fg`, `bg` as `#rrggbb`, `bold`, `italic`) of the combined groups that draw the first occurrence of the text.
 
 ## Seeing the current render
 
-`make render CASE=<setup>` prints the child screen as text for a setup in `tests/render/<setup>.lua`, which is a module returning `function(child)`. `ATTR=1` adds the attribute block, and `LINES` / `COLUMNS` resize the screen. Plain `make render` lists the setups (`dashboard`, `lua-file`, `neo-tree`).
+`make render CASE=<case>` starts the real config (same isolation as the tests) in a private, detached tmux server sized `COLUMNS` x `LINES` (default 80x24, `TERM=tmux-256color`, truecolor), runs the case's setup over RPC, waits until the screen stops changing, and captures the pane with `tmux capture-pane -e`. It prints the colored capture and writes `renders/<case>.ansi` (gitignored, `OUT=path` to override); view it with `cat` or `less -R`. `MONO=1` prints the plain mini.test screenshot instead (`ATTR=1` adds the attribute block). Plain `make render` lists the cases.
+
+Cases live in `tests/render/cases.lua`: one entry per case with a description and a `setup(driver)` that uses `driver.lua`, `driver.cmd`, `driver.type_keys` and `driver.wait` (a mini.test child satisfies the same interface, so MONO and colored renders share the setup).
+
+`make colorize FILE=<doc.md>` prints the renders of a design doc, colored where a mask and legend are given (see [design-renders.md](design-renders.md#viewing-renders-in-color)).
 
 ## Smoke details
 
-`tests/smoke/run.lua` lists the healthchecks it skips (they need external tools, or their known issues are in findings) and the known-benign ERROR lines. The startup budget defaults to 400 ms and is the median of 5 `--startuptime` runs after a warm-up. Override it with `STARTUP_BUDGET_MS`; CI uses 1500.
+`tests/smoke/run.lua` lists the healthchecks it skips (they need external tools, or their known issues are in findings) and the known-benign ERROR lines. The startup budget defaults to 400 ms and is the median of 5 `--startuptime` runs after a warm-up. Override it with `STARTUP_BUDGET_MS` (for example on a slow or busy machine).
 
 ## Claude Code hooks
 

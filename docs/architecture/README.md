@@ -14,7 +14,7 @@ headless tests, and the user is only asked about new behaviour, new plugins, cor
   scenarios run in a headless child Neovim. A change starts by changing the spec.
 - **Test first.** Every task starts with a failing test (mini.test child Neovim). Screen-level behaviour is
   pinned by text screenshots under `tests/screenshots/` (being built; `make check` runs everything,
-  `make render` prints the child screen as text).
+  `make render` captures the real screen in color, `make colorize` colors design mockups).
 - **Plugins and built-ins over custom code.** Custom Lua is glue, small named functions, or a feature no
   plugin covers (diff preview, language chip, session keys).
 - **Degrade, don't crash.** Optional plugins are required with `pcall`, so a missing plugin disables its

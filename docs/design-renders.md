@@ -90,17 +90,48 @@ with `[Name]` annotations:
 Highlights: ` NORMAL ` [lualine_a_normal] green bg, bold · `(` [StatuslineLangCapOk] green
 ```
 
-Use the highlight group name the code sets, not a color name alone. If several cells on one row need
-different groups and a list is ambiguous, add a mask block of the same width where each cell holds a
-letter and the legend maps letters to groups (this mirrors the attribute part of a mini.test screenshot):
+Use the highlight group name the code sets, not a color name alone. When several cells on a row need
+different groups, or the change is about color at all, add a **mask** and a **legend**, which
+`make colorize` turns into a colored render:
+
+- The mask is a second ```` ```text ```` block right after the render (only blank lines between) with the
+  same number of rows and the same width. Each cell holds a letter; `.` or a space means [Normal].
+- The legend is the paragraph right after the mask. It starts with `Legend:` and maps each letter as
+  `` `a` [GroupName] ``, entries separated by ` · `.
+- Group names are exact: no wildcards, and mode-specific lualine groups name a mode
+  (`lualine_x_diagnostics_error_normal`, not `lualine_x_diagnostics_*`).
 
 ```text
  NORMAL  ⎇ auto                                                                    ✗ 0 ▲ 0 ( ◆ lua )
-aaaaaaaabbbbbbbbccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccxxxxxxxxxkmlmmmmme
 ```
 
-`a` [lualine_a_normal] · `b` [lualine_b_normal] · `c` [lualine_c_normal] · `x` [lualine_x_diagnostics_*] ·
+```text
+aaaaaaaabbbbbbbbcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccxxxxwwwckmlmmmmme
+```
+
+Legend: `a` [lualine_a_normal] · `b` [lualine_b_normal] · `c` [lualine_c_normal] ·
+`x` [lualine_x_diagnostics_error_normal] · `w` [lualine_x_diagnostics_warn_normal] ·
 `k` [StatuslineLangCapOk] · `l` [StatuslineLang_lua] · `m` [StatuslineLangText] · `e` [StatuslineLangEdge]
+
+The mask mirrors the attribute block of a mini.test screenshot, but with named groups instead of
+numbered attributes.
+
+## Viewing renders in color
+
+- **Current** (the real screen): `make render CASE=<case> [COLUMNS=100 LINES=30]` starts the real config
+  in a private tmux, drives the case from [`tests/render/cases.lua`](../tests/render/cases.lua) and
+  captures the pane with its truecolor escapes. It prints the capture and writes
+  `renders/<case>.ansi` (gitignored; `OUT=path` to write elsewhere). View it again with
+  `cat renders/<case>.ansi` or `less -R renders/<case>.ansi`. `MONO=1` prints the plain-text mini.test
+  screenshot instead (`ATTR=1` adds its attribute block). Add a case with one entry in `cases.lua`.
+- **Proposed** (mockups): `make colorize FILE=<doc.md>` prints every render of a markdown file; renders
+  with a mask and legend are colored with the fg, bg, bold and italic of each group in the real
+  colorscheme (queried from a headless child of the config after the `lua-file` case, so groups created
+  on first draw exist; `CASE=` picks another case). Unknown groups are reported and shown as [Normal].
+  Renders without a mask print plain.
+
+Copy a colored capture into a doc as text with `make render ... MONO=1`, which gives the same rows
+without escapes.
 
 ## Worked example: language chip variants
 
@@ -114,6 +145,14 @@ glyphs were lost), so the chip shows no health at all.
  NORMAL  ⎇ auto  + 3 ~ 1                                                             ✗ 0 ▲ 0  ◆ lua 
 ```
 
+```text
+aaaaaaaabbbbbbbbbbbbbbbbbccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccxxxxwwwcmlmmmmm
+```
+
+Legend: `a` [lualine_a_normal] · `b` [lualine_b_normal] · `c` [lualine_c_normal] ·
+`x` [lualine_x_diagnostics_error_normal] · `w` [lualine_x_diagnostics_warn_normal] ·
+`l` [StatuslineLang_lua] · `m` [StatuslineLangText]
+
 Highlights: ` ◆ lua ` [StatuslineLangText] on `chip_bg`. Nothing shows that lua_ls is running.
 
 **Proposed A**: restore the rounded caps (left cap colored by health)
@@ -122,6 +161,15 @@ Highlights: ` ◆ lua ` [StatuslineLangText] on `chip_bg`. Nothing shows that lu
  NORMAL  ⎇ auto  + 3 ~ 1                                                           ✗ 0 ▲ 0 ( ◆ lua )
 ```
 
+```text
+aaaaaaaabbbbbbbbbbbbbbbbbccccccccccccccccccccccccccccccccccccccccccccccccccccccccccxxxxwwwckmlmmmmme
+```
+
+Legend: `a` [lualine_a_normal] · `b` [lualine_b_normal] · `c` [lualine_c_normal] ·
+`x` [lualine_x_diagnostics_error_normal] · `w` [lualine_x_diagnostics_warn_normal] ·
+`k` [StatuslineLangCapOk] · `l` [StatuslineLang_lua] · `m` [StatuslineLangText] ·
+`e` [StatuslineLangEdge]
+
 Highlights: `(` [StatuslineLangCapOk] green (or [StatuslineLangCapError] red) · `)` [StatuslineLangEdge]
 
 **Proposed B**: health dot inside the chip (`STYLE = "dot_logo_name"`), no caps
@@ -129,6 +177,14 @@ Highlights: `(` [StatuslineLangCapOk] green (or [StatuslineLangCapError] red) ·
 ```text
  NORMAL  ⎇ auto  + 3 ~ 1                                                           ✗ 0 ▲ 0  ● ◆ lua 
 ```
+
+```text
+aaaaaaaabbbbbbbbbbbbbbbbbccccccccccccccccccccccccccccccccccccccccccccccccccccccccccxxxxwwwcmomlmmmmm
+```
+
+Legend: `a` [lualine_a_normal] · `b` [lualine_b_normal] · `c` [lualine_c_normal] ·
+`x` [lualine_x_diagnostics_error_normal] · `w` [lualine_x_diagnostics_warn_normal] ·
+`o` [StatuslineLspOk] · `l` [StatuslineLang_lua] · `m` [StatuslineLangText]
 
 Highlights: `●` [StatuslineLspOk] green (or [StatuslineLspError] red)
 
@@ -139,13 +195,14 @@ monochrome screenshot. If B is picked, its render becomes the text of the refere
 ## Flow
 
 1. **Idea**: a finding, a wish, or an annoyance.
-2. **Explore**: `/opsx:explore` with a Current render (from `make render` once available) and two or three
-   Proposed renders labelled A/B/C.
+2. **Explore**: `/opsx:explore` with a Current render (`make render`, plain text via `MONO=1`) and two or
+   three Proposed renders labelled A/B/C, each with a mask and legend when color matters. Check them in
+   color with `make colorize FILE=<doc>`.
 3. **Pick**: the user (core UI or keymaps) or the agent (otherwise) picks one option and records why.
 4. **Propose**: `/opsx:propose`. `design.md` carries the Current render and the chosen Proposed render; the
    spec delta adds or updates a reference-screenshot scenario that names it.
 5. **Test**: the first task writes the screen test. It sets the same screen size and state as the caption,
    and the approved render is the expected text of the reference screenshot under `tests/screenshots/`.
    The test fails until the code matches.
-6. **Build and verify**: implement until the screen test and `make check` pass, then compare
-   `make render` output with the approved render.
+6. **Build and verify**: implement until the screen test and `make check` pass, then compare the colored
+   `make render` capture with `make colorize` of the approved render.

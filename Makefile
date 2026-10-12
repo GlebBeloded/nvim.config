@@ -1,5 +1,5 @@
 # Test pyramid for this Neovim config. See docs/testing.md.
-#   make check   - everything below, in pyramid order (CI and the Claude Stop hook run this)
+#   make check   - everything below, in pyramid order (the Claude Stop hook runs this)
 
 NVIM ?= nvim
 LUA_DIRS := lua/ init.lua tests/
@@ -10,7 +10,7 @@ MINITEST = $(NVIM) --headless --noplugin -u tests/minimal_init.lua -c "lua requi
 NVIM_LUA = $(NVIM) -u tests/minimal_init.lua -l
 
 .PHONY: check install deps fmt lint types test test-unit test-integration test-screen \
-	screenshots smoke trace render clean
+	screenshots smoke trace render colorize clean
 
 check: lint types test smoke trace
 
@@ -54,8 +54,13 @@ smoke: deps
 trace: deps
 	@$(NVIM_LUA) tests/trace.lua $(if $(VERBOSE),,--quiet)
 
+# colored capture in a private tmux (MONO=1: plain mini.test screenshot)
 render: deps
 	@$(NVIM) --headless --noplugin -u tests/minimal_init.lua -c "lua require('tests.render').run()"
+
+# design-doc renders with mask + legend in the real colorscheme's colors
+colorize: deps
+	@$(NVIM) --headless --noplugin -u tests/minimal_init.lua -c "lua require('tests.render.colorize').run()"
 
 clean:
 	rm -rf .tests

@@ -22,6 +22,7 @@ rules:
     - A change with visible UI must include a "Current render" and at least one "Proposed render" (see docs/design-renders.md).
     - Renders are ```text blocks of at most 100 columns, captioned with `<cols>x<rows>`, mode and state. Use real content, `█` for the cursor, box-drawing characters for window borders, and single-width stand-ins for Nerd Font glyphs and emoji.
     - When color matters, list the highlight groups under the render as [Name] annotations.
+    - A color-relevant change adds a mask block and a `Legend:` line (exact group names) under each Current and Proposed render, so `make colorize FILE=<design.md>` shows it in the real colorscheme; compare with the colored `make render CASE=<case>` capture.
     - When exploring, label options Proposed A, B, C and record which one was picked and why.
     - The approved Proposed render is the expected text of the reference screenshot (tests/screenshots/) that the scenario's screen test asserts.
   tasks:

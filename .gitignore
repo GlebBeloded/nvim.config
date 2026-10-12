@@ -56,3 +56,6 @@ claude-obsidian.db
 
 # test dependencies (tests/bootstrap.sh)
 .tests/
+
+# make render output (tests/render)
+renders/
