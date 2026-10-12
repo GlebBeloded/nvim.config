@@ -14,6 +14,10 @@ The chain SHALL route every shortcut in the shortcut table (section "Shortcut ta
 - **WHEN** the effective Alacritty bindings (imports followed) are parsed
 - **THEN** every `chars` binding outside Vi mode has a `chars` row with the same bytes, every `chars` row has such a binding, and every `kitty` row's bytes equal Alacritty's kitty flag-1 encoding of the shortcut
 
+#### Scenario: Every Alacritty chars binding can match a key press
+- **WHEN** the effective Alacritty bindings (imports followed) are parsed
+- **THEN** no `chars` binding outside Vi mode has `Shift` in its mods together with a non-letter character key (`Minus`, `Equals`, `Slash`, `LBracket`, `RBracket`, `Key0`–`Key9` and other punctuation keys), because Alacritty 0.17 matches the shifted character (`_`, `+`, ...) and such a binding never fires; each offending binding is reported with its key, mods and bytes
+
 #### Scenario: zellij routes every shortcut as in the table
 - **WHEN** the zellij keybinds are resolved for `normal` mode and each row's bytes are decoded the way zellij parses them
 - **THEN** the route is the row's *zellij* column
@@ -146,8 +150,8 @@ Columns of the table the "Shortcut table" requirement refers to:
 | Cmd+Shift+L | chars | `\eL` | navigator resize right | `<M-l>` | none |
 | Cmd+- | chars | `\e-` | pass | `<M-->` | `zc` |
 | Cmd+= | chars | `\e=` | pass | `<M-=>` | `zo` |
-| Cmd+Shift+- | chars | `\e_` | pass | `<M-_>` | none |
-| Cmd+Shift+= | chars | `\e+` | pass | `<M-+>` | none |
+| Cmd+Shift+- | kitty | `\e[45;10u` | pass | `<S-D-->` | fn `require("ufo").closeAllFolds` |
+| Cmd+Shift+= | kitty | `\e[61;10u` | pass | `<S-D-=>` | fn `require("ufo").openAllFolds` |
 | Cmd+[ | chars | `\e[` | GoToPreviousTab | — | — |
 | Cmd+] | chars | `\e]` | GoToNextTab | — | — |
 | Cmd+9 | chars | `\e9` | pass | `<M-9>` | desc `99: Menu` |
@@ -177,7 +181,7 @@ Columns of the table the "Shortcut table" requirement refers to:
 | Ctrl+Left | kitty | `\e[1;5D` | pass | `<C-Left>` | `:vertical resize -2<CR>` |
 | Ctrl+Right | kitty | `\e[1;5C` | pass | `<C-Right>` | `:vertical resize +2<CR>` |
 
-Known gaps this table pins down: Cmd+J/Cmd+K never reach Neovim (the later `shared_except "locked" "scroll"` block rebinds `Alt j`/`Alt k` to zellij `MoveFocus`); Cmd+Shift+H/J/K/L reach Neovim as lowercase `<M-h/j/k/l>` (the navigator's resize writes `ESC <dir>`), so the `<A-H/J/K/L>` resize maps are unreachable and Cmd+Shift+J/K move the cursor between splits; Cmd+Shift+-/= send `<M-_>`/`<M-+>` while folding maps `<S-D-->`/`<S-D-=>`; Ctrl+Q quits zellij.
+Known gaps this table pins down: Cmd+J/Cmd+K never reach Neovim (the later `shared_except "locked" "scroll"` block rebinds `Alt j`/`Alt k` to zellij `MoveFocus`); Cmd+Shift+H/J/K/L reach Neovim as lowercase `<M-h/j/k/l>` (the navigator's resize writes `ESC <dir>`), so the `<A-H/J/K/L>` resize maps are unreachable and Cmd+Shift+J/K move the cursor between splits; Ctrl+Q quits zellij.
 
 ## Collision table
 | zellij key | zellij action | Shadowed Neovim key | Neovim modes |
