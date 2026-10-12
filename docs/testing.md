@@ -105,7 +105,7 @@ If no scenario exists yet, add it to the spec first (via an OpenSpec change). Ne
 
 Specs describe current behaviour, and tests assert the spec.
 - A finding where the spec already describes the buggy behaviour is fixed with an OpenSpec change. Change the scenario, write the failing test (named after the new scenario), then fix the code.
-- When the code does not do what the spec says (e.g. the codediff crash in `openspec/findings.md`), wrap the case in `H.xfail("<finding>", fn)`. It reports a skipped case with an `XFAIL` note while the bug exists, and fails with `XPASS` once it is fixed, so the marker gets removed.
+- When the code does not do what the spec says (e.g. the codediff crash queued as `openspec/changes/fix-diff-preview-codediff-crash`), wrap the case in `H.xfail("<change id>", fn)`. It reports a skipped case with an `XFAIL` note while the bug exists, and fails with `XPASS` once it is fixed, so the marker gets removed.
 
 ## Screenshots
 
@@ -120,11 +120,11 @@ Screen tests call `H.expect_screenshot(...)` (mini.test `reference_screenshot`).
 
 Cases live in `tests/render/cases.lua`: one entry per case with a description and a `setup(driver)` that uses `driver.lua`, `driver.cmd`, `driver.type_keys` and `driver.wait` (a mini.test child satisfies the same interface, so MONO and colored renders share the setup).
 
-`make colorize FILE=<doc.md>` prints the renders of a design doc, colored where a mask and legend are given (see [design-renders.md](design-renders.md#viewing-renders-in-color)).
+`make colorize FILE=<doc.md>` prints the renders of a design doc, colored where a mask and legend are given (see [workflow.md](workflow.md#seeing-renders-in-color)).
 
 ## Smoke details
 
-`tests/smoke/run.lua` lists the healthchecks it skips (they need external tools, or their known issues are in findings) and the known-benign ERROR lines. `make smoke` runs the probe (messages, checkhealth) concurrently with the timing, after one warm-up start; `make smoke-health` and `make smoke-startup` run one part. The startup budget defaults to 400 ms and is checked on the median of 3 `--startuptime` runs. Over budget, it takes 6 more samples and checks the fastest of all 9, since load only adds time; the line then shows the load average. Override the budget with `STARTUP_BUDGET_MS`.
+`tests/smoke/run.lua` lists the healthchecks it skips (they need external tools, or their known issues are queued in openspec/changes) and the known-benign ERROR lines. `make smoke` runs the probe (messages, checkhealth) concurrently with the timing, after one warm-up start; `make smoke-health` and `make smoke-startup` run one part. The startup budget defaults to 400 ms and is checked on the median of 3 `--startuptime` runs. Over budget, it takes 6 more samples and checks the fastest of all 9, since load only adds time; the line then shows the load average. Override the budget with `STARTUP_BUDGET_MS`.
 
 ## Claude Code hooks
 
