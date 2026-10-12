@@ -21,6 +21,11 @@ Layer: integration (`tests/integration/file-tree/test_tree.lua`, tree mappings).
 - [x] 2.2 Show it red by running it with task 1's `diff_preview.lua` change reverted locally (fails on `state.original_tab` still set), then green with it; `git_close` in `lua/gleb/file_tree/init.lua` needs no change, as it does not read `state.original_tab` after closing
 - [x] 2.3 `make quick`, then `make check` green; `make trace` lists the three scenarios as tested
 
+## 3. Verify findings
+
+- [x] 3.1 Replace the `H.xfail(CODEDIFF_CRASH, ...)` wrappers of the three new cases with a stub of codediff `view.create` (`tabnew`), so their assertions run while fix-diff-preview-codediff-crash is queued; red with task 1's change reverted, green with it
+- [x] 3.2 Scenario "file-tree: Return cancels a pending preview": `open_diff` then `return_to_original()` at once creates no diff tab
+
 ## Notes
-- fix-diff-preview-codediff-crash has no commits on `auto`, so the four new async cases stay under `H.xfail(CODEDIFF_CRASH, ...)`. Red/green was checked locally with the xfail unwrapped and codediff `view.create` stubbed to `tabnew`: red on the stale `original_tab` without the fix, green with it.
+- fix-diff-preview-codediff-crash has no commits on `auto`; the new cases stub codediff `view.create` to `tabnew` instead of xfail (task 3.1), since they assert diff_preview tab state, not codediff rendering. "Diff tab is created" and "Neo-tree is opened and focused in diff tab" stay xfail for that change.
 - 2.3: `make quick` and `make trace` green; the full `make check` is left to the gate.

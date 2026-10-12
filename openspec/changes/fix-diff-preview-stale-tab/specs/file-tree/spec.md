@@ -49,3 +49,7 @@ In the `git_status` tree, normal-mode mappings SHALL be: `<cr>` closes any diff 
 #### Scenario: Next preview records the new original tab
 - **WHEN** `diff_preview.open_diff(a)` completed from tab T1, `diff_preview.return_to_original()` was called, `:tabnew` makes tab T2 current, and `diff_preview.open_diff(b)` completes
 - **THEN** `state.original_tab` equals T2 and `diff_preview.return_to_original()` makes T2 the current tab
+
+#### Scenario: Return cancels a pending preview
+- **WHEN** `diff_preview.open_diff(p)` is called and `diff_preview.return_to_original()` runs before the debounced open completes
+- **THEN** no diff tab is created and `state.original_tab` stays nil

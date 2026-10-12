@@ -36,6 +36,12 @@ local function wait_diff_tab()
 	return child.wait("DiffPreview.state.diff_tab ~= nil", ASYNC_MS)
 end
 
+--- Replace codediff's view.create with a plain tabnew, so tab-state cases run while
+--- fix-diff-preview-codediff-crash is queued; they assert diff_preview state, not codediff rendering.
+local function stub_codediff_view()
+	child.lua([[require("codediff.ui.view").create = function() vim.cmd("tabnew") end]])
+end
+
 ---@return boolean
 local function current_is_neo_tree()
 	return child.bo.filetype == "neo-tree"
@@ -76,7 +82,8 @@ T["file-tree: Neo-tree is opened and focused in diff tab"] = H.xfail(CODEDIFF_CR
 	eq(current_is_neo_tree(), true)
 end)
 
-T["file-tree: Return clears tab state and focus guard"] = H.xfail(CODEDIFF_CRASH, function()
+T["file-tree: Return clears tab state and focus guard"] = function()
+	stub_codediff_view()
 	open_diff(TRACKED)
 	eq(wait_diff_tab(), true)
 
@@ -86,9 +93,10 @@ T["file-tree: Return clears tab state and focus guard"] = H.xfail(CODEDIFF_CRASH
 	eq(child.lua_get("DiffPreview.state.diff_tab"), vim.NIL)
 	eq(child.lua_get("DiffPreview.state.navigating_until"), 0)
 	eq(focus_guard_count(), 0)
-end)
+end
 
-T["file-tree: Next preview records the new original tab"] = H.xfail(CODEDIFF_CRASH, function()
+T["file-tree: Next preview records the new original tab"] = function()
+	stub_codediff_view()
 	open_diff(TRACKED)
 	eq(wait_diff_tab(), true)
 	child.lua("DiffPreview.return_to_original()")
@@ -101,7 +109,18 @@ T["file-tree: Next preview records the new original tab"] = H.xfail(CODEDIFF_CRA
 	eq(child.lua_get("DiffPreview.state.original_tab"), second)
 	child.lua("DiffPreview.return_to_original()")
 	eq(child.api.nvim_get_current_tabpage(), second)
-end)
+end
+
+T["file-tree: Return cancels a pending preview"] = function()
+	stub_codediff_view()
+	local before = tab_count()
+	open_diff(TRACKED)
+	child.lua("DiffPreview.return_to_original()")
+
+	eq(child.wait("DiffPreview.state.diff_tab ~= nil", 300), false)
+	eq(tab_count(), before)
+	eq(child.lua_get("DiffPreview.state.original_tab"), vim.NIL)
+end
 
 T["file-tree: File outside a repository"] = function()
 	local outside = vim.fn.tempname() .. ".txt"
