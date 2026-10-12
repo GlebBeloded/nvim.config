@@ -64,19 +64,19 @@ Every task follows the same steps:
 
 ## 4. file-tree (integration)
 
-- [ ] 4.1 `test_tree.lua`. Scenarios: Tree closes with last window, Directory argument opens tree in current window, Current file is followed, Dotfiles and gitignored files are listed, Git status tree opens on the left at width 35, Next source switches tree source.
+- [x] 4.1 `test_tree.lua`. Scenarios: Tree closes with last window, Directory argument opens tree in current window, Current file is followed, Dotfiles and gitignored files are listed, Git status tree opens on the left at width 35, Next source switches tree source.
   1. Failing cases; the directory argument uses `child.restart_config({ dir })` from 1.2, gitignored files a temp repo with `.gitignore`.
   2. None.
   3. Verify (file-tree).
-- [ ] 4.2 `test_tree.lua` (temp dir). Scenarios: a creates a file, r renames a file, t opens file in new tab, v opens file in vertical split.
+- [x] 4.2 `test_tree.lua` (temp dir). Scenarios: a creates a file, r renames a file, t opens file in new tab, v opens file in vertical split.
   1. Failing cases driving neo-tree input prompts with `child.type_keys`; assert the file on disk / tab and window layout.
   2. None.
   3. Verify (file-tree).
-- [ ] 4.3 `test_tree.lua` (temp repo). Scenarios: Space stages an unstaged file (M:fix-diff-preview-stale-tab), Space unstages a staged file (M).
+- [x] 4.3 `test_tree.lua` (temp repo). Scenarios: Space stages an unstaged file (M:fix-diff-preview-stale-tab), Space unstages a staged file (M).
   1. Failing cases asserting `git diff --cached --name-only` on the host.
   2. None. (`fix-neotree-stage-toggle` adds its own scenarios; not covered here.)
   3. Verify (file-tree).
-- [ ] 4.4 `test_tree.lua` (temp repo). Scenarios: c commits confirmed message (M:fix-neotree-commit-check), P pushes successfully (M), P reports push failure (M).
+- [x] 4.4 `test_tree.lua` (temp repo). Scenarios: c commits confirmed message (M:fix-neotree-commit-check), P pushes successfully (M), P reports push failure (M).
   1. Failing cases: `c` with the ollama `jobstart` stubbed, confirm, assert `git log -1 --format=%s`; `P` with `git push` stubbed to exit 0 / 1, assert the command and the notification. If `fix-git-status-map-shadowing` has moved `c` by then, use its key and title.
   2. Move the 3.5 recorders to `tests/helpers.lua` (`H.record_jobstart`, `H.record_notify`, typed).
   3. Verify (file-tree).
