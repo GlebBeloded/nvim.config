@@ -126,10 +126,11 @@ local function jump_prev()
 	vim.diagnostic.jump({ count = -1, on_jump = open_float_on_jump })
 end
 
-local jump_next_opts = vim.tbl_extend("force", opts, { desc = "Next diagnostic" })
+local jump_next_opts = vim.tbl_extend("force", opts, { desc = "Diagnostics: Next" })
+local jump_prev_opts = vim.tbl_extend("force", opts, { desc = "Diagnostics: Previous" })
 kmap("n", "<A-w>", jump_next, jump_next_opts)
 kmap("n", "ge", jump_next, jump_next_opts)
-kmap("n", "[d", jump_prev, opts)
+kmap("n", "[d", jump_prev, jump_prev_opts)
 
 -- Leader keys
 vim.g.mapleader = "<D->"

@@ -16,7 +16,7 @@ Kind: bug
 
 ## Impact
 - Code: `lua/gleb/keymaps.lua`.
-- Shortcut table: the Cmd+W *Mapping* cell becomes `` desc `Next diagnostic` `` (the maps get that `desc`).
+- Shortcut table: the Cmd+W *Mapping* cell becomes `` desc `Diagnostics: Next` `` (the maps get that `desc`; `[d` gets `Diagnostics: Previous`).
 - Plugins: none added, removed or upgraded.
 - Core keymaps: unchanged (same keys, same jumps; no deprecation message).
 - Out of scope: the float's look (border, source, header); `]d`/`[d` defaults Neovim already provides; `lsp/config/python/typecheck.lua:7`.

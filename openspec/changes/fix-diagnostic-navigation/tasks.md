@@ -17,3 +17,10 @@ Scenarios: "keymaps: Diagnostic jump opens float"
 - [x] 2.3 `make quick` green: both new cases and the three jump cases pass; "Diagnostic jump is not deprecated" still passes with the float open.
 - [x] 2.4 `make check` green.
 
+
+## 3. Diagnostic map descs follow rule 3.3
+
+Scenarios: "shortcuts: Neovim mappings match the table"
+
+- [x] 3.1 Failing test: set the Cmd+W *Mapping* cell of `openspec/specs/shortcuts/spec.md` to `` desc `Diagnostics: Next` `` and the proposal's Impact line to match; run `make test FILE=tests/chain/shortcuts/test_chain.lua` and confirm it fails on the old `Next diagnostic` desc.
+- [x] 3.2 In `lua/gleb/keymaps.lua`, give `<A-w>` / `ge` the desc `"Diagnostics: Next"` and `[d` the desc `"Diagnostics: Previous"`; the chain test and the diagnostic integration cases pass.
