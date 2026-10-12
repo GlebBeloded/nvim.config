@@ -24,12 +24,12 @@ Scenarios: "Space stages a file whose name is a suffix of a staged file", "Space
 
 Scenarios: "Space stages an unstaged file", "Space unstages a staged file" (existing `file-tree` spec, currently untested).
 
-- [ ] 2.1 Tests in `test_stage.lua` with cwd = repo root, `:Neotree git_status`:
+- [x] 2.1 Tests in `test_stage.lua` with cwd = repo root, `:Neotree git_status`:
   - `file-tree: Space stages an unstaged file`: modified unstaged `a.lua`; after `<space>`, `staged(dir)` contains `a.lua`.
   - `file-tree: Space unstages a staged file`: modified staged `a.lua`; after `<space>`, `staged(dir)` does not contain `a.lua`.
   - Regression guards for behaviour that already holds; check each one fails when its assertion is inverted, then restore it. Both pass on the task 1 code.
 
 ## 3. Gate
 
-- [ ] 3.1 `make quick` green (lint, types, trace lists all six scenarios as tested).
+- [x] 3.1 `make quick` green (lint, types, trace lists all six scenarios as tested).
 - [ ] 3.2 `make check` green.
