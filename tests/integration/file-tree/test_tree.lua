@@ -33,6 +33,29 @@ function Tree.cursor_path(win)
 	return node and node.path
 end
 
+--- Line and node of `path` in tree window `win` (nil while not rendered).
+function Tree.find(win, path)
+	local state = Tree.state(win)
+	if not (state and state.tree) then return end
+	for line = 1, vim.api.nvim_buf_line_count(vim.api.nvim_win_get_buf(win)) do
+		local node = state.tree:get_node(line)
+		if node and node.path == path then return line, node end
+	end
+end
+
+--- Move the cursor of `win` to the node of `path`; false while not rendered.
+function Tree.focus(win, path)
+	local line = Tree.find(win, path)
+	if line then vim.api.nvim_win_set_cursor(win, { line, 0 }) end
+	return line ~= nil
+end
+
+--- git status code neo-tree shows for the node of `path` (nil without node).
+function Tree.git_status(win, path)
+	local _, node = Tree.find(win, path)
+	return node and node.extra and node.extra.git_status
+end
+
 --- Non-tree windows of the current tab.
 function Tree.editing_wins()
 	return vim.tbl_filter(function(win)
@@ -102,6 +125,40 @@ local function answer_prompt(key, keys)
 	child.type_keys(key)
 	eq(child.wait([[vim.bo.buftype == "prompt" and vim.fn.mode() == "i"]], ASYNC_MS), true)
 	child.type_keys(unpack(keys))
+end
+
+--- Temp repo with `a.txt` committed then modified (staged too if `staged`),
+--- the child in it and the `git_status` tree's cursor on `a.txt`.
+---@param staged boolean
+---@return string repo, integer win, string path
+local function git_status_on_changed_file(staged)
+	local repo = H.git_repo({ ["a.txt"] = "a\n" })
+	H.write_files(repo, { ["a.txt"] = "changed\n" })
+	if staged then
+		H.git(repo, { "add", "a.txt" })
+	end
+	start_in(repo)
+	child.cmd("enew")
+	local win = open_tree("Neotree git_status", "git_status")
+	local path = vim.fs.joinpath(repo, "a.txt")
+	eq(child.wait(("Tree.focus(%d, %q)"):format(win, path), ASYNC_MS), true)
+	return repo, win, path
+end
+
+---@param repo string
+---@return string[] paths in `git diff --cached --name-only`
+local function staged_paths(repo)
+	return vim.split(vim.trim(H.git(repo, { "diff", "--cached", "--name-only" })), "\n", { trimempty = true })
+end
+
+--- Wait until the staged paths of `repo` equal `expected`.
+---@param repo string
+---@param expected string[]
+local function wait_staged(repo, expected)
+	vim.wait(ASYNC_MS, function()
+		return vim.deep_equal(staged_paths(repo), expected)
+	end, 20)
+	eq(staged_paths(repo), expected)
 end
 
 ---@param path string
@@ -260,6 +317,27 @@ T["file-tree: r renames a file"] = function()
 		true
 	)
 	eq(exists(old), false)
+end
+
+T["file-tree: Space stages an unstaged file"] = function()
+	local repo, win, path = git_status_on_changed_file(false)
+	eq(staged_paths(repo), {})
+	local before = child.lua_get("Tree.git_status(...)", { win, path })
+
+	child.type_keys("<Space>")
+
+	wait_staged(repo, { "a.txt" })
+	-- refreshed: the node shows the new (staged) status
+	eq(child.wait(("Tree.git_status(%d, %q) ~= %q"):format(win, path, before), ASYNC_MS), true)
+end
+
+T["file-tree: Space unstages a staged file"] = function()
+	local repo = git_status_on_changed_file(true)
+	eq(staged_paths(repo), { "a.txt" })
+
+	child.type_keys("<Space>")
+
+	wait_staged(repo, {})
 end
 
 T["file-tree: Missing neo-tree is tolerated"] = function()
