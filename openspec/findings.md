@@ -39,7 +39,28 @@ Each one becomes an OpenSpec change (`/opsx:propose fix-…`) with a failing tes
 - Stale comments: `file_tree/init.lua:79` (Alt+C), `git/vscode_diff.lua:7`, `lualine.lua:94`, `init.lua:8-9`.
 - No keymap in keymaps.lua has a `desc`.
 
+## Found by the test pyramid (2026-10-12)
+- High file-tree: `diff_preview.open_diff(p)` crashes in the scheduled callback inside codediff `view.create` (`codediff/ui/view/helpers.lua:34: attempt to index local 'ref' (a nil value)`) with the pinned vscode-diff.nvim. No diff tab is created and neo-tree is never opened in it. Tests "Diff tab is created" and "Neo-tree is opened and focused in diff tab" are marked `H.xfail`.
+- Medium session: auto-save writes unnamed buffers. Typing in an `:enew` buffer sets `v:errmsg` to `E32: No file name` after the debounce, because the `condition` checks only `buftype` and `filetype`, not the buffer name.
+- Low: every Neovim start writes `/tmp/nvim/<time>_<pid>.txt` (nvim-debug-log), and test children are no exception. The harness deletes its own files by pid.
+
+## Static baseline
+`make lint` (stylua + selene) is clean. `lsp_progress.lua` was reformatted by stylua with no behaviour change. The plenary busted globals were removed from `vim.toml`.
+`make types` (lua-language-server 3.19.1, `--checklevel=Warning`) is green because these codes are downgraded to `Information` in `.luarc.jsonc`. Put each one back to Warning once its hits are fixed:
+- `param-type-mismatch` (7): colors/gruvbox-material/init.lua:9, colors/gruvbox-material/util/init.lua:17 (x2), file_tree/diff_preview.lua:81 and :155, plugins/plugins.lua:338, run/init.lua:3.
+- `deprecated` (4): keymaps.lua:109, :111 and :114 (`vim.diagnostic.goto_*`, see Medium above), lsp/config/python/typecheck.lua:7.
+- `undefined-doc-name` (2): `SessionConfig` (diff_preview.lua:60) and `LazyPluginSpec` (plugins.lua:50). These are plugin types, and plugins are not in the LuaLS library.
+- `duplicate-set-field` (1): select/init.lua:13 (`vim.ui.select` override).
+- `need-check-nil` (1): statusline/lsp_progress.lua:75 (`timer`).
+
+## Smoke baseline
+- Healthchecks are skipped by `make smoke` (list in `tests/smoke/run.lua`):
+  - Need external tools: `null-ls` (markuplint, stylelint, shfmt, shellharden, terraform), `rustaceanvim` (rust-analyzer), `mason`, `vim.provider`.
+  - Report plugin or config issues: `neo-tree` (`config.buffers.renderers: expected ?, got nil`) and `neotest-golang` (`testify/namespace` and `testify/test_method` queries cannot be loaded).
+- Ignored ERROR: lazy `hererocks/bin/luarocks not installed`. lazy itself says "no plugins require luarocks". Proposal: set `rocks = { enabled = false }` in lazy setup.
+- Startup: the headless median is about 220-250 ms with warm caches, and the budget is 400 ms (`STARTUP_BUDGET_MS`). The first start with an empty data dir takes about 425 ms.
+
 ## Test gaps
-- Weak existing tests: diff_preview "should create a new tab" asserts `>=`, and "should track original tab" checks its own assignment.
-- The debug-log tests wait 3000 ms against a 2000 ms flush, which is flaky.
-- Most keymap, statusline and git scenarios have no tests yet. Screenshot scenarios need mini.test screen references.
+- Resolved: the weak diff_preview tests were replaced by mini.test cases that assert the spec. The debug-log cases now find the child's own log by pid and no longer wipe `/tmp/nvim`. They still wait the 3000 ms the spec allows against the 2000 ms flush.
+- Screen tests compare attribute *identity*, not colors. The normal and insert accent screenshots therefore share an attr layout, and asserting a color needs `nvim_get_hl` checks.
+- Missing scenarios are listed by `make trace` (git, neo-tree mappings, 99 prompts, Copilot states, session restore).

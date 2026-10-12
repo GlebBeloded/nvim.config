@@ -53,3 +53,6 @@ plugin/
 .idea/
 claude-obsidian.db
 .claude/settings.local.json
+
+# test dependencies (tests/bootstrap.sh)
+.tests/

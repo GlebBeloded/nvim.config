@@ -3,7 +3,7 @@ schema: spec-driven
 context: |
   Personal Neovim config in Lua, single user, macOS. No production, no other users.
   Targets Neovim stable and nightly. Plugins managed by lazy.nvim and pinned in lazy-lock.json.
-  Custom code lives in lua/gleb/<feature>/. Tests run headless (mini.test child Neovim; legacy plenary specs being migrated).
+  Custom code lives in lua/gleb/<feature>/. Tests run headless with mini.test (child Neovim); layers and commands in docs/testing.md, `make check` is the gate.
   Agents work autonomously; the user is only involved for new behaviour, new plugin dependencies, core keymap changes, or escalations.
   Git: integration branch is `auto`; each change uses a feature branch forked from `auto`.
 

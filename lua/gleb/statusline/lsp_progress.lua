@@ -52,15 +52,17 @@ local function log(client_name, value)
 	if not fd then
 		return
 	end
-	fd:write(string.format(
-		"[%s] %-8s kind=%-6s title=%q msg=%q pct=%s\n",
-		os.date("%H:%M:%S"),
-		client_name,
-		value.kind or "",
-		value.title or "",
-		value.message or "",
-		tostring(value.percentage or "")
-	))
+	fd:write(
+		string.format(
+			"[%s] %-8s kind=%-6s title=%q msg=%q pct=%s\n",
+			os.date("%H:%M:%S"),
+			client_name,
+			value.kind or "",
+			value.title or "",
+			value.message or "",
+			tostring(value.percentage or "")
+		)
+	)
 	fd:close()
 end
 
