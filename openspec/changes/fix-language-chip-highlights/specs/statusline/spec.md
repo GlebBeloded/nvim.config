@@ -1,7 +1,7 @@
 ## MODIFIED Requirements
 
 ### Requirement: Language chip
-The config SHALL render, via `require("gleb.statusline.language").component()`, an empty string when `filetype` is empty; otherwise `<left cap><space><filetype logo><space><filetype><space><right cap>` where the left cap uses highlight `StatuslineLangCapOk` if a non-stopped LSP client is attached to the current buffer and `StatuslineLangCapError` otherwise, and the right cap uses `StatuslineLangEdge`. Highlight groups are (re)defined on `ColorScheme` by a single autocmd in augroup `gleb_statusline_language` (created with `clear = true`). The logo highlight group is named `StatuslineLang_<filetype>` with every character outside `[%w_]` replaced by `_`.
+The config SHALL render, via `require("gleb.statusline.language").component()`, an empty string when `filetype` is empty; otherwise `<left cap><space><filetype logo><space><filetype><space><right cap>` where the left cap uses highlight `StatuslineLangCapOk` if a non-stopped LSP client is attached to the current buffer and `StatuslineLangCapError` otherwise, and the right cap uses `StatuslineLangEdge`.
 
 #### Scenario: chip empty without filetype
 - **WHEN** `vim.bo.filetype` is `""` and `component()` is called
@@ -14,6 +14,11 @@ The config SHALL render, via `require("gleb.statusline.language").component()`, 
 #### Scenario: chip shows ok cap with running LSP
 - **WHEN** a running LSP client is attached to the current `lua` buffer and `component()` is called
 - **THEN** the result starts with `%#StatuslineLangCapOk#`
+
+## ADDED Requirements
+
+### Requirement: Language chip highlights
+The config SHALL (re)define the language chip highlight groups on `ColorScheme` by a single autocmd in augroup `gleb_statusline_language` (created with `clear = true`), and SHALL name the logo highlight group `StatuslineLang_<filetype>` with every character outside `[%w_]` replaced by `_`.
 
 #### Scenario: chip logo highlight per filetype
 - **WHEN** `component()` is called for a buffer with `filetype=lua`

@@ -14,3 +14,7 @@ Scenarios: "statusline: chip logo highlight name sanitized", "statusline: chip l
 - [x] 2.1 Add the failing unit test "statusline: chip logo highlight name sanitized" to `tests/unit/statusline/test_language.lua`: `filetype=foo-bar.baz`, call `component()`, assert `nvim_get_hl(0, { name = "StatuslineLang_foo_bar_baz" }).bg` equals the palette `chip_bg` (same shape as "chip logo highlight per filetype"). Run it; it fails (only `StatuslineLang_foo-bar.baz` is defined).
 - [x] 2.2 In `logo()`, build the group name with a small named helper `logo_group(filetype)` returning `"StatuslineLang_" .. filetype:gsub("[^%w_]", "_")` (wrap the `gsub` in parentheses to drop its count); keep `logo_defined` keyed by filetype.
 - [x] 2.3 Run `make test CASE=chip`, then `make check`; all pass, including "chip logo highlight per filetype", and `make trace` shows both new scenarios as tested with no orphans.
+
+## 3. Spec validation
+
+- [x] 3.1 Split the over-long "Language chip" requirement (strict validate warns above 500 characters): the highlight-group behavior and its four scenarios move to a new "Language chip highlights" requirement, in both the delta and `openspec/specs/statusline/spec.md`; `openspec validate --strict` passes for the change and for the main specs after a trial archive.
