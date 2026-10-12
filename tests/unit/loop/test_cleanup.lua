@@ -11,6 +11,7 @@ local T = H.child_set(child, child.start_bare)
 local ARCHON_STUB = [[#!/bin/sh
 case "$1 $2" in
 "workflow run")
+	[ -n "$ARCHON_RUNS" ] && echo "$*" >>"$ARCHON_RUNS"
 	while [ $# -gt 0 ]; do
 		[ "$1" = --branch ] && branch=$2
 		shift
@@ -23,8 +24,9 @@ esac
 exit 0
 ]]
 
+--- `openspec` stub: `list --json` prints $OPENSPEC_LIST, by default one change `t-change`.
 local OPENSPEC_STUB = [[#!/bin/sh
-echo '{"changes":[{"name":"t-change"}]}'
+if [ -n "$OPENSPEC_LIST" ]; then echo "$OPENSPEC_LIST"; else echo '{"changes":[{"name":"t-change"}]}'; fi
 ]]
 
 ---@param path string
@@ -97,26 +99,45 @@ end
 ---@field code integer make exit code
 ---@field output string make stdout and stderr
 ---@field log string[] lines the stub logged at `isolation cleanup --merged`
+---@field runs string[] arguments of each `workflow run` the stub received
 
---- Runs `make <args>` in `repo` with the stubs first on PATH and a temp HOME (keeps
---- `loop-register` away from the real ~/.archon).
----@param repo string
----@param args string[]
----@return test.LoopRun
-local function run_target(repo, args)
+---@param path string
+---@return string[]
+local function read_lines(path)
+	return child.lua_get("vim.fn.filereadable(...) == 1 and vim.fn.readfile(...) or {}", { path })
+end
+
+--- Env with the stubs first on PATH, their logs in a fresh temp dir and a temp HOME (keeps
+--- `loop-register` away from the real ~/.archon); `extra` is merged on top.
+---@param extra? table<string, string>
+---@return table<string, string>
+local function stub_env(extra)
 	local bin = tempdir()
-	local log = vim.fs.joinpath(bin, "cleanup.log")
-	local env = vim.tbl_extend("force", GIT_ENV, {
+	return vim.tbl_extend("force", GIT_ENV, {
 		HOME = tempdir(),
 		ARCHON = write_stub(bin),
-		LOOP_LOG = log,
+		LOOP_LOG = vim.fs.joinpath(bin, "cleanup.log"),
+		ARCHON_RUNS = vim.fs.joinpath(bin, "runs.log"),
 		PATH = bin .. ":" .. child.lua_get("vim.env.PATH"),
 		MAKEFLAGS = "",
 		MAKELEVEL = "",
-	})
-	local result = system(vim.list_extend({ "make" }, args), repo, env)
-	local lines = child.lua_get("vim.fn.filereadable(...) == 1 and vim.fn.readfile(...) or {}", { log })
-	return { code = result.code, output = result.stdout .. result.stderr, log = lines }
+	}, extra or {})
+end
+
+--- Runs `make <args>` in `repo` with `stub_env(env)`.
+---@param repo string
+---@param args string[]
+---@param env? table<string, string>
+---@return test.LoopRun
+local function run_target(repo, args, env)
+	local full = stub_env(env)
+	local result = system(vim.list_extend({ "make" }, args), repo, full)
+	return {
+		code = result.code,
+		output = result.stdout .. result.stderr,
+		log = read_lines(full.LOOP_LOG),
+		runs = read_lines(full.ARCHON_RUNS),
+	}
 end
 
 ---@type { args: string[], branch: string }[]
