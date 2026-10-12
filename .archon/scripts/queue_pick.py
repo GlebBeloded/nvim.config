@@ -16,7 +16,8 @@ CHANGES = pathlib.Path("openspec/changes")
 
 
 def taken(name: str) -> bool:
-    return subprocess.run(["git", "rev-parse", "--verify", "--quiet", f"refs/heads/loop/{name}"]).returncode == 0
+    ref = f"refs/heads/loop/{name}"
+    return subprocess.run(["git", "rev-parse", "--verify", "--quiet", ref], stdout=subprocess.DEVNULL).returncode == 0
 
 
 def created(path: pathlib.Path) -> str:

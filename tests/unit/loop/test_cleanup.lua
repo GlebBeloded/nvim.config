@@ -165,4 +165,52 @@ T["loop: Cleanup sees the merge the run shipped"] = function()
 	vim.iter(TARGETS):each(expect_cleanup_sees_merge)
 end
 
+--- Adds an active change `name` with `created` in its .openspec.yaml to `repo` and commits it.
+---@param repo string
+---@param name string
+---@param created string
+local function write_change(repo, name, created)
+	local dir = vim.fs.joinpath(repo, "openspec/changes", name)
+	child.fn.mkdir(dir, "p")
+	child.fn.writefile({ "created: " .. created }, vim.fs.joinpath(dir, ".openspec.yaml"))
+	eq(system({ "git", "add", "openspec" }, repo, GIT_ENV).code, 0)
+	eq(system({ "git", "commit", "-q", "-m", "change " .. name }, repo, GIT_ENV).code, 0)
+end
+
+--- Asserts `make queue` (no CHANGE) works `name` and asked Archon for its `loop/` branch.
+---@param run test.LoopRun
+---@param name string
+local function expect_queue_works(run, name)
+	eq(run.code, 0, run.output)
+	eq(run.output:find("JSONDecodeError", 1, true), nil, run.output)
+	eq(run.output:find("Working on " .. name, 1, true) ~= nil, true, run.output)
+	local branched = vim.iter(run.runs):any(function(line)
+		return line:find("--branch loop/" .. name, 1, true) ~= nil
+	end)
+	eq(branched, true, table.concat(run.runs, "\n"))
+end
+
+--- Asserts queue_pick.py, run directly in `repo` with `env`, prints one JSON object picking `name`.
+---@param repo string
+---@param env table<string, string>
+---@param name string
+local function expect_picks(repo, env, name)
+	local result = system({ "python3", ".archon/scripts/queue_pick.py" }, repo, env)
+	eq(result.code, 0, result.stderr)
+	local ok, picked = pcall(vim.json.decode, result.stdout)
+	eq(ok, true, result.stdout)
+	eq(picked.change, name)
+end
+
+T["loop: Queue skips a taken change"] = function()
+	local repo = make_repo()
+	write_change(repo, "t-change", "2026-01-01")
+	write_change(repo, "t-next", "2026-01-02")
+	eq(system({ "git", "branch", "loop/t-change" }, repo, GIT_ENV).code, 0)
+	local list = { OPENSPEC_LIST = '{"changes":[{"name":"t-change"},{"name":"t-next"}]}' }
+	-- Pick directly first: the archon stub creates loop/t-next when make queue runs it.
+	expect_picks(repo, stub_env(list), "t-next")
+	expect_queue_works(run_target(repo, { "queue" }, list), "t-next")
+end
+
 return T
