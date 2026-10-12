@@ -33,6 +33,13 @@ function Tree.cursor_path(win)
 	return node and node.path
 end
 
+--- Non-tree windows of the current tab.
+function Tree.editing_wins()
+	return vim.tbl_filter(function(win)
+		return vim.bo[vim.api.nvim_win_get_buf(win)].filetype ~= "neo-tree"
+	end, vim.api.nvim_tabpage_list_wins(0))
+end
+
 --- Whether every name occurs in the tree buffer of `win`.
 function Tree.lists(win, names)
 	local text = table.concat(vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(win), 0, -1, false), "\n")
@@ -67,6 +74,40 @@ local function open_tree(cmd, source)
 	child.cmd(cmd)
 	eq(child.wait(("Tree.win() and Tree.source(Tree.win()) == %q"):format(source), ASYNC_MS), true)
 	return child.lua_get("Tree.win()")
+end
+
+--- Wait until the cursor of tree window `win` is on the node for `path`.
+---@param win integer
+---@param path string
+local function wait_cursor_on(win, path)
+	eq(child.wait(("Tree.cursor_path(%d) == %q"):format(win, path), ASYNC_MS), true)
+end
+
+--- Filesystem tree of `dir` with the cursor on the node for `path`
+--- (`reveal_file` moves it there).
+---@param dir string
+---@param path string
+---@return integer tree window
+local function open_tree_on(dir, path)
+	local win = open_tree("Neotree filesystem reveal_file=" .. vim.fn.fnameescape(path), "filesystem")
+	wait_cursor_on(win, path)
+	eq(child.lua_get("Tree.state(...).path", { win }), dir)
+	return win
+end
+
+--- Press `key` in the tree, wait for neo-tree's input popup, type `keys`.
+---@param key string
+---@param keys string[]
+local function answer_prompt(key, keys)
+	child.type_keys(key)
+	eq(child.wait([[vim.bo.buftype == "prompt" and vim.fn.mode() == "i"]], ASYNC_MS), true)
+	child.type_keys(unpack(keys))
+end
+
+---@param path string
+---@return boolean
+local function exists(path)
+	return vim.uv.fs_stat(path) ~= nil
 end
 
 local T = MiniTest.new_set({ hooks = { post_once = child.stop } })
@@ -147,6 +188,78 @@ T["file-tree: Next source switches tree source"] = function()
 	child.type_keys(">")
 
 	eq(child.wait(("Tree.source(%d) == 'git_status'"):format(win), ASYNC_MS), true)
+end
+
+T["file-tree: v opens file in vertical split"] = function()
+	local dir = temp_dir({ ["a.txt"] = "a\n", ["b.txt"] = "b\n" })
+	start_in(dir)
+	child.cmd("edit a.txt")
+	local previous = child.api.nvim_get_current_win()
+	local b = vim.fs.joinpath(dir, "b.txt")
+	open_tree_on(dir, b)
+
+	child.type_keys("v")
+
+	eq(child.wait(("vim.api.nvim_buf_get_name(0) == %q"):format(b), ASYNC_MS), true)
+	local split = child.api.nvim_get_current_win()
+	local editing = child.lua_get("Tree.editing_wins()")
+	table.sort(editing)
+	eq(editing, { previous, split })
+	eq(child.api.nvim_buf_get_name(child.api.nvim_win_get_buf(previous)), vim.fs.joinpath(dir, "a.txt"))
+	-- side by side: same top row and height, different columns
+	local split_pos, previous_pos = child.fn.win_screenpos(split), child.fn.win_screenpos(previous)
+	eq(split_pos[1], previous_pos[1])
+	eq(child.api.nvim_win_get_height(split), child.api.nvim_win_get_height(previous))
+	eq(split_pos[2] ~= previous_pos[2], true)
+end
+
+T["file-tree: t opens file in new tab"] = function()
+	local dir = temp_dir({ ["a.txt"] = "a\n", ["b.txt"] = "b\n" })
+	start_in(dir)
+	child.cmd("edit a.txt")
+	local b = vim.fs.joinpath(dir, "b.txt")
+	open_tree_on(dir, b)
+	local tabs = #child.api.nvim_list_tabpages()
+
+	child.type_keys("t")
+
+	eq(child.wait(("#vim.api.nvim_list_tabpages() == %d"):format(tabs + 1), ASYNC_MS), true)
+	eq(child.api.nvim_buf_get_name(0), b)
+end
+
+T["file-tree: a creates a file"] = function()
+	local dir = temp_dir({ ["a.txt"] = "a\n" })
+	start_in(dir)
+	local win = open_tree("Neotree filesystem", "filesystem")
+	wait_cursor_on(win, dir)
+
+	answer_prompt("a", { "new.txt<CR>" })
+
+	local new = vim.fs.joinpath(dir, "new.txt")
+	eq(
+		vim.wait(ASYNC_MS, function()
+			return exists(new)
+		end, 20),
+		true
+	)
+	eq(child.wait(("Tree.lists(%d, { 'new.txt' })"):format(win), ASYNC_MS), true)
+end
+
+T["file-tree: r renames a file"] = function()
+	local dir = temp_dir({ ["old.txt"] = "old\n" })
+	start_in(dir)
+	local old = vim.fs.joinpath(dir, "old.txt")
+	open_tree_on(dir, old)
+
+	answer_prompt("r", { "<C-u>", "renamed.txt<CR>" })
+
+	eq(
+		vim.wait(ASYNC_MS, function()
+			return exists(vim.fs.joinpath(dir, "renamed.txt"))
+		end, 20),
+		true
+	)
+	eq(exists(old), false)
 end
 
 T["file-tree: Missing neo-tree is tolerated"] = function()
