@@ -8,10 +8,13 @@ set -euo pipefail
 domain=${1:-org.alacritty}
 root=$(cd "$(dirname "$0")/../.." && pwd)
 
-# a missing domain is already reset
+# a missing domain is already reset; any other failure is reported
 reset_domains() {
-	defaults read "$domain" >/dev/null 2>&1 || return 0
-	defaults delete "$domain"
+	local err
+	err=$(defaults delete "$domain" 2>&1 >/dev/null) && return 0
+	if [[ $err == *"Domain ($domain) not found."* ]]; then return 0; fi
+	printf '%s\n' "$err" >&2
+	return 1
 }
 
 apply_terminal_setup() {
