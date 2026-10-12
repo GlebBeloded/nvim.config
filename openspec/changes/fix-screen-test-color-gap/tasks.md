@@ -86,13 +86,13 @@ Scenarios: "statusline: insert mode accent matches reference screenshot"
 **Interfaces:**
 - Consumes: `H.expect_screen_colors` from task 1.
 
-- [ ] **2.1 Failing test.** In the Insert case replace the `H.expect_colors(...)` call with `H.expect_screen_colors(child, -1, mask, legend)`: the Normal mask with `INSERT` in place of `NORMAL` (same widths), legend `a = "lualine_a_insert"`, `c = "lualine_c_insert"`, `e = "lualine_x_diagnostics_error_insert"`, `w = "lualine_x_diagnostics_warn_insert"`, `t`/`l` unchanged. Delete `DARK` and `CHIP`.
-- [ ] **2.2 Run it.** `make test-screen FILE=tests/screen/statusline/test_statusline_screen.lua CASE="insert mode accent"`. If it fails, the failure names an unknown group or prints the actual mask: correct the legend to the groups lualine really draws in Insert mode, read from the printed actual mask and attrs. Never widen a letter to `?`, and the `a` segment must stay distinct from Normal's. Then PASS.
-- [ ] **2.3 Prove the accent is checked.** Temporarily set `a = "lualine_a_normal"` → FAIL with a mask diff at column 1. Revert.
-- [ ] **2.4 Remove the old helpers** (D6). `grep -rn "statusline_colors\|expect_colors\|test.Colors" tests docs` → no hits; `make types` → green.
-- [ ] **2.5 Docs.** Replace the `expect_colors` bullet in `docs/testing.md` "Screenshots": `H.expect_screen_colors(child, row, mask, legend)` checks drawn colors per cell in the design-render mask/legend notation, and the failure's actual mask is what to paste after an intended color change. No implementation details.
-- [ ] **2.6 Run, expect PASS.** `make test-screen FILE=tests/screen/statusline/test_statusline_screen.lua` → both cases PASS; `git diff --exit-code tests/screenshots` → exit 0.
-- [ ] **2.7 Commit** `test(statusline): assert Insert statusline colors with a mask; drop expect_colors`.
+- [x] **2.1 Failing test.** In the Insert case replace the `H.expect_colors(...)` call with `H.expect_screen_colors(child, -1, mask, legend)`: the Normal mask with `INSERT` in place of `NORMAL` (same widths), legend `a = "lualine_a_insert"`, `c = "lualine_c_insert"`, `e = "lualine_x_diagnostics_error_insert"`, `w = "lualine_x_diagnostics_warn_insert"`, `t`/`l` unchanged. Delete `DARK` and `CHIP`.
+- [x] **2.2 Run it.** `make test-screen FILE=tests/screen/statusline/test_statusline_screen.lua CASE="insert mode accent"`. If it fails, the failure names an unknown group or prints the actual mask: correct the legend to the groups lualine really draws in Insert mode, read from the printed actual mask and attrs. Never widen a letter to `?`, and the `a` segment must stay distinct from Normal's. Then PASS. Result: `lualine_c_insert` is undefined (the theme has no Insert `c` section), lualine draws `c` with `lualine_c_normal`; the legend uses that.
+- [x] **2.3 Prove the accent is checked.** Temporarily set `a = "lualine_a_normal"` → FAIL with a mask diff at column 1. Revert.
+- [x] **2.4 Remove the old helpers** (D6). `grep -rn "statusline_colors\|expect_colors\|test.Colors" tests docs` → no hits; `make types` → green.
+- [x] **2.5 Docs.** Replace the `expect_colors` bullet in `docs/testing.md` "Screenshots": `H.expect_screen_colors(child, row, mask, legend)` checks drawn colors per cell in the design-render mask/legend notation, and the failure's actual mask is what to paste after an intended color change. No implementation details.
+- [x] **2.6 Run, expect PASS.** `make test-screen FILE=tests/screen/statusline/test_statusline_screen.lua` → both cases PASS; `git diff --exit-code tests/screenshots` → exit 0.
+- [x] **2.7 Commit** `test(statusline): assert Insert statusline colors with a mask; drop expect_colors`.
 
 ## 3. Gate
 

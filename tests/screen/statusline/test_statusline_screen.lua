@@ -24,9 +24,6 @@ local function expect_statusline_screenshot(mode_label)
 	H.expect_screenshot(H.screen_rows(child, -1))
 end
 
--- gruvbox-material (medium, dark) colors the screenshots cannot see.
-local DARK = "#282828"
-
 local T = H.child_set(child, start)
 
 T["statusline: statusline matches reference screenshot"] = function()
@@ -46,7 +43,16 @@ end
 T["statusline: insert mode accent matches reference screenshot"] = function()
 	child.type_keys("i")
 	expect_statusline_screenshot("INSERT")
-	H.expect_colors(H.statusline_colors(child, "INSERT"), { fg = DARK, bg = "#7daea3", bold = true })
+	H.expect_screen_colors(child, -1, {
+		"aaaaaaaacccccccccccccccccccccccccccccccccccccccccccccccccccccccceeeeewwwwtlttttt",
+	}, {
+		a = "lualine_a_insert",
+		c = "lualine_c_normal",
+		e = "lualine_x_diagnostics_error_insert",
+		w = "lualine_x_diagnostics_warn_insert",
+		t = "StatuslineLangText",
+		l = "StatuslineLang_lua",
+	})
 end
 
 return T
