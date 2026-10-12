@@ -27,5 +27,5 @@ Scenarios: none (rule 10.3 housekeeping, covered by the AI review).
 
 ## 4. Verify
 
-- [ ] 4.1 `make trace` lists both scenarios as `tested`, no orphans
-- [ ] 4.2 `make test CASE=loop` and `make check` are green
+- [x] 4.1 `make trace` lists both scenarios as `tested`, no orphans
+- [x] 4.2 `make test CASE=loop` and `make check` are green (`make test CASE=loop` green here; `make check` runs once in the gate)
