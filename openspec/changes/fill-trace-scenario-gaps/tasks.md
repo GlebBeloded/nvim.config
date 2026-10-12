@@ -91,11 +91,11 @@ Every task follows the same steps:
 
 ## 5. keymaps (integration, `test_keymaps.lua`)
 
-- [ ] 5.1 Scenarios: Alt-e reveals current file, Alt-e closes focused filesystem tree, Alt-e on URI buffer focuses filesystem, Alt-G switches tree to git status, Alt-G closes focused git status tree.
+- [x] 5.1 Scenarios: Alt-e reveals current file, Alt-e closes focused filesystem tree, Alt-e on URI buffer focuses filesystem, Alt-G switches tree to git status, Alt-G closes focused git status tree.
   1. Failing cases with `child.type_keys("<M-e>")` / `"<M-G>"`; assert neo-tree source, focus, cursor node and window count.
   2. None.
   3. Verify (keymaps).
-- [ ] 5.2 Scenarios: Alt-g opens Differ (temp repo), Alt-F opens live grep.
+- [x] 5.2 Scenarios: Alt-g opens Differ (temp repo), Alt-F opens live grep.
   1. Failing cases; assert the Differ layout and the Telescope prompt buffer filetype and title.
   2. None.
   3. Verify (keymaps 36/36).
@@ -109,11 +109,11 @@ Every task follows the same steps:
 
 ## 7. statusline
 
-- [ ] 7.1 Unit `test_copilot.lua`. Scenarios: copilot glyph hidden when healthy, copilot glyph shown when disabled, copilot glyph shown on warning.
+- [x] 7.1 Unit `test_copilot.lua`. Scenarios: copilot glyph hidden when healthy, copilot glyph shown when disabled, copilot glyph shown on warning.
   1. Failing cases with the existing Copilot stubs; assert the component output exactly as the spec states (today `""` for both shown cases, design D5).
   2. None.
   3. Verify (statusline).
-- [ ] 7.2 Integration `test_statusline.lua`. Scenarios: diff hidden in narrow windows (temp repo), navic breadcrumb shown when available.
+- [x] 7.2 Integration `test_statusline.lua`. Scenarios: diff hidden in narrow windows (temp repo), navic breadcrumb shown when available.
   1. Failing cases: modified file in a window narrower than the spec's threshold, assert the diff text is absent from `H.screen_rows(child, -1)`; stub `nvim-navic` `is_available`/`get_location` in the child and assert the breadcrumb text.
   2. None.
   3. Verify (statusline 28/28).
