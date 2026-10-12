@@ -33,12 +33,15 @@ local function define_highlights()
 	vim.api.nvim_set_hl(0, "StatuslineLangCapError", { fg = ERR_FG }) -- left cap when broken
 end
 
+local function on_colorscheme()
+	logo_defined = {}
+	define_highlights()
+end
+
 define_highlights()
 vim.api.nvim_create_autocmd("ColorScheme", {
-	callback = function()
-		logo_defined = {}
-		define_highlights()
-	end,
+	group = vim.api.nvim_create_augroup("gleb_statusline_language", { clear = true }),
+	callback = on_colorscheme,
 })
 
 -- ── pieces ──────────────────────────────────────────────────────────────────

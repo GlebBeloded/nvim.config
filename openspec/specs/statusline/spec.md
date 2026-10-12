@@ -47,7 +47,7 @@ The config SHALL color the statusline from `gleb.statusline.palette` (derived fr
 - **THEN** it matches the stored reference screenshot with the insert (blue) accent on the mode section
 
 ### Requirement: Language chip
-The config SHALL render, via `require("gleb.statusline.language").component()`, an empty string when `filetype` is empty; otherwise `<left cap><space><filetype logo><space><filetype><space><right cap>` where the left cap uses highlight `StatuslineLangCapOk` if a non-stopped LSP client is attached to the current buffer and `StatuslineLangCapError` otherwise, and the right cap uses `StatuslineLangEdge`. Highlight groups are (re)defined on `ColorScheme`.
+The config SHALL render, via `require("gleb.statusline.language").component()`, an empty string when `filetype` is empty; otherwise `<left cap><space><filetype logo><space><filetype><space><right cap>` where the left cap uses highlight `StatuslineLangCapOk` if a non-stopped LSP client is attached to the current buffer and `StatuslineLangCapError` otherwise, and the right cap uses `StatuslineLangEdge`. Highlight groups are (re)defined on `ColorScheme` by a single autocmd in augroup `gleb_statusline_language` (created with `clear = true`). The logo highlight group is named `StatuslineLang_<filetype>` with every character outside `[%w_]` replaced by `_`.
 
 #### Scenario: chip empty without filetype
 - **WHEN** `vim.bo.filetype` is `""` and `component()` is called
@@ -68,6 +68,14 @@ The config SHALL render, via `require("gleb.statusline.language").component()`, 
 #### Scenario: chip highlights survive colorscheme change
 - **WHEN** `:colorscheme <any>` is executed
 - **THEN** highlight groups `StatuslineLangText`, `StatuslineLspOk`, `StatuslineLspError`, `StatuslineLangEdge`, `StatuslineLangCapOk` and `StatuslineLangCapError` are defined
+
+#### Scenario: chip colorscheme autocmd not duplicated on reload
+- **WHEN** `gleb.statusline.language` is required, then removed from `package.loaded` and required again
+- **THEN** `nvim_get_autocmds({ group = "gleb_statusline_language", event = "ColorScheme" })` returns exactly one autocmd
+
+#### Scenario: chip logo highlight name sanitized
+- **WHEN** `component()` is called for a buffer with `filetype=foo-bar.baz`
+- **THEN** highlight group `StatuslineLang_foo_bar_baz` exists with `bg` equal to the palette `chip_bg`
 
 ### Requirement: Delayed LSP progress
 The config SHALL track `LspProgress` events per `<client_id>:<token>` (`begin` adds a task, `report` updates its message/percentage, `end` removes it) and render, via `require("gleb.statusline.lsp_progress").progress()`, one entry per task active for at least 500 ms as `<spinner> <label>` or `<spinner> <label> <pct>%%`, joined by two spaces. Every event SHALL be appended to `/tmp/nvim-lsp-progress.log`.

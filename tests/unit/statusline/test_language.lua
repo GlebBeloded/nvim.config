@@ -66,4 +66,15 @@ T["statusline: chip logo highlight per filetype"] = function()
 	eq(string.format("#%06x", hl_bg), chip_bg:lower())
 end
 
+T["statusline: chip colorscheme autocmd not duplicated on reload"] = function()
+	child.lua([[
+        package.loaded["gleb.statusline.language"] = nil
+        Language = require("gleb.statusline.language")
+    ]])
+
+	local count =
+		child.lua_get([[#vim.api.nvim_get_autocmds({ group = "gleb_statusline_language", event = "ColorScheme" })]])
+	eq(count, 1)
+end
+
 return T
