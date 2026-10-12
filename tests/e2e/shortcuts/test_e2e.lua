@@ -1,0 +1,214 @@
+-- E2E layer: real Alacritty (repo config) -> real zellij -> Neovim (real
+-- config), real macOS key events (tests/e2e/alacritty.lua). Skipped with a
+-- one-line fix when Accessibility is not granted, and (unless E2E=1) when key
+-- events only arrive with the window focused. The Ctrl+Q case quits zellij, so
+-- it runs last.
+local MiniTest = require("mini.test")
+local C = require("tests.shortcuts.chain")
+local E = require("tests.e2e.alacritty")
+local S = require("tests.shortcuts.stack")
+
+local eq = MiniTest.expect.equality
+local NEOVIM_PANE, CAT_PANE = "terminal_0", "terminal_1"
+local CONSUMED = { "Cmd+J", "Cmd+K", "Cmd+[", "Cmd+]" }
+local SETTLE_MS = 300
+
+---@type e2e.Stack?
+local stack
+---@type string?
+local skipped
+
+---@return e2e.Stack
+local function get()
+	if skipped then
+		MiniTest.skip("SKIPPED (reason on the first line)")
+	end
+	return assert(stack, "e2e stack not started")
+end
+
+local function start()
+	skipped = E.preflight()
+	if not skipped then
+		stack = E.start()
+		if not stack.background and vim.env.E2E ~= "1" then
+			skipped = "key events need the window focused; that runs only with E2E=1 (make e2e, the loop's gate)"
+			stack:stop()
+			stack = nil
+		end
+	end
+	if skipped then
+		io.write("\ne2e: SKIPPED: " .. skipped .. "\n")
+	end
+end
+
+local function stop()
+	if stack then
+		stack:stop()
+		stack = nil
+	end
+end
+
+--- Real mappings, one Neovim window, zellij focus on Neovim, normal mode.
+local function reset()
+	if skipped then
+		return
+	end
+	local s = get()
+	s:restore()
+	s:lua([[vim.cmd("stopinsert | silent! only")]])
+	if s:focused_pane() ~= NEOVIM_PANE then
+		s:zellij("focus-pane-id", NEOVIM_PANE)
+	end
+	S.wait_for(function()
+		return s:focused_pane() == NEOVIM_PANE
+	end, "focus on the Neovim pane")
+end
+
+local T = MiniTest.new_set({ hooks = { pre_once = start, pre_case = reset, post_once = stop } })
+
+---@param physical string
+---@return shortcuts.Row
+local function row(physical)
+	for _, r in ipairs(C.shortcut_rows()) do
+		if r.shortcut == physical then
+			return r
+		end
+	end
+	error("no shortcut table row " .. physical)
+end
+
+--- Press a shortcut and wait until a recorder fires; return the recorded keys.
+---@param shortcut string
+---@return string[]
+local function press_and_record(shortcut)
+	local s = get()
+	s:clear_hits()
+	E.press(s, E.chord(shortcut))
+	pcall(S.wait_for, function()
+		return #s:hits() > 0
+	end, "recorder", 1500)
+	vim.wait(30) -- a second (wrong) key would land now
+	return s:hits()
+end
+
+---@param expr string Lua expression evaluated in Neovim
+---@param what string
+local function wait_nvim(expr, what)
+	S.wait_for(function()
+		return get():lua("return " .. expr)
+	end, what, 3000)
+end
+
+---@param pane string
+---@param what string
+local function wait_pane(pane, what)
+	S.wait_for(function()
+		return get():focused_pane() == pane
+	end, what, 3000)
+end
+
+---@param fn fun()
+local function burst(fn)
+	E.burst(get(), fn)
+end
+
+T["shortcuts: Every passed shortcut reaches its Neovim key from a real key press"] = function()
+	local s, rows = get(), vim.tbl_filter(function(r)
+		return r.receives ~= nil
+	end, C.shortcut_rows())
+	s:record(vim.tbl_map(function(r)
+		return r.receives
+	end, rows))
+	local problems = {}
+	burst(function()
+		for _, r in ipairs(rows) do
+			local hits = press_and_record(r.shortcut)
+			if not vim.deep_equal(hits, { r.receives }) then
+				local got = #hits > 0 and table.concat(hits, " ") or "nothing"
+				table.insert(problems, string.format("%-20s expected %s, got %s", r.shortcut, r.receives, got))
+			end
+		end
+	end)
+	if #problems > 0 then
+		error(table.concat(problems, "\n"), 0)
+	end
+end
+
+T["shortcuts: Consumed shortcuts never reach Neovim from a real key press"] = function()
+	local s = get()
+	s:record(vim.tbl_map(function(physical)
+		return C.decode(row(physical).bytes).nvim
+	end, CONSUMED))
+	burst(function()
+		for _, physical in ipairs(CONSUMED) do
+			E.press(s, E.chord(physical))
+			vim.wait(100)
+		end
+		vim.wait(SETTLE_MS)
+	end)
+	eq(s:hits(), {})
+	eq(s:focused_pane(), NEOVIM_PANE)
+end
+
+T["shortcuts: Ctrl+Return reaches Neovim as <C-CR> from a real key press"] = function()
+	local s, hits = get(), {}
+	s:record({ "<C-CR>", "<CR>" })
+	burst(function()
+		hits = press_and_record("Ctrl+Return")
+	end)
+	eq(hits, { "<C-CR>" })
+end
+
+T["shortcuts: Cmd+H moves to the left Neovim split from a real key press"] = function()
+	local s = get()
+	s:lua([[vim.cmd("vsplit | wincmd l")]])
+	local left = s:lua("return vim.api.nvim_tabpage_list_wins(0)[1]")
+	burst(function()
+		E.press(s, "cmd+h")
+		wait_nvim("vim.api.nvim_get_current_win() == " .. left, "left window")
+	end)
+	eq(s:focused_pane(), NEOVIM_PANE)
+end
+
+T["shortcuts: Ctrl+Up grows the current Neovim split from a real key press"] = function()
+	local s = get()
+	s:lua([[vim.cmd("split")]])
+	local height = s:lua("return vim.api.nvim_win_get_height(0)")
+	burst(function()
+		E.press(s, "ctrl+up")
+		wait_nvim("vim.api.nvim_win_get_height(0) == " .. (height + 2), "split 2 rows taller")
+	end)
+end
+
+T["shortcuts: Cmd+L at the rightmost Neovim split moves zellij focus right from a real key press"] = function()
+	local s = get()
+	burst(function()
+		E.press(s, "cmd+l")
+		wait_pane(CAT_PANE, "zellij focus on the cat pane")
+	end)
+end
+
+T["shortcuts: Ctrl+H in a non-Neovim pane moves zellij focus left from a real key press"] = function()
+	local s = get()
+	s:zellij("focus-pane-id", CAT_PANE)
+	wait_pane(CAT_PANE, "focus on the cat pane")
+	burst(function()
+		E.press(s, "ctrl+h")
+		wait_pane(NEOVIM_PANE, "zellij focus on the Neovim pane")
+	end)
+end
+
+T["shortcuts: Ctrl+Q quits zellij and closes the Alacritty window"] = function()
+	local s = get()
+	local pid = assert(s.alacritty_pid, "Alacritty not running")
+	burst(function()
+		E.press(s, "ctrl+q")
+		S.wait_for(function()
+			return vim.uv.kill(pid, 0) ~= 0
+		end, "Alacritty to exit", 5000)
+	end)
+	local sessions = S.run({ "zellij", "list-sessions", "--short", "--no-formatting" }, s.env)
+	eq(vim.list_contains(vim.split(sessions.stdout or "", "\n"), s.session), false)
+end
+
+return T

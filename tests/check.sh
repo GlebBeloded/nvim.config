@@ -37,7 +37,10 @@ wait_all() {
 		for t in $pending; do
 			if [ -f "$logs/$t.rc" ]; then
 				if [ "$(cat "$logs/$t.rc")" = 0 ]; then status="ok  "; else status="FAIL"; fi
-				printf '%s %-14s %5s s\n' "$status" "$t" "$(cat "$logs/$t.time")"
+				# a layer that cannot run here (e2e without Accessibility) says why
+				skip=$(grep -o -m1 '[a-z0-9-]*: SKIPPED: .*' "$logs/$t.log")
+				[ -n "$skip" ] && [ "$status" = "ok  " ] && status="skip"
+				printf '%s %-14s %5s s%s\n' "$status" "$t" "$(cat "$logs/$t.time")" "${skip:+  ($skip)}"
 			else
 				rest="$rest $t"
 			fi

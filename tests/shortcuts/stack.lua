@@ -26,7 +26,7 @@ local EXTRA_OPTIONS = {
 ---@field env table<string, string?>
 ---@field channel integer? RPC channel to Neovim
 ---@field nvim_pid integer?
----@field gui vim.SystemObj? Alacritty process (gui layer), nil for tmux
+---@field frontend shortcuts.Frontend
 local Stack = {}
 Stack.__index = Stack
 
@@ -191,32 +191,34 @@ local function connect(self)
 	end, "zellij client focused on the Neovim pane")
 end
 
----@param self shortcuts.Stack
-local function start_tmux(self)
-	local tmux = { "tmux", "-S", self:tmux_socket(), "-f", "/dev/null", "new-session", "-d" }
-	vim.list_extend(tmux, { "-x", "200", "-y", "50", self:zellij_command() })
-	local result = run(tmux)
-	assert(result.code == 0, "tmux new-session failed: " .. (result.stderr or ""))
-end
+--- What runs zellij: a terminal (tmux pty here, a real Alacritty window in
+--- tests/e2e/alacritty.lua). start() launches `self:zellij_command()`; stop()
+--- must be safe to call twice and after a failed start.
+---@class shortcuts.Frontend
+---@field term? string TERM for zellij (nil: inherit the terminal's own)
+---@field start fun(self: shortcuts.Stack)
+---@field stop fun(self: shortcuts.Stack)
 
----@param self shortcuts.Stack
-local function start_alacritty(self)
-	local config = vim.fs.joinpath(C.configs().alacritty.root, "alacritty.toml")
-	local cmd = { "alacritty", "--config-file", config, "--title", self.session }
-	vim.list_extend(cmd, { "-e", "sh", "-c", self:zellij_command() })
-	self.gui = vim.system(cmd, { text = true })
-end
+---@type shortcuts.Frontend
+M.TMUX = {
+	term = "xterm-256color",
+	start = function(self)
+		local tmux = { "tmux", "-S", self:tmux_socket(), "-f", "/dev/null", "new-session", "-d" }
+		vim.list_extend(tmux, { "-x", "200", "-y", "50", self:zellij_command() })
+		local result = run(tmux)
+		assert(result.code == 0, "tmux new-session failed: " .. (result.stderr or ""))
+	end,
+	stop = function(self)
+		run({ "tmux", "-S", self:tmux_socket(), "kill-server" })
+	end,
+}
 
----@class shortcuts.StartOpts
----@field gui? boolean drive a real Alacritty window instead of a tmux pty
-
---- Start tmux (or Alacritty) + zellij + Neovim. Call stack:stop() when done.
----@param opts? shortcuts.StartOpts
+--- Start the frontend (default tmux) + zellij + Neovim. Call stack:stop() when done.
+---@param frontend? shortcuts.Frontend
 ---@return shortcuts.Stack
-function M.start(opts)
-	opts = opts or {}
+function M.start(frontend)
 	H.isolate()
-	local self = setmetatable({}, Stack)
+	local self = setmetatable({ frontend = frontend or M.TMUX }, Stack)
 	self.dir = vim.trim(vim.fn.system({ "mktemp", "-d", "/tmp/nvst.XXXXXX" }))
 	self.session = string.format("nvim-shortcuts-%d-%d", vim.fn.getpid(), vim.uv.hrtime() % 100000)
 	self.env = {
@@ -227,7 +229,7 @@ function M.start(opts)
 		XDG_STATE_HOME = vim.env.XDG_STATE_HOME,
 		XDG_CACHE_HOME = vim.env.XDG_CACHE_HOME,
 		PATH = vim.env.PATH,
-		TERM = not opts.gui and "xterm-256color" or nil,
+		TERM = self.frontend.term,
 	}
 	vim.api.nvim_create_autocmd("VimLeavePre", {
 		callback = function()
@@ -236,11 +238,7 @@ function M.start(opts)
 	})
 	local ok, err = pcall(function()
 		write_zellij_files(self)
-		if opts.gui then
-			start_alacritty(self)
-		else
-			start_tmux(self)
-		end
+		self.frontend.start(self)
 		connect(self)
 	end)
 	if not ok then
@@ -250,7 +248,7 @@ function M.start(opts)
 	return self
 end
 
---- Kill zellij and tmux, close RPC, delete the temp dir. Safe to call twice.
+--- Kill zellij and the frontend, close RPC, delete the temp dir. Safe to call twice.
 function Stack:stop()
 	if self.channel then
 		pcall(vim.fn.chanclose, self.channel)
@@ -258,12 +256,7 @@ function Stack:stop()
 	end
 	if self.dir then
 		run({ "zellij", "kill-session", self.session }, self.env)
-		run({ "tmux", "-S", self:tmux_socket(), "kill-server" })
-		if self.gui then
-			self.gui:kill(15)
-			self.gui:wait(5000)
-			self.gui = nil
-		end
+		self.frontend.stop(self)
 		vim.fn.delete(self.dir, "rf")
 		self.dir = nil
 	end
@@ -315,26 +308,7 @@ function Stack:clear_hits()
 	self:lua("_G.shortcut_hits = {}")
 end
 
---- Press a physical key in the Alacritty window via System Events (gui layer).
---- Needs Accessibility permission for the calling terminal; steals focus.
----@param key { char?: string, code?: integer, mods?: string[] } mods: command, shift, control, option
-function Stack:press(key)
-	local gui = assert(self.gui, "press() needs M.start({ gui = true })")
-	local mods = vim.tbl_map(function(mod)
-		return mod .. " down"
-	end, key.mods or {})
-	local using = #mods > 0 and (" using {" .. table.concat(mods, ", ") .. "}") or ""
-	local stroke = key.code and ("key code " .. key.code) or string.format("keystroke %q", key.char)
-	local script = table.concat({
-		'tell application "System Events"',
-		string.format("set frontmost of (first process whose unix id is %d) to true", gui.pid),
-		"delay 0.2",
-		stroke .. using,
-		"end tell",
-	}, "\n")
-	local result = run({ "osascript", "-e", script })
-	local hint = "grant Accessibility to the app running make (System Settings > Privacy & Security > Accessibility)"
-	assert(result.code == 0, "osascript failed: " .. vim.trim(result.stderr or "") .. "\n" .. hint)
-end
+-- for frontends (tests/e2e/alacritty.lua)
+M.run, M.write = run, write
 
 return M

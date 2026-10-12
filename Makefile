@@ -1,5 +1,5 @@
 # Test pyramid for this Neovim config. See docs/testing.md.
-#   make check   - every layer below, concurrently (tests/check.sh); the merge gate
+#   make check   - every layer below, concurrently (tests/check.sh); E2E=1 for the merge gate
 #   make quick   - only what the changes vs $(BASE) touch (tests/quick.sh); the inner loop
 
 # not NVIM: Neovim exports $NVIM (its server address) to :terminal jobs
@@ -14,13 +14,15 @@ NVIM_LUA = $(NVIM_BIN) -u tests/minimal_init.lua -l
 PARALLEL = $(NVIM_LUA) tests/parallel.lua $(1)
 BASE ?= auto
 export BASE
+# e2e: unset = run only if key events need no window focus, 1 = focus bursts allowed, 0 = skip
+export E2E
 
 .PHONY: check quick install deps fmt lint types test test-unit test-integration test-screen \
 	screenshots smoke smoke-health smoke-startup trace render colorize clean
 
 # startup timing runs alone after the rest, so the other layers do not skew it
 check:
-	@tests/check.sh lint types test trace chain stack smoke-health +smoke-startup
+	@tests/check.sh lint types test trace chain stack e2e smoke-health +smoke-startup
 
 quick:
 	@tests/quick.sh
@@ -81,7 +83,7 @@ colorize: deps
 
 # --- shortcut layers: Alacritty -> zellij -> Neovim (docs/testing.md) ----------
 # (CAPS narrows only the mini.test layers above)
-.PHONY: deps-shortcuts chain stack e2e-gui
+.PHONY: deps-shortcuts chain stack e2e
 
 deps-shortcuts:
 	@tests/shortcuts/bootstrap.sh
@@ -93,8 +95,9 @@ chain: deps deps-shortcuts
 stack: deps deps-shortcuts
 	@CAPS= $(call MINITEST,stack)
 
-e2e-gui: deps deps-shortcuts
-	@CAPS= $(call MINITEST,gui)
+# real Alacritty + zellij + Neovim, real key events; SKIPPED without Accessibility
+e2e: deps deps-shortcuts
+	@CAPS= E2E=$${E2E:-1} $(call MINITEST,e2e)
 
 clean:
 	rm -rf .tests

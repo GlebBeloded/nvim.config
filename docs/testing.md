@@ -4,26 +4,29 @@
 
 | Command | What runs | Wall time (14-core Mac) |
 |---|---|---|
-| `make check` | every layer below except GUI, concurrently (`tests/check.sh`); smoke startup timing runs alone afterwards | ~15–20 s (was ~85 s serial) |
+| `make check` | every layer below, concurrently (`tests/check.sh`); smoke startup timing runs alone afterwards. e2e runs only if it needs no window focus (else `skip`) | ~15 s |
+| `make check E2E=1` | the same, e2e with focus bursts; the loop's gate (`.archon/scripts/gate.py`) | ~15 s + e2e |
 | `make quick` | lint + trace, plus only the layers the changes vs `BASE` (default `auto`) can affect (`tests/quick.sh` has the mapping) | <1 s docs only, ~7 s one capability |
 | `make test FILE=… CASE=…` | one file / matching cases | ~1–3 s |
 
-`check.sh` prints one status line per layer as it finishes, then the full log of every failed layer. `make quick` takes `ALL=1`, `STACK=1`, `SMOKE=1` and `TYPES=1` to force a layer.
+`check.sh` prints one status line per layer as it finishes, then the full log of every failed layer. A layer that cannot run here prints `skip` with its reason (e2e without Accessibility). `make quick` takes `ALL=1`, `STACK=1`, `E2E=1`, `SMOKE=1` and `TYPES=1` to force a layer.
 
-| Layer | Command | What it checks |
-|---|---|---|
-| Static | `make lint` | `stylua --check` and `selene` on `lua/ init.lua tests/` |
-| Static | `make types` | `lua-language-server --check` with `.luarc.jsonc` (LuaJIT, `vim` global, `$VIMRUNTIME` as library), gate at Warning |
-| Unit | `make test-unit` | one module in a *bare* child Neovim (`tests/minimal_init.lua`, no user config, plugins added one by one) |
-| Integration | `make test-integration` | behaviour of the *real* config in a child Neovim (keys, autocmds, plugins) |
-| Screen | `make test-screen` | reference screenshots (`tests/screenshots/`) of the real config |
-| Smoke | `make smoke` | headless start of the real config: nothing in `:messages` or stderr, no `ERROR` in `:checkhealth`, startup time within budget |
-| Trace | `make trace` | scenario ↔ test matrix, fails on orphan tests |
-| Chain | `make chain` | real Alacritty + zellij configs parsed and routed, mappings checked in a child Neovim; prints the shortcut table ([shortcut layers](#shortcut-layers)) |
-| Stack | `make stack` | real zellij (user keybinds) in a tmux pty with the real Neovim config, fed Alacritty's bytes |
-| GUI (opt-in) | `make e2e-gui` | real Alacritty window, real macOS key events; not in `make check` |
+Pyramid, bottom to top. Times are wall times of one layer on its own (in `make check` they overlap).
 
-`make test` runs all three mini.test layers (`tests/parallel.lua`): the matched cases are sharded over `JOBS` headless workers (default cores − 2; `JOBS=1` runs serially), balanced by the case durations of earlier runs (`.tests/timings.json`), and reported as one mini.test report with fails and notes at the end. Every worker has its own sandbox (see [Isolation](#isolation)). `make screenshots`, `chain` and `stack` run in one process. `make deps` fetches the pinned test dependency, mini.nvim v0.18.0, into `.tests/deps` (gitignored) via `tests/bootstrap.sh`. It is not part of the plugin list. `make install` installs the static tools with brew.
+| Layer | Command | What it checks | Time |
+|---|---|---|---|
+| Static | `make lint` | `stylua --check` and `selene` on `lua/ init.lua tests/` | <1 s |
+| Static | `make types` | `lua-language-server --check` with `.luarc.jsonc` (LuaJIT, `vim` global, `$VIMRUNTIME` as library), gate at Warning | ~6 s, 0 s cached |
+| Static | `make trace` | scenario ↔ test matrix, fails on orphan tests | <1 s |
+| Static | `make chain` | real Alacritty + zellij configs parsed and routed, mappings checked in a child Neovim; prints the shortcut table ([shortcut layers](#shortcut-layers)) | ~2 s |
+| Unit | `make test-unit` | one module in a *bare* child Neovim (`tests/minimal_init.lua`, no user config, plugins added one by one) | `make test` (all three): ~10 s |
+| Integration | `make test-integration` | behaviour of the *real* config in a child Neovim (keys, autocmds, plugins) | |
+| Screen | `make test-screen` | reference screenshots (`tests/screenshots/`) of the real config | |
+| Stack | `make stack` | real zellij (user keybinds) in a tmux pty with the real Neovim config, fed Alacritty's bytes | ~6 s |
+| E2E | `make e2e` | real Alacritty window + zellij + Neovim, real macOS key events; needs Accessibility, else skipped | ~2 s to ready; full run not measured yet; 0.3 s skipped |
+| Smoke | `make smoke` | headless start of the real config: nothing in `:messages` or stderr, no `ERROR` in `:checkhealth`, startup time within budget | ~7 s health, ~2 s startup |
+
+`make test` runs all three mini.test layers (`tests/parallel.lua`): the matched cases are sharded over `JOBS` headless workers (default cores − 2; `JOBS=1` runs serially), balanced by the case durations of earlier runs (`.tests/timings.json`), and reported as one mini.test report with fails and notes at the end. Every worker has its own sandbox (see [Isolation](#isolation)). `make screenshots`, `chain`, `stack` and `e2e` run in one process. `make deps` fetches the pinned test dependency, mini.nvim v0.18.0, into `.tests/deps` (gitignored) via `tests/bootstrap.sh`. It is not part of the plugin list. `make install` installs the static tools with brew.
 
 To narrow a run, use `FILE=tests/unit/session/test_key.lua make test`, `CAPS=session,keymaps make test` (only `tests/<layer>/<cap>/`) or `CASE="Move to left" make test-integration`.
 
@@ -42,6 +45,8 @@ tests/
   parallel.lua          make test*: shards cases over JOBS workers, merged report
   check.sh / quick.sh   make check / make quick
   <layer>/<capability>/test_<topic>.lua
+  shortcuts/            chain + stack harness (configs.py, chain.lua, stack.lua)
+  e2e/                  e2e harness (alacritty.lua, keys.swift, build.sh)
   screenshots/          reference screenshots (text, committed)
   smoke/                make smoke (run.lua outside, probe.lua inside nvim)
   render/               make render / make colorize (cases.lua, tmux capture, mockup colorizer)
@@ -135,6 +140,8 @@ The Alacritty and zellij configs are external and unversioned. They are read-onl
 
 - **chain** (`tests/chain/`, ~2 s, in `make check`): `tests/shortcuts/configs.py` parses the TOML (imports followed) and the KDL (kdl-py, pinned in `.tests/venv` by `make deps-shortcuts`) and resolves zellij's keybind semantics. `tests/shortcuts/chain.lua` decodes bytes the way zellij and Neovim's TUI do and models vim-zellij-navigator. Then each row is checked against Alacritty, zellij (normal and locked mode) and `maparg` in a child Neovim.
 - **stack** (`tests/stack/`, ~10 s, in `make check`): `tests/shortcuts/stack.lua` runs tmux, used only as the pty. Inside it run real zellij with a copy of the user's config (session serialization off; keybinds unchanged) and a fixed layout: Neovim with the real config on the left, `cat` on the right. Every process gets a temp dir under `/tmp`, which holds its own HOME (zellij cache with pre-granted plugin permissions), socket dirs and the helpers sandbox. Bytes are sent with `tmux send-keys -H`. Results are read from recorder mappings over RPC and from `zellij action list-clients`. Everything is cleaned up, even after a failure. `TMUX` and `TERM_PROGRAM` are unset for zellij, otherwise smart-splits picks its tmux backend.
-- **gui** (`tests/gui/`, opt-in): opens a dedicated Alacritty window (`--config-file` = the user's config) running the same zellij + Neovim, and presses keys with `osascript` System Events. It needs Accessibility permission for the app running `make`, steals focus for a few seconds, and closes the window afterwards.
+- **e2e** (`tests/e2e/`, `make e2e`): starts a dedicated Alacritty instance with the repo's `terminal/alacritty` config (imports pointed at it, fixed size) without activating it, running the stack layer's zellij + Neovim setup. `tests/e2e/keys.swift` (built and cached in `.tests/e2e/` by `tests/e2e/build.sh`) launches it, checks `AXIsProcessTrusted`, and posts real key events to its pid (`CGEventPostToPid`, US key positions, modifier down/up events). At start one probe key shows whether events reach the window in the background. If they do not, each test's key burst makes the window frontmost and gives focus back to the previous app afterwards; that mode runs only with `E2E=1` (`make e2e`, `make check E2E=1`, the loop's gate) and `make check` alone reports `skip`. The window, the zellij session and the temp dir are removed by `stop()`, and by a detached watchdog if the runner dies. `make quick` adds e2e (with `E2E=1`) when `terminal/`, keymaps, `tests/shortcuts/`, `tests/e2e/` or the shortcuts spec change and Accessibility is granted.
 
-Kitty keyboard protocol: zellij always pushes kitty flag 1 to Alacritty (`\e[>1u`) and answers Neovim's `CSI ? u`, so Neovim runs with kitty keys inside zellij. `chars` bindings are sent verbatim. Keys without a binding (Ctrl+Return, Ctrl+H, Ctrl+Q, Ctrl+arrows) are sent by the stack layer in Alacritty's flag-1 encoding (`alacritty/src/input/keyboard.rs`, e.g. Ctrl+Return = `\e[13;5u`). Only the gui layer checks Alacritty's real encoding, `option_as_alt`, and macOS key handling.
+  Permission: macOS charges Accessibility to the app that started the process chain (for a shell in Alacritty, Alacritty itself; the skip line names it). Enable it in System Settings > Privacy & Security > Accessibility. Without it every e2e case is skipped with that one-line fix. While a burst runs, your own keystrokes would land in the test window.
+
+Kitty keyboard protocol: zellij always pushes kitty flag 1 to Alacritty (`\e[>1u`) and answers Neovim's `CSI ? u`, so Neovim runs with kitty keys inside zellij. `chars` bindings are sent verbatim. Keys without a binding (Ctrl+Return, Ctrl+H, Ctrl+Q, Ctrl+arrows) are sent by the stack layer in Alacritty's flag-1 encoding (`alacritty/src/input/keyboard.rs`, e.g. Ctrl+Return = `\e[13;5u`). Only the e2e layer checks Alacritty's real encoding, `option_as_alt`, and macOS key handling.

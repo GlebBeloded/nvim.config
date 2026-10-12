@@ -9,7 +9,7 @@
 local MiniTest = require("mini.test")
 
 local SPECS_DIR = "openspec/specs"
-local TEST_LAYERS = { "unit", "integration", "screen", "chain", "stack", "gui" }
+local TEST_LAYERS = { "unit", "integration", "screen", "chain", "stack", "e2e" }
 local quiet = vim.list_contains(_G.arg or {}, "--quiet")
 
 ---@class trace.Scenario

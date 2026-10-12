@@ -41,7 +41,8 @@ def archived_specs_ok(log: str) -> tuple[bool, str]:
     return ok, tail
 
 
-green, check_tail = run(["make", "check"], f"check-{attempt}.log")
+# E2E=1: the e2e layer may focus its Alacritty window for key bursts (docs/testing.md)
+green, check_tail = run(["make", "check", "E2E=1"], f"check-{attempt}.log")
 spec_ok, spec_tail = True, ""
 tasks_done = True
 change_dir = pathlib.Path("openspec/changes") / change

@@ -3,9 +3,10 @@
 ## Purpose
 The user-facing contract "physical shortcut → intended action" for the whole key path Alacritty → zellij → Neovim on macOS (Alacritty 0.17, zellij 0.45, Neovim 0.12). Alacritty `[[keyboard.bindings]]` with `chars` turn Command shortcuts into byte sequences, zellij (`keybinds clear-defaults=true`, default mode `normal`) may consume a key or hand it to the vim-zellij-navigator plugin, and Neovim maps what arrives. The Alacritty and zellij configs are external and unversioned; they are read from `$ALACRITTY_CONFIG_DIR` / `$ZELLIJ_CONFIG_DIR`, else `<repo>/terminal/<tool>`, else `~/.config/<tool>`. This spec describes current behaviour, including collisions.
 
-Unlike other capabilities, these scenarios are not verified in a headless child Neovim alone. They run in three layers (docs/testing.md): **chain** (static: parse the real configs, route keys, check maparg in a child Neovim), **stack** (real zellij with the user's keybinds in a tmux pty, real Neovim config, bytes fed with `tmux send-keys -H`) and **gui** (opt-in: a real Alacritty window driven by macOS System Events).
+Unlike other capabilities, these scenarios are not verified in a headless child Neovim alone. They run in three layers (docs/testing.md): **chain** (static: parse the real configs, route keys, check maparg in a child Neovim), **stack** (real zellij with the user's keybinds in a tmux pty, real Neovim config, bytes fed with `tmux send-keys -H`) and **e2e** (a dedicated real Alacritty instance with the repo's config, real macOS key events posted to its process; skipped without Accessibility permission).
 
 ## Requirements
+
 ### Requirement: Shortcut table
 The chain SHALL route every shortcut in the shortcut table (section "Shortcut table" below) as listed, with zellij in `normal` mode and the focused zellij pane running Neovim in normal mode.
 
@@ -67,12 +68,40 @@ The stack SHALL behave as the shortcut table when real zellij 0.45 runs the user
 - **WHEN** the `cat` pane is focused and `\x08` is sent
 - **THEN** zellij focus moves to the Neovim pane on the left
 
-### Requirement: Real Alacritty delivers shortcuts
-The gui layer SHALL deliver physical key presses to Neovim as the shortcut table says, in a dedicated Alacritty window started with the user's Alacritty config and running zellij with the user's keybinds. Only this layer exercises Alacritty's own key encoding (rows with source `kitty`, `option_as_alt`, macOS key handling).
+### Requirement: Real key presses in Alacritty deliver shortcuts
+The e2e layer SHALL deliver physical key presses to Neovim as the shortcut table says, in a dedicated Alacritty instance started with the repo's Alacritty config and running real zellij with the user's keybinds and the stack layer's two-pane layout, with key events posted to that instance's process. Only this layer exercises Alacritty's own key encoding (rows with source `kitty`, `option_as_alt`, macOS key handling).
 
-#### Scenario: Physical shortcuts reach their Neovim key in Alacritty
-- **WHEN** recorder mappings are set in Neovim and System Events presses Cmd+G, Cmd+L, Shift+Return and Ctrl+Return in the Alacritty window
-- **THEN** the recorders for `<M-g>`, `<C-L>`, `<S-CR>` and `<C-CR>` fire
+#### Scenario: Every passed shortcut reaches its Neovim key from a real key press
+- **WHEN** a recorder mapping is set in Neovim normal mode for each row's *Neovim receives* key and each row's shortcut is pressed in the Alacritty window
+- **THEN** the recorder for exactly that key fires
+
+#### Scenario: Consumed shortcuts never reach Neovim from a real key press
+- **WHEN** a recorder mapping is set for the keys they encode and Cmd+J, Cmd+K, Cmd+[ and Cmd+] are pressed
+- **THEN** no recorder fires and the Neovim pane stays focused
+
+#### Scenario: Ctrl+Return reaches Neovim as <C-CR> from a real key press
+- **WHEN** recorders are set for `<C-CR>` and `<CR>` and Ctrl+Return is pressed
+- **THEN** only the `<C-CR>` recorder fires
+
+#### Scenario: Cmd+H moves to the left Neovim split from a real key press
+- **WHEN** two Neovim windows exist side by side, the cursor is in the right one, and Cmd+H is pressed
+- **THEN** the current Neovim window is the left one and zellij focus stays on the Neovim pane
+
+#### Scenario: Ctrl+Up grows the current Neovim split from a real key press
+- **WHEN** two Neovim windows exist stacked, the cursor is in the top one, and Ctrl+Up is pressed
+- **THEN** the current window is 2 rows taller
+
+#### Scenario: Cmd+L at the rightmost Neovim split moves zellij focus right from a real key press
+- **WHEN** Neovim has one window and Cmd+L is pressed
+- **THEN** zellij focus moves to the `cat` pane on the right
+
+#### Scenario: Ctrl+H in a non-Neovim pane moves zellij focus left from a real key press
+- **WHEN** the `cat` pane is focused and Ctrl+H is pressed
+- **THEN** zellij focus moves to the Neovim pane on the left
+
+#### Scenario: Ctrl+Q quits zellij and closes the Alacritty window
+- **WHEN** Ctrl+Q is pressed
+- **THEN** the zellij session ends and the Alacritty process exits
 
 ## Shortcut table
 Columns of the table the "Shortcut table" requirement refers to:
