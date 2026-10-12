@@ -17,6 +17,10 @@ Scenarios: "file-tree: q closes preview and tree"
 
 Layer: integration (`tests/integration/file-tree/test_tree.lua`, tree mappings). Same `CODEDIFF_CRASH` xfail rule as task 1.
 
-- [ ] 2.1 Failing test `T["file-tree: q closes preview and tree"]`: in a temp git repo (`git init`, commit a file, modify it; `cd` into it), record tab T, `:Neotree git_status`, wait for the file node, move onto it with `j` (the tree's own preview mapping calls `open_diff`), wait for `state.diff_tab ~= nil` and the tree focused in the diff tab, press `q` in normal mode, then assert current tab is T, the diff tab is no longer valid, `state.current_file` and `state.original_tab` are nil, and no window in the current tab has filetype `neo-tree`
-- [ ] 2.2 Show it red by running it with task 1's `diff_preview.lua` change reverted locally (fails on `state.original_tab` still set), then green with it; `git_close` in `lua/gleb/file_tree/init.lua` needs no change, as it does not read `state.original_tab` after closing
-- [ ] 2.3 `make quick`, then `make check` green; `make trace` lists the three scenarios as tested
+- [x] 2.1 Failing test `T["file-tree: q closes preview and tree"]`: in a temp git repo (`git init`, commit a file, modify it; `cd` into it), record tab T, `:Neotree git_status`, wait for the file node, move onto it with `j` (the tree's own preview mapping calls `open_diff`), wait for `state.diff_tab ~= nil` and the tree focused in the diff tab, press `q` in normal mode, then assert current tab is T, the diff tab is no longer valid, `state.current_file` and `state.original_tab` are nil, and no window in the current tab has filetype `neo-tree`
+- [x] 2.2 Show it red by running it with task 1's `diff_preview.lua` change reverted locally (fails on `state.original_tab` still set), then green with it; `git_close` in `lua/gleb/file_tree/init.lua` needs no change, as it does not read `state.original_tab` after closing
+- [x] 2.3 `make quick`, then `make check` green; `make trace` lists the three scenarios as tested
+
+## Notes
+- fix-diff-preview-codediff-crash has no commits on `auto`, so the four new async cases stay under `H.xfail(CODEDIFF_CRASH, ...)`. Red/green was checked locally with the xfail unwrapped and codediff `view.create` stubbed to `tabnew`: red on the stale `original_tab` without the fix, green with it.
+- 2.3: `make quick` and `make trace` green; the full `make check` is left to the gate.
