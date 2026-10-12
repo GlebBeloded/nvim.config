@@ -21,7 +21,7 @@ GUEST_REPO=/Users/$GUEST_USER/nvim
 GUEST_DATA=/Users/$GUEST_USER/.local/share/nvim
 # pinned to the host's versions (docs/testing.md); release builds, no Homebrew bottles
 NVIM_VERSION=0.12.5 ZELLIJ_VERSION=0.45.1 ALACRITTY_VERSION=0.17.0
-PROVISION_REV=3 # bump when provision() changes
+PROVISION_REV=4 # bump when provision() changes
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 export LUME_TELEMETRY_ENABLED=false LUME_UPDATE_CHECK=false
 
@@ -254,6 +254,8 @@ provision() {
 	gssh "sudo mkdir -p '$plugin_dir' && sudo chown -R $GUEST_USER '${plugin_dir%%/.config/*}'"
 	grsync "$ROOT/terminal/zellij/plugins/vim-zellij-navigator.wasm" "$GUEST_USER@$(ip):$plugin_dir/"
 	sync_repo
+	# the app menu must leave Cmd+Q and Cmd+H to the terminal (org.alacritty defaults)
+	gssh "$GUEST_REPO/terminal/macos_menu_keys.sh >/dev/null"
 	gssh "cd $GUEST_REPO && zsh -lc 'tests/e2e/build.sh >/dev/null && make -s deps deps-shortcuts'"
 	if ! gssh "csrutil status" | grep -q disabled; then
 		log "disabling SIP in the guest (lume sip off: 3 boots over VNC, ~3 min, once)"

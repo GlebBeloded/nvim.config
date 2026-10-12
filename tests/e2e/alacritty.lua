@@ -277,6 +277,13 @@ function M.wait_hits(n, timeout, self)
 	return M.events
 end
 
+--- Is the Alacritty window hidden (the app menu's Hide)?
+---@param self e2e.Stack
+---@return boolean
+function M.hidden(self)
+	return keys({ "hidden", tostring(assert(self.alacritty_pid, "Alacritty not running")) }) == "true"
+end
+
 --- Chords on the key helper's denylist (system-wide shortcuts it never presses).
 ---@param chords string[]
 ---@return table<string, true>

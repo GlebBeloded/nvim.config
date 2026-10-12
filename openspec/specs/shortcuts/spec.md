@@ -79,11 +79,11 @@ The repo SHALL provide an idempotent macOS setup step that moves Alacritty's app
 - **WHEN** the setup step runs twice against a defaults plist whose `NSUserKeyEquivalents` already holds `"Hide alacritty" = "@\Uf70f"` and `"Minimize" = "@m"`
 - **THEN** `NSUserKeyEquivalents` is `"Quit alacritty" = "@~^q"`, `"Hide alacritty" = "@~^h"` and `"Minimize" = "@m"`, and the second run exits 0
 
-### Requirement: Real key presses in the sandbox VM deliver shortcuts
-The e2e layer SHALL deliver physical key presses to Neovim as the shortcut table says, in a dedicated Alacritty instance (repo config) running real zellij (user keybinds, the stack layer's layout), with key events posted to that process inside the sandbox macOS VM, never on the host. Exceptions: the app menu takes Cmd+Q and Cmd+H, Cmd+Shift+-/= arrive in Alacritty's kitty encoding, and the key helper never presses Cmd+Shift+Q (system Log Out).
+### Requirement: Real key presses in the provisioned sandbox VM deliver shortcuts
+The e2e layer SHALL deliver physical key presses to Neovim as the shortcut table says, in a dedicated Alacritty instance (repo config, app-menu setup applied) running real zellij (user keybinds, the stack layer's layout), with key events posted to that process inside the sandbox macOS VM, never on the host. Exceptions: Cmd+Shift+-/= arrive in Alacritty's kitty encoding; Cmd+Shift+Q (system Log Out) is never pressed.
 
 #### Scenario: Every passed shortcut reaches its Neovim key from a real key press
-- **WHEN** a recorder mapping is set in Neovim normal mode for each row's *Neovim receives* key and each row's shortcut except Cmd+Q, Cmd+Shift+Q, Cmd+H, Cmd+Shift+- and Cmd+Shift+= is pressed in the Alacritty window
+- **WHEN** a recorder mapping is set in Neovim normal mode for each row's *Neovim receives* key and each row's shortcut except Cmd+Shift+Q, Cmd+Shift+- and Cmd+Shift+= is pressed in the Alacritty window
 - **THEN** the recorder for exactly that key fires
 
 #### Scenario: Consumed shortcuts never reach Neovim from a real key press
@@ -94,9 +94,17 @@ The e2e layer SHALL deliver physical key presses to Neovim as the shortcut table
 - **WHEN** recorders are set for `<C-CR>` and `<CR>` and Ctrl+Return is pressed
 - **THEN** only the `<C-CR>` recorder fires
 
-#### Scenario: Cmd+H never reaches Neovim from a real key press
-- **WHEN** two Neovim windows exist side by side, the cursor is in the right one, a recorder is set for `<C-H>`, and Cmd+H is pressed
-- **THEN** no recorder fires and the current Neovim window is still the right one
+#### Scenario: Cmd+Q reaches Neovim as <M-q> from a real key press
+- **WHEN** a recorder is set for `<M-q>` and Cmd+Q is pressed
+- **THEN** exactly `<M-q>` is recorded and the Alacritty process is still running with its window visible
+
+#### Scenario: Cmd+H moves to the left Neovim split from a real key press
+- **WHEN** two Neovim windows exist side by side, the cursor is in the right one, and Cmd+H is pressed
+- **THEN** the current Neovim window is the left one, zellij focus stays on the Neovim pane and the Alacritty window is visible
+
+#### Scenario: Cmd+H in a non-Neovim pane moves zellij focus left from a real key press
+- **WHEN** the `cat` pane is focused and Cmd+H is pressed
+- **THEN** zellij focus moves to the Neovim pane on the left
 
 #### Scenario: Cmd+Shift+- and Cmd+Shift+= reach Neovim as <S-D--> and <S-D-=> from a real key press
 - **WHEN** recorders are set for `<S-D-->`, `<S-D-=>`, `<M-_>` and `<M-+>` and Cmd+Shift+- then Cmd+Shift+= are pressed
@@ -118,8 +126,8 @@ The e2e layer SHALL deliver physical key presses to Neovim as the shortcut table
 - **WHEN** Ctrl+Q is pressed
 - **THEN** the zellij session ends and the Alacritty process exits
 
-#### Scenario: Cmd+Q quits Alacritty from a real key press
-- **WHEN** Cmd+Q is pressed in a freshly started Alacritty window
+#### Scenario: Cmd+Option+Control+Q quits Alacritty from a real key press
+- **WHEN** Cmd+Option+Control+Q is pressed in a freshly started Alacritty window
 - **THEN** the Alacritty process exits
 
 #### Scenario: Cmd+Shift+Q is never pressed: the key helper refuses it
