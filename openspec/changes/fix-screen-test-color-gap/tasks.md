@@ -42,7 +42,7 @@ Scenarios: "statusline: statusline matches reference screenshot"
   - `M.expect_screen_colors(child: MiniTest.child, row: integer, mask: string[], legend: table<string, string>)`: `row` as in `H.screen_rows`; checks rows `row .. row + #mask - 1`.
   - Child-side chunk `SCREEN_CELLS_LUA(first_row0: integer, count: integer, groups: string[])` → `{ cells: { text: string, attrs: test.CellAttrs }[][], hls: table<string, test.CellAttrs|vim.NIL> }`; maps `foreground`/`background`/`special` to `fg`/`bg`/`sp`.
 
-- [ ] **1.1 Failing test.** In the Normal case, keep `expect_statusline_screenshot("NORMAL")`, replace both `H.expect_colors(...)` calls with:
+- [x] **1.1 Failing test.** In the Normal case, keep `expect_statusline_screenshot("NORMAL")`, replace both `H.expect_colors(...)` calls with:
 
   ```lua
   H.expect_screen_colors(child, -1, {
@@ -58,21 +58,21 @@ Scenarios: "statusline: statusline matches reference screenshot"
   ```
 
   Leave the Insert case and the `DARK`/`CHIP` constants for task 2.
-- [ ] **1.2 Run it, expect FAIL.** `make test-screen FILE=tests/screen/statusline/test_statusline_screen.lua CASE="statusline matches reference screenshot"` → fails with `attempt to call field 'expect_screen_colors' (a nil value)`.
-- [ ] **1.3 Implement** in `tests/helpers.lua`:
+- [x] **1.2 Run it, expect FAIL.** `make test-screen FILE=tests/screen/statusline/test_statusline_screen.lua CASE="statusline matches reference screenshot"` → fails with `attempt to call field 'expect_screen_colors' (a nil value)`.
+- [x] **1.3 Implement** in `tests/helpers.lua`:
   - `M.DEFAULT_GROUP`, `M.UNMASKED`; `colorize.lua` drops its local copies and uses `H.DEFAULT_GROUP` / `H.UNMASKED`.
   - `SCREEN_CELLS_LUA`: one `nvim__inspect_cell(1, 0, 0)` priming call, `redraw!`, then all cells of the rows, then `nvim_get_hl(0, { name = g, link = false })` for each legend group plus `Normal` (`vim.NIL` when `hlexists` is 0). Row conversion: `row < 0 → vim.o.lines + row`, else `row - 1`.
   - `local function check_width(mask: string[], columns: integer)`: `error` naming the mask row and both widths.
   - `local function cell_matches(attrs: test.CellAttrs, hl: test.CellAttrs, normal: test.CellAttrs): boolean`: D3 (fg/bg/sp only where `hl` sets them, missing actual colors filled from `normal`; the six flags always, absent = false).
   - `local function actual_mask(cells, legend, hls, normal): string[]`: first legend letter in sorted order that matches, `.` for Normal, else `?` (D4).
   - `M.expect_screen_colors`: undefined group → `error("legend <letter>: unknown highlight group [<group>]")`; on mismatch `error` with `expected:`/`actual:` rows one above the other plus column, character, group and expected/actual attrs as `#rrggbb`.
-- [ ] **1.4 Prove it is not color-blind (temporary edits, reverted after each).** Run the 1.2 command each time; each must FAIL with the stated message:
+- [x] **1.4 Prove it is not color-blind (temporary edits, reverted after each).** Run the 1.2 command each time; each must FAIL with the stated message:
   1. swap `e` and `w` in the legend → mask diff, first bad cell at column 65 with `#rrggbb` values;
   2. comment out the priming call → mask diff (stale attrs);
   3. legend `l = "StatuslineLang_lux"` → `legend l: unknown highlight group [StatuslineLang_lux]`;
   4. drop the last mask character → width error naming 79 vs 80.
-- [ ] **1.5 Run, expect PASS.** Same command → PASS; `git diff --exit-code tests/screenshots` → exit 0; `make colorize FILE=openspec/changes/fix-screen-test-color-gap/design.md` prints the statusline render in color.
-- [ ] **1.6 Commit** `test(statusline): assert full-row colors of the Normal statusline with a mask`.
+- [x] **1.5 Run, expect PASS.** Same command → PASS; `git diff --exit-code tests/screenshots` → exit 0; `make colorize FILE=openspec/changes/fix-screen-test-color-gap/design.md` prints the statusline render in color.
+- [x] **1.6 Commit** `test(statusline): assert full-row colors of the Normal statusline with a mask`.
 
 ## 2. Insert-mode statusline, remove the old color helpers
 
