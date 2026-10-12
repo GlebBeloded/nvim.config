@@ -2,8 +2,9 @@
 -- cases. A case is linked to a scenario when its name is exactly
 -- "<capability>: <scenario title>" (capability = openspec/specs/<capability>).
 --   tested  - scenario has at least one case
---   missing - scenario has no case (reported, not fatal yet)
+--   missing - scenario has no case (fatal)
 --   orphan  - case name matches no scenario (fatal)
+-- --quiet lists only the missing scenarios.
 -- Run: nvim -u tests/minimal_init.lua -l tests/trace.lua [--quiet]
 
 local MiniTest = require("mini.test")
@@ -127,9 +128,10 @@ for _, capability in ipairs(capabilities) do
 	local tested, total = count(specs[capability])
 	all_tested, all_total = all_tested + tested, all_total + total
 	out("%s  %d/%d", capability, tested, total)
-	if not quiet then
-		for _, title in ipairs(sorted_titles(specs[capability])) do
-			out("%s", scenario_row(specs[capability][title]))
+	for _, title in ipairs(sorted_titles(specs[capability])) do
+		local scenario = specs[capability][title]
+		if not quiet or #scenario.cases == 0 then
+			out("%s", scenario_row(scenario))
 		end
 	end
 end
@@ -141,6 +143,7 @@ if #orphans > 0 then
 	end
 end
 
-out("\ntrace: %d scenarios, %d tested, %d missing, %d orphan", all_total, all_tested, all_total - all_tested, #orphans)
+local missing = all_total - all_tested
+out("\ntrace: %d scenarios, %d tested, %d missing, %d orphan", all_total, all_tested, missing, #orphans)
 io.flush()
-os.exit(#orphans > 0 and 1 or 0)
+os.exit((#orphans > 0 or missing > 0) and 1 or 0)
