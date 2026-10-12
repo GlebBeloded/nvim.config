@@ -4,7 +4,7 @@
 assistant: claude
 assistants:
   claude:
-    settingSources: [project, user] # project: .claude/settings.json hooks + superpowers plugin
+    settingSources: [project, user] # project: superpowers plugin in .claude/settings.json
 worktree:
   baseBranch: auto
   # Archon cuts worktrees from <remote>/<baseBranch>. `local` is a self-remote (the repo itself,
@@ -15,5 +15,3 @@ docs:
 defaults:
   loadDefaultWorkflows: false # only the workflows in .archon/workflows/
   loadDefaultCommands: false
-env:
-  ARCHON_RUN: "1" # .claude/hooks/stop-check.sh lints changed files only; the workflow gate runs make check once

@@ -1,6 +1,6 @@
 # Testing
 
-`make check` is the merge gate (the loop's `gate` script runs it). `make quick` is the inner loop (the Claude Code Stop hook runs it). The loop is fully local; there is no hosted CI.
+`make check` is the merge gate (the loop's `gate` script runs it). `make quick` is the inner loop (the loop's `implement` step runs it before each commit). The loop is fully local; there is no hosted CI.
 
 | Command | What runs | Wall time (14-core Mac) |
 |---|---|---|
@@ -125,12 +125,6 @@ Cases live in `tests/render/cases.lua`: one entry per case with a description an
 ## Smoke details
 
 `tests/smoke/run.lua` lists the healthchecks it skips (they need external tools, or their known issues are queued in openspec/changes) and the known-benign ERROR lines. `make smoke` runs the probe (messages, checkhealth) concurrently with the timing, after one warm-up start; `make smoke-health` and `make smoke-startup` run one part. The startup budget defaults to 400 ms and is checked on the median of 3 `--startuptime` runs. Over budget, it takes 6 more samples and checks the fastest of all 9, since load only adds time; the line then shows the load average. Override the budget with `STARTUP_BUDGET_MS`.
-
-## Claude Code hooks
-
-`.claude/settings.json` (committed) sets two hooks:
-- PostToolUse on `Edit|Write|MultiEdit`: `.claude/hooks/lua-format.sh` runs stylua on the edited `*.lua` file, then selene. Selene findings go back to Claude (exit 2).
-- Stop: `.claude/hooks/stop-check.sh` runs `make quick` when the work tree has changes, and blocks (exit 2, tail of the log) if it is red. When the hook fires again for the same stop (`stop_hook_active`), it lets Claude stop, so the gate cannot loop forever.
 
 ## Shortcut layers
 

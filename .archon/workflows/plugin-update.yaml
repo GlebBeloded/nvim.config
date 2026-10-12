@@ -1,0 +1,123 @@
+name: plugin-update
+description: |
+  Update one plugin on demand (docs/workflow.md), `make update PLUGIN=<name>`. `:Lazy! update <name>`
+  in a private plugin copy, changelog, make check E2E=1. Green: commit that lazy-lock.json line and
+  merge into auto. Red: spec the adaptation as an OpenSpec change and run nvim-deliver (TDD fix loop,
+  escalation). Not shipped: keep the old pin and merge only the change folder, queued for a later
+  `make update PLUGIN=<name>`.
+interactive: true
+worktree:
+  enabled: true
+inputs:
+  plugin:
+    required: true
+    description: Plugin name as in lazy-lock.json
+nodes:
+  - id: update
+    script: plugin_update
+    runtime: uv
+    timeout: 2400000
+    with:
+      mode: update
+      plugin: $INPUTS.plugin
+    output_format:
+      type: object
+      properties:
+        changed: { type: boolean }
+        plugin: { type: string }
+        change: { type: string }
+        old: { type: string }
+        new: { type: string }
+        green: { type: boolean }
+        changelog: { type: string }
+        message: { type: string }
+      required: [changed, plugin, change, old, new, green, changelog, message]
+
+  - id: nothing
+    cancel: "Already at its upstream target: nothing to update."
+    depends_on: [update]
+    when: "$update.output.changed == false"
+
+  - id: changelog
+    bash: cat "$ARTIFACTS_DIR/changelog.md"
+    depends_on: [update]
+    when: "$update.output.changed == true"
+
+  # --- Green: ship the one lock line -----------------------------------------------------------------
+  - id: ship
+    script: ship
+    runtime: uv
+    timeout: 300000
+    depends_on: [changelog]
+    when: "$update.output.green == true"
+    with:
+      change: ""
+      message: $update.output.message
+    output_format:
+      type: object
+      properties:
+        merged: { type: boolean }
+        branch: { type: string }
+        commit: { type: string }
+      required: [merged, branch, commit]
+
+  # --- Red: adapt the config through the fix loop ----------------------------------------------------
+  - id: spec
+    command: spec-plugin-update
+    depends_on: [changelog]
+    when: "$update.output.green == false"
+    idle_timeout: 900000
+    with:
+      plugin: $update.output.plugin
+      change: $update.output.change
+      old: $update.output.old
+      new: $update.output.new
+    skills: [superpowers:systematic-debugging, openspec-propose, openspec-continue-change]
+
+  - id: spec-gate
+    bash: openspec validate $update.output.change --strict --no-interactive
+    depends_on: [spec]
+
+  - id: deliver
+    include: nvim-deliver
+    depends_on: [spec-gate]
+    with:
+      change: $update.output.change
+      message: "fix(deps): update $update.output.plugin, adapt the config"
+      cancel_on_reject: "false"
+
+  # --- Not shipped (escalation rejected): keep the old pin, queue the change -------------------------
+  - id: pin-back
+    script: plugin_pin_back
+    runtime: uv
+    depends_on: [deliver]
+    trigger_rule: all_done
+    when: "$update.output.green == false"
+    with:
+      merged: { from: $deliver.output.merged, if_skipped: false }
+      plugin: $update.output.plugin
+      change: $update.output.change
+    output_format:
+      type: object
+      properties:
+        pinned: { type: boolean }
+        attempt: { type: string }
+        message: { type: string }
+      required: [pinned, attempt, message]
+
+  - id: queue
+    script: ship
+    runtime: uv
+    timeout: 300000
+    depends_on: [pin-back]
+    when: "$pin-back.output.pinned == true"
+    with:
+      change: ""
+      message: $pin-back.output.message
+    output_format:
+      type: object
+      properties:
+        merged: { type: boolean }
+        branch: { type: string }
+        commit: { type: string }
+      required: [merged, branch, commit]

@@ -16,23 +16,27 @@ Each run works in its own git worktree cut from `auto` and, when every gate is g
 | `make fix BUG="…"` | `fix-bug`: root cause, spec delta, TDD fix. `BUG` can also be a change id |
 | `make feature IDEA="…"` | `new-feature`: brainstorm, proposal with renders; always stops for your approval |
 | `make queue [CHANGE=<id>]` | `work-queue`: the oldest change in `openspec/changes/` that no run has taken (no `loop/<id>` branch) |
-| `make upkeep [DRY=1]` | `weekly-upkeep`: plugin update; `DRY=1` simulates it without AI or git |
-| `make schedule` / `make unschedule` | load or unload the launchd job (`ops/launchd/`) that runs `make upkeep` on Mondays at 09:00 |
+| `make outdated` | plugins with commits past `lazy-lock.json` (read-only) |
+| `make update PLUGIN=<name>` | `plugin-update`: update that one plugin, test it, ship it or adapt the config |
 | `make preview CHANGE=<id> [OPEN=1]` | regenerate `openspec/changes/<id>/preview.html` |
 | `make console` | `archon serve`, the web console at http://localhost:3090 |
 | `make loop-status` / `make loop-validate` | active and last runs / `archon validate workflows` |
 
-Run the targets from `~/.config/nvim` (the `auto` checkout). `fix`, `feature` and `queue` can pause, so
-they stay in the foreground. Answer gates in the terminal, in the console, or from another shell with
+Run the targets from `~/.config/nvim` (the `auto` checkout). `fix`, `feature`, `queue` and `update` can
+pause, so they stay in the foreground. Answer gates in the terminal, in the console, or from another shell with
 `archon workflow approve|reject|respond <run-id> [text]`.
 
 Implement, verify, align and review form one group that runs at most 3 times; each pass starts with the
 previous pass's failures. After 3 red passes the run escalates.
 
-**weekly-upkeep** runs `:Lazy! update` in an APFS clone of the plugin dir, so live plugins are untouched,
-and runs `make check` against it. Green: the new `lazy-lock.json` merges into `auto`. Red: it bisects the
-updated plugins, pins each culprit back (3 at most) and queues one `fix-upkeep-<plugin>` change per
-breakage. After a merge, run `:Lazy restore` in your editor.
+**Plugin updates** happen only on demand, one plugin per run; nothing updates plugins on a schedule
+(lazy.nvim's `checker` is off). `make outdated` and `plugin-update` run lazy.nvim on an APFS clone of the
+plugin dir, so live plugins and parsers are untouched. `plugin-update` updates the one plugin, shows its
+changelog and runs `make check E2E=1` against the clone. Green: that `lazy-lock.json` line merges into
+`auto`. Red: the breakage becomes an `update-<plugin>` change and `nvim-deliver` adapts the config. If
+that does not ship (escalation rejected), the old pin stays and only the change merges, queued for the
+next `make update PLUGIN=<name>` (`make queue` skips it). After a merge, run `:Lazy restore` in your
+editor.
 
 ### When you get pinged
 
@@ -69,9 +73,10 @@ Known issues and planned work are queued changes in `openspec/changes/`; there i
 
 - `.archon/config.yaml`: base branch `auto`, remote `local` (a self-remote added by `make loop-setup`), so
   `auto` never has to exist on GitHub.
-- Claude runs with `bypassPermissions` and project settings, so the hooks and superpowers plugin in
-  `.claude/settings.json` are active. With `ARCHON_RUN=1` the Stop hook lints only changed Lua files; the
-  full `make check` runs once per build pass in the `gate` script.
+- Claude runs with `bypassPermissions` and project settings, so the superpowers plugin in
+  `.claude/settings.json` is active. There are no Claude Code hooks: the `implement` command runs
+  `make fmt` and `make quick` itself, and the full `make check E2E=1` runs once per build pass in the
+  `gate` script.
 - AI nodes can use only the skills they declare (`skills:` on the node). Add a skill there before a
   prompt mentions it.
 - `--dry-run` auto-approves gates with the plain string `approved`, so nodes that read

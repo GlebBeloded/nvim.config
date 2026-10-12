@@ -13,6 +13,9 @@ inputs:
   message:
     default: ""
     description: Commit message for the ship commit
+  cancel_on_reject:
+    default: "true"
+    description: '"false" ends the block without cancelling the run when the escalation is rejected'
 returns: ship
 nodes:
   # --- Plan ---------------------------------------------------------------------------------------
@@ -155,10 +158,10 @@ nodes:
         feedback: { type: string }
       required: [go, decision, feedback]
 
-  - id: stop
+  - id: stop # go is false here, so the second test reads: cancel_on_reject is not "false"
     cancel: "Not shipped: escalation rejected. The branch and worktree are kept."
     depends_on: [ship-decide]
-    when: "$ship-decide.output.go == false"
+    when: "$ship-decide.output.go == false && $ship-decide.output.go != $INPUTS.cancel_on_reject"
 
   # --- Ship: /opsx:archive, commit, merge --no-ff into auto ----------------------------------------
   - id: ship

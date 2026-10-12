@@ -25,6 +25,8 @@ make check          # the full gate
 | `make fix BUG="…"` | AI loop: fix a bug end to end |
 | `make feature IDEA="…"` | AI loop: build a feature (asks for approval) |
 | `make queue` | AI loop: work the next queued change in `openspec/changes/` |
+| `make outdated` | plugins with updates past `lazy-lock.json` |
+| `make update PLUGIN=<name>` | AI loop: update one plugin, adapt the config if it breaks |
 | `make console` | Archon web console for runs and gates |
 
 ## Docs

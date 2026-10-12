@@ -12,9 +12,9 @@ Review findings of the previous pass: $LOOP_PREV.review.output
 Use `openspec-apply-change` for the task flow and `superpowers:test-driven-development` for every
 task: write the failing test "<capability>: <scenario title>", see it fail, make it pass with the
 smallest change, tick the task in tasks.md. Run only the test file or case you touch
-(`make test FILE=tests/<layer>/<capability>/test_x.lua CASE="…"`), and `make quick` (lint, trace
-and the layers your changes vs auto touch, in seconds) before each commit; never the full
-`make check` (the gate after you runs it once).
+(`make test FILE=tests/<layer>/<capability>/test_x.lua CASE="…"`), then `make fmt` and `make quick`
+(lint, trace and the layers your changes vs auto touch, in seconds) before each commit, and commit
+only when it is green; never the full `make check` (the gate after you runs it once).
 Fix every failure and finding listed above first. Follow the conventions in docs/architecture.md.
 
 Never delete, skip or weaken a test or scenario to get green; if the spec is wrong, say so in

@@ -1,30 +1,5 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
-  "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Edit|Write|MultiEdit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/lua-format.sh",
-            "timeout": 60
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/stop-check.sh",
-            "timeout": 600
-          }
-        ]
-      }
-    ]
-  },
   "extraKnownMarketplaces": {
     "superpowers-marketplace": {
       "source": {

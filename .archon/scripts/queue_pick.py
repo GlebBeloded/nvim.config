@@ -1,6 +1,7 @@
 """Pick the next queue item: an active change in openspec/changes/ (archive excluded). Uses
 INPUTS_CHANGE when given, otherwise the oldest change (by `created` in .openspec.yaml, then name)
-that has no `loop/<change>` branch yet (a branch means a run already took it).
+that has no `loop/<change>` branch yet (a branch means a run already took it). `update-<plugin>`
+changes are skipped: they need the new plugin commit, so `make update PLUGIN=<plugin>` works them.
 Kind: a `Kind: feature` line in proposal.md, or an add-/feat-/new- prefix, makes it a feature;
 everything else is a bug fix.
 """
@@ -39,7 +40,8 @@ names = [c["name"] for c in listing.get("changes", [])]
 if wanted:
     candidates = [n for n in names if n == wanted]
 else:
-    candidates = sorted((n for n in names if not taken(n)), key=lambda n: (created(CHANGES / n), n))
+    pending = (n for n in names if not n.startswith("update-") and not taken(n))
+    candidates = sorted(pending, key=lambda n: (created(CHANGES / n), n))
 
 if not candidates:
     print(json.dumps({"found": False, "change": "", "kind": "", "has_tasks": False}))
