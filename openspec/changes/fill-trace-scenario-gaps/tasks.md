@@ -80,11 +80,11 @@ Every task follows the same steps:
   1. Failing cases: `c` with the ollama `jobstart` stubbed, confirm, assert `git log -1 --format=%s`; `P` with `git push` stubbed to exit 0 / 1, assert the command and the notification. If `fix-git-status-map-shadowing` has moved `c` by then, use its key and title.
   2. Move the 3.5 recorders to `tests/helpers.lua` (`H.record_jobstart`, `H.record_notify`, typed).
   3. Verify (file-tree).
-- [ ] 4.5 `test_diff_preview.lua`. Scenarios: j skips directories and previews next file, k skips directories and previews previous file, Deleted file is not previewed, Rapid calls are debounced.
+- [x] 4.5 `test_diff_preview.lua`. Scenarios: j skips directories and previews next file, k skips directories and previews previous file, Deleted file is not previewed, Rapid calls are debounced.
   1. Failing cases in a temp repo (D2, not this checkout); assert the previewed path / no preview / one open after rapid calls.
   2. `CODEDIFF_CRASH` xfail only where the assertion needs the diff view.
   3. Verify (file-tree).
-- [ ] 4.6 `test_diff_preview.lua`. Scenarios: Diff tab is reused across files, Focus guard pulls focus back during navigation (M:fix-diff-preview-stale-tab), Enter opens file and switches to filesystem tree (M), q closes preview and tree (M).
+- [x] 4.6 `test_diff_preview.lua`. Scenarios: Diff tab is reused across files, Focus guard pulls focus back during navigation (M:fix-diff-preview-stale-tab), Enter opens file and switches to filesystem tree (M), q closes preview and tree (M).
   1. Failing cases asserting the scenario THENs.
   2. Wrap in `H.xfail(CODEDIFF_CRASH, …)` as long as `fix-diff-preview-codediff-crash` is queued.
   3. Verify (file-tree 38/38).
