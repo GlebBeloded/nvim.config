@@ -19,3 +19,6 @@ Proposal only: the work-queue (queue-spec) writes the spec delta and design.
 - Plugins: none added, removed or upgraded
 - Core keymaps: unchanged
 - Out of scope: other bufferline options and colors, the `buferFilter` rename (`cleanup-convention-targets`), and neo-tree window size or position.
+
+## Decision (user, 2026-10-12)
+Agent picks: offset label `text = ""`, no separator, default highlight. Keep the preview for the user's later review.

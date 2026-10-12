@@ -20,3 +20,6 @@ Open question for the user: keep today's real behaviour (drop the two dead bindi
 - Plugins: none added, removed or upgraded.
 - Core keymaps: unchanged in Neovim; the keys Alacritty sends for two shortcuts may change.
 - Out of scope: other Shift+punctuation bindings (audit them in the same pass only if the chain check is added).
+
+## Decision (user, 2026-10-12)
+Normalize: remove the dead Alacritty bindings and anything else dead in the Alacritty ↔ zellij ↔ Neovim key path; the e2e layer (real key presses in the VM) is the source of truth for what arrives, and the shortcut table and specs follow it. Folding keeps working on what actually arrives (`<S-D-->` / `<S-D-=>`).

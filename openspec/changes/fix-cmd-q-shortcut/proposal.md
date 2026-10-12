@@ -22,3 +22,6 @@ Cmd+Shift+Q cannot be taken back from the system short of remapping Log Out in S
 - Plugins: none added, removed or upgraded.
 - Core keymaps: changed (Cmd+Q / Cmd+H behaviour), user decides.
 - Out of scope: other Cmd shortcuts that produce no bytes (Cmd+M/N/T/V/0, Cmd+Ctrl+F, Cmd+Shift+/, Cmd+`).
+
+## Decision (user, 2026-10-12)
+Option A: Cmd+Q, Cmd+H (and Cmd+Shift+Q where possible) reach Neovim. Move Alacritty's app-menu key equivalents for Quit and Hide off Cmd+Q / Cmd+H (`defaults write org.alacritty NSUserKeyEquivalents`), as a versioned, idempotent setup step in the repo (terminal/), applied on the host by a make target and provisioned in the sandbox VM. Prove with e2e scenarios that Cmd+Q arrives as `<M-q>` and Cmd+H navigates splits/panes. Cmd+Shift+Q (system Log Out) is never pressed by tests; mark its row unreachable unless remapped in System Settings.

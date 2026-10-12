@@ -27,3 +27,6 @@ Kind: bug
 - Plugins: none added, removed or upgraded
 - Core keymaps: unchanged
 - Out of scope: changing colors or layout beyond restoring the glyphs; the chip `STYLE`; icons that already render (lualine branch/diff/diagnostics, bufferline, DAP signs).
+
+## Decision (user, 2026-10-12)
+Agent picks: restore the glyphs from git history (038f1a8 and earlier) where they existed, neo-tree defaults otherwise; chip caps U+E0B6 / U+E0B4. Keep the preview for the user's later review.

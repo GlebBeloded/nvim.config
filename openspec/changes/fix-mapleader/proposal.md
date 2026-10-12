@@ -21,3 +21,6 @@ Open question for the user: which key should `<leader>` be (e.g. `<Space>`, `,`,
 - Plugins: none added, removed or upgraded.
 - Core keymaps: changed: `<leader>` becomes a real key, so diffview conflict maps `<leader>co/ct/cb/ca` become usable.
 - Out of scope: moving `require("gleb.colors")`; adding new `<leader>` maps; `maplocalleader` value (stays `\` unless the user says otherwise).
+
+## Decision (user, 2026-10-12)
+Cmd-based maps, no leader. Every map this config defines with `<leader>` (diffview conflict maps included) moves to a Cmd chord `<D-x>`, which reaches Neovim through Alacritty's kitty keyboard protocol. Pick chords Alacritty, the macOS app menu and zellij do not already take (Cmd+C/V/N/T/W/M/Q/H etc.; see the shortcut table and `fix-cmd-q-shortcut`), and prove each one with an e2e scenario in the sandbox VM (real Alacritty → zellij → Neovim). Set `vim.g.mapleader = " "` (Space) at the top of `init.lua`, before lazy.nvim, only as a fallback for plugin defaults; `maplocalleader` stays `\`.

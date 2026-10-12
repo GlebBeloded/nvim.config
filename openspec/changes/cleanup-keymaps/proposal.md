@@ -23,3 +23,6 @@ Open questions for the user:
 - Plugins: none added, removed or upgraded (vim-bbye is already installed).
 - Core keymaps: changed: descs added on all maps; `<C-q>` behaviour may change (user decision).
 - Out of scope: the leader key (`fix-mapleader`), `v`/`x` mode duplicates (`fix-keymaps-visual-modes`), diagnostic API (`fix-diagnostic-navigation`), visual `J`/`K`, neo-tree git_status `gr`/`c` shadowing.
+
+## Decision (user, 2026-10-12)
+`<C-q>` uses vim-bbye `Bdelete` (keeps the layout, like the bufferline close). Delete `lua/gleb/debugging/keybindings.lua` (unused, collides with resize maps) and its commented require.

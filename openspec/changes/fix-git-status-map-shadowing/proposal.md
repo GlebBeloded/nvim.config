@@ -20,3 +20,6 @@ Open question (needs the user): which keys replace `gr` (revert) and `c` (commit
 - Plugins: none added, removed or upgraded
 - Core keymaps: unchanged globally; buffer-local `git_status` keys change (user decision)
 - Out of scope: commit/stage correctness (fix-neotree-commit-check, fix-neotree-stage-toggle), other neo-tree default maps.
+
+## Decision (user, 2026-10-12)
+Agent decides the new keys (avoid shadowing global and common neo-tree maps; revert must ask for confirmation). Record the choice and the reason in design.md.
