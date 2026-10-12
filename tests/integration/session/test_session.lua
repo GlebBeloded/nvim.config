@@ -4,6 +4,8 @@ local H = require("tests.helpers")
 local eq = MiniTest.expect.equality
 local child = H.new_child()
 
+--- Longer than auto-save's debounce_delay (1000 ms); cases that expect no
+--- write have to sit it out.
 local AUTOSAVE_WAIT_MS = 1500
 
 ---@type string
@@ -45,7 +47,7 @@ end
 T["session: modified file buffer is auto-written"] = function()
 	local path = edit_file("a.txt", { "" })
 	child.type_keys("i", "hello", "<Esc>")
-	vim.uv.sleep(AUTOSAVE_WAIT_MS)
+	child.wait("not vim.bo.modified", AUTOSAVE_WAIT_MS * 2)
 
 	eq({ vim.fn.readfile(path), child.bo.modified }, { { "hello" }, false })
 end

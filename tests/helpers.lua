@@ -58,7 +58,9 @@ function M.isolate()
 	if not sandbox then
 		sandbox = vim.fn.tempname()
 		symlink(M.root, vim.fs.joinpath(sandbox, "config/nvim"))
-		vim.fn.mkdir(vim.fs.joinpath(sandbox, "cache"), "p")
+		-- vim.loader's mkdir("cache/nvim/luac", "p") races when two Neovims
+		-- start at once (E739), so the cache tree exists before any child runs
+		vim.fn.mkdir(vim.fs.joinpath(sandbox, "cache/nvim/luac"), "p")
 		vim.env.XDG_CONFIG_HOME = vim.fs.joinpath(sandbox, "config")
 		vim.env.XDG_CACHE_HOME = vim.fs.joinpath(sandbox, "cache")
 		vim.env.NVIM_APPNAME = nil

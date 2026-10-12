@@ -1,18 +1,29 @@
 # Test pyramid for this Neovim config. See docs/testing.md.
-#   make check   - everything below, in pyramid order (the Claude Stop hook runs this)
+#   make check   - every layer below, concurrently (tests/check.sh); the merge gate
+#   make quick   - only what the changes vs $(BASE) touch (tests/quick.sh); the inner loop
 
-NVIM ?= nvim
+# not NVIM: Neovim exports $NVIM (its server address) to :terminal jobs
+NVIM_BIN ?= nvim
 LUA_DIRS := lua/ init.lua tests/
-VIMRUNTIME ?= $(shell $(NVIM) --clean --headless --cmd 'echo $$VIMRUNTIME | q' 2>&1)
+VIMRUNTIME ?= $(shell $(NVIM_BIN) --clean --headless --cmd 'echo $$VIMRUNTIME | q' 2>&1)
 export VIMRUNTIME
 
-MINITEST = $(NVIM) --headless --noplugin -u tests/minimal_init.lua -c "lua require('tests.runner').run('$(1)')"
-NVIM_LUA = $(NVIM) -u tests/minimal_init.lua -l
+MINITEST = $(NVIM_BIN) --headless --noplugin -u tests/minimal_init.lua -c "lua require('tests.runner').run('$(1)')"
+NVIM_LUA = $(NVIM_BIN) -u tests/minimal_init.lua -l
+# sharded over JOBS (default cores - 2) workers, one merged report
+PARALLEL = $(NVIM_LUA) tests/parallel.lua $(1)
+BASE ?= auto
+export BASE
 
-.PHONY: check install deps fmt lint types test test-unit test-integration test-screen \
-	screenshots smoke trace render colorize clean
+.PHONY: check quick install deps fmt lint types test test-unit test-integration test-screen \
+	screenshots smoke smoke-health smoke-startup trace render colorize clean
 
-check: lint types test smoke trace chain stack
+# startup timing runs alone after the rest, so the other layers do not skew it
+check:
+	@tests/check.sh lint types test trace chain stack smoke-health +smoke-startup
+
+quick:
+	@tests/quick.sh
 
 install:
 	brew install stylua selene lua-language-server
@@ -31,18 +42,18 @@ lint:
 types: deps
 	@tests/types.sh
 
-# --- mini.test layers (FILE=path, CASE=substring narrow the run) ----------------
+# --- mini.test layers (FILE=path, CAPS=cap[,cap], CASE=substring narrow the run) ---
 test: deps
-	@$(call MINITEST,)
+	@$(call PARALLEL,)
 
 test-unit: deps
-	@$(call MINITEST,unit)
+	@$(call PARALLEL,unit)
 
 test-integration: deps
-	@$(call MINITEST,integration)
+	@$(call PARALLEL,integration)
 
 test-screen: deps
-	@$(call MINITEST,screen)
+	@$(call PARALLEL,screen)
 
 screenshots: deps
 	@UPDATE_SCREENSHOTS=1 $(call MINITEST,screen)
@@ -51,32 +62,39 @@ screenshots: deps
 smoke: deps
 	@$(NVIM_LUA) tests/smoke/run.lua
 
+smoke-health: deps
+	@$(NVIM_LUA) tests/smoke/run.lua health
+
+smoke-startup: deps
+	@$(NVIM_LUA) tests/smoke/run.lua startup
+
 trace: deps
 	@$(NVIM_LUA) tests/trace.lua $(if $(VERBOSE),,--quiet)
 
 # colored capture in a private tmux (MONO=1: plain mini.test screenshot)
 render: deps
-	@$(NVIM) --headless --noplugin -u tests/minimal_init.lua -c "lua require('tests.render').run()"
+	@$(NVIM_BIN) --headless --noplugin -u tests/minimal_init.lua -c "lua require('tests.render').run()"
 
 # design-doc renders with mask + legend in the real colorscheme's colors
 colorize: deps
-	@$(NVIM) --headless --noplugin -u tests/minimal_init.lua -c "lua require('tests.render.colorize').run()"
+	@$(NVIM_BIN) --headless --noplugin -u tests/minimal_init.lua -c "lua require('tests.render.colorize').run()"
 
 # --- shortcut layers: Alacritty -> zellij -> Neovim (docs/testing.md) ----------
+# (CAPS narrows only the mini.test layers above)
 .PHONY: deps-shortcuts chain stack e2e-gui
 
 deps-shortcuts:
 	@tests/shortcuts/bootstrap.sh
 
 chain: deps deps-shortcuts
-	@$(call MINITEST,chain)
+	@CAPS= $(call MINITEST,chain)
 	@$(NVIM_LUA) tests/shortcuts/report.lua
 
 stack: deps deps-shortcuts
-	@$(call MINITEST,stack)
+	@CAPS= $(call MINITEST,stack)
 
 e2e-gui: deps deps-shortcuts
-	@$(call MINITEST,gui)
+	@CAPS= $(call MINITEST,gui)
 
 clean:
 	rm -rf .tests
@@ -124,7 +142,7 @@ loop-status:
 
 preview: # make preview CHANGE=<id> [OPEN=1]: openspec/changes/<id>/preview.html
 	@test -d "openspec/changes/$(CHANGE)" || { echo "usage: make preview CHANGE=<change id>" >&2; exit 2; }
-	@out=$$($(NVIM) --clean -l ops/preview/preview.lua "openspec/changes/$(CHANGE)") && echo "$$out" && \
+	@out=$$($(NVIM_BIN) --clean -l ops/preview/preview.lua "openspec/changes/$(CHANGE)") && echo "$$out" && \
 	if [ -n "$(OPEN)" ]; then open "$$out"; fi
 
 schedule: # weekly-upkeep every Monday 09:00 via launchd (opt-in)

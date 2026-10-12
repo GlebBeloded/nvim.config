@@ -1,6 +1,14 @@
 # Testing
 
-`make check` is the gate. It runs every layer below in pyramid order, and the Claude Code Stop hook runs it. The loop is fully local; there is no hosted CI.
+`make check` is the merge gate (the loop's `gate` script runs it). `make quick` is the inner loop (the Claude Code Stop hook runs it). The loop is fully local; there is no hosted CI.
+
+| Command | What runs | Wall time (14-core Mac) |
+|---|---|---|
+| `make check` | every layer below except GUI, concurrently (`tests/check.sh`); smoke startup timing runs alone afterwards | ~15–20 s (was ~85 s serial) |
+| `make quick` | lint + trace, plus only the layers the changes vs `BASE` (default `auto`) can affect (`tests/quick.sh` has the mapping) | <1 s docs only, ~7 s one capability |
+| `make test FILE=… CASE=…` | one file / matching cases | ~1–3 s |
+
+`check.sh` prints one status line per layer as it finishes, then the full log of every failed layer. `make quick` takes `ALL=1`, `STACK=1`, `SMOKE=1` and `TYPES=1` to force a layer.
 
 | Layer | Command | What it checks |
 |---|---|---|
@@ -15,9 +23,13 @@
 | Stack | `make stack` | real zellij (user keybinds) in a tmux pty with the real Neovim config, fed Alacritty's bytes |
 | GUI (opt-in) | `make e2e-gui` | real Alacritty window, real macOS key events; not in `make check` |
 
-`make test` runs all three mini.test layers in one process. `make deps` fetches the pinned test dependency, mini.nvim v0.18.0, into `.tests/deps` (gitignored) via `tests/bootstrap.sh`. It is not part of the plugin list. `make install` installs the static tools with brew.
+`make test` runs all three mini.test layers (`tests/parallel.lua`): the matched cases are sharded over `JOBS` headless workers (default cores − 2; `JOBS=1` runs serially), balanced by the case durations of earlier runs (`.tests/timings.json`), and reported as one mini.test report with fails and notes at the end. Every worker has its own sandbox (see [Isolation](#isolation)). `make screenshots`, `chain` and `stack` run in one process. `make deps` fetches the pinned test dependency, mini.nvim v0.18.0, into `.tests/deps` (gitignored) via `tests/bootstrap.sh`. It is not part of the plugin list. `make install` installs the static tools with brew.
 
-To narrow a run, use `FILE=tests/unit/session/test_key.lua make test` or `CASE="Move to left" make test-integration`.
+To narrow a run, use `FILE=tests/unit/session/test_key.lua make test`, `CAPS=session,keymaps make test` (only `tests/<layer>/<cap>/`) or `CASE="Move to left" make test-integration`.
+
+`make types` caches a green result in `.tests/types.ok`, keyed by the content of every Lua file, `.luarc.jsonc`, the LuaLS version and the libraries; it skips LuaLS while that key is unchanged.
+
+Run make from inside Neovim's `:terminal` as usual: the binary is `NVIM_BIN` (not `NVIM`, which Neovim sets to its server address).
 
 ## Layout
 
@@ -26,7 +38,9 @@ tests/
   minimal_init.lua      runner + bare-child init (rtp: checkout + mini.nvim)
   child_init.lua        --cmd for full-config children (in-memory clipboard)
   helpers.lua           sandbox, child factory, screenshot helpers, xfail
-  runner.lua            mini.test entry point used by the Makefile
+  runner.lua            mini.test entry point (one process, or one shard)
+  parallel.lua          make test*: shards cases over JOBS workers, merged report
+  check.sh / quick.sh   make check / make quick
   <layer>/<capability>/test_<topic>.lua
   screenshots/          reference screenshots (text, committed)
   smoke/                make smoke (run.lua outside, probe.lua inside nvim)
@@ -40,7 +54,7 @@ tests/
 
 Every child gets its own sandbox (`tests/helpers.lua`), so tests never touch your sessions, shada, undo files or clipboard:
 - `XDG_CONFIG_HOME/nvim` is a symlink to this checkout, so `stdpath("config")` is the worktree and not `~/.config/nvim`.
-- `XDG_DATA_HOME` and `XDG_STATE_HOME` are fresh temp dirs for each child start. Only `lazy/` (plugins) and `site/` (treesitter parsers) are symlinked from `NVIM_TEST_DATA_DIR` (default `~/.local/share/nvim`; point it at any dir where `Lazy! restore` installed the plugins). `XDG_CACHE_HOME` is a temp dir shared by one run.
+- `XDG_DATA_HOME` and `XDG_STATE_HOME` are fresh temp dirs for each child start. Only `lazy/` (plugins) and `site/` (treesitter parsers) are symlinked from `NVIM_TEST_DATA_DIR` (default `~/.local/share/nvim`; point it at any dir where `Lazy! restore` installed the plugins). `XDG_CACHE_HOME` is a temp dir shared by one runner process (each parallel worker has its own). Neovims never start concurrently on one cache: vim.loader writes its byte code in place, so a concurrent start can load a half-written module (smoke warms the cache before its probe and timing overlap).
 - mini.test passes `--clean`, so the child reads and writes no shada.
 - Multiplexer env vars (`ZELLIJ*`, `TMUX*`, `WEZTERM_PANE`, `KITTY_*`) are unset, so smart-splits never moves your terminal panes.
 - `g:clipboard` is an in-memory provider (`tests/child_init.lua`).
@@ -105,13 +119,13 @@ Cases live in `tests/render/cases.lua`: one entry per case with a description an
 
 ## Smoke details
 
-`tests/smoke/run.lua` lists the healthchecks it skips (they need external tools, or their known issues are in findings) and the known-benign ERROR lines. The startup budget defaults to 400 ms and is the median of 5 `--startuptime` runs after a warm-up. Override it with `STARTUP_BUDGET_MS` (for example on a slow or busy machine).
+`tests/smoke/run.lua` lists the healthchecks it skips (they need external tools, or their known issues are in findings) and the known-benign ERROR lines. `make smoke` runs the probe (messages, checkhealth) concurrently with the timing, after one warm-up start; `make smoke-health` and `make smoke-startup` run one part. The startup budget defaults to 400 ms and is checked on the median of 3 `--startuptime` runs. Over budget, it takes 6 more samples and checks the fastest of all 9, since load only adds time; the line then shows the load average. Override the budget with `STARTUP_BUDGET_MS`.
 
 ## Claude Code hooks
 
 `.claude/settings.json` (committed) sets two hooks:
 - PostToolUse on `Edit|Write|MultiEdit`: `.claude/hooks/lua-format.sh` runs stylua on the edited `*.lua` file, then selene. Selene findings go back to Claude (exit 2).
-- Stop: `.claude/hooks/stop-check.sh` runs `make check` when the work tree has changes, and blocks (exit 2, tail of the log) if it is red. When the hook fires again for the same stop (`stop_hook_active`), it lets Claude stop, so the gate cannot loop forever.
+- Stop: `.claude/hooks/stop-check.sh` runs `make quick` when the work tree has changes, and blocks (exit 2, tail of the log) if it is red. When the hook fires again for the same stop (`stop_hook_active`), it lets Claude stop, so the gate cannot loop forever.
 
 ## Shortcut layers
 

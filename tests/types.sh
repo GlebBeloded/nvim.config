@@ -10,6 +10,20 @@ OUT="$LOG_DIR/out.txt"
 mkdir -p "$LOG_DIR"
 trap 'rm -rf "$LOG_DIR"' EXIT
 
+# Skip when nothing LuaLS reads changed since the last green run: the Lua
+# files, the config, the LuaLS version and the libraries ($VIMRUNTIME, mini.nvim).
+STAMP=.tests/types.ok
+key=$({
+	lua-language-server --version
+	echo "$VIMRUNTIME"
+	git -C .tests/deps/mini.nvim rev-parse HEAD 2>/dev/null || true
+	git ls-files -z --cached --others --exclude-standard -- '*.lua' .luarc.jsonc | xargs -0 shasum
+} | shasum | cut -d' ' -f1)
+if [ "$(cat "$STAMP" 2>/dev/null)" = "$key" ]; then
+	echo "types: unchanged since the last green run (rm $STAMP to force)"
+	exit 0
+fi
+
 status=0
 lua-language-server --check="$PWD" --configpath="$PWD/.luarc.jsonc" \
 	--checklevel=Warning --check_format=pretty --logpath="$LOG_DIR" >"$OUT" 2>&1 || status=$?
@@ -21,4 +35,5 @@ if grep -q "Setting file loading error" "$OUT"; then
 fi
 # drop the progress bar, keep diagnostics and the summary
 tr '\r' '\n' <"$OUT" | grep -v '^ *>*=* *[0-9]*/[0-9]*$' | grep -v '^Initializing' | sed '/^[[:space:]]*$/d'
+[ "$status" -eq 0 ] && mkdir -p .tests && echo "$key" >"$STAMP"
 exit "$status"

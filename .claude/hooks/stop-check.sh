@@ -1,5 +1,6 @@
 #!/usr/bin/env sh
-# Stop: run `make check`; exit 2 (block stopping) with the failing tail if red.
+# Stop: run `make quick` (the layers the changes vs auto touch); exit 2 (block
+# stopping) with the failing tail if red. `make check` stays the merge gate.
 # Skips when the work tree is clean, and lets Claude stop on the second
 # attempt (stop_hook_active) so a red gate cannot loop forever.
 # Inside Archon loop runs (ARCHON_RUN=1, .archon/config.yaml env) it only lints
@@ -19,11 +20,11 @@ if [ "${ARCHON_RUN:-}" = "1" ]; then
 	# shellcheck disable=SC2086 # word splitting is the file list
 	{ stylua --check $files && selene $files; } >"$log" 2>&1 && { rm -f "$log"; exit 0; }
 	gate="lint (stylua --check, selene) on changed files"
-elif make check >"$log" 2>&1; then
+elif make quick >"$log" 2>&1; then
 	rm -f "$log"
 	exit 0
 else
-	gate="make check"
+	gate="make quick"
 fi
 {
 	echo "$gate is red. Fix it before finishing. Last lines:"

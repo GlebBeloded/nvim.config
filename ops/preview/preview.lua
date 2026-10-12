@@ -195,8 +195,7 @@ end
 ---@param design_path string
 ---@return preview.Render[]? nil when the target is missing or fails
 local function colorized_renders(design_path)
-	-- NVIM=nvim: Neovim exports $NVIM (its server address) to children, and the Makefile reads NVIM
-	local cmd = { "make", "-s", "colorize", "NVIM=nvim", "FILE=" .. design_path }
+	local cmd = { "make", "-s", "colorize", "FILE=" .. design_path }
 	local result = vim.system(cmd, { text = true }):wait()
 	if result.code ~= 0 or not result.stdout:find("── ", 1, true) then
 		return nil
