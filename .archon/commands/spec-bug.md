@@ -18,4 +18,4 @@ If the bug input is an existing change id under openspec/changes/, update that c
 
 Stop after the artifacts exist; do not implement. Set `change` to the change id, `visible_ui` to
 true when the change alters what is drawn on screen, `architecture` to true when it changes module
-layout, load order or plugin wiring (docs/architecture/).
+layout, load order or plugin wiring (docs/architecture.md).

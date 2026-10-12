@@ -1,6 +1,6 @@
 name: weekly-upkeep
 description: |
-  Weekly plugin upkeep (docs/loop.md), unattended (launchd, `make schedule`). `:Lazy! update` in a
+  Weekly plugin upkeep (docs/workflow.md), unattended (launchd, `make schedule`). `:Lazy! update` in a
   private plugin copy -> make check. Green: commit lazy-lock.json and merge into auto. Red: bisect
   the plugin updates, pin the breaking ones back in lazy-lock.json, queue an OpenSpec change per
   breakage (worked later by work-queue), commit and merge.

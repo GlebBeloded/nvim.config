@@ -51,7 +51,7 @@ T["file-tree: Original tab is saved"] = function()
 	eq(child.lua_get("DiffPreview.state.original_tab"), original)
 end
 
-local CODEDIFF_CRASH = "findings.md High: open_diff crashes in codediff view.create"
+local CODEDIFF_CRASH = "fix-diff-preview-codediff-crash: open_diff crashes in codediff view.create"
 
 T["file-tree: Diff tab is created"] = H.xfail(CODEDIFF_CRASH, function()
 	local before = tab_count()

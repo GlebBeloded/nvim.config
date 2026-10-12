@@ -1,9 +1,36 @@
 # nvim.config
-This repository was made to log changes to my nvim lua config.
+
+My Neovim config (Lua, lazy.nvim, macOS, run inside zellij in Alacritty). AI agents maintain it through a
+local spec-driven loop: every behaviour has an OpenSpec scenario and a headless test, and changes merge
+into the `auto` branch only when every gate is green.
+
+## Quick start
+
+```sh
+git clone <this repo> ~/.config/nvim && cd ~/.config/nvim
+git switch auto
+make install deps   # stylua, selene, lua-language-server; test deps
+nvim                # lazy.nvim installs the plugins pinned in lazy-lock.json
+make check          # the full gate
+```
+
+## Commands
+
+| Command | What it does |
+|---|---|
+| `make check` | every test layer, concurrently: the merge gate |
+| `make quick` | only what your changes vs `auto` touch: the inner loop |
+| `make test FILE=… CASE=…` | one test file or case |
+| `make render CASE=<case>` | capture the real screen in color |
+| `make fix BUG="…"` | AI loop: fix a bug end to end |
+| `make feature IDEA="…"` | AI loop: build a feature (asks for approval) |
+| `make queue` | AI loop: work the next queued change in `openspec/changes/` |
+| `make console` | Archon web console for runs and gates |
 
 ## Docs
-- [Architecture overview](docs/architecture/README.md): module map, startup sequence, AI maintenance loop
-- [Conventions](docs/architecture/conventions.md): rules the AI consistency gate enforces
-- Capabilities: [keymaps](docs/architecture/keymaps.md), [ai](docs/architecture/ai.md), [nvim-debug-log](docs/architecture/nvim-debug-log.md), [file-tree](docs/architecture/file-tree.md), [git](docs/architecture/git.md), [session](docs/architecture/session.md), [statusline](docs/architecture/statusline.md)
-- [Design renders](docs/design-renders.md): text renders for UI changes
-- Specs: [openspec/specs](openspec/specs), known issues: [openspec/findings.md](openspec/findings.md)
+
+- [Architecture](docs/architecture.md): module map, startup, AI loop, terminal stack, key decisions, conventions
+- [Workflow](docs/workflow.md): running the loop, queueing issues, design renders, debugging shortcuts
+- [Testing](docs/testing.md): test layers, naming, screenshots
+- [Agent rules](docs/CLAUDE.md) (also `CLAUDE.md`)
+- Behaviour specs: [openspec/specs](openspec/specs); queued changes and known issues: [openspec/changes](openspec/changes); project rules: [openspec/config.yaml](openspec/config.yaml)

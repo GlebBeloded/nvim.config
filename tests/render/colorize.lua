@@ -1,6 +1,6 @@
 -- `make colorize FILE=<markdown> [CASE=lua-file]`
 -- Prints every ```text render of a design doc. A render followed by a mask
--- block and a `Legend:` line (docs/design-renders.md, "Highlights") is printed
+-- block and a `Legend:` line (docs/workflow.md, "Design renders") is printed
 -- in truecolor: each mask letter is resolved to the fg/bg/bold/italic of its
 -- highlight group in the real colorscheme, queried from a headless full-config
 -- child after the render case CASE has run (groups created on first draw, like

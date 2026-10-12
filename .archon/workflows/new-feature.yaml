@@ -1,6 +1,6 @@
 name: new-feature
 description: |
-  Local loop for a feature idea (docs/loop.md). Explore + brainstorm -> propose with Current and
+  Local loop for a feature idea (docs/workflow.md). Explore + brainstorm -> propose with Current and
   Proposed A/B renders -> preview.html -> ALWAYS an approval gate (pick a render option, revise, or
   stop) -> nvim-deliver (plan, TDD build, make check, trace, verify, review, escalation, ship).
 interactive: true

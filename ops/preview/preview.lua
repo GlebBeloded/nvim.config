@@ -1,5 +1,5 @@
 -- Change preview: builds openspec/changes/<id>/preview.html, the page the user reads before approving
--- a change in the Archon loop (docs/loop.md). It shows the proposal, design.md, its mermaid diagrams
+-- a change in the Archon loop (docs/workflow.md). It shows the proposal, design.md, its mermaid diagrams
 -- rendered, and every ```text render side by side. Renders are colored by `make colorize FILE=…` when
 -- that target exists (truecolor ANSI from the real colorscheme); otherwise they stay monochrome.
 -- `*.ansi` captures in the change folder (from `make render`) are shown in color as well.

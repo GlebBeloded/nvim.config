@@ -99,7 +99,7 @@ e2e-gui: deps deps-shortcuts
 clean:
 	rm -rf .tests
 
-# --- local AI loop (docs/loop.md): thin wrappers around Archon workflows in .archon/workflows/ ---
+# --- local AI loop (docs/workflow.md): thin wrappers around Archon workflows in .archon/workflows/ ---
 ARCHON ?= archon
 STAMP := $(shell date +%Y%m%d-%H%M%S)
 LAUNCHD_LABEL := dev.gleb.nvim.weekly-upkeep

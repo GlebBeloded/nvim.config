@@ -1,6 +1,6 @@
 name: work-queue
 description: |
-  Work the local queue (docs/loop.md): take one pending change from openspec/changes/ (input
+  Work the local queue (docs/workflow.md): take one pending change from openspec/changes/ (input
   `change`, or the oldest untaken one), complete its artifacts when it is only a proposal, preview +
   approval for features and visible-UI/architecture fixes, then nvim-deliver into auto.
   `make queue` picks the change and names the branch loop/<change>.

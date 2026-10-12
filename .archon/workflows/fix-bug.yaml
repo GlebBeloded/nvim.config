@@ -1,6 +1,6 @@
 name: fix-bug
 description: |
-  Local loop for a bug (docs/loop.md). Input: a bug description or an existing OpenSpec change id.
+  Local loop for a bug (docs/workflow.md). Input: a bug description or an existing OpenSpec change id.
   Explore (root cause) -> Specify (scenario delta, validate --strict) -> [preview + approval only
   for visible UI or architecture] -> nvim-deliver (plan, TDD build, make check, trace, verify,
   review, escalation check, ship into auto).

@@ -9,12 +9,12 @@
 local H = require("tests.helpers")
 
 --- Healthchecks skipped because they need external tools or report plugin
---- issues tracked in openspec/findings.md ("Smoke baseline").
+--- issues queued as openspec/changes/fix-smoke-healthchecks.
 local HEALTH_EXCLUDE = {
 	"null-ls", -- external formatters/linters (markuplint, stylelint, shfmt, ...)
 	"rustaceanvim", -- rust-analyzer binary
 	"neotest-golang", -- testify queries need extra treesitter query files
-	"neo-tree", -- config validation false positive (findings.md)
+	"neo-tree", -- config validation false positive (fix-smoke-healthchecks)
 	"mason", -- package registry/network checks, external toolchains
 	"vim.provider", -- python/node/ruby/perl providers are optional
 }

@@ -60,6 +60,6 @@ claude-obsidian.db
 # make render output (tests/render)
 renders/
 
-# local AI loop (docs/loop.md)
+# local AI loop (docs/workflow.md)
 .archon/.env
 openspec/changes/**/preview.html

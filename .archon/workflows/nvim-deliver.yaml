@@ -1,6 +1,6 @@
 name: nvim-deliver
 description: |
-  Building block of the local loop (docs/loop.md), included by fix-bug, new-feature and work-queue:
+  Building block of the local loop (docs/workflow.md), included by fix-bug, new-feature and work-queue:
   Plan -> Build TDD -> Verify -> Align -> Review -> escalation check -> Ship into `auto`.
   Input: an OpenSpec change id whose proposal/specs/tasks exist. Run it via work-queue.
 inputs:
@@ -109,7 +109,7 @@ nodes:
               weakened_test: { type: boolean }
             required: [done, passed, exhausted, attempt, failed_gates, weakened_scenario, weakened_test]
 
-  # --- Escalation check: ping the user only for the cases in docs/loop.md ---------------------------
+  # --- Escalation check: ping the user only for the cases in docs/workflow.md -----------------------
   - id: escalation
     script: escalation
     runtime: uv

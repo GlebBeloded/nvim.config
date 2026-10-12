@@ -8,7 +8,7 @@ Idea: $ARGUMENTS
 
 Use the `openspec-explore` skill, then `superpowers:brainstorming`, without asking the user
 questions: nobody is at the console during this node. Where you would ask, pick the option that
-fits docs/CLAUDE.md and docs/architecture/conventions.md best and record the alternatives.
+fits docs/CLAUDE.md and docs/architecture.md (Conventions) best and record the alternatives.
 Research plugins (GitHub, awesome-neovim; stars, last commit) before proposing custom code.
 
 Write `$ARTIFACTS_DIR/brainstorm.md`: problem, options with trade-offs, recommendation, open

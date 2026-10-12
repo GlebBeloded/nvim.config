@@ -1,8 +1,7 @@
-- Autonomous mode: agents implement fixes and features end-to-end (spec → test → code). The user reviews only escalations.
-- Git: `auto` is the integration branch. Every change goes on a feature branch forked from `auto` and merges back into `auto`.
-- The code should be modern, idiomatic, and typed (LuaCATS annotations) where possible.
-- Before adding a plugin or approach, do web research (GitHub, awesome-neovim) for the most modern, maintained solution; compare alternatives by maintenance and star count.
-- Prefer existing plugins/built-ins over custom code.
-- Readability is critical: idiomatic, small, named functions.
-- Avoid long anonymous functions.
-- The loop runs as local Archon workflows (`.archon/workflows/`, how-to in docs/loop.md). Follow the stages in docs/architecture/README.md, the rules in docs/architecture/conventions.md and openspec/config.yaml. Never push. Never delete or weaken a test or scenario to get green.
+- Autonomous mode: agents implement fixes and features end to end (spec → test → code). The user reviews only escalations.
+- Git: `auto` is the integration branch. Every change goes on a feature branch forked from `auto` and merges back into `auto`. Never push.
+- Before adding a plugin or approach, do web research (GitHub, awesome-neovim) for the most modern, maintained solution; compare alternatives by maintenance and star count. Prefer existing plugins and built-ins over custom code.
+- Code is modern, idiomatic, typed (LuaCATS), readable: small named functions, no long anonymous functions.
+- Never delete or weaken a test or scenario to get green.
+- Read `docs/architecture.md` (principles, conventions by rule number), `docs/workflow.md` (the loop, queue, renders) and `docs/testing.md`. Rules for specs and changes: `openspec/config.yaml`.
+- Docs never restate code. New markdown only where rule 10 of `docs/architecture.md` allows; known issues become queued changes in `openspec/changes/`.

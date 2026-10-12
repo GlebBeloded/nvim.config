@@ -1,4 +1,4 @@
-# Archon project config for the local AI loop (docs/loop.md). Everything stays on this machine:
+# Archon project config for the local AI loop (docs/workflow.md). Everything stays on this machine:
 # no pushes, no PRs. Each run gets a worktree under ~/.archon/workspaces/…/worktrees/<branch>,
 # cut from `auto`, and the ship step merges it back into `auto` with --no-ff.
 assistant: claude

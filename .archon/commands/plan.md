@@ -10,4 +10,4 @@ Use the `superpowers:writing-plans` skill, but write the plan into the change's 
 separate plan file). Follow openspec/config.yaml `rules.tasks`: each task lists the scenario
 titles it satisfies, and its first step is a failing mini.test case named exactly
 "<capability>: <scenario title>" (docs/testing.md picks the layer). Keep tasks small, reuse
-plugins and built-ins (docs/architecture/conventions.md). Do not write code.
+plugins and built-ins (docs/architecture.md, Conventions). Do not write code.

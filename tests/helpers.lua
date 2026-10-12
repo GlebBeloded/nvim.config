@@ -184,7 +184,7 @@ function M.child_set(child, start)
 end
 
 --- Expected failure: wrap a case that documents a known bug (see
---- openspec/findings.md). It is reported as a skipped case with an XFAIL note
+--- its queued change in openspec/changes/). It is reported as a skipped case with an XFAIL note
 --- while it fails, and fails loudly (XPASS) once the bug is fixed.
 ---@param reason string finding reference shown in the note
 ---@param case fun()

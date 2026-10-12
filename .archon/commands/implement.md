@@ -15,7 +15,7 @@ smallest change, tick the task in tasks.md. Run only the test file or case you t
 (`make test FILE=tests/<layer>/<capability>/test_x.lua CASE="…"`), and `make quick` (lint, trace
 and the layers your changes vs auto touch, in seconds) before each commit; never the full
 `make check` (the gate after you runs it once).
-Fix every failure and finding listed above first. Follow docs/architecture/conventions.md.
+Fix every failure and finding listed above first. Follow the conventions in docs/architecture.md.
 
 Never delete, skip or weaken a test or scenario to get green; if the spec is wrong, say so in
 tasks.md under "Blocked" and stop. Commit after each task (`git commit`, conventional message).

@@ -7,8 +7,8 @@ argument-hint: <bug description or openspec change id>
 Bug: $ARGUMENTS
 
 Use the `superpowers:systematic-debugging` skill (phase 1-3 only: reproduce, trace, root cause).
-Context: docs/CLAUDE.md, docs/architecture/README.md, docs/testing.md, the capability spec in
-openspec/specs/<capability>/spec.md and openspec/findings.md. If the input is a change id, read
+Context: docs/CLAUDE.md, docs/architecture.md, docs/testing.md, the capability spec in
+openspec/specs/<capability>/spec.md and the queued changes in openspec/changes/. If the input is a change id, read
 openspec/changes/<id>/ first.
 
 Reproduce in a headless child Neovim where possible (`make test CASE=…`, or a throwaway mini.test
