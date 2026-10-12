@@ -9,7 +9,7 @@ Every task follows the same steps:
 
 ## 1. Harness helpers
 
-- [ ] 1.1 Temp git repo (design D2). Scenarios: Git commands are available after startup (first user of the helper).
+- [x] 1.1 Temp git repo (design D2). Scenarios: Git commands are available after startup (first user of the helper).
   1. Failing case `git: Git commands are available after startup` in `tests/integration/git/test_git.lua` that calls `H.git_repo({ ["a.txt"] = "a\n" })` and `cd`s the child into it.
   2. Add `H.git_repo(files, opts)` to `tests/helpers.lua` (temp dir, `git init -b main`, local `user.name`/`user.email`, commit `files`, optional `opts.remote` as `origin`; LuaCATS-typed, small named functions).
   3. Verify the case and `make lint types`.

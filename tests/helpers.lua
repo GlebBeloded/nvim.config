@@ -198,6 +198,51 @@ function M.xfail(reason, case)
 	end
 end
 
+---@class test.GitRepoOpts
+---@field remote? string URL added as `origin`
+
+--- Run git in `dir` on the host and fail the case on a non-zero exit.
+---@param dir string
+---@param args string[]
+---@return string stdout
+function M.git(dir, args)
+	local result = vim.system(vim.list_extend({ "git", "-C", dir }, args), { text = true }):wait()
+	assert(result.code == 0, ("git %s: %s"):format(table.concat(args, " "), result.stderr))
+	return result.stdout
+end
+
+--- Write `files` (path relative to `dir` -> content) into `dir`.
+---@param dir string
+---@param files table<string, string>
+function M.write_files(dir, files)
+	for name, content in pairs(files) do
+		local path = vim.fs.joinpath(dir, name)
+		vim.fn.mkdir(vim.fs.dirname(path), "p")
+		vim.fn.writefile(vim.split(content, "\n", { plain = true }), path, "b")
+	end
+end
+
+--- Temp git repository on branch `main` with `files` committed, so cases
+--- that stage, commit or diff never touch this checkout.
+---@param files table<string, string> path relative to the repo -> content
+---@param opts? test.GitRepoOpts
+---@return string path of the repo
+function M.git_repo(files, opts)
+	local dir = vim.fs.normalize(vim.fn.resolve(vim.fn.tempname()))
+	vim.fn.mkdir(dir, "p")
+	M.git(dir, { "init", "-q", "-b", "main" })
+	M.git(dir, { "config", "user.name", "Test" })
+	M.git(dir, { "config", "user.email", "test@example.com" })
+	M.git(dir, { "config", "commit.gpgsign", "false" })
+	M.write_files(dir, files)
+	M.git(dir, { "add", "-A" })
+	M.git(dir, { "commit", "-q", "--allow-empty", "-m", "initial" })
+	if opts and opts.remote then
+		M.git(dir, { "remote", "add", "origin", opts.remote })
+	end
+	return dir
+end
+
 --- Re-encode attr codes of a screenshot slice so it is independent of rows
 --- outside the slice (mini.test numbers attrs in order of appearance).
 ---@param attr string[][]
