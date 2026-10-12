@@ -62,6 +62,9 @@ function M.preflight()
 	if vim.uv.os_uname().sysname ~= "Darwin" then
 		return "e2e needs macOS"
 	end
+	if vim.trim(vim.fn.system({ "sysctl", "-n", "kern.hv_vmm_present" })) ~= "1" then
+		return "e2e posts real key events, so it only runs inside the sandbox VM (host is never targeted)"
+	end
 	local app = M.app()
 	if not app or not vim.uv.fs_stat(app) then
 		return "no Alacritty.app found (brew install --cask alacritty, or set E2E_ALACRITTY_APP)"
