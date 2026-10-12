@@ -126,7 +126,8 @@ clean:
 ARCHON ?= archon
 STAMP := $(shell date +%Y%m%d-%H%M%S)
 # After a run, drop worktrees whose branch is merged into auto (a run cannot delete its own).
-CLEANUP = $(ARCHON) isolation cleanup --merged >/dev/null 2>&1 || true
+# Archon judges "merged" against local/auto without fetching it, so refresh it with the run's merge first.
+CLEANUP = { git fetch -q local; $(ARCHON) isolation cleanup --merged; } >/dev/null 2>&1 || true
 
 .PHONY: loop-setup loop-register loop-validate fix feature queue update outdated console loop-status preview
 
