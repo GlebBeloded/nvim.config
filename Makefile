@@ -12,7 +12,7 @@ NVIM_LUA = $(NVIM) -u tests/minimal_init.lua -l
 .PHONY: check install deps fmt lint types test test-unit test-integration test-screen \
 	screenshots smoke trace render colorize clean
 
-check: lint types test smoke trace
+check: lint types test smoke trace chain stack
 
 install:
 	brew install stylua selene lua-language-server
@@ -61,6 +61,22 @@ render: deps
 # design-doc renders with mask + legend in the real colorscheme's colors
 colorize: deps
 	@$(NVIM) --headless --noplugin -u tests/minimal_init.lua -c "lua require('tests.render.colorize').run()"
+
+# --- shortcut layers: Alacritty -> zellij -> Neovim (docs/testing.md) ----------
+.PHONY: deps-shortcuts chain stack e2e-gui
+
+deps-shortcuts:
+	@tests/shortcuts/bootstrap.sh
+
+chain: deps deps-shortcuts
+	@$(call MINITEST,chain)
+	@$(NVIM_LUA) tests/shortcuts/report.lua
+
+stack: deps deps-shortcuts
+	@$(call MINITEST,stack)
+
+e2e-gui: deps deps-shortcuts
+	@$(call MINITEST,gui)
 
 clean:
 	rm -rf .tests

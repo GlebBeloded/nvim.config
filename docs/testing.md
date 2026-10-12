@@ -11,6 +11,9 @@
 | Screen | `make test-screen` | reference screenshots (`tests/screenshots/`) of the real config |
 | Smoke | `make smoke` | headless start of the real config: nothing in `:messages` or stderr, no `ERROR` in `:checkhealth`, startup time within budget |
 | Trace | `make trace` | scenario ↔ test matrix, fails on orphan tests |
+| Chain | `make chain` | real Alacritty + zellij configs parsed and routed, mappings checked in a child Neovim; prints the shortcut table ([shortcut layers](#shortcut-layers)) |
+| Stack | `make stack` | real zellij (user keybinds) in a tmux pty with the real Neovim config, fed Alacritty's bytes |
+| GUI (opt-in) | `make e2e-gui` | real Alacritty window, real macOS key events; not in `make check` |
 
 `make test` runs all three mini.test layers in one process. `make deps` fetches the pinned test dependency, mini.nvim v0.18.0, into `.tests/deps` (gitignored) via `tests/bootstrap.sh`. It is not part of the plugin list. `make install` installs the static tools with brew.
 
@@ -109,3 +112,15 @@ Cases live in `tests/render/cases.lua`: one entry per case with a description an
 `.claude/settings.json` (committed) sets two hooks:
 - PostToolUse on `Edit|Write|MultiEdit`: `.claude/hooks/lua-format.sh` runs stylua on the edited `*.lua` file, then selene. Selene findings go back to Claude (exit 2).
 - Stop: `.claude/hooks/stop-check.sh` runs `make check` when the work tree has changes, and blocks (exit 2, tail of the log) if it is red. When the hook fires again for the same stop (`stop_hook_active`), it lets Claude stop, so the gate cannot loop forever.
+
+## Shortcut layers
+
+Keys go Alacritty → zellij → Neovim, so the `shortcuts` capability (`openspec/specs/shortcuts/spec.md`) is tested across the whole chain. Its shortcut and collision tables are the source of truth; the tests parse them.
+
+The Alacritty and zellij configs are external and unversioned. They are read-only, from `$ALACRITTY_CONFIG_DIR` / `$ZELLIJ_CONFIG_DIR`, else `<repo>/terminal/<tool>`, else `~/.config/<tool>`. A change there can turn `make check` red without a commit here.
+
+- **chain** (`tests/chain/`, ~2 s, in `make check`): `tests/shortcuts/configs.py` parses the TOML (imports followed) and the KDL (kdl-py, pinned in `.tests/venv` by `make deps-shortcuts`) and resolves zellij's keybind semantics. `tests/shortcuts/chain.lua` decodes bytes the way zellij and Neovim's TUI do and models vim-zellij-navigator. Then each row is checked against Alacritty, zellij (normal and locked mode) and `maparg` in a child Neovim.
+- **stack** (`tests/stack/`, ~10 s, in `make check`): `tests/shortcuts/stack.lua` runs tmux, used only as the pty. Inside it run real zellij with a copy of the user's config (session serialization off; keybinds unchanged) and a fixed layout: Neovim with the real config on the left, `cat` on the right. Every process gets a temp dir under `/tmp`, which holds its own HOME (zellij cache with pre-granted plugin permissions), socket dirs and the helpers sandbox. Bytes are sent with `tmux send-keys -H`. Results are read from recorder mappings over RPC and from `zellij action list-clients`. Everything is cleaned up, even after a failure. `TMUX` and `TERM_PROGRAM` are unset for zellij, otherwise smart-splits picks its tmux backend.
+- **gui** (`tests/gui/`, opt-in): opens a dedicated Alacritty window (`--config-file` = the user's config) running the same zellij + Neovim, and presses keys with `osascript` System Events. It needs Accessibility permission for the app running `make`, steals focus for a few seconds, and closes the window afterwards.
+
+Kitty keyboard protocol: zellij always pushes kitty flag 1 to Alacritty (`\e[>1u`) and answers Neovim's `CSI ? u`, so Neovim runs with kitty keys inside zellij. `chars` bindings are sent verbatim. Keys without a binding (Ctrl+Return, Ctrl+H, Ctrl+Q, Ctrl+arrows) are sent by the stack layer in Alacritty's flag-1 encoding (`alacritty/src/input/keyboard.rs`, e.g. Ctrl+Return = `\e[13;5u`). Only the gui layer checks Alacritty's real encoding, `option_as_alt`, and macOS key handling.
