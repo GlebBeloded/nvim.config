@@ -22,8 +22,8 @@ Scenarios: "loop: Agent rules cover how to operate the loop".
 
 Scenarios: none (rule 10.3 housekeeping, covered by the AI review).
 
-- [ ] 3.1 `docs/architecture.md` rule 10.3: after `docs/CLAUDE.md`, note that the root `CLAUDE.md` and `AGENTS.md` are symlinks to it
-- [ ] 3.2 `README.md` Docs list: `[Agent rules](docs/CLAUDE.md) (also `CLAUDE.md` and `AGENTS.md`)`
+- [x] 3.1 `docs/architecture.md` rule 10.3: after `docs/CLAUDE.md`, note that the root `CLAUDE.md` and `AGENTS.md` are symlinks to it
+- [x] 3.2 `README.md` Docs list: `[Agent rules](docs/CLAUDE.md) (also `CLAUDE.md` and `AGENTS.md`)`
 
 ## 4. Verify
 
