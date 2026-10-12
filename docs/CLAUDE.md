@@ -1,5 +1,9 @@
+- This repo is a Neovim config, built and maintained by an AI loop (`docs/workflow.md`).
 - Autonomous mode: agents implement fixes and features end to end (spec → test → code). The user reviews only escalations.
 - Git: `auto` is the integration branch. Every change goes on a feature branch forked from `auto` and merges back into `auto`. Never push.
+- Loop entry points: `make fix`, `make feature`, `make queue`, `make update`; `make console` opens the Archon console.
+- Tests: `make quick` while working, `make check` before done; layers in `docs/testing.md`. e2e runs only via `make e2e` in the sandbox VM: key events are never posted on the host.
+- User decisions live in the `## Decision` sections of `openspec/changes/*/proposal.md`; read them before working a change.
 - Before adding a plugin or approach, do web research (GitHub, awesome-neovim) for the most modern, maintained solution; compare alternatives by maintenance and star count. Prefer existing plugins and built-ins over custom code.
 - Code is modern, idiomatic, typed (LuaCATS), readable: small named functions, no long anonymous functions.
 - Never delete or weaken a test or scenario to get green.
