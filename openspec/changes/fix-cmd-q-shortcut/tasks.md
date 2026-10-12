@@ -27,7 +27,7 @@ Scenarios: "Every passed shortcut reaches its Neovim key from a real key press",
 
 Scenarios: all of the above.
 
-- [ ] 3.1 Run `openspec validate fix-cmd-q-shortcut --strict` and `make check E2E=1`: every layer green, e2e in the provisioned VM, `make trace` with no orphans and none of this change's scenarios missing
+- [x] 3.1 Run `openspec validate fix-cmd-q-shortcut --strict` and `make check E2E=1`: every layer green, e2e in the provisioned VM, `make trace` with no orphans and none of this change's scenarios missing
 
 ## Workflow follow-up
 
