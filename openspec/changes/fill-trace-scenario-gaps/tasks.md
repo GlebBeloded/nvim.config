@@ -22,11 +22,11 @@ Every task follows the same steps:
 
 `refactor-ai-99-config` may later move these to unit; until then the menu lives in the lazy spec and needs the real config.
 
-- [ ] 2.1 Scenarios: Menu shows prompt, Menu s opens search prompt, Menu v opens vibe prompt, Menu ignores other keys.
+- [x] 2.1 Scenarios: Menu shows prompt, Menu s opens search prompt, Menu v opens vibe prompt, Menu ignores other keys.
   1. Failing cases: press the menu key with `child.type_keys`, read the message row with `H.screen_rows(child, -1)`; assert the 99 prompt buffer for `s`/`v`, nothing for another key.
   2. No harness change expected (plugin loaded after `child.wait_very_lazy()`).
   3. Verify (ai).
-- [ ] 2.2 Scenarios: Shift-Enter opens vibe prompt, Visual Alt-9 opens visual prompt, Visual Shift-Enter opens visual prompt.
+- [x] 2.2 Scenarios: Shift-Enter opens vibe prompt, Visual Alt-9 opens visual prompt, Visual Shift-Enter opens visual prompt.
   1. Failing cases: normal-mode `<S-CR>`, visual `<M-9>` and `<S-CR>` over a selection; assert the prompt buffer opens with the selection as context.
   2. No harness change expected.
   3. Verify (ai 15/15).
