@@ -9,7 +9,7 @@ Kind: bug
 
 ## Capabilities
 ### Modified Capabilities
-- `file-tree`: adds a requirement that `<space>` staging matches exact repository paths and reports failures. The existing "Git status open, close and staging actions" block stays as is (it holds when cwd is the repo root).
+- `file-tree`: adds a requirement that `<space>` staging matches exact repository paths and reports failures. The existing "Git status open, close and staging actions" block keeps its behaviour; its two staging scenarios now say "repository path" instead of "cwd-relative path" and `git reset -q`, matching the new requirement.
 
 ## Impact
 - Code: `lua/gleb/file_tree/init.lua` (`git_toggle_stage`)
