@@ -5,7 +5,8 @@
 #   sandbox.sh down       stop the VM
 #   sandbox.sh status     state, IP, provisioning (exit 0 only if running and provisioned)
 #   sandbox.sh provision  idempotent guest setup over SSH (tools, plugins, Accessibility)
-#   sandbox.sh e2e        sync the repo, run the e2e layer in the guest's GUI session
+#   sandbox.sh e2e        sync the repo, restore repo-controlled guest state, run the e2e layer
+#                         in the guest's GUI session
 #                         (SANDBOX_START=0: print a skip line instead of booting a stopped VM)
 # Inside a VM, `sandbox.sh e2e` runs the harness directly (make e2e-local).
 set -euo pipefail
@@ -242,6 +243,9 @@ sync_plugins() {
 	gssh "echo $stamp > $GUEST_DATA/.lock-stamp"
 }
 
+# the guest state the checkout controls (tests/sandbox/guest_restore.sh)
+restore_guest() { gssh "$GUEST_REPO/tests/sandbox/guest_restore.sh"; }
+
 provision() {
 	bootstrap_ssh
 	local t0=$SECONDS
@@ -343,6 +347,7 @@ e2e() {
 	bootstrap_ssh
 	if ! provisioned; then provision >&2; fi
 	sync_repo
+	restore_guest # per run, not in provision(): independent of PROVISION_REV
 	wait_gui 60 || die "no GUI session in the guest after 60 s (make sandbox-provision)"
 	local vars=""
 	for v in CASE E2E_FOCUS; do

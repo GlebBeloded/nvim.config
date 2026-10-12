@@ -28,7 +28,7 @@ Scenarios: "Guest restore drops Alacritty defaults the branch does not define", 
 
 Scenario: "sandbox.sh e2e restores guest state after syncing and before the e2e layer".
 
-- [ ] 2.1 Failing test `shortcuts: sandbox.sh e2e restores guest state after syncing and before the e2e layer` in `tests/unit/shortcuts/test_sandbox.lua`. Stubs go in a temp bin dir first on PATH, each appending its argv as one line to a shared `$GUEST_LOG`:
+- [x] 2.1 Failing test `shortcuts: sandbox.sh e2e restores guest state after syncing and before the e2e layer` in `tests/unit/shortcuts/test_sandbox.lua`. Stubs go in a temp bin dir first on PATH, each appending its argv as one line to a shared `$GUEST_LOG`:
   - `sysctl` prints `0` (host, so not `in_vm`).
   - `lume`: `get … --format json` prints `{"name":"nvim-e2e","status":"running","ipAddress":"192.0.2.1"}`.
   - `ssh` logs its last argument (the guest command) and answers:
@@ -39,8 +39,8 @@ Scenario: "sandbox.sh e2e restores guest state after syncing and before the e2e 
   - Env: `SANDBOX_STATE` is a temp dir holding a pre-made `id_ed25519`/`.pub` pair (empty files), and `HOME` is a temp dir. `NVIM_TEST_DATA_DIR` is a temp dir with `lazy/` and `site/`. `CASE` and `E2E_FOCUS` are unset, and `E2E` is empty.
   - Run `tests/sandbox/sandbox.sh e2e` from `H.root`. Expect code 0. In the log, the index of the first `rsync` line ending in `:/Users/lume/nvim/` is less than the index of the line containing `tests/sandbox/guest_restore.sh`. That is less than the index of the line containing `make -s e2e-local`.
   - The case fails, because there is no restore line.
-- [ ] 2.2 In `tests/sandbox/sandbox.sh`, add `restore_guest() { gssh "$GUEST_REPO/tests/sandbox/guest_restore.sh"; }`. Call it from `e2e()` right after `sync_repo`, before `wait_gui`/`gui "make -s e2e-local…"`. Add a one-line comment saying it runs per run, not in `provision()`, so it is independent of `PROVISION_REV`. Update the header line for `sandbox.sh e2e`: "sync the repo, restore repo-controlled guest state, run the e2e layer…". `PROVISION_REV` is unchanged, because `provision()` does not change.
-- [ ] 2.3 Run `make test FILE=tests/unit/shortcuts/test_sandbox.lua`: all three cases pass. `make quick` is green.
+- [x] 2.2 In `tests/sandbox/sandbox.sh`, add `restore_guest() { gssh "$GUEST_REPO/tests/sandbox/guest_restore.sh"; }`. Call it from `e2e()` right after `sync_repo`, before `wait_gui`/`gui "make -s e2e-local…"`. Add a one-line comment saying it runs per run, not in `provision()`, so it is independent of `PROVISION_REV`. Update the header line for `sandbox.sh e2e`: "sync the repo, restore repo-controlled guest state, run the e2e layer…". `PROVISION_REV` is unchanged, because `provision()` does not change.
+- [x] 2.3 Run `make test FILE=tests/unit/shortcuts/test_sandbox.lua`: all three cases pass. `make quick` is green.
 - [ ] 2.4 VM check of the original bug (needs `make sandbox-up`):
   - `tests/sandbox/sandbox.sh ssh "defaults write org.alacritty NSUserKeyEquivalents -dict-add 'Quit alacritty' '@~^q' 'Hide alacritty' '@~^h'"`
   - then `make e2e` on this branch passes "Cmd+Q quits Alacritty from a real key press" and "Cmd+H never reaches Neovim from a real key press".
