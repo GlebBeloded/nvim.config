@@ -1,0 +1,31 @@
+
+[window]
+opacity = 0.90
+blur = true
+option_as_alt = "Both"
+decorations = "Buttonless"
+
+[font]
+size = 12.0
+
+[font.normal]
+family = "Hack Nerd Font Mono"
+style = "Regular"
+
+[font.bold]
+family = "Hack Nerd Font Mono"
+style = "Bold"
+
+[font.italic]
+family = "Hack Nerd Font Mono"
+style = "Italic"
+
+[general]
+# Alacritty Configuration
+
+import = [
+    "~/.config/alacritty/colors.toml",
+    "~/.config/alacritty/keymaps_macos.toml",
+    "~/.config/alacritty/shell.toml",
+]
+

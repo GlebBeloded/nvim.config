@@ -1,0 +1,235 @@
+[[keyboard.bindings]]
+chars = "\u001Be"
+key = "E"
+mods = "Command"
+
+[[keyboard.bindings]]
+chars = "\u001Bg"
+key = "G"
+mods = "Command"
+
+[[keyboard.bindings]]
+chars = "\u001Bb"
+key = "B"
+mods = "Command"
+
+[[keyboard.bindings]]
+chars = "\u001Bq"
+key = "Q"
+mods = "Command"
+
+[[keyboard.bindings]]
+chars = "\u001BQ"
+key = "Q"
+mods = "Command|Shift"
+
+[[keyboard.bindings]]
+chars = "\u001Br"
+key = "R"
+mods = "Command"
+
+[[keyboard.bindings]]
+chars = "\u001Bc"
+key = "C"
+mods = "Command"
+
+[[keyboard.bindings]]
+chars = "\u001B/"
+key = "Slash"
+mods = "Command"
+
+[[keyboard.bindings]]
+chars = "\u001Bf"
+key = "F"
+mods = "Command"
+
+[[keyboard.bindings]]
+chars = "\u001BF"
+key = "F"
+mods = "Command|Shift"
+
+[[keyboard.bindings]]
+chars = "\u001Bw"
+key = "W"
+mods = "Command"
+
+[[keyboard.bindings]]
+chars = "\u001BW"
+key = "W"
+mods = "Command|Shift"
+
+[[keyboard.bindings]]
+chars = "\u0008"
+key = "H"
+mods = "Command"
+
+[[keyboard.bindings]]
+chars = "\u001BH"
+key = "H"
+mods = "Command|Shift"
+
+[[keyboard.bindings]]
+chars = "\u001Bj"
+key = "J"
+mods = "Command"
+
+[[keyboard.bindings]]
+chars = "\u001BJ"
+key = "J"
+mods = "Command|Shift"
+
+[[keyboard.bindings]]
+chars = "\u001Bk"
+key = "K"
+mods = "Command"
+
+[[keyboard.bindings]]
+chars = "\u001BK"
+key = "K"
+mods = "Command|Shift"
+
+[[keyboard.bindings]]
+chars = "\u000C"
+key = "L"
+mods = "Command"
+
+[[keyboard.bindings]]
+chars = "\u001BL"
+key = "L"
+mods = "Command|Shift"
+
+[[keyboard.bindings]]
+chars = "\u001B-"
+key = "Minus"
+mods = "Command"
+
+[[keyboard.bindings]]
+chars = "\u001B="
+key = "Equals"
+mods = "Command"
+
+[[keyboard.bindings]]
+action = "IncreaseFontSize"
+key = "Equals"
+mods = "Control"
+
+[[keyboard.bindings]]
+action = "DecreaseFontSize"
+key = "Minus"
+mods = "Control"
+
+[[keyboard.bindings]]
+action = "ResetFontSize"
+key = "Key0"
+mods = "Control"
+
+[[keyboard.bindings]]
+chars = "\u001B_"
+key = "Minus"
+mods = "Command|Shift"
+
+[[keyboard.bindings]]
+chars = "\u001B+"
+key = "Equals"
+mods = "Command|Shift"
+
+[[keyboard.bindings]]
+chars = "\u001B["
+key = "LBracket"
+mods = "Command"
+
+[[keyboard.bindings]]
+chars = "\u001B]"
+key = "RBracket"
+mods = "Command"
+
+[[keyboard.bindings]]
+chars = "\u001B[13;2u"
+key = "Return"
+mods = "Shift"
+
+[[keyboard.bindings]]
+chars = "\u001B}"
+key = "Return"
+mods = "Option"
+
+[[keyboard.bindings]]
+chars = "\u001B{"
+key = "Return"
+mods = "Option|Shift"
+
+[[keyboard.bindings]]
+chars = "\u001Bq"
+key = "Q"
+mods = "Option"
+
+[[keyboard.bindings]]
+chars = "\u001B%"
+key = "F"
+mods = "Option"
+
+[[keyboard.bindings]]
+chars = "\u001B!"
+key = "H"
+mods = "Option"
+
+[[keyboard.bindings]]
+chars = "\u001B@"
+key = "L"
+mods = "Option"
+
+[[keyboard.bindings]]
+chars = "\u001B#"
+key = "J"
+mods = "Option"
+
+[[keyboard.bindings]]
+chars = "\u001B$"
+key = "K"
+mods = "Option"
+
+[[keyboard.bindings]]
+chars = "\u001B^"
+key = "H"
+mods = "Option|Shift"
+
+[[keyboard.bindings]]
+chars = "\u001B&"
+key = "L"
+mods = "Option|Shift"
+
+[[keyboard.bindings]]
+chars = "\u001B*"
+key = "J"
+mods = "Option|Shift"
+
+[[keyboard.bindings]]
+chars = "\u001B("
+key = "K"
+mods = "Option|Shift"
+
+[[keyboard.bindings]]
+chars = "\u001B9"
+key = "Key9"
+mods = "Command"
+
+[[keyboard.bindings]]
+chars = "\u001BΩ"
+key = "H"
+mods = "Option|Control"
+
+[[keyboard.bindings]]
+chars = "\u001B≈"
+key = "L"
+mods = "Option|Control"
+
+[[keyboard.bindings]]
+chars = "\u001Bç"
+key = "J"
+mods = "Option|Control"
+
+[[keyboard.bindings]]
+chars = "\u001B∫"
+key = "K"
+mods = "Option|Control"
+
