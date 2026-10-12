@@ -87,8 +87,8 @@ In the `git_status` tree, normal-mode mappings SHALL be: `<cr>` closes any diff 
 - **THEN** no diff preview tab remains, the tree shows the `filesystem` source with the file revealed, and a non-tree window's buffer is that file
 
 #### Scenario: q closes preview and tree
-- **WHEN** a diff preview tab is open from the `git_status` tree and `q` is pressed in normal mode in the tree
-- **THEN** the current tab is `diff_preview.state.original_tab`, the diff tab is closed, `diff_preview.state.current_file` is nil, and no `neo-tree` window is open in the current tab
+- **WHEN** a diff preview tab was opened from the `git_status` tree while tab T was current, and `q` is pressed in normal mode in the tree
+- **THEN** the current tab is T, the diff tab is closed, `diff_preview.state.current_file` and `diff_preview.state.original_tab` are nil, and no `neo-tree` window is open in the current tab
 
 #### Scenario: Space stages an unstaged file
 - **WHEN** the cursor is on a file node whose cwd-relative path is not in `git diff --cached --name-only` and `<space>` is pressed in normal mode
@@ -170,7 +170,7 @@ When resolving the git root or `HEAD` for `open_diff(path)` fails, the config SH
 - **THEN** a notification starting with `Git root error:` at ERROR is emitted and the tab page count is unchanged
 
 ### Requirement: Diff preview focus and closing
-`diff_preview.focus_neo_tree()` SHALL focus the first window with filetype `neo-tree` in the current tab and return true, or return false if none exists. While `state.navigating_until` is in the future, entering a window whose filetype is neither `neo-tree` nor empty SHALL refocus the neo-tree window. `close_all_diffs()` (alias `return_to_original()`) SHALL switch to `state.original_tab` if valid, close `state.diff_tab` if valid, and set `state.current_file` to nil.
+`diff_preview.focus_neo_tree()` SHALL focus the first window with filetype `neo-tree` in the current tab and return true, or return false if none exists. While `state.navigating_until` is in the future, entering a window whose filetype is neither `neo-tree` nor empty SHALL refocus the tree. `close_all_diffs()` (alias `return_to_original()`) SHALL switch to `state.original_tab` if valid, close `state.diff_tab` if valid, clear the focus-guard autocmds and restore the initial state.
 
 #### Scenario: Focus returns false without neo-tree
 - **WHEN** no neo-tree window exists in the current tab and `diff_preview.focus_neo_tree()` is called
@@ -191,3 +191,15 @@ When resolving the git root or `HEAD` for `open_diff(path)` fails, the config SH
 #### Scenario: Return clears current file
 - **WHEN** `state.current_file` is `/some/file` and `diff_preview.return_to_original()` is called
 - **THEN** `state.current_file` is nil
+
+#### Scenario: Return clears tab state and focus guard
+- **WHEN** `diff_preview.open_diff(p)` has completed for a git-tracked file and `diff_preview.return_to_original()` is called
+- **THEN** `state.original_tab` and `state.diff_tab` are nil, `state.navigating_until` is 0, and `vim.api.nvim_get_autocmds({ group = "DiffPreviewFocusGuard" })` is empty
+
+#### Scenario: Next preview records the new original tab
+- **WHEN** `diff_preview.open_diff(a)` completed from tab T1, `diff_preview.return_to_original()` was called, `:tabnew` makes tab T2 current, and `diff_preview.open_diff(b)` completes
+- **THEN** `state.original_tab` equals T2 and `diff_preview.return_to_original()` makes T2 the current tab
+
+#### Scenario: Return cancels a pending preview
+- **WHEN** `diff_preview.open_diff(p)` is called and `diff_preview.return_to_original()` runs before the debounced open completes
+- **THEN** no diff tab is created and `state.original_tab` stays nil
