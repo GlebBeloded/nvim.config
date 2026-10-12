@@ -44,6 +44,51 @@ local function callback_is(lhs, mode, expr)
 	return child.lua_get(string.format("vim.fn.maparg(%q, %q, false, true).callback == %s", lhs, mode, expr))
 end
 
+--- Wait budget for async plugins (neo-tree, telescope, differ).
+local ASYNC_MS = 3000
+
+--- Lua expression: number of neo-tree windows in all tabs.
+local TREE_WIN_COUNT = [[#vim.tbl_filter(function(win)
+	return vim.bo[vim.api.nvim_win_get_buf(win)].filetype == "neo-tree"
+end, vim.api.nvim_list_wins())]]
+
+--- Wait until the current window is the neo-tree window of `source`.
+---@param source "filesystem"|"git_status"
+---@return boolean
+local function wait_tree_focused(source)
+	local expr = [[vim.bo.filetype == "neo-tree" and vim.api.nvim_buf_get_name(0):find("neo-tree %s", 1, true) ~= nil]]
+	return child.wait(expr:format(source), ASYNC_MS)
+end
+
+---@return boolean
+local function wait_no_tree()
+	return child.wait(TREE_WIN_COUNT .. " == 0", ASYNC_MS)
+end
+
+--- `cd` the child into a temp git repo and edit its `foo.lua`.
+---@return string repo
+local function edit_repo_file()
+	local repo = H.git_repo({ ["foo.lua"] = "return 1\n" })
+	child.cmd("cd " .. repo .. " | edit foo.lua")
+	return repo
+end
+
+---@param source "filesystem"|"git_status"
+local function focus_tree(source)
+	child.cmd("Neotree focus " .. source)
+	assert(wait_tree_focused(source), "neo-tree " .. source .. " not focused")
+end
+
+--- Path of the filesystem tree node under the cursor (nil if none).
+---@return string?
+local function tree_cursor_path()
+	return child.lua_get([[(function()
+		local state = require("neo-tree.sources.manager").get_state("filesystem")
+		local node = state.tree and state.tree:get_node()
+		return node and node.path or vim.NIL
+	end)()]])
+end
+
 local function set_diagnostics_on_lines_2_and_4()
 	set_lines({ "1", "2", "3", "4", "5" })
 	child.lua([[
@@ -286,6 +331,53 @@ T["keymaps: [d jumps to previous diagnostic"] = function()
 	child.type_keys("[d")
 
 	eq(cursor_line(), 2)
+end
+
+-- Neo-tree, Differ, Telescope ------------------------------------------------
+
+T["keymaps: Alt-e reveals current file"] = function()
+	local repo = edit_repo_file()
+	child.type_keys("<M-e>")
+
+	eq(wait_tree_focused("filesystem"), true)
+	eq(child.wait([[vim.api.nvim_get_current_line():find("foo.lua", 1, true) ~= nil]], ASYNC_MS), true)
+	eq(tree_cursor_path(), vim.fs.joinpath(repo, "foo.lua"))
+end
+
+T["keymaps: Alt-e on URI buffer focuses filesystem"] = H.xfail(
+	"fix-neotree-uri-reveal: follow_current_file prompts to change cwd to vscodediff:",
+	function()
+		edit_repo_file()
+		child.cmd("enew | file vscodediff://x | messages clear")
+		child.type_keys("<M-e>")
+
+		eq(wait_tree_focused("filesystem"), true)
+		eq({ child.v.errmsg, child.cmd_capture("messages") }, { "", "" })
+	end
+)
+
+T["keymaps: Alt-e closes focused filesystem tree"] = function()
+	edit_repo_file()
+	focus_tree("filesystem")
+	child.type_keys("<M-e>")
+
+	eq(wait_no_tree(), true)
+end
+
+T["keymaps: Alt-G switches tree to git status"] = function()
+	edit_repo_file()
+	focus_tree("filesystem")
+	child.type_keys("<M-G>")
+
+	eq(wait_tree_focused("git_status"), true)
+end
+
+T["keymaps: Alt-G closes focused git status tree"] = function()
+	edit_repo_file()
+	focus_tree("git_status")
+	child.type_keys("<M-G>")
+
+	eq(wait_no_tree(), true)
 end
 
 return T
