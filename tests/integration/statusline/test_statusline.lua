@@ -35,6 +35,47 @@ local function expect_statusline_contains(needle)
 	end
 end
 
+--- Diff symbols of `lua/gleb/lualine.lua` (added, modified, removed); the spec
+--- shows them as empty backticks until fix-empty-nerd-font-glyphs.
+local DIFF_SYMBOLS = { vim.fn.nr2char(0xf457), vim.fn.nr2char(0xf459), vim.fn.nr2char(0xf458) }
+
+---@param needles string[]
+---@return boolean
+local function statusline_has_any(needles)
+	local text = statusline_text()
+	return vim.iter(needles):any(function(needle)
+		return text:find(needle, 1, true) ~= nil
+	end)
+end
+
+--- Replace nvim-navic in the child with a stub that reports `location`.
+---@param location string
+local function stub_navic(location)
+	child.lua(
+		[[
+		local location = ...
+		package.loaded["nvim-navic"] = {
+			is_available = function() return true end,
+			get_location = function() return location end,
+		}
+	]],
+		{ location }
+	)
+end
+
+--- 1-based screen column where `text` starts in a row of cells (nil if absent).
+---@param cells string[]
+---@param text string
+---@return integer?
+local function location_column(cells, text)
+	local first = vim.fn.strcharpart(text, 0, 1)
+	for col = 1, #cells do
+		if cells[col] == first and table.concat(cells, "", col):sub(1, #text) == text then
+			return col
+		end
+	end
+end
+
 local T = H.child_set(child, start)
 
 T["statusline: statusline is global"] = function()
@@ -79,6 +120,33 @@ T["statusline: statusline disabled on dashboard"] = function()
 	vim.uv.sleep(200)
 
 	eq(statusline_text():find("NORMAL", 1, true), nil)
+end
+
+T["statusline: diff hidden in narrow windows"] = function()
+	local repo = H.git_repo({ ["sample.txt"] = "a\nb\n" })
+	H.write_files(repo, { ["sample.txt"] = "a\nchanged\nadded\n" })
+	child.o.columns = 120
+	child.cmd("cd " .. repo .. " | edit sample.txt")
+	-- wide first: the diff is shown, so its absence below is due to the width
+	expect_statusline_contains(DIFF_SYMBOLS[1])
+
+	child.o.columns = 80
+	child.cmd("redrawstatus")
+	vim.wait(1500, function()
+		return not statusline_has_any(DIFF_SYMBOLS)
+	end, 50)
+
+	eq(statusline_has_any(DIFF_SYMBOLS), false)
+end
+
+T["statusline: navic breadcrumb shown when available"] = function()
+	child.o.columns = 100
+	edit_scratch("sample.txt")
+	stub_navic("Server ▸ Handle")
+	expect_statusline_contains("Server ▸ Handle")
+
+	local cells = H.screen_rows(child, -1).text[1]
+	eq(location_column(cells, "Server ▸ Handle") <= #cells / 2, true)
 end
 
 T["statusline: chip highlights survive colorscheme change"] = function()
