@@ -6,6 +6,7 @@ local child = H.new_child()
 
 --- Git-tracked files of this checkout used as diff targets.
 local TRACKED = vim.fs.joinpath(H.root, "lua/gleb/file_tree/diff_preview.lua")
+local TRACKED_B = vim.fs.joinpath(H.root, "lua/gleb/file_tree/init.lua")
 local ASYNC_MS = 3000
 
 local function start()
@@ -18,6 +19,11 @@ end
 ---@return integer
 local function tab_count()
 	return #child.api.nvim_list_tabpages()
+end
+
+---@return integer
+local function focus_guard_count()
+	return child.lua_get([[#vim.api.nvim_get_autocmds({ group = "DiffPreviewFocusGuard" })]])
 end
 
 ---@param path string
@@ -68,6 +74,33 @@ T["file-tree: Neo-tree is opened and focused in diff tab"] = H.xfail(CODEDIFF_CR
 
 	eq(child.wait([[vim.bo.filetype == "neo-tree"]], ASYNC_MS), true)
 	eq(current_is_neo_tree(), true)
+end)
+
+T["file-tree: Return clears tab state and focus guard"] = H.xfail(CODEDIFF_CRASH, function()
+	open_diff(TRACKED)
+	eq(wait_diff_tab(), true)
+
+	child.lua("DiffPreview.return_to_original()")
+
+	eq(child.lua_get("DiffPreview.state.original_tab"), vim.NIL)
+	eq(child.lua_get("DiffPreview.state.diff_tab"), vim.NIL)
+	eq(child.lua_get("DiffPreview.state.navigating_until"), 0)
+	eq(focus_guard_count(), 0)
+end)
+
+T["file-tree: Next preview records the new original tab"] = H.xfail(CODEDIFF_CRASH, function()
+	open_diff(TRACKED)
+	eq(wait_diff_tab(), true)
+	child.lua("DiffPreview.return_to_original()")
+	child.cmd("tabnew")
+	local second = child.api.nvim_get_current_tabpage()
+
+	open_diff(TRACKED_B)
+	eq(wait_diff_tab(), true)
+
+	eq(child.lua_get("DiffPreview.state.original_tab"), second)
+	child.lua("DiffPreview.return_to_original()")
+	eq(child.api.nvim_get_current_tabpage(), second)
 end)
 
 T["file-tree: File outside a repository"] = function()
