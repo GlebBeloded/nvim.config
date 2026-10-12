@@ -52,4 +52,4 @@ Scenario: "sandbox.sh e2e restores guest state after syncing and before the e2e 
   - "Sandbox VM" table, `make e2e` row: after rsyncing the checkout, it restores the repo-controlled guest state (`tests/sandbox/guest_restore.sh`: the `org.alacritty` defaults domain, then the checkout's `terminal/macos_*.sh`) before `make e2e-local`.
   - "Layout": add `guest_restore.sh` to the `sandbox/` line.
 - [x] 3.2 Hand-off for `fix-cmd-q-shortcut` (unmerged, out of this branch): this change's proposal already records it, so no code here. When that branch rebases onto `auto`, it drops its `provision()` call and `PROVISION_REV` bump. Its `terminal/macos_menu_keys.sh` is then picked up by the restore step.
-- [ ] 3.3 `make check E2E=1` green.
+- [x] 3.3 `make check E2E=1` green.
