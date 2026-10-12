@@ -95,6 +95,90 @@ local function diff_tab_shows(path)
 	return ("DiffTabShows(%q)"):format(path)
 end
 
+--- Lua expression: the current tab has a window whose buffer is `path` and not a tree.
+---@param path string
+---@return string
+local function editing(path)
+	return (
+		"vim.iter(vim.api.nvim_tabpage_list_wins(0)):any(function(win) "
+		.. "local buf = vim.api.nvim_win_get_buf(win) "
+		.. "return vim.bo[buf].filetype ~= 'neo-tree' and vim.api.nvim_buf_get_name(buf) == %q end)"
+	):format(path)
+end
+
+---@return boolean
+local function neo_tree_in_current_tab()
+	return child.lua_get([[vim.iter(vim.api.nvim_tabpage_list_wins(0)):any(function(win)
+		return vim.bo[vim.api.nvim_win_get_buf(win)].filetype == "neo-tree"
+	end)]])
+end
+
+--- Lua expression: a `filesystem` tree in the current tab has its cursor on `path`.
+---@param path string
+---@return string
+local function filesystem_reveals(path)
+	return ([[(function(path)
+		local state = require("neo-tree.sources.manager").get_state("filesystem")
+		if not (state.winid and vim.api.nvim_win_is_valid(state.winid) and state.tree) then
+			return false
+		end
+		local buf = vim.api.nvim_win_get_buf(state.winid)
+		local node = state.tree:get_node()
+		return vim.api.nvim_win_get_tabpage(state.winid) == vim.api.nvim_get_current_tabpage()
+			and vim.b[buf].neo_tree_source == "filesystem"
+			and node ~= nil and node.path == path
+	end)(%q)]]):format(path)
+end
+
+--- Call `open_diff(path)` and keep the child's clock at the call in `OpenDiffAt`.
+---@param path string
+local function open_diff_timed(path)
+	child.lua("OpenDiffAt = vim.uv.now(); DiffPreview.open_diff(...)", { path })
+end
+
+--- Enter the first non-tree, non-empty-filetype window of the current tab with
+--- `vim.uv.now()` reading `after_ms` past the `open_diff_timed` call: a fake clock
+--- for the synchronous `WinEnter`, so a slow diff view cannot miss the window.
+---@param after_ms integer
+local function enter_diff_window_at(after_ms)
+	child.lua(
+		[[local now, after_ms = vim.uv.now, ...
+		local win = vim.iter(vim.api.nvim_tabpage_list_wins(0)):find(function(w)
+			local ft = vim.bo[vim.api.nvim_win_get_buf(w)].filetype
+			return ft ~= "neo-tree" and ft ~= ""
+		end)
+		assert(win, "no diff window in the current tab")
+		vim.uv.now = function() return OpenDiffAt + after_ms end
+		local ok, err = pcall(vim.api.nvim_set_current_win, win)
+		vim.uv.now = now
+		assert(ok, err)]],
+		{ after_ms }
+	)
+end
+
+--- Focus the tree and press `keys` in one RPC, so scheduled focus changes of the
+--- diff view cannot move the cursor out of the tree in between.
+---@param keys string
+---@return boolean focused whether a neo-tree window got the keys
+local function press_in_tree(keys)
+	return child.lua(
+		[[if not DiffPreview.focus_neo_tree() then
+			return false
+		end
+		vim.api.nvim_feedkeys(vim.keycode(...), "mx", false)
+		return true]],
+		{ keys }
+	)
+end
+
+--- Open the preview of `path` and wait until its diff tab shows it with the tree focused.
+---@param path string
+---@return boolean
+local function preview(path)
+	open_diff(path)
+	return child.wait(diff_tab_shows(path) .. " and vim.bo.filetype == 'neo-tree'", ASYNC_MS)
+end
+
 ---@return boolean
 local function current_is_neo_tree()
 	return child.bo.filetype == "neo-tree"
@@ -218,6 +302,52 @@ T["file-tree: Rapid calls are debounced"] = H.xfail(CODEDIFF_CRASH, function()
 	eq(wait_diff_tab(), true)
 	eq(child.lua_get("TabsCreated"), 1)
 	eq(child.lua_get(diff_tab_shows(repo_path("b/y.lua"))), true)
+end)
+
+T["file-tree: Diff tab is reused across files"] = H.xfail(CODEDIFF_CRASH, function()
+	start_repo()
+	eq(preview(repo_path("a/x.lua")), true)
+
+	eq(preview(repo_path("b/y.lua")), true)
+
+	eq(tab_count(), 2)
+	eq(child.lua_get("DiffPreview.state.current_file"), repo_path("b/y.lua"))
+end)
+
+T["file-tree: Focus guard pulls focus back during navigation"] = H.xfail(CODEDIFF_CRASH, function()
+	start_repo()
+	open_diff_timed(repo_path("a/x.lua"))
+	eq(child.wait(diff_tab_shows(repo_path("a/x.lua")), ASYNC_MS), true)
+
+	enter_diff_window_at(100)
+
+	eq(child.wait([[vim.bo.filetype == "neo-tree"]], ASYNC_MS), true)
+end)
+
+T["file-tree: Enter opens file and switches to filesystem tree"] = function()
+	start_repo()
+	open_git_status(repo_path("a/x.lua"))
+	cursor_on(repo_path("a/x.lua"))
+
+	child.type_keys("<CR>")
+
+	eq(child.wait(filesystem_reveals(repo_path("a/x.lua")), ASYNC_MS), true)
+	eq(child.lua_get(editing(repo_path("a/x.lua"))), true)
+	eq(tab_count(), 1)
+	eq(child.lua_get("DiffPreview.state.diff_tab"), vim.NIL)
+end
+
+T["file-tree: q closes preview and tree"] = H.xfail(CODEDIFF_CRASH, function()
+	start_repo()
+	eq(preview(repo_path("a/x.lua")), true)
+	local diff_tab = child.lua_get("DiffPreview.state.diff_tab")
+
+	eq(press_in_tree("q"), true)
+
+	eq(child.lua_get("vim.api.nvim_get_current_tabpage() == DiffPreview.state.original_tab"), true)
+	eq(child.api.nvim_tabpage_is_valid(diff_tab), false)
+	eq(child.lua_get("DiffPreview.state.current_file"), vim.NIL)
+	eq(neo_tree_in_current_tab(), false)
 end)
 
 return T
