@@ -27,6 +27,8 @@ local EXTRA_OPTIONS = {
 ---@field channel integer? RPC channel to Neovim
 ---@field nvim_pid integer?
 ---@field frontend shortcuts.Frontend
+---@field t0 integer hrtime of start()
+---@field timeline string[] "+<ms> <event>" lines, shown in start failures
 local Stack = {}
 Stack.__index = Stack
 
@@ -172,23 +174,44 @@ function Stack:lua(code, args)
 	return vim.rpcrequest(channel, "nvim_exec_lua", code, args or {})
 end
 
+--- Note a startup event with its time since start().
+---@param event string
+function Stack:mark(event)
+	table.insert(self.timeline, string.format("+%5d ms  %s", (vim.uv.hrtime() - self.t0) / 1e6, event))
+end
+
+--- Timeline plus the frontend's own diagnostics, for failure messages.
+---@return string
+function Stack:diagnostics()
+	local lines = { "timeline:" }
+	vim.list_extend(lines, self.timeline)
+	if self.frontend.diagnostics then
+		vim.list_extend(lines, self.frontend.diagnostics(self))
+	end
+	return table.concat(lines, "\n  ")
+end
+
 ---@param self shortcuts.Stack
 local function connect(self)
 	M.wait_for(function()
 		return vim.uv.fs_stat(self:nvim_socket()) ~= nil
 	end, "Neovim socket")
+	self:mark("Neovim socket")
 	self.channel = vim.fn.sockconnect("pipe", self:nvim_socket(), { rpc = true })
 	assert(self.channel > 0, "cannot connect to " .. self:nvim_socket())
 	-- zellij is a real UI, so UIEnter and VeryLazy fire on their own
 	self.nvim_pid = self:lua("return vim.fn.getpid()")
+	self:mark("Neovim RPC (pid " .. self.nvim_pid .. ")")
 	M.wait_for(function()
 		return self:lua("return vim.g.did_very_lazy == true")
 	end, "VeryLazy")
+	self:mark("VeryLazy")
 	self:lua([[local plugin = require("lazy.core.config").plugins["copilot.lua"]
 		if plugin then require("lazy.core.handler").disable(plugin) end]])
 	M.wait_for(function()
 		return self:focused_pane() == "terminal_0"
 	end, "zellij client focused on the Neovim pane")
+	self:mark("zellij client on the Neovim pane")
 end
 
 --- What runs zellij: a terminal (tmux pty here, a real Alacritty window in
@@ -198,6 +221,7 @@ end
 ---@field term? string TERM for zellij (nil: inherit the terminal's own)
 ---@field start fun(self: shortcuts.Stack)
 ---@field stop fun(self: shortcuts.Stack)
+---@field diagnostics? fun(self: shortcuts.Stack): string[] extra lines for failure messages
 
 ---@type shortcuts.Frontend
 M.TMUX = {
@@ -218,7 +242,7 @@ M.TMUX = {
 ---@return shortcuts.Stack
 function M.start(frontend)
 	H.isolate()
-	local self = setmetatable({ frontend = frontend or M.TMUX }, Stack)
+	local self = setmetatable({ frontend = frontend or M.TMUX, t0 = vim.uv.hrtime(), timeline = {} }, Stack)
 	self.dir = vim.trim(vim.fn.system({ "mktemp", "-d", "/tmp/nvst.XXXXXX" }))
 	self.session = string.format("nvim-shortcuts-%d-%d", vim.fn.getpid(), vim.uv.hrtime() % 100000)
 	self.env = {
@@ -242,8 +266,9 @@ function M.start(frontend)
 		connect(self)
 	end)
 	if not ok then
+		local diagnostics = self:diagnostics()
 		self:stop()
-		error(err, 0)
+		error(tostring(err) .. "\n  " .. diagnostics, 0)
 	end
 	return self
 end
@@ -277,7 +302,12 @@ local RECORD = [[_G.shortcut_hits = {}
 		if _G.shortcut_saved[lhs] == nil then
 			_G.shortcut_saved[lhs] = vim.fn.maparg(lhs, "n", false, true)
 		end
-		vim.keymap.set("n", lhs, function() table.insert(_G.shortcut_hits, lhs) end)
+		vim.keymap.set("n", lhs, function()
+			table.insert(_G.shortcut_hits, lhs)
+			if _G.shortcut_notify then -- push to the runner (tests/e2e/alacritty.lua waits on it)
+				pcall(vim.rpcnotify, _G.shortcut_notify, "nvim_exec_lua", "require('tests.e2e.alacritty').on_hit(...)", { lhs })
+			end
+		end)
 	end]]
 
 local RESTORE = [[for lhs, saved in pairs(_G.shortcut_saved or {}) do

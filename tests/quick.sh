@@ -7,8 +7,8 @@
 #   any Lua or .luarc.jsonc -> types (cached by content, tests/types.sh)
 #   init.lua, plugin spec, lazy-lock.json, options, autocommands, tests/smoke/ -> smoke
 #   terminal/, keymaps -> chain; shortcuts capability -> chain + stack
-#   terminal/, keymaps, shortcuts capability, tests/e2e/ -> e2e (E2E=1, focus bursts),
-#     only when Accessibility is granted (else make check reports it as skipped)
+#   terminal/, keymaps, shortcuts capability, tests/e2e/, tests/sandbox/ -> e2e, only while the
+#     sandbox VM runs (make sandbox-up; e2e never runs on the host)
 # Overrides: ALL=1 all mini.test layers, STACK=1 stack, E2E=1 e2e, SMOKE=1 smoke, TYPES=1 types.
 set -eu
 
@@ -55,7 +55,7 @@ for f in $changed; do
 	tests/shortcuts/* | openspec/specs/shortcuts/* | openspec/changes/*/specs/shortcuts/*)
 		chain=1 stack=1 e2e=1 ;;
 	tests/chain/* | tests/stack/*) chain=1 stack=1 ;;
-	tests/e2e/*) e2e=1 ;;
+	tests/e2e/* | tests/sandbox/*) e2e=1 ;;
 	terminal/*) chain=1 e2e=1 ;;
 	tests/screenshots/tests-*-*-*) c=${f#tests/screenshots/tests-*-} && add_cap "${c%%-test_*}" ;;
 	tests/unit/*/* | tests/integration/*/* | tests/screen/*/*) c=${f#tests/*/} && add_cap "${c%%/*}" ;;
@@ -76,7 +76,7 @@ elif [ -n "$(echo "$caps" | tr -d ' ')" ]; then
 fi
 [ -n "$chain" ] && targets="$targets chain"
 [ -n "$stack" ] && targets="$targets stack"
-if [ -n "$e2e" ] && [ "$e2e" != 0 ] && keys=$(tests/e2e/build.sh 2>/dev/null) && "$keys" trusted >/dev/null; then
+if [ -n "$e2e" ] && [ "$e2e" != 0 ] && tests/sandbox/sandbox.sh status >/dev/null 2>&1; then
 	targets="$targets e2e"
 	export E2E=1
 fi

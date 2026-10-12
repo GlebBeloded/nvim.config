@@ -4,12 +4,12 @@
 
 | Command | What runs | Wall time (14-core Mac) |
 |---|---|---|
-| `make check` | every layer below, concurrently (`tests/check.sh`); smoke startup timing runs alone afterwards. e2e runs only if it needs no window focus (else `skip`) | ~15 s |
-| `make check E2E=1` | the same, e2e with focus bursts; the loop's gate (`.archon/scripts/gate.py`) | ~15 s + e2e |
+| `make check` | every layer below, concurrently (`tests/check.sh`); smoke startup timing runs alone afterwards. e2e runs only while the sandbox VM is up (else `skip`) | ~15 s |
+| `make check E2E=1` | the same, booting the sandbox VM for e2e if it is down; the loop's gate (`.archon/scripts/gate.py`) | ~15 s (VM up) |
 | `make quick` | lint + trace, plus only the layers the changes vs `BASE` (default `auto`) can affect (`tests/quick.sh` has the mapping) | <1 s docs only, ~7 s one capability |
 | `make test FILE=… CASE=…` | one file / matching cases | ~1–3 s |
 
-`check.sh` prints one status line per layer as it finishes, then the full log of every failed layer. A layer that cannot run here prints `skip` with its reason (e2e without Accessibility). `make quick` takes `ALL=1`, `STACK=1`, `E2E=1`, `SMOKE=1` and `TYPES=1` to force a layer.
+`check.sh` prints one status line per layer as it finishes, then the full log of every failed layer. A layer that cannot run here prints `skip` with its reason (e2e while the sandbox VM is down). `make quick` takes `ALL=1`, `STACK=1`, `E2E=1`, `SMOKE=1` and `TYPES=1` to force a layer.
 
 Pyramid, bottom to top. Times are wall times of one layer on its own (in `make check` they overlap).
 
@@ -23,7 +23,7 @@ Pyramid, bottom to top. Times are wall times of one layer on its own (in `make c
 | Integration | `make test-integration` | behaviour of the *real* config in a child Neovim (keys, autocmds, plugins) | |
 | Screen | `make test-screen` | reference screenshots (`tests/screenshots/`) of the real config | |
 | Stack | `make stack` | real zellij (user keybinds) in a tmux pty with the real Neovim config, fed Alacritty's bytes | ~6 s |
-| E2E | `make e2e` | real Alacritty window + zellij + Neovim, real macOS key events; needs Accessibility, else skipped | ~2 s to ready; full run not measured yet; 0.3 s skipped |
+| E2E | `make e2e` | real Alacritty window + zellij + Neovim, real macOS key events, inside the [sandbox VM](#sandbox-vm) | ~13 s warm (1 s to ready) |
 | Smoke | `make smoke` | headless start of the real config: nothing in `:messages` or stderr, no `ERROR` in `:checkhealth`, startup time within budget | ~7 s health, ~2 s startup |
 
 `make test` runs all three mini.test layers (`tests/parallel.lua`): the matched cases are sharded over `JOBS` headless workers (default cores − 2; `JOBS=1` runs serially), balanced by the case durations of earlier runs (`.tests/timings.json`), and reported as one mini.test report with fails and notes at the end. Every worker has its own sandbox (see [Isolation](#isolation)). `make screenshots`, `chain`, `stack` and `e2e` run in one process. `make deps` fetches the pinned test dependency, mini.nvim v0.18.0, into `.tests/deps` (gitignored) via `tests/bootstrap.sh`. It is not part of the plugin list. `make install` installs the static tools with brew.
@@ -47,6 +47,7 @@ tests/
   <layer>/<capability>/test_<topic>.lua
   shortcuts/            chain + stack harness (configs.py, chain.lua, stack.lua)
   e2e/                  e2e harness (alacritty.lua, keys.swift, build.sh)
+  sandbox/              the e2e sandbox VM (sandbox.sh, sip_off.sh)
   screenshots/          reference screenshots (text, committed)
   smoke/                make smoke (run.lua outside, probe.lua inside nvim)
   render/               make render / make colorize (cases.lua, tmux capture, mockup colorizer)
@@ -134,8 +135,20 @@ The Alacritty and zellij configs are external and unversioned. They are read-onl
 
 - **chain** (`tests/chain/`, ~2 s, in `make check`): `tests/shortcuts/configs.py` parses the TOML (imports followed) and the KDL (kdl-py, pinned in `.tests/venv` by `make deps-shortcuts`) and resolves zellij's keybind semantics. `tests/shortcuts/chain.lua` decodes bytes the way zellij and Neovim's TUI do and models vim-zellij-navigator. Then each row is checked against Alacritty, zellij (normal and locked mode) and `maparg` in a child Neovim.
 - **stack** (`tests/stack/`, ~10 s, in `make check`): `tests/shortcuts/stack.lua` runs tmux, used only as the pty. Inside it run real zellij with a copy of the user's config (session serialization off; keybinds unchanged) and a fixed layout: Neovim with the real config on the left, `cat` on the right. Every process gets a temp dir under `/tmp`, which holds its own HOME (zellij cache with pre-granted plugin permissions), socket dirs and the helpers sandbox. Bytes are sent with `tmux send-keys -H`. Results are read from recorder mappings over RPC and from `zellij action list-clients`. Everything is cleaned up, even after a failure. `TMUX` and `TERM_PROGRAM` are unset for zellij, otherwise smart-splits picks its tmux backend.
-- **e2e** (`tests/e2e/`, `make e2e`): starts a dedicated Alacritty instance with the repo's `terminal/alacritty` config (imports pointed at it, fixed size) without activating it, running the stack layer's zellij + Neovim setup. `tests/e2e/keys.swift` (built and cached in `.tests/e2e/` by `tests/e2e/build.sh`) launches it, checks `AXIsProcessTrusted`, and posts real key events to its pid (`CGEventPostToPid`, US key positions, modifier down/up events). At start one probe key shows whether events reach the window in the background. If they do not, each test's key burst makes the window frontmost and gives focus back to the previous app afterwards; that mode runs only with `E2E=1` (`make e2e`, `make check E2E=1`, the loop's gate) and `make check` alone reports `skip`. The window, the zellij session and the temp dir are removed by `stop()`, and by a detached watchdog if the runner dies. `make quick` adds e2e (with `E2E=1`) when `terminal/`, keymaps, `tests/shortcuts/`, `tests/e2e/` or the shortcuts spec change and Accessibility is granted.
-
-  Permission: macOS charges Accessibility to the app that started the process chain (for a shell in Alacritty, Alacritty itself; the skip line names it). Enable it in System Settings > Privacy & Security > Accessibility. Without it every e2e case is skipped with that one-line fix. While a burst runs, your own keystrokes would land in the test window.
+- **e2e** (`tests/e2e/`, `make e2e`; runs only in the [sandbox VM](#sandbox-vm)): starts a dedicated Alacritty instance with the repo's `terminal/alacritty` config (imports pointed at it, fixed size) without activating it, running the stack layer's zellij + Neovim setup. `tests/e2e/keys.swift` (built and cached in `.tests/e2e/` by `tests/e2e/build.sh`) launches it, checks `AXIsProcessTrusted`, and posts real key events to its pid (`CGEventPostToPid`, US key positions, modifier down/up events); Ctrl+Return goes through the HID tap with the window focused, because a per-pid post loses its key-down. A probe key at start must arrive as itself. Recorder mappings push every hit to the runner over RPC, so a row waits at most 300 ms for a key that never comes. Every press is followed by a liveness check; a failure prints the startup timeline (Alacritty launched, Neovim socket and RPC, VeryLazy, zellij client, probe) with Alacritty's ERROR/WARN log lines and zellij's stderr. A case that quits the window (Ctrl+Q, Cmd+Q, last) gets a fresh stack in `pre_case`. The window, the zellij session and the temp dir are removed by `stop()`, and by a detached watchdog if the runner dies. `make quick` adds e2e when `terminal/`, keymaps, `tests/shortcuts/`, `tests/e2e/`, `tests/sandbox/` or the shortcuts spec change and the sandbox VM is up.
 
 Kitty keyboard protocol: zellij always pushes kitty flag 1 to Alacritty (`\e[>1u`) and answers Neovim's `CSI ? u`, so Neovim runs with kitty keys inside zellij. `chars` bindings are sent verbatim. Keys without a binding (Ctrl+Return, Ctrl+H, Ctrl+Q, Ctrl+arrows) are sent by the stack layer in Alacritty's flag-1 encoding (`alacritty/src/input/keyboard.rs`, e.g. Ctrl+Return = `\e[13;5u`). Only the e2e layer checks Alacritty's real encoding, `option_as_alt`, and macOS key handling.
+
+## Sandbox VM
+
+e2e posts real key events, so it never runs on the host: `keys press`/`focus` refuse unless `kern.hv_vmm_present` is 1 (fail closed), a denylist of system-wide chords (log out, force quit, lock screen, app switcher, Spotlight, …) is refused everywhere, and the harness skips on the host. It runs in a headless macOS VM managed by [Lume](https://cua.ai/docs/lume) (`tests/sandbox/sandbox.sh`, telemetry off). Key events and VNC input only ever reach the guest.
+
+| Command | What it does |
+|---|---|
+| `make sandbox-up` | installs Lume (brew), pulls `macos-tahoe-vanilla` once (~21 GB download, ~25 GB on disk; refuses if it would leave < 25 GB free), boots it headless (4 CPU, 8 GB), provisions if needed |
+| `make sandbox-provision` | idempotent guest setup over SSH: key login, Homebrew, pinned Neovim / zellij / Alacritty release builds (host versions), tmux, python, uv, the Hack Nerd Font, the navigator plugin at its configured path, plugins from `~/.local/share/nvim/{lazy,site}` (again when `lazy-lock.json` changes), SIP off and Accessibility in the guest's TCC.db; ends with `keys trusted` |
+| `make sandbox-status` / `make sandbox-down` | state and IP / power off (after `sync`) |
+| `make e2e` | rsyncs the checkout into the guest and runs `make e2e-local` in its logged-in GUI session (`launchctl asuser`), output streamed back; `CASE=` and `E2E_FOCUS=` pass through |
+
+`make check` runs e2e only while the VM is up (else `skip: sandbox down — make sandbox-up`); `make check E2E=1` and the loop's gate boot it. A cold boot takes ~10 s; first provisioning ~5 min plus SIP. SIP is turned off once with `lume sip off`; where Lume's Recovery automation fails (Lume 0.6.1 on macOS 26.4), `tests/sandbox/sip_off.sh` drives Recovery over the VM's own VNC port (~4 min, screenshots in `~/.cache/nvim-e2e-sandbox/sip/`). State (SSH key, vncdotool venv, logs) lives in `~/.cache/nvim-e2e-sandbox`, the VM in `~/.lume/nvim-e2e`; `lume delete nvim-e2e` removes it.
+

@@ -14,7 +14,7 @@ NVIM_LUA = $(NVIM_BIN) -u tests/minimal_init.lua -l
 PARALLEL = $(NVIM_LUA) tests/parallel.lua $(1)
 BASE ?= auto
 export BASE
-# e2e: unset = run only if key events need no window focus, 1 = focus bursts allowed, 0 = skip
+# e2e (runs in the sandbox VM): unset = only if the VM is running, 1 = boot the VM if needed, 0 = skip
 export E2E
 # plugin-update runs the tests on its private plugin copy (.archon/scripts/plugin_update.py)
 ifneq ($(wildcard .tests/xdg/data/nvim/lazy),)
@@ -26,7 +26,7 @@ endif
 
 # startup timing runs alone after the rest, so the other layers do not skew it
 check:
-	@tests/check.sh lint types test trace chain stack e2e smoke-health +smoke-startup
+	@SANDBOX_START=$${E2E:-0} tests/check.sh lint types test trace chain stack e2e smoke-health +smoke-startup
 
 quick:
 	@tests/quick.sh
@@ -87,7 +87,7 @@ colorize: deps
 
 # --- shortcut layers: Alacritty -> zellij -> Neovim (docs/testing.md) ----------
 # (CAPS narrows only the mini.test layers above)
-.PHONY: deps-shortcuts chain stack e2e
+.PHONY: deps-shortcuts chain stack e2e e2e-local sandbox-up sandbox-down sandbox-status sandbox-provision
 
 deps-shortcuts:
 	@tests/shortcuts/bootstrap.sh
@@ -99,9 +99,25 @@ chain: deps deps-shortcuts
 stack: deps deps-shortcuts
 	@CAPS= $(call MINITEST,stack)
 
-# real Alacritty + zellij + Neovim, real key events; SKIPPED without Accessibility
-e2e: deps deps-shortcuts
+# real Alacritty + zellij + Neovim, real key events, inside the sandbox VM only (tests/sandbox/sandbox.sh):
+# on the host it boots the VM if needed (SANDBOX_START=0: skip when it is down), syncs and runs e2e-local there
+e2e:
+	@tests/sandbox/sandbox.sh e2e
+
+e2e-local: deps deps-shortcuts
 	@CAPS= E2E=$${E2E:-1} $(call MINITEST,e2e)
+
+sandbox-up:
+	@tests/sandbox/sandbox.sh up
+
+sandbox-down:
+	@tests/sandbox/sandbox.sh down
+
+sandbox-status:
+	@tests/sandbox/sandbox.sh status
+
+sandbox-provision:
+	@tests/sandbox/sandbox.sh provision
 
 clean:
 	rm -rf .tests

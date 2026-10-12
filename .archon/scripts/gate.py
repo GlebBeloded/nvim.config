@@ -41,7 +41,7 @@ def archived_specs_ok(log: str) -> tuple[bool, str]:
     return ok, tail
 
 
-# E2E=1: the e2e layer may focus its Alacritty window for key bursts (docs/testing.md)
+# E2E=1: e2e runs in the sandbox VM and boots it when it is down (docs/testing.md, Sandbox VM)
 green, check_tail = run(["make", "check", "E2E=1"], f"check-{attempt}.log")
 spec_ok, spec_tail = True, ""
 tasks_done = True

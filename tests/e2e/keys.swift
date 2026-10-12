@@ -5,7 +5,8 @@
 //   keys frontmost                 pid of the frontmost app
 //   keys focus <pid>               make <pid> frontmost (AX), print the previous frontmost pid
 //   keys denied <chord>...         exit 0 if any chord is on the denylist (the harness skips those rows)
-//   keys press <pid> <chord>...    post key events to <pid> (CGEventPostToPid), e.g. cmd+shift+h ctrl+return
+//   keys press [--hid] <pid> <chord>...  post key events to <pid> (CGEventPostToPid), e.g. cmd+shift+h ctrl+return;
+//                                  --hid: focus <pid>, post at the HID tap (CGEventPostToPid drops some keyDowns)
 // Chords use US ANSI key positions (virtual key codes), so the layout's own letters do not matter.
 // Safety: press/focus refuse to run unless this is a virtual machine (kern.hv_vmm_present == 1,
 // fail closed), and DENIED system-wide chords (log out, force quit, lock screen, app switcher, ...)
@@ -81,11 +82,14 @@ let MODS: [(name: String, code: CGKeyCode, flag: CGEventFlags)] = [
 ]
 let ARROWS: Set<CGKeyCode> = [123, 124, 125, 126]
 
+// press --hid: post at the HID tap, as a keyboard would, after making <pid> frontmost
+var HID = false
+
 func post(_ pid: pid_t, _ source: CGEventSource, _ code: CGKeyCode, _ down: Bool, _ flags: CGEventFlags, modifier: Bool = false) {
 	guard let event = CGEvent(keyboardEventSource: source, virtualKey: code, keyDown: down) else { fail("cannot create event") }
 	if modifier { event.type = .flagsChanged } // what a real modifier key sends
 	event.flags = flags
-	event.postToPid(pid)
+	if HID { event.post(tap: .cghidEventTap) } else { event.postToPid(pid) }
 	usleep(4000)
 }
 
@@ -187,10 +191,15 @@ case "focus":
 	if !focus(pid) { fail("could not make pid \(pid) frontmost (previous \(previous))") }
 	print(previous)
 case "press":
+	if args.first == "--hid" {
+		HID = true
+		args.removeFirst()
+	}
 	let chords = Array(args.dropFirst())
 	if let bad = chords.first(where: denied) { fail("keys press: refused, \(bad) is a denied system-wide chord") }
 	requireVM(command)
 	guard let pid = args.first.flatMap({ pid_t($0) }) else { fail("usage: keys press <pid> <chord>...") }
+	if HID && !focus(pid) { fail("keys press --hid: could not make pid \(pid) frontmost") }
 	for chord in chords { press(pid, chord) }
 case "denied":
 	let bad = args.filter(denied)
