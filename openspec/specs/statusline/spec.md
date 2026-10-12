@@ -1,0 +1,127 @@
+# statusline Specification
+
+## Purpose
+A single global lualine statusline styled from the gruvbox-material palette, showing mode, git branch/diff, navic breadcrumb, delayed LSP progress, a Copilot failure glyph, diagnostics and an LSP-health language chip.
+
+## Requirements
+### Requirement: Global statusline layout
+The config SHALL configure lualine with a global statusline (`laststatus=3`), no component or section separators, disabled for filetypes `alpha`, `dashboard` and `Outline`, with sections: a = mode; b = branch (icon ``), diff; c = navic breadcrumb; x = LSP progress, Copilot glyph, diagnostics, language chip; y and z empty; and an empty tabline.
+
+#### Scenario: statusline is global
+- **WHEN** the config has loaded (after `VimEnter`)
+- **THEN** `vim.o.laststatus` is `3`
+
+#### Scenario: mode section shows current mode
+- **WHEN** a file buffer is open in Normal mode and the screen is redrawn
+- **THEN** the last screen line starts with ` NORMAL `
+
+#### Scenario: diagnostics always visible
+- **WHEN** a buffer with no diagnostics is shown in a window wider than 80 columns
+- **THEN** the statusline contains the error and warn symbols each followed by `0`
+
+#### Scenario: diagnostics show error and warn counts
+- **WHEN** `vim.diagnostic.set` adds 2 errors and 1 warning to the current buffer and the statusline refreshes
+- **THEN** the statusline contains ` 2` and ` 1`
+
+#### Scenario: diff hidden in narrow windows
+- **WHEN** the current window is 80 columns wide or less and the buffer has git changes
+- **THEN** the statusline contains none of the diff symbols ``, ``, ``
+
+#### Scenario: navic breadcrumb shown when available
+- **WHEN** nvim-navic reports a location for the current buffer (e.g. `Server ▸ Handle`)
+- **THEN** that location text appears in the left half of the statusline
+
+#### Scenario: statusline disabled on dashboard
+- **WHEN** the current buffer has `filetype=alpha`
+- **THEN** lualine does not render its sections for that window
+
+### Requirement: Statusline visual style
+The config SHALL color the statusline from `gleb.statusline.palette` (derived from the gruvbox-material palette: bar = `bg0` blended 5% toward orange and brightened 2%; mode accents normal=green, insert=blue, visual=purple, replace=red, command=yellow, terminal=aqua; section a text in `bg0`, bold; inactive text in `bg5`) and render the language chip as a rounded pill with `chip_bg` background.
+
+#### Scenario: statusline matches reference screenshot
+- **WHEN** a Lua file is open in Normal mode with gruvbox-material active and `MiniTest` child `expect.reference_screen()` is taken of the statusline row
+- **THEN** it matches the stored reference screenshot, including mode accent, bar color and language chip
+
+#### Scenario: insert mode accent matches reference screenshot
+- **WHEN** `i` is pressed in Normal mode and a screenshot of the statusline row is taken
+- **THEN** it matches the stored reference screenshot with the insert (blue) accent on the mode section
+
+### Requirement: Language chip
+The config SHALL render, via `require("gleb.statusline.language").component()`, an empty string when `filetype` is empty; otherwise `<left cap><space><filetype logo><space><filetype><space><right cap>` where the left cap uses highlight `StatuslineLangCapOk` if a non-stopped LSP client is attached to the current buffer and `StatuslineLangCapError` otherwise, and the right cap uses `StatuslineLangEdge`. Highlight groups are (re)defined on `ColorScheme`.
+
+#### Scenario: chip empty without filetype
+- **WHEN** `vim.bo.filetype` is `""` and `component()` is called
+- **THEN** it returns `""`
+
+#### Scenario: chip shows error cap without LSP
+- **WHEN** `vim.bo.filetype` is `lua`, no LSP client is attached, and `component()` is called
+- **THEN** the result starts with `%#StatuslineLangCapError#`, contains `lua` and ends with `%#StatuslineLangEdge#`
+
+#### Scenario: chip shows ok cap with running LSP
+- **WHEN** a running LSP client is attached to the current `lua` buffer and `component()` is called
+- **THEN** the result starts with `%#StatuslineLangCapOk#`
+
+#### Scenario: chip logo highlight per filetype
+- **WHEN** `component()` is called for a buffer with `filetype=lua`
+- **THEN** highlight group `StatuslineLang_lua` exists with `bg` equal to the palette `chip_bg`
+
+#### Scenario: chip highlights survive colorscheme change
+- **WHEN** `:colorscheme <any>` is executed
+- **THEN** highlight groups `StatuslineLangText`, `StatuslineLspOk`, `StatuslineLspError`, `StatuslineLangEdge`, `StatuslineLangCapOk` and `StatuslineLangCapError` are defined
+
+### Requirement: Delayed LSP progress
+The config SHALL track `LspProgress` events per `<client_id>:<token>` (`begin` adds a task, `report` updates its message/percentage, `end` removes it) and render, via `require("gleb.statusline.lsp_progress").progress()`, one entry per task active for at least 500 ms as `<spinner> <label>` or `<spinner> <label> <pct>%%`, joined by two spaces. Every event SHALL be appended to `/tmp/nvim-lsp-progress.log`.
+
+#### Scenario: progress hidden before 500 ms
+- **WHEN** an `LspProgress` event with `kind=begin`, `title="Indexing"` fires and `progress()` is called immediately
+- **THEN** it returns `""`
+
+#### Scenario: progress shown after 500 ms with alias
+- **WHEN** an `LspProgress` `begin` with `message="Setting up workspace"`, `percentage=40` fires and `progress()` is called after 500 ms
+- **THEN** it returns `<spinner> indexing workspace 40%%` where `<spinner>` is one of `⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏`
+
+#### Scenario: report updates percentage
+- **WHEN** a `begin` with `title="Building"` is followed by a `report` with `percentage=75` for the same token, and `progress()` is called after 500 ms
+- **THEN** it returns `<spinner> building 75%%`
+
+#### Scenario: end removes the task
+- **WHEN** a `begin` is followed by an `end` for the same client and token, and `progress()` is called after 500 ms
+- **THEN** it returns `""`
+
+#### Scenario: concurrent tasks joined
+- **WHEN** two tokens have active tasks older than 500 ms
+- **THEN** `progress()` returns both entries separated by two spaces
+
+#### Scenario: progress events are logged
+- **WHEN** any `LspProgress` event fires
+- **THEN** a line containing its `kind`, `title`, `message` and percentage is appended to `/tmp/nvim-lsp-progress.log`
+
+### Requirement: LSP progress labels
+The config SHALL label a progress entry with the first alias matching its message, else the message verbatim, else the first alias matching its title, else the title, else `working`. Aliases (first match wins): `[Ss]etting up workspace`→`indexing workspace`, `[Ll]oading`→`loading`, `[Ii]ndex`→`indexing`, `[Dd]iagnos`→`checking`, `[Dd]ownload`→`downloading deps`, `[Bb]uild`→`building`, `[Ff]ormat`→`formatting`, `[Pp]rocessing`→`processing`.
+
+#### Scenario: progress falls back to working
+- **WHEN** a `begin` event without title or message fires and `progress()` is called after 500 ms
+- **THEN** it returns `<spinner> working`
+
+#### Scenario: unmatched message shown verbatim
+- **WHEN** a `begin` event with `message="Resolving"` fires and `progress()` is called after 500 ms
+- **THEN** it returns `<spinner> Resolving`
+
+### Requirement: Copilot failure indicator
+The config SHALL render, via `require("gleb.statusline.copilot").component()`, an empty string while Copilot has not been loaded or is healthy, and the glyph `` (colored with the palette `err` color in the statusline) when Copilot is loaded and is disabled, failed to start, has no client, or reports status `Warning`.
+
+#### Scenario: copilot glyph hidden before load
+- **WHEN** `package.loaded["copilot.client"]` is nil and `component()` is called
+- **THEN** it returns `""` and `copilot.client` is still not loaded
+
+#### Scenario: copilot glyph hidden when healthy
+- **WHEN** Copilot is loaded, enabled, started without error, has a client, and its status is not `Warning`
+- **THEN** `component()` returns `""`
+
+#### Scenario: copilot glyph shown when disabled
+- **WHEN** Copilot is loaded and disabled (e.g. after `:Copilot disable`)
+- **THEN** `component()` returns `""`
+
+#### Scenario: copilot glyph shown on warning
+- **WHEN** Copilot is loaded with a client and its status is `Warning`
+- **THEN** `component()` returns `""`

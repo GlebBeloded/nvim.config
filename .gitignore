@@ -52,3 +52,4 @@ plugin/
 .vscode/
 .idea/
 claude-obsidian.db
+.claude/settings.local.json

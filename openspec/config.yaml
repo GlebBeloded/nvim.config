@@ -1,0 +1,32 @@
+schema: spec-driven
+
+context: |
+  Personal Neovim config in Lua, single user, macOS. No production, no other users.
+  Targets Neovim stable and nightly. Plugins managed by lazy.nvim and pinned in lazy-lock.json.
+  Custom code lives in lua/gleb/<feature>/. Tests run headless (mini.test child Neovim; legacy plenary specs being migrated).
+  Agents work autonomously; the user is only involved for new behaviour, new plugin dependencies, core keymap changes, or escalations.
+  Git: integration branch is `auto`; each change uses a feature branch forked from `auto`.
+
+rules:
+  specs:
+    - One capability per feature area, named after the lua/gleb/<feature> module (kebab-case).
+    - Every scenario must be verifiable in a headless child Neovim. WHEN is a key sequence (exact lhs and mode), an Ex command, an autocmd event, or a function call. THEN is observable state (buffers, windows, options, registers, notifications, spawned commands, or screen content).
+    - Scenario titles are unique within a capability and stable; tests reference them by name as "<capability>: <scenario title>".
+    - Visual-only behaviour (colors, layout) is specified as a reference screenshot scenario.
+    - Describe current behaviour precisely; do not specify plugin internals.
+  proposal:
+    - State whether the change adds, removes, or upgrades a plugin dependency. A new plugin must list alternatives with stars and last-commit date.
+    - State whether core keymaps change.
+    - Always state what is out of scope.
+  tasks:
+    - Each task lists the scenario titles it satisfies.
+    - The first step of each task is a failing test for those scenarios.
+
+operations:
+  apply:
+    guidance:
+      - Test first; a task is done only when its scenario tests pass and make check is green.
+      - Prefer existing plugins or Neovim built-ins over custom code.
+  archive:
+    guidance:
+      - Run /opsx:verify before archiving and resolve CRITICAL findings.
