@@ -12,4 +12,4 @@ Scenarios: "loop: Queue skips a taken change".
 ## 2. Verify
 
 - [x] 2.1 `make trace` lists "loop: Queue skips a taken change" as `tested`, no orphans
-- [ ] 2.2 `make test CASE=loop` and `make check` are green
+- [x] 2.2 `make test CASE=loop` and `make check` are green

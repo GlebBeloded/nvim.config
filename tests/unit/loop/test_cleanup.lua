@@ -108,7 +108,8 @@ local function read_lines(path)
 end
 
 --- Env with the stubs first on PATH, their logs in a fresh temp dir and a temp HOME (keeps
---- `loop-register` away from the real ~/.archon); `extra` is merged on top.
+--- `loop-register` away from the real ~/.archon); the queue inputs are cleared so an enclosing
+--- loop run's `CHANGE`/`INPUTS_CHANGE` cannot leak in; `extra` is merged on top.
 ---@param extra? table<string, string>
 ---@return table<string, string>
 local function stub_env(extra)
@@ -121,6 +122,8 @@ local function stub_env(extra)
 		PATH = bin .. ":" .. child.lua_get("vim.env.PATH"),
 		MAKEFLAGS = "",
 		MAKELEVEL = "",
+		CHANGE = "",
+		INPUTS_CHANGE = "",
 	}, extra or {})
 end
 
