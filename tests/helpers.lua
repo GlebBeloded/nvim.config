@@ -72,8 +72,12 @@ function M.isolate()
 	return sandbox
 end
 
+---@class test.RestartOpts
+---@field env? table<string, string> env vars set for this start only (e.g. ZELLIJ_PANE_ID)
+
 ---@class test.Child: MiniTest.child
 ---@field start_config fun() Restart with the real config (init.lua); copilot.lua disabled.
+---@field restart_config fun(args?: string[], opts?: test.RestartOpts) Start the real config again on the previous start's data/state (sessions, shada kept), with extra Neovim args.
 ---@field start_bare fun(plugins?: string[]) Restart with tests/minimal_init.lua plus the named lazy plugins on rtp.
 ---@field disable_plugin fun(name: string) Remove lazy.nvim load handlers of a plugin.
 ---@field wait_very_lazy fun() Fire UIEnter (absent headless) and wait for VeryLazy.
@@ -121,6 +125,23 @@ function M.config_args()
 	}
 end
 
+--- Run `fn` with `env` set in this process (inherited by a child started
+--- inside it), then restore the previous values.
+---@param env table<string, string>
+---@param fn fun()
+local function with_env(env, fn)
+	local saved = {}
+	for name, value in pairs(env) do
+		saved[name] = vim.env[name] or false
+		vim.env[name] = value
+	end
+	local ok, err = pcall(fn)
+	for name, value in pairs(saved) do
+		vim.env[name] = value or nil
+	end
+	assert(ok, err)
+end
+
 --- New child Neovim with config/bare start helpers.
 ---@return test.Child
 function M.new_child()
@@ -139,6 +160,13 @@ function M.new_child()
 		-- mini.test always passes --clean, which drops stdpath("config") from rtp
 		M.isolate()
 		child.restart(M.config_args())
+		vim.iter(M.DISABLED_PLUGINS):each(child.disable_plugin)
+	end
+
+	function child.restart_config(args, opts)
+		with_env(opts and opts.env or {}, function()
+			child.restart(vim.list_extend(M.config_args(), args or {}))
+		end)
 		vim.iter(M.DISABLED_PLUGINS):each(child.disable_plugin)
 	end
 

@@ -13,7 +13,7 @@ Every task follows the same steps:
   1. Failing case `git: Git commands are available after startup` in `tests/integration/git/test_git.lua` that calls `H.git_repo({ ["a.txt"] = "a\n" })` and `cd`s the child into it.
   2. Add `H.git_repo(files, opts)` to `tests/helpers.lua` (temp dir, `git init -b main`, local `user.name`/`user.email`, commit `files`, optional `opts.remote` as `origin`; LuaCATS-typed, small named functions).
   3. Verify the case and `make lint types`.
-- [ ] 1.2 Restart with kept state (design D3). Scenarios: quitting saves the session (M:fix-session-save-guards).
+- [x] 1.2 Restart with kept state (design D3). Scenarios: quitting saves the session (M:fix-session-save-guards).
   1. Failing case `session: quitting saves the session` in `tests/integration/session/test_session.lua`: start, edit a file, `:qall`, assert the session file exists on the host.
   2. Add `child.restart_config(args, opts)` to `tests/helpers.lua`: reuses the previous start's `XDG_DATA_HOME`/`XDG_STATE_HOME` (skips `fresh_state()`), extra args and env (zellij pane id); document it in the `---@field` list.
   3. Verify the case and `make lint types`.

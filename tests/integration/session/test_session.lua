@@ -29,6 +29,25 @@ local function edit_file(name, lines)
 	return path
 end
 
+--- Child-side: path of the session file `key.session_name()` maps to.
+local SESSION_FILE_LUA = [[require("resession.util").get_session_file(require("gleb.session.key").session_name())]]
+
+--- `:qall` in the child, then wait until its process has exited (VimLeavePre ran).
+local function quit_all()
+	local job = child.job.id
+	child.api_notify.nvim_command("qall")
+	eq(vim.fn.jobwait({ job }, 5000)[1], 0)
+end
+
+---@param path string
+---@return string[] names of the buffers stored in the session file
+local function session_buffers(path)
+	local session = vim.json.decode(table.concat(vim.fn.readfile(path), "\n"))
+	return vim.tbl_map(function(buf)
+		return buf.name
+	end, session.buffers)
+end
+
 local T = H.child_set(child, start)
 
 T["session: no matching session leaves startup untouched"] = function()
@@ -69,6 +88,14 @@ T["session: special buffer is not auto-written"] = function()
 	vim.uv.sleep(AUTOSAVE_WAIT_MS)
 
 	eq({ child.bo.modified, vim.fn.readfile(path) }, { modified, { "original" } })
+end
+
+T["session: quitting saves the session"] = function()
+	local path = edit_file("a.txt")
+	local session_file = child.lua_get(SESSION_FILE_LUA)
+	quit_all()
+
+	eq(session_buffers(session_file), { vim.fn.resolve(path) })
 end
 
 return T
