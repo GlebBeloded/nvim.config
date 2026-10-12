@@ -12,8 +12,8 @@ Scenarios: "keymaps: Diagnostic jump is not deprecated", "keymaps: ge jumps to n
 
 Scenarios: "keymaps: Diagnostic jump opens float"
 
-- [ ] 2.1 Failing test: add `T["keymaps: Diagnostic jump opens float"]` to `tests/integration/keymaps/test_keymaps.lua`. `set_diagnostics_on_lines_2_and_4()`, cursor on line 1, `child.type_keys("ge")`, then `child.wait(...)` (on_jump is scheduled) for a window with `nvim_win_get_config(w).relative ~= ""` whose buffer lines contain `first`; assert the wait returned true. Run `make test FILE=tests/integration/keymaps/test_keymaps.lua CASE="Diagnostic jump opens float"` and confirm it fails (task 1's `jump({ count })` opens no float).
-- [ ] 2.2 In `lua/gleb/keymaps.lua`, add a named `open_float_on_jump(diagnostic, bufnr)` (LuaCATS: `vim.Diagnostic?`, `integer`) that returns early when `diagnostic` is nil and otherwise calls `vim.diagnostic.open_float({ bufnr = bufnr, scope = "cursor", focus = false })`; pass it as `on_jump` in `jump_next` / `jump_prev`. No `float` option.
-- [ ] 2.3 `make quick` green: both new cases and the three jump cases pass; "Diagnostic jump is not deprecated" still passes with the float open.
-- [ ] 2.4 `make check` green.
+- [x] 2.1 Failing test: add `T["keymaps: Diagnostic jump opens float"]` to `tests/integration/keymaps/test_keymaps.lua`. `set_diagnostics_on_lines_2_and_4()`, cursor on line 1, `child.type_keys("ge")`, then `child.wait(...)` (on_jump is scheduled) for a window with `nvim_win_get_config(w).relative ~= ""` whose buffer lines contain `first`; assert the wait returned true. Run `make test FILE=tests/integration/keymaps/test_keymaps.lua CASE="Diagnostic jump opens float"` and confirm it fails (task 1's `jump({ count })` opens no float).
+- [x] 2.2 In `lua/gleb/keymaps.lua`, add a named `open_float_on_jump(diagnostic, bufnr)` (LuaCATS: `vim.Diagnostic?`, `integer`) that returns early when `diagnostic` is nil and otherwise calls `vim.diagnostic.open_float({ bufnr = bufnr, scope = "cursor", focus = false })`; pass it as `on_jump` in `jump_next` / `jump_prev`. No `float` option.
+- [x] 2.3 `make quick` green: both new cases and the three jump cases pass; "Diagnostic jump is not deprecated" still passes with the float open.
+- [x] 2.4 `make check` green.
 

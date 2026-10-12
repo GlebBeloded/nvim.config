@@ -303,4 +303,19 @@ T["keymaps: Diagnostic jump is not deprecated"] = function()
 	eq(child.cmd_capture("messages"):find("deprecated"), nil)
 end
 
+--- Is there a floating window whose buffer contains `text`? (child Lua expression)
+local FLOAT_WITH_FIRST = [[vim.iter(vim.api.nvim_list_wins()):any(function(win)
+	local buf = vim.api.nvim_win_get_buf(win)
+	local text = table.concat(vim.api.nvim_buf_get_lines(buf, 0, -1, false), "\n")
+	return vim.api.nvim_win_get_config(win).relative ~= "" and text:find("first") ~= nil
+end)]]
+
+T["keymaps: Diagnostic jump opens float"] = function()
+	set_diagnostics_on_lines_2_and_4()
+	child.api.nvim_win_set_cursor(0, { 1, 0 })
+	child.type_keys("ge")
+
+	eq(child.wait(FLOAT_WITH_FIRST, 1000), true)
+end
+
 return T
