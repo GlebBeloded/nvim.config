@@ -11,11 +11,17 @@ local AUTOSAVE_WAIT_MS = 1500
 ---@type string
 local dir
 
+--- RPC can be served while init.lua still runs; restore happens on VimEnter.
+local function wait_vim_enter()
+	assert(child.wait("vim.v.vim_did_enter == 1", 5000), "VimEnter did not fire")
+end
+
 --- Full config started bare in a fresh temp cwd (child state is sandboxed).
 local function start()
 	dir = vim.fn.tempname()
 	vim.fn.mkdir(dir, "p")
 	child.start_config()
+	wait_vim_enter()
 	child.cmd("cd " .. dir)
 end
 
@@ -46,6 +52,32 @@ local function session_buffers(path)
 	return vim.tbl_map(function(buf)
 		return buf.name
 	end, session.buffers)
+end
+
+--- Save a session holding `a.txt` from a child in pane `pane_id`, then quit.
+---@param pane_id string
+---@return string path of a.txt
+local function save_session_in_pane(pane_id)
+	child.lua("vim.env.ZELLIJ_PANE_ID = ...", { pane_id })
+	local path = edit_file("a.txt")
+	quit_all()
+	return path
+end
+
+--- Start the config again in `dir` on the kept data/state, in pane `pane_id`.
+---@param pane_id string
+---@param args? string[] extra Neovim args (file arguments)
+local function restart_in_pane(pane_id, args)
+	local cd = { "--cmd", "cd " .. vim.fn.fnameescape(dir) }
+	child.restart_config(vim.list_extend(cd, args or {}), { env = { ZELLIJ_PANE_ID = pane_id } })
+	wait_vim_enter()
+end
+
+---@return string[] names of the listed buffers
+local function listed_buffers()
+	return child.lua_get([[vim.tbl_map(vim.api.nvim_buf_get_name, vim.tbl_filter(function(buf)
+		return vim.bo[buf].buflisted
+	end, vim.api.nvim_list_bufs()))]])
 end
 
 local T = H.child_set(child, start)
@@ -88,6 +120,29 @@ T["session: special buffer is not auto-written"] = function()
 	vim.uv.sleep(AUTOSAVE_WAIT_MS)
 
 	eq({ child.bo.modified, vim.fn.readfile(path) }, { modified, { "original" } })
+end
+
+T["session: bare nvim restores the pane session"] = function()
+	local path = save_session_in_pane("5")
+	restart_in_pane("5")
+
+	eq({ child.api.nvim_buf_get_name(0), child.bo.filetype ~= "" }, { vim.fn.resolve(path), true })
+end
+
+T["session: bare nvim restores a cwd session after pane id change"] = function()
+	local path = save_session_in_pane("9")
+	restart_in_pane("5")
+
+	eq(listed_buffers(), { vim.fn.resolve(path) })
+end
+
+T["session: nvim with a file argument does not restore"] = function()
+	save_session_in_pane("5")
+	local other = vim.fs.joinpath(dir, "b.txt")
+	vim.fn.writefile({ "b" }, other)
+	restart_in_pane("5", { other })
+
+	eq(listed_buffers(), { vim.fn.resolve(other) })
 end
 
 T["session: quitting saves the session"] = function()

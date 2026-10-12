@@ -102,7 +102,7 @@ Every task follows the same steps:
 
 ## 6. session (integration, `test_session.lua`, restart from 1.2)
 
-- [ ] 6.1 Scenarios: bare nvim restores the pane session (M:fix-session-fallback-match), bare nvim restores a cwd session after pane id change (M), nvim with a file argument does not restore (M).
+- [x] 6.1 Scenarios: bare nvim restores the pane session (M:fix-session-fallback-match), bare nvim restores a cwd session after pane id change (M), nvim with a file argument does not restore (M).
   1. Failing cases: first start with a pane id saves the session; `child.restart_config` with the same / another pane id / a file argument; assert the restored buffer list or its absence.
   2. None beyond 1.2.
   3. Verify (session 15/15).
