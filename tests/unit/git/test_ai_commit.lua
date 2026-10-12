@@ -93,6 +93,16 @@ local function popup_lines()
 	return child.lua_get("vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(PopupWin), 0, -1, false)")
 end
 
+---@return boolean
+local function popup_open()
+	return child.lua_get("vim.api.nvim_win_is_valid(PopupWin)")
+end
+
+---@return string[] messages `on_commit` was called with
+local function commits()
+	return child.lua_get("Commits")
+end
+
 --- Replay the job's stdout `text` and exit `code`, and wait until the popup
 --- has handled them.
 ---@param text string
@@ -170,6 +180,41 @@ T["git: Ollama failure is shown"] = function()
 
 	eq(popup_lines(), { "# Error: Ollama exited with code 1" })
 	eq(child.lua_get("PopupTitle()"), " Commit Message ")
+end
+
+T["git: Enter confirms message"] = function()
+	show_commit_input()
+	child.api.nvim_buf_set_lines(0, 0, -1, false, { "feat: x  " })
+	child.type_keys("<CR>")
+
+	eq(popup_open(), false)
+	eq(commits(), { "feat: x" })
+end
+
+T["git: Enter on empty buffer does nothing"] = function()
+	show_commit_input()
+	child.api.nvim_buf_set_lines(0, 0, -1, false, {})
+	child.type_keys("<CR>")
+
+	eq(popup_open(), true)
+	eq(commits(), {})
+end
+
+T["git: q discards popup"] = function()
+	show_generating()
+	child.type_keys("q")
+
+	eq(popup_open(), false)
+	eq(jobs()[1].stopped, true)
+	eq(commits(), {})
+end
+
+T["git: Leaving popup closes it"] = function()
+	show_commit_input()
+	child.cmd("wincmd p")
+
+	eq(popup_open(), false)
+	eq(commits(), {})
 end
 
 return T
