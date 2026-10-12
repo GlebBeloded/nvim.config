@@ -96,4 +96,4 @@ Scenarios: "statusline: insert mode accent matches reference screenshot"
 
 ## 3. Gate
 
-- [ ] 3.1 `make check` green; `make trace` reports no orphans.
+- [x] 3.1 `make check` green; `make trace` reports no orphans.
