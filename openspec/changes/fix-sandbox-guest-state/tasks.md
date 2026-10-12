@@ -41,15 +41,15 @@ Scenario: "sandbox.sh e2e restores guest state after syncing and before the e2e 
   - The case fails, because there is no restore line.
 - [x] 2.2 In `tests/sandbox/sandbox.sh`, add `restore_guest() { gssh "$GUEST_REPO/tests/sandbox/guest_restore.sh"; }`. Call it from `e2e()` right after `sync_repo`, before `wait_gui`/`gui "make -s e2e-local…"`. Add a one-line comment saying it runs per run, not in `provision()`, so it is independent of `PROVISION_REV`. Update the header line for `sandbox.sh e2e`: "sync the repo, restore repo-controlled guest state, run the e2e layer…". `PROVISION_REV` is unchanged, because `provision()` does not change.
 - [x] 2.3 Run `make test FILE=tests/unit/shortcuts/test_sandbox.lua`: all three cases pass. `make quick` is green.
-- [ ] 2.4 VM check of the original bug (needs `make sandbox-up`):
+- [x] 2.4 VM check of the original bug (needs `make sandbox-up`):
   - `tests/sandbox/sandbox.sh ssh "defaults write org.alacritty NSUserKeyEquivalents -dict-add 'Quit alacritty' '@~^q' 'Hide alacritty' '@~^h'"`
   - then `make e2e` on this branch passes "Cmd+Q quits Alacritty from a real key press" and "Cmd+H never reaches Neovim from a real key press".
   - `tests/sandbox/sandbox.sh ssh "defaults read org.alacritty NSUserKeyEquivalents"` then fails.
 
 ## 3. Docs and gate
 
-- [ ] 3.1 Update `docs/testing.md`:
+- [x] 3.1 Update `docs/testing.md`:
   - "Sandbox VM" table, `make e2e` row: after rsyncing the checkout, it restores the repo-controlled guest state (`tests/sandbox/guest_restore.sh`: the `org.alacritty` defaults domain, then the checkout's `terminal/macos_*.sh`) before `make e2e-local`.
   - "Layout": add `guest_restore.sh` to the `sandbox/` line.
-- [ ] 3.2 Hand-off for `fix-cmd-q-shortcut` (unmerged, out of this branch): this change's proposal already records it, so no code here. When that branch rebases onto `auto`, it drops its `provision()` call and `PROVISION_REV` bump. Its `terminal/macos_menu_keys.sh` is then picked up by the restore step.
+- [x] 3.2 Hand-off for `fix-cmd-q-shortcut` (unmerged, out of this branch): this change's proposal already records it, so no code here. When that branch rebases onto `auto`, it drops its `provision()` call and `PROVISION_REV` bump. Its `terminal/macos_menu_keys.sh` is then picked up by the restore step.
 - [ ] 3.3 `make check E2E=1` green.

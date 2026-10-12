@@ -47,7 +47,7 @@ tests/
   <layer>/<capability>/test_<topic>.lua
   shortcuts/            chain + stack harness (configs.py, chain.lua, stack.lua)
   e2e/                  e2e harness (alacritty.lua, keys.swift, build.sh)
-  sandbox/              the e2e sandbox VM (sandbox.sh, sip_off.sh)
+  sandbox/              the e2e sandbox VM (sandbox.sh, sip_off.sh, guest_restore.sh)
   screenshots/          reference screenshots (text, committed)
   smoke/                make smoke (run.lua outside, probe.lua inside nvim)
   render/               make render / make colorize (cases.lua, tmux capture, mockup colorizer)
@@ -148,7 +148,7 @@ e2e posts real key events, so it never runs on the host: `keys press`/`focus` re
 | `make sandbox-up` | installs Lume (brew), pulls `macos-tahoe-vanilla` once (~21 GB download, ~25 GB on disk; refuses if it would leave < 25 GB free), boots it headless (4 CPU, 8 GB), provisions if needed |
 | `make sandbox-provision` | idempotent guest setup over SSH: key login, Homebrew, pinned Neovim / zellij / Alacritty release builds (host versions), tmux, python, uv, the Hack Nerd Font, the navigator plugin at its configured path, plugins from `~/.local/share/nvim/{lazy,site}` (again when `lazy-lock.json` changes), SIP off and Accessibility in the guest's TCC.db; ends with `keys trusted` |
 | `make sandbox-status` / `make sandbox-down` | state and IP / power off (after `sync`) |
-| `make e2e` | rsyncs the checkout into the guest and runs `make e2e-local` in its logged-in GUI session (`launchctl asuser`), output streamed back; `CASE=` and `E2E_FOCUS=` pass through |
+| `make e2e` | rsyncs the checkout into the guest, restores the guest state the repo controls (`tests/sandbox/guest_restore.sh`: deletes the `org.alacritty` defaults domain, then runs the checkout's `terminal/macos_*.sh`), and runs `make e2e-local` in its logged-in GUI session (`launchctl asuser`), output streamed back; `CASE=` and `E2E_FOCUS=` pass through |
 
 `make check` runs e2e only while the VM is up (else `skip: sandbox down — make sandbox-up`); `make check E2E=1` and the loop's gate boot it. Warm `make e2e` takes ~13 s; with the VM down, `make check E2E=1` spends ~50 s on e2e (boot to the autologin GUI session included). First provisioning takes ~5 min plus SIP and one restart (SIP clears autologin, provisioning sets it again). SIP is turned off once with `lume sip off`; where Lume's Recovery automation fails (Lume 0.6.1 on macOS 26.4), `tests/sandbox/sip_off.sh` drives Recovery over the VM's own VNC port (~4 min, screenshots in `~/.cache/nvim-e2e-sandbox/sip/`). State (SSH key, vncdotool venv, logs) lives in `~/.cache/nvim-e2e-sandbox`, the VM in `~/.lume/nvim-e2e`; `lume delete nvim-e2e` removes it.
 
