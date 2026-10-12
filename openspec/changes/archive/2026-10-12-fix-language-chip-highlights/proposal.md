@@ -10,7 +10,7 @@ Kind: bug
 
 ## Capabilities
 ### Modified Capabilities
-- None (`skip_specs: true`: the "Language chip" requirement and its scenarios are unchanged).
+- `statusline`: the "Language chip" requirement names the `ColorScheme` augroup and the sanitized logo group; adds scenarios "chip colorscheme autocmd not duplicated on reload" and "chip logo highlight name sanitized". Existing scenarios are unchanged.
 
 ## Impact
 - Code: `lua/gleb/statusline/language.lua`; a unit test that a filetype with `-`/`.` maps to a sanitized group and that re-requiring the module leaves one `ColorScheme` autocmd in the group.

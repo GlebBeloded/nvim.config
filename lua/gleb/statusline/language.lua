@@ -33,12 +33,15 @@ local function define_highlights()
 	vim.api.nvim_set_hl(0, "StatuslineLangCapError", { fg = ERR_FG }) -- left cap when broken
 end
 
+local function on_colorscheme()
+	logo_defined = {}
+	define_highlights()
+end
+
 define_highlights()
 vim.api.nvim_create_autocmd("ColorScheme", {
-	callback = function()
-		logo_defined = {}
-		define_highlights()
-	end,
+	group = vim.api.nvim_create_augroup("gleb_statusline_language", { clear = true }),
+	callback = on_colorscheme,
 })
 
 -- ── pieces ──────────────────────────────────────────────────────────────────
@@ -58,12 +61,18 @@ local function dot()
 	return hl(has_running_client() and "StatuslineLspOk" or "StatuslineLspError", "●")
 end
 
+---@param filetype string
+---@return string
+local function logo_group(filetype)
+	return "StatuslineLang_" .. (filetype:gsub("[^%w_]", "_"))
+end
+
 local function logo(filetype)
 	local glyph, color = devicons.get_icon_color_by_filetype(filetype, { default = true })
 	if not glyph then
 		return ""
 	end
-	local group = "StatuslineLang_" .. filetype
+	local group = logo_group(filetype)
 	if not logo_defined[filetype] then
 		vim.api.nvim_set_hl(0, group, { fg = color, bg = BLOCK_BG })
 		logo_defined[filetype] = true
