@@ -21,7 +21,7 @@ GUEST_REPO=/Users/$GUEST_USER/nvim
 GUEST_DATA=/Users/$GUEST_USER/.local/share/nvim
 # pinned to the host's versions (docs/testing.md); release builds, no Homebrew bottles
 NVIM_VERSION=0.12.5 ZELLIJ_VERSION=0.45.1 ALACRITTY_VERSION=0.17.0
-PROVISION_REV=2 # bump when provision() changes
+PROVISION_REV=3 # bump when provision() changes
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 export LUME_TELEMETRY_ENABLED=false LUME_UPDATE_CHECK=false
 
@@ -53,11 +53,22 @@ d = d[0] if isinstance(d, list) else d
 print(d.get(sys.argv[1]) or "")' "$1"
 }
 
-running() { [ "$(vm_field status)" = running ]; }
+# `lume get` can report a running VM as stopped (seen after a detached run); the
+# `lume run` process owning the VM is the ground truth
+running() {
+	[ "$(vm_field status)" = running ] || pgrep -qf "libexec/lume run $VM( |\$)"
+}
 
 IP= # cached by boot() / bootstrap_ssh() in the main shell
 ip() {
-	if [ -n "$IP" ]; then echo "$IP"; else vm_field ipAddress; fi
+	[ -n "$IP" ] && { echo "$IP"; return; }
+	local addr mac
+	addr=$(vm_field ipAddress)
+	if [ -z "$addr" ] && mac=$(vm_field macAddress) && [ -n "$mac" ]; then
+		# the DHCP lease of the VM's MAC (vmnet NAT)
+		addr=$(awk -v mac="1,$mac" '/ip_address=/ {ip = substr($1, 12)} /hw_address=/ && substr($1, 12) == mac {print ip; exit}' /var/db/dhcpd_leases 2>/dev/null)
+	fi
+	echo "$addr"
 }
 
 ssh_opts() {
@@ -94,10 +105,14 @@ boot() {
 	running && return
 	log "booting $VM headless"
 	mkdir -p "$STATE"
-	lume run "$VM" --no-display --detach --log-file "$STATE/vm.log" >/dev/null 2>&1 \
-		|| lume run "$VM" --no-display --detach >/dev/null
+	lume run "$VM" --no-display --detach --log-file "$STATE/vm.log" >/dev/null
+	boot_wait
+}
+
+boot_wait() {
 	local deadline=$((SECONDS + 180))
 	until [ -n "$(ip)" ] && lume ssh "$VM" -t 10 true >/dev/null 2>&1; do
+		pgrep -qf "libexec/lume run $VM( |\$)" || die "$VM stopped while booting ($STATE/vm.log)"
 		[ $SECONDS -lt $deadline ] || die "$VM did not answer SSH within 180 s ($STATE/vm.log)"
 		sleep 2
 	done
@@ -160,6 +175,28 @@ ln -sf \$app/Contents/MacOS/alacritty ~/bin/alacritty
 sudo pmset -a sleep 0 displaysleep 0 disksleep 0 >/dev/null
 defaults -currentHost write com.apple.screensaver idleTime 0
 EOF
+}
+
+# autologin of the guest user (/etc/kcpassword: the password XOR-ed with Apple's key,
+# padded to 12 bytes); a policy change (SIP) clears it, and e2e needs a GUI session
+guest_autologin_script() {
+	cat <<EOF
+set -eu
+sudo defaults write /Library/Preferences/com.apple.loginwindow autoLoginUser $GUEST_USER
+perl -e '@k = (0x7D,0x89,0x52,0x23,0xD2,0xBC,0xDD,0xEA,0xA3,0xB9,0x1F); @p = unpack("C*", "$GUEST_PASS"); push @p, 0 while @p % 12; print pack("C*", map { \$p[\$_] ^ \$k[\$_ % 11] } 0..\$#p)' | sudo tee /etc/kcpassword >/dev/null
+sudo chmod 600 /etc/kcpassword
+EOF
+}
+
+console_user() { gssh "stat -f %Su /dev/console" 2>/dev/null; }
+
+# until the guest user's GUI session is up (autologin), at most $1 s
+wait_gui() {
+	local deadline=$((SECONDS + ${1:-60}))
+	until [ "$(console_user)" = "$GUEST_USER" ]; do
+		[ $SECONDS -lt $deadline ] || return 1
+		sleep 1
+	done
 }
 
 # Accessibility (+ PostEvent) for what posts the key events in the guest. The
@@ -235,6 +272,16 @@ provision() {
 		bootstrap_ssh
 		gssh "csrutil status" | grep -q disabled || die "SIP is still enabled in the guest (screenshots: $STATE/sip)"
 	fi
+	guest_autologin_script | gssh "bash -s"
+	if ! wait_gui 5; then
+		log "no GUI session; restarting the guest into autologin"
+		gssh "sync; sudo shutdown -h now" || true
+		for _ in $(seq 60); do running || break; sleep 1; done
+		lume stop "$VM" >/dev/null 2>&1 || true
+		boot
+		bootstrap_ssh
+		wait_gui 90 || die "the guest did not log in $GUEST_USER (autologin); see: lume attach $VM --display vnc"
+	fi
 	guest_tcc_script | gssh "cat > /tmp/nvim-e2e-tcc.sh"
 	gssh "bash /tmp/nvim-e2e-tcc.sh $(printf '%q ' "${TCC_CLIENTS[@]}") </dev/null"
 	gssh "echo $PROVISION_REV > ~/.nvim-e2e-provisioned"
@@ -266,10 +313,8 @@ status() {
 		echo "sandbox: $VM not created (make sandbox-up)"
 		return 1
 	fi
-	local state
-	state=$(vm_field status)
-	if [ "$state" != running ]; then
-		echo "sandbox: $VM $state (make sandbox-up)"
+	if ! running; then
+		echo "sandbox: $VM $(vm_field status) (make sandbox-up)"
 		return 1
 	fi
 	if [ -f "$STATE/id_ed25519" ] && provisioned; then
@@ -298,6 +343,7 @@ e2e() {
 	bootstrap_ssh
 	if ! provisioned; then provision >&2; fi
 	sync_repo
+	wait_gui 60 || die "no GUI session in the guest after 60 s (make sandbox-provision)"
 	local vars=""
 	for v in CASE E2E_FOCUS; do
 		[ -n "${!v:-}" ] && vars="$vars $v=$(printf %q "${!v}")"
@@ -316,7 +362,10 @@ provision)
 down)
 	if command -v lume >/dev/null && running; then
 		{ bootstrap_ssh && gssh "sync"; } || true # lume stop is a power-off
-		lume stop "$VM" >/dev/null
+		lume stop "$VM" >/dev/null 2>&1 || true
+		# the owning `lume run` stops the VM on SIGTERM (when lume get lost track of it)
+		pkill -TERM -f "libexec/lume run $VM( |\$)" || true
+		for _ in $(seq 30); do running || break; sleep 1; done
 	fi
 	echo "sandbox: $VM stopped"
 	;;
