@@ -271,6 +271,91 @@ function M.git_repo(files, opts)
 	return dir
 end
 
+---@class test.JobScript
+---@field stdout? string[] `data` passed to `on_stdout` (not called when nil)
+---@field code? integer exit code passed to `on_exit` (default 0)
+
+---@class test.JobCall
+---@field cmd string|string[] command given to `jobstart`
+---@field stdin string everything sent to the job with `chansend`
+
+--- Child-side: replace `vim.fn.jobstart` with a recorder (see M.record_jobstart).
+--- Fake job ids start at 100000 so `chansend`/`chanclose`/`jobstop` pass
+--- other channels through to the originals.
+local RECORD_JOBSTART_LUA = [[
+local scripts = ...
+local orig = { chansend = vim.fn.chansend, chanclose = vim.fn.chanclose, jobstop = vim.fn.jobstop }
+local jobs = {}
+JobstartCalls = {}
+
+local function program(cmd)
+	return type(cmd) == "table" and cmd[1] or vim.split(cmd, " ", { trimempty = true })[1]
+end
+
+local function finish(id, opts, script)
+	if script.stdout and opts.on_stdout then opts.on_stdout(id, script.stdout, "stdout") end
+	if opts.on_exit then opts.on_exit(id, script.code or 0, "exit") end
+end
+
+function vim.fn.jobstart(cmd, opts)
+	opts = opts or {}
+	local id = 100000 + #JobstartCalls
+	local call = { cmd = cmd, stdin = "" }
+	table.insert(JobstartCalls, call)
+	jobs[id] = call
+	local script = scripts[program(cmd)] or {}
+	vim.schedule(function() finish(id, opts, script) end)
+	return id
+end
+
+function vim.fn.chansend(id, data)
+	if not jobs[id] then return orig.chansend(id, data) end
+	jobs[id].stdin = jobs[id].stdin .. (type(data) == "table" and table.concat(data, "\n") or data)
+	return #jobs[id].stdin
+end
+
+function vim.fn.chanclose(id, ...)
+	if not jobs[id] then return orig.chanclose(id, ...) end
+	return 1
+end
+
+function vim.fn.jobstop(id)
+	if not jobs[id] then return orig.jobstop(id) end
+	return 1
+end]]
+
+--- Replace `vim.fn.jobstart` in `child` with a recorder: no process is
+--- spawned; each call records its command and the stdin sent via `chansend`,
+--- then on `vim.schedule` calls `on_stdout` (if scripted) and `on_exit` with
+--- the script of the command's program (`cmd[1]`, or the first word of a
+--- string command; unscripted programs exit 0 without output).
+---@param child MiniTest.child
+---@param scripts? table<string, test.JobScript> program name -> scripted result
+---@return fun(): test.JobCall[] calls recorded so far
+function M.record_jobstart(child, scripts)
+	child.lua(RECORD_JOBSTART_LUA, { scripts or vim.empty_dict() })
+	return function()
+		return child.lua_get("JobstartCalls")
+	end
+end
+
+---@class test.Notification
+---@field msg string
+---@field level? integer vim.log.levels value
+
+--- Replace `vim.notify` in `child` with a recorder (nothing is shown).
+---@param child MiniTest.child
+---@return fun(): test.Notification[] notifications recorded so far
+function M.record_notify(child)
+	child.lua([[
+		Notifications = {}
+		vim.notify = function(msg, level) table.insert(Notifications, { msg = msg, level = level }) end
+	]])
+	return function()
+		return child.lua_get("Notifications")
+	end
+end
+
 --- Re-encode attr codes of a screenshot slice so it is independent of rows
 --- outside the slice (mini.test numbers attrs in order of appearance).
 ---@param attr string[][]
