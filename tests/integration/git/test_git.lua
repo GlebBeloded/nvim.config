@@ -24,4 +24,13 @@ T["git: Git commands are available after startup"] = function()
 	eq(exists, { 2, 2, 2, 2 })
 end
 
+T["git: vscode-diff setup runs on plugin load"] = function()
+	child.lua([[require("lazy").load({ plugins = { "vscode-diff.nvim" } })]])
+
+	eq(child.lua_get([[package.loaded["gleb.git.vscode_diff"] ~= nil]]), true)
+	-- the plugin defaults are width 40 and a list view, so these come from the config's setup
+	local explorer = child.lua_get([[require("codediff.config").options.explorer]])
+	eq({ explorer.position, explorer.width, explorer.view_mode }, { "left", 35, "tree" })
+end
+
 return T
