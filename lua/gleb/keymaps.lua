@@ -106,13 +106,20 @@ kmap("n", "gr", require("telescope.builtin").lsp_references, opts)
 kmap("n", "<A-r>", vim.lsp.buf.rename, opts)
 
 -- Diagnostics
-kmap("n", "<A-w>", vim.diagnostic.goto_next, opts)
-kmap("n", "[d", function()
-	vim.diagnostic.goto_prev({ border = "rounded" })
-end, opts)
-kmap("n", "ge", function()
-	vim.diagnostic.goto_next({ border = "rounded" })
-end, opts)
+--- Jump to the next diagnostic.
+local function jump_next()
+	vim.diagnostic.jump({ count = 1 })
+end
+
+--- Jump to the previous diagnostic.
+local function jump_prev()
+	vim.diagnostic.jump({ count = -1 })
+end
+
+local jump_next_opts = vim.tbl_extend("force", opts, { desc = "Next diagnostic" })
+kmap("n", "<A-w>", jump_next, jump_next_opts)
+kmap("n", "ge", jump_next, jump_next_opts)
+kmap("n", "[d", jump_prev, opts)
 
 -- Leader keys
 vim.g.mapleader = "<D->"

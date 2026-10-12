@@ -288,4 +288,19 @@ T["keymaps: [d jumps to previous diagnostic"] = function()
 	eq(cursor_line(), 2)
 end
 
+T["keymaps: Diagnostic jump is not deprecated"] = function()
+	child.lua([[
+		_G.deprecations = {}
+		vim.deprecate = function(name)
+			table.insert(_G.deprecations, name)
+		end
+	]])
+	set_diagnostics_on_lines_2_and_4()
+	child.api.nvim_win_set_cursor(0, { 1, 0 })
+	child.type_keys("ge", "<A-w>", "[d")
+
+	eq(child.lua_get("_G.deprecations"), {})
+	eq(child.cmd_capture("messages"):find("deprecated"), nil)
+end
+
 return T
