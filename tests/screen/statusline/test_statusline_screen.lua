@@ -24,6 +24,11 @@ local function expect_statusline_screenshot(mode_label)
 	H.expect_screenshot(H.screen_rows(child, -1))
 end
 
+-- gruvbox-material (medium, dark) colors the masks cannot see: a mask compares
+-- each cell with its own group, so the groups' palette colors are pinned here.
+local DARK = "#282828"
+local CHIP = { fg = "#ddc7a1", bg = "#413a36" } -- language chip (palette chip_bg / text_hi)
+
 local T = H.child_set(child, start)
 
 T["statusline: statusline matches reference screenshot"] = function()
@@ -38,6 +43,8 @@ T["statusline: statusline matches reference screenshot"] = function()
 		t = "StatuslineLangText",
 		l = "StatuslineLang_lua",
 	})
+	H.expect_hl_colors(child, "lualine_a_normal", { fg = DARK, bg = "#a9b665", bold = true })
+	H.expect_hl_colors(child, "StatuslineLangText", CHIP)
 end
 
 T["statusline: insert mode accent matches reference screenshot"] = function()
@@ -47,12 +54,14 @@ T["statusline: insert mode accent matches reference screenshot"] = function()
 		"aaaaaaaacccccccccccccccccccccccccccccccccccccccccccccccccccccccceeeeewwwwtlttttt",
 	}, {
 		a = "lualine_a_insert",
-		c = "lualine_c_normal",
+		c = "lualine_c_normal", -- the theme has no Insert c section, so lualine draws Normal's
 		e = "lualine_x_diagnostics_error_insert",
 		w = "lualine_x_diagnostics_warn_insert",
 		t = "StatuslineLangText",
 		l = "StatuslineLang_lua",
 	})
+	H.expect_hl_colors(child, "lualine_a_insert", { fg = DARK, bg = "#7daea3", bold = true })
+	H.expect_hl_colors(child, "StatuslineLangText", CHIP)
 end
 
 return T

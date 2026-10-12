@@ -467,6 +467,37 @@ function M.expect_screen_colors(child, row, mask, legend)
 	end
 end
 
+---@class test.HlColors
+---@field fg? string `#rrggbb`
+---@field bg? string `#rrggbb`
+---@field bold? boolean
+
+---@param hl test.CellAttrs
+---@return test.HlColors
+local function hl_colors(hl)
+	---@param color integer?
+	local function hex(color)
+		return color and ("#%06x"):format(color)
+	end
+	return { fg = hex(hl.fg), bg = hex(hl.bg), bold = hl.bold or false }
+end
+
+--- Pin the resolved colors of highlight `group`: only the keys `expected` sets.
+--- Masks compare cells with their own group, so this is what catches a wrong
+--- palette color.
+---@param child MiniTest.child
+---@param group string
+---@param expected test.HlColors
+function M.expect_hl_colors(child, group, expected)
+	local hl = child.lua_get("vim.api.nvim_get_hl(0, { name = ..., link = false })", { group }) --[[@as test.CellAttrs]]
+	local actual = hl_colors(hl)
+	for key, value in pairs(expected) do
+		if actual[key] ~= value then
+			error(("[%s] %s: expected %s, got %s"):format(group, key, tostring(value), tostring(actual[key])), 0)
+		end
+	end
+end
+
 --- `expect.reference_screenshot` that honours UPDATE_SCREENSHOTS=1.
 ---@param screenshot table
 function M.expect_screenshot(screenshot)

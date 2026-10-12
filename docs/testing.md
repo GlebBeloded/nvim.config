@@ -113,7 +113,7 @@ Specs describe current behaviour, and tests assert the spec.
 Screen tests call `H.expect_screenshot(...)` (mini.test `reference_screenshot`). The references are plain text in `tests/screenshots/`, named after the case, with one block for text and one for attribute identity. They are committed.
 - A missing reference is created on the first run, and the case passes with a note. Review the new file and commit it.
 - After an intended visual change, run `make screenshots` (`UPDATE_SCREENSHOTS=1`) and review `git diff tests/screenshots`.
-- Attributes are compared by identity, not by color. For colors, `H.expect_screen_colors(child, row, mask, legend)` checks the drawn colors of every cell from screen `row` down against a mask and legend of highlight group names, in the design-render notation (`docs/workflow.md`, "Design renders"). Its failure prints the actual mask: after an intended color change, review it and paste it into the test.
+- Attributes are compared by identity, not by color. For colors, `H.expect_screen_colors(child, row, mask, legend)` checks the drawn colors of every cell from screen `row` down against a mask and legend of highlight group names, in the design-render notation (`docs/workflow.md`, "Design renders"). Its failure prints the actual mask: after an intended color change, review it and paste it into the test. The mask compares each cell with its own group, so pin the absolute colors that matter (accents, chips) with `H.expect_hl_colors(child, group, { fg = "#rrggbb", bg = ..., bold = ... })`.
 
 ## Seeing the current render
 

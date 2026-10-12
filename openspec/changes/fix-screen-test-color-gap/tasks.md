@@ -9,7 +9,7 @@
 ## Global Constraints
 
 - NVIM v0.12.5; `nvim__inspect_cell(grid, row, col)` is 0-based and lives only in the one child-side chunk (D1).
-- Legend values are exact highlight group names; tests hold no hex literals.
+- Legend values are exact highlight group names; masks hold no hex literals. The absolute colors the old `H.expect_colors` checks pinned (accents, chip) stay pinned as hex next to the mask (task 4): the mask alone compares cells with their own group, so a wrong palette color would pass.
 - `.` and space in a mask mean `Normal` (shared with `make colorize`, D5).
 - Mask rows are exactly `vim.o.columns` cells wide, counted with `vim.fn.strchars`.
 - Reference screenshots in `tests/screenshots/` stay byte-identical (`git diff tests/screenshots` empty).
@@ -93,6 +93,22 @@ Scenarios: "statusline: insert mode accent matches reference screenshot"
 - [x] **2.5 Docs.** Replace the `expect_colors` bullet in `docs/testing.md` "Screenshots": `H.expect_screen_colors(child, row, mask, legend)` checks drawn colors per cell in the design-render mask/legend notation, and the failure's actual mask is what to paste after an intended color change. No implementation details.
 - [x] **2.6 Run, expect PASS.** `make test-screen FILE=tests/screen/statusline/test_statusline_screen.lua` → both cases PASS; `git diff --exit-code tests/screenshots` → exit 0.
 - [x] **2.7 Commit** `test(statusline): assert Insert statusline colors with a mask; drop expect_colors`.
+
+## 4. Pin the accent and chip colors (review: the mask alone is self-referential)
+
+Scenarios: "statusline: statusline matches reference screenshot", "statusline: insert mode accent matches reference screenshot"
+
+**Files:**
+- Modify: `tests/helpers.lua`, `tests/screen/statusline/test_statusline_screen.lua`, `docs/testing.md`
+
+**Interfaces:**
+- Produces: `M.expect_hl_colors(child: MiniTest.child, group: string, expected: test.HlColors)` with `---@class test.HlColors` `fg?`, `bg?: string` (`#rrggbb`), `bold?: boolean`; compares only the keys `expected` sets against `nvim_get_hl(0, { name = group, link = false })`.
+
+- [x] **4.1 Failing test.** Restore the removed pins next to the masks: Normal `lualine_a_normal` `{ fg = DARK, bg = "#a9b665", bold = true }` and `StatuslineLangText` `CHIP`; Insert `lualine_a_insert` `{ fg = DARK, bg = "#7daea3", bold = true }` and `CHIP`. Comment why Insert's `c` is `lualine_c_normal`.
+- [x] **4.2 Run it, expect FAIL** (`expect_hl_colors` is nil).
+- [x] **4.3 Implement** `M.expect_hl_colors`; failure names the group and both values.
+- [x] **4.4 Prove it.** Temporarily set `insert = fg.green` in `lua/gleb/statusline/palette.lua` → the Insert case FAILS. Revert.
+- [x] **4.5 Docs, run, commit** `test(statusline): pin accent and chip colors next to the masks`.
 
 ## 3. Gate
 
