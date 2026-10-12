@@ -380,4 +380,27 @@ T["keymaps: Alt-G closes focused git status tree"] = function()
 	eq(wait_no_tree(), true)
 end
 
+T["keymaps: Alt-g opens Differ"] = function()
+	local repo = edit_repo_file()
+	H.write_files(repo, { ["foo.lua"] = "return 2\n" })
+	child.type_keys("<M-g>")
+
+	-- :Differ opens its own tab with the file panel leftmost
+	eq(child.wait([[vim.api.nvim_buf_get_name(vim.fn.winbufnr(1)) == "differ://panel"]], ASYNC_MS), true)
+	eq(#child.api.nvim_list_tabpages(), 2)
+end
+
+T["keymaps: Alt-F opens live grep"] = function()
+	edit_repo_file()
+	child.type_keys("<M-F>")
+
+	eq(child.wait([[vim.bo.filetype == "TelescopePrompt"]], ASYNC_MS), true)
+	eq(
+		child.lua_get(
+			[[require("telescope.actions.state").get_current_picker(vim.api.nvim_get_current_buf()).prompt_title]]
+		),
+		"Live Grep"
+	)
+end
+
 return T
