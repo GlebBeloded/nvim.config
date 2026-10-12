@@ -383,7 +383,7 @@ end
 T["file-tree: P pushes successfully"] = function()
 	local calls, notifications = push_exiting(0)
 
-	eq(calls, { { cmd = "git push", stdin = "" } })
+	eq(calls, { { cmd = "git push", stdin = "", stopped = false } })
 	eq(notifications, {
 		{ msg = "Pushing...", level = INFO },
 		{ msg = "Pushed successfully", level = INFO },
@@ -393,7 +393,7 @@ end
 T["file-tree: P reports push failure"] = function()
 	local calls, notifications = push_exiting(1)
 
-	eq(calls, { { cmd = "git push", stdin = "" } })
+	eq(calls, { { cmd = "git push", stdin = "", stopped = false } })
 	eq(notifications, {
 		{ msg = "Pushing...", level = INFO },
 		{ msg = "Push failed", level = ERROR },

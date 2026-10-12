@@ -33,31 +33,31 @@ Every task follows the same steps:
 
 ## 3. git
 
-- [ ] 3.1 Scenarios: Missing optional git plugins are tolerated (unit `tests/unit/git/test_modules.lua`, bare child without the plugins), vscode-diff setup runs on plugin load (integration `test_git.lua`).
+- [x] 3.1 Scenarios: Missing optional git plugins are tolerated (unit `tests/unit/git/test_modules.lua`, bare child without the plugins), vscode-diff setup runs on plugin load (integration `test_git.lua`).
   1. Failing cases: require the git modules in a bare child and assert no error; load vscode-diff and assert its setup ran (its command exists).
   2. No harness change expected.
   3. Verify (git).
-- [ ] 3.2 Scenarios: Added line shows bar sign, Blame is off by default (integration, temp repo).
+- [x] 3.2 Scenarios: Added line shows bar sign, Blame is off by default (integration, temp repo).
   1. Failing cases: add a line to a committed file, `child.wait` for the gitsigns sign and assert its text; assert no blame virtual text after the 300 ms the spec names.
   2. None.
   3. Verify (git).
-- [ ] 3.3 Scenarios: Differ opens panel on the left, Diffview file panel on the left, tab moves to next entry, s stages entry from file panel, q closes diffview from file panel, dx drops both conflict sides (integration, temp repo; a merge conflict built with `H.git_repo` plus a host-side branch merge for `dx`).
+- [x] 3.3 Scenarios: Differ opens panel on the left, Diffview file panel on the left, tab moves to next entry, s stages entry from file panel, q closes diffview from file panel, dx drops both conflict sides (integration, temp repo; a merge conflict built with `H.git_repo` plus a host-side branch merge for `dx`).
   1. Failing cases asserting window layout, cursor entry, `git diff --cached --name-only` on the host, closed tab, and conflict markers gone.
   2. If building the conflict is not one-line, add `opts.conflict` to `H.git_repo` (small named function).
   3. Verify (git).
-- [ ] 3.4 Scenarios: Gitlink copies current line URL, Gitlink copies range URL, pgw.dev remote uses GitHub URL format (integration, temp repo with `opts.remote`).
+- [x] 3.4 Scenarios: Gitlink copies current line URL, Gitlink copies range URL, pgw.dev remote uses GitHub URL format (integration, temp repo with `opts.remote`).
   1. Failing cases: run the Gitlink mapping in normal and visual mode; assert the `+` register (in-memory clipboard) URL with `#L<n>` / `#L<a>-L<b>`.
   2. None.
   3. Verify (git).
-- [ ] 3.5 Scenarios: No staged changes, Ollama is spawned with staged diff, Long diff is truncated (unit `tests/unit/git/test_ai_commit.lua`, bare child in a temp repo).
+- [x] 3.5 Scenarios: No staged changes, Ollama is spawned with staged diff, Long diff is truncated (unit `tests/unit/git/test_ai_commit.lua`, bare child in a temp repo).
   1. Failing cases: call `gleb.git.ai_commit` with nothing staged (assert the notification), with a staged file and with a staged diff over the limit; assert the recorded `ollama run` command and stdin.
   2. Add the `jobstart`/`chansend` and `vim.notify` recorders as named local functions in the file (design D4); move them to `tests/helpers.lua` only when 4.4 reuses them.
   3. Verify (git).
-- [ ] 3.6 Scenarios: Generated message fills popup (M:fix-neotree-commit-check), Popup resizes to content (M), Ollama failure is shown (M).
+- [x] 3.6 Scenarios: Generated message fills popup (M:fix-neotree-commit-check), Popup resizes to content (M), Ollama failure is shown (M).
   1. Failing cases: scripted `on_stdout`/`on_exit`; assert popup buffer lines, window height, and the error shown.
   2. None.
   3. Verify (git).
-- [ ] 3.7 Scenarios: Enter confirms message (M), Enter on empty buffer does nothing (M), q discards popup (M), Leaving popup closes it (M).
+- [x] 3.7 Scenarios: Enter confirms message (M), Enter on empty buffer does nothing (M), q discards popup (M), Leaving popup closes it (M).
   1. Failing cases: assert the confirm callback receives the message (or is not called), popup closed on `q` and on `WinLeave`.
   2. None.
   3. Verify (git 24/24).

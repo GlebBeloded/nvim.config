@@ -5,7 +5,6 @@ local eq = MiniTest.expect.equality
 local child = H.new_child()
 
 local OLLAMA_CMD = { "ollama", "run", "tavernari/git-commit-message:sp_commit_mini" }
-local ASYNC_MS = 2000
 
 ---@type string
 local repo
@@ -17,47 +16,12 @@ local function start()
 	child.cmd("cd " .. repo)
 end
 
---- Child-side recorder for external processes (design D4): `vim.fn.jobstart`
---- records the command and the job's callbacks in `Jobs` instead of spawning,
---- `chansend` appends to the job's `stdin`, `jobstop` marks it stopped.
---- `FinishJob(text, code)` replays stdout `text` (split into lines as a
---- channel delivers it) and the exit `code` through the recorded callbacks.
-local RECORD_JOBSTART_LUA = [[
-Jobs = {}
-local FIRST_ID = 100
-local function job(id) return Jobs[id - FIRST_ID + 1] end
-vim.fn.jobstart = function(cmd, opts)
-	table.insert(Jobs, { cmd = cmd, opts = opts, stdin = "", stopped = false })
-	return FIRST_ID + #Jobs - 1
-end
-vim.fn.chansend = function(id, data) job(id).stdin = job(id).stdin .. data end
-vim.fn.chanclose = function() end
-vim.fn.jobstop = function(id) job(id).stopped = true end
-function FinishJob(text, code)
-	local id = FIRST_ID + #Jobs - 1
-	vim.schedule(function()
-		job(id).opts.on_stdout(id, vim.split(text, "\n"))
-		job(id).opts.on_exit(id, code)
-		-- queued after anything on_exit schedules, so it runs once that is done
-		vim.schedule(function() job(id).handled = true end)
-	end)
-end]]
+---@type fun(): test.JobCall[]
+local jobs
 
---- Install the jobstart/chansend recorder in the child.
+--- Record jobs instead of spawning them; ollama runs until `finish_job`.
 local function record_jobstart()
-	child.lua(RECORD_JOBSTART_LUA)
-end
-
----@class test.RecordedJob
----@field cmd string[]
----@field stdin string
----@field stopped boolean
-
----@return test.RecordedJob[]
-local function jobs()
-	return child.lua([[return vim.tbl_map(function(job)
-		return { cmd = job.cmd, stdin = job.stdin, stopped = job.stopped }
-	end, Jobs)]])
+	jobs = H.record_jobstart(child, { ollama = { hold = true } })
 end
 
 --- Child-side: `PopupTitle()`, the text between the corners of the top edge
@@ -103,13 +67,11 @@ local function commits()
 	return child.lua_get("Commits")
 end
 
---- Replay the job's stdout `text` and exit `code`, and wait until the popup
---- has handled them.
+--- Replay the job's stdout `text` and exit `code`.
 ---@param text string
 ---@param code integer
 local function finish_job(text, code)
-	child.lua("FinishJob(...)", { text, code })
-	assert(child.wait("Jobs[#Jobs].handled", ASYNC_MS), "job result was not handled")
+	H.finish_job(child, text, code)
 end
 
 --- Open the popup with a staged change, so the AI job is running.

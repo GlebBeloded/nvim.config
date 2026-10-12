@@ -274,10 +274,12 @@ end
 ---@class test.JobScript
 ---@field stdout? string[] `data` passed to `on_stdout` (not called when nil)
 ---@field code? integer exit code passed to `on_exit` (default 0)
+---@field hold? boolean keep the job running until `M.finish_job`
 
 ---@class test.JobCall
 ---@field cmd string|string[] command given to `jobstart`
 ---@field stdin string everything sent to the job with `chansend`
+---@field stopped boolean `jobstop` was called on it
 
 --- Child-side: replace `vim.fn.jobstart` with a recorder (see M.record_jobstart).
 --- Fake job ids start at 100000 so `chansend`/`chanclose`/`jobstop` pass
@@ -295,16 +297,29 @@ end
 local function finish(id, opts, script)
 	if script.stdout and opts.on_stdout then opts.on_stdout(id, script.stdout, "stdout") end
 	if opts.on_exit then opts.on_exit(id, script.code or 0, "exit") end
+	-- queued after anything the callbacks schedule, so it runs once that is done
+	vim.schedule(function() LastHandledJob = id end)
+end
+
+local held_opts
+
+function FinishHeldJob(script)
+	local id, opts = HeldJob, held_opts
+	vim.schedule(function() finish(id, opts, script) end)
 end
 
 function vim.fn.jobstart(cmd, opts)
 	opts = opts or {}
 	local id = 100000 + #JobstartCalls
-	local call = { cmd = cmd, stdin = "" }
+	local call = { cmd = cmd, stdin = "", stopped = false }
 	table.insert(JobstartCalls, call)
 	jobs[id] = call
 	local script = scripts[program(cmd)] or {}
-	vim.schedule(function() finish(id, opts, script) end)
+	if script.hold then
+		HeldJob, held_opts = id, opts
+	else
+		vim.schedule(function() finish(id, opts, script) end)
+	end
 	return id
 end
 
@@ -321,6 +336,7 @@ end
 
 function vim.fn.jobstop(id)
 	if not jobs[id] then return orig.jobstop(id) end
+	jobs[id].stopped = true
 	return 1
 end]]
 
@@ -328,7 +344,8 @@ end]]
 --- spawned; each call records its command and the stdin sent via `chansend`,
 --- then on `vim.schedule` calls `on_stdout` (if scripted) and `on_exit` with
 --- the script of the command's program (`cmd[1]`, or the first word of a
---- string command; unscripted programs exit 0 without output).
+--- string command; unscripted programs exit 0 without output). A `hold`
+--- script keeps the job running until `M.finish_job`.
 ---@param child MiniTest.child
 ---@param scripts? table<string, test.JobScript> program name -> scripted result
 ---@return fun(): test.JobCall[] calls recorded so far
@@ -337,6 +354,17 @@ function M.record_jobstart(child, scripts)
 	return function()
 		return child.lua_get("JobstartCalls")
 	end
+end
+
+--- Finish the last held job (see M.record_jobstart) with stdout `text`, split
+--- into lines as a channel delivers it, and exit `code`; wait until the
+--- callbacks and what they scheduled have run.
+---@param child test.Child
+---@param text string
+---@param code integer
+function M.finish_job(child, text, code)
+	child.lua("FinishHeldJob(...)", { { stdout = vim.split(text, "\n"), code = code } })
+	assert(child.wait("LastHandledJob == HeldJob"), "job result was not handled")
 end
 
 ---@class test.Notification
