@@ -266,6 +266,7 @@ relative to `lua/gleb/`.
   already shows. They hold intent, cross-module relationships, decisions and how to operate.
 - 10.2 Behaviour lives in `openspec/specs/**`, planned work and known issues in `openspec/changes/**`.
 - 10.3 Markdown goes only in `README.md`, `docs/architecture.md`, `docs/workflow.md`, `docs/testing.md`,
-  `docs/CLAUDE.md`, `openspec/specs/**` and `openspec/changes/**` (tool-generated `.claude/`, `.pi/`
-  and `.archon/commands/` prompts aside). Every file in `docs/` is linked from `README.md`, and every
-  relative link resolves. The AI review flags violations.
+  `docs/CLAUDE.md` (the root `CLAUDE.md` and `AGENTS.md` are symlinks to it), `openspec/specs/**` and
+  `openspec/changes/**` (tool-generated `.claude/`, `.pi/` and `.archon/commands/` prompts aside). Every
+  file in `docs/` is linked from `README.md`, and every relative link resolves. The AI review flags
+  violations.

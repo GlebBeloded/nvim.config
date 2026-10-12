@@ -34,5 +34,5 @@ make check          # the full gate
 - [Architecture](docs/architecture.md): module map, startup, AI loop, terminal stack, key decisions, conventions
 - [Workflow](docs/workflow.md): running the loop, queueing issues, design renders, debugging shortcuts
 - [Testing](docs/testing.md): test layers, naming, screenshots
-- [Agent rules](docs/CLAUDE.md) (also `CLAUDE.md`)
+- [Agent rules](docs/CLAUDE.md) (also `CLAUDE.md` and `AGENTS.md`)
 - Behaviour specs: [openspec/specs](openspec/specs); queued changes and known issues: [openspec/changes](openspec/changes); project rules: [openspec/config.yaml](openspec/config.yaml)
