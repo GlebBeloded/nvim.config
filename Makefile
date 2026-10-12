@@ -128,12 +128,22 @@ STAMP := $(shell date +%Y%m%d-%H%M%S)
 # After a run, drop worktrees whose branch is merged into auto (a run cannot delete its own).
 CLEANUP = $(ARCHON) isolation cleanup --merged >/dev/null 2>&1 || true
 
-.PHONY: loop-setup loop-validate fix feature queue update outdated console loop-status preview
+.PHONY: loop-setup loop-register loop-validate fix feature queue update outdated console loop-status preview
 
 loop-setup: # self-remote: Archon cuts worktrees from <remote>/auto, and auto stays local
 	@git remote get-url local >/dev/null 2>&1 || git remote add local "$$(git rev-parse --path-format=absolute --git-common-dir | sed 's|/.git$$||')"
 	@git fetch -q local
+	@$(MAKE) -s loop-register
 	@$(ARCHON) doctor | grep -E '✓|✗' || true
+
+# Archon registers the repo once (DB row + workspaces/<owner>/<repo>/source link). A registration
+# made from a since-deleted worktree breaks every run, so point both back at this checkout.
+ARCHON_SOURCE = $(HOME)/.archon/workspaces/GlebBeloded/nvim.config/source
+loop-register:
+	@[ ! -L "$(ARCHON_SOURCE)" ] || [ "$$(readlink "$(ARCHON_SOURCE)")" = "$(CURDIR)" ] || { \
+		ln -sfn "$(CURDIR)" "$(ARCHON_SOURCE)"; \
+		sqlite3 "$(HOME)/.archon/archon.db" "update remote_agent_codebases set default_cwd='$(CURDIR)' where name='GlebBeloded/nvim.config'"; \
+		echo "loop-register: Archon registration repointed to $(CURDIR)"; }
 
 loop-validate:
 	@$(ARCHON) validate workflows
