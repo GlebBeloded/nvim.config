@@ -73,10 +73,10 @@ The stack SHALL behave as the shortcut table when real zellij 0.45 runs the user
 - **THEN** zellij focus moves to the Neovim pane on the left
 
 ### Requirement: Real key presses in the sandbox VM deliver shortcuts
-The e2e layer SHALL deliver physical key presses to Neovim as the shortcut table says, in a dedicated Alacritty instance (repo config) running real zellij (user keybinds, the stack layer's layout), with key events posted to that process inside the sandbox macOS VM, never on the host. Exceptions: the app menu takes Cmd+Q and Cmd+H, Cmd+Shift+-/= arrive in Alacritty's kitty encoding, and the key helper never presses Cmd+Shift+Q (system Log Out).
+The e2e layer SHALL deliver physical key presses to Neovim as the shortcut table says, in a dedicated Alacritty instance (repo config) running real zellij (user keybinds, the stack layer's layout), with key events posted to that process inside the sandbox macOS VM, never on the host. Exceptions: the app menu takes Cmd+Q and Cmd+H, and the key helper never presses Cmd+Shift+Q (system Log Out).
 
 #### Scenario: Every passed shortcut reaches its Neovim key from a real key press
-- **WHEN** a recorder mapping is set in Neovim normal mode for each row's *Neovim receives* key and each row's shortcut except Cmd+Q, Cmd+Shift+Q, Cmd+H, Cmd+Shift+- and Cmd+Shift+= is pressed in the Alacritty window
+- **WHEN** a recorder mapping is set in Neovim normal mode for each row's *Neovim receives* key and each row's shortcut except Cmd+Q, Cmd+Shift+Q and Cmd+H is pressed in the Alacritty window
 - **THEN** the recorder for exactly that key fires
 
 #### Scenario: Consumed shortcuts never reach Neovim from a real key press
@@ -94,6 +94,10 @@ The e2e layer SHALL deliver physical key presses to Neovim as the shortcut table
 #### Scenario: Cmd+Shift+- and Cmd+Shift+= reach Neovim as <S-D--> and <S-D-=> from a real key press
 - **WHEN** recorders are set for `<S-D-->`, `<S-D-=>`, `<M-_>` and `<M-+>` and Cmd+Shift+- then Cmd+Shift+= are pressed
 - **THEN** exactly `<S-D-->` then `<S-D-=>` are recorded
+
+#### Scenario: Cmd+Shift+- and Cmd+Shift+= close and open all folds from a real key press
+- **WHEN** a buffer with at least two top-level folds is open with all folds open, Cmd+Shift+- is pressed, then Cmd+Shift+= is pressed
+- **THEN** after Cmd+Shift+- every top-level fold is closed (`foldclosed()` of each fold's first line is not -1), and after Cmd+Shift+= none is
 
 #### Scenario: Ctrl+Up grows the current Neovim split from a real key press
 - **WHEN** two Neovim windows exist stacked, the cursor is in the top one, and Ctrl+Up is pressed
