@@ -68,6 +68,17 @@ The stack SHALL behave as the shortcut table when real zellij 0.45 runs the user
 - **WHEN** the `cat` pane is focused and `\x08` is sent
 - **THEN** zellij focus moves to the Neovim pane on the left
 
+### Requirement: The app menu leaves Cmd+Q and Cmd+H to the terminal
+The repo SHALL provide an idempotent macOS setup step that moves Alacritty's app-menu key equivalents for "Quit alacritty" to Cmd+Option+Control+Q and "Hide alacritty" to Cmd+Option+Control+H in the `org.alacritty` defaults domain, keeping every other entry of that domain. The host applies it with a make target; the sandbox VM is provisioned with it.
+
+#### Scenario: Menu key setup moves Quit and Hide off Cmd+Q and Cmd+H
+- **WHEN** the setup step runs against an empty defaults plist
+- **THEN** its `NSUserKeyEquivalents` is exactly `"Quit alacritty" = "@~^q"` and `"Hide alacritty" = "@~^h"`
+
+#### Scenario: Menu key setup is idempotent and keeps other entries
+- **WHEN** the setup step runs twice against a defaults plist whose `NSUserKeyEquivalents` already holds `"Hide alacritty" = "@\Uf70f"` and `"Minimize" = "@m"`
+- **THEN** `NSUserKeyEquivalents` is `"Quit alacritty" = "@~^q"`, `"Hide alacritty" = "@~^h"` and `"Minimize" = "@m"`, and the second run exits 0
+
 ### Requirement: Real key presses in the sandbox VM deliver shortcuts
 The e2e layer SHALL deliver physical key presses to Neovim as the shortcut table says, in a dedicated Alacritty instance (repo config) running real zellij (user keybinds, the stack layer's layout), with key events posted to that process inside the sandbox macOS VM, never on the host. Exceptions: the app menu takes Cmd+Q and Cmd+H, Cmd+Shift+-/= arrive in Alacritty's kitty encoding, and the key helper never presses Cmd+Shift+Q (system Log Out).
 
