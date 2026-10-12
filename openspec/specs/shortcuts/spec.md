@@ -140,6 +140,7 @@ Columns of the table the "Shortcut table" requirement refers to:
 - *zellij*: `pass` (unbound, bytes written to the pane), `navigator <name> <payload>` (vim-zellij-navigator writes its own bytes to the Neovim pane), or the zellij action that consumes the key.
 - *Neovim receives*: the key the Neovim pane decodes, `—` when nothing arrives.
 - *Mapping*: the global normal-mode mapping of that key: `` `rhs` ``, `` fn `<lua expr>` `` (callback identity), `fn` (any Lua callback), `` desc `<desc>` ``, `none` (no mapping), or `—`.
+- Cmd+Shift+Q is the system Log Out shortcut, so it is unreachable from a key press unless Log Out is remapped in System Settings > Keyboard > Shortcuts; its row and binding stay for that case.
 
 | Shortcut | Source | Alacritty sends | zellij | Neovim receives | Mapping |
 |---|---|---|---|---|---|

@@ -2,7 +2,8 @@
 -- config), real macOS key events (tests/e2e/alacritty.lua). Skipped with a
 -- one-line fix when Accessibility is not granted, and (unless E2E=1) when key
 -- events only arrive with the window focused. Runs inside the sandbox VM only
--- (make e2e delegates there). Quitting chords (Ctrl+Q, Cmd+Option+Control+Q) run
+-- (make e2e delegates there); fails when the VM lacks the app-menu key setup
+-- (make sandbox-provision). Quitting chords (Ctrl+Q, Cmd+Option+Control+Q) run
 -- in their own last cases; pre_case relaunches the stack when a case left it dead.
 local MiniTest = require("mini.test")
 local C = require("tests.shortcuts.chain")
