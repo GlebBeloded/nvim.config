@@ -32,4 +32,4 @@ Scenarios: "Space stages an unstaged file", "Space unstages a staged file" (exis
 ## 3. Gate
 
 - [x] 3.1 `make quick` green (lint, types, trace lists all six scenarios as tested).
-- [ ] 3.2 `make check` green.
+- [x] 3.2 `make check` green.
