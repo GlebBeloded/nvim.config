@@ -18,6 +18,12 @@ rules:
     - State whether the change adds, removes, or upgrades a plugin dependency. A new plugin must list alternatives with stars and last-commit date.
     - State whether core keymaps change.
     - Always state what is out of scope.
+  design:
+    - A change with visible UI must include a "Current render" and at least one "Proposed render" (see docs/design-renders.md).
+    - Renders are ```text blocks of at most 100 columns, captioned with `<cols>x<rows>`, mode and state. Use real content, `█` for the cursor, box-drawing characters for window borders, and single-width stand-ins for Nerd Font glyphs and emoji.
+    - When color matters, list the highlight groups under the render as [Name] annotations.
+    - When exploring, label options Proposed A, B, C and record which one was picked and why.
+    - The approved Proposed render is the expected text of the reference screenshot (tests/screenshots/) that the scenario's screen test asserts.
   tasks:
     - Each task lists the scenario titles it satisfies.
     - The first step of each task is a failing test for those scenarios.
