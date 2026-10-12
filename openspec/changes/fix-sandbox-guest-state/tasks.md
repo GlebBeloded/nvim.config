@@ -9,20 +9,20 @@
 
 Scenarios: "Guest restore drops Alacritty defaults the branch does not define", "Guest restore applies the branch's own terminal setup".
 
-- [ ] 1.1 Failing test `shortcuts: Guest restore drops Alacritty defaults the branch does not define` in `tests/unit/shortcuts/test_sandbox.lua`:
+- [x] 1.1 Failing test `shortcuts: Guest restore drops Alacritty defaults the branch does not define` in `tests/unit/shortcuts/test_sandbox.lua`:
   - helper `make_checkout(setup?)`: a temp dir with `tests/sandbox/guest_restore.sh` copied from `H.root` and an empty `terminal/`. An optional `setup` script body is written as `terminal/macos_test.sh` (executable).
   - seed `<tmp>/org.alacritty.plist` with `defaults write <plist> NSUserKeyEquivalents -dict-add "Quit alacritty" "@~^q" "Hide alacritty" "@~^h"`.
   - run `<checkout>/tests/sandbox/guest_restore.sh <plist>`. Expect code 0, and expect `defaults read <plist> NSUserKeyEquivalents` to exit non-zero.
   - `make test FILE=tests/unit/shortcuts/test_sandbox.lua` fails, because the script does not exist.
-- [ ] 1.2 Failing test `shortcuts: Guest restore applies the branch's own terminal setup` in the same file:
+- [x] 1.2 Failing test `shortcuts: Guest restore applies the branch's own terminal setup` in the same file:
   - the checkout's `terminal/macos_test.sh` runs `defaults write "$1" TestKey -string fresh`.
   - the plist domain is empty (missing file).
   - run the restore. Expect code 0. `defaults export <plist> -` parsed (`plutil -convert json -o - -`) equals exactly `{ TestKey = "fresh" }`.
-- [ ] 1.3 Add `tests/sandbox/guest_restore.sh` (executable). It has small named functions:
+- [x] 1.3 Add `tests/sandbox/guest_restore.sh` (executable). It has small named functions:
   - `reset_domains`: `defaults delete "$domain"`. A missing domain is not an error, so tolerate only that exit and stay quiet.
   - `apply_terminal_setup`: run each executable `"$root"/terminal/macos_*.sh "$domain"` with nullglob, stdout to `/dev/null`.
   - main: `reset_domains`, then `apply_terminal_setup`.
-- [ ] 1.4 Run `make test FILE=tests/unit/shortcuts/test_sandbox.lua`: both cases pass. Then `make quick` is green (lint, trace shows both scenarios tested).
+- [x] 1.4 Run `make test FILE=tests/unit/shortcuts/test_sandbox.lua`: both cases pass. Then `make quick` is green (lint, trace shows both scenarios tested).
 
 ## 2. Run the restore before every e2e run
 
