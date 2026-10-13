@@ -21,6 +21,8 @@ import subprocess
 import sys
 
 PROJECT_SKILL_DIRS = {"claude": ".claude/skills", "codex": ".agents/skills"}
+# Codex has no project plugin manifest like `.claude/settings.json`: plugins come from this marketplace.
+CODEX_MARKETPLACE = "openai-curated-remote"
 
 
 def configured_assistant() -> str:
@@ -129,8 +131,23 @@ def install_claude_plugins() -> int:
     return 0
 
 
+def install_codex_plugins(paths: list[str]) -> int:
+    names = skills_by_provider(paths).get("codex") or []
+    wanted = sorted({name.split(":", 1)[0] for name in names if ":" in name})
+    installed = codex_plugins(include_disabled=True) if wanted else {}
+    for plugin in wanted:
+        if plugin in installed:
+            if not installed[plugin].get("enabled"):
+                print(f"skills_check: Codex plugin {plugin} is installed but disabled; enable it in Codex", flush=True)
+            continue
+        print(f"skills_check: installing Codex plugin {plugin}@{CODEX_MARKETPLACE}", flush=True)
+        if subprocess.run(["codex", "plugin", "add", f"{plugin}@{CODEX_MARKETPLACE}"]).returncode != 0:
+            return 1
+    return 0
+
+
 def install_plugins(paths: list[str]) -> int:
-    return install_claude_plugins()
+    return install_claude_plugins() or install_codex_plugins(paths)
 
 
 def main(args: list[str]) -> int:

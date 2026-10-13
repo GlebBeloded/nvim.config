@@ -404,4 +404,33 @@ T["loop: Loop setup installs a missing enabled plugin"] = function()
 	eq(installed, true, { fail_reason = table.concat(calls, "\n") })
 end
 
+--- Dir that holds the `yaml` package python3 imports with the real HOME (often the user site).
+---@return string
+local function pyyaml_dir()
+	local find = "import os,yaml; print(os.path.dirname(os.path.dirname(yaml.__file__)))"
+	local result = H.system(child, { "python3", "-c", find }, H.root)
+	eq(result.code, 0, { fail_reason = result.stderr })
+	return vim.trim(result.stdout)
+end
+
+T["loop: Loop setup installs a missing Codex plugin"] = function()
+	local repo = make_setup_repo()
+	write_files(repo, {
+		[".archon/config.yaml"] = "assistant: codex",
+		[".archon/workflows/w.yaml"] = "name: w\nnodes:\n  - id: n\n    prompt: p\n    skills: [superpowers:writing-plans]",
+	})
+	local bin = H.tempdir(child)
+	write_claude_stub(bin, { { id = PLUGIN_ID, scope = "user", enabled = true, installPath = bin } })
+	local log = write_codex_stub(bin, {})
+	local archon = vim.fs.joinpath(bin, "archon")
+	write_executable(archon, "#!/bin/sh\nexit 0")
+	-- Throwaway HOME keeps loop-register off the real Archon registration; PYTHONPATH keeps PyYAML.
+	local env = stub_env(bin, { HOME = H.tempdir(child), ARCHON = archon, PYTHONPATH = pyyaml_dir() })
+	local result = H.system(child, { "make", "loop-setup" }, repo, env)
+	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
+	local calls = child.lua_get("vim.fn.filereadable(...) == 1 and vim.fn.readfile(...) or {}", { log })
+	local added = vim.list_contains(calls, "plugin add superpowers@openai-curated-remote")
+	eq(added, true, { fail_reason = table.concat(calls, "\n") })
+end
+
 return T

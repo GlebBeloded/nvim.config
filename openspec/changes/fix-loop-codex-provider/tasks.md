@@ -95,26 +95,26 @@ Scenarios: "Loop setup installs a missing Codex plugin" (and "Loop setup install
 - Consumes: `configured_assistant`, `declared_skills_by_provider`, `codex_plugins`, `claude_plugins` (Task 1); `write_codex_stub` (Task 1).
 - Produces: CLI `skills_check.py --install-plugins [workflow.yaml...]`. Non-existent paths are ignored. The constant is `CODEX_MARKETPLACE = "openai-curated-remote"`.
 
-- [ ] **Step 1: Write the failing test** `T["loop: Loop setup installs a missing Codex plugin"]`:
+- [x] **Step 1: Write the failing test** `T["loop: Loop setup installs a missing Codex plugin"]`:
   - `make_setup_repo()` plus `.archon/config.yaml` (`assistant: codex`) and `.archon/workflows/w.yaml` with one node declaring `superpowers:writing-plans`;
   - the claude stub reports `PLUGIN_ID` loaded;
   - the codex stub has `installed = {}`;
   - `ARCHON` stub, then `make loop-setup`;
   - assert `code == 0` and the codex log contains `plugin add superpowers@openai-curated-remote`.
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
   Run: `make test FILE=tests/unit/loop/test_skills.lua CASE="Loop setup"`
   Expected: the new case FAILS (no codex log line). "Loop setup installs a missing enabled plugin" PASSES.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
   - `install_plugins(paths: list[str]) -> int`: the Claude part is unchanged. For each unique `<plugin>` of a codex-provider `:` skill that is not in `codex_plugins()`, run `codex plugin add <plugin>@openai-curated-remote`, unless the plugin is installed but disabled: then print a hint to enable it. Import `yaml` only when a path exists.
   - `Makefile`: `@python3 .archon/scripts/skills_check.py --install-plugins .archon/workflows/*.yaml`.
 
-- [ ] **Step 4: Verify**
+- [x] **Step 4: Verify**
   Run: `make test FILE=tests/unit/loop/test_skills.lua`
   Expected: all PASS.
 
-- [ ] **Step 5: Commit**: `git commit -m "fix(loop): loop-setup installs declared Codex plugins"`
+- [x] **Step 5: Commit**: `git commit -m "fix(loop): loop-setup installs declared Codex plugins"`
 
 ### Task 3: Commands load skills on both providers
 
