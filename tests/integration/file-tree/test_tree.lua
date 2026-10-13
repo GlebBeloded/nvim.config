@@ -28,7 +28,32 @@ local function current_tab_has_neo_tree()
 	end)]])
 end
 
---- Stage `a.txt` in `dir`, open `git_status` in the child and press `c` with the
+---@param dir string
+---@param args string[]
+---@return string stdout
+local function git(dir, args)
+	return vim.system(vim.list_extend({ "git" }, args), { cwd = dir, text = true }):wait().stdout
+end
+
+--- Open the git_status tree on `dir` with the cursor on `a.txt`.
+---@param dir string
+local function open_git_status(dir)
+	child.start_config()
+	child.wait_very_lazy()
+	child.cmd("cd " .. dir .. " | enew | Neotree git_status")
+	eq(child.wait([[vim.bo.filetype == "neo-tree" and vim.fn.search("a.txt", "nw") > 0]], ASYNC_MS), true)
+	child.lua([[vim.fn.search("a.txt")]])
+end
+
+--- Press X on the cursor node and answer the neo-tree confirm popup.
+---@param answer "y"|"n"
+local function revert_with_answer(answer)
+	child.type_keys("X")
+	eq(child.wait([[vim.fn.getline("."):find(" y/n: ", 1, true) ~= nil]], ASYNC_MS), true)
+	child.type_keys(answer, "<CR>")
+end
+
+--- Stage `a.txt` in `dir`, open `git_status` in the child and press `gc` with the
 --- AI popup stubbed to confirm `message`; notifications land in the child's `Notes`.
 ---@param dir string repo from `modified_repo()`
 ---@param message string
@@ -49,7 +74,7 @@ require("gleb.git.ai_commit").show_commit_input = function(cb) cb(CommitMessage)
 	)
 	child.cmd("Neotree git_status")
 	eq(child.wait([[vim.bo.filetype == "neo-tree" and vim.fn.search("a.txt", "nw") > 0]], ASYNC_MS), true)
-	child.type_keys("c")
+	child.type_keys("gc")
 end
 
 ---@param dir string
@@ -117,7 +142,7 @@ T["file-tree: q closes preview and tree"] = function()
 	eq(current_tab_has_neo_tree(), false)
 end
 
-T["file-tree: c reports commit failure"] = function()
+T["file-tree: gc reports commit failure"] = function()
 	child.start_config()
 	child.wait_very_lazy()
 	local dir = modified_repo()
@@ -132,7 +157,7 @@ T["file-tree: c reports commit failure"] = function()
 	eq(last_subject(dir), "init")
 end
 
-T["file-tree: c commits confirmed message"] = function()
+T["file-tree: gc commits confirmed message"] = function()
 	child.start_config()
 	child.wait_very_lazy()
 	local dir = modified_repo()
@@ -144,9 +169,54 @@ T["file-tree: c commits confirmed message"] = function()
 	vim.fn.writefile({ "three" }, vim.fs.joinpath(dir, "a.txt"))
 	vim.system({ "git", "add", "a.txt" }, { cwd = dir }):wait()
 	child.lua([[Notes, CommitMessage = {}, "fix: it's $HOME"]])
-	child.type_keys("c")
+	child.type_keys("gc")
 	eq(wait_note("Committed:"), true)
 	eq(last_subject(dir), "fix: it's $HOME")
+end
+
+T["file-tree: X reverts a file after confirmation"] = function()
+	local dir = modified_repo()
+	open_git_status(dir)
+
+	revert_with_answer("y")
+
+	eq(
+		vim.wait(ASYNC_MS, function()
+			return git(dir, { "status", "--porcelain" }) == ""
+		end, 20),
+		true
+	)
+	eq(vim.fn.readfile(vim.fs.joinpath(dir, "a.txt")), { "one" })
+end
+
+T["file-tree: X keeps a file when revert is declined"] = function()
+	local dir = modified_repo()
+	open_git_status(dir)
+
+	revert_with_answer("n")
+
+	eq(child.wait([[vim.bo.filetype == "neo-tree"]], ASYNC_MS), true)
+	eq(vim.fn.readfile(vim.fs.joinpath(dir, "a.txt")), { "two" })
+	eq(git(dir, { "status", "--porcelain" }), " M a.txt\n")
+end
+
+T["file-tree: gr keeps its global meaning in git status tree"] = function()
+	open_git_status(modified_repo())
+
+	eq(child.lua_get([[vim.fn.maparg("gr", "n", false, true).buffer]]), 0)
+	eq(
+		child.lua_get([[vim.fn.maparg("gr", "n", false, true).callback == require("telescope.builtin").lsp_references]]),
+		true
+	)
+end
+
+T["file-tree: c is copy in git status tree"] = function()
+	open_git_status(modified_repo())
+
+	local desc = child.lua_get([[vim.iter(vim.api.nvim_buf_get_keymap(0, "n")):find(function(map)
+		return map.lhs == "c"
+	end).desc]])
+	eq(desc, "copy")
 end
 
 return T

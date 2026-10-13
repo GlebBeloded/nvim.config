@@ -1,0 +1,83 @@
+--|---------|---------|---------|---------|---------|---------|---------|---------|---------|---------|
+01|       [No Name]                                                                                   
+02|  GIT STATUS for /private/tmp/gle╭─────────────────── Neotree Help ────────────────────╮            
+03|     lua                        │ Press the corresponding key to execute the command. │            
+04|      gleb                      │               Press <Esc> to cancel.                │            
+05|        file_tree               │                                                     │            
+06|       └     init.lua          │         KEY(S)    COMMAND                           │            
+07|                                 │              < -> prev_source                       │            
+08|                                 │  <2-LeftMouse> -> open                              │            
+09|                                 │          <C-b> -> scroll_preview                    │            
+10|                                 │          <C-f> -> scroll_preview                    │            
+11|                                 │          <C-r> -> clear_clipboard                   │            
+12|                                 │           <bs> -> close_node                        │            
+13|                                 │           <cr> -> <function>                        │            
+14|                                 │          <esc> -> cancel                            │            
+15|                                 │        <space> -> <function>                        │            
+16|                                 │              > -> next_source                       │            
+17|                                 │              ? -> show_help                         │            
+18|                                 │              A -> git_add_all                       │            
+19|                                 │              C -> close_node                        │            
+20|                                 │              P -> <function>                        │            
+21|                                 │              R -> refresh                           │            
+22|                                 │              S -> open_split                        │            
+23|                                 │              X -> git_revert_file                   │            
+24|                                 │              a -> add                               │            
+25|                                 │              b -> rename_basename                   │            
+26|                                 │              c -> copy                              │            
+27|                                 │              d -> delete                            │            
+28|                                 │              e -> toggle_auto_expand_width          │            
+29|                                 │             gU -> git_undo_last_commit              │            
+30|                                 │             ga -> git_add_file                      │            
+31|                                 │             gc -> commit (AI)                       │            
+32|                                 │             gg -> git_commit_and_push               │            
+33|                                 │             gp -> git_push                          │            
+34|                                 │             gt -> git_toggle_file_stage             │            
+35|                                 │             gu -> git_unstage_file                  │            
+36|                                 │              h -> close_node                        │            
+37|                                 │              i -> show_file_details                 │            
+38|                                 │              j -> <function>                        │            
+39|                                 ╰─────────────────────────────────────────────────────╯            
+40|                                                                                                    
+
+--|---------|---------|---------|---------|---------|---------|---------|---------|---------|---------|
+01|0111112211111111111111133333333333333333333333333333333333333333333333333333333333333333333333333333
+02|4566666666666666666666666666666667777777777777777777788888888888888777777777777777777777999999999999
+03|:::;;<===>>>>>>>>>>>>>>>>>>>>>>>>7????????????????????????????????????????????????????@7AAAAAAAAAAAA
+04|>>>:;;<====>>>>>>>>>>>>>>>>>>>>>>7?????????????????????????????????????@@@@@@@@@@@@@@@@7AAAAAAAAAAAA
+05|>>>>>:;;<=========>>>>>>>>>>>>>>>7@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@7AAAAAAAAAAAA
+06|>>>>>>>BB;;CCDD;;;;;;;;>>>>>>>>>>7EEEEEEEEEEEEEEE7777EEEEEEE@@@@@@@@@@@@@@@@@@@@@@@@@@@7AAAAAAAAAAAA
+07|FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF7GGGGGGGGGGGGGGG7777HHHHHHHHHHH@@@@@@@@@@@@@@@@@@@@@@@7AAAAAAAAAAAA
+08|FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF7GGGGGGGGGGGGGGG7777HHHH@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@7AAAAAAAAAAAA
+09|FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF7GGGGGGGGGGGGGGG7777HHHHHHHHHHHHHH@@@@@@@@@@@@@@@@@@@@7AAAAAAAAAAAA
+10|FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF7GGGGGGGGGGGGGGG7777HHHHHHHHHHHHHH@@@@@@@@@@@@@@@@@@@@7AAAAAAAAAAAA
+11|FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF7GGGGGGGGGGGGGGG7777HHHHHHHHHHHHHHH@@@@@@@@@@@@@@@@@@@7AAAAAAAAAAAA
+12|FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF7GGGGGGGGGGGGGGG7777HHHHHHHHHH@@@@@@@@@@@@@@@@@@@@@@@@7AAAAAAAAAAAA
+13|FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF7GGGGGGGGGGGGGGG7777HHHHHHHHHH@@@@@@@@@@@@@@@@@@@@@@@@7AAAAAAAAAAAA
+14|FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF7GGGGGGGGGGGGGGG7777HHHHHH@@@@@@@@@@@@@@@@@@@@@@@@@@@@7AAAAAAAAAAAA
+15|FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF7GGGGGGGGGGGGGGG7777HHHHHHHHHH@@@@@@@@@@@@@@@@@@@@@@@@7AAAAAAAAAAAA
+16|FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF7GGGGGGGGGGGGGGG7777HHHHHHHHHHH@@@@@@@@@@@@@@@@@@@@@@@7AAAAAAAAAAAA
+17|FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF7GGGGGGGGGGGGGGG7777HHHHHHHHH@@@@@@@@@@@@@@@@@@@@@@@@@7AAAAAAAAAAAA
+18|FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF7GGGGGGGGGGGGGGG7777HHHHHHHHHHH@@@@@@@@@@@@@@@@@@@@@@@7AAAAAAAAAAAA
+19|FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF7GGGGGGGGGGGGGGG7777HHHHHHHHHH@@@@@@@@@@@@@@@@@@@@@@@@7AAAAAAAAAAAA
+20|FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF7GGGGGGGGGGGGGGG7777HHHHHHHHHH@@@@@@@@@@@@@@@@@@@@@@@@7AAAAAAAAAAAA
+21|FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF7GGGGGGGGGGGGGGG7777HHHHHHH@@@@@@@@@@@@@@@@@@@@@@@@@@@7AAAAAAAAAAAA
+22|FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF7GGGGGGGGGGGGGGG7777HHHHHHHHHH@@@@@@@@@@@@@@@@@@@@@@@@7AAAAAAAAAAAA
+23|FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF7GGGGGGGGGGGGGGG7777HHHHHHHHHHHHHHH@@@@@@@@@@@@@@@@@@@7AAAAAAAAAAAA
+24|FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF7GGGGGGGGGGGGGGG7777HHH@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@7AAAAAAAAAAAA
+25|FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF7GGGGGGGGGGGGGGG7777HHHHHHHHHHHHHHH@@@@@@@@@@@@@@@@@@@7AAAAAAAAAAAA
+26|FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF7GGGGGGGGGGGGGGG7777HHHH@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@7AAAAAAAAAAAA
+27|FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF7GGGGGGGGGGGGGGG7777HHHHHH@@@@@@@@@@@@@@@@@@@@@@@@@@@@7AAAAAAAAAAAA
+28|FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF7GGGGGGGGGGGGGGG7777HHHHHHHHHHHHHHHHHHHHHHHH@@@@@@@@@@7AAAAAAAAAAAA
+29|FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF7GGGGGGGGGGGGGGG7777HHHHHHHHHHHHHHHHHHHH@@@@@@@@@@@@@@7AAAAAAAAAAAA
+30|FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF7GGGGGGGGGGGGGGG7777HHHHHHHHHHHH@@@@@@@@@@@@@@@@@@@@@@7AAAAAAAAAAAA
+31|FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF7GGGGGGGGGGGGGGG7777HHHHHHHHHHH@@@@@@@@@@@@@@@@@@@@@@@7AAAAAAAAAAAA
+32|FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF7GGGGGGGGGGGGGGG7777HHHHHHHHHHHHHHHHHHH@@@@@@@@@@@@@@@7AAAAAAAAAAAA
+33|FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF7GGGGGGGGGGGGGGG7777HHHHHHHH@@@@@@@@@@@@@@@@@@@@@@@@@@7AAAAAAAAAAAA
+34|FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF7GGGGGGGGGGGGGGG7777HHHHHHHHHHHHHHHHHHHHH@@@@@@@@@@@@@7AAAAAAAAAAAA
+35|FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF7GGGGGGGGGGGGGGG7777HHHHHHHHHHHHHHHH@@@@@@@@@@@@@@@@@@7AAAAAAAAAAAA
+36|FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF7GGGGGGGGGGGGGGG7777HHHHHHHHHH@@@@@@@@@@@@@@@@@@@@@@@@7AAAAAAAAAAAA
+37|FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF7GGGGGGGGGGGGGGG7777HHHHHHHHHHHHHHHHH@@@@@@@@@@@@@@@@@7AAAAAAAAAAAA
+38|FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF7GGGGGGGGGGGGGGG7777HHHHHHHHHH@@@@@@@@@@@@@@@@@@@@@@@@7AAAAAAAAAAAA
+39|FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF7777777777777777777777777777777777777777777777777777777AAAAAAAAAAAA
+40|IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII

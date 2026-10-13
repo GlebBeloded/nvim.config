@@ -47,14 +47,14 @@ Notes for the tests:
 - Find `a.txt` with `vim.fn.search("a.txt")`, never with `j`: in this tree `j` opens a diff preview.
 - Call `child.wait_very_lazy()` before reading the global `gr`. `open_git_status` already does this.
 
-- [ ] 1.1 Write the failing tests in `test_tree.lua` on `auto`:
+- [x] 1.1 Write the failing tests in `test_tree.lua` on `auto`:
   - Add the branch's helpers `git`, `open_git_status` and `revert_with_answer`, and its cases "file-tree: X reverts a file after confirmation", "file-tree: X keeps a file when revert is declined", "file-tree: gr keeps its global meaning in git status tree" and "file-tree: c is copy in git status tree", taken verbatim from `git show loop/fix-git-status-map-shadowing:tests/integration/file-tree/test_tree.lua`.
   - In `commit_from_tree`, press `gc` instead of `c` and update its doc comment.
   - Rename "file-tree: c commits confirmed message" to "file-tree: gc commits confirmed message". Keep all of its assertions, and press `gc` for the second commit. This case replaces the branch's `gc` case. The branch case's only assertions, the `Committed: feat: x` INFO note and the `feat: x` subject, are already in it, so the union adds nothing.
   - Rename "file-tree: c reports commit failure" to "file-tree: gc reports commit failure" without changing its assertions.
   - Add `tests/screen/file-tree/test_git_status_help.lua` and its reference screenshot from the branch (`git show loop/fix-git-status-map-shadowing:<path> > <path>`).
-- [ ] 1.2 Run `make test FILE=tests/integration/file-tree/test_tree.lua` and `make test FILE=tests/screen/file-tree/test_git_status_help.lua`. Expected: FAIL in the four X/gr/c cases, in both gc cases (on `auto`, `gc` is neo-tree's plain `git_commit`, so no `Committed:` note arrives) and in the help screenshot. The other 3 cases pass.
-- [ ] 1.3 Commit the failing tests: `git commit -m "test(file-tree): git_status keys X, gc, gr, c (failing)"`.
+- [x] 1.2 Run `make test FILE=tests/integration/file-tree/test_tree.lua` and `make test FILE=tests/screen/file-tree/test_git_status_help.lua`. Expected: FAIL in the four X/gr/c cases, in both gc cases (on `auto`, `gc` is neo-tree's plain `git_commit`, so no `Committed:` note arrives) and in the help screenshot. The other 3 cases pass.
+- [x] 1.3 Commit the failing tests: `git commit -m "test(file-tree): git_status keys X, gc, gr, c (failing)"`.
 - [ ] 1.4 Run `git merge --no-ff loop/fix-git-status-map-shadowing` and resolve:
   - `lua/gleb/file_tree/init.lua`: take `auto`'s whole file (async `run_commit`, glyphs, diagnostics) plus only the branch's mapping lines: `gc`, `X`, `gr = "none"`, and no `c`.
   - `tests/integration/file-tree/test_tree.lua`: keep the 1.1 version. Drop the branch's `gc commits confirmed message` body.
