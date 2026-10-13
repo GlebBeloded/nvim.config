@@ -80,7 +80,7 @@ In the `git_status` tree, normal-mode `j` and `k` SHALL move the cursor down/up 
 - **THEN** `diff_preview.state.current_file` is unchanged
 
 ### Requirement: Git status open, close and staging actions
-In the `git_status` tree, normal-mode mappings SHALL be: `<cr>` closes any diff preview, reveals the file in the `filesystem` source, moves one window right and edits the file; `q` returns to the original tab via `diff_preview.return_to_original()` then runs `:Neotree close`; `<space>` toggles staging of the node's path; `A` stages all (`git_add_all`); `X` asks `Are you sure you want to revert <name>?` and reverts the file only when confirmed (`git_revert_file`). The tree SHALL set no buffer-local `gr` mapping, so the global `gr` applies, and `c` SHALL be the common `copy` mapping.
+In the `git_status` tree, normal-mode mappings SHALL be: `<cr>` closes any diff preview, reveals the file in the `filesystem` source, moves one window right and edits the file; `q` returns to the original tab via `diff_preview.return_to_original()` then runs `:Neotree close`; `<space>` toggles staging of the node's path; `A` stages all (`git_add_all`).
 
 #### Scenario: Enter opens file and switches to filesystem tree
 - **WHEN** the cursor is on a file node in the `git_status` tree and `<cr>` is pressed in normal mode
@@ -124,6 +124,9 @@ In the `git_status` tree, `<space>` on a file node SHALL treat the file as stage
 #### Scenario: Space reports a staging failure
 - **WHEN** `.git/index.lock` exists, the cursor is on an unstaged file node and `<space>` is pressed in normal mode
 - **THEN** a notification starting with `Stage failed:` at ERROR is emitted
+
+### Requirement: Git status revert and key ownership
+In the `git_status` tree, normal-mode `X` SHALL ask `Are you sure you want to revert <name>?` and revert the file only when confirmed (`git_revert_file`). The tree SHALL set no buffer-local `gr` mapping, so the global `gr` applies, and `c` SHALL be the common `copy` mapping.
 
 #### Scenario: X reverts a file after confirmation
 - **WHEN** the cursor is on the file node `a.txt` with an unstaged change in the `git_status` tree, `X` is pressed in normal mode and the prompt `Are you sure you want to revert a.txt?` is answered yes
