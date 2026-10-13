@@ -1,6 +1,6 @@
 # Tasks: fix-git-status-map-shadowing (port onto `auto`)
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use Markdown checkboxes for tracking.
 
 **Goal:** In the `git_status` tree, revert moves to `X`, the AI commit moves to `gc` with commit-check's async exit-code reporting, `gr` is the global Telescope `lsp_references` map and `c` is `copy`.
 
@@ -75,8 +75,21 @@ Scenarios: none new. This task checks that the Task 1 scenarios trace and that t
 - Modify: `openspec/changes/fill-trace-scenario-gaps/proposal.md:33`
 
 - [x] 2.1 Rename the entry "c commits confirmed message" to "gc commits confirmed message" in `fill-trace-scenario-gaps/proposal.md`. Verify with `grep -rn "c commits confirmed\|c reports commit failure" openspec tests | grep -v "changes/archive/"`. Expected: only this change's REMOVED/Migration text.
-- [x] 2.2 Run `make trace`. Expected: all 7 scenarios of this delta are `tested`, and there are no orphans.
+- [x] 2.2 Run `make trace`. Expected: the 7 Task 1 scenarios are `tested` and there are no orphans. The delta has 13 scenarios; Task 3 covers the 3 that were untested before this change (Enter, P success, P failure).
 - [x] 2.3 Run `make check E2E=1`. Expected: green, with no case or scenario removed or weakened compared with `auto` or with the branch. Commit: `git commit -m "chore(openspec): gc rename in fill-trace-scenario-gaps"`.
+
+### Task 3: Delta scenarios untested before this change
+
+Scenarios: "Enter opens file and switches to filesystem tree", "P pushes successfully", "P reports push failure". The behavior already exists, so each test is seen failing by temporarily breaking the code it pins, then restored.
+
+**Files:**
+- Modify: `tests/integration/file-tree/test_tree.lua`
+- Modify: `openspec/changes/fill-trace-scenario-gaps/proposal.md` (drop the gaps this task closes and `gc commits confirmed message`)
+
+- [x] 3.1 Add "file-tree: Enter opens file and switches to filesystem tree": `<cr>` on `a.txt` in `git_status`; assert one tab, no `diff_tab`, the tree buffer's `neo_tree_source` is `filesystem` and a non-tree window shows `a.txt`.
+- [x] 3.2 Add "file-tree: P pushes successfully": repo with an upstream bare remote; `P`; assert `Pushing...` (INFO) then `Pushed successfully` (INFO).
+- [x] 3.3 Add "file-tree: P reports push failure": repo without a remote; `P`; assert `Pushing...` (INFO) then `Push failed` (ERROR).
+- [x] 3.4 Remove the 3 closed gaps and `gc commits confirmed message` from `fill-trace-scenario-gaps/proposal.md` and fix its count; `make trace VERBOSE=1` lists all 13 delta scenarios as `tested`.
 
 ## Workflow follow-up
 

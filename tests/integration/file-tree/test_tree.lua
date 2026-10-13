@@ -53,6 +53,25 @@ local function revert_with_answer(answer)
 	child.type_keys(answer, "<CR>")
 end
 
+--- Record the child's notifications as `{ msg, level }` in its global `Notes`.
+local function record_notes()
+	child.lua([[Notes = {}
+local notify = vim.notify
+vim.notify = function(msg, level, opts)
+	table.insert(Notes, { msg, level })
+	return notify(msg, level, opts)
+end]])
+end
+
+--- Give `dir` a bare `origin` remote that tracks its current branch.
+---@param dir string
+local function add_upstream(dir)
+	local remote = vim.fn.tempname()
+	vim.system({ "git", "init", "-q", "--bare", remote }):wait()
+	git(dir, { "remote", "add", "origin", remote })
+	git(dir, { "push", "-q", "-u", "origin", "HEAD" })
+end
+
 --- Stage `a.txt` in `dir`, open `git_status` in the child and press `gc` with the
 --- AI popup stubbed to confirm `message`; notifications land in the child's `Notes`.
 ---@param dir string repo from `modified_repo()`
@@ -62,13 +81,9 @@ local function commit_from_tree(dir, message)
 	vim.system({ "git", "config", "user.name", "t" }, { cwd = dir }):wait()
 	vim.system({ "git", "config", "user.email", "t@t" }, { cwd = dir }):wait()
 	child.cmd("cd " .. vim.fn.fnameescape(dir) .. " | enew")
+	record_notes()
 	child.lua(
-		[[Notes, CommitMessage = {}, ...
-local notify = vim.notify
-vim.notify = function(msg, level, opts)
-	table.insert(Notes, { msg, level })
-	return notify(msg, level, opts)
-end
+		[[CommitMessage = ...
 require("gleb.git.ai_commit").show_commit_input = function(cb) cb(CommitMessage) end]],
 		{ message }
 	)
@@ -98,6 +113,16 @@ local function notes_with(prefix)
 	return vim.tbl_filter(function(note)
 		return vim.startswith(note[1], prefix)
 	end, child.lua_get("Notes"))
+end
+
+--- Open `git_status` on `dir`, record notes, press `P` and wait for the push result.
+---@param dir string
+---@param result_prefix string
+local function push_from_tree(dir, result_prefix)
+	open_git_status(dir)
+	record_notes()
+	child.type_keys("P")
+	eq(wait_note(result_prefix), true)
 end
 
 local T = MiniTest.new_set({ hooks = { post_once = child.stop } })
@@ -217,6 +242,45 @@ T["file-tree: c is copy in git status tree"] = function()
 		return map.lhs == "c"
 	end).desc]])
 	eq(desc, "copy")
+end
+
+T["file-tree: Enter opens file and switches to filesystem tree"] = function()
+	local dir = modified_repo()
+	open_git_status(dir)
+
+	child.type_keys("<CR>")
+
+	eq(child.wait([[vim.fn.expand("%:t") == "a.txt"]], ASYNC_MS), true)
+	eq(#child.api.nvim_list_tabpages(), 1)
+	eq(child.lua_get([[require("gleb.file_tree.diff_preview").state.diff_tab]]), vim.NIL)
+	eq(child.bo.filetype ~= "neo-tree", true)
+	eq(
+		child.lua_get([[vim.iter(vim.api.nvim_tabpage_list_wins(0)):map(vim.api.nvim_win_get_buf):filter(function(buf)
+			return vim.bo[buf].filetype == "neo-tree"
+		end):map(function(buf) return vim.b[buf].neo_tree_source end):totable()]]),
+		{ "filesystem" }
+	)
+end
+
+T["file-tree: P pushes successfully"] = function()
+	local dir = modified_repo()
+	add_upstream(dir)
+
+	push_from_tree(dir, "Pushed")
+
+	eq(child.lua_get("Notes"), {
+		{ "Pushing...", vim.log.levels.INFO },
+		{ "Pushed successfully", vim.log.levels.INFO },
+	})
+end
+
+T["file-tree: P reports push failure"] = function()
+	push_from_tree(modified_repo(), "Push failed")
+
+	eq(child.lua_get("Notes"), {
+		{ "Pushing...", vim.log.levels.INFO },
+		{ "Push failed", vim.log.levels.ERROR },
+	})
 end
 
 return T
