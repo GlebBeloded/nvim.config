@@ -16,7 +16,7 @@ The config SHALL resolve which saved session to load with `key.resolve(name, sav
 - **THEN** it returns `nil`
 
 #### Scenario: resolve ignores a session for a deeper path with the same tail
-- **WHEN** the cwd is `/foo/bar` and `key.resolve("blossom-5-%foo%bar", { "blossom-9-%baz%foo%bar" })` is called
+- **WHEN** `key.resolve("blossom-5-<cwd slug>", { "blossom-9-%baz<cwd slug>", "x-9-%baz-1-<cwd slug>" })` is called (sessions for the deeper paths `/baz<cwd>` and `/baz-1-<cwd>`)
 - **THEN** it returns `nil`
 
 ### Requirement: Restore on bare startup
