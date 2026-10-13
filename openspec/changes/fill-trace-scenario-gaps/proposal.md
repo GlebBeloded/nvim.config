@@ -30,7 +30,7 @@ Kind: bug
   - Space unstages a staged file (in a requirement modified by `fix-diff-preview-stale-tab`)
   - Tree closes with last window
   - a creates a file
-  - c commits confirmed message (in a requirement modified by `fix-neotree-commit-check`)
+  - gc commits confirmed message (in a requirement modified by `fix-git-status-map-shadowing`)
   - j skips directories and previews next file
   - k skips directories and previews previous file
   - q closes preview and tree (in a requirement modified by `fix-diff-preview-stale-tab`)

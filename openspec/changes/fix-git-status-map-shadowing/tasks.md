@@ -74,9 +74,9 @@ Scenarios: none new. This task checks that the Task 1 scenarios trace and that t
 **Files:**
 - Modify: `openspec/changes/fill-trace-scenario-gaps/proposal.md:33`
 
-- [ ] 2.1 Rename the entry "c commits confirmed message" to "gc commits confirmed message" in `fill-trace-scenario-gaps/proposal.md`. Verify with `grep -rn "c commits confirmed\|c reports commit failure" openspec tests | grep -v "changes/archive/"`. Expected: only this change's REMOVED/Migration text.
-- [ ] 2.2 Run `make trace`. Expected: all 7 scenarios of this delta are `tested`, and there are no orphans.
-- [ ] 2.3 Run `make check E2E=1`. Expected: green, with no case or scenario removed or weakened compared with `auto` or with the branch. Commit: `git commit -m "chore(openspec): gc rename in fill-trace-scenario-gaps"`.
+- [x] 2.1 Rename the entry "c commits confirmed message" to "gc commits confirmed message" in `fill-trace-scenario-gaps/proposal.md`. Verify with `grep -rn "c commits confirmed\|c reports commit failure" openspec tests | grep -v "changes/archive/"`. Expected: only this change's REMOVED/Migration text.
+- [x] 2.2 Run `make trace`. Expected: all 7 scenarios of this delta are `tested`, and there are no orphans.
+- [x] 2.3 Run `make check E2E=1`. Expected: green, with no case or scenario removed or weakened compared with `auto` or with the branch. Commit: `git commit -m "chore(openspec): gc rename in fill-trace-scenario-gaps"`.
 
 ## Workflow follow-up
 
