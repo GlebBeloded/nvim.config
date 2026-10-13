@@ -53,7 +53,7 @@ Scenarios: "file-tree: c reports commit failure" (regression guard: "file-tree: 
 
 Layer: integration (`tests/integration/file-tree/test_tree.lua`, tree mappings).
 
-- [ ] 3.1 Add the failing tests. Setup is shared through a typed local `commit_from_tree(message: string)`:
+- [x] 3.1 Add the failing tests. Setup is shared through a typed local `commit_from_tree(message: string)`:
   - Take `modified_repo()`, `git add a.txt`, and set user.name/email in the repo config.
   - `cd` the child into it. Set `Notes = {}` and wrap `vim.notify` to record `{ msg, level }`.
   - Stub `require("gleb.git.ai_commit").show_commit_input = function(cb) cb(<message>) end`.
@@ -62,13 +62,13 @@ Layer: integration (`tests/integration/file-tree/test_tree.lua`, tree mappings).
   The cases:
   - `T["file-tree: c reports commit failure"]`: write an executable `.git/hooks/pre-commit` that runs `echo "hook says no" >&2; exit 1`. Then `commit_from_tree("feat: x")` and wait for a note starting `Commit failed:`. Assert that it is `{ "Commit failed: hook says no", ERROR }`, that no note starts with `Committed:`, and that `git log -1 --format=%s` is still `init`.
   - `T["file-tree: c commits confirmed message"]`: `commit_from_tree("feat: x")`, wait for a note `{ "Committed: feat: x", INFO }`, then assert `git log -1 --format=%s` is `feat: x`. Run a second commit in the same case (stage a new change, message `fix: it's $HOME`) and assert the subject is the same string verbatim.
-- [ ] 3.2 Run `make test FILE=tests/integration/file-tree/test_tree.lua`. The failure case must fail, because `Committed: feat: x` is emitted. The success case must pass.
-- [ ] 3.3 In `lua/gleb/file_tree/init.lua`, add these named locals:
+- [x] 3.2 Run `make test FILE=tests/integration/file-tree/test_tree.lua`. The failure case must fail, because `Committed: feat: x` is emitted. The success case must pass.
+- [x] 3.3 In `lua/gleb/file_tree/init.lua`, add these named locals:
   - `---@param msg string`, `---@param result vim.SystemCompleted`, `local function on_commit_exit(msg, result)`. It runs inside `vim.schedule`. On `result.code == 0`: `refresh("git_status")` and `vim.notify("Committed: " .. <first line>, INFO)`. Otherwise: `vim.notify("Commit failed: " .. <trimmed stderr, else trimmed stdout, else "exit " .. code>, ERROR)`.
   - `---@param msg string`, `local function run_commit(msg)`. It calls `vim.system({ "git", "commit", "-m", msg }, { text = true }, function(r) on_commit_exit(msg, r) end)`.
 
   `git_commit` then passes `run_commit` to `show_commit_input` (design, "git_commit uses async vim.system"; convention 6.4, 8.3).
-- [ ] 3.4 Both cases and the existing tree cases pass. Run `make quick`.
+- [x] 3.4 Both cases and the existing tree cases pass. Run `make quick`.
 
 ## 4. Integration
 
