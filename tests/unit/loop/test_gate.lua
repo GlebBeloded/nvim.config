@@ -97,6 +97,38 @@ T["loop: Gate failures keep an early lint section"] = function()
 	eq(read(vim.fs.joinpath(artifacts, "check-1.log")):find("\27", 1, true), nil)
 end
 
+T["loop: Gate gives language servers a long timeout"] = function()
+	local repo = H.tempdir(child)
+	local artifacts = H.tempdir(child)
+	local scratch = H.tempdir(child)
+	local bin = fake_tool(scratch, "make", ('echo "$LSP_TIMEOUT_MS" >"%s/lsp_timeout"'):format(scratch))
+	local env = { ARTIFACTS_DIR = artifacts, INPUTS_CHANGE = "", PATH = bin .. ":" .. vim.env.PATH }
+
+	local result = H.system(child, { "python3", vim.fs.joinpath(SCRIPTS, "gate.py") }, repo, env)
+	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
+	eq(read(vim.fs.joinpath(scratch, "lsp_timeout")), "120000")
+end
+
+---@param value string?
+---@param default_ms integer
+---@return integer
+local function lsp_timeout_with(value, default_ms)
+	local saved = vim.env.LSP_TIMEOUT_MS
+	vim.env.LSP_TIMEOUT_MS = value
+	local ok, ms = pcall(H.lsp_timeout, default_ms)
+	vim.env.LSP_TIMEOUT_MS = saved
+	assert(ok, ms)
+	return ms
+end
+
+T["loop: LSP waits in tests honor LSP_TIMEOUT_MS"] = function()
+	eq(lsp_timeout_with(nil, 10000), 10000)
+	eq(lsp_timeout_with("", 10000), 10000)
+	eq(lsp_timeout_with("abc", 10000), 10000)
+	eq(lsp_timeout_with("0", 10000), 10000)
+	eq(lsp_timeout_with("120000", 10000), 120000)
+end
+
 T["loop: Types output drops LuaLS progress lines"] = function()
 	local repo = H.tempdir(child)
 	local progress = [[printf '>>>>>>>>=====  12/369 [Found 5 problems in 1 files]\r>>>>>>>>>>>>= 300/369\n']]

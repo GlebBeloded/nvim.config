@@ -86,12 +86,14 @@ local function write_claude_stub(bin, plugins)
 end
 
 --- `codex` stub in `bin`: `plugin list --json` prints `{ installed = installed, available = {} }`
---- as JSON and exits `list_code` (default 0); every call appends its arguments to `bin/codex.log`.
+--- as JSON, then `warning` (if any) on stderr, and exits `list_code` (default 0); every call appends
+--- its arguments to `bin/codex.log`.
 ---@param bin string
 ---@param installed table[]
 ---@param list_code? integer
+---@param warning? string
 ---@return string log
-local function write_codex_stub(bin, installed, list_code)
+local function write_codex_stub(bin, installed, list_code, warning)
 	local log = vim.fs.joinpath(bin, "codex.log")
 	local list = vim.fs.joinpath(bin, "codex-plugins.json")
 	-- vim.json.encode turns an empty table into `{}`; Codex reports an empty list as `[]`.
@@ -102,7 +104,12 @@ local function write_codex_stub(bin, installed, list_code)
 		table.concat({
 			"#!/bin/sh",
 			string.format('echo "$*" >>"%s"', log),
-			string.format('[ "$1 $2 $3" = "plugin list --json" ] && { cat "%s"; exit %d; }', list, list_code or 0),
+			string.format(
+				'[ "$1 $2 $3" = "plugin list --json" ] && { cat "%s"; printf "%%s" "%s" >&2; exit %d; }',
+				list,
+				warning or "",
+				list_code or 0
+			),
 			"exit 0",
 		}, "\n")
 	)
@@ -277,6 +284,23 @@ end
 
 T["loop: Skill preflight resolves a remote Codex plugin from the plugin cache"] = function()
 	local result = run_remote_codex_check(make_codex_cache(), remote_codex_plugin())
+	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
+end
+
+T["loop: Skill preflight resolves a cached Codex plugin when the remote catalog fails"] = function()
+	local repo = make_skill_repo({ "superpowers:writing-plans" }, { assistant = "codex" })
+	local bin = H.tempdir(child)
+	local warning = "Warning: failed to list remote marketplace plugins: error sending request"
+	write_codex_stub(bin, {}, 0, warning)
+	local codex_home = make_codex_cache()
+	write_files(
+		codex_home,
+		{ ["plugins/cache/openai-curated-remote/superpowers/.codex-remote-plugin-install.json"] = "{}" }
+	)
+	local skills = H.tempdir(child)
+	write_files(skills, { ["writing-plans/SKILL.md"] = "x" })
+
+	local result = run_check(repo, bin, { CODEX_HOME = codex_home, AGENTS_SKILLS_DIR = skills })
 	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
 end
 

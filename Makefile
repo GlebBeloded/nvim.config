@@ -158,9 +158,10 @@ loop-register:
 loop-validate:
 	@$(ARCHON) validate workflows
 
-# dry-run fixtures (.archon/workflows/<workflow>/fixtures/*.stubs.yaml): no AI, no run, ~13 s
+# dry-run fixtures (.archon/workflows/<workflow>/fixtures/*.stubs.yaml): no AI, no run, ~13 s;
+# exec-code fixtures see the fixture-owned changes, never the live queue
 loop-test:
-	@LOG_LEVEL=error $(ARCHON) workflow test
+	@LOG_LEVEL=error LOOP_CHANGES_DIR=.archon/workflows/work-queue/fixtures/changes $(ARCHON) workflow test
 
 fix: loop-setup # make fix BUG="what is wrong"  (or BUG=<openspec change id>)
 	@test -n "$$BUG" || { echo 'usage: make fix BUG="..."'; exit 2; }

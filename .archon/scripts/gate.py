@@ -23,8 +23,13 @@ attempt = int(counter.read_text()) + 1 if counter.exists() else 1
 counter.write_text(str(attempt))
 
 
+# gopls can take ~2 min to load a module on a busy host; tests read this via H.lsp_timeout (tests/helpers.lua)
+LSP_TIMEOUT_MS = "120000"
+
+
 def run(cmd: list[str], log: str) -> tuple[bool, str]:
-    proc = subprocess.run(cmd, capture_output=True, text=True)
+    env = {**os.environ, "LSP_TIMEOUT_MS": os.environ.get("LSP_TIMEOUT_MS") or LSP_TIMEOUT_MS}
+    proc = subprocess.run(cmd, capture_output=True, text=True, env=env)
     out = strip_ansi(proc.stdout + proc.stderr)  # plain text, so `rg 'FAIL in'` finds every case
     (artifacts / log).write_text(out)
     return proc.returncode == 0, out
