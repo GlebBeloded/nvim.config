@@ -1,6 +1,5 @@
 # Synthetic Repository E2E Port Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Restore the approved synthetic-repository LSP and Git e2e workflows on current `auto` while retaining both branches' later harness, sandbox, spec, and test behavior.
 
