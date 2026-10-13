@@ -44,3 +44,12 @@ Scenarios: "session: bare nvim restores the newest cwd session"
 ## 3. Gate
 
 - [x] 3.1 `make check` green; `make trace` reports no orphans for the new scenario titles.
+
+## 4. Restore scenarios restated by the MODIFIED requirement
+
+Scenarios: "session: bare nvim restores the pane session", "session: bare nvim restores a cwd session after pane id change", "session: nvim with a file argument does not restore"
+
+**Files:** `tests/integration/session/test_session.lua`
+
+- [x] 4.1 **Tests.** Add the three integration cases, reusing `save_pane_session`/`restart_in_pane` (which gains optional extra args for the file argument). The behavior already exists, so they pass on first run; confirm each fails when restore is disabled.
+- [x] 4.2 **Commit** `test(session): cover restore on bare startup scenarios`.

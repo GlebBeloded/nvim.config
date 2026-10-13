@@ -50,16 +50,19 @@ local function set_mtime(path, mtime)
 	assert(vim.uv.fs_utime(path, mtime, mtime))
 end
 
---- Restart the full config bare in `dir` under zellij pane `zellij`/`pane`,
---- keeping the child's state (start_config would reset it).
+--- Restart the full config in `dir` under zellij pane `zellij`/`pane` with
+--- `files` as arguments (bare by default), keeping the child's state
+--- (start_config would reset it).
 ---@param zellij string
 ---@param pane string
-local function restart_in_pane(zellij, pane)
+---@param files? string[]
+local function restart_in_pane(zellij, pane, files)
 	vim.env.ZELLIJ_SESSION_NAME, vim.env.ZELLIJ_PANE_ID = zellij, pane
 	MiniTest.finally(function()
 		vim.env.ZELLIJ_SESSION_NAME, vim.env.ZELLIJ_PANE_ID = nil, nil
 	end)
-	child.restart(vim.list_extend({ "--cmd", "cd " .. dir }, H.config_args()))
+	local args = vim.list_extend({ "--cmd", "cd " .. dir }, H.config_args())
+	child.restart(vim.list_extend(args, files or {}))
 	vim.iter(H.DISABLED_PLUGINS):each(child.disable_plugin)
 end
 
@@ -67,6 +70,39 @@ local T = H.child_set(child, start)
 
 T["session: no matching session leaves startup untouched"] = function()
 	eq(child.bo.filetype, "alpha")
+end
+
+T["session: bare nvim restores the pane session"] = function()
+	save_pane_session("z", "5", "a.txt")
+	child.stop()
+
+	restart_in_pane("z", "5")
+
+	eq({ child.fn.expand("%:t"), child.bo.filetype ~= "" }, { "a.txt", true })
+end
+
+T["session: bare nvim restores a cwd session after pane id change"] = function()
+	save_pane_session("z", "9", "a.txt")
+	child.stop()
+
+	restart_in_pane("z", "5")
+
+	eq(child.fn.expand("%:t"), "a.txt")
+end
+
+T["session: nvim with a file argument does not restore"] = function()
+	save_pane_session("z", "5", "a.txt")
+	child.stop()
+	-- Absolute: file arguments resolve against the process cwd, not `--cmd cd`.
+	local b = vim.fs.joinpath(dir, "b.txt")
+	vim.fn.writefile({ "b" }, b)
+
+	restart_in_pane("z", "5", { b })
+
+	local listed = child.lua_get(
+		[[vim.tbl_map(function(b) return vim.fn.fnamemodify(b.name, ":t") end, vim.fn.getbufinfo({ buflisted = 1 }))]]
+	)
+	eq(listed, { "b.txt" })
 end
 
 T["session: bare nvim restores the newest cwd session"] = function()
