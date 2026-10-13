@@ -6,22 +6,21 @@ local child = H.new_child()
 
 local T = H.child_set(child, child.start_bare)
 
---- `archon` stub: `workflow run` logs its arguments and prints a run id from the change input;
---- `workflow wait <id>` reports the outcome in $OUTCOMES/<id> (default completed).
+--- `archon` stub: a foreground `workflow run` logs its arguments, prints a line and records a run
+--- of its change in the sqlite $ARCHON_DB with the status in $OUTCOMES/<change> (default completed).
 local ARCHON_STUB = [[#!/bin/sh
-case "$1 $2" in
-"workflow run")
-	echo "$*" >>"$ARCHON_RUNS"
-	for arg; do case $arg in change=*) change=${arg#change=} ;; esac; done
-	echo "{\"ok\": true, \"runId\": \"run-$change\"}" ;;
-"workflow wait")
-	outcome=$(cat "$OUTCOMES/$3" 2>/dev/null || echo completed)
-	if [ "$outcome" = paused ]; then
-		echo '{"result": "attention", "attention": {"kind": "awaiting_response"}}'
-	else
-		echo "{\"result\": \"attention\", \"attention\": {\"kind\": \"terminal\", \"status\": \"$outcome\"}}"
-	fi ;;
-esac
+[ "$1 $2" = "workflow run" ] || exit 0
+echo "$*" >>"$ARCHON_RUNS"
+for arg; do case $arg in change=*) change=${arg#change=} ;; esac; done
+echo "stub run of $change"
+status=$(cat "$OUTCOMES/$change" 2>/dev/null || echo completed)
+python3 - "$ARCHON_DB" "$change" "$status" <<'PY'
+import sqlite3, sys
+db = sqlite3.connect(sys.argv[1])
+db.execute("create table if not exists remote_agent_workflow_runs (id text primary key default (lower(hex(randomblob(16)))), user_message text, status text, started_at text default (datetime('now')))")
+db.execute("insert into remote_agent_workflow_runs (user_message, status) values (?, ?)", (f"Work queued change {sys.argv[2]}", sys.argv[3]))
+db.commit()
+PY
 exit 0
 ]]
 
@@ -90,7 +89,7 @@ end
 ---@field runs string runs log path
 ---@field outcomes string directory of per-run outcomes
 
---- Stubs first on PATH, a temp HOME and no Archon DB; queue inputs cleared.
+--- Stubs first on PATH, a temp HOME and a throwaway Archon DB; queue inputs cleared.
 ---@return test.DrainEnv
 local function stub_env()
 	local bin = H.tempdir(child)
@@ -102,7 +101,7 @@ local function stub_env()
 		HOME = H.tempdir(child),
 		ARCHON = vim.fs.joinpath(bin, "archon"),
 		ARCHON_RUNS = runs,
-		ARCHON_DB = vim.fs.joinpath(bin, "none.db"),
+		ARCHON_DB = vim.fs.joinpath(bin, "archon.db"),
 		OUTCOMES = outcomes,
 		PATH = bin .. ":" .. child.lua_get("vim.env.PATH"),
 		MAKEFLAGS = "",
@@ -118,7 +117,7 @@ end
 ---@param change string
 ---@param outcome string
 local function set_outcome(stubs, change, outcome)
-	child.fn.writefile({ outcome }, vim.fs.joinpath(stubs.outcomes, "run-" .. change))
+	child.fn.writefile({ outcome }, vim.fs.joinpath(stubs.outcomes, change))
 end
 
 ---@param repo string
@@ -129,12 +128,12 @@ local function drain(repo, stubs, args)
 	return H.system(child, vim.list_extend({ "make", "drain" }, args or {}), repo, stubs.env)
 end
 
---- Changes the stub was asked to run, in order (each must be a detached work-queue run).
+--- Changes the stub was asked to run, in order (each must be a foreground work-queue run).
 ---@param stubs test.DrainEnv
 ---@return string[]
 local function ran(stubs)
 	return vim.tbl_map(function(line)
-		eq(line:find("workflow run work-queue --detach --json", 1, true) ~= nil, true, { fail_reason = line })
+		eq(line:find("workflow run work-queue --base auto", 1, true) ~= nil, true, { fail_reason = line })
 		return line:match("change=(%S+)")
 	end, read_lines(stubs.runs))
 end
@@ -175,6 +174,18 @@ T["loop: Drain stops at a run that waits for the user"] = function()
 	local out = output(drain(repo, stubs))
 	eq(ran(stubs), { "t-a" })
 	eq(out:find("t-a waits for you", 1, true) ~= nil, true, { fail_reason = out })
+end
+
+T["loop: Drain runs each change in the foreground"] = function()
+	local repo, stubs = make_repo(), stub_env()
+	write_change(repo, "t-a", "2026-01-01")
+	local out = output(drain(repo, stubs))
+	eq(ran(stubs), { "t-a" })
+	for _, line in ipairs(read_lines(stubs.runs)) do
+		eq(line:find("--detach", 1, true), nil, { fail_reason = line })
+	end
+	eq(out:find("stub run of t-a", 1, true) ~= nil, true, { fail_reason = out })
+	eq(out:find("t-a completed", 1, true) ~= nil, true, { fail_reason = out })
 end
 
 ---@param repo string
