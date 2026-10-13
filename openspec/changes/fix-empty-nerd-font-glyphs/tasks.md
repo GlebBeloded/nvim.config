@@ -15,8 +15,8 @@ Scenarios: "statusline: chip has rounded caps", "statusline: chip shows error ca
 
 Layer: unit (`tests/unit/statusline/test_language.lua`, bare child with nvim-web-devicons).
 
-- [ ] 1.1 Failing tests: add `T["statusline: chip has rounded caps"]` (filetype `lua`, no LSP: result starts with `%#StatuslineLangCapError#` .. `"\u{E0B6}"` and ends with `"\u{E0B4}"`); tighten "chip shows error cap without LSP" to assert the end is `%#StatuslineLangEdge#` .. `"\u{E0B4}"` and "chip shows ok cap with running LSP" to assert the start is `%#StatuslineLangCapOk#` .. `"\u{E0B6}"`. Run `make test FILE=tests/unit/statusline/test_language.lua` and confirm all three fail on the missing cap glyph.
-- [ ] 1.2 In `lua/gleb/statusline/language.lua` set `CAP_LEFT = "\u{E0B6}"`, `CAP_RIGHT = "\u{E0B4}"`. 1.1 passes; the other chip cases stay green.
+- [x] 1.1 Failing tests: add `T["statusline: chip has rounded caps"]` (filetype `lua`, no LSP: result starts with `%#StatuslineLangCapError#` .. `"\u{E0B6}"` and ends with `"\u{E0B4}"`); tighten "chip shows error cap without LSP" to assert the end is `%#StatuslineLangEdge#` .. `"\u{E0B4}"` and "chip shows ok cap with running LSP" to assert the start is `%#StatuslineLangCapOk#` .. `"\u{E0B6}"`. Run `make test FILE=tests/unit/statusline/test_language.lua` and confirm all three fail on the missing cap glyph.
+- [x] 1.2 In `lua/gleb/statusline/language.lua` set `CAP_LEFT = "\u{E0B6}"`, `CAP_RIGHT = "\u{E0B4}"`. 1.1 passes; the other chip cases stay green.
 
 ## 2. Copilot failure glyph
 
@@ -24,8 +24,8 @@ Scenarios: "statusline: copilot glyph shown when disabled", "statusline: copilot
 
 Layer: unit (`tests/unit/statusline/test_copilot.lua`, bare child; Copilot is disabled in full-config children).
 
-- [ ] 2.1 Failing tests: add a small typed helper `stub_copilot(opts)` that sets `package.loaded["copilot.client"]` (`is_disabled`, `startup_error`, `get`) and `package.loaded["copilot.status"]` (`data.status`) in the child. Cases: disabled → `component()` is `"\u{F4B8}"`; client present, status `Warning` → `"\u{F4B8}"`; enabled, no error, client, status `Normal` → `""`. Run `make test FILE=tests/unit/statusline/test_copilot.lua` and confirm the two shown cases fail (they return `""`); the healthy case passes and is a regression guard.
-- [ ] 2.2 In `lua/gleb/statusline/copilot.lua` set `GLYPH = "\u{F4B8}"`. 2.1 passes.
+- [x] 2.1 Failing tests: add a small typed helper `stub_copilot(opts)` that sets `package.loaded["copilot.client"]` (`is_disabled`, `startup_error`, `get`) and `package.loaded["copilot.status"]` (`data.status`) in the child. Cases: disabled → `component()` is `"\u{F4B8}"`; client present, status `Warning` → `"\u{F4B8}"`; enabled, no error, client, status `Normal` → `""`. Run `make test FILE=tests/unit/statusline/test_copilot.lua` and confirm the two shown cases fail (they return `""`); the healthy case passes and is a regression guard.
+- [x] 2.2 In `lua/gleb/statusline/copilot.lua` set `GLYPH = "\u{F4B8}"`. 2.1 passes.
 
 ## 3. Statusline glyph names and screenshots
 
@@ -33,8 +33,8 @@ Scenarios: "statusline: diagnostics show error and warn counts", "statusline: di
 
 Layers: integration (`tests/integration/statusline/test_statusline.lua`), screen (`tests/screen/statusline/test_statusline_screen.lua`).
 
-- [ ] 3.1 Failing test: add `T["statusline: diff hidden in narrow windows"]`: temp git repo with a committed file, modify it, `:edit` it, `columns = 80`, wait for gitsigns' `b:gitsigns_status_dict`, then assert the statusline row (`H.screen_rows(child, -1)`) contains none of `nr2char(0xF457)`, `nr2char(0xF459)`, `nr2char(0xF458)`. "diagnostics show error and warn counts" already asserts U+F057 / U+F071 + count and needs no edit. Both pass against the unchanged `lualine.lua` (the spec only renamed its glyphs), so show red by locally setting lualine's diff `cond` to always true (narrow case fails), then revert.
-- [ ] 3.2 Failing test: after 1.2 and 2.2, run `make test-screen CASE="statusline:"` and confirm both screenshot cases fail on the chip caps. Regenerate with `make screenshots`, review `git diff tests/screenshots`: the Normal row equals the Proposed statusline render in design.md (caps at columns 72 and 80), the attribute row shows two new groups at those cells. `make test-screen CASE="statusline:"` green.
+- [x] 3.1 Failing test: add `T["statusline: diff hidden in narrow windows"]`: temp git repo with a committed file, modify it, `:edit` it, `columns = 80`, wait for gitsigns' `b:gitsigns_status_dict`, then assert the statusline row (`H.screen_rows(child, -1)`) contains none of `nr2char(0xF457)`, `nr2char(0xF459)`, `nr2char(0xF458)`. "diagnostics show error and warn counts" already asserts U+F057 / U+F071 + count and needs no edit. Both pass against the unchanged `lualine.lua` (the spec only renamed its glyphs), so show red by locally setting lualine's diff `cond` to always true (narrow case fails), then revert.
+- [x] 3.2 Failing test: after 1.2 and 2.2, run `make test-screen CASE="statusline:"` and confirm both screenshot cases fail on the chip caps. Regenerate with `make screenshots`, review `git diff tests/screenshots`: the Normal row equals the Proposed statusline render in design.md (caps at columns 72 and 80), the attribute row shows two new groups at those cells. `make test-screen CASE="statusline:"` green.
 
 ## 4. LSP diagnostic signs
 
