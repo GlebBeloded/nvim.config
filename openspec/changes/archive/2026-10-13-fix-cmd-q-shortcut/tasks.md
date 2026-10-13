@@ -255,3 +255,9 @@
 
 - On the host, run `make menu-keys`, then fully quit and relaunch Alacritty.
 - Confirm the final merge commit is reachable from `auto`; never push.
+
+## Review Follow-up
+
+- [x] Restore the approved Cmd+Shift+Q unreachable-by-default note in the main shortcut table.
+- [ ] Restore the sandbox-lock scenarios' literal 2 s holder times and 2 s / 5 s pass bounds.
+- [ ] Cover fatal e2e preflight without debug-library access to the controlled-regression helper.
