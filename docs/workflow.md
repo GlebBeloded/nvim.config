@@ -29,6 +29,10 @@ pause, so they stay in the foreground. Answer gates in the terminal, in the cons
 Implement, verify, align and review form one group that runs at most 3 times; each pass starts with the
 previous pass's failures. After 3 red passes the run escalates.
 
+Runs merge into `auto` one at a time under `.git/nvim-ship.lock` (it holds the merging pid; delete it
+only if that pid is not running). A run whose merge conflicts with `auto` goes through `reconcile`: an
+agent merges `auto` into the branch and resolves it, the gate runs again, and ship retries, at most twice.
+
 **Plugin updates** happen only on demand, one plugin per run; nothing updates plugins on a schedule
 (lazy.nvim's `checker` is off). `make outdated` and `plugin-update` run lazy.nvim on an APFS clone of the
 plugin dir, so live plugins and parsers are untouched. `plugin-update` updates the one plugin, shows its

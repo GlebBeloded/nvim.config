@@ -47,16 +47,18 @@ nodes:
   - id: ship
     script: ship
     runtime: uv
-    timeout: 300000
+    timeout: 900000 # waits up to SHIP_LOCK_TIMEOUT (600 s) for other runs' merges
     depends_on: [changelog]
     when: "$update.output.green == true"
     with:
       change: ""
       message: $update.output.message
+      on_conflict: fail
     output_format:
       type: object
       properties:
         merged: { type: boolean }
+        conflict: { type: boolean }
         branch: { type: string }
         commit: { type: string }
       required: [merged, branch, commit]
@@ -108,16 +110,18 @@ nodes:
   - id: queue
     script: ship
     runtime: uv
-    timeout: 300000
+    timeout: 900000 # waits up to SHIP_LOCK_TIMEOUT (600 s) for other runs' merges
     depends_on: [pin-back]
     when: "$pin-back.output.pinned == true"
     with:
       change: ""
       message: $pin-back.output.message
+      on_conflict: fail
     output_format:
       type: object
       properties:
         merged: { type: boolean }
+        conflict: { type: boolean }
         branch: { type: string }
         commit: { type: string }
       required: [merged, branch, commit]

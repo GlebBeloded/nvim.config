@@ -38,43 +38,13 @@ local function write_executable(path, content)
 	})
 end
 
----@param cmd string[]
----@param cwd string
----@param env? table<string, string>
----@return { code: integer, stdout: string, stderr: string }
-local function system(cmd, cwd, env)
-	return child.lua_get("vim.system(..., { cwd = select(2, ...), env = select(3, ...), text = true }):wait(30000)", {
-		cmd,
-		cwd,
-		env or vim.empty_dict(),
-	})
-end
-
----@return string
-local function tempdir()
-	return child.lua_get(
-		"(function() local d = vim.fn.tempname(); vim.fn.mkdir(d, 'p'); return vim.uv.fs_realpath(d) end)()"
-	)
-end
-
---- Git identity and an empty config, so commits work without the user's (signing) setup.
----@type table<string, string>
-local GIT_ENV = {
-	GIT_AUTHOR_NAME = "test",
-	GIT_AUTHOR_EMAIL = "test@example.com",
-	GIT_COMMITTER_NAME = "test",
-	GIT_COMMITTER_EMAIL = "test@example.com",
-	GIT_CONFIG_GLOBAL = "/dev/null",
-	GIT_CONFIG_NOSYSTEM = "1",
-}
-
 --- Repo on branch `auto` with one commit, no `local` remote, this checkout's Makefile and
 --- queue_pick.py (for `make queue`).
 ---@return string
 local function make_repo()
-	local repo = tempdir()
-	eq(system({ "git", "init", "-q", "-b", "auto" }, repo, GIT_ENV).code, 0)
-	eq(system({ "git", "commit", "-q", "--allow-empty", "-m", "init" }, repo, GIT_ENV).code, 0)
+	local repo = H.tempdir(child)
+	eq(H.system(child, { "git", "init", "-q", "-b", "auto" }, repo, H.GIT_ENV).code, 0)
+	eq(H.system(child, { "git", "commit", "-q", "--allow-empty", "-m", "init" }, repo, H.GIT_ENV).code, 0)
 	child.lua("vim.uv.fs_symlink(...)", { vim.fs.joinpath(H.root, "Makefile"), vim.fs.joinpath(repo, "Makefile") })
 	local scripts = vim.fs.joinpath(repo, ".archon/scripts")
 	child.fn.mkdir(scripts, "p")
@@ -113,9 +83,9 @@ end
 ---@param extra? table<string, string>
 ---@return table<string, string>
 local function stub_env(extra)
-	local bin = tempdir()
-	return vim.tbl_extend("force", GIT_ENV, {
-		HOME = tempdir(),
+	local bin = H.tempdir(child)
+	return vim.tbl_extend("force", H.GIT_ENV, {
+		HOME = H.tempdir(child),
 		ARCHON = write_stub(bin),
 		LOOP_LOG = vim.fs.joinpath(bin, "cleanup.log"),
 		ARCHON_RUNS = vim.fs.joinpath(bin, "runs.log"),
@@ -134,7 +104,7 @@ end
 ---@return test.LoopRun
 local function run_target(repo, args, env)
 	local full = stub_env(env)
-	local result = system(vim.list_extend({ "make" }, args), repo, full)
+	local result = H.system(child, vim.list_extend({ "make" }, args), repo, full)
 	return {
 		code = result.code,
 		output = result.stdout .. result.stderr,
@@ -176,8 +146,8 @@ local function write_change(repo, name, created)
 	local dir = vim.fs.joinpath(repo, "openspec/changes", name)
 	child.fn.mkdir(dir, "p")
 	child.fn.writefile({ "created: " .. created }, vim.fs.joinpath(dir, ".openspec.yaml"))
-	eq(system({ "git", "add", "openspec" }, repo, GIT_ENV).code, 0)
-	eq(system({ "git", "commit", "-q", "-m", "change " .. name }, repo, GIT_ENV).code, 0)
+	eq(H.system(child, { "git", "add", "openspec" }, repo, H.GIT_ENV).code, 0)
+	eq(H.system(child, { "git", "commit", "-q", "-m", "change " .. name }, repo, H.GIT_ENV).code, 0)
 end
 
 --- Asserts `make queue` (no CHANGE) works `name` and asked Archon for its `loop/` branch.
@@ -198,7 +168,7 @@ end
 ---@param env table<string, string>
 ---@param name string
 local function expect_picks(repo, env, name)
-	local result = system({ "python3", ".archon/scripts/queue_pick.py" }, repo, env)
+	local result = H.system(child, { "python3", ".archon/scripts/queue_pick.py" }, repo, env)
 	eq(result.code, 0, { fail_reason = result.stderr })
 	local ok, picked = pcall(vim.json.decode, result.stdout)
 	eq(ok, true, { fail_reason = result.stdout })
@@ -209,7 +179,7 @@ T["loop: Queue skips a taken change"] = function()
 	local repo = make_repo()
 	write_change(repo, "t-change", "2026-01-01")
 	write_change(repo, "t-next", "2026-01-02")
-	eq(system({ "git", "branch", "loop/t-change" }, repo, GIT_ENV).code, 0)
+	eq(H.system(child, { "git", "branch", "loop/t-change" }, repo, H.GIT_ENV).code, 0)
 	local list = { OPENSPEC_LIST = '{"changes":[{"name":"t-change"},{"name":"t-next"}]}' }
 	-- Pick directly first: the archon stub creates loop/t-next when make queue runs it.
 	expect_picks(repo, stub_env(list), "t-next")
