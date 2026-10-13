@@ -34,9 +34,10 @@ Scenarios: ai: Menu shows prompt, ai: Menu s opens search prompt, ai: Menu v ope
 
 **Files:** `tests/unit/ai/test_entry_keymaps.lua` (new), `lua/gleb/ai/entry_keymaps.lua` (new)
 
-- [ ] 2.1 **Failing test.** New `test_entry_keymaps.lua`: bare child, a stub 99 table whose `search`, `vibe`, `visual` each record their name in a global and open a new buffer with filetype `99`; call `require("gleb.ai.entry_keymaps").setup(Stub)`. One case per scenario, keys sent with `child.type_keys` (menu key in the same call as `<A-9>`; visual cases start with `V`). Assert the recorded action, `&filetype == "99"` and `mode() == "i"` after the scheduled `startinsert` (or no action and mode `n` for `x`); "Menu shows prompt" wraps `vim.api.nvim_echo` to record chunks, sends `<A-9>` alone, asserts `child.is_blocked()`, sends `<Esc>`, then asserts the recorded `{ "99> [s]earch [v]ibe: ", "Question" }` (screenshots are refused while `getchar()` blocks; design.md, Risks). `make test-unit` → FAIL (module not found).
-- [ ] 2.2 **Implement** `entry_keymaps.lua` (design.md, Decision 1): body moved from `plugins.lua`, `M.setup(nn)` with `---@param`. `make test-unit` → seven cases pass; `make trace VERBOSE=1` lists all seven as tested.
-- [ ] 2.3 **Commit** `test(ai): cover 99 entry keymaps`.
+- [x] 2.1 **Failing test.** New `test_entry_keymaps.lua`: bare child, a stub 99 table whose `search`, `vibe`, `visual` each record their name in a global and open a new buffer with filetype `99`; call `require("gleb.ai.entry_keymaps").setup(Stub)`. One case per scenario, keys sent with `child.type_keys` (menu key in the same call as `<A-9>`; visual cases start with `V`). Assert the recorded action, `&filetype == "99"` and `mode() == "i"` after the scheduled `startinsert` (or no action and mode `n` for `x`); "Menu shows prompt" wraps `vim.api.nvim_echo` to record chunks, sends `<A-9>` alone, asserts `child.is_blocked()`, sends `<Esc>`, then asserts the recorded `{ "99> [s]earch [v]ibe: ", "Question" }` (screenshots are refused while `getchar()` blocks; design.md, Risks). `make test-unit` → FAIL (module not found).
+- [x] 2.2 **Implement** `entry_keymaps.lua` (design.md, Decision 1): body moved from `plugins.lua`, `M.setup(nn)` with `---@param`. `make test-unit` → seven cases pass; `make trace VERBOSE=1` lists all seven as tested.
+  - Note (implementation): on Nvim 0.12.5 `getchar()` in the menu does not report `blocking` and screenshots work, so `child.is_blocked()` is false; "Menu shows prompt" asserts the bottom screen row text plus the recorded `nvim_echo` chunk (highlight) instead.
+- [x] 2.3 **Commit** `test(ai): cover 99 entry keymaps`.
 
 ## 3. Wire through `gleb.ai`
 
