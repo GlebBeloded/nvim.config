@@ -34,3 +34,5 @@ Adopt: loop/fix-lsp-readiness
 ## Rejected run
 Run on `loop/fix-lsp-readiness` was rejected by the judge:
 - fix loop exhausted (3 attempts) with gates still red: tests,review_skipped
+- Readiness cases failed only on time (lua_ls 3157 ms, gopls 1498 ms, vtsls 1789 ms) inside the 12-worker `test` layer. Timing bounds must not share CPU with other cases: run `tests/integration/lsp/test_readiness.lua` in its own check layer that runs alone after the rest (like `+smoke-startup` in `make check`), excluded from `make test`.
+- lua_ls at 3.1 s means the editor still indexes the full library: verify `.luarc.jsonc` has no `workspace.library` and lazydev loads types lazily in this config before tuning anything else.
