@@ -114,21 +114,21 @@ Gitlink copies current line URL", the `shortcuts` chain/stack rows (smart-splits
 **Files:** `copilot.lua` (new), `smart_splits.lua` (new), `plugins/plugins.lua`, `alpha.lua`,
 `git/gitlink.lua`, `folding/init.lua`, `debugging/ui.lua`, `testing.lua`, `statusline/language.lua`
 
-- [ ] 4.1 **Failing test.** `rg -n 'require\("(copilot|smart-splits)"\)\.setup' lua/gleb/plugins/plugins.lua`,
+- [x] 4.1 **Failing test.** `rg -n 'require\("(copilot|smart-splits)"\)\.setup' lua/gleb/plugins/plugins.lua`,
   `rg -n '":[^"]*<CR>"' lua/gleb/alpha.lua` and
   `rg -L 'pcall\(require' lua/gleb/{git/gitlink,folding/init,debugging/ui,testing}.lua` → hits;
   `rg -n '^local devicons = require' lua/gleb/statusline/language.lua` → hit.
-- [ ] 4.2 **Implement.** `copilot.lua`: pcall guard, the setup table from `plugins.lua:408-418`, the two
+- [x] 4.2 **Implement.** `copilot.lua`: pcall guard, the setup table from `plugins.lua:408-418`, the two
   blink `User` autocmds in augroup `gleb_copilot_blink`. `smart_splits.lua`: pcall guard, the setup table
   from `plugins.lua:295-300`. The specs' `config` only requires the module; copilot keeps `cmd`/`event`,
   smart-splits keeps `lazy = false`.
-- [ ] 4.3 **Implement.** Alpha buttons use `<Cmd>…<CR>`: `"<Cmd>Telescope find_files<CR>"`,
+- [x] 4.3 **Implement.** Alpha buttons use `<Cmd>…<CR>`: `"<Cmd>Telescope find_files<CR>"`,
   `"<Cmd>ene | startinsert<CR>"`, … `"<Cmd>qa<CR>"`.
-- [ ] 4.4 **Implement.** `pcall(require)` guard with early return at the top of `git/gitlink.lua`
+- [x] 4.4 **Implement.** `pcall(require)` guard with early return at the top of `git/gitlink.lua`
   (gitlinker and `gitlinker.hosts`), `folding/init.lua`, `debugging/ui.lua` (dap and dapui), `testing.lua`
   (neotest and neotest-golang). `statusline/language.lua` loads devicons with `pcall` and `logo()` returns
   `""` without it.
-- [ ] 4.5 **Green.** 4.1 checks list nothing; in a headless child with gitlinker, ufo, dapui and neotest
+- [x] 4.5 **Green.** 4.1 checks list nothing; in a headless child with gitlinker, ufo, dapui and neotest
   removed from the runtimepath (`child.disable_plugin`), requiring each guarded module raises no error;
   `package.loaded.copilot` is nil after a bare start; `make check` passes. **Commit**
   `refactor(plugins): copilot and smart-splits config in modules, guards, <Cmd> buttons`.

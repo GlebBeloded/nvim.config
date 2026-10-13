@@ -1,8 +1,14 @@
-require("gitlinker").setup({
+local has_gitlinker, gitlinker = pcall(require, "gitlinker")
+local has_hosts, hosts = pcall(require, "gitlinker.hosts")
+if not (has_gitlinker and has_hosts) then
+	return
+end
+
+gitlinker.setup({
 	mappings = nil,
 	print_url = false,
 	callbacks = {
-		["pgw.dev"] = require("gitlinker.hosts").get_github_type_url,
+		["pgw.dev"] = hosts.get_github_type_url,
 	},
 })
 

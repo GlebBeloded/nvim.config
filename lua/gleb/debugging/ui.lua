@@ -1,4 +1,8 @@
-local dap, dapui = require("dap"), require("dapui")
+local has_dap, dap = pcall(require, "dap")
+local has_dapui, dapui = pcall(require, "dapui")
+if not (has_dap and has_dapui) then
+	return
+end
 
 dapui.setup({
 	icons = { expanded = "▾", collapsed = "▸" },
