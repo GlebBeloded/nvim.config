@@ -3,11 +3,12 @@ description: Turn a plugin update that breaks make check into an OpenSpec change
 ---
 # Specify the adaptation
 
-First, load each of these skills before any other step: `superpowers:systematic-debugging`,
-`openspec-propose`, `openspec-continue-change`. On Claude, load each with the Skill tool. On Codex,
-invoke each by name: $superpowers:systematic-debugging, $openspec-propose,
-$openspec-continue-change. Report each skill as it loads. If one does not load, stop and report the
-error naming it.
+First, load each of these skills before any other step: `superpowers:systematic-debugging`. On Claude, load each with the
+Skill tool. On Codex, invoke each by name: $superpowers:systematic-debugging. Report each skill as it loads. If one does not
+load, stop and report the error naming it.
+
+Flow (plugin-adapt): context + changelog → **diagnose + spec** → plan → implement ×task → check → fix → review → judge → ship.
+Your step: **diagnose + spec**. Input: the plugin changelog and failures. Output: the change folder and the JSON fields. Do not: write tests or code. Keep output brief.
 
 Plugin: $INPUTS.plugin, pinned $INPUTS.old, updated to $INPUTS.new (lazy-lock.json in this worktree
 already has the new commit; the tests run against it).
@@ -19,7 +20,7 @@ commit of the changelog breaks which test, and why. Read the plugin's code at th
 .tests/xdg/data/nvim/lazy/$INPUTS.plugin/.
 
 If openspec/changes/$INPUTS.change/ exists (an earlier update was pinned back), update it for the
-new commit range with `openspec-continue-change`; otherwise create it with `openspec-propose`.
+new commit range with openspec continue-change; otherwise create it with openspec propose.
 Follow openspec/config.yaml rules:
 - proposal: `Kind: bug`, upgrades the $INPUTS.plugin dependency (both commits, compare link), the
   failing tests and error excerpt, the root cause, what the config must adapt; core keymap change?

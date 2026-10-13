@@ -7,6 +7,9 @@ First, load each of these skills before any other step: `superpowers:writing-pla
 each with the Skill tool. On Codex, invoke each by name: $superpowers:writing-plans. Report each
 skill as it loads. If one does not load, stop and report the error naming it.
 
+Flow (fix-bug / work-queue): diagnose → spec → plan → implement ×task → check → fix → verify → review → judge → ship.
+Your step: **plan**. Input: the change folder. Output: tasks.md: small tasks, each naming its scenario test; no sub-skill header. Do not: write tests or code. Keep output brief.
+
 Change: openspec/changes/$INPUTS.change/
 User feedback from the approval gate (may be empty, it overrides the proposal): $INPUTS.feedback
 

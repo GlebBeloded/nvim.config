@@ -3,6 +3,9 @@ description: Merge auto into the run branch and resolve the conflicts ship repor
 ---
 # Resolve conflict
 
+Flow (port): merge auto in → **resolve** → check → fix → ship.
+Your step: **resolve**. Input: the conflict hunks. Output: 1 merge commit with no conflict markers. Do not: change behaviour beyond merging both sides, drop tests, run make quick/check. Keep output brief.
+
 Change id: $INPUTS.change
 Files ship reported as conflicting with `auto`: $ship.output.files
 
@@ -12,7 +15,7 @@ was cut. Work only in this run worktree; never touch the `auto` checkout (`~/.co
 1. `git merge auto`. Resolve every conflict keeping the intent of both sides: the run's change and
    what landed on `auto`. Keep every test and every scenario from both; never delete, skip or weaken
    one to make the merge fit.
-2. `make fmt`, then `make quick` until it is green.
+2. `make fmt`; run only the test files that conflicted (`make test FILE=… 2>&1 | tail -40`); the gate runs `make check`.
 3. Commit the merge (`git commit --no-edit`).
 
 If the two intents cannot both hold, keep the branch as is and say why; the run fails with the

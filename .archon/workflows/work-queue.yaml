@@ -2,7 +2,7 @@ name: work-queue
 description: |
   Work the local queue (docs/workflow.md): take one pending change from openspec/changes/ (input
   `change`, or the oldest untaken one), complete its artifacts when it is only a proposal, preview +
-  approval for features and visible-UI/architecture fixes, then nvim-deliver into auto.
+  approval for features and visible-UI fixes, then nvim-deliver into auto.
   `make queue` picks the change and names the branch loop/<change>.
 interactive: true
 worktree:
@@ -41,7 +41,7 @@ nodes:
     when: "$pick.output.found == true"
     with:
       change: $pick.output.change
-    skills: [openspec-continue-change, superpowers:systematic-debugging]
+    skills: [openspec-continue-change]
     output_format:
       type: object
       properties:
@@ -53,11 +53,11 @@ nodes:
     bash: openspec validate $pick.output.change --strict --no-interactive
     depends_on: [complete]
 
-  # --- Preview + approval: always for features, else only for visible UI / architecture ----------------
+  # --- Preview + approval: always for features, else only for visible UI ----------------
   - id: preview
-    bash: make -s preview CHANGE=$pick.output.change OPEN=1
+    bash: make -s preview CHANGE=$pick.output.change
     depends_on: [spec-gate]
-    when: "$pick.output.kind == 'feature' || $complete.output.visible_ui == true || $complete.output.architecture == true"
+    when: "$pick.output.kind == 'feature' || $complete.output.visible_ui == true"
 
   - id: design-gate
     depends_on: [preview]
@@ -76,6 +76,7 @@ nodes:
     depends_on: [spec-gate, design-gate]
     trigger_rule: all_done
     with:
+      verdict: ""
       needed: { from: $preview.output, if_skipped: "" }
       decision: { from: $design-gate.output.decision, if_skipped: auto }
       feedback: { from: $design-gate.output.text, if_skipped: "" }

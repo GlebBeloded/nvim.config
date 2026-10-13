@@ -13,7 +13,7 @@ nodes:
   - id: explore
     command: explore-feature
     depends_on: [skills-check]
-    skills: [openspec-explore, superpowers:brainstorming]
+    skills: [superpowers:brainstorming]
     idle_timeout: 900000
 
   # --- Specify + preview + approval; "revise" runs the proposal again with the user's comment -------
@@ -25,7 +25,7 @@ nodes:
       nodes:
         - id: spec
           command: spec-feature
-          skills: [openspec-propose, openspec-continue-change]
+          skills: [openspec-propose]
           output_format:
             type: object
             properties:
@@ -37,7 +37,7 @@ nodes:
           depends_on: [spec]
 
         - id: preview
-          bash: make -s preview CHANGE=$spec.output.change OPEN=1
+          bash: make -s preview CHANGE=$spec.output.change
           depends_on: [spec-gate]
 
         - id: design-gate
@@ -62,6 +62,7 @@ nodes:
     runtime: uv
     depends_on: [design]
     with:
+      verdict: ""
       needed: "true"
       decision: $design.output.decision # the body's sink is design-gate: {decision, text}
       feedback: $design.output.text

@@ -211,3 +211,38 @@ The build verdict/escalation path SHALL append a supplied one-line lesson only f
 #### Scenario: Unfixed failures do not become lessons
 - **WHEN** an attempt fails and no later attempt supplies a lesson saying that failure was fixed
 - **THEN** the verdict/escalation path does not add a lesson for that failure
+
+### Requirement: Small steps with a script judge
+The delivery loop SHALL implement one task per fresh agent session from a script-built context pack, count only real checkbox list items as tasks, send only a failing pass's findings to the next fix step, and decide shipping by script: reject partial or rule-breaking work, ask the user only for breaking changes, and ship everything else.
+
+#### Scenario: Plan header prose is not an unchecked task
+- **WHEN** `.archon/scripts/tasks.py` runs on a tasks.md whose only `- [ ]` text is inside a plan header sentence and every list item is checked
+- **THEN** it exits 0 (the task loop is done)
+
+#### Scenario: Task loop continues while a task is unchecked
+- **WHEN** `.archon/scripts/tasks.py` runs on a tasks.md with an unchecked `- [ ]` list item
+- **THEN** it exits 1
+
+#### Scenario: Context pack names the next task
+- **WHEN** `.archon/scripts/context_pack.py` runs for a change whose first task is ticked and second is not
+- **THEN** `$ARTIFACTS_DIR/context.md` has a `## Next task` section holding the second task and includes the Loop lessons
+
+#### Scenario: Judge rejects an xfail without a queued change
+- **WHEN** `.archon/scripts/escalation.py` runs on a branch that adds `H.xfail("<id>", …)` for an id with no `openspec/changes/<id>`
+- **THEN** its JSON `decision` is `reject`
+
+#### Scenario: Judge asks only for a breaking change
+- **WHEN** `.archon/scripts/escalation.py` runs on a branch that adds a `vim.keymap.set` line to `lua/gleb/keymaps.lua`
+- **THEN** its JSON `decision` is `ask`
+
+#### Scenario: Judge ships an internal change without asking
+- **WHEN** `.archon/scripts/escalation.py` runs on a branch that only adds an internal Lua module
+- **THEN** its JSON is `{decision = "ship", escalate = false, reasons = "- none"}`
+
+#### Scenario: Verdict sends hard-rule violations back to fix
+- **WHEN** `.archon/scripts/verdict.py` runs with every gate green on a branch that removes a test case
+- **THEN** it reports `passed` false, `done` false, `failed_gates` `rules`, and `feedback` names the removed case
+
+#### Scenario: A rejected judge never ships
+- **WHEN** `.archon/scripts/decide.py` runs with `INPUTS_VERDICT=reject` and no gate decision
+- **THEN** its JSON `go` is false

@@ -8,6 +8,9 @@ Claude, load each with the Skill tool. On Codex, invoke each by name:
 $superpowers:requesting-code-review. Report each skill as it loads. If one does not load, stop and
 report the error naming it.
 
+Flow (fix-bug / work-queue): diagnose → spec → plan → implement ×task → check → fix → verify → review → judge → ship.
+Your step: **review**. Input: the branch diff. Output: the JSON fields only. Do not: edit files or fix findings (fix does that). Keep output brief.
+
 Change id: $INPUTS.change. Diff: `git diff $(git merge-base HEAD $BASE_BRANCH)` plus untracked files.
 
 Use `superpowers:requesting-code-review` as the checklist, acting as the reviewer yourself. Judge
