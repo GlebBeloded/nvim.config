@@ -148,7 +148,7 @@ Scenario: "Every declared skill is named and loaded by its command".
 
 Scenarios: none (a gate before Task 5; the design's Decision 6).
 
-- [ ] **Step 1:** Run `make loop-setup`, then `codex plugin list --json`. Expected: `superpowers` with `installed: true, enabled: true`.
+- [x] **Step 1:** Run `make loop-setup`, then `codex plugin list --json`. Expected: `superpowers` with `installed: true, enabled: true`.
 - [ ] **Step 2:** With `assistant: claude` still set, write the uncommitted `.archon/workflows/probe-codex.yaml`. It has one node with `provider: codex`, `model: gpt-5.6-sol`, and a prompt that:
   - invokes `$superpowers:systematic-debugging` and `$openspec-explore`;
   - reports which loaded;
@@ -222,3 +222,13 @@ Scenario: "Provider switch is documented".
   Expected: green.
 
 - [ ] **Step 5: Commit**: `git commit -m "docs(workflow): codex provider, cross-model review"`
+
+## Blocked
+
+The spec's Codex plugin resolver is wrong for the plugin it targets (found in Task 4 Step 1, 2026-10-13).
+- `codex plugin add superpowers@openai-curated-remote` succeeded (6.4.2, `installed: true, enabled: true`). It was run directly, not through `make loop-setup`: run from a worktree, `loop-register` repoints the Archon registration to that worktree.
+- `codex plugin list --json` reports this plugin as `source: {"source": "remote", "id": "plugins~Plugin_…"}`, with no `path`. Only local/bundled plugins carry `source.path`.
+- Its skills live in `~/.codex/plugins/cache/openai-curated-remote/superpowers/6.4.2/skills/<skill>/SKILL.md`, which is `$CODEX_HOME/plugins/cache/<marketplaceName>/<name>/<version>` with fields the list does report (`marketplaceName`, `name`, `version`).
+- So "a `<plugin>:<skill>` needs … `<source.path>/skills/<skill>/SKILL.md`" (specs/loop/spec.md, design Decision 3, Global Constraints) never resolves `superpowers:*` on Codex. After the flip, every run's preflight would fail, and "loop: Configured provider resolves every declared skill here" would fail.
+
+Proposed spec fix (needs a decision): the codex plugin root is `source.path` when present, else `${CODEX_HOME:-~/.codex}/plugins/cache/<marketplaceName>/<name>/<version>`. The stubs in the codex scenarios would then also cover a remote entry. Tasks 1–3 are done and committed; Task 4 Steps 2–4 (probe), 5 and 6 wait on this.
