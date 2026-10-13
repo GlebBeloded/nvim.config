@@ -1,0 +1,303 @@
+local MiniTest = require("mini.test")
+local H = require("tests.helpers")
+
+local eq = MiniTest.expect.equality
+local child = H.new_child()
+
+local T = H.child_set(child, child.start_bare)
+
+local PLUGIN_ID = "superpowers@superpowers-marketplace"
+
+--- Writes `files` (relative path -> content) under `dir`.
+---@param dir string
+---@param files table<string, string>
+local function write_files(dir, files)
+	child.lua(
+		[[local dir, files = ...
+		for path, content in pairs(files) do
+			local full = vim.fs.joinpath(dir, path)
+			vim.fn.mkdir(vim.fs.dirname(full), "p")
+			vim.fn.writefile(vim.split(content, "\n"), full)
+		end]],
+		{ dir, files }
+	)
+end
+
+---@param path string
+---@param content string
+local function write_executable(path, content)
+	write_files(vim.fs.dirname(path), { [vim.fs.basename(path)] = content })
+	child.lua("vim.uv.fs_chmod(..., 493)", { path })
+end
+
+--- Links this checkout's `name` (repo-relative) into `repo` at the same path.
+---@param repo string
+---@param name string
+local function link_from_checkout(repo, name)
+	local target = vim.fs.joinpath(repo, name)
+	child.fn.mkdir(vim.fs.dirname(target), "p")
+	child.lua("vim.uv.fs_symlink(...)", { vim.fs.joinpath(H.root, name), target })
+end
+
+--- Throwaway repo whose `.archon/workflows/w.yaml` has one node declaring `skills`, with this
+--- checkout's skills_check.py linked in.
+---@param skills string[]
+---@return string
+local function make_skill_repo(skills)
+	local repo = H.tempdir(child)
+	local workflow = {
+		"name: w",
+		"nodes:",
+		"  - id: n",
+		"    prompt: p",
+		"    skills: [" .. table.concat(skills, ", ") .. "]",
+	}
+	write_files(repo, { [".archon/workflows/w.yaml"] = table.concat(workflow, "\n") })
+	link_from_checkout(repo, ".archon/scripts/skills_check.py")
+	return repo
+end
+
+--- `claude` stub in `bin`: `plugin list --json` prints `plugins` as JSON; every call appends its
+--- arguments to `bin/claude.log`.
+---@param bin string
+---@param plugins table[]
+---@return string log
+local function write_claude_stub(bin, plugins)
+	local log = vim.fs.joinpath(bin, "claude.log")
+	local list = vim.fs.joinpath(bin, "plugins.json")
+	write_files(bin, { ["plugins.json"] = vim.json.encode(plugins) })
+	write_executable(
+		vim.fs.joinpath(bin, "claude"),
+		table.concat({
+			"#!/bin/sh",
+			string.format('echo "$*" >>"%s"', log),
+			string.format('[ "$1 $2 $3" = "plugin list --json" ] && cat "%s"', list),
+			"exit 0",
+		}, "\n")
+	)
+	return log
+end
+
+--- Env with `bin` first on PATH; `extra` is merged on top. HOME stays real so python3 finds
+--- PyYAML in the user site.
+---@param bin string
+---@param extra? table<string, string>
+---@return table<string, string>
+local function stub_env(bin, extra)
+	return vim.tbl_extend("force", H.GIT_ENV, {
+		PATH = bin .. ":" .. child.lua_get("vim.env.PATH"),
+		MAKEFLAGS = "",
+		MAKELEVEL = "",
+	}, extra or {})
+end
+
+---@param repo string
+---@param bin string
+---@return test.SystemResult
+local function run_check(repo, bin)
+	return H.system(
+		child,
+		{ "python3", ".archon/scripts/skills_check.py", ".archon/workflows/w.yaml" },
+		repo,
+		stub_env(bin)
+	)
+end
+
+T["loop: Skill preflight fails on an unresolved plugin skill"] = function()
+	local repo = make_skill_repo({ "superpowers:writing-plans" })
+	local bin = H.tempdir(child)
+	write_claude_stub(bin, {
+		{ id = PLUGIN_ID, scope = "project", enabled = true, installPath = bin, errors = { "not installed" } },
+	})
+	local result = run_check(repo, bin)
+	eq(result.code ~= 0, true, { fail_reason = result.stdout .. result.stderr })
+	eq(result.stderr:find("superpowers:writing-plans", 1, true) ~= nil, true, { fail_reason = result.stderr })
+end
+
+T["loop: Skill preflight passes when every declared skill resolves"] = function()
+	local repo = make_skill_repo({ "superpowers:writing-plans", "openspec-propose" })
+	write_files(repo, { [".claude/skills/openspec-propose/SKILL.md"] = "x" })
+	local install = H.tempdir(child)
+	write_files(install, { ["skills/writing-plans/SKILL.md"] = "x" })
+	local bin = H.tempdir(child)
+	write_claude_stub(bin, { { id = PLUGIN_ID, scope = "user", enabled = true, installPath = install } })
+	local result = run_check(repo, bin)
+	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
+end
+
+local YAML_TO_JSON = "import json,sys,yaml; print(json.dumps(yaml.safe_load(open(sys.argv[1]))))"
+
+---@class test.WorkflowNode
+---@field id string
+---@field bash? string
+---@field command? string
+---@field skills? string[]
+---@field depends_on? string[]
+---@field loop_group? { nodes: test.WorkflowNode[] }
+
+---@class test.Workflow
+---@field name string
+---@field nodes test.WorkflowNode[]
+
+--- Every `.archon/workflows/*.yaml` of this checkout, parsed by PyYAML.
+---@return test.Workflow[]
+local function load_workflows()
+	local paths = vim.fn.glob(vim.fs.joinpath(H.root, ".archon/workflows/*.yaml"), false, true)
+	return vim.tbl_map(function(path)
+		local result = H.system(child, { "python3", "-c", YAML_TO_JSON, path }, H.root)
+		eq(result.code, 0, { fail_reason = path .. "\n" .. result.stderr })
+		return vim.json.decode(result.stdout)
+	end, paths)
+end
+
+--- Top-level nodes paired with each node they own: itself and its `loop_group.nodes`.
+---@param workflow test.Workflow
+---@return { top: test.WorkflowNode, node: test.WorkflowNode }[]
+local function owned_nodes(workflow)
+	local owned = {}
+	for _, top in ipairs(workflow.nodes) do
+		table.insert(owned, { top = top, node = top })
+		for _, inner in ipairs(top.loop_group and top.loop_group.nodes or {}) do
+			table.insert(owned, { top = top, node = inner })
+		end
+	end
+	return owned
+end
+
+---@param node test.WorkflowNode
+---@return boolean
+local function declares_plugin_skill(node)
+	return vim.iter(node.skills or {}):any(function(skill)
+		return skill:find(":", 1, true) ~= nil
+	end)
+end
+
+--- Whether `from` reaches node `target` through the transitive `depends_on` of `by_id`.
+---@param by_id table<string, test.WorkflowNode>
+---@param from test.WorkflowNode
+---@param target string
+---@return boolean
+local function reaches(by_id, from, target)
+	local seen, stack = {}, vim.deepcopy(from.depends_on or {})
+	while #stack > 0 do
+		local id = table.remove(stack)
+		if id == target then
+			return true
+		end
+		if not seen[id] and by_id[id] then
+			seen[id] = true
+			vim.list_extend(stack, by_id[id].depends_on or {})
+		end
+	end
+	return false
+end
+
+--- `{ workflow, node }` for each plugin-skill node that does not depend on the preflight node.
+---@param workflow test.Workflow
+---@return { workflow: string, node: string }[]
+local function preflight_violations(workflow)
+	local check = vim.iter(workflow.nodes):find(function(node)
+		return (node.bash or ""):find(".archon/scripts/skills_check.py", 1, true) ~= nil
+	end)
+	if not check then
+		return { { workflow = workflow.name, node = "(no skills_check.py bash node)" } }
+	end
+	local by_id = {}
+	for _, node in ipairs(workflow.nodes) do
+		by_id[node.id] = node
+	end
+	local violations = {}
+	for _, owned in ipairs(owned_nodes(workflow)) do
+		if declares_plugin_skill(owned.node) and not reaches(by_id, owned.top, check.id) then
+			table.insert(violations, { workflow = workflow.name, node = owned.node.id })
+		end
+	end
+	return violations
+end
+
+T["loop: Skill preflight runs before every skill-declaring node"] = function()
+	local violations = vim.iter(load_workflows()):map(preflight_violations):flatten():totable()
+	eq(violations, {})
+end
+
+---@type string[] Plain-text needles of the load-first step every skill-declaring command opens with.
+local LOAD_FIRST_NEEDLES = { "Skill tool", "before any other step", "does not load, stop" }
+
+--- `{ command, problem }` for each way the command of `node` fails to name and load its skills.
+---@param node test.WorkflowNode
+---@return { command: string, problem: string }[]
+local function command_violations(node)
+	local path = vim.fs.joinpath(H.root, ".archon/commands", node.command .. ".md")
+	-- Joined on spaces with whitespace collapsed: markdown wraps lines anywhere.
+	local text = table.concat(vim.fn.readfile(path), " "):gsub("%s+", " ")
+	local problems = {}
+	local function add(problem)
+		table.insert(problems, { command = node.command, problem = problem })
+	end
+	for _, skill in ipairs(node.skills) do
+		if not text:find("`" .. skill .. "`", 1, true) then
+			add("does not name `" .. skill .. "`")
+		end
+	end
+	for _, needle in ipairs(LOAD_FIRST_NEEDLES) do
+		if not text:find(needle, 1, true) then
+			add("lacks load-first text: " .. needle)
+		end
+	end
+	for named in text:gmatch("`(superpowers:[%w-]+)`") do
+		if not vim.list_contains(node.skills, named) then
+			add("names undeclared `" .. named .. "`")
+		end
+	end
+	return problems
+end
+
+---@param owned { node: test.WorkflowNode }
+---@return boolean
+local function has_skills_and_command(owned)
+	return owned.node.skills ~= nil and owned.node.command ~= nil
+end
+
+T["loop: Every declared skill is named and loaded by its command"] = function()
+	local violations = vim.iter(load_workflows())
+		:map(owned_nodes)
+		:flatten()
+		:filter(has_skills_and_command)
+		:map(function(owned)
+			return command_violations(owned.node)
+		end)
+		:flatten()
+		:totable()
+	eq(violations, {})
+end
+
+--- Repo on branch `auto` with one commit, this checkout's Makefile and skills_check.py linked in
+--- (as in test_cleanup.lua) and `.claude/settings.json` enabling the superpowers plugin.
+---@return string
+local function make_setup_repo()
+	local repo = H.tempdir(child)
+	eq(H.system(child, { "git", "init", "-q", "-b", "auto" }, repo, H.GIT_ENV).code, 0)
+	eq(H.system(child, { "git", "commit", "-q", "--allow-empty", "-m", "init" }, repo, H.GIT_ENV).code, 0)
+	link_from_checkout(repo, "Makefile")
+	link_from_checkout(repo, ".archon/scripts/skills_check.py")
+	write_files(repo, { [".claude/settings.json"] = vim.json.encode({ enabledPlugins = { [PLUGIN_ID] = true } }) })
+	return repo
+end
+
+T["loop: Loop setup installs a missing enabled plugin"] = function()
+	local repo = make_setup_repo()
+	local bin = H.tempdir(child)
+	local log = write_claude_stub(bin, {
+		{ id = PLUGIN_ID, scope = "project", enabled = true, installPath = bin, errors = { "not installed" } },
+	})
+	local archon = vim.fs.joinpath(bin, "archon")
+	write_executable(archon, "#!/bin/sh\nexit 0")
+	local env = stub_env(bin, { HOME = H.tempdir(child), ARCHON = archon })
+	local result = H.system(child, { "make", "loop-setup" }, repo, env)
+	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
+	local calls = child.lua_get("vim.fn.filereadable(...) == 1 and vim.fn.readfile(...) or {}", { log })
+	local installed = vim.list_contains(calls, "plugin install " .. PLUGIN_ID .. " --scope user")
+	eq(installed, true, { fail_reason = table.concat(calls, "\n") })
+end
+
+return T

@@ -3,6 +3,9 @@ description: Turn an OpenSpec change into a TDD task plan
 ---
 # Plan
 
+First, load each of these skills with the Skill tool, before any other step:
+`superpowers:writing-plans`. If one does not load, stop and report the error naming it.
+
 Change: openspec/changes/$INPUTS.change/
 User feedback from the approval gate (may be empty, it overrides the proposal): $INPUTS.feedback
 

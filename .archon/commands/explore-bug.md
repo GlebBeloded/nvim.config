@@ -4,6 +4,9 @@ argument-hint: <bug description or openspec change id>
 ---
 # Explore the bug
 
+First, load each of these skills with the Skill tool, before any other step:
+`superpowers:systematic-debugging`. If one does not load, stop and report the error naming it.
+
 Bug: $ARGUMENTS
 
 Use the `superpowers:systematic-debugging` skill (phase 1-3 only: reproduce, trace, root cause).

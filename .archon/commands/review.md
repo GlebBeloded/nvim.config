@@ -3,6 +3,9 @@ description: Independent AI review of the change branch
 ---
 # Review
 
+First, load each of these skills with the Skill tool, before any other step:
+`superpowers:requesting-code-review`. If one does not load, stop and report the error naming it.
+
 Change id: $INPUTS.change. Diff: `git diff $(git merge-base HEAD $BASE_BRANCH)` plus untracked files.
 
 Use `superpowers:requesting-code-review` as the checklist, acting as the reviewer yourself. Judge

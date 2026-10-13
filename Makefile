@@ -134,6 +134,7 @@ CLEANUP = { git fetch -q local; $(ARCHON) isolation cleanup --merged; } >/dev/nu
 loop-setup: # self-remote: Archon cuts worktrees from <remote>/auto, and auto stays local
 	@git remote get-url local >/dev/null 2>&1 || git remote add local "$$(git rev-parse --path-format=absolute --git-common-dir | sed 's|/.git$$||')"
 	@git fetch -q local
+	@python3 .archon/scripts/skills_check.py --install-plugins
 	@$(MAKE) -s loop-register
 	@$(ARCHON) doctor | grep -E '✓|✗' || true
 
