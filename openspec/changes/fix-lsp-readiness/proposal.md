@@ -16,7 +16,7 @@ Adopt: loop/fix-20261013-125627
 - `lsp`: add language-server readiness and Lua editor type-metadata requirements. Diagnostic sign requirements are unchanged.
 
 ## Impact
-- Code: `.luarc.jsonc`, `tests/luarc.types.jsonc`, `tests/types.sh`, `tests/helpers.lua`, `tests/integration/lsp/test_readiness.lua`, and `docs/testing.md`.
+- Code: `.luarc.jsonc`, `tests/luarc.types.jsonc`, `tests/types.sh`, `tests/helpers.lua`, `tests/parallel.lua`, `tests/integration/lsp/test_readiness.lua`, and `docs/testing.md`.
 - Plugins: no dependency is added, removed or upgraded; the existing `folke/lazydev.nvim` setup supplies editor metadata.
 - Core keymaps: unchanged.
 - Out of scope: gopls readiness in large modules; unmeasured terraform, yaml, json, html, css and bash servers; rust-analyzer (owned by rustaceanvim); shared or daemon servers.
