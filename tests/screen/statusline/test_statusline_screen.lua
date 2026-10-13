@@ -1,15 +1,18 @@
 -- Reference screenshots of the global statusline row (tests/screenshots/).
 -- Update with `make screenshots` (UPDATE_SCREENSHOTS=1) after an intended change.
 local H = require("tests.helpers")
+local MiniTest = require("mini.test")
 
 local child = H.new_child()
 
---- A Lua file in a non-git temp dir (no branch/diff) without an LSP client,
---- so the language chip shows the deterministic "no LSP" cap.
+--- A Lua file in a non-git temp dir (no branch/diff) without an LSP client
+--- (lua_ls and none-ls's Lua sources kept off), so the language chip shows
+--- the deterministic "no LSP" cap.
 local function start()
 	child.start_config()
 	child.wait_very_lazy()
 	child.lua([[vim.lsp.enable("lua_ls", false)]])
+	child.lua([[require("null-ls").disable({ filetypes = { "lua" } })]])
 	local dir = vim.fn.tempname()
 	vim.fn.mkdir(dir, "p")
 	child.cmd("cd " .. dir .. " | edit sample.lua")
@@ -24,17 +27,24 @@ local function expect_statusline_screenshot(mode_label)
 	H.expect_screenshot(H.screen_rows(child, -1))
 end
 
+--- The chip's left cap is red only while no LSP client is attached.
+local function expect_no_lsp_client()
+	MiniTest.expect.equality(child.lua_get("#vim.lsp.get_clients({ bufnr = 0 })"), 0)
+end
+
 -- gruvbox-material (medium, dark) colors the masks cannot see: a mask compares
 -- each cell with its own group, so the groups' palette colors are pinned here.
 local DARK = "#282828"
+local ERR = "#ea6962" -- "no LSP" chip cap (palette err)
 local CHIP = { fg = "#ddc7a1", bg = "#413a36" } -- language chip (palette chip_bg / text_hi)
 
 local T = H.child_set(child, start)
 
 T["statusline: statusline matches reference screenshot"] = function()
 	expect_statusline_screenshot("NORMAL")
+	expect_no_lsp_client()
 	H.expect_screen_colors(child, -1, {
-		"aaaaaaaacccccccccccccccccccccccccccccccccccccccccccccccccccccccceeeeewwwwtlttttt",
+		"aaaaaaaacccccccccccccccccccccccccccccccccccccccccccccccccccccceeeeewwwwrtltttttg",
 	}, {
 		a = "lualine_a_normal",
 		c = "lualine_c_normal",
@@ -42,16 +52,20 @@ T["statusline: statusline matches reference screenshot"] = function()
 		w = "lualine_x_diagnostics_warn_normal",
 		t = "StatuslineLangText",
 		l = "StatuslineLang_lua",
+		r = "StatuslineLangCapError",
+		g = "StatuslineLangEdge",
 	})
 	H.expect_hl_colors(child, "lualine_a_normal", { fg = DARK, bg = "#a9b665", bold = true })
 	H.expect_hl_colors(child, "StatuslineLangText", CHIP)
+	H.expect_hl_colors(child, "StatuslineLangCapError", { fg = ERR })
 end
 
 T["statusline: insert mode accent matches reference screenshot"] = function()
 	child.type_keys("i")
 	expect_statusline_screenshot("INSERT")
+	expect_no_lsp_client()
 	H.expect_screen_colors(child, -1, {
-		"aaaaaaaacccccccccccccccccccccccccccccccccccccccccccccccccccccccceeeeewwwwtlttttt",
+		"aaaaaaaacccccccccccccccccccccccccccccccccccccccccccccccccccccceeeeewwwwrtltttttg",
 	}, {
 		a = "lualine_a_insert",
 		c = "lualine_c_normal", -- the theme has no Insert c section, so lualine draws Normal's
@@ -59,9 +73,12 @@ T["statusline: insert mode accent matches reference screenshot"] = function()
 		w = "lualine_x_diagnostics_warn_insert",
 		t = "StatuslineLangText",
 		l = "StatuslineLang_lua",
+		r = "StatuslineLangCapError",
+		g = "StatuslineLangEdge",
 	})
 	H.expect_hl_colors(child, "lualine_a_insert", { fg = DARK, bg = "#7daea3", bold = true })
 	H.expect_hl_colors(child, "StatuslineLangText", CHIP)
+	H.expect_hl_colors(child, "StatuslineLangCapError", { fg = ERR })
 end
 
 return T
