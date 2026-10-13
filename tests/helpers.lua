@@ -535,6 +535,13 @@ function M.system(child, cmd, cwd, env)
 	})
 end
 
+--- How much slower the host runs than idle: the 1-min load average per CPU, at least 1. Timing
+--- checks multiply their deadlines by it; read on each call, so a test can stub `vim.uv.loadavg`.
+---@return number
+function M.load_factor()
+	return math.max(1, vim.uv.loadavg() / vim.uv.available_parallelism())
+end
+
 --- Fresh temp directory of the child, as a resolved real path.
 ---@param child MiniTest.child
 ---@return string

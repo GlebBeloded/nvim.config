@@ -9,6 +9,8 @@
 #                         in the guest's GUI session
 #                         (SANDBOX_START=0: print a skip line instead of booting a stopped VM)
 # Inside a VM, `sandbox.sh e2e` runs the harness directly (make e2e-local).
+# The commands that change the guest (all but status) are serialized across checkouts by
+# $SANDBOX_STATE/lock (tests/sandbox/lock.sh): a second one waits until the first exits.
 set -euo pipefail
 
 VM=${SANDBOX_VM:-nvim-e2e}
@@ -24,6 +26,9 @@ GUEST_DATA=/Users/$GUEST_USER/.local/share/nvim
 NVIM_VERSION=0.12.5 ZELLIJ_VERSION=0.45.1 ALACRITTY_VERSION=0.17.0
 PROVISION_REV=3 # bump when provision() changes
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
+LOCK=$STATE/lock # held by this process until it exits
+# shellcheck source=tests/sandbox/lock.sh
+source "$ROOT/tests/sandbox/lock.sh"
 export LUME_TELEMETRY_ENABLED=false LUME_UPDATE_CHECK=false
 
 log() { printf 'sandbox: %s\n' "$*" >&2; }
@@ -337,6 +342,7 @@ e2e() {
 		echo "e2e: SKIPPED: E2E=0"
 		return
 	}
+	sandbox_lock "$LOCK"
 	if ! command -v lume >/dev/null || ! running; then
 		if [ "${SANDBOX_START:-1}" != 1 ]; then
 			echo "e2e: SKIPPED: sandbox down — make sandbox-up"
@@ -358,13 +364,19 @@ e2e() {
 
 cmd=${1:-status}
 case "$cmd" in
-up | status | e2e) "$cmd" ;;
+status | e2e) "$cmd" ;;
+up)
+	sandbox_lock "$LOCK"
+	up
+	;;
 provision)
+	sandbox_lock "$LOCK"
 	start_vm
 	provision
 	status
 	;;
 down)
+	sandbox_lock "$LOCK"
 	if command -v lume >/dev/null && running; then
 		{ bootstrap_ssh && gssh "sync"; } || true # lume stop is a power-off
 		lume stop "$VM" >/dev/null 2>&1 || true
@@ -376,6 +388,7 @@ down)
 	;;
 ssh)
 	shift
+	sandbox_lock "$LOCK"
 	gssh "$@"
 	;;
 *) die "usage: sandbox.sh up|down|status|provision|e2e|ssh <cmd>" ;;

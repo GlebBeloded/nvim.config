@@ -25,6 +25,10 @@ exit 0
 --- Runs in the child: focused_pane() of a Stack whose `zellij` is the stub,
 --- polled for terminal_0 by `M.wait_for` when `outer` (ms) is given.
 local FOCUSED_PANE = [[local stub, mode, timeout, outer = ...
+-- an idle host whatever the machine's load, so the deadlines stay unscaled
+vim.uv.loadavg = function()
+	return 0, 0, 0
+end
 local dir = vim.fn.tempname()
 vim.fn.mkdir(dir, "p")
 local zellij = vim.fs.joinpath(dir, "zellij")
@@ -88,6 +92,80 @@ T["shortcuts: The stack harness keeps a zellij CLI retry within the outer wait"]
 	eq(result.ok, false)
 	eq(result.value:find("There is no active session!", 1, true) ~= nil, true)
 	eq(result.ms < 2000, true)
+end
+
+--- Runs in the child with `vim.uv.loadavg` / `vim.uv.available_parallelism` pinned to `load` and `cpus`:
+--- `M.wait_for` from tests.shortcuts.stack on a predicate that turns true `ready` ms after the call.
+local WAIT_UNDER_LOAD = [[local load, cpus, ready, timeout = ...
+vim.uv.loadavg = function()
+	return load, load, load
+end
+vim.uv.available_parallelism = function()
+	return cpus
+end
+local M = require("tests.shortcuts.stack")
+local t0 = vim.uv.hrtime()
+local function ready_yet()
+	return (vim.uv.hrtime() - t0) / 1e6 >= ready
+end
+local ok, err = pcall(M.wait_for, ready_yet, "the ready flag", timeout)
+return { ok = ok, err = tostring(err) }]]
+
+--- Runs in the child with the load pinned: `module.fn(...)` for a `module` among tests.helpers and
+--- tests.smoke.budget.
+local CALL_UNDER_LOAD = [[local loads, cpus, module, fn, args = ...
+vim.uv.loadavg = function()
+	return unpack(loads)
+end
+vim.uv.available_parallelism = function()
+	return cpus
+end
+return require(module)[fn](unpack(args))]]
+
+---@param loads number[] 1, 5 and 15 min load average
+---@param cpus integer
+---@param module string
+---@param fn string
+---@param args? any[]
+---@return any
+local function call_under_load(loads, cpus, module, fn, args)
+	return child.lua(CALL_UNDER_LOAD, { loads, cpus, module, fn, args or {} })
+end
+
+T["load"] = MiniTest.new_set()
+
+T["load"]["shortcuts: The load factor is 1 on an idle host"] = function()
+	eq(call_under_load({ 7, 7, 7 }, 14, "tests.helpers", "load_factor"), 1)
+end
+
+T["load"]["shortcuts: The load factor is the load per CPU on a busy host"] = function()
+	eq(call_under_load({ 70, 60, 50 }, 14, "tests.helpers", "load_factor"), 5)
+end
+
+T["load"]["shortcuts: The stack harness wait stretches with host load"] = function()
+	local cpus = child.lua_get("vim.uv.available_parallelism()")
+
+	local result = child.lua(WAIT_UNDER_LOAD, { 3 * cpus, cpus, 600, 300 })
+
+	eq(result, { ok = true, err = "nil" })
+end
+
+T["load"]["shortcuts: The stack harness wait keeps its timeout on an idle host"] = function()
+	local cpus = child.lua_get("vim.uv.available_parallelism()")
+
+	local result = child.lua(WAIT_UNDER_LOAD, { 0, cpus, 600, 300 })
+
+	eq(result.ok, false)
+	eq(result.err:find("stack: timed out waiting for", 1, true) ~= nil, true)
+end
+
+T["load"]["shortcuts: The smoke startup budget scales with host load only when busy"] = function()
+	local budgets = {
+		idle = call_under_load({ 14, 14, 14 }, 14, "tests.smoke.budget", "startup_budget", { 400 }),
+		busy = call_under_load({ 42, 42, 42 }, 14, "tests.smoke.budget", "startup_budget", { 400 }),
+	}
+
+	eq(budgets, { idle = 400, busy = 1200 })
 end
 
 return T
