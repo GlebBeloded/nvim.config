@@ -15,8 +15,11 @@ local function enter_prompt(action)
 end
 
 local function normal_menu()
+	local cmdheight = vim.o.cmdheight
+	vim.o.cmdheight = 1
 	vim.api.nvim_echo({ { "99> [s]earch [v]ibe: ", "Question" } }, false, {})
 	local key = vim.fn.getcharstr()
+	vim.o.cmdheight = cmdheight
 	vim.cmd("redraw")
 	local actions = { s = nn.search, v = nn.vibe }
 	if actions[key] then
