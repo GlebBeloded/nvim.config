@@ -55,17 +55,17 @@ Notes for the tests:
   - Add `tests/screen/file-tree/test_git_status_help.lua` and its reference screenshot from the branch (`git show loop/fix-git-status-map-shadowing:<path> > <path>`).
 - [x] 1.2 Run `make test FILE=tests/integration/file-tree/test_tree.lua` and `make test FILE=tests/screen/file-tree/test_git_status_help.lua`. Expected: FAIL in the four X/gr/c cases, in both gc cases (on `auto`, `gc` is neo-tree's plain `git_commit`, so no `Committed:` note arrives) and in the help screenshot. The other 3 cases pass.
 - [x] 1.3 Commit the failing tests: `git commit -m "test(file-tree): git_status keys X, gc, gr, c (failing)"`.
-- [ ] 1.4 Run `git merge --no-ff loop/fix-git-status-map-shadowing` and resolve:
+- [x] 1.4 Run `git merge --no-ff loop/fix-git-status-map-shadowing` and resolve:
   - `lua/gleb/file_tree/init.lua`: take `auto`'s whole file (async `run_commit`, glyphs, diagnostics) plus only the branch's mapping lines: `gc`, `X`, `gr = "none"`, and no `c`.
   - `tests/integration/file-tree/test_tree.lua`: keep the 1.1 version. Drop the branch's `gc commits confirmed message` body.
   - `openspec/specs/file-tree/spec.md`: `auto`'s spec with this change's delta applied. That means no `gr` in "Git status open, close and staging actions"; "Git status revert and key ownership"; "Git status AI commit" with its three scenarios; "Git status push". Everything else stays as on `auto`.
   - `tests/sandbox/sandbox.sh`: keep `auto`'s `sandbox_lock`, and drop `E2E_LOCK`, `lock_e2e` and its call.
   - `tests/integration/file-tree/test_diff_preview.lua`: `ASYNC_MS = 10000` with `auto`'s comment.
   - `git rm -r openspec/changes/archive/2026-10-13-fix-git-status-map-shadowing/`: ship's `openspec archive` recreates it.
-- [ ] 1.5 Run `make test FILE=tests/integration/file-tree/test_tree.lua`. Expected: all 9 cases PASS, and `grep -n '"file-tree: c ' tests/integration/file-tree/test_tree.lua` matches only "c is copy in git status tree".
-- [ ] 1.6 Run `make test FILE=tests/screen/file-tree/test_git_status_help.lua`. Expected: PASS, with the screenshot rows matching the Proposed render in design.md (apart from the header path). If `auto`'s glyphs change the tree rows, delete the reference, run once to write it, check it against the render, then run again. Expected: PASS.
-- [ ] 1.7 Run `openspec validate fix-git-status-map-shadowing --strict --no-interactive`. Expected: valid. Then run a trial `openspec archive fix-git-status-map-shadowing --yes` on a scratch copy of `openspec/`. Expected: the specs are already in sync, and `openspec validate --specs --strict` passes there.
-- [ ] 1.8 Commit the merge (`git commit`, keeping the default merge message plus `fix: fix-git-status-map-shadowing`).
+- [x] 1.5 Run `make test FILE=tests/integration/file-tree/test_tree.lua`. Expected: all 9 cases PASS, and `grep -n '"file-tree: c ' tests/integration/file-tree/test_tree.lua` matches only "c is copy in git status tree".
+- [x] 1.6 Run `make test FILE=tests/screen/file-tree/test_git_status_help.lua`. Expected: PASS, with the screenshot rows matching the Proposed render in design.md (apart from the header path). If `auto`'s glyphs change the tree rows, delete the reference, run once to write it, check it against the render, then run again. Expected: PASS.
+- [x] 1.7 Run `openspec validate fix-git-status-map-shadowing --strict --no-interactive`. Expected: valid. Then run a trial `openspec archive fix-git-status-map-shadowing --yes` on a scratch copy of `openspec/`. Expected: the specs are already in sync, and `openspec validate --specs --strict` passes there.
+- [x] 1.8 Commit the merge (`git commit`, keeping the default merge message plus `fix: fix-git-status-map-shadowing`).
 
 ### Task 2: Stale references and the gate
 
