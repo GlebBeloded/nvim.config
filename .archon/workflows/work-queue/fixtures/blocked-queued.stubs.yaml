@@ -1,0 +1,16 @@
+# g5. a queued change with a `## Blocked` section (fixtures/changes/blocked-change, LOOP_CHANGES_DIR):
+# blocked (real) quotes it, spec and build never run, the blocked gate shows the quote and the run stops.
+fixture:
+  expect: cancelled
+  inputs: { change: blocked-change }
+  reached: [pick, adopt, adopted-state, blocked, blocked-gate, blocked-stop]
+  resolved-text-contains:
+    blocked-gate: "fixture bound conflict: pick (A) or (B)"
+exec-code: true
+skills-check: "skills ok"
+pick: { found: true, change: blocked-change, kind: fix, has_tasks: false }
+complete: "MUST-NOT-RUN"
+spec-gate: "MUST-NOT-RUN"
+preview: "MUST-NOT-RUN"
+design-decide: "MUST-NOT-RUN"
+deliver__ship: "MUST-NOT-RUN"
