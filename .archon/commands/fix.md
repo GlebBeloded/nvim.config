@@ -33,8 +33,8 @@ Regenerate a reference screenshot (`tests/screenshots/`) only when its cell diff
 a merged or base commit changed; name that commit (short hash and subject) in the commit message.
 Any other screenshot diff is a bug to fix, not a reference to update.
 
-Fixed-bound timing tests: one sample, no retry, no load factor; if over the bound on a loaded host,
-rerun the case once and escalate (`## Blocked`) if still over.
+Tests whose assertion is a time bound (readiness, startup budgets): one sample, no retry, no load factor; if over the bound on a loaded host,
+rerun the case once and escalate (`## Blocked`) if still over. Waits for a condition are different: they may scale with `H.load_factor()`.
 
 When a fix is directly verified, append one concise cause-to-action line to
 `$ARTIFACTS_DIR/lesson-candidates.txt`; start it with `loop:` when it is about loop tooling
