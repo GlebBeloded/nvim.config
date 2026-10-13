@@ -1,0 +1,14 @@
+{
+  // LuaLS config of `make types` (tests/types.sh): .luarc.jsonc plus the full library.
+  "$schema": "https://raw.githubusercontent.com/LuaLS/vscode-lua/master/setting/schema.json",
+  "runtime.version": "LuaJIT",
+  "runtime.path": ["lua/?.lua", "lua/?/init.lua", "?.lua", "?/init.lua"],
+  "runtime.pathStrict": true,
+  "diagnostics.globals": ["vim"],
+  "diagnostics.severity": {
+    "undefined-doc-name": "Information"
+  },
+  "workspace.checkThirdParty": false,
+  "workspace.library": ["$VIMRUNTIME", "${3rd}/luv/library", ".tests/deps/mini.nvim"],
+  "workspace.ignoreDir": [".tests", ".git", "plugin"]
+}

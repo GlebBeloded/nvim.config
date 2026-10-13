@@ -98,6 +98,10 @@ end
 
 local T = H.child_set(child, start)
 
+T["lsp: lua_ls ready within 1 s in this config"] = function()
+	expect_ready(H.root, "lua/gleb/lsp/config/init.lua", "lua_ls")
+end
+
 T["lsp: gopls ready within 1 s in a small module"] = function()
 	local dir = write_fixture({
 		["go.mod"] = "module example.com/ready\n\ngo 1.22",
