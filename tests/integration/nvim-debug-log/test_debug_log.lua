@@ -95,6 +95,15 @@ T["nvim-debug-log: Require alone does not log"] = function()
 	eq(log_file(), nil)
 end
 
+T["nvim-debug-log: Full config starts the log"] = function()
+	child.start_config()
+	pid = child.fn.getpid()
+	child.cmd('echom "FULL_CONFIG_LOG"')
+	expect_logged("FULL_CONFIG_LOG")
+
+	eq(vim.fs.basename(log_file()):match("^%d+_" .. pid .. "%.txt$") ~= nil, true)
+end
+
 T["nvim-debug-log: Other redirection survives a flush"] = function()
 	child.cmd("redir => g:other")
 	child.cmd('echo "OTHER_REDIR"')
