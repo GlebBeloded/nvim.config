@@ -2,6 +2,7 @@
 `make trace` (run 2026-10-12) reports `175 scenarios, 105 tested, 70 missing, 0 orphan`: 70 spec scenarios have no mini.test case named `<capability>: <scenario title>`, so their behaviour is unguarded and `make check` cannot catch a regression there.
 
 Kind: bug
+Adopt: loop/fill-trace-scenario-gaps-20261013-193801
 
 ## What Changes
 - Add one mini.test case per missing scenario, named exactly `<capability>: <scenario title>`, in the layer `docs/testing.md` prescribes (unit with stubs where the module runs alone, integration for the real config, screen for visual-only). The list from `make trace VERBOSE=1`:
@@ -93,3 +94,6 @@ Kind: bug
 - Out of scope: fixing bugs the new tests expose (each becomes its own change or uses `H.xfail` naming its queued change), new scenarios, and the `shortcuts` and `nvim-debug-log` capabilities (fully traced).
 - Out of scope: making `missing` fatal in `tests/trace.lua`. Trace counts the scenarios of active changes, which are untested until their run implements them, so a fatal `missing` would fail every other change's gate.
 - Decision (loop owner, 2026-10-13): refresh the scenario list with `make trace VERBOSE=1`; tasks of at most 5 scenarios each.
+
+## Rejected run
+- fix loop exhausted (3 attempts) with gates still red: tests,review_skipped (sandbox VM collision, flaky ship test; both fixed in the loop)
