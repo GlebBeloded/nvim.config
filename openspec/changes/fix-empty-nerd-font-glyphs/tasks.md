@@ -67,8 +67,8 @@ Scenarios: "file-tree: filesystem tree matches reference screenshot"
 
 Layer: screen (new `tests/screen/file-tree/test_tree_screen.lua`).
 
-- [ ] 6.1 Failing test: the fixture from the scenario (`docs/workflow.md`, `empty/`, `lua/gleb/`, `init.lua`), `:Neotree filesystem`, `<cr>` on `docs`, `<cr>` twice on `empty`, then `H.expect_screenshot` of the tree rows below the root row (the root row holds the temp path). Write it before 5.2 is applied (or with 5.2 reverted locally) and with no reference file: confirm the first run creates a reference with blank icon cells, delete that reference.
-- [ ] 6.2 With 5.2 applied, `make screenshots CASE="file-tree:"` creates the reference; check its text equals rows 2–6 of the Proposed tree render in design.md (glyphs in place of the stand-ins). `make test-screen CASE="file-tree:"` green.
+- [x] 6.1 Failing test: the fixture from the scenario (`docs/workflow.md`, `empty/`, `lua/gleb/`, `init.lua`), `:Neotree filesystem`, `<cr>` on `docs`, `<cr>` twice on `empty`, then `H.expect_screenshot` of the tree rows below the root row (the root row holds the temp path). Write it before 5.2 is applied (or with 5.2 reverted locally) and with no reference file: confirm the first run creates a reference with blank icon cells, delete that reference.
+- [x] 6.2 With 5.2 applied, `make screenshots CASE="file-tree:"` creates the reference; check its text equals rows 2–6 of the Proposed tree render in design.md (glyphs in place of the stand-ins). `make test-screen CASE="file-tree:"` green.
 
 ## 7. Verify
 
