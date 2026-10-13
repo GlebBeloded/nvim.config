@@ -26,7 +26,7 @@ Pyramid, bottom to top. Times are wall times of one layer on its own (in `make c
 | E2E | `make e2e` | real Alacritty window + zellij + Neovim, real macOS key events, inside the [sandbox VM](#sandbox-vm) | ~13 s warm (1 s to ready) |
 | Smoke | `make smoke` | headless start of the real config: nothing in `:messages` or stderr, no `ERROR` in `:checkhealth`, startup time within budget | ~7 s health, ~2 s startup |
 
-`make test` runs all three mini.test layers (`tests/parallel.lua`): the matched cases are sharded over `JOBS` headless workers (default cores − 2; `JOBS=1` runs serially), balanced by the case durations of earlier runs (`.tests/timings.json`), and reported as one mini.test report with fails and notes at the end. Every worker has its own sandbox (see [Isolation](#isolation)). `make screenshots`, `chain`, `stack` and `e2e` run in one process. `make deps` fetches the pinned test dependency, mini.nvim v0.18.0, into `.tests/deps` (gitignored) via `tests/bootstrap.sh`. It is not part of the plugin list. `make install` installs the static tools with brew.
+`make test` runs all three mini.test layers (`tests/parallel.lua`): the matched cases are sharded over `JOBS` headless workers (default cores − 2; `JOBS=1` runs serially), balanced by the case durations of earlier runs (`.tests/timings.json`), and reported as one mini.test report with fails and notes at the end. Every worker has its own sandbox (see [Isolation](#isolation)). `make screenshots`, `chain`, `stack` and `e2e` run in one process. `make deps` fetches the pinned test dependencies into `.tests/deps` (gitignored) via `tests/bootstrap.sh`: mini.nvim v0.18.0, and lazy.nvim and vscode-diff.nvim at their `lazy-lock.json` commits as type libraries for `make types`. They are not part of the plugin list. `make install` installs the static tools with brew.
 
 To narrow a run, use `FILE=tests/unit/session/test_key.lua make test`, `CAPS=session,keymaps make test` (only `tests/<layer>/<cap>/`) or `CASE="Move to left" make test-integration`.
 
@@ -113,7 +113,7 @@ Specs describe current behaviour, and tests assert the spec.
 Screen tests call `H.expect_screenshot(...)` (mini.test `reference_screenshot`). The references are plain text in `tests/screenshots/`, named after the case, with one block for text and one for attribute identity. They are committed.
 - A missing reference is created on the first run, and the case passes with a note. Review the new file and commit it.
 - After an intended visual change, run `make screenshots` (`UPDATE_SCREENSHOTS=1`) and review `git diff tests/screenshots`.
-- Attributes are compared by identity, not by color. For colors, assert the resolved highlight of a statusline segment: `H.expect_colors(H.statusline_colors(child, "NORMAL"), { bg = "#a9b665", bold = true })` compares only the given fields (`fg`, `bg` as `#rrggbb`, `bold`, `italic`) of the combined groups that draw the first occurrence of the text.
+- Attributes are compared by identity, not by color. For colors, `H.expect_screen_colors(child, row, mask, legend)` checks the drawn colors of every cell from screen `row` down against a mask and legend of highlight group names, in the design-render notation (`docs/workflow.md`, "Design renders"). Its failure prints the actual mask: after an intended color change, review it and paste it into the test. The mask compares each cell with its own group, so pin the absolute colors that matter (accents, chips) with `H.expect_hl_colors(child, group, { fg = "#rrggbb", bg = ..., bold = ... })`.
 
 ## Seeing the current render
 

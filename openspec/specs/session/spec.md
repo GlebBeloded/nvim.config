@@ -20,7 +20,7 @@ The config SHALL name a session `<zellij session>-<pane id>-<cwd slug>` via `req
 - **THEN** it returns `"no-zellij-0-" .. key.slugify(vim.fn.getcwd())`
 
 ### Requirement: Session resolution
-The config SHALL resolve which saved session to load with `key.resolve(name, saved)`: return `name` if it is in `saved`; otherwise return the first entry of `saved` that ends with the current cwd slug; otherwise return `nil`.
+The config SHALL resolve which saved session to load with `key.resolve(name, saved)`: return `name` if it is in `saved`; otherwise return the first entry of `saved` of the form `<zellij session>-<pane id>-<cwd slug>`, where `<cwd slug>` is the whole current cwd slug, `<pane id>` is digits and `<zellij session>` contains no `%`; otherwise return `nil`.
 
 #### Scenario: resolve prefers the exact pane key
 - **WHEN** `key.resolve("blossom-5-<cwd slug>", { "blossom-9-<cwd slug>", "blossom-5-<cwd slug>" })` is called
@@ -34,8 +34,12 @@ The config SHALL resolve which saved session to load with `key.resolve(name, sav
 - **WHEN** `key.resolve("blossom-5-<cwd slug>", { "blossom-5-%some%other%dir" })` is called
 - **THEN** it returns `nil`
 
+#### Scenario: resolve ignores a session for a deeper path with the same tail
+- **WHEN** `key.resolve("blossom-5-<cwd slug>", { "blossom-9-%baz<cwd slug>", "x-9-%baz-1-<cwd slug>" })` is called (sessions for the deeper paths `/baz<cwd>` and `/baz-1-<cwd>`)
+- **THEN** it returns `nil`
+
 ### Requirement: Restore on bare startup
-The config SHALL, on `VimEnter`, load the session returned by `key.resolve(key.session_name(), <saved sessions>)` only when Neovim was started with no file arguments (`argc(-1) == 0`), with nested autocmds enabled so `FileType` fires for restored buffers, and errors silenced.
+The config SHALL, on `VimEnter`, load the session returned by `key.resolve(key.session_name(), <saved sessions>)` only when Neovim was started with no file arguments (`argc(-1) == 0`), with nested autocmds enabled so `FileType` fires for restored buffers, and errors silenced. The saved sessions SHALL be listed newest first by modification time, so the cwd fallback picks the most recently saved session for the cwd.
 
 #### Scenario: bare nvim restores the pane session
 - **WHEN** a session named `key.session_name()` containing file `a.txt` exists and Neovim is started with no file arguments in the same cwd and zellij env
@@ -45,16 +49,20 @@ The config SHALL, on `VimEnter`, load the session returned by `key.resolve(key.s
 - **WHEN** only a session for another pane id with the same cwd exists (e.g. `$ZELLIJ_PANE_ID` changed from `9` to `5`) and Neovim is started with no file arguments
 - **THEN** after `VimEnter` that session's buffers are loaded
 
+#### Scenario: bare nvim restores the newest cwd session
+- **WHEN** sessions for pane ids `7` (containing `new.txt`) and `8` (containing `old.txt`) with the same cwd exist, pane `7`'s session file has the later modification time, and Neovim is started with no file arguments and `$ZELLIJ_PANE_ID` `9`
+- **THEN** after `VimEnter` the current buffer is `new.txt`
+
 #### Scenario: nvim with a file argument does not restore
 - **WHEN** a matching session exists and Neovim is started as `nvim b.txt`
 - **THEN** after `VimEnter` the only listed buffer is `b.txt`
 
 #### Scenario: no matching session leaves startup untouched
-- **WHEN** no saved session ends with the cwd slug and Neovim is started with no file arguments
+- **WHEN** no saved session matches the cwd (see Session resolution) and Neovim is started with no file arguments
 - **THEN** after `VimEnter` the current buffer is the empty startup buffer (or the dashboard)
 
 ### Requirement: Save on write and exit
-The config SHALL save the current layout as session `key.session_name()` (without notification) on every `BufWritePost` and on `VimLeavePre`; the session plugin's own periodic autosave is disabled.
+The config SHALL save the current layout as session `key.session_name()` (without notification) on every `BufWritePost` and on `VimLeavePre`, but only when Neovim was started with no file arguments (`argc(-1) == 0`) and at least one listed buffer has a non-empty name and an empty `buftype`; otherwise it SHALL NOT save and an existing session with that name stays unchanged. The session plugin's own periodic autosave is disabled.
 
 #### Scenario: writing a buffer saves the session
 - **WHEN** `:write` is executed on a file buffer
@@ -64,8 +72,16 @@ The config SHALL save the current layout as session `key.session_name()` (withou
 - **WHEN** `:qall` is executed
 - **THEN** a session named `key.session_name()` exists on disk and lists the buffers that were open
 
+#### Scenario: nvim with a file argument does not save the session
+- **WHEN** a session named `key.session_name()` listing `a.txt` exists, Neovim is started as `nvim b.txt`, `:write` is executed and then `:qall`
+- **THEN** the session file named `key.session_name()` is unchanged and still lists `a.txt`
+
+#### Scenario: quitting without file buffers keeps the previous session
+- **WHEN** a session named `key.session_name()` listing `a.txt` exists, Neovim is started with no file arguments, `:%bwipeout` leaves only an unnamed buffer, and `:qall` is executed
+- **THEN** the session file named `key.session_name()` is unchanged and still lists `a.txt`
+
 ### Requirement: Auto-save modified buffers
-The config SHALL automatically write modified buffers after a 1000 ms debounce, but only for buffers with an empty `buftype` whose `filetype` is not `gitcommit` or `gitrebase`.
+The config SHALL automatically write modified buffers after a 1000 ms debounce, but only for buffers with a non-empty name and an empty `buftype` whose `filetype` is not `gitcommit` or `gitrebase`.
 
 #### Scenario: modified file buffer is auto-written
 - **WHEN** a normal file buffer is changed (e.g. `ihello<Esc>` in Normal mode) and more than 1000 ms pass
@@ -78,3 +94,7 @@ The config SHALL automatically write modified buffers after a 1000 ms debounce, 
 #### Scenario: special buffer is not auto-written
 - **WHEN** a buffer with non-empty `buftype` (e.g. `nofile`) is changed and more than 1000 ms pass
 - **THEN** no write occurs and `modified` remains as set
+
+#### Scenario: unnamed buffer is not auto-written
+- **WHEN** `:enew` is executed, `ihello<Esc>` is typed in Normal mode and more than 1000 ms pass
+- **THEN** `modified` is still true and `v:errmsg` does not contain `E32`

@@ -36,6 +36,8 @@ local config = {
 	install = { colorscheme = { "gruvbox-material" } },
 	-- automatically check for plugin updates
 	checker = { enabled = false },
+	-- no plugin needs luarocks (else :checkhealth lazy wants hererocks)
+	rocks = { enabled = false },
 }
 
 -- Setup lazy.nvim

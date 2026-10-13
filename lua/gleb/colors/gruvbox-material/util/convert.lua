@@ -33,9 +33,9 @@ end
 ---@param r integer r Red component (0-255)
 ---@param g integer g Green component (0-255)
 ---@param b integer b Blue component (0-255)
----@return integer? h hue (0-360)
----@return integer? s saturation (0-360)
----@return integer? l lightness (360)
+---@return number h hue (0-1)
+---@return number s saturation (0-1)
+---@return number l lightness (0-1)
 function M.rgb_to_hsl(r, g, b)
 	r, g, b = r / 255, g / 255, b / 255
 
@@ -59,9 +59,9 @@ function M.rgb_to_hsl(r, g, b)
 	return h, s, l
 end
 
----@param h integer hue (0-360)
----@param s integer saturation (0-360)
----@param l integer lightness (360)
+---@param h number hue (0-1)
+---@param s number saturation (0-1)
+---@param l number lightness (0-1)
 ---@return integer r r Red component (0-255)
 ---@return integer g g Green component (0-255)
 ---@return integer b b Blue component (0-255)

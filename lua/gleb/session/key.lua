@@ -18,15 +18,33 @@ function M.session_name()
 	return table.concat(parts, "-")
 end
 
+-- Whether `candidate` parses as `<zellij session>-<pane id>-<slug>` with the
+-- whole slug as its tail. A zellij session name never holds `%`, so names of
+-- deeper paths that merely end with the slug (`x-9-%baz-<slug>`) are rejected.
+---@param candidate string
+---@param slug string
+---@return boolean
+local function is_cwd_session(candidate, slug)
+	if not vim.endswith(candidate, "-" .. slug) then
+		return false
+	end
+	local head = candidate:sub(1, -#slug - 2)
+	return head:match("^[^%%]+%-%d+$") ~= nil
+end
+
 -- Resolve which saved session to load: prefer the exact pane key, otherwise
--- reuse any session for this cwd (pane id changed, e.g. after resurrection).
+-- reuse the first session for this cwd (pane id changed, e.g. after
+-- resurrection); `saved` is newest first (see lua/gleb/session/init.lua).
+---@param name string
+---@param saved string[]
+---@return string?
 function M.resolve(name, saved)
 	if vim.tbl_contains(saved, name) then
 		return name
 	end
-	local cwd_suffix = M.slugify(vim.fn.getcwd())
+	local slug = M.slugify(vim.fn.getcwd())
 	for _, candidate in ipairs(saved) do
-		if vim.endswith(candidate, cwd_suffix) then
+		if is_cwd_session(candidate, slug) then
 			return candidate
 		end
 	end

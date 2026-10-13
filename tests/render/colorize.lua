@@ -11,8 +11,6 @@ local cases = require("tests.render.cases")
 
 local M = {}
 
-local DEFAULT_GROUP = "Normal"
-local UNMASKED = { ["."] = true, [" "] = true }
 local RESET = "\27[0m"
 local DIM = "\27[2m"
 
@@ -157,7 +155,7 @@ end
 ---@param renders colorize.Render[]
 ---@return string[]
 local function legend_groups(renders)
-	local groups = { [DEFAULT_GROUP] = true }
+	local groups = { [H.DEFAULT_GROUP] = true }
 	for _, render in ipairs(renders) do
 		for _, group in pairs(render.legend or {}) do
 			groups[group] = true
@@ -219,19 +217,32 @@ end
 
 -- ── output ──────────────────────────────────────────────────────────────────
 
+--- The highlight of `group`, or nil when the group does not exist.
+---@param hls table<string, colorize.Hl|vim.NIL>
+---@param group string
+---@return colorize.Hl?
+local function hl_of(hls, group)
+	local hl = hls[group]
+	if hl == vim.NIL then
+		return nil
+	end
+	-- LuaLS does not narrow on `== vim.NIL`
+	return hl --[[@as colorize.Hl]]
+end
+
 ---@param render colorize.Render
 ---@param hls table<string, colorize.Hl|vim.NIL>
 ---@return table<string, string> mask letter -> escape
 local function letter_escapes(render, hls)
-	local base = hls[DEFAULT_GROUP] ~= vim.NIL and hls[DEFAULT_GROUP] or {}
+	local base = hl_of(hls, H.DEFAULT_GROUP) or {}
 	local escapes = {}
 	for letter, group in pairs(render.legend) do
-		local hl = hls[group]
-		if hl == vim.NIL then
-			warn(("line %d: unknown highlight group [%s], shown as %s"):format(render.line, group, DEFAULT_GROUP))
+		local hl = hl_of(hls, group)
+		if not hl then
+			warn(("line %d: unknown highlight group [%s], shown as %s"):format(render.line, group, H.DEFAULT_GROUP))
 			hl = base
 		end
-		escapes[letter] = sgr(hl --[[@as colorize.Hl]], base)
+		escapes[letter] = sgr(hl, base)
 	end
 	escapes[""] = sgr(base, base)
 	return escapes
@@ -245,7 +256,7 @@ local function color_row(row, mask, escapes)
 	local cells, letters, out, current = vim.fn.split(row, [[\zs]]), vim.fn.split(mask, [[\zs]]), {}, nil
 	for col, cell in ipairs(cells) do
 		local letter = letters[col] or ""
-		local escape = (UNMASKED[letter] or not escapes[letter]) and escapes[""] or escapes[letter]
+		local escape = (H.UNMASKED[letter] or not escapes[letter]) and escapes[""] or escapes[letter]
 		if escape ~= current then
 			table.insert(out, escape)
 			current = escape

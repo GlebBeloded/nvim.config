@@ -155,8 +155,8 @@ local TARGETS = {
 local function expect_cleanup_sees_merge(target)
 	local run = run_target(make_repo(), target.args)
 	local name = target.args[1]
-	eq({ name, run.code }, { name, 0 }, run.output)
-	eq(#run.log >= 2, true, name .. ": cleanup not called\n" .. run.output)
+	eq({ name, run.code }, { name, 0 }, { fail_reason = run.output })
+	eq(#run.log >= 2, true, { fail_reason = name .. ": cleanup not called\n" .. run.output })
 	eq({ name, run.log[1] }, { name, run.log[2] })
 	local listed = vim.iter(vim.list_slice(run.log, 3)):any(function(line)
 		return vim.trim(line):find("^" .. target.branch) ~= nil
@@ -184,13 +184,13 @@ end
 ---@param run test.LoopRun
 ---@param name string
 local function expect_queue_works(run, name)
-	eq(run.code, 0, run.output)
-	eq(run.output:find("JSONDecodeError", 1, true), nil, run.output)
-	eq(run.output:find("Working on " .. name, 1, true) ~= nil, true, run.output)
+	eq(run.code, 0, { fail_reason = run.output })
+	eq(run.output:find("JSONDecodeError", 1, true), nil, { fail_reason = run.output })
+	eq(run.output:find("Working on " .. name, 1, true) ~= nil, true, { fail_reason = run.output })
 	local branched = vim.iter(run.runs):any(function(line)
 		return line:find("--branch loop/" .. name, 1, true) ~= nil
 	end)
-	eq(branched, true, table.concat(run.runs, "\n"))
+	eq(branched, true, { fail_reason = table.concat(run.runs, "\n") })
 end
 
 --- Asserts queue_pick.py, run directly in `repo` with `env`, prints one JSON object picking `name`.
@@ -199,9 +199,9 @@ end
 ---@param name string
 local function expect_picks(repo, env, name)
 	local result = system({ "python3", ".archon/scripts/queue_pick.py" }, repo, env)
-	eq(result.code, 0, result.stderr)
+	eq(result.code, 0, { fail_reason = result.stderr })
 	local ok, picked = pcall(vim.json.decode, result.stdout)
-	eq(ok, true, result.stdout)
+	eq(ok, true, { fail_reason = result.stdout })
 	eq(picked.change, name)
 end
 

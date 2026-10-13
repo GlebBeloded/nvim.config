@@ -4,7 +4,7 @@ local M = {}
 
 local function restart_basedpyright()
 	for _, client in ipairs(vim.lsp.get_clients({ name = "basedpyright" })) do
-		vim.lsp.stop_client(client.id)
+		client:stop()
 	end
 	vim.cmd("edit") -- reattach the LSP to the current buffer
 end

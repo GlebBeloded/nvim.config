@@ -53,27 +53,48 @@ local function git_close()
 	vim.cmd("Neotree close")
 end
 
+--- Whether `path` (file or directory) has staged changes, asked from git for that exact pathspec.
+---@param path string
+---@param cwd string
+---@return boolean? staged nil when git failed
+---@return string? stderr
+local function is_staged(path, cwd)
+	local result = vim.system({ "git", "diff", "--cached", "--quiet", "--", path }, { cwd = cwd, text = true }):wait()
+	if result.code == 1 then
+		return true
+	elseif result.code == 0 then
+		return false
+	end
+	return nil, result.stderr
+end
+
+--- Run git with an argument list; notify `failure_prefix .. stderr` at ERROR on a non-zero exit.
+---@param args string[]
+---@param cwd string
+---@param failure_prefix string
+local function run_git(args, cwd, failure_prefix)
+	local result = vim.system(args, { cwd = cwd, text = true }):wait()
+	if result.code ~= 0 then
+		vim.notify(failure_prefix .. vim.trim(result.stderr or ""), vim.log.levels.ERROR)
+	end
+end
+
 -- Git status: toggle stage/unstage file
 local function git_toggle_stage(state)
 	local node = state.tree:get_node()
-	if node and node.path then
-		local handle = io.popen("git diff --cached --name-only")
-		if not handle then
-			return
-		end
-		local staged_files = handle:read("*a")
-		handle:close()
-
-		local relative_path = vim.fn.fnamemodify(node.path, ":.")
-		local is_staged = staged_files:find(relative_path, 1, true) ~= nil
-
-		if is_staged then
-			vim.fn.system("git reset -- " .. vim.fn.shellescape(node.path))
-		else
-			vim.fn.system("git add " .. vim.fn.shellescape(node.path))
-		end
-		require("neo-tree.sources.manager").refresh("git_status")
+	if not (node and node.path) then
+		return
 	end
+	local cwd, path = state.path, node.path
+	local staged, stderr = is_staged(path, cwd)
+	if staged == nil then
+		vim.notify("Stage failed: " .. vim.trim(stderr or ""), vim.log.levels.ERROR)
+	elseif staged then
+		run_git({ "git", "reset", "-q", "--", path }, cwd, "Unstage failed: ")
+	else
+		run_git({ "git", "add", "--", path }, cwd, "Stage failed: ")
+	end
+	require("neo-tree.sources.manager").refresh("git_status")
 end
 
 --- Report a finished `git commit`; refresh the tree only on success.
@@ -120,6 +141,8 @@ end
 
 neo_tree.setup({
 	sources = { "filesystem", "git_status" },
+	-- neo-tree's health check validates buffers even when it is not in sources
+	buffers = { renderers = {} },
 	source_selector = {
 		winbar = false,
 		statusline = false,
