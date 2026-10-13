@@ -8,7 +8,7 @@ worktree:
   enabled: true
 nodes:
   - id: skills-check # declared skills resolve here (docs/workflow.md, Setup facts)
-    bash: python3 .archon/scripts/skills_check.py .archon/workflows/new-feature.yaml
+    bash: python3 .archon/scripts/skills_check.py .archon/workflows/new-feature/new-feature.yaml
 
   - id: explore
     command: explore-feature

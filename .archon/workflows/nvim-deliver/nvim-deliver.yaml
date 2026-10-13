@@ -20,7 +20,7 @@ returns: shipped
 nodes:
   # --- Plan ---------------------------------------------------------------------------------------
   - id: skills-check # declared skills resolve here (docs/workflow.md, Setup facts)
-    bash: python3 .archon/scripts/skills_check.py .archon/workflows/nvim-deliver.yaml
+    bash: python3 .archon/scripts/skills_check.py .archon/workflows/nvim-deliver/nvim-deliver.yaml
 
   - id: plan-check # the spec step usually wrote tasks.md already; plan only when it has no task
     bash: INPUTS_CHANGE="$INPUTS_CHANGE" python3 .archon/scripts/tasks.py --plan-needed

@@ -310,10 +310,10 @@ local YAML_TO_JSON = "import json,sys,yaml; print(json.dumps(yaml.safe_load(open
 ---@field name string
 ---@field nodes test.WorkflowNode[]
 
---- Every `.archon/workflows/*.yaml` of this checkout, parsed by PyYAML.
+--- Every `.archon/workflows/*/*.yaml` of this checkout, parsed by PyYAML.
 ---@return test.Workflow[]
 local function load_workflows()
-	local paths = vim.fn.glob(vim.fs.joinpath(H.root, ".archon/workflows/*.yaml"), false, true)
+	local paths = vim.fn.glob(vim.fs.joinpath(H.root, ".archon/workflows/*/*.yaml"), false, true)
 	return vim.tbl_map(function(path)
 		local result = H.system(child, { "python3", "-c", YAML_TO_JSON, path }, H.root)
 		eq(result.code, 0, { fail_reason = path .. "\n" .. result.stderr })
@@ -488,7 +488,7 @@ T["loop: Loop setup installs a missing Codex plugin"] = function()
 	local repo = make_setup_repo()
 	write_files(repo, {
 		[".archon/config.yaml"] = "assistant: codex",
-		[".archon/workflows/w.yaml"] = "name: w\nnodes:\n  - id: n\n    prompt: p\n    skills: [superpowers:writing-plans]",
+		[".archon/workflows/w/w.yaml"] = "name: w\nnodes:\n  - id: n\n    prompt: p\n    skills: [superpowers:writing-plans]",
 	})
 	local bin = H.tempdir(child)
 	write_claude_stub(bin, { { id = PLUGIN_ID, scope = "user", enabled = true, installPath = bin } })

@@ -84,10 +84,10 @@ When the merge into `auto` conflicts and the input `on_conflict` is `report`, `s
 - **THEN** ship exits 0 and prints one JSON object with `merged` false, `conflict` true and `files` listing that file; `auto` is unchanged, the `auto` checkout has no `MERGE_HEAD` and no staged or modified tracked files, and no ship lock file remains
 
 ### Requirement: Loop commands load the skills their node declares
-Every AI node in `.archon/workflows/*.yaml` with `skills:` SHALL use a command that names each declared skill. As its first step, the command SHALL load them all on either provider: with the Skill tool on Claude, and as `$<skill>` on Codex. It SHALL stop when one does not load.
+Every AI node in `.archon/workflows/*/*.yaml` with `skills:` SHALL use a command that names each declared skill. As its first step, the command SHALL load them all on either provider: with the Skill tool on Claude, and as `$<skill>` on Codex. It SHALL stop when one does not load.
 
 #### Scenario: Every declared skill is named and loaded by its command
-- **WHEN** each `.archon/workflows/*.yaml` is parsed (via `python3 -c 'yaml.safe_load'` in `vim.system`) and, for every node (loop nodes included) with `skills:` and a `command:`, `.archon/commands/<command>.md` is read with `vim.fn.readfile`
+- **WHEN** each `.archon/workflows/*/*.yaml` is parsed (via `python3 -c 'yaml.safe_load'` in `vim.system`) and, for every node (loop nodes included) with `skills:` and a `command:`, `.archon/commands/<command>.md` is read with `vim.fn.readfile`
 - **THEN** the command:
   - names every declared skill in backticks and as `$<skill>`;
   - tells the agent to load them with the Skill tool before any other step and to stop when one does not load;
@@ -97,7 +97,7 @@ Every AI node in `.archon/workflows/*.yaml` with `skills:` SHALL use a command t
 Every workflow SHALL run `.archon/scripts/skills_check.py` before its first skill-declaring AI node. The script SHALL fail when a declared skill does not resolve for the provider of its node. That provider is the node's `provider:`, else its loop node's `provider:`, else the `assistant:` of `.archon/config.yaml`.
 
 #### Scenario: Skill preflight runs before every skill-declaring node
-- **WHEN** each `.archon/workflows/*.yaml` is parsed
+- **WHEN** each `.archon/workflows/*/*.yaml` is parsed
 - **THEN** it has a `bash` node that runs `.archon/scripts/skills_check.py`, and every node with a `<plugin>:<skill>` in `skills:` reaches that node through `depends_on` (a loop node through its parent node)
 
 #### Scenario: Skill preflight fails on an unresolved plugin skill
@@ -114,7 +114,7 @@ Every workflow SHALL run `.archon/scripts/skills_check.py` before its first skil
 - **THEN** it exits 0
 
 #### Scenario: Configured provider resolves every declared skill here
-- **WHEN** `python3 .archon/scripts/skills_check.py .archon/workflows/*.yaml` is run via `vim.system` in this checkout, with no stubs
+- **WHEN** `python3 .archon/scripts/skills_check.py .archon/workflows/*/*.yaml` is run via `vim.system` in this checkout, with no stubs
 - **THEN** it exits 0 (the test skips with its reason when `codex` or `claude` is not on `PATH`)
 
 ### Requirement: Loop setup installs the project's Claude plugins
@@ -144,7 +144,7 @@ Every workflow SHALL run `.archon/scripts/skills_check.py` before its first skil
 - **THEN** `assistant` is `codex`, `assistants.codex.model` is `gpt-5.6-sol`, `assistants.codex.modelReasoningEffort` is `medium`, and `assistants` also has a `claude` key
 
 #### Scenario: Review runs on claude
-- **WHEN** `.archon/workflows/nvim-deliver.yaml` is parsed and its `review` node is found (loop nodes included)
+- **WHEN** `.archon/workflows/nvim-deliver/nvim-deliver.yaml` is parsed and its `review` node is found (loop nodes included)
 - **THEN** that node has `provider: claude`
 
 #### Scenario: Provider switch is documented
