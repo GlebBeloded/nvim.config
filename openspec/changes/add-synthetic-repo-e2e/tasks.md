@@ -67,11 +67,11 @@ Scenarios: `git: Cmd+G opens differ listing every change of a dirty repo`
 
 **Interfaces (consumed):** `F.copy`, `E.start_or_skip`, `StackOpts` (task 1). **Produced:** the `dirty` fixture; manifest `files` (one entry per panel entry: `d.txt` twice) and `hunks["b.txt"]` = worktree start lines of its unstaged hunks (`git diff -U0`).
 
-- [ ] 3.1 Failing test: `T["git: Cmd+G opens differ listing every change of a dirty repo"]` in `tests/e2e/git/test_differ_review.lua` (`cwd` = `F.copy("dirty", dir .. "/work")`, `layout = "nvim"`, 100x30). Press `cmd+g`; wait for `require("differ.panel").current()` with sections; assert `vim.fn.win_screenpos(panel.winid)[2] == 1`; map every `differ.FileEntry` to `{ path, staged = entry.staged == true, untracked = entry.status == "?" }` and assert the set equals `manifest.files`, and the manifest's paths are `a.txt`, `b.txt`, `d.txt` x2, `lib/c.lua`, `new.txt`.
-- [ ] 3.2 Append the delta's "Differ review workflow" requirement to `openspec/specs/git/spec.md`. Run `make e2e CASE="git: Cmd+G"`: fails (unknown fixture `dirty`).
-- [ ] 3.3 `build.sh` `dirty`: three commits (`a.txt`, `b.txt` of 19 lines `alpha`..`tau`, `lib/c.lua`, `d.txt`), then stage one added line in `a.txt`; unstaged edits on `b.txt` lines 2 and 17; one unstaged line in `lib/c.lua`; `d.txt` one staged and one unstaged change; untracked `new.txt` (3 lines). Manifest `files` from `git diff --cached --name-only`, `git diff --name-only`, `git ls-files --others --exclude-standard`; `hunks` from `git diff -U0 b.txt` (`+start` of each `@@`).
-- [ ] 3.4 Run `make e2e CASE="git: Cmd+G"` (green) and `make trace`.
-- [ ] 3.5 Commit: `feat(tests): dirty fixture and differ e2e`.
+- [x] 3.1 Failing test: `T["git: Cmd+G opens differ listing every change of a dirty repo"]` in `tests/e2e/git/test_differ_review.lua` (`cwd` = `F.copy("dirty", dir .. "/work")`, `layout = "nvim"`, 100x30). Press `cmd+g`; wait for `require("differ.panel").current()` with sections; assert `vim.fn.win_screenpos(panel.winid)[2] == 1`; map every `differ.FileEntry` to `{ path, staged = entry.staged == true, untracked = entry.status == "?" }` and assert the set equals `manifest.files`, and the manifest's paths are `a.txt`, `b.txt`, `d.txt` x2, `lib/c.lua`, `new.txt`.
+- [x] 3.2 Append the delta's "Differ review workflow" requirement to `openspec/specs/git/spec.md`. Run `make e2e CASE="git: Cmd+G"`: fails (unknown fixture `dirty`).
+- [x] 3.3 `build.sh` `dirty`: three commits (`a.txt`, `b.txt` of 19 lines `alpha`..`tau`, `lib/c.lua`, `d.txt`), then stage one added line in `a.txt`; unstaged edits on `b.txt` lines 2 and 17; one unstaged line in `lib/c.lua`; `d.txt` one staged and one unstaged change; untracked `new.txt` (3 lines). Manifest `files` from `git diff --cached --name-only`, `git diff --name-only`, `git ls-files --others --exclude-standard`; `hunks` from `git diff -U0 b.txt` (`+start` of each `@@`).
+- [x] 3.4 Run `make e2e CASE="git: Cmd+G"` (green) and `make trace`.
+- [x] 3.5 Commit: `feat(tests): dirty fixture and differ e2e`.
 
 ## 4. `]f` and `]c` in differ
 
@@ -79,11 +79,11 @@ Scenarios: `git: ]f steps to the next changed file in differ`, `git: ]c steps to
 
 **Interfaces (consumed):** task 3's stack (differ open), `require("differ").active_view()` (`.model.path`, `.columns[i].winid`, `.columns[i].map.from_new`), panel entries in section order.
 
-- [ ] 4.1 Failing tests in `tests/e2e/git/test_differ_review.lua`:
+- [x] 4.1 Failing tests in `tests/e2e/git/test_differ_review.lua`:
   - `T["git: ]f steps to the next changed file in differ"]`: over RPC focus the diff window of the last column of `active_view()`; record `active_view().model.path`; then for each following panel entry press `]`, `f` and wait until the path equals that entry's path; assert the visited list equals the panel's entry paths in order and its set equals the manifest's paths.
   - `T["git: ]c steps to the next hunk in differ"]`: press `]`, `f` until `active_view().model.path == "b.txt"` (at most one press per entry); over RPC put the cursor of the last column on `map.from_new[hunks["b.txt"][1]]`; press `]`, `c`; wait until the cursor line equals `map.from_new[hunks["b.txt"][2]]`; assert `nvim_eval_statusline(vim.wo[win].winbar, { winid = win, use_winbar = true }).str` contains `hunk 2/2`.
   Run `make e2e CASE="git: ]"`: fail or pass on first run; a pass is checked by breaking an expectation locally, then reverted.
-- [ ] 4.2 Make them pass with harness changes only. Run `make e2e CASE="git:"` (three green), `make trace` (all five scenarios tested, no orphans).
+- [x] 4.2 Make them pass with harness changes only. Run `make e2e CASE="git:"` (three green), `make trace` (all five scenarios tested, no orphans).
 - [ ] 4.3 `docs/testing.md`: `fixtures/` and `fixtures.lua` in the layout block; one paragraph "Adding a fixture" (a function in `build.sh`, its manifest keys, `F.copy` from a stack's `cwd`); the e2e row and the Sandbox VM paragraph get the measured warm time and the Go/gopls pins in the provision row; the `make quick` e2e trigger list adds fixtures, `lua/gleb/lsp/`, `lua/gleb/git/`.
 - [ ] 4.4 Run `make check E2E=1`: green; warm `make e2e` within ~23 s.
 - [ ] 4.5 Commit: `test(e2e): differ file and hunk navigation; docs`.
@@ -92,6 +92,7 @@ Scenarios: `git: ]f steps to the next changed file in differ`, `git: ]c steps to
 
 - **Resolved (attempt 3): `gr` on the declaration lists 4 entries, not 5.** `telescope.builtin.lsp_references` defaults to `include_current_line = false`, so the declaration under the cursor is dropped. The requirement asks for the declaration, so it is a config fault: queued as `fix-lsp-references-current-line`, and the case is wrapped in `H.xfail` (global constraint). Task 2's case opens the picker without depending on the count.
 - Notes for the reviewer:
+  - Differ opens on the first unstaged file (`lib/c.lua`), not the panel's first row, and `]f` wraps: the `]f` case asserts the panel's row order (`panel.meta` file rows: staged section, then the unstaged tree) rotated to start at the panel's current entry. `]f` moves focus out of the diff window, so the `]c` case focuses the last column again before setting the cursor.
   - `GOPLS_VERSION=0.23.0`, not 0.21.1: the host's gopls is v0.23.0 (`gopls version`), and the rule is "pinned to the host's versions".
   - Harness fixes found on the way: null-ls's `golangci_lint` source is disabled over RPC in the test (golangci-lint is not in the sandbox; its "not executable" message hit a hit-enter prompt under `cmdheight=0` and blocked Neovim); `E.alive` now probes RPC with `nvim_get_mode`, so Neovim waiting on `timeoutlen` (`gr` vs the built-in `grr`/`gra`) is not reported as a dead stack.
   - The shared VM: parallel worktrees rsync into the same guest path (`/Users/lume/nvim`, with `--delete`) and reset `~/.nvim-e2e-provisioned` to their own `PROVISION_REV`; the runs above used a private guest dir. The queued VM lock fix covers the first; the rev ping-pong stays until every branch has rev 4.

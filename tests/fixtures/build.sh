@@ -3,6 +3,7 @@
 # (repo/ + manifest.json with the facts the tests assert), cached by the hash of
 # this script (plus `go version` for gomod). Prints the cache dir.
 #   build.sh gomod   stdlib-only Go module, money.Format referenced across packages
+#   build.sh dirty   repo with staged, unstaged and untracked changes (differ review)
 # Git is hermetic: no user or system config, fixed author, committer and dates.
 set -eu
 root=$(cd "$(dirname "$0")/../.." && pwd)
@@ -109,6 +110,52 @@ EOF
 		internal/money/money_test.go billing/invoice.go report/summary.go)" >../manifest.json
 }
 
+# stdin: paths, one per line; $1, $2: staged, untracked. JSON fixtures.Entry list items
+file_entries() {
+	awk -v staged="$1" -v untracked="$2" '
+		{ printf "%s{\"path\":\"%s\",\"staged\":%s,\"untracked\":%s}", sep, $0, staged, untracked; sep = "," }'
+}
+
+# $1 path: JSON list of the worktree start lines of its unstaged hunks
+hunk_starts() {
+	git diff -U0 -- "$1" | awk '
+		/^@@/ { split($3, new, ","); printf "%s%d", sep, substr(new[1], 2); sep = "," }'
+}
+
+# $1 file, $2 line, $3 text: replace line $2 of $1
+replace_line() {
+	awk -v n="$2" -v text="$3" 'NR == n { $0 = text } { print }' "$1" >"$1.new"
+	mv "$1.new" "$1"
+}
+
+dirty() {
+	git init -q
+	printf 'one\ntwo\n' >a.txt
+	commit "add a.txt"
+	for word in alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu nu xi omicron pi rho sigma tau; do
+		echo "$word"
+	done >b.txt
+	mkdir lib
+	printf 'local M = {}\n\nreturn M\n' >lib/c.lua
+	commit "add b.txt and lib/c.lua"
+	printf 'first\nsecond\nthird\n' >d.txt
+	commit "add d.txt"
+	echo three >>a.txt
+	git add a.txt
+	replace_line b.txt 2 BETA
+	replace_line b.txt 17 RHO
+	replace_line lib/c.lua 2 'M.version = 1'
+	replace_line d.txt 1 FIRST
+	git add d.txt
+	replace_line d.txt 3 THIRD
+	printf 'new\nuntracked\nfile\n' >new.txt
+	staged=$(git diff --cached --name-only | file_entries true false)
+	unstaged=$(git diff --name-only | file_entries false false)
+	untracked=$(git ls-files --others --exclude-standard | file_entries false true)
+	printf '{"files":[%s,%s,%s],"hunks":{"b.txt":[%s]}}\n' "$staged" "$unstaged" "$untracked" \
+		"$(hunk_starts b.txt)" >../manifest.json
+}
+
 # cache key input: this script, plus the Go toolchain for Go fixtures
 key_input() {
 	cat "$0"
@@ -118,7 +165,7 @@ key_input() {
 }
 
 case "$name" in
-gomod) ;;
+gomod | dirty) ;;
 *)
 	echo "build.sh: unknown fixture '$name'" >&2
 	exit 2
