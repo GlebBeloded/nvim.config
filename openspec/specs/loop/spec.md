@@ -62,7 +62,7 @@ The repo root SHALL expose the agent rules as both `CLAUDE.md` and `AGENTS.md`, 
 - **THEN** make exits 0, its output contains `Working on <newer change>` and no `JSONDecodeError`, and the stub was called with `--branch loop/<newer change>`, while `python3 .archon/scripts/queue_pick.py` run in the same repo prints a stdout that `vim.json.decode` parses as one object with `change` equal to the newer change
 
 ### Requirement: Rejected run is re-queued once
-After a judge reject, `.archon/scripts/followup.py` SHALL re-queue the work on `auto` under the ship lock with no second change for the same work: when `openspec/changes/<change>/proposal.md` is on `auto`, it SHALL rewrite that proposal to hold one `Adopt: <rejected branch>` line and one `## Rejected run` section with the judge's reasons; otherwise it SHALL queue a new change `followup-<change>` that adopts the branch. It prints `{queued, change}`.
+After a judge reject, `.archon/scripts/followup.py` SHALL re-queue the work on `auto` under the ship lock with no second change for the same work: when `openspec/changes/<change>/proposal.md` is on `auto`, it SHALL rewrite that proposal to hold one `Adopt: <rejected branch>` line and one `## Rejected run` section with the judge's reasons; otherwise it SHALL queue a new change `followup-<change>` that adopts the branch, and leave no worktree of its own on any exit. It prints `{queued, change}`.
 
 #### Scenario: Rejected active change is re-queued in place
 - **WHEN** `python3 .archon/scripts/followup.py` runs with `INPUTS_CHANGE=x` and `INPUTS_REASONS` in a worktree on `loop/x-20260101` of a throwaway repo whose main checkout is on `auto` and holds `openspec/changes/x/proposal.md` with `Kind: bug`, an `Adopt: loop/x` line and an old `## Rejected run` section
@@ -75,6 +75,10 @@ After a judge reject, `.archon/scripts/followup.py` SHALL re-queue the work on `
 #### Scenario: Rejected archived change gets a follow-up change
 - **WHEN** followup.py runs with `INPUTS_CHANGE=x` where `auto` has no `openspec/changes/x/proposal.md`
 - **THEN** it prints `queued` true and `change` `followup-x`, and `openspec/changes/followup-x/proposal.md` on `auto` has the line `Adopt: <branch>` and the reasons
+
+#### Scenario: Follow-up leaves no worktree when checkout fails
+- **WHEN** followup.py runs where `auto` is checked out in no worktree and a `post-checkout` hook exits 1, then again without the hook
+- **THEN** the first run exits non-zero with empty stdout, leaves `auto`, `git worktree list` and the ship lock as before; the second queues `followup-x` and leaves `git worktree list` as before
 
 ### Requirement: Queue waits for a change's dependencies
 `.archon/scripts/queue_pick.py` SHALL not pick a change whose proposal.md has a `Depends: <change>[, <change>]` line until every named change is archived under `openspec/changes/archive/`, whether it is picked automatically or named by `INPUTS_CHANGE`.
@@ -433,6 +437,25 @@ The delivery loop SHALL implement one task per fresh agent session from a script
 #### Scenario: A rejected judge never ships
 - **WHEN** `.archon/scripts/decide.py` runs with `INPUTS_VERDICT=reject` and no gate decision
 - **THEN** its JSON `go` is false
+
+### Requirement: Judge tells a tested rename from a removal
+The judge SHALL count a removed main-spec scenario as renamed when, one for one, an added scenario of the same capability (or the capability Git sees its spec renamed to) gains its `<capability>: <title>` test and the old test name is removed; a renamed capability's renamed tests are kept too. `## RENAMED Requirements` is no removal. Test cases SHALL be compared by name, so an added case never offsets a lost one.
+
+#### Scenario: Judge ships a tested scenario rename
+- **WHEN** `.archon/scripts/escalation.py` runs on a branch that retitles scenario `old title` of capability `c` to `new title` and renames test `c: old title` to `c: new title`, on one that only reorders scenarios, and on one whose change delta has a `## RENAMED Requirements` section applied to the main spec
+- **THEN** each JSON `decision` is `ship`
+
+#### Scenario: Judge ships a renamed capability
+- **WHEN** `.archon/scripts/escalation.py` runs on a branch that moves `openspec/specs/a/spec.md` to `openspec/specs/b/spec.md` unchanged and renames tests `a: one`, `a: two` to `b: one`, `b: two`
+- **THEN** its JSON `decision` is `ship`
+
+#### Scenario: Judge asks for a scenario removal a rename does not cover
+- **WHEN** `.archon/scripts/escalation.py` runs on a branch that removes scenario `old title` of `c` and keeps test `c: old title`, one that retitles it while keeping the old test beside `c: new title`, and one that retitles it with no test change
+- **THEN** each JSON `decision` is `ask` and `reasons` names `c: old title`
+
+#### Scenario: Judge rejects a lost test case by name
+- **WHEN** `.archon/scripts/escalation.py` runs on a branch that replaces test `c: kept` by `c: unrelated` (same case count), one that does so inside a nested `T["group"]` set, and one that moves scenario `old title` to capability `d` as `new title` with its test renamed to `d: new title`
+- **THEN** each JSON `decision` is `reject` and `reasons` names the lost case (`c: kept`, `c: old title`), never the group
 
 ### Requirement: Loop keeps the user's contract
 The loop SHALL leave the user's contract to the user: no step changes a requirement's bounds or the `## Decision` text unasked, main specs change only by archive, and a `## Blocked` section in a change's proposal.md or tasks.md stops agent work on it, is quoted to the user, and never ships, until a later user `## Decision` resolves it.

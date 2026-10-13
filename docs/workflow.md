@@ -82,7 +82,9 @@ editor.
   the absolute path of `preview.html`; nothing opens on the host (no `open`, `osascript` or browser).
 - The judge (`.archon/scripts/escalation.py`) asks only for breaking changes: a plugin added or removed,
   a core keymap or the leader changed, behaviour (a spec scenario) removed, a requirement removed and
-  re-added, or your `## Decision` text reworded.
+  re-added, or your `## Decision` text reworded. A scenario or capability renamed together with its
+  `<capability>: <title>` tests, or a `## RENAMED Requirements` delta, is no removal; test cases count
+  by name, so a lost one is rejected even when others are added.
 - A `## Blocked` section in a change's proposal.md or tasks.md: `work-queue` stops before spec, and a
   build loop stops at once; you get its text, the change never ships and is re-queued. Answer in
   `## Decision` and delete the `## Blocked` section.

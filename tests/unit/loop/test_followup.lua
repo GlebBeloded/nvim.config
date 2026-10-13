@@ -138,4 +138,37 @@ T["loop: Rejected archived change gets a follow-up change"] = function()
 	eq(#matching(proposal, "^%- new reason$"), 1)
 end
 
+--- `git rev-parse auto` and `git worktree list --porcelain` of `repo`.
+---@param repo string
+---@return string[]
+local function state(repo)
+	return {
+		git_ok({ "rev-parse", "auto" }, repo).stdout,
+		git_ok({ "worktree", "list", "--porcelain" }, repo).stdout,
+	}
+end
+
+T["loop: Follow-up leaves no worktree when checkout fails"] = function()
+	local repo = make_repo()
+	local run = vim.fs.joinpath(H.tempdir(child), "run")
+	git_ok({ "worktree", "add", "-q", "-b", BRANCH, run, "auto" }, repo)
+	git_ok({ "checkout", "-q", "-b", "other" }, repo) -- auto checked out nowhere: followup uses a temp worktree
+	local hook = vim.fs.joinpath(repo, ".git/hooks/post-checkout")
+	child.fn.mkdir(vim.fs.dirname(hook), "p")
+	child.fn.writefile({ "#!/bin/sh", "exit 1" }, hook)
+	child.lua("vim.uv.fs_chmod(..., 493)", { hook })
+	local before = state(repo)
+	local env =
+		vim.tbl_extend("force", H.GIT_ENV, { BASE_BRANCH = "auto", INPUTS_CHANGE = "x", INPUTS_REASONS = REASONS })
+	local failed = H.system(child, { "python3", FOLLOWUP }, run, env)
+	eq({ failed.code ~= 0, failed.stdout }, { true, "" })
+	eq(state(repo), before)
+	eq(exists(repo, ".git/nvim-ship.lock"), false)
+	child.fn.delete(hook)
+	local result = H.system(child, { "python3", FOLLOWUP }, run, env)
+	eq(vim.json.decode(result.stdout), { queued = true, change = "followup-x" })
+	eq(state(repo)[2], before[2])
+	eq(#matching(read_auto(repo, "openspec/changes/followup-x/proposal.md"), "^Adopt: "), 1)
+end
+
 return T

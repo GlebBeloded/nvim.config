@@ -10,7 +10,10 @@ import subprocess
 
 BASE = os.environ.get("BASE_BRANCH") or "auto"
 PLUGIN_NAME = re.compile(r'"([\w.-]+/[\w.-]+)"')
-CASE_RE = re.compile(r'^\s*T\["')
+CASE_CHAIN = re.compile(r'^\s*T((?:\["[^"]+"\])+)')
+CASE_KEY = re.compile(r'\["([^"]+)"\]')
+SPEC_HEADER = re.compile(r"^diff --git a/openspec/specs/([^/]+)/spec\.md b/openspec/specs/([^/]+)/spec\.md$")
+SCENARIO = re.compile(r"^#### Scenario:\s*(.+?)\s*$")
 XFAIL_RE = re.compile(r'H\.xfail\(\s*"([\w.-]+)')
 DELTA_SECTION = re.compile(r"^## (ADDED|MODIFIED|REMOVED|RENAMED) Requirements\s*$", re.MULTILINE)
 REQUIREMENT = re.compile(r"^### Requirement:\s*(.+?)\s*$", re.MULTILINE)
@@ -37,6 +40,75 @@ def changed_files(pattern: str) -> list[str]:
     base = git("merge-base", "HEAD", BASE).strip()
     names = git("diff", "--cached", "--name-only", base, "--", "openspec/changes").split()
     return [n for n in names if re.fullmatch(pattern, n) and "/archive/" not in n and os.path.isfile(n)]
+
+
+def net(removed: set[str], added: set[str]) -> tuple[set[str], set[str]]:
+    """Identities only on one side of a diff: a moved or reordered line is neither removed nor added."""
+    return removed - added, added - removed
+
+
+def test_cases() -> tuple[set[str], set[str]]:
+    """Removed and added mini.test case names (the last key of a `T["..."]["..."]` chain)."""
+    tests = diff("tests/")
+    removed = {CASE_KEY.findall(m.group(1))[-1] for l in lines(tests, "-") if (m := CASE_CHAIN.match(l))}
+    added = {CASE_KEY.findall(m.group(1))[-1] for l in lines(tests, "+") if (m := CASE_CHAIN.match(l))}
+    return net(removed, added)
+
+
+def scenarios() -> tuple[set[str], set[str]]:
+    """Removed and added main-spec scenarios as `<capability>: <title>`, the names tests use."""
+    removed: set[str] = set()
+    added: set[str] = set()
+    old = new = None
+    for line in diff("openspec/specs").splitlines():
+        if line.startswith("diff --git "):
+            header = SPEC_HEADER.match(line)
+            old, new = header.groups() if header else (None, None)
+            continue
+        title = SCENARIO.match(line[1:]) if old and line[:1] in "+-" and not line.startswith(("+++", "---")) else None
+        if title:
+            (removed if line[0] == "-" else added).add(f"{old if line[0] == '-' else new}: {title.group(1)}")
+    return net(removed, added)
+
+
+def capability_renames() -> dict[str, str]:
+    """Old to new capability for each main spec Git sees renamed (`openspec/specs/<capability>/spec.md`)."""
+    base = git("merge-base", "HEAD", BASE).strip()
+    rows = git("diff", "--cached", "-M", "--name-status", base, "--", "openspec/specs").splitlines()
+    renames = {}
+    for row in rows:
+        status, *paths = row.split("\t")
+        if status.startswith("R") and len(paths) == 2:
+            old, new = (p.split("/") for p in paths)
+            if len(old) == len(new) == 4:
+                renames[old[2]] = new[2]
+    return renames
+
+
+class Coverage:
+    """Scenario and test-case changes of the branch, with tested renames paired off: a removed scenario
+    is renamed when an added scenario of the same (or renamed) capability is too, the old case name is
+    removed and the new one added, one for one. A case renamed with its capability is renamed too."""
+
+    def __init__(self) -> None:
+        self.gone, new = scenarios()
+        self.lost, cases = test_cases()
+        moved = capability_renames()
+
+        def cap(identity: str) -> str:
+            name = identity.split(": ", 1)[0]
+            return moved.get(name, name)
+
+        for capability in sorted({cap(s) for s in self.gone}):
+            old = sorted(s for s in self.gone if cap(s) == capability and s in self.lost)
+            fresh = sorted(s for s in new if cap(s) == capability and s in cases)
+            for before, _ in zip(old, fresh):
+                self.gone.discard(before)
+                self.lost.discard(before)
+        for case in list(self.lost):
+            name, _, title = case.partition(": ")
+            if name in moved and f"{moved[name]}: {title}" in cases:
+                self.lost.discard(case)
 
 
 def delta_requirements(text: str) -> dict[str, list[str]]:
@@ -91,9 +163,9 @@ def hard_rule_violations() -> list[str]:
     deleted = git("diff", "--cached", "--diff-filter=D", "--name-only", base, "--", "tests/").split()
     if deleted:
         reasons.append("test files deleted: " + ", ".join(deleted))
-    lost = len([l for l in lines(tests, "-") if CASE_RE.match(l)]) - len([l for l in lines(tests, "+") if CASE_RE.match(l)])
-    if lost > 0:
-        reasons.append(f"{lost} test case(s) removed")
+    lost = sorted(Coverage().lost)  # by name: an unrelated new case cannot offset a lost one
+    if lost:
+        reasons.append(f"{len(lost)} test case(s) removed: " + ", ".join(lost))
     for line in lines(tests, "+"):
         if "H.xfail(" not in line:
             continue
@@ -123,10 +195,7 @@ def breaking_changes() -> list[str]:
     keymaps = diff("lua/gleb/keymaps.lua")
     if any(re.search(r"keymap\.set|mapleader|nvim_set_keymap", l) for l in lines(keymaps, "+") + lines(keymaps, "-")):
         reasons.append("changes core keymaps (lua/gleb/keymaps.lua)")
-    specs = diff("openspec/specs")
-    gone = set(l for l in lines(specs, "-") if l.startswith("#### Scenario:")) - set(
-        l for l in lines(specs, "+") if l.startswith("#### Scenario:")
-    )
+    gone = sorted(Coverage().gone)  # a tested rename is not a removal
     removed_req = any(l.startswith("## REMOVED Requirements") for l in lines(diff("openspec/changes"), "+"))
     if gone or removed_req:
         reasons.append("removes behaviour: " + ("; ".join(sorted(gone)) if gone else "REMOVED Requirements"))
