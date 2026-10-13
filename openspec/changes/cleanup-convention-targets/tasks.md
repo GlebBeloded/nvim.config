@@ -171,12 +171,12 @@ Scenarios: none (Static layer: `make types`). Regression guards: `make check`.
 **Files:** `statusline/copilot.lua`, `statusline/language.lua`, `statusline/lsp_progress.lua`,
 `session/key.lua`, `git/ai_commit.lua`, `file_tree/diff_preview.lua`
 
-- [ ] 7.1 **Failing test.** `rg -n -B1 '^function M[.:]' lua/gleb/{statusline/copilot,statusline/language,statusline/lsp_progress,session/key,git/ai_commit,file_tree/diff_preview}.lua | rg -v '@return|^--$'`
+- [x] 7.1 **Failing test.** `rg -n -B1 '^function M[.:]' lua/gleb/{statusline/copilot,statusline/language,statusline/lsp_progress,session/key,git/ai_commit,file_tree/diff_preview}.lua | rg -v '@return|^--$'`
   → `copilot.component`, `language.component`, `lsp_progress.progress`, `key.slugify`,
   `key.session_name`, `key.resolve` (`name` param), `ai_commit.show_commit_input`,
   `diff_preview.open_diff`, `close_current_diff`, `focus_neo_tree`, `close_all_diffs`, `reset`.
-- [ ] 7.2 **Implement.** `---@param` for every parameter and `---@return` for each of them.
-- [ ] 7.3 **Green.** 7.1 check lists nothing; `make types` green; `make check` passes. **Commit**
+- [x] 7.2 **Implement.** `---@param` for every parameter and `---@return` for each of them.
+- [x] 7.3 **Green.** 7.1 check lists nothing; `make types` green; `make check` passes. **Commit**
   `docs(types): annotate exported functions`.
 
 ## 8. Gate

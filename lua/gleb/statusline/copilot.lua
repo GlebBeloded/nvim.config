@@ -25,6 +25,8 @@ local function not_working()
 	return ok and status.data and status.data.status == "Warning"
 end
 
+--- Statusline component: the glyph while Copilot is not working, else empty.
+---@return string
 function M.component()
 	return not_working() and GLYPH or ""
 end

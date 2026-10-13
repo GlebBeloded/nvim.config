@@ -105,7 +105,8 @@ local function on_progress(args)
 	end
 end
 
--- statusline component: spinner + readable label, only for tasks past the threshold
+--- Statusline component: spinner + readable label, only for tasks past the threshold.
+---@return string
 function M.progress()
 	local parts = {}
 	local elapsed_from = now_ms()

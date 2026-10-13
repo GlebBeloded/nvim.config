@@ -98,6 +98,8 @@ local function pieces_for(filetype)
 	}
 end
 
+--- Statusline component: the language chip for the current buffer.
+---@return string
 function M.component()
 	local filetype = vim.bo.filetype
 	if filetype == "" then
