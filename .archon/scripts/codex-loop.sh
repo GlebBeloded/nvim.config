@@ -55,9 +55,13 @@ overrides=(
     -c 'plugins."apple-photos@apple-photos-mcp".enabled=false'
 )
 
+codex=${CODEX_LOOP_BIN:-/opt/homebrew/bin/codex}
+# Fail closed (exit 2, reasons on stderr) on an untested Codex or a GUI tool / MCP server left on.
+python3 "$(dirname "${BASH_SOURCE[0]}")/codex_preflight.py" "$codex" "$user_home" -- "${overrides[@]}"
+
 if [[ $# -gt 0 && $1 != -* ]]; then
     subcommand=$1
     shift
-    exec "${CODEX_LOOP_BIN:-/opt/homebrew/bin/codex}" "$subcommand" "${overrides[@]}" "$@"
+    exec "$codex" "$subcommand" "${overrides[@]}" "$@"
 fi
-exec "${CODEX_LOOP_BIN:-/opt/homebrew/bin/codex}" "${overrides[@]}" "$@"
+exec "$codex" "${overrides[@]}" "$@"

@@ -32,7 +32,7 @@ Each run works in its own git worktree cut from `auto` and, when every gate is g
 | `make queue [CHANGE=<id>]` | `work-queue`: the oldest change in `openspec/changes/` that no run has taken (no `loop/<id>` branch) |
 | `make outdated` | plugins with commits past `lazy-lock.json` (read-only) |
 | `make update PLUGIN=<name>` | `plugin-update`: update that one plugin, test it, ship it or adapt the config |
-| `make preview CHANGE=<id> [OPEN=1]` | regenerate `openspec/changes/<id>/preview.html` |
+| `make preview CHANGE=<id> [OPEN=1]` | regenerate `openspec/changes/<id>/preview.html` and print its absolute path (`OPEN=1` is for you; the loop passes `OPEN=`) |
 | `make console` | `archon serve`, the web console at http://localhost:3090 |
 | `make loop-report [RUN=<id>]` | generate a local HTML report for the named run, or the latest run for this codebase |
 | `make loop-status` / `make loop-validate` | active and last runs plus the latest report URI / `archon validate workflows` |
@@ -56,7 +56,7 @@ input, output and limits). Scripts do everything that needs no judgment:
 | review | agent, Claude | `superpowers:requesting-code-review` | JSON |
 | verdict, judge, ship, follow-up | scripts | none | JSON, `escalation.md`, merge commit |
 
-Agents run only their own test case and never `make quick` or `make check`; general instructions about web searches, extra skills and sub-agents do not apply in a step (`codex-loop.sh` also turns off Codex sub-agents, hooks, apps, the skills catalog, GUI and MCP tools, and the global `~/.codex/AGENTS.md`). A failure in loop tooling is never fixed inside a change: the step writes `## Blocked: loop: …`. The check/review
+Agents run only their own test case and never `make quick` or `make check`; general instructions about web searches, extra skills and sub-agents do not apply in a step (`codex-loop.sh` also turns off Codex sub-agents, hooks, apps, the skills catalog, GUI and MCP tools, and the global `~/.codex/AGENTS.md`, and `codex_preflight.py` refuses the call when `codex --version` is outside its tested range or an MCP server or GUI plugin is still enabled; widen the range only after checking the overrides against the new Codex). A failure in loop tooling is never fixed inside a change: the step writes `## Blocked: loop: …`. The check/review
 group runs at most 3 times; a red pass sends only its findings (`verdict.py` `feedback`, which also
 lists hard-rule violations from `integrity.py`) to the next pass's fix step.
 
@@ -75,8 +75,8 @@ editor.
 
 ### When you get pinged
 
-- The design gate: always for a feature, and for a fix that changes visible UI. The gate message links
-  `preview.html`; nothing opens on the host.
+- The design gate: always for a feature, and for a fix that changes visible UI. The gate message prints
+  the absolute path of `preview.html`; nothing opens on the host (no `open`, `osascript` or browser).
 - The judge (`.archon/scripts/escalation.py`) asks only for breaking changes: a plugin added or removed,
   a core keymap or the leader changed, behaviour (a spec scenario) removed, a requirement removed and
   re-added, or your `## Decision` text reworded.

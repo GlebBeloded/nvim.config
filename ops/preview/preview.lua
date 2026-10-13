@@ -360,4 +360,4 @@ if not dir or vim.fn.isdirectory(dir) == 0 then
 	)
 	os.exit(2)
 end
-print(build(dir))
+io.stdout:write(build(dir), "\n") -- print() goes to stderr under `nvim -l`

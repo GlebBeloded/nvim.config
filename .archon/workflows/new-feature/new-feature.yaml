@@ -38,7 +38,7 @@ nodes:
           depends_on: [spec]
 
         - id: preview
-          bash: make -s preview CHANGE=$spec.output.change
+          bash: make -s preview CHANGE=$spec.output.change OPEN= # OPEN= beats an exported OPEN: nothing opens on the host
           depends_on: [spec-gate]
 
         - id: design-gate
@@ -46,7 +46,7 @@ nodes:
           approval:
             message: |
               Proposal $spec.output.change is ready.
-              Preview (opened in the browser): $preview.output
+              Preview (nothing opens on the host): $preview.output
               approve: build it; put the picked option (e.g. "Proposed B") and any corrections in the comment.
               revise: rewrite the proposal using your comment. reject: stop.
             decisions:

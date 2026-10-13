@@ -125,7 +125,7 @@ nodes:
 
   # --- Preview + approval: always for features, else only for visible UI ----------------
   - id: preview
-    bash: make -s preview CHANGE=$pick.output.change
+    bash: make -s preview CHANGE=$pick.output.change OPEN= # OPEN= beats an exported OPEN: nothing opens on the host
     depends_on: [spec-gate]
     when: "$pick.output.kind == 'feature' || $complete.output.visible_ui == true"
 
@@ -134,7 +134,7 @@ nodes:
     approval:
       message: |
         Queued change $pick.output.change ($pick.output.kind) is ready to build.
-        Preview (opened in the browser): $preview.output
+        Preview (nothing opens on the host): $preview.output
         Approve to build; put the picked render option or corrections in the comment.
       decisions:
         - { id: approve, label: Build it }

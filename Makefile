@@ -200,7 +200,7 @@ loop-status:
 	@$(ARCHON) workflow status; $(ARCHON) workflow runs --limit 10
 	@$(MAKE) -s loop-report
 
-preview: # make preview CHANGE=<id> [OPEN=1]: openspec/changes/<id>/preview.html
+preview: # make preview CHANGE=<id> [OPEN=1]: prints the absolute path of openspec/changes/<id>/preview.html
 	@test -d "openspec/changes/$(CHANGE)" || { echo "usage: make preview CHANGE=<change id>" >&2; exit 2; }
-	@out=$$($(NVIM_BIN) --clean -l ops/preview/preview.lua "openspec/changes/$(CHANGE)") && echo "$$out" && \
+	@out=$$($(NVIM_BIN) --clean -l ops/preview/preview.lua "$(CURDIR)/openspec/changes/$(CHANGE)") && echo "$$out" && \
 	if [ -n "$(OPEN)" ]; then open "$$out"; fi

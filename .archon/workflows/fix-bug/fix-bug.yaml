@@ -37,7 +37,7 @@ nodes:
 
   # --- Preview + approval (only for visible UI changes) -----------------------------
   - id: preview
-    bash: make -s preview CHANGE=$spec.output.change
+    bash: make -s preview CHANGE=$spec.output.change OPEN= # OPEN= beats an exported OPEN: nothing opens on the host
     depends_on: [spec-gate]
     when: "$spec.output.visible_ui == true" # breaking for the user; internals never pause
 
@@ -46,7 +46,7 @@ nodes:
     approval:
       message: |
         Change $spec.output.change changes visible UI.
-        Preview: $preview.output
+        Preview (nothing opens on the host): $preview.output
         Approve to build. Put the chosen render option or corrections in the comment.
       decisions:
         - { id: approve, label: Build it }
