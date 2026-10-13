@@ -85,21 +85,21 @@ Scenarios: none (Static layer: `rg`). Regression guards: "session: modified file
 
 **Files:** `autocommands.lua`, `plugins/init.lua`, `treesitter.lua`
 
-- [ ] 3.1 **Failing test.** `rg -n 'augroup |nnoremap|nvim_create_augroup\("[^g]' lua` and
+- [x] 3.1 **Failing test.** `rg -n 'augroup |nnoremap|nvim_create_augroup\("[^g]' lua` and
   `rg -n -A1 'nvim_create_autocmd\(' lua/gleb/autocommands.lua lua/gleb/treesitter.lua | rg -v 'group|nvim_create_autocmd|^--$'`
   → hits (`autocommands.lua:1-34,36,49,71,79`, `plugins/init.lua:20`, `treesitter.lua:22`).
-- [ ] 3.2 **Implement.** Rewrite `autocommands.lua:1-34` with `nvim_create_augroup(…, { clear = true })` /
+- [x] 3.2 **Implement.** Rewrite `autocommands.lua:1-34` with `nvim_create_augroup(…, { clear = true })` /
   `nvim_create_autocmd`: `gleb_general` (q map as `vim.keymap.set("n", "q", "<Cmd>close<CR>",
   { buffer = event.buf, silent = true, desc = "Window: Close" })`, `vim.hl.on_yank`, `formatoptions`, qf
   `buflisted = false`, `~/.zshrc`/`~/.zprofile` → `sh`), `gleb_git_commit`, `gleb_markdown`
   (`wrap`/`spell` via `vim.opt_local`), `gleb_auto_resize` (`tabdo wincmd =`), `gleb_alpha`
   (`AlphaReady` sets `showtabline = 0` and adds a `once = true` `BufUnload` autocmd on that buffer
   restoring 2). Callbacks longer than a few lines are named local functions.
-- [ ] 3.3 **Implement.** Rename `_lsp` → `gleb_lsp_format`, `_autosave_format` → `gleb_autosave_format`;
+- [x] 3.3 **Implement.** Rename `_lsp` → `gleb_lsp_format`, `_autosave_format` → `gleb_autosave_format`;
   put the `CmdlineEnter`/`CmdlineLeave` autocmds (`autocommands.lua:71,79`) in `gleb_search_hlsearch`;
   give `treesitter.lua:22` augroup `gleb_treesitter`; rewrite `plugins/init.lua:19-24` with augroup
   `gleb_plugins_reload` (`BufWritePost` `plugins.lua`, callback `source` + `Lazy sync`).
-- [ ] 3.4 **Green.** 3.1 checks list only `99PromptKeymaps` and `DiffPreviewFocusGuard` (spec-pinned,
+- [x] 3.4 **Green.** 3.1 checks list only `99PromptKeymaps` and `DiffPreviewFocusGuard` (spec-pinned,
   design.md Non-Goals); in a headless child `:help help` then `q` closes the help window, and
   `nvim_get_autocmds({ group = "gleb_general" })` is non-empty; `make check` passes. **Commit**
   `refactor(autocmds): Lua autocmds in gleb_ augroups`.
