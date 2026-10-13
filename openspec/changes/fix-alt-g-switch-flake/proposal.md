@@ -4,10 +4,11 @@
 Kind: bug
 
 ## Root Cause
-To be confirmed: find every neo-tree wait in `tests/integration/keymaps/test_keymaps.lua` that does not scale with `H.load_factor()` (or that sleeps instead of polling), and reproduce the Alt-G case under CPU load.
+The neo-tree cases poll observable state, but `ASYNC_MS` samples `H.load_factor()` once while the test file loads. The parallel gate's CPU load can rise after that snapshot, leaving later neo-tree waits at the 3000 ms idle budget even while the host is busy. The Alt-G failure timed out waiting for `git_status` focus and passed alone and on rerun; the later Alt-e recurrence has the same stale-budget shape. No neo-tree wait sleeps or bypasses the shared budget.
 
 ## What Changes
-- Every async neo-tree wait in the keymaps integration tests polls the observable condition with a load-scaled budget. Assertions unchanged.
+- Every async neo-tree wait in the keymaps integration tests polls the observable condition with a freshly load-scaled budget. The 3000 ms idle-host budget and assertions stay unchanged.
+- Out of scope: neo-tree configuration, runtime toggle behavior, core keymaps, and plugin dependencies.
 
 ## Capabilities
 ### Modified Capabilities
