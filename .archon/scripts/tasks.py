@@ -23,8 +23,17 @@ def task_sections(text: str) -> list[str]:
     return [sec for sec in sections if re.search(r"^\s*[-*] \[[ x]\] ", sec, re.MULTILINE)]
 
 
+# "Run `make check`" items are the gate's job (agents never run it): they do not hold the task loop,
+# and gate.py ticks them once the check is green.
+GATE_ITEM = re.compile(r"^\s*[-*] \[ \] .*`make (check|quick)\b[^`]*`", re.MULTILINE)
+
+
 def unchecked(text: str) -> int:
-    return len(UNCHECKED.findall(text))
+    return len(UNCHECKED.findall(text)) - len(GATE_ITEM.findall(text))
+
+
+def tick_gate_items(text: str) -> str:
+    return GATE_ITEM.sub(lambda m: m.group(0).replace("[ ]", "[x]", 1), text)
 
 
 def next_task(tasks: pathlib.Path) -> str:
@@ -35,11 +44,12 @@ def next_task(tasks: pathlib.Path) -> str:
     text = tasks.read_text()
     sections = task_sections(text)
     if 0 < len(sections) <= SMALL:
-        return "\n\n".join(sec for sec in sections if UNCHECKED.search(sec))
+        return "\n\n".join(sec for sec in sections if unchecked(sec))
     starts = [m.start() for m in TASK_HEADING.finditer(text)] + [len(text)]
     for start, end in zip(starts, starts[1:]):
-        if UNCHECKED.search(text[start:end]):
-            return text[start:end].strip()
+        section = text[start:end]
+        if len(UNCHECKED.findall(section)) > len(GATE_ITEM.findall(section)):
+            return section.strip()
     match = UNCHECKED.search(text)
     return text[match.start() : match.start() + 2000].strip() if match else ""
 

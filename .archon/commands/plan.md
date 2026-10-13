@@ -18,3 +18,4 @@ separate plan file). Follow openspec/config.yaml `rules.tasks`: each task lists 
 titles it satisfies, and its first step is a failing mini.test case named exactly
 "<capability>: <scenario title>" (docs/testing.md picks the layer). Keep tasks small, reuse
 plugins and built-ins (docs/architecture.md, Conventions). Do not write code.
+Checkbox items are work an agent does; do not add items to run `make check` or `make quick` (the gate does that).

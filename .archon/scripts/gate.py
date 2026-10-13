@@ -11,7 +11,7 @@ import subprocess
 import tempfile
 
 from scenarios import change_scenarios, untested
-from tasks import unchecked
+from tasks import tick_gate_items, unchecked
 
 
 change = os.environ.get("INPUTS_CHANGE", "")
@@ -56,6 +56,8 @@ if change and change_dir.is_dir():
         spec_ok, spec_tail = archived_specs_ok(f"archive-{attempt}.log")
     missing = untested(change_scenarios(change_dir))
     tasks = change_dir / "tasks.md"
+    if green and tasks.exists():
+        tasks.write_text(tick_gate_items(tasks.read_text()))
     tasks_done = tasks.exists() and unchecked(tasks.read_text()) == 0
 
 missing = missing if change and change_dir.is_dir() else []
