@@ -4,7 +4,7 @@
 Kind: bug
 
 ## What Changes
-- Drop a client's tasks when the client detaches or stops (`LspDetach`, or the client is gone / `is_stopped()` when the timer ticks).
+- Drop a client's tasks on `LspDetach` when the client is gone, `is_stopped()`, or the detaching buffer is its last one (`LspDetach` also fires per buffer on unload, so a running client keeps its tasks).
 - Drop a task that has had no `begin`/`report` event for `STALE_AFTER_MS` (60 s), so a server that never sends `end` cannot spin forever.
 - Stop and close the refresh timer on `VimLeavePre`, and keep stopping it once no task is left.
 - Use a local for the new timer in `ensure_timer` so the `need-check-nil` hit at `:75` goes away (counted in `fix-type-check-baseline`).
