@@ -55,6 +55,17 @@ overrides=(
     -c 'plugins."apple-photos@apple-photos-mcp".enabled=false'
 )
 
+# No <plugins_instructions> block: it is gated on the model's include_plugin_usage_instructions, so run
+# on a copy of the cached model catalog with it off. features.plugins=false would drop the block too,
+# but it also unloads every plugin skill ($superpowers:<skill>).
+models_cache=$user_home/models_cache.json
+model_catalog=$loop_home/model-catalog.json
+if [[ -f $models_cache && (! -f $model_catalog || $models_cache -nt $model_catalog) ]] && command -v jq >/dev/null; then
+    jq '{models: [.models[] | .include_plugin_usage_instructions = false]}' "$models_cache" >"$model_catalog.$$" &&
+        mv -f "$model_catalog.$$" "$model_catalog" || rm -f "$model_catalog.$$"
+fi
+[[ -f $model_catalog ]] && overrides+=(-c "model_catalog_json=\"$model_catalog\"")
+
 if [[ $# -gt 0 && $1 != -* ]]; then
     subcommand=$1
     shift

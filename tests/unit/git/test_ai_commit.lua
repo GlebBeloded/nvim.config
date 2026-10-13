@@ -165,7 +165,9 @@ T["git: q discards popup"] = function()
 
 	eq(popup_open(), false)
 	eq(jobs()[1].stopped, true)
+	finish_job("feat: late\n", 0)
 	eq(commits(), {})
+	eq(child.v.errmsg, "")
 end
 
 T["git: Leaving popup closes it"] = function()

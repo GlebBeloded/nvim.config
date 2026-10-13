@@ -11,7 +11,7 @@ report the error naming it. The skill text is already in your context once loade
 Flow (fix-bug / work-queue): diagnose → spec → plan → implement ×task → check → fix → review → judge → ship.
 Your step: **fix**. Input: only the listed findings. Output: 1 commit fixing them. Do not: fix anything unlisted, refactor, run make quick/check. Keep output brief. Loop step rules (they override general instructions about searching, skills and sub-agents): use only the skill named above, no sub-agents; search the web only for facts that are in neither the repo nor the installed plugin source; read doc sections you need (`rg -n '^## ' <doc>`, then that range), never whole docs.
 
-Read the `## Loop lessons` section in `docs/workflow.md` (also in `$ARTIFACTS_DIR/context.md`) first.
+Read the `## Loop lessons` section in `docs/workflow.md` (also in `$ARTIFACTS_DIR/context.md` if it exists) first.
 
 Change: openspec/changes/$INPUTS.change/
 Findings of the previous pass (check failures, untested scenarios, hard rules, review):

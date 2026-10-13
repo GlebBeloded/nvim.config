@@ -122,24 +122,6 @@ T["git: Enter drops comment lines"] = function()
 	eq(commits(), { "feat: x" })
 end
 
-T["git: Enter confirms message"] = function()
-	repo(false)
-	local win = open_popup()
-	set_popup_lines(win, { "feat: x  " })
-	child.type_keys("<CR>")
-	eq(child.api.nvim_win_is_valid(win), false)
-	eq(commits(), { "feat: x" })
-end
-
-T["git: Enter on empty buffer does nothing"] = function()
-	repo(false)
-	local win = open_popup()
-	set_popup_lines(win, { "" })
-	child.type_keys("<CR>")
-	eq(child.api.nvim_win_is_valid(win), true)
-	eq(#commits(), 0)
-end
-
 T["git: Empty Ollama output is shown"] = function()
 	for _, out in ipairs({ "```\\n```\\n", "  \\n" }) do
 		ollama_repo({ FAKE_OLLAMA_OUT = out })
@@ -148,39 +130,6 @@ T["git: Empty Ollama output is shown"] = function()
 		eq(popup_lines(), { "# Error: Ollama returned an empty message" })
 		child.type_keys("q")
 	end
-end
-
-T["git: q discards popup"] = function()
-	ollama_repo({ FAKE_OLLAMA_SLEEP = "1" })
-	local win = open_popup()
-	child.type_keys("q")
-	eq(child.api.nvim_win_is_valid(win), false)
-	child.lua("vim.wait(500)")
-	eq(#commits(), 0)
-	eq(child.v.errmsg, "")
-end
-
-T["git: Generated message fills popup"] = function()
-	ollama_repo({ FAKE_OLLAMA_OUT = "```\\nfeat(git): add x\\n```\\n" })
-	open_popup()
-	eq(wait_title(" Commit Message "), true)
-	eq(popup_lines(), { "feat(git): add x" })
-end
-
-T["git: Popup resizes to content"] = function()
-	child.o.columns = 200
-	ollama_repo({ FAKE_OLLAMA_OUT = "feat: x\\n" })
-	local win = open_popup()
-	eq(wait_title(" Commit Message "), true)
-	eq(child.api.nvim_win_get_width(win), 72)
-	eq(child.api.nvim_win_get_height(win), 1)
-end
-
-T["git: Ollama failure is shown"] = function()
-	ollama_repo({ FAKE_OLLAMA_CODE = "1" })
-	open_popup()
-	eq(wait_title(" Commit Message "), true)
-	eq(popup_lines(), { "# Error: Ollama exited with code 1" })
 end
 
 return T

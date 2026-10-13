@@ -126,6 +126,15 @@ local function neo_tree_in_current_tab()
 	end)]])
 end
 
+---@return string[] `neo_tree_source` of every tree window in the current tab
+local function tree_sources_in_current_tab()
+	return child.lua_get(
+		[[vim.iter(vim.api.nvim_tabpage_list_wins(0)):map(vim.api.nvim_win_get_buf):filter(function(buf)
+		return vim.bo[buf].filetype == "neo-tree"
+	end):map(function(buf) return vim.b[buf].neo_tree_source end):totable()]]
+	)
+end
+
 --- Lua expression: a `filesystem` tree in the current tab has its cursor on `path`.
 ---@param path string
 ---@return string
@@ -345,15 +354,42 @@ local function count_new_tabs()
 	]])
 end
 
+--- Spy on the diff work for a file: paths passed to codediff's `get_git_root` (first step
+--- of every diff open) land in `GitRootCalls`, repo-relative paths passed to its
+--- `view.create` in `ViewCreates`; both still call through.
+local function spy_diff_work()
+	child.lua([[
+		GitRootCalls, ViewCreates = {}, {}
+		local git, view = require("codediff.core.git"), require("codediff.ui.view")
+		local get_git_root, create = git.get_git_root, view.create
+		git.get_git_root = function(path, ...)
+			table.insert(GitRootCalls, path)
+			return get_git_root(path, ...)
+		end
+		view.create = function(session_config, ...)
+			table.insert(ViewCreates, session_config.modified.relative)
+			return create(session_config, ...)
+		end
+	]])
+end
+
 T["file-tree: Rapid calls are debounced"] = function()
 	start_repo()
 	count_new_tabs()
+	spy_diff_work()
 
 	open_diff_rapidly(repo_path("a/x.lua"), repo_path("b/y.lua"))
 
+	-- right after the calls return, before the debounce timer fires: no diff work yet
+	eq(
+		child.lua_get("{ GitRootCalls, ViewCreates, TabsCreated, DiffPreview.state.diff_tab == nil }"),
+		{ {}, {}, 0, true }
+	)
 	eq(wait_diff_tab(), true)
-	eq(child.lua_get("TabsCreated"), 1)
 	eq(child.lua_get(diff_tab_shows(repo_path("b/y.lua"))), true)
+	eq(child.lua_get("GitRootCalls"), { repo_path("b/y.lua") })
+	eq(child.lua_get("ViewCreates"), { "b/y.lua" })
+	eq(child.lua_get("TabsCreated"), 1)
 end
 
 T["file-tree: Diff tab is reused across files"] = function()
@@ -385,6 +421,9 @@ T["file-tree: Enter opens file and switches to filesystem tree"] = function()
 
 	eq(child.wait(filesystem_reveals(repo_path("a/x.lua")), ASYNC_MS), true)
 	eq(child.lua_get(editing(repo_path("a/x.lua"))), true)
+	eq(child.api.nvim_buf_get_name(0), repo_path("a/x.lua"))
+	eq(current_is_neo_tree(), false)
+	eq(tree_sources_in_current_tab(), { "filesystem" })
 	eq(tab_count(), 1)
 	eq(child.lua_get("DiffPreview.state.diff_tab"), vim.NIL)
 end

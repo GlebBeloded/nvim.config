@@ -149,7 +149,26 @@ T["loop: Trace counts scenarios an active change adds"] = function()
 	local nvim = { vim.v.progpath, "--clean", "--headless", "-u", vim.fs.joinpath(H.root, "tests/minimal_init.lua") }
 	local result = H.system(child, vim.list_extend(nvim, { "-l", vim.fs.joinpath(H.root, "tests/trace.lua") }), repo)
 	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
-	eq((result.stdout .. result.stderr):find("2 scenarios, 2 tested, 0 missing, 0 orphan", 1, true) ~= nil, true)
+	eq(
+		(result.stdout .. result.stderr):find("2 scenarios, 2 tested, 0 missing, 0 orphan, 0 duplicate", 1, true) ~= nil,
+		true
+	)
+end
+
+T["loop: Trace fails on a case name in two test files"] = function()
+	local repo = H.tempdir(child)
+	local case = 'local T = MiniTest.new_set()\nT["x: base"] = function() end\nreturn T'
+	write(repo, {
+		["openspec/specs/x/spec.md"] = "#### Scenario: base",
+		["tests/unit/x/test_x.lua"] = case,
+		["tests/integration/x/test_x.lua"] = case,
+	})
+	local nvim = { vim.v.progpath, "--clean", "--headless", "-u", vim.fs.joinpath(H.root, "tests/minimal_init.lua") }
+	local result = H.system(child, vim.list_extend(nvim, { "-l", vim.fs.joinpath(H.root, "tests/trace.lua") }), repo)
+	local output = result.stdout .. result.stderr
+	eq(result.code, 1, { fail_reason = output })
+	local listed = "x: base  (tests/integration/x/test_x.lua, tests/unit/x/test_x.lua)"
+	eq({ output:find(listed, 1, true) ~= nil, output:find("0 orphan, 1 duplicate", 1, true) ~= nil }, { true, true })
 end
 
 T["loop: Plan is skipped when the spec wrote tasks"] = function()

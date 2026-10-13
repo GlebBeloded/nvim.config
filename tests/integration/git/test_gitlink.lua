@@ -12,6 +12,7 @@ local function git(dir, args)
 end
 
 ---@return string file
+---@return string sha of HEAD
 local function repo_file()
 	local dir = vim.fn.tempname()
 	vim.fn.mkdir(dir, "p")
@@ -24,21 +25,23 @@ local function repo_file()
 	git(dir, { "commit", "-qm", "init" })
 	git(dir, { "remote", "add", "origin", "https://github.com/owner/repo.git" })
 	git(dir, { "update-ref", "refs/remotes/origin/main", "HEAD" })
-	return file
+	local sha = vim.trim(vim.system({ "git", "rev-parse", "HEAD" }, { cwd = dir }):wait().stdout)
+	return file, sha
 end
 
 local T = H.child_set(child, child.start_config)
 
 T["git: Gitlink copies range URL"] = function()
-	child.cmd("edit " .. vim.fn.fnameescape(repo_file()))
+	local file, sha = repo_file()
+	child.cmd("edit " .. vim.fn.fnameescape(file))
 	child.type_keys("3GV5G", ":Gitlink<CR>")
-	eq(child.fn.getreg("+"):match("#L%d+%-L%d+$"), "#L3-L5")
+	eq(child.fn.getreg("+"), ("https://github.com/owner/repo/blob/%s/a.txt#L3-L5"):format(sha))
 	eq(child.fn.mode(), "n")
 	eq(child.api.nvim_win_get_cursor(0), { 3, 0 })
 end
 
 T["git: Gitlink range preserves editor state"] = function()
-	child.cmd("edit " .. vim.fn.fnameescape(repo_file()))
+	child.cmd("edit " .. vim.fn.fnameescape((repo_file())))
 	child.type_keys("ggVj<Esc>", "4G2l")
 	local cursor = child.api.nvim_win_get_cursor(0)
 	local visual_start = child.api.nvim_buf_get_mark(0, "<")
@@ -53,7 +56,7 @@ T["git: Gitlink range preserves editor state"] = function()
 end
 
 T["git: Gitlink range failure restores editor state"] = function()
-	child.cmd("edit " .. vim.fn.fnameescape(repo_file()))
+	child.cmd("edit " .. vim.fn.fnameescape((repo_file())))
 	child.type_keys("ggVj<Esc>", "4G2l")
 	local cursor = child.api.nvim_win_get_cursor(0)
 	local visual_start = child.api.nvim_buf_get_mark(0, "<")

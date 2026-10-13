@@ -89,27 +89,6 @@ end
 
 local T = H.child_set(child, start)
 
-T["file-tree: Space stages an unstaged file"] = function()
-	local dir = staging_repo({ "a.lua" })
-	modify(dir, "a.lua")
-	open_in_repo(dir)
-
-	press_space_on_a_lua()
-
-	eq(wait_staged(dir, "a.lua", true), true)
-end
-
-T["file-tree: Space unstages a staged file"] = function()
-	local dir = staging_repo({ "a.lua" })
-	modify(dir, "a.lua")
-	git({ "add", "a.lua" }, dir)
-	open_in_repo(dir)
-
-	press_space_on_a_lua()
-
-	eq(wait_staged(dir, "a.lua", false), true)
-end
-
 T["file-tree: Space stages a file whose name is a suffix of a staged file"] = function()
 	local dir = staging_repo({ "a.lua", "aa.lua" })
 	modify(dir, "a.lua")

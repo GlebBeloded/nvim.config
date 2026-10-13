@@ -119,10 +119,12 @@ local function wait_keys_done()
 end
 
 T["ai: Menu ignores other keys"] = function()
+	child.api.nvim_buf_set_lines(0, 0, -1, false, { "keep" })
 	child.type_keys("<A-9>", "x")
 	wait_keys_done()
 
 	eq({ prompt_buffers(), child.api.nvim_get_mode().mode }, { 0, "n" })
+	eq(child.api.nvim_buf_get_lines(0, 0, -1, false), { "keep" })
 end
 
 T["ai: Shift-Enter opens vibe prompt"] = function()
