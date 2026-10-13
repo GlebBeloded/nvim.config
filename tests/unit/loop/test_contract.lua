@@ -146,6 +146,26 @@ T["loop: Blocked queued change goes straight to the user"] = function()
 	eq(run("blocked.py", repo, { INPUTS_CHANGE = "ok", LOOP_CHANGES_DIR = "" }).blocked, false)
 end
 
+--- Commits everything in `repo` with committer date `date` (seconds since the epoch).
+---@param repo string
+---@param date integer
+local function commit_at(repo, date)
+	git_ok({ "add", "-A" }, repo)
+	local env = vim.tbl_extend("force", H.GIT_ENV, { GIT_COMMITTER_DATE = ("@%d +0000"):format(date) })
+	local result = H.system(child, { "git", "commit", "-q", "-m", "at " .. date }, repo, env)
+	eq(result.code, 0, { fail_reason = result.stderr })
+end
+
+T["loop: A later user Decision resolves a Blocked section"] = function()
+	local repo = branch_repo({}, { ["openspec/changes/b/tasks.md"] = "## 1. T\n- [ ] 1.1 x\n\n" .. BLOCKED })
+	commit_at(repo, 1700000000)
+	write(repo, { ["openspec/changes/b/proposal.md"] = "## Why\nx\n\n" .. DECISION })
+	commit_at(repo, 1700000100)
+	eq(run("blocked.py", repo, { INPUTS_CHANGE = "b", LOOP_CHANGES_DIR = "" }).blocked, false)
+	write(repo, { ["openspec/changes/b/tasks.md"] = "## 1. T\n\n" .. BLOCKED .. "\nagain" })
+	eq(run("blocked.py", repo, { INPUTS_CHANGE = "b", LOOP_CHANGES_DIR = "" }).blocked, true)
+end
+
 T["loop: Verdict ends the build loop on a Blocked section"] = function()
 	local repo = branch_repo({}, { ["openspec/changes/c/tasks.md"] = "## 1. T\n- [ ] 1.1 x\n\n" .. BLOCKED })
 	local out = run("verdict.py", repo, {
