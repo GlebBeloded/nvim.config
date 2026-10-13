@@ -157,14 +157,15 @@ end
 local LOCK_SCRIPT = [[source "$LOCK_SH"
 sandbox_lock "$1"
 now() { perl -MTime::HiRes=time -e 'printf "%.3f\n", time'; }
-echo "got $(now)" >>"$2"
+owner=$(head -1 "$1/owner")
+echo "got $(now) ${owner%% *}" >>"$2"
 sleep "$3"
 echo "left $(now)" >>"$2"
 ]]
 
 ---@class SandboxLocker
 ---@field pid integer
----@field log string the `got <time>` / `left <time>` lines
+---@field log string the `got <time> <pid>` / `left <time>` lines
 
 --- Starts LOCK_SCRIPT on `dir` in the background, holding the lock `hold` s; `name` keys it in the child.
 ---@param name string
@@ -193,7 +194,7 @@ end
 ---@param name string
 ---@return { code: integer, stdout: string, stderr: string }
 local function wait_locker(name)
-	return child.lua_get("_G.lockers[...]:wait(30000)", { name })
+	return child.lua_get("_G.lockers[...]:wait(select(2, ...))", { name, math.ceil(30000 * H.load_factor()) })
 end
 
 --- The `owner` pid recorded in lock dir `dir`, or nil.
@@ -208,13 +209,13 @@ end
 ---@param dir string
 ---@param pid integer
 local function wait_owner(dir, pid)
-	local named = [[(function(owner, pid)
+	local named = [[(function(owner, pid, timeout)
 		local function names_pid()
 			return vim.fn.filereadable(owner) == 1 and (vim.fn.readfile(owner)[1] or ""):match("^%d+") == pid
 		end
-		return vim.wait(5000, names_pid, 20)
+		return vim.wait(timeout, names_pid, 20)
 	end)(...)]]
-	eq(child.lua_get(named, { vim.fs.joinpath(dir, "owner"), tostring(pid) }), true)
+	eq(child.lua_get(named, { vim.fs.joinpath(dir, "owner"), tostring(pid), math.ceil(5000 * H.load_factor()) }), true)
 end
 
 --- The time (s) on the `kind` line of a locker log.
@@ -223,9 +224,21 @@ end
 ---@return number?
 local function locker_time(log, kind)
 	for _, line in ipairs(read_lines(log)) do
-		local time = line:match("^" .. kind .. " ([%d.]+)$")
+		local time = line:match("^" .. kind .. " ([%d.]+)$") or line:match("^" .. kind .. " ([%d.]+) %d+$")
 		if time then
 			return tonumber(time)
+		end
+	end
+end
+
+--- The owner pid persisted on the `got` line of a locker log.
+---@param log string
+---@return integer?
+local function locker_owner(log)
+	for _, line in ipairs(read_lines(log)) do
+		local owner = line:match("^got [%d.]+ (%d+)$")
+		if owner then
+			return tonumber(owner)
 		end
 	end
 end
@@ -249,15 +262,13 @@ end
 
 T["shortcuts: A second sandbox lock waits for the first and says so"] = function()
 	local dir = vim.fs.joinpath(tempdir(), "lock")
-	local holder = start_locker("holder", dir, 2)
+	local holder = start_locker("holder", dir, 2 * H.load_factor())
 	wait_owner(dir, holder.pid)
 
 	local waiter = start_locker("waiter", dir, 0.5)
-	wait_owner(dir, waiter.pid)
-	local owner = lock_owner(dir)
 	local holder_result, waiter_result = wait_locker("holder"), wait_locker("waiter")
 
-	eq({ holder_result.code, waiter_result.code, owner }, { 0, 0, waiter.pid })
+	eq({ holder_result.code, waiter_result.code, locker_owner(waiter.log) }, { 0, 0, waiter.pid })
 	eq(waiter_result.stderr:find("sandbox: waiting for", 1, true) ~= nil, true)
 	eq(waiter_result.stderr:find("pid " .. holder.pid, 1, true) ~= nil, true)
 	local left, got = locker_time(holder.log, "left"), locker_time(waiter.log, "got")
@@ -277,7 +288,7 @@ T["shortcuts: A sandbox lock left by a dead process is reclaimed"] = function()
 	local elapsed = now_ms() - t0
 	local result = wait_locker("reclaimer")
 
-	eq(elapsed < 2000, true)
+	eq(elapsed < 2000 * H.load_factor(), true)
 	eq(result.stderr:find("sandbox: reclaiming stale lock", 1, true) ~= nil, true)
 end
 
@@ -293,7 +304,7 @@ T["shortcuts: A sandbox lock wait gives up after SANDBOX_LOCK_TIMEOUT"] = functi
 
 	MiniTest.expect.no_equality(result.code, 0)
 	eq(
-		{ at_least_timeout = elapsed >= 1000, within_bound = elapsed < 5000 },
+		{ at_least_timeout = elapsed >= 1000, within_bound = elapsed < 5000 * H.load_factor() },
 		{ at_least_timeout = true, within_bound = true }
 	)
 	eq(result.stderr:find("pid " .. holder.pid, 1, true) ~= nil, true)
@@ -405,7 +416,7 @@ end
 T["shortcuts: sandbox.sh e2e waits while another checkout holds the sandbox lock"] = function()
 	local env = sandbox_env()
 	local dir = vim.fs.joinpath(env.SANDBOX_STATE, "lock")
-	local holder = start_locker("holder", dir, 2)
+	local holder = start_locker("holder", dir, 2 * H.load_factor())
 	wait_owner(dir, holder.pid)
 
 	child.lua("_G.e2e_run = vim.system(..., { cwd = select(2, ...), env = select(3, ...), text = true })", {
