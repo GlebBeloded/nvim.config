@@ -1,6 +1,22 @@
-vim.fn.mkdir("/tmp/nvim", "p")
+local LOG_DIR = "/tmp/nvim"
+local MAX_AGE_S = 7 * 24 * 60 * 60
 
-local path = string.format("/tmp/nvim/%d_%d.txt", os.time(), vim.fn.getpid())
+--- Deletes `<time>_<pid>.txt` logs whose start time is older than `max_age_s`.
+---@param dir string
+---@param max_age_s integer
+local function prune_old_logs(dir, max_age_s)
+	for name, type in vim.fs.dir(dir) do
+		local time = type == "file" and name:match("^(%d+)_%d+%.txt$")
+		if time and os.time() - tonumber(time) > max_age_s then
+			os.remove(vim.fs.joinpath(dir, name))
+		end
+	end
+end
+
+vim.fn.mkdir(LOG_DIR, "p")
+prune_old_logs(LOG_DIR, MAX_AGE_S)
+
+local path = string.format("%s/%d_%d.txt", LOG_DIR, os.time(), vim.fn.getpid())
 local flush_interval_ms = 2000
 
 vim.cmd("redir >> " .. path)
