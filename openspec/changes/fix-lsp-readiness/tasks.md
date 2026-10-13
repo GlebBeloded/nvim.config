@@ -4,3 +4,4 @@ Scenarios: `lsp: lua_ls ready within 2.5 s in this config`, `lsp: gopls ready wi
 - [x] 1.2 Rename the lua_ls case, use its fixed 2500 ms bound, and move the readiness file out of parallel `make test` into a dedicated serial check layer that runs after all other layers without load scaling
 - [x] 1.3 Run `make test-readiness FILE=tests/integration/lsp/test_readiness.lua CASE="ready within"` and see all four scenarios pass
 - [x] 1.4 Judge one warm readiness sample against the fixed bound; do not retry an over-bound sample
+- [x] 1.5 Stop the warmed client before restarting so its server process cannot overlap the measured sample

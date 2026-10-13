@@ -38,6 +38,12 @@ end
 
 request()]]
 
+local STOP_LUA = [[
+local server = ...
+for _, client in ipairs(vim.lsp.get_clients({ name = server })) do
+	client:stop(1000)
+end]]
+
 --- Relative path -> content, written into a fresh temp dir.
 ---@param files table<string, string>
 ---@return string dir
@@ -88,6 +94,9 @@ end
 ---@param bound_ms integer
 local function warm(cwd, file, server, bound_ms)
 	ready_ms(cwd, file, server, bound_ms)
+	child.lua(STOP_LUA, { server })
+	local stopped = child.wait(("#vim.lsp.get_clients({ name = %q }) == 0"):format(server), TIMEOUT_MS)
+	assert(stopped, server .. " did not stop")
 	start()
 end
 
