@@ -42,6 +42,6 @@ Scenarios: "tabline with tree open matches reference screenshot", "tabline witho
 
 Scenarios: all of the above
 
-- [ ] 3.1 `make render CASE=neo-tree MONO=1 COLUMNS=100 LINES=12` row 1 matches design.md Proposed; colored
+- [x] 3.1 `make render CASE=neo-tree MONO=1 COLUMNS=100 LINES=12` row 1 matches design.md Proposed; colored
   `make render CASE=neo-tree COLUMNS=100 LINES=12` shows the offset in the tree's background
 - [ ] 3.2 `make check` is green
