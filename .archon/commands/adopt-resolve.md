@@ -12,6 +12,6 @@ Merge state: $adopt.output.summary
 A merge of an abandoned run's branch for this change (its earlier commits) into this run's branch, cut
 from today's `auto`, stopped on conflicts. Resolve each conflict keeping today's `auto` behaviour and the
 old branch's intent (the change's proposal says what it is). Keep every test and scenario from both
-sides. Then `make fmt` and `make lint` (seconds; a merged side often still uses a name the other side removed, e.g. an old `kmap`/`opts` local: fix those), check there are no conflict markers (`git grep -n -E '^(<<<<<<<|>>>>>>>) '`),
+sides. A side may have deleted lines: compare with the base (`git show :1:<file>`) and keep both sides' changes, deletions included. Then `make fmt` and `make lint` (seconds; a merged side often still uses a name the other side removed, e.g. an old `kmap`/`opts` local: fix those), check there are no conflict markers (`git grep -n -E '^(<<<<<<<|>>>>>>>) '`),
 and `git commit --no-edit`. If a hunk cannot keep both intents, take `auto`'s side and note it in
 `$ARTIFACTS_DIR/adopt-notes.md` (one line per hunk); the spec step plans that part again.

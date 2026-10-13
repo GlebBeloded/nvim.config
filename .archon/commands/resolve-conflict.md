@@ -16,9 +16,10 @@ was cut, or (gate failed true) the merge is clean but `make lint trace specs` fa
 test case name both sides added. Work only in this run worktree; never touch the `auto` checkout
 (`~/.config/nvim`).
 
-1. `git merge auto`. Resolve every conflict keeping the intent of both sides: the run's change and
+1. `git -c merge.conflictStyle=zdiff3 merge auto` (hunks then show the base between `|||||||` and `=======`). Resolve every conflict keeping the intent of both sides: the run's change and
    what landed on `auto`. Keep every test and every scenario from both; never delete, skip or weaken
    one to make the merge fit.
+   A side may have deleted lines: read each conflicted file's base (`git diff --merge <file>` or `git show :1:<file>`) and apply both sides' changes to it, deletions included; an empty side in a hunk is often a deletion, not "nothing".
 2. On a gate failure, fix what the gate output names (rename a duplicated case, keep both tests) and
    rerun `make lint trace specs`.
 3. `make fmt`; run only the test files that conflicted (`make test FILE=… 2>&1 | tail -40`); the gate runs `make check`.

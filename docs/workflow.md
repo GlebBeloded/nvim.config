@@ -15,7 +15,6 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - When review evidence contradicts a queued task or proposal, preserve the declared scope and remove unverified bug claims before shipping.
 - When consolidating duplicate test names, preserve the original file and case, then split new coverage into a distinct specified scenario.
 - When async work runs under rising parallel load, refresh and monotonically extend the load-scaled polling budget instead of fixing it at poll start.
-- When StyLua reports a multiline replacement, apply its exact formatting before the lint gate.
 - Explicitly stop and await a warmed LSP client before restarting its test child so the old server cannot contend with the measured process.
 
 ## The loop
