@@ -227,6 +227,10 @@ The delivery loop SHALL implement one task per fresh agent session from a script
 - **WHEN** `.archon/scripts/tasks.py` runs on a tasks.md whose only `- [ ]` text is inside a plan header sentence and every list item is checked
 - **THEN** it exits 0 (the task loop is done)
 
+#### Scenario: A make check item does not hold the task loop
+- **WHEN** `.archon/scripts/tasks.py` runs on a tasks.md whose only unchecked item says to run `make check`
+- **THEN** it exits 0 (agents never run `make check`; the gate ticks that item once the check is green)
+
 #### Scenario: Task loop continues while a task is unchecked
 - **WHEN** `.archon/scripts/tasks.py` runs on a tasks.md with an unchecked `- [ ]` list item
 - **THEN** it exits 1

@@ -196,4 +196,13 @@ T["loop: Gate ignores unchanged scenarios a modified requirement repeats"] = fun
 	eq({ result.code, vim.trim(result.stdout) }, { 1, "x: edited" })
 end
 
+T["loop: A make check item does not hold the task loop"] = function()
+	local repo = H.tempdir(child)
+	write(
+		repo,
+		{ ["openspec/changes/c/tasks.md"] = "## 1. Task\n- [x] 1.1 code\n- [ ] 1.2 Run `make check`; expect green" }
+	)
+	eq(run("tasks.py", repo, { INPUTS_CHANGE = "c" }).code, 0)
+end
+
 return T
