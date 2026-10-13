@@ -1,6 +1,6 @@
 # Loop on Codex with cross-model review: Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkboxes for tracking.
 
 **Goal:** Run the loop on Codex (`gpt-5.6-sol`, medium) by default with review pinned to Claude. Every declared skill must load and resolve for the provider that runs its node.
 

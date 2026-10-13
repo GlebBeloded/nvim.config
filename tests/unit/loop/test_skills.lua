@@ -146,6 +146,16 @@ T["loop: Skill preflight fails on an unresolved plugin skill"] = function()
 	eq(result.stderr:find("superpowers:writing-plans", 1, true) ~= nil, true, { fail_reason = result.stderr })
 end
 
+T["loop: Skill preflight fails on a Claude plugin with no install path"] = function()
+	local repo = make_skill_repo({ "superpowers:writing-plans" }, { assistant = "claude" })
+	local bin = H.tempdir(child)
+	write_claude_stub(bin, { { id = PLUGIN_ID, scope = "user", enabled = true } })
+	local result = run_check(repo, bin)
+	eq(result.code ~= 0, true, { fail_reason = result.stdout .. result.stderr })
+	eq(result.stderr:find("superpowers:writing-plans", 1, true) ~= nil, true, { fail_reason = result.stderr })
+	eq(result.stderr:find("Traceback", 1, true), nil, { fail_reason = result.stderr })
+end
+
 T["loop: Skill preflight passes when every declared skill resolves"] = function()
 	local repo = make_skill_repo({ "superpowers:writing-plans", "openspec-propose" }, { assistant = "claude" })
 	write_files(repo, { [".claude/skills/openspec-propose/SKILL.md"] = "x" })

@@ -93,8 +93,14 @@ def codex_plugin_root(plugin: dict) -> pathlib.Path | None:
     return pathlib.Path(codex_home, "plugins", "cache", *parts)
 
 
+def claude_plugin_root(plugin: dict) -> pathlib.Path | None:
+    """`installPath` of a Claude plugin; None when it is missing."""
+    path = plugin.get("installPath")
+    return pathlib.Path(path) if path else None
+
+
 def plugin_skill_path(provider: str, plugin: dict, skill: str) -> pathlib.Path | None:
-    root = pathlib.Path(plugin["installPath"]) if provider == "claude" else codex_plugin_root(plugin)
+    root = claude_plugin_root(plugin) if provider == "claude" else codex_plugin_root(plugin)
     return root and root / "skills" / skill / "SKILL.md"
 
 

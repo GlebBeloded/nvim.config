@@ -26,11 +26,18 @@ On `claude`, `skills_check.py` SHALL resolve a project skill at `.claude/skills/
   - a stub `codex` has a `plugin list --json` whose `installed` list has no `superpowers` entry.
 - **THEN** it exits non-zero and its stderr names `superpowers:writing-plans`
 
+#### Scenario: Skill preflight fails on a Claude plugin with no install path
+- **WHEN** the check is run in a throwaway repo:
+  - its `.archon/config.yaml` has `assistant: claude`;
+  - its workflow declares `superpowers:writing-plans`;
+  - a stub `claude` reports the plugin enabled with no `errors` and no `installPath`.
+- **THEN** it exits non-zero, its stderr names `superpowers:writing-plans`, and it prints no traceback
+
 #### Scenario: Skill preflight resolves skills for each node's provider
 - **WHEN** the check is run in a throwaway repo:
   - its `.archon/config.yaml` has `assistant: codex`;
   - a node declares `superpowers:writing-plans` and `openspec-propose`;
-  - a second node with `provider: claude` declares `superpowers:requesting-code-review`;
+  - a loop node with `provider: claude` holds a node that declares `superpowers:requesting-code-review`;
   - a stub `codex` reports `superpowers` installed and enabled with a `source.path` that contains `skills/writing-plans/SKILL.md`;
   - the repo has `.agents/skills/openspec-propose/SKILL.md`;
   - a stub `claude` reports the plugin enabled with an `installPath` that contains `skills/requesting-code-review/SKILL.md`.
@@ -64,7 +71,7 @@ Every AI node in `.archon/workflows/*.yaml` with `skills:` SHALL use a command t
   - and every `` `superpowers:<x>` `` it names is in that node's `skills:`.
 
 ### Requirement: Skill preflight fails a run with an unresolved skill
-Every workflow SHALL run `.archon/scripts/skills_check.py` before its first skill-declaring AI node. The script SHALL fail when a declared skill does not resolve for the provider of its node. That provider is the node's `provider:`, else the `assistant:` of `.archon/config.yaml`.
+Every workflow SHALL run `.archon/scripts/skills_check.py` before its first skill-declaring AI node. The script SHALL fail when a declared skill does not resolve for the provider of its node. That provider is the node's `provider:`, else its loop node's `provider:`, else the `assistant:` of `.archon/config.yaml`.
 
 #### Scenario: Skill preflight runs before every skill-declaring node
 - **WHEN** each `.archon/workflows/*.yaml` is parsed
