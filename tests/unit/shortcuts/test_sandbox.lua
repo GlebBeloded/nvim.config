@@ -262,7 +262,7 @@ end
 
 T["shortcuts: A second sandbox lock waits for the first and says so"] = function()
 	local dir = vim.fs.joinpath(tempdir(), "lock")
-	local holder = start_locker("holder", dir, 2 * H.load_factor())
+	local holder = start_locker("holder", dir, 2)
 	wait_owner(dir, holder.pid)
 
 	local waiter = start_locker("waiter", dir, 0.5)
@@ -288,7 +288,7 @@ T["shortcuts: A sandbox lock left by a dead process is reclaimed"] = function()
 	local elapsed = now_ms() - t0
 	local result = wait_locker("reclaimer")
 
-	eq(elapsed < 2000 * H.load_factor(), true)
+	eq(elapsed < 2000, true)
 	eq(result.stderr:find("sandbox: reclaiming stale lock", 1, true) ~= nil, true)
 end
 
@@ -304,7 +304,7 @@ T["shortcuts: A sandbox lock wait gives up after SANDBOX_LOCK_TIMEOUT"] = functi
 
 	MiniTest.expect.no_equality(result.code, 0)
 	eq(
-		{ at_least_timeout = elapsed >= 1000, within_bound = elapsed < 5000 * H.load_factor() },
+		{ at_least_timeout = elapsed >= 1000, within_bound = elapsed < 5000 },
 		{ at_least_timeout = true, within_bound = true }
 	)
 	eq(result.stderr:find("pid " .. holder.pid, 1, true) ~= nil, true)
@@ -416,7 +416,7 @@ end
 T["shortcuts: sandbox.sh e2e waits while another checkout holds the sandbox lock"] = function()
 	local env = sandbox_env()
 	local dir = vim.fs.joinpath(env.SANDBOX_STATE, "lock")
-	local holder = start_locker("holder", dir, 2 * H.load_factor())
+	local holder = start_locker("holder", dir, 2)
 	wait_owner(dir, holder.pid)
 
 	child.lua("_G.e2e_run = vim.system(..., { cwd = select(2, ...), env = select(3, ...), text = true })", {

@@ -259,5 +259,5 @@
 ## Review Follow-up
 
 - [x] Restore the approved Cmd+Shift+Q unreachable-by-default note in the main shortcut table.
-- [ ] Restore the sandbox-lock scenarios' literal 2 s holder times and 2 s / 5 s pass bounds.
+- [x] Restore the sandbox-lock scenarios' literal 2 s holder times and 2 s / 5 s pass bounds.
 - [ ] Cover fatal e2e preflight without debug-library access to the controlled-regression helper.
