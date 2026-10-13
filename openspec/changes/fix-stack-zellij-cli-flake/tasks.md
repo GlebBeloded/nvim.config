@@ -50,5 +50,10 @@ Scenarios: "shortcuts: The stack harness retries a transient zellij CLI failure"
 
 ## 2. Gate
 
-- [ ] 2.1 `make check` green.
-- [ ] 2.2 `make check E2E=1` green 5 times in a row (the bug's acceptance criterion). Record the 5 status lines in the PR notes.
+- [x] 2.1 `make check` green.
+- [x] 2.2 `make check E2E=1` green 5 times in a row (the bug's acceptance criterion). Record the 5 status lines in the PR notes.
+  - run 1: `check: ok (19.5 s)`
+  - run 2: `check: ok (21.3 s)`
+  - run 3: `check: ok (26.5 s)`
+  - run 4: `check: ok (20.5 s)`
+  - run 5: `check: ok (128.3 s)` (smoke-health took 126.5 s, but no layer failed)
