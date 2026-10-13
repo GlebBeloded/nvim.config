@@ -375,6 +375,17 @@ The build gate SHALL save the check log without ANSI codes and send the next fix
 - **WHEN** `tests/types.sh` runs where lua-language-server prints `>>>>=== 12/369 [Found 5 problems in 1 files]` progress lines and a diagnostic
 - **THEN** the output holds the diagnostic and no progress line
 
+### Requirement: Loop test runs give language servers a long timeout
+Tests that wait for a real language server SHALL take their timeout from `H.lsp_timeout(default)`: `$LSP_TIMEOUT_MS` when it is a positive integer, else the default, so interactive runs keep their timeout. The build gate SHALL run `make check` with `LSP_TIMEOUT_MS=120000` unless it is already set, since gopls can take minutes to load.
+
+#### Scenario: Gate gives language servers a long timeout
+- **WHEN** `.archon/scripts/gate.py` runs without `LSP_TIMEOUT_MS` set and a stubbed `make`
+- **THEN** `make` sees `LSP_TIMEOUT_MS=120000`
+
+#### Scenario: LSP waits in tests honor LSP_TIMEOUT_MS
+- **WHEN** `H.lsp_timeout(10000)` is called with `LSP_TIMEOUT_MS` unset, empty, `abc`, `0` and `120000`
+- **THEN** it returns 10000, 10000, 10000, 10000 and 120000
+
 ### Requirement: Fix pass reruns failed files and guards references
 The fix command SHALL rerun every test file named in a `FAIL in …` line of the latest check log plus `tests/screen/<area>` of the touched area (never make check), read only the latest check log with bounded context, and regenerate a reference screenshot only when the cell diff is limited to UI a named merged or base commit changed.
 

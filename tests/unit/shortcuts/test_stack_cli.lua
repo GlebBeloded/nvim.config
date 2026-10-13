@@ -94,6 +94,38 @@ T["shortcuts: The stack harness keeps a zellij CLI retry within the outer wait"]
 	eq(result.ms < 2000, true)
 end
 
+--- `zellij` stub whose `dump-screen` prints a Neovim screen stuck on a startup error.
+local BLOCKED_SCREEN_STUB = [[#!/bin/sh
+case "$*" in
+*dump-screen*) printf '~\n~\n\nError detected while processing init.lua:\nE5113: kmap is nil\nPress ENTER or type command to continue\n\n' ;;
+*) exit 1 ;;
+esac
+]]
+
+--- Runs in the child: `lua()` of a Stack whose Neovim reports a blocking mode `r`.
+local BLOCKED_LUA = [[local stub = ...
+local dir = vim.fn.tempname()
+vim.fn.mkdir(dir, "p")
+local zellij = vim.fs.joinpath(dir, "zellij")
+vim.fn.writefile(vim.split(stub, "\n"), zellij)
+vim.uv.fs_chmod(zellij, 493)
+local M = require("tests.shortcuts.stack")
+local stack = setmetatable({ session = "s", env = { PATH = dir .. ":" .. vim.env.PATH } }, M.Stack)
+function stack.mode()
+	return { mode = "r", blocking = true }
+end
+local ok, err = pcall(stack.lua, stack, "return 1")
+return { ok = ok, err = tostring(err) }]]
+
+T["shortcuts: The stack harness shows the screen that blocks Neovim"] = function()
+	local result = child.lua(BLOCKED_LUA, { BLOCKED_SCREEN_STUB })
+
+	eq(result.ok, false)
+	for _, needle in ipairs({ "blocked in mode r", "E5113: kmap is nil", "Press ENTER or type command to continue" }) do
+		eq(result.err:find(needle, 1, true) ~= nil, true, { fail_reason = result.err })
+	end
+end
+
 --- Runs in the child with `vim.uv.loadavg` / `vim.uv.available_parallelism` pinned to `load` and `cpus`:
 --- `M.wait_for` from tests.shortcuts.stack on a predicate that turns true `ready` ms after the call.
 local WAIT_UNDER_LOAD = [[local load, cpus, ready, timeout = ...

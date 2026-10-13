@@ -728,6 +728,15 @@ function M.load_factor()
 	return math.max(1, vim.uv.loadavg() / vim.uv.available_parallelism())
 end
 
+--- How long a test waits for a real language server to attach and answer: `$LSP_TIMEOUT_MS` when it is a
+--- positive integer (the loop's gate sets it, since gopls can take minutes to load a module), else `default_ms`.
+---@param default_ms integer
+---@return integer
+function M.lsp_timeout(default_ms)
+	local ms = tonumber(vim.env.LSP_TIMEOUT_MS)
+	return ms and ms > 0 and math.floor(ms) == ms and ms or default_ms
+end
+
 --- Fresh temp directory of the child, as a resolved real path.
 ---@param child MiniTest.child
 ---@return string

@@ -87,6 +87,13 @@ The stack harness SHALL read zellij state through `zellij action` calls that ret
 - **WHEN** `M.wait_for` polls `focused_pane()` with a 300 ms timeout, the Stack has the default CLI deadline, and every stubbed `action list-clients` exits 1 printing `There is no active session!`
 - **THEN** it raises an error containing `There is no active session!` in under 2 s
 
+### Requirement: The stack harness shows what blocks Neovim
+When Neovim reports a blocking mode (a startup error or hit-enter prompt), the stack and e2e harness SHALL fail the RPC call with the mode and the last non-blank lines of the Neovim pane as zellij draws it, instead of only the mode.
+
+#### Scenario: The stack harness shows the screen that blocks Neovim
+- **WHEN** `lua()` of a `tests.shortcuts.stack` Stack is called while Neovim reports mode `r` as blocking and the stubbed `zellij action dump-screen` prints `E5113: kmap is nil` above `Press ENTER or type command to continue`
+- **THEN** it raises an error containing `blocked in mode r`, `E5113: kmap is nil` and the prompt line
+
 ### Requirement: The app menu leaves Cmd+Q and Cmd+H to the terminal
 The repo SHALL provide an idempotent macOS setup step that moves Alacritty's app-menu key equivalents for "Quit alacritty" to Cmd+Option+Control+Q and "Hide alacritty" to Cmd+Option+Control+H in the `org.alacritty` defaults domain while keeping every other entry. The host SHALL apply it with a make target, and the sandbox VM SHALL apply it before e2e.
 

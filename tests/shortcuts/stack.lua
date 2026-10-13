@@ -17,6 +17,8 @@ local NAVIGATOR_PERMISSIONS = { "WriteToStdin", "ReadApplicationState", "ChangeA
 -- zellij 0.45 CLI calls fail now and then under load (a CLI client id is freed twice)
 local CLI_TIMEOUT_MS = 5000
 local NO_SESSION = "There is no active session!"
+-- screen lines shown when Neovim is blocked (startup errors span a few lines plus the prompt)
+local BLOCKED_LINES = 8
 local EXTRA_OPTIONS = {
 	"session_serialization false",
 	"show_release_notes false",
@@ -235,17 +237,43 @@ function Stack:send(bytes)
 	assert(result.code == 0, "tmux send-keys failed: " .. (result.stderr or ""))
 end
 
---- Run Lua in Neovim over RPC.
+--- Neovim's mode over RPC: answered even while Neovim blocks (getchar, prompts),
+--- where nvim_exec_lua would hang the whole run.
+---@return { mode: string, blocking: boolean }
+function Stack:mode()
+	local channel = assert(self.channel, "stack: Neovim not connected")
+	return vim.rpcrequest(channel, "nvim_get_mode") --[[@as { mode: string, blocking: boolean }]]
+end
+
+---@param line string
+---@return boolean
+local function not_blank(line)
+	return vim.trim(line) ~= ""
+end
+
+--- Last non-blank lines of the Neovim pane as zellij draws it, readable while Neovim blocks
+--- (a startup error or hit-enter prompt).
+---@param count integer
+---@return string
+function Stack:screen_tail(count)
+	local result = self:action({ "dump-screen", "--pane-id", "terminal_0" })
+	if result.code ~= 0 then
+		return "(screen unavailable: " .. vim.trim(result.stderr or "") .. ")"
+	end
+	local lines = vim.tbl_filter(not_blank, vim.split(result.stdout or "", "\n", { plain = true }))
+	return table.concat(vim.list_slice(lines, math.max(1, #lines - count + 1)), "\n  ")
+end
+
+--- Run Lua in Neovim over RPC; a blocked Neovim fails with the screen lines that block it.
 ---@param code string
 ---@param args? any[]
 ---@return any
 function Stack:lua(code, args)
-	local channel = assert(self.channel, "stack: Neovim not connected")
-	-- nvim_get_mode is answered even while Neovim blocks (getchar, prompts),
-	-- where nvim_exec_lua would hang the whole run
-	local mode = vim.rpcrequest(channel, "nvim_get_mode") --[[@as { mode: string, blocking: boolean }]]
-	assert(not mode.blocking, "stack: Neovim is blocked in mode " .. mode.mode)
-	return vim.rpcrequest(channel, "nvim_exec_lua", code, args or {})
+	local mode = self:mode()
+	if mode.blocking then
+		error("stack: Neovim is blocked in mode " .. mode.mode .. "; screen:\n  " .. self:screen_tail(BLOCKED_LINES), 0)
+	end
+	return vim.rpcrequest(self.channel, "nvim_exec_lua", code, args or {})
 end
 
 --- Note a startup event with its time since start().
