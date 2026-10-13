@@ -1,10 +1,10 @@
 ## Why
-`<A-e>` on a buffer named like a URI (`vscodediff://x`) does not focus the filesystem tree. `smart_toggle_neotree` (`lua/gleb/keymaps.lua`) skips `reveal_file` for `scheme://` names and runs `Neotree focus filesystem`, but `follow_current_file = { enabled = true }` (`lua/gleb/file_tree/init.lua`) still tries to reveal the current buffer: neo-tree opens a `neo-tree-popup` asking "File not in cwd. Change cwd to vscodediff:? y/n", which takes focus. The test "keymaps: Alt-e on URI buffer focuses filesystem" (`tests/integration/keymaps/test_keymaps.lua`) is `H.xfail` until this is fixed.
+`<A-e>` on a buffer named like a URI (`vscodediff://x`) does not focus the filesystem tree. `smart_toggle_neotree` (`lua/gleb/keymaps.lua`) skips `reveal_file` for `scheme://` names and runs `Neotree focus filesystem`, but neo-tree treats an omitted `reveal` as enabled when `follow_current_file.enabled` is true. Its command then derives `vscodediff://x` as a reveal path outside the cwd and opens a `neo-tree-popup` asking "File not in cwd. Change cwd to vscodediff:? y/n", which takes focus. The test "keymaps: Alt-e on URI buffer focuses filesystem" (`tests/integration/keymaps/test_keymaps.lua`) is `H.xfail` until this is fixed.
 
 Kind: bug
 
 ## What Changes
-- Focusing the filesystem tree from a `scheme://` buffer opens it on the cwd without a reveal or a "Change cwd" prompt (e.g. focus from a buffer neo-tree does not follow, or skip `follow_current_file` for non-file buffers).
+- Focusing the filesystem tree from a `scheme://` buffer explicitly suppresses neo-tree's implied reveal, so it opens on the cwd without a "Change cwd" prompt. Following ordinary files remains enabled.
 - Remove `H.xfail` from "keymaps: Alt-e on URI buffer focuses filesystem"; it must pass.
 
 ## Capabilities
