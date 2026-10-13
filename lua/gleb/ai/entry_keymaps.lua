@@ -39,8 +39,8 @@ function M.setup(ninety_nine)
 	nn = ninety_nine
 	vim.keymap.set("n", "<A-9>", normal_menu, { silent = true, desc = "99: Menu" })
 	vim.keymap.set("n", "<S-CR>", vibe_prompt, { silent = true, desc = "99: Vibe" })
-	vim.keymap.set("v", "<A-9>", visual_prompt, { silent = true, desc = "99: Visual" })
-	vim.keymap.set("v", "<S-CR>", visual_prompt, { silent = true, desc = "99: Visual" })
+	vim.keymap.set("x", "<A-9>", visual_prompt, { silent = true, desc = "99: Visual" })
+	vim.keymap.set("x", "<S-CR>", visual_prompt, { silent = true, desc = "99: Visual" })
 end
 
 return M

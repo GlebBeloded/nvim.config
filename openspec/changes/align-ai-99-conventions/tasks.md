@@ -33,11 +33,11 @@ Scenario: `Entry mappings are silent`.
 
 Scenario: `Select mode keeps its default behavior`.
 
-- [ ] 3.1 Failing mini.test first: extend `tests/unit/ai/test_entry_keymaps.lua` with the case
+- [x] 3.1 Failing mini.test first: extend `tests/unit/ai/test_entry_keymaps.lua` with the case
   `ai: Select mode keeps its default behavior`. Assert via `maparg(..., false, true)` that neither
   `<A-9>` nor `<S-CR>` has a Select-mode mapping. Run the focused case; expect both assertions to
   fail because the current `v` maps also apply in Select mode.
-- [ ] 3.2 In `lua/gleb/ai/entry_keymaps.lua`, change only the two selection mappings from mode `v` to
+- [x] 3.2 In `lua/gleb/ai/entry_keymaps.lua`, change only the two selection mappings from mode `v` to
   `x`; preserve their functions, descriptions, and silent options.
-- [ ] 3.3 Run `make test FILE=tests/unit/ai/test_entry_keymaps.lua` to cover the new scenario and every
+- [x] 3.3 Run `make test FILE=tests/unit/ai/test_entry_keymaps.lua` to cover the new scenario and every
   existing entry-key behavior, then run `make quick`; both pass. Commit the test and implementation.
