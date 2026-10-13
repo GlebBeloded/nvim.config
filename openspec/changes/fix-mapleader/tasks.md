@@ -25,4 +25,4 @@ Scenarios: "shortcuts: Cmd chords reach Neovim through real zellij", "shortcuts:
 Scenarios: none (docs and the merge gate; every scenario above is already covered by tasks 1–3)
 
 - [x] 4.1 `docs/architecture.md`: the load-order note says the leader (Space, fallback for plugin defaults) is set at the top of `init.lua`; rule 3.8 becomes "No `<leader>` maps in the config; Cmd shortcuts instead. Core keymap changes need user approval."; rule 3.7 adds that an unbound Cmd chord arrives as `<D-…>` (kitty protocol). Update the git spec text that still mentions `<D->` if any remains. `make trace` shows no orphan and every new scenario tested.
-- [ ] 4.2 `make check E2E=1` green.
+- [x] 4.2 `make check E2E=1` green.
