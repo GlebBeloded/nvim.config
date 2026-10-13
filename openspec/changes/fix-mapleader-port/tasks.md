@@ -140,7 +140,7 @@ Expected: PASS, including "Leader values after startup", "Leader is set before l
 
 Verify `openspec/changes/fix-mapleader/` is gone and `git diff loop/fix-mapleader -- openspec/changes/archive/2026-10-13-fix-mapleader/` is empty. Reread the leader notes in `docs/architecture.md` (load order, rules 3.7/3.8); fix any statement that contradicts the resolved `init.lua` (leader, then debug-log `setup()`, then lazy.nvim).
 
-- [ ] **Step 10: Full gate** (left to the gate after this pass, which runs it once)
+- [x] **Step 10: Full gate**
 
 Run: `make check E2E=1` (sandbox VM).
 Expected: every layer green; e2e runs (not `skip`) and both the Cmd+O/I/D/A and fold cases pass; `make trace` reports no orphans.
