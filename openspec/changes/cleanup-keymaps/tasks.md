@@ -42,16 +42,16 @@ Scenarios: "Command maps do not enter the command line"; regression: "Increase h
 Scenarios: "Close buffer keeps split layout", "Close modified buffer is refused"; regression:
 "Close current buffer".
 
-- [ ] 3.1 Add the failing case `T["keymaps: Close buffer keeps split layout"]`: edit `<dir>/a`, then
+- [x] 3.1 Add the failing case `T["keymaps: Close buffer keeps split layout"]`: edit `<dir>/a`, then
   `<dir>/b`, `vsplit`, press `<C-q>`; assert `#nvim_tabpage_list_wins(0) == 2`, neither window's
   buffer is `b`, and `buflisted(b) == 0`.
-- [ ] 3.2 Add the case `T["keymaps: Close modified buffer is refused"]`: edit `<dir>/a`, then
+- [x] 3.2 Add the case `T["keymaps: Close modified buffer is refused"]`: edit `<dir>/a`, then
   `<dir>/b` with `setlocal filetype=gitcommit` (the auto-save `condition` skips it, so it stays
   modified), set lines, press `<C-q>`; assert the current buffer is still `b`, listed, and
   `modified`. It passes today (`:bdelete` refuses too); it guards the `Bdelete` (no `!`) choice.
-- [ ] 3.3 Run both: "keeps split layout" fails (one window left).
-- [ ] 3.4 Map `<C-q>` to `<Cmd>Bdelete<CR>` (desc `Buffer: Close`).
-- [ ] 3.5 Both cases and "Close current buffer" pass; `make quick` green. Commit.
+- [x] 3.3 Run both: "keeps split layout" fails (one window left).
+- [x] 3.4 Map `<C-q>` to `<Cmd>Bdelete<CR>` (desc `Buffer: Close`).
+- [x] 3.5 Both cases and "Close current buffer" pass; `make quick` green. Commit.
 
 ## 4. Reference screenshot of `<C-q>` in a split
 

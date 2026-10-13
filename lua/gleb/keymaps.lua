@@ -35,7 +35,7 @@ map("n", "<A-K>", require("smart-splits").resize_up, "Window: Resize up") -- Cmd
 map("n", "<A-L>", require("smart-splits").resize_right, "Window: Resize right") -- Cmd+Shift+L
 
 -- Buffer management
-map("n", "<C-q>", ":bdelete<CR>", "Buffer: Close")
+map("n", "<C-q>", "<Cmd>Bdelete<CR>", "Buffer: Close")
 
 -- Insert mode
 map("i", "jk", "<ESC>", "Edit: Leave insert mode")

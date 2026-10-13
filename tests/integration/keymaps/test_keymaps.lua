@@ -249,6 +249,33 @@ T["keymaps: Close current buffer"] = function()
 	eq(child.fn.buflisted(current), 0)
 end
 
+T["keymaps: Close buffer keeps split layout"] = function()
+	local dir = vim.fn.tempname()
+	child.cmd("edit " .. dir .. "/a | edit " .. dir .. "/b | vsplit")
+	local b = child.api.nvim_get_current_buf()
+	child.type_keys("<C-q>")
+	local wins = child.api.nvim_tabpage_list_wins(0)
+	local shown = vim.tbl_map(child.api.nvim_win_get_buf, wins)
+
+	eq({ #wins, vim.tbl_contains(shown, b), child.fn.buflisted(b) }, { 2, false, 0 })
+end
+
+T["keymaps: Close modified buffer is refused"] = function()
+	local dir = vim.fn.tempname()
+	-- gitcommit: the auto-save condition skips it, so it stays modified
+	child.cmd("edit " .. dir .. "/a | edit " .. dir .. "/b | setlocal filetype=gitcommit")
+	local b = child.api.nvim_get_current_buf()
+	set_lines({ "changed" })
+	-- the refusal is reported as an error (E89), which type_keys rethrows
+	pcall(child.type_keys, "<C-q>")
+
+	eq({
+		child.api.nvim_get_current_buf(),
+		child.fn.buflisted(b),
+		child.api.nvim_get_option_value("modified", { buf = b }),
+	}, { b, 1, true })
+end
+
 -- Insert and visual helpers --------------------------------------------------
 
 T["keymaps: jk leaves insert mode"] = function()
