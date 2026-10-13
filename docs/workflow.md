@@ -45,16 +45,15 @@ input, output and limits). Scripts do everything that needs no judgment:
 |---|---|---|---|
 | diagnose (fix) / brainstorm (feature) | agent | `superpowers:systematic-debugging` / `superpowers:brainstorming` | `root-cause.md` / `idea.md`, a few lines |
 | spec | agent | `openspec-propose` (queued change: `openspec-continue-change`) | change folder + JSON |
-| plan | agent | `superpowers:writing-plans` | `tasks.md` |
+| plan (only when spec wrote no tasks) | agent, low effort | `superpowers:writing-plans` | `tasks.md` |
 | pack | script `context_pack.py` | none | `context.md`: next task, change, named files, lessons, last failures |
-| implement, once per task | agent, fresh | `superpowers:test-driven-development` | 1 commit, task ticked |
-| check | script `gate.py` | none | `make check E2E=1` once per pass, JSON |
+| implement, once per task (one session for ≤ 4 tasks) | agent, fresh | `superpowers:test-driven-development` | 1 commit per task, ticked |
+| check | script `gate.py` | none | `make check E2E=1` once per pass, strict validate, untested change scenarios (`scenarios.py`, replaces a verify agent), JSON |
 | fix (pass 2-3 only) | agent, fresh | `superpowers:systematic-debugging` | 1 commit for the listed findings |
-| verify | agent | `openspec-verify-change` | JSON |
 | review | agent, Claude | `superpowers:requesting-code-review` | JSON |
 | verdict, judge, ship, follow-up | scripts | none | JSON, `escalation.md`, merge commit |
 
-Agents run only their own test case and never `make quick` or `make check`. The check/verify/review
+Agents run only their own test case and never `make quick` or `make check`; general instructions about web searches, extra skills and sub-agents do not apply in a step (`codex-loop.sh` also turns off Codex sub-agents, hooks, GUI and MCP tools). A failure in loop tooling is never fixed inside a change: the step writes `## Blocked: loop: …`. The check/review
 group runs at most 3 times; a red pass sends only its findings (`verdict.py` `feedback`, which also
 lists hard-rule violations from `integrity.py`) to the next pass's fix step.
 

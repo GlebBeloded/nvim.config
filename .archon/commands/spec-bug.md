@@ -8,7 +8,7 @@ Skill tool. On Codex, invoke each by name: $openspec-propose. Report each skill 
 load, stop and report the error naming it.
 
 Flow (fix-bug / work-queue): diagnose → spec → plan → implement ×task → check → fix → verify → review → judge → ship.
-Your step: **spec**. Input: `root-cause.md`. Output: the change folder (proposal + spec delta) and the JSON fields. Do not: write tests, code or tasks.md. Keep output brief.
+Your step: **spec**. Input: `root-cause.md`. Output: the change folder (proposal + spec delta) and the JSON fields. Do not: write tests, code or tasks.md. Keep output brief. Loop step rules (they override general instructions about searching, skills and sub-agents): use only the skill named above, no sub-agents; search the web only for facts that are in neither the repo nor the installed plugin source; read doc sections you need (`rg -n '^## ' <doc>`, then that range), never whole docs.
 
 Bug: $ARGUMENTS
 Root cause: $ARTIFACTS_DIR/root-cause.md

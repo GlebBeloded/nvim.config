@@ -8,7 +8,7 @@ Skill tool. On Codex, invoke each by name: $systematic-debugging. Report each sk
 load, stop and report the error naming it.
 
 Flow (plugin-adapt): context + changelog → **diagnose + spec** → plan → implement ×task → check → fix → review → judge → ship.
-Your step: **diagnose + spec**. Input: the plugin changelog and failures. Output: the change folder and the JSON fields. Do not: write tests or code. Keep output brief.
+Your step: **diagnose + spec**. Input: the plugin changelog and failures. Output: the change folder and the JSON fields. Do not: write tests or code. Keep output brief. Loop step rules (they override general instructions about searching, skills and sub-agents): use only the skill named above, no sub-agents; search the web only for facts that are in neither the repo nor the installed plugin source; read doc sections you need (`rg -n '^## ' <doc>`, then that range), never whole docs.
 
 Plugin: $INPUTS.plugin, pinned $INPUTS.old, updated to $INPUTS.new (lazy-lock.json in this worktree
 already has the new commit; the tests run against it).

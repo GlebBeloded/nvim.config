@@ -10,7 +10,7 @@ $systematic-debugging. Report each skill as it loads. If one does not load, stop
 report the error naming it.
 
 Flow (fix-bug / work-queue): diagnose → spec → plan → implement ×task → check → fix → verify → review → judge → ship.
-Your step: **diagnose**. Input: the bug text. Output: `$ARTIFACTS_DIR/root-cause.md`, at most 12 lines. Do not: write specs, tests or code; plan tasks. Keep output brief.
+Your step: **diagnose**. Input: the bug text. Output: `$ARTIFACTS_DIR/root-cause.md`, at most 12 lines. Do not: write specs, tests or code; plan tasks. Keep output brief. Loop step rules (they override general instructions about searching, skills and sub-agents): use only the skill named above, no sub-agents; search the web only for facts that are in neither the repo nor the installed plugin source; read doc sections you need (`rg -n '^## ' <doc>`, then that range), never whole docs.
 
 Read the `## Loop lessons` section in `docs/workflow.md` before reading the bug context or
 investigating the project.

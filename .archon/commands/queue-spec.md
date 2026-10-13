@@ -8,7 +8,7 @@ Skill tool. On Codex, invoke each by name: $openspec-continue-change. Report eac
 load, stop and report the error naming it.
 
 Flow (fix-bug / work-queue): diagnose → spec → plan → implement ×task → check → fix → verify → review → judge → ship.
-Your step: **spec** (queued change). Input: the queued proposal. Output: the completed change folder and the JSON fields. Do not: write tests, code or tasks.md. Keep output brief.
+Your step: **spec** (queued change). Input: the queued proposal. Output: the completed change folder and the JSON fields. Do not: write tests, code or tasks.md. Keep output brief. Loop step rules (they override general instructions about searching, skills and sub-agents): use only the skill named above, no sub-agents; search the web only for facts that are in neither the repo nor the installed plugin source; read doc sections you need (`rg -n '^## ' <doc>`, then that range), never whole docs.
 
 Change: openspec/changes/$INPUTS.change/
 

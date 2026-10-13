@@ -4,7 +4,7 @@ description: Merge auto into the run branch and resolve the conflicts ship repor
 # Resolve conflict
 
 Flow (port): merge auto in → **resolve** → check → fix → ship.
-Your step: **resolve**. Input: the conflict hunks. Output: 1 merge commit with no conflict markers. Do not: change behaviour beyond merging both sides, drop tests, run make quick/check. Keep output brief.
+Your step: **resolve**. Input: the conflict hunks. Output: 1 merge commit with no conflict markers. Do not: change behaviour beyond merging both sides, drop tests, run make quick/check. Keep output brief. Loop step rules (they override general instructions about searching, skills and sub-agents): use only the skill named above, no sub-agents; search the web only for facts that are in neither the repo nor the installed plugin source; read doc sections you need (`rg -n '^## ' <doc>`, then that range), never whole docs.
 
 Change id: $INPUTS.change
 Files ship reported as conflicting with `auto`: $ship.output.files

@@ -22,17 +22,29 @@ nodes:
   - id: skills-check # declared skills resolve here (docs/workflow.md, Setup facts)
     bash: python3 .archon/scripts/skills_check.py .archon/workflows/nvim-deliver.yaml
 
+  - id: plan-check # the spec step usually wrote tasks.md already; plan only when it has no task
+    bash: INPUTS_CHANGE="$INPUTS_CHANGE" python3 .archon/scripts/tasks.py --plan-needed
+    depends_on: [skills-check]
+    output_format:
+      type: object
+      properties:
+        needed: { type: boolean }
+      required: [needed]
+
   - id: plan
     command: plan
-    depends_on: [skills-check]
+    depends_on: [plan-check]
+    when: "$plan-check.output.needed == true"
     context: fresh
+    effort: low
     skills: [superpowers:writing-plans]
 
   - id: plan-gate # drop plan headers that name a sub-skill (one skill per step), then validate
     bash: |
       python3 -c "import re,sys;p=sys.argv[1];t=open(p).read();open(p,'w').write(re.sub(r'(?m)^.*REQUIRED SUB-SKILL.*\n','',t))" "openspec/changes/$INPUTS_CHANGE/tasks.md"
       openspec validate "$INPUTS_CHANGE" --strict --no-interactive
-    depends_on: [plan]
+    depends_on: [plan-check, plan]
+    trigger_rule: all_done
 
   # --- Tasks: one fresh, short implement session per unchecked task (docs/workflow.md, Steps) -------
   - id: tasks
@@ -82,29 +94,17 @@ nodes:
               green: { type: boolean }
               spec_ok: { type: boolean }
               tasks_done: { type: boolean }
+              untested: { type: integer }
               attempt: { type: integer }
               failures: { type: string }
-            required: [green, spec_ok, tasks_done, attempt, failures]
-
-        - id: verify # /opsx:verify + make trace; CRITICAL findings go to the next pass's fix
-          command: verify
-          context: fresh
-          depends_on: [gate]
-          when: "$gate.output.green == true && $gate.output.spec_ok == true"
-          skills: [openspec-verify-change]
-          output_format:
-            type: object
-            properties:
-              critical: { type: integer }
-              findings: { type: string }
-            required: [critical, findings]
+            required: [green, spec_ok, tasks_done, untested, attempt, failures]
 
         - id: review # consistency, scope creep, test integrity, reuse
           command: review
           provider: claude # cross-model review
           context: fresh
-          depends_on: [verify]
-          when: "$verify.output.critical == 0"
+          depends_on: [gate]
+          when: "$gate.output.green == true && $gate.output.spec_ok == true && $gate.output.untested == 0"
           skills: [superpowers:requesting-code-review]
           output_format:
             type: object
@@ -118,7 +118,7 @@ nodes:
         - id: verdict # also runs the hard-rule checks (integrity.py); feedback feeds the next fix
           script: verdict
           runtime: uv
-          depends_on: [gate, verify, review]
+          depends_on: [gate, review]
           trigger_rule: all_done
           with:
             green: $gate.output.green
@@ -126,8 +126,7 @@ nodes:
             tasks_done: $gate.output.tasks_done
             attempt: $gate.output.attempt
             failures: $gate.output.failures
-            critical: { from: $verify.output.critical, if_skipped: -1 }
-            verify_findings: { from: $verify.output.findings, if_skipped: "" }
+            critical: $gate.output.untested # a script check replaces the verify agent: untested scenarios
             approve: { from: $review.output.approve, if_skipped: false }
             review_findings: { from: $review.output.findings, if_skipped: "" }
             weakened_scenario: { from: $review.output.weakened_scenario, if_skipped: false }
@@ -241,6 +240,7 @@ nodes:
         - id: resolve
           command: resolve-conflict
           idle_timeout: 900000
+          effort: low
 
         - id: regate
           script: gate

@@ -9,7 +9,7 @@ Skill tool. On Codex, invoke each by name: $brainstorming. Report each skill as 
 load, stop and report the error naming it.
 
 Flow (new-feature): brainstorm → spec + renders → user picks a render → plan → implement ×task → check → fix → verify → review → judge → ship.
-Your step: **brainstorm**. Input: the idea. Output: `$ARTIFACTS_DIR/idea.md`, at most 15 lines (options, pick, why). Do not: write specs, tests or code. Keep output brief.
+Your step: **brainstorm**. Input: the idea. Output: `$ARTIFACTS_DIR/idea.md`, at most 15 lines (options, pick, why). Do not: write specs, tests or code. Keep output brief. Loop step rules (they override general instructions about searching, skills and sub-agents): use only the skill named above, no sub-agents; search the web only for facts that are in neither the repo nor the installed plugin source; read doc sections you need (`rg -n '^## ' <doc>`, then that range), never whole docs.
 
 Idea: $ARGUMENTS
 
