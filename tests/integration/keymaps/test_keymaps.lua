@@ -543,14 +543,13 @@ T["keymaps: Alt-e reveals current file"] = function()
 end
 
 T["keymaps: Alt-e on URI buffer focuses filesystem"] = H.xfail("fix-neotree-uri-reveal: URI reveal prompts", function()
-		edit_repo_file()
-		child.cmd("enew | file vscodediff://x | messages clear")
-		child.type_keys("<M-e>")
+	edit_repo_file()
+	child.cmd("enew | file vscodediff://x | messages clear")
+	child.type_keys("<M-e>")
 
-		eq(wait_tree_focused("filesystem"), true)
-		eq({ child.v.errmsg, child.cmd_capture("messages") }, { "", "" })
-	end
-)
+	eq(wait_tree_focused("filesystem"), true)
+	eq({ child.v.errmsg, child.cmd_capture("messages") }, { "", "" })
+end)
 
 T["keymaps: Alt-e closes focused filesystem tree"] = function()
 	edit_repo_file()
