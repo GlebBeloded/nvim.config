@@ -27,7 +27,7 @@ behaviour change: `make check` green, smoke startup within budget.
 
 ## 0. Sync with `auto`
 
-- [ ] 0.1 `git rebase auto` (the branch forked at `ac413b8`; `fix-session-save-guards`,
+- [x] 0.1 `git rebase auto` (the branch forked at `ac413b8`; `fix-session-save-guards`,
   `fix-diff-preview-stale-tab`, `fix-type-check-baseline` and others landed since). `make quick` green.
 
 ## 1. Module layout (1.2, 1.4, 4.1)
