@@ -92,11 +92,11 @@ end
 
 -- nvim_input, not child.type_keys: type_keys' `v:errmsg` round-trips make the
 -- menu's pending getchar() return, so the prompt would be gone before reading.
-T["ai: Menu shows prompt"] = H.xfail("fix-ai-menu-prompt-hidden: cmdheight=0 hides the echo", function()
+T["ai: Menu shows prompt"] = function()
 	child.api.nvim_input("<A-9>")
 
 	eq(wait_menu_row():sub(1, #MENU), MENU)
-end)
+end
 
 T["ai: Menu s opens search prompt"] = function()
 	child.type_keys("<A-9>", "s")

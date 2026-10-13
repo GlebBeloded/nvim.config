@@ -33,3 +33,5 @@ Scenarios: `<capability>: <scenario title>`
 ```
 Do not run `openspec instructions tasks`; the tasks format is given
 above. Run `openspec status` once, at the end. Do not re-read files you just wrote; read files with `nl -ba` once.
+
+Before finishing, when the change has a spec delta: keep each requirement's text (between `### Requirement:` and its first scenario, MODIFIED ones restated in full) under 500 characters, and run `python3 .archon/scripts/spec_trial.py <change>`; fix the delta until it exits 0.

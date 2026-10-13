@@ -175,7 +175,7 @@ Every workflow SHALL run `.archon/scripts/skills_check.py` before its first skil
 - **THEN** it contains `assistant: codex`, `assistant: claude` and `provider: claude`
 
 ### Requirement: Codex wrapper trims the fixed context of every call
-`.archon/scripts/codex-loop.sh` SHALL pass its `-c` overrides after the subcommand (`codex -c k=v exec` ignores them), turning off sub-agents, hooks, apps, tool suggestions (recommended plugins), the skills catalog, the collaboration-mode and multi-agent usage hints, and the GUI and MCP tools. It SHALL run Codex with `CODEX_HOME` set to a directory that links every entry of the user's Codex home (auth, config, plugins, sessions) except `AGENTS.md` and `AGENTS.override.md`, so the global instructions are not loaded while sessions still land in `~/.codex/sessions`.
+`.archon/scripts/codex-loop.sh` SHALL pass its `-c` overrides after the subcommand, turning off sub-agents, hooks, apps, tool suggestions, the skills catalog, the collaboration-mode and multi-agent hints, and the GUI and MCP tools. It SHALL run Codex with a `CODEX_HOME` that links every entry of the user's Codex home except `AGENTS.md` and `AGENTS.override.md`, so global instructions are not loaded while sessions still land in `~/.codex/sessions`.
 
 #### Scenario: Codex wrapper passes its overrides after the subcommand
 - **WHEN** the wrapper is run as `codex-loop.sh exec --experimental-json` with `CODEX_LOOP_BIN` set to a stub that logs its arguments
