@@ -11,7 +11,6 @@ local runner = require("tests.runner")
 
 local TIMINGS = ".tests/timings.json"
 local DEFAULT_MS = 500
-local SERIAL_FILES = { ["tests/integration/lsp/test_readiness.lua"] = true }
 
 ---@class parallel.Result
 ---@field index integer
@@ -49,15 +48,14 @@ local function write_timings(timings, results)
 end
 
 --- Longest-processing-time-first: each case goes to the least loaded shard.
----@param indices integer[]
 ---@param cases table[]
 ---@param jobs integer
 ---@param timings table<string, number>
 ---@return integer[][] case indices per shard
-local function balance(indices, cases, jobs, timings)
+local function balance(cases, jobs, timings)
 	local order = {}
-	for _, i in ipairs(indices) do
-		table.insert(order, { index = i, ms = timings[case_id(cases[i])] or DEFAULT_MS })
+	for i, case in ipairs(cases) do
+		order[i] = { index = i, ms = timings[case_id(case)] or DEFAULT_MS }
 	end
 	table.sort(order, function(a, b)
 		return a.ms > b.ms
@@ -77,18 +75,6 @@ local function balance(indices, cases, jobs, timings)
 		load[lightest] = load[lightest] + item.ms
 	end
 	return shards
-end
-
----@param cases table[]
----@return integer[] parallel
----@return integer[] serial
-local function partition(cases)
-	local parallel, serial = {}, {}
-	for i, case in ipairs(cases) do
-		local target = SERIAL_FILES[case.desc[1]] and serial or parallel
-		table.insert(target, i)
-	end
-	return parallel, serial
 end
 
 ---@param layer string
@@ -171,11 +157,10 @@ local function main()
 		io.write("No test cases matched\n")
 		return 1
 	end
-	local parallel_indices, serial_indices = partition(cases)
 	local jobs = tonumber(vim.env.JOBS) or math.max(1, vim.uv.available_parallelism() - 2)
-	jobs = math.min(jobs, #parallel_indices)
+	jobs = math.min(jobs, #cases)
 	local timings = read_timings()
-	local shards = balance(parallel_indices, cases, jobs, timings)
+	local shards = balance(cases, jobs, timings)
 
 	local workers = {}
 	for s, indices in ipairs(shards) do
@@ -196,20 +181,6 @@ local function main()
 			table.insert(stderr, done.stderr)
 		end
 	end
-	if #serial_indices > 0 then
-		local out = vim.fn.tempname() .. ".json"
-		local worker = { indices = serial_indices, out = out, process = spawn(layer, serial_indices, out) }
-		local done = worker.process:wait()
-		local shard = read_results(worker.out)
-		if not shard then
-			local reason = string.format("worker exited %d without results\n%s", done.code, done.stderr or "")
-			shard = crashed(worker.indices, cases, reason)
-		end
-		vim.list_extend(results, shard)
-		if vim.trim(done.stderr or "") ~= "" then
-			table.insert(stderr, done.stderr)
-		end
-	end
 	write_timings(timings, results)
 
 	local merged = to_cases(results)
@@ -217,10 +188,7 @@ local function main()
 	if #stderr > 0 then
 		io.write("Worker stderr:\n" .. table.concat(stderr, "\n") .. "\n")
 	end
-	local worker_count = math.max(jobs, #serial_indices > 0 and 1 or 0)
-	io.write(
-		string.format("%d cases on %d workers in %.1f s\n", #merged, worker_count, (vim.uv.hrtime() - started) / 1e9)
-	)
+	io.write(string.format("%d cases on %d workers in %.1f s\n", #merged, jobs, (vim.uv.hrtime() - started) / 1e9))
 	return has_fails(merged) and 1 or 0
 end
 

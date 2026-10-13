@@ -34,8 +34,6 @@ To narrow a run, use `FILE=tests/unit/session/test_key.lua make test`, `CAPS=ses
 
 `make types` uses `tests/luarc.types.jsonc`, so the editor `.luarc.jsonc` stays lean while the static check retains its full library. It caches a green result in `.tests/types.ok`, keyed by every Lua file, `tests/luarc.types.jsonc`, the LuaLS version and the libraries; it skips LuaLS while that key is unchanged.
 
-The LSP readiness cases run serially (`JOBS=1`): `lua_ls` has a fixed 2500 ms bound for this config, while gopls, basedpyright, and vtsls each have a fixed 1000 ms bound. These limits never scale with host load.
-
 Run make from inside Neovim's `:terminal` as usual: the binary is `NVIM_BIN` (not `NVIM`, which Neovim sets to its server address).
 
 ## Layout
