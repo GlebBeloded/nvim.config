@@ -255,11 +255,11 @@ TCC_CLIENTS=(
 )
 
 sync_repo() {
-	stage --exclude .git --exclude /.tests/ --exclude '/.archon/' "$ROOT/" "$SHARE/repo/"
+	stage --exclude .git --exclude /.tests --exclude '/.archon/' "$ROOT/" "$SHARE/repo/"
 	# test deps the host already pinned (mini.nvim); the guest builds keys and the venv itself
 	mkdir -p "$SHARE/deps"
 	[ ! -d "$ROOT/.tests/deps" ] || stage "$ROOT/.tests/deps/" "$SHARE/deps/"
-	gssh "rsync -a --delete --exclude /.tests/ '$GSHARE/repo/' $GUEST_REPO/ && mkdir -p $GUEST_REPO/.tests && rsync -a --delete '$GSHARE/deps/' $GUEST_REPO/.tests/deps/"
+	gssh "rsync -a --delete --exclude /.tests '$GSHARE/repo/' $GUEST_REPO/ && mkdir -p $GUEST_REPO/.tests && rsync -a --delete '$GSHARE/deps/' $GUEST_REPO/.tests/deps/"
 	sync_plugins
 }
 

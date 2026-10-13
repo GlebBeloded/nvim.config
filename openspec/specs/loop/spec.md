@@ -235,6 +235,18 @@ The delivery loop SHALL implement one task per fresh agent session from a script
 - **WHEN** `.archon/scripts/context_pack.py` ran for a change with an unchecked task and `.archon/scripts/tasks.py` then runs with only `ARTIFACTS_DIR` set (as in `until_bash`, which gets no `INPUTS_*` env)
 - **THEN** it exits 1 (a task is left)
 
+#### Scenario: Plan is skipped when the spec wrote tasks
+- **WHEN** `.archon/scripts/tasks.py --plan-needed` runs for a change whose tasks.md has a task, and for one with no tasks.md
+- **THEN** it prints `{"needed": false}` and then `{"needed": true}`
+
+#### Scenario: Small change packs all remaining tasks
+- **WHEN** `.archon/scripts/context_pack.py` runs for a change with at most 4 tasks, the first one ticked
+- **THEN** the pack's `## Next task` section holds every remaining task, so one implement session does them all
+
+#### Scenario: Gate names a change scenario without a test
+- **WHEN** `.archon/scripts/scenarios.py <change>` runs where the change adds two scenarios and a test names only one, and a REMOVED section lists a third
+- **THEN** it prints only the untested scenario as `<capability>: <title>` and exits 1
+
 #### Scenario: Context pack names the next task
 - **WHEN** `.archon/scripts/context_pack.py` runs for a change whose first task is ticked and second is not
 - **THEN** `$ARTIFACTS_DIR/context.md` has a `## Next task` section holding the second task and includes the Loop lessons

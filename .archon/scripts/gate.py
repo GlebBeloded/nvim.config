@@ -10,7 +10,9 @@ import shutil
 import subprocess
 import tempfile
 
+from scenarios import change_scenarios, untested
 from tasks import unchecked
+
 
 change = os.environ.get("INPUTS_CHANGE", "")
 artifacts = pathlib.Path(os.environ.get("ARTIFACTS_DIR", ".")).resolve()
@@ -52,10 +54,14 @@ if change and change_dir.is_dir():
     spec_ok, spec_tail = run(["openspec", "validate", change, "--strict", "--no-interactive"], f"validate-{attempt}.log")
     if spec_ok:
         spec_ok, spec_tail = archived_specs_ok(f"archive-{attempt}.log")
+    missing = untested(change_scenarios(change_dir))
     tasks = change_dir / "tasks.md"
     tasks_done = tasks.exists() and unchecked(tasks.read_text()) == 0
 
+missing = missing if change and change_dir.is_dir() else []
 failures = []
+if missing:
+    failures.append("scenarios of this change with no test named after them:\n" + "\n".join("- " + m for m in missing))
 if not green:
     failures.append("make check is red:\n" + check_tail)
 if not spec_ok:
@@ -69,6 +75,7 @@ print(
             "green": green,
             "spec_ok": spec_ok,
             "tasks_done": tasks_done,
+            "untested": len(missing),
             "attempt": attempt,
             "failures": "\n\n".join(failures),
         }

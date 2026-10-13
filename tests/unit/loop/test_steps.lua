@@ -152,4 +152,38 @@ T["loop: Trace counts scenarios an active change adds"] = function()
 	eq((result.stdout .. result.stderr):find("2 scenarios, 2 tested, 0 missing, 0 orphan", 1, true) ~= nil, true)
 end
 
+T["loop: Plan is skipped when the spec wrote tasks"] = function()
+	local repo = H.tempdir(child)
+	write(repo, { ["openspec/changes/c/tasks.md"] = "## 1. Task\n- [ ] 1.1 todo" })
+	local with_tasks = run("tasks.py", repo, { INPUTS_CHANGE = "c" })
+	local args = { "python3", vim.fs.joinpath(SCRIPTS, "tasks.py"), "--plan-needed" }
+	local env = vim.tbl_extend("force", H.GIT_ENV, { INPUTS_CHANGE = "c" })
+	eq(vim.json.decode(H.system(child, args, repo, env).stdout), { needed = false })
+	env.INPUTS_CHANGE = "none"
+	eq(vim.json.decode(H.system(child, args, repo, env).stdout), { needed = true })
+	eq(with_tasks.code, 1)
+end
+
+T["loop: Small change packs all remaining tasks"] = function()
+	local repo = H.tempdir(child)
+	local artifacts = H.tempdir(child)
+	write(repo, {
+		["docs/workflow.md"] = "## Loop lessons\n\n## The loop\n",
+		["openspec/changes/c/tasks.md"] = "## 1. A\n- [x] 1.1 a\n\n## 2. B\n- [ ] 2.1 b\n\n## 3. C\n- [ ] 3.1 c",
+	})
+	eq(run("context_pack.py", repo, { INPUTS_CHANGE = "c", ARTIFACTS_DIR = artifacts }).code, 0)
+	local pack = table.concat(vim.fn.readfile(vim.fs.joinpath(artifacts, "context.md")), "\n")
+	eq({ pack:find("## 2. B", 1, true) ~= nil, pack:find("## 3. C", 1, true) ~= nil }, { true, true })
+end
+
+T["loop: Gate names a change scenario without a test"] = function()
+	local repo = H.tempdir(child)
+	write(repo, {
+		["openspec/changes/c/specs/x/spec.md"] = "## ADDED Requirements\n#### Scenario: tested one\n#### Scenario: lonely\n## REMOVED Requirements\n#### Scenario: gone",
+		["tests/unit/x/test_x.lua"] = 'T["x: tested one"] = function() end',
+	})
+	local result = H.system(child, { "python3", vim.fs.joinpath(SCRIPTS, "scenarios.py"), "c" }, repo, H.GIT_ENV)
+	eq({ result.code, vim.trim(result.stdout) }, { 1, "x: lonely" })
+end
+
 return T
