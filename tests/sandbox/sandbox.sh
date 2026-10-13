@@ -121,8 +121,21 @@ boot() {
 	log "booting $VM headless"
 	mkdir -p "$STATE"
 	mkdir -p "$SHARE"
-	lume run "$VM" --no-display --detach --shared-dir "$SHARE" --log-file "$STATE/vm.log" >/dev/null
+	local try
+	for try in 1 2 3 4 5; do
+		lume run "$VM" --no-display --detach --shared-dir "$SHARE" --log-file "$STATE/vm.log" >/dev/null
+		storage_locked || break
+		log "$VM still holds its storage after a stop; retrying boot ($try/5)"
+		sleep 5
+	done
 	boot_wait
+}
+
+# true when the boot just failed because a killed VM process has not released its disk yet
+storage_locked() {
+	sleep 3
+	pgrep -qf "libexec/lume run $VM( |\$)" && return 1
+	tail -n 20 "$STATE/vm.log" 2>/dev/null | grep -q "Failed to lock auxiliary storage"
 }
 
 # `lume ssh` exit status for "test -d <shared folder>": 0 shared, 1 not shared, else the guest did not answer
