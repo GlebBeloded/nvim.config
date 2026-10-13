@@ -72,7 +72,7 @@ Layer: integration (`tests/integration/file-tree/test_tree.lua`, tree mappings).
 
 ## 4. Integration
 
-- [ ] 4.1 `VERBOSE=1 make trace` lists the 11 scenarios named in tasks 1–3 as `tested`, and there are no orphans. "P pushes successfully", "P reports push failure" and "Leaving popup closes it" stay with `fill-trace-scenario-gaps`.
+- [x] 4.1 `VERBOSE=1 make trace` lists the 11 scenarios named in tasks 1–3 as `tested`, and there are no orphans. "P pushes successfully", "P reports push failure" and "Leaving popup closes it" stay with `fill-trace-scenario-gaps`.
 - [ ] 4.2 `make check` is green.
 
 ## Notes
