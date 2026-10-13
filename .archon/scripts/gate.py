@@ -11,6 +11,7 @@ import subprocess
 import tempfile
 
 from scenarios import covered, untested
+from spec_trial import archived_specs_ok as trial_archive
 from tasks import tick_gate_items, unchecked
 
 
@@ -29,20 +30,9 @@ def run(cmd: list[str], log: str) -> tuple[bool, str]:
 
 
 def archived_specs_ok(log: str) -> tuple[bool, str]:
-    """Archive the change in a scratch copy of openspec/ and validate the resulting main specs, so a
-    delta that breaks `openspec validate --specs --strict` (e.g. an overlong requirement) is caught
-    here, where the next pass can fix it, instead of after ship's real archive."""
-    with tempfile.TemporaryDirectory() as tmp:
-        shutil.copytree("openspec", pathlib.Path(tmp) / "openspec")
-        cwd = os.getcwd()
-        os.chdir(tmp)
-        try:
-            ok, tail = run(["openspec", "archive", change, "--yes"], log)
-            if ok:
-                ok, tail = run(["openspec", "validate", "--specs", "--strict", "--no-interactive"], log)
-        finally:
-            os.chdir(cwd)
-    return ok, tail
+    ok, out = trial_archive(change)
+    (artifacts / log).write_text(out)
+    return ok, "\n".join(out.splitlines()[-40:])
 
 
 # E2E=1: e2e runs in the sandbox VM and boots it when it is down (docs/testing.md, Sandbox VM)

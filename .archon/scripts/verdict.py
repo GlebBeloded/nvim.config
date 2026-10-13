@@ -42,6 +42,9 @@ gates = {
     "verify": int(value("critical", -1)) == 0,
     "review": value("approve", False) is True,
 }
+if value("green", False) is not True or value("spec_ok", False) is not True or int(value("critical", -1)) != 0:
+    gates.pop("review")  # review did not run this pass: not a failed gate
+    gates["review_skipped"] = False
 passed = all(gates.values())
 attempt = int(value("attempt", 0))
 exhausted = not passed and attempt >= MAX_ATTEMPTS
