@@ -79,18 +79,9 @@ lualine.setup({
 		lualine_y = {},
 		lualine_z = {},
 	},
-	inactive_sections = {
-		lualine_a = {},
-		lualine_b = {},
-		lualine_c = { "filename" },
-		lualine_x = { "location" },
-		lualine_y = {},
-		lualine_z = {},
-	},
 	tabline = {},
 	extensions = {},
 })
 
--- make bufferline global (same bufferline for all windows)
--- must be after lualine setup
+-- global statusline (one for all windows); must be after lualine setup
 vim.opt.laststatus = 3
