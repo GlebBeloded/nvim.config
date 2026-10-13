@@ -206,8 +206,8 @@ M.ALACRITTY = {
 		---@cast self e2e.Stack
 		local cmd = { "launch", assert(M.app()), "--config-file", write_alacritty_config(self) }
 		vim.list_extend(cmd, { "--title", self.session })
-		vim.list_extend(cmd, { "-o", "window.dimensions.columns=" .. M.COLUMNS })
-		vim.list_extend(cmd, { "-o", "window.dimensions.lines=" .. M.LINES })
+		vim.list_extend(cmd, { "-o", "window.dimensions.columns=" .. (self.opts.columns or M.COLUMNS) })
+		vim.list_extend(cmd, { "-o", "window.dimensions.lines=" .. (self.opts.lines or M.LINES) })
 		vim.list_extend(cmd, { "-o", "debug.persistent_logging=true" })
 		local err = vim.fn.shellescape(zellij_err(self))
 		local shell = string.format('%s 2>>%s; echo "exited with status $?" >>%s', self:zellij_command(), err, err)
@@ -245,11 +245,15 @@ M.ALACRITTY = {
 	end,
 }
 
---- Is the whole stack still up (Alacritty process and Neovim RPC)?
+--- Is the whole stack still up (Alacritty process and Neovim RPC)? Neovim
+--- waiting for more keys of a mapping (timeoutlen) counts as up.
 ---@param self e2e.Stack
 ---@return boolean
 function M.alive(self)
-	return self.alacritty_pid ~= nil and alive(self.alacritty_pid) and pcall(self.lua, self, "return 1")
+	return self.alacritty_pid ~= nil
+		and alive(self.alacritty_pid)
+		and self.channel ~= nil
+		and pcall(vim.rpcrequest, self.channel, "nvim_get_mode")
 end
 
 --- Fail fast, with diagnostics, when the stack died after `what`.
@@ -378,9 +382,10 @@ end
 
 --- Start Alacritty + zellij + Neovim and find out whether key events need focus
 --- ($E2E_FOCUS=1 skips the probe and always focuses). Call stack:stop() when done.
+---@param opts? shortcuts.StackOpts
 ---@return e2e.Stack
-function M.start()
-	local self = S.start(M.ALACRITTY) --[[@as e2e.Stack]]
+function M.start(opts)
+	local self = S.start(M.ALACRITTY, opts) --[[@as e2e.Stack]]
 	local ok, err = pcall(function()
 		self.background = vim.env.E2E_FOCUS ~= "1" and probe_arrives(self, 800)
 		self:mark(self.background and "probe key arrived in the background" or "no probe key in the background")
@@ -402,6 +407,29 @@ function M.start()
 		string.format("e2e: key events %s\n", self.background and "arrive in the background" or "need focus (bursts)")
 	)
 	return self
+end
+
+--- A started stack, or nil and the reason e2e is skipped here (printed once):
+--- preflight failed, or key events need focus and E2E=1 (make e2e) is unset.
+--- A misconfigured guest is a failure, never a skip.
+---@param opts? shortcuts.StackOpts
+---@return e2e.Stack?
+---@return string? reason
+function M.start_or_skip(opts)
+	local reason, fatal = M.preflight()
+	if fatal then
+		error("e2e: " .. tostring(reason), 0)
+	end
+	local self = not reason and M.start(opts) or nil
+	if self and not self.background and vim.env.E2E ~= "1" then
+		reason = "key events need the window focused; that runs only with E2E=1 (make e2e, the loop's gate)"
+		self:stop()
+		self = nil
+	end
+	if reason then
+		io.write("\ne2e: SKIPPED: " .. reason .. "\n")
+	end
+	return self, reason
 end
 
 return M

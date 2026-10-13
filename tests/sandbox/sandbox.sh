@@ -24,7 +24,8 @@ GUEST_REPO=/Users/$GUEST_USER/nvim
 GUEST_DATA=/Users/$GUEST_USER/.local/share/nvim
 # pinned to the host's versions (docs/testing.md); release builds, no Homebrew bottles
 NVIM_VERSION=0.12.5 ZELLIJ_VERSION=0.45.1 ALACRITTY_VERSION=0.17.0
-PROVISION_REV=3 # bump when provision() changes
+GO_VERSION=1.27.1 GOPLS_VERSION=0.23.0 # the e2e Go fixture (tests/fixtures/build.sh) and gopls
+PROVISION_REV=4 # bump when provision() changes
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 LOCK=$STATE/lock # held by this process until it exits
 # shellcheck source=tests/sandbox/lock.sh
@@ -167,6 +168,15 @@ if [ "\$(~/bin/zellij --version 2>/dev/null)" != "zellij $ZELLIJ_VERSION" ]; the
 	step "zellij $ZELLIJ_VERSION"
 	fetch https://github.com/zellij-org/zellij/releases/download/v$ZELLIJ_VERSION/zellij-aarch64-apple-darwin.tar.gz /tmp/zellij.tgz
 	tar -xzf /tmp/zellij.tgz -C ~/bin && xattr -c ~/bin/zellij
+fi
+if [ "\$(~/bin/go version 2>/dev/null | cut -d' ' -f3)" != "go$GO_VERSION" ]; then
+	step "go $GO_VERSION"
+	rm -rf ~/opt/go && fetch https://go.dev/dl/go$GO_VERSION.darwin-arm64.tar.gz /tmp/go.tgz
+	tar -xzf /tmp/go.tgz -C ~/opt && ln -sf ~/opt/go/bin/go ~/bin/go
+fi
+if [ "\$(~/bin/gopls version 2>/dev/null | head -1 | cut -d' ' -f2)" != "v$GOPLS_VERSION" ]; then
+	step "gopls $GOPLS_VERSION (builds once, ~1-2 min)"
+	GOBIN=~/bin GOTOOLCHAIN=local GOTELEMETRY=off ~/bin/go install golang.org/x/tools/gopls@v$GOPLS_VERSION
 fi
 app=/Applications/Alacritty.app
 if [ "\$(\$app/Contents/MacOS/alacritty --version 2>/dev/null | cut -d' ' -f2)" != "$ALACRITTY_VERSION" ]; then

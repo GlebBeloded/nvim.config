@@ -45,18 +45,7 @@ local function start()
 		io.write("\ne2e: FAILED: " .. reason .. "\n")
 		return
 	end
-	skipped = reason
-	if not skipped then
-		stack = E.start()
-		if not stack.background and vim.env.E2E ~= "1" then
-			skipped = "key events need the window focused; that runs only with E2E=1 (make e2e, the loop's gate)"
-			stack:stop()
-			stack = nil
-		end
-	end
-	if skipped then
-		io.write("\ne2e: SKIPPED: " .. skipped .. "\n")
-	end
+	stack, skipped = E.start_or_skip()
 end
 
 local function stop()
