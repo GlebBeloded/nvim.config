@@ -65,12 +65,6 @@ Every AI node in `.archon/workflows/*.yaml` with `skills:` SHALL use a command t
 
 ### Requirement: Skill preflight fails a run with an unresolved skill
 Every workflow SHALL run `.archon/scripts/skills_check.py` before its first skill-declaring AI node. The script SHALL fail when a declared skill does not resolve for the provider of its node. That provider is the node's `provider:`, else the `assistant:` of `.archon/config.yaml`.
-- On `claude`:
-  - a project skill needs `.claude/skills/<name>/SKILL.md`;
-  - a `<plugin>:<skill>` needs that plugin reported enabled without `errors` by `claude plugin list --json`, and `<installPath>/skills/<skill>/SKILL.md`.
-- On `codex`:
-  - a project skill needs `.agents/skills/<name>/SKILL.md`;
-  - a `<plugin>:<skill>` needs a plugin named `<plugin>` reported `installed` and `enabled` by `codex plugin list --json`, and `<source.path>/skills/<skill>/SKILL.md`.
 
 #### Scenario: Skill preflight runs before every skill-declaring node
 - **WHEN** each `.archon/workflows/*.yaml` is parsed
@@ -87,24 +81,6 @@ Every workflow SHALL run `.archon/scripts/skills_check.py` before its first skil
 - **WHEN** the same check is run, but:
   - the stub reports the plugin enabled with no `errors` and an `installPath` that contains `skills/writing-plans/SKILL.md`;
   - the repo has `.claude/skills/openspec-propose/SKILL.md` for a declared `openspec-propose`.
-- **THEN** it exits 0
-
-#### Scenario: Skill preflight fails on a plugin skill Codex does not have
-- **WHEN** the check is run in a throwaway repo:
-  - its `.archon/config.yaml` has `assistant: codex`;
-  - its workflow declares `superpowers:writing-plans`;
-  - a stub `claude` reports the plugin loaded;
-  - a stub `codex` has a `plugin list --json` whose `installed` list has no `superpowers` entry.
-- **THEN** it exits non-zero and its stderr names `superpowers:writing-plans`
-
-#### Scenario: Skill preflight resolves skills for each node's provider
-- **WHEN** the check is run in a throwaway repo:
-  - its `.archon/config.yaml` has `assistant: codex`;
-  - a node declares `superpowers:writing-plans` and `openspec-propose`;
-  - a second node with `provider: claude` declares `superpowers:requesting-code-review`;
-  - a stub `codex` reports `superpowers` installed and enabled with a `source.path` that contains `skills/writing-plans/SKILL.md`;
-  - the repo has `.agents/skills/openspec-propose/SKILL.md`;
-  - a stub `claude` reports the plugin enabled with an `installPath` that contains `skills/requesting-code-review/SKILL.md`.
 - **THEN** it exits 0
 
 #### Scenario: Configured provider resolves every declared skill here
@@ -144,3 +120,24 @@ Every workflow SHALL run `.archon/scripts/skills_check.py` before its first skil
 #### Scenario: Provider switch is documented
 - **WHEN** `docs/workflow.md` is read with `vim.fn.readfile`
 - **THEN** it contains `assistant: codex`, `assistant: claude` and `provider: claude`
+
+### Requirement: Skill preflight resolves a skill for its node's provider
+On `claude`, `skills_check.py` SHALL resolve a project skill at `.claude/skills/<name>/SKILL.md`, and a `<plugin>:<skill>` at `<installPath>/skills/<skill>/SKILL.md` of a plugin `claude plugin list --json` reports enabled without `errors`. On `codex`, it SHALL use `.agents/skills/<name>/SKILL.md`, and `<source.path>/skills/<skill>/SKILL.md` of a plugin `codex plugin list --json` reports `installed` and `enabled`.
+
+#### Scenario: Skill preflight fails on a plugin skill Codex does not have
+- **WHEN** the check is run in a throwaway repo:
+  - its `.archon/config.yaml` has `assistant: codex`;
+  - its workflow declares `superpowers:writing-plans`;
+  - a stub `claude` reports the plugin loaded;
+  - a stub `codex` has a `plugin list --json` whose `installed` list has no `superpowers` entry.
+- **THEN** it exits non-zero and its stderr names `superpowers:writing-plans`
+
+#### Scenario: Skill preflight resolves skills for each node's provider
+- **WHEN** the check is run in a throwaway repo:
+  - its `.archon/config.yaml` has `assistant: codex`;
+  - a node declares `superpowers:writing-plans` and `openspec-propose`;
+  - a second node with `provider: claude` declares `superpowers:requesting-code-review`;
+  - a stub `codex` reports `superpowers` installed and enabled with a `source.path` that contains `skills/writing-plans/SKILL.md`;
+  - the repo has `.agents/skills/openspec-propose/SKILL.md`;
+  - a stub `claude` reports the plugin enabled with an `installPath` that contains `skills/requesting-code-review/SKILL.md`.
+- **THEN** it exits 0

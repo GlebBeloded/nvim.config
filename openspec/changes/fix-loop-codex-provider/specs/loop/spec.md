@@ -15,43 +15,8 @@
 - **WHEN** `docs/workflow.md` is read with `vim.fn.readfile`
 - **THEN** it contains `assistant: codex`, `assistant: claude` and `provider: claude`
 
-## MODIFIED Requirements
-
-### Requirement: Loop commands load the skills their node declares
-Every AI node in `.archon/workflows/*.yaml` with `skills:` SHALL use a command that names each declared skill. As its first step, the command SHALL load them all on either provider: with the Skill tool on Claude, and as `$<skill>` on Codex. It SHALL stop when one does not load.
-
-#### Scenario: Every declared skill is named and loaded by its command
-- **WHEN** each `.archon/workflows/*.yaml` is parsed (via `python3 -c 'yaml.safe_load'` in `vim.system`) and, for every node (loop nodes included) with `skills:` and a `command:`, `.archon/commands/<command>.md` is read with `vim.fn.readfile`
-- **THEN** the command:
-  - names every declared skill in backticks and as `$<skill>`;
-  - tells the agent to load them with the Skill tool before any other step and to stop when one does not load;
-  - and every `` `superpowers:<x>` `` it names is in that node's `skills:`.
-
-### Requirement: Skill preflight fails a run with an unresolved skill
-Every workflow SHALL run `.archon/scripts/skills_check.py` before its first skill-declaring AI node. The script SHALL fail when a declared skill does not resolve for the provider of its node. That provider is the node's `provider:`, else the `assistant:` of `.archon/config.yaml`.
-- On `claude`:
-  - a project skill needs `.claude/skills/<name>/SKILL.md`;
-  - a `<plugin>:<skill>` needs that plugin reported enabled without `errors` by `claude plugin list --json`, and `<installPath>/skills/<skill>/SKILL.md`.
-- On `codex`:
-  - a project skill needs `.agents/skills/<name>/SKILL.md`;
-  - a `<plugin>:<skill>` needs a plugin named `<plugin>` reported `installed` and `enabled` by `codex plugin list --json`, and `<source.path>/skills/<skill>/SKILL.md`.
-
-#### Scenario: Skill preflight runs before every skill-declaring node
-- **WHEN** each `.archon/workflows/*.yaml` is parsed
-- **THEN** it has a `bash` node that runs `.archon/scripts/skills_check.py`, and every node with a `<plugin>:<skill>` in `skills:` reaches that node through `depends_on` (a loop node through its parent node)
-
-#### Scenario: Skill preflight fails on an unresolved plugin skill
-- **WHEN** `python3 .archon/scripts/skills_check.py <workflow>` is run via `vim.system` in a throwaway repo:
-  - its `.archon/config.yaml` has `assistant: claude`;
-  - its workflow declares `superpowers:writing-plans`;
-  - `PATH` puts first a stub `claude` whose `plugin list --json` reports `superpowers@superpowers-marketplace` with a non-empty `errors`.
-- **THEN** it exits non-zero and its stderr names `superpowers:writing-plans`
-
-#### Scenario: Skill preflight passes when every declared skill resolves
-- **WHEN** the same check is run, but:
-  - the stub reports the plugin enabled with no `errors` and an `installPath` that contains `skills/writing-plans/SKILL.md`;
-  - the repo has `.claude/skills/openspec-propose/SKILL.md` for a declared `openspec-propose`.
-- **THEN** it exits 0
+### Requirement: Skill preflight resolves a skill for its node's provider
+On `claude`, `skills_check.py` SHALL resolve a project skill at `.claude/skills/<name>/SKILL.md`, and a `<plugin>:<skill>` at `<installPath>/skills/<skill>/SKILL.md` of a plugin `claude plugin list --json` reports enabled without `errors`. On `codex`, it SHALL use `.agents/skills/<name>/SKILL.md`, and `<source.path>/skills/<skill>/SKILL.md` of a plugin `codex plugin list --json` reports `installed` and `enabled`.
 
 #### Scenario: Skill preflight fails on a plugin skill Codex does not have
 - **WHEN** the check is run in a throwaway repo:
@@ -69,6 +34,38 @@ Every workflow SHALL run `.archon/scripts/skills_check.py` before its first skil
   - a stub `codex` reports `superpowers` installed and enabled with a `source.path` that contains `skills/writing-plans/SKILL.md`;
   - the repo has `.agents/skills/openspec-propose/SKILL.md`;
   - a stub `claude` reports the plugin enabled with an `installPath` that contains `skills/requesting-code-review/SKILL.md`.
+- **THEN** it exits 0
+
+## MODIFIED Requirements
+
+### Requirement: Loop commands load the skills their node declares
+Every AI node in `.archon/workflows/*.yaml` with `skills:` SHALL use a command that names each declared skill. As its first step, the command SHALL load them all on either provider: with the Skill tool on Claude, and as `$<skill>` on Codex. It SHALL stop when one does not load.
+
+#### Scenario: Every declared skill is named and loaded by its command
+- **WHEN** each `.archon/workflows/*.yaml` is parsed (via `python3 -c 'yaml.safe_load'` in `vim.system`) and, for every node (loop nodes included) with `skills:` and a `command:`, `.archon/commands/<command>.md` is read with `vim.fn.readfile`
+- **THEN** the command:
+  - names every declared skill in backticks and as `$<skill>`;
+  - tells the agent to load them with the Skill tool before any other step and to stop when one does not load;
+  - and every `` `superpowers:<x>` `` it names is in that node's `skills:`.
+
+### Requirement: Skill preflight fails a run with an unresolved skill
+Every workflow SHALL run `.archon/scripts/skills_check.py` before its first skill-declaring AI node. The script SHALL fail when a declared skill does not resolve for the provider of its node. That provider is the node's `provider:`, else the `assistant:` of `.archon/config.yaml`.
+
+#### Scenario: Skill preflight runs before every skill-declaring node
+- **WHEN** each `.archon/workflows/*.yaml` is parsed
+- **THEN** it has a `bash` node that runs `.archon/scripts/skills_check.py`, and every node with a `<plugin>:<skill>` in `skills:` reaches that node through `depends_on` (a loop node through its parent node)
+
+#### Scenario: Skill preflight fails on an unresolved plugin skill
+- **WHEN** `python3 .archon/scripts/skills_check.py <workflow>` is run via `vim.system` in a throwaway repo:
+  - its `.archon/config.yaml` has `assistant: claude`;
+  - its workflow declares `superpowers:writing-plans`;
+  - `PATH` puts first a stub `claude` whose `plugin list --json` reports `superpowers@superpowers-marketplace` with a non-empty `errors`.
+- **THEN** it exits non-zero and its stderr names `superpowers:writing-plans`
+
+#### Scenario: Skill preflight passes when every declared skill resolves
+- **WHEN** the same check is run, but:
+  - the stub reports the plugin enabled with no `errors` and an `installPath` that contains `skills/writing-plans/SKILL.md`;
+  - the repo has `.claude/skills/openspec-propose/SKILL.md` for a declared `openspec-propose`.
 - **THEN** it exits 0
 
 #### Scenario: Configured provider resolves every declared skill here
