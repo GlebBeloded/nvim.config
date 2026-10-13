@@ -228,6 +228,13 @@ On `codex`, a plugin's root SHALL be the `codex plugin list --json` entry's `sou
 - **WHEN** the same check is run, but the `CODEX_HOME` temp dir has no plugin cache
 - **THEN** it exits non-zero, its stderr names `superpowers:writing-plans`, and it has no `Traceback`
 
+### Requirement: Codex skill preflight does not depend on the network
+`codex plugin list --json` exits 0 but omits every remote plugin when its catalog request fails, warning `failed to list remote marketplace plugins` on stderr. On that warning, the codex preflight SHALL add each remote plugin of the plugin cache (`plugins/cache/<market>/<name>/` with `.codex-remote-plugin-install.json`) at its newest cached version, installed and enabled.
+
+#### Scenario: Skill preflight resolves a cached Codex plugin when the remote catalog fails
+- **WHEN** the check of a codex repo declaring `superpowers:writing-plans` runs with a stub `codex` that lists no plugin and prints that warning, `CODEX_HOME` holding the remote superpowers 6.4.2 cache with `writing-plans` and its install marker, and `AGENTS_SKILLS_DIR` holding `writing-plans/SKILL.md`
+- **THEN** it exits 0
+
 ### Requirement: Agents start with durable loop lessons
 The fix workflow's exploration prompt and every implementation pass SHALL read the curated `Loop lessons` section in `docs/workflow.md` after loading required skills and before investigating or changing the project.
 

@@ -53,15 +53,52 @@ def declared_skills_by_provider(workflow: dict, default: str) -> dict[str, list[
     return by_provider
 
 
-def plugin_list(cli: str) -> object:
-    """Parsed `<cli> plugin list --json`; exits with a message naming `cli` when it fails."""
+def run_plugin_list(cli: str) -> subprocess.CompletedProcess:
+    """`<cli> plugin list --json`; exits with a message naming `cli` when it fails."""
     try:
         proc = subprocess.run([cli, "plugin", "list", "--json"], capture_output=True, text=True)
     except FileNotFoundError:
         sys.exit(f"skills_check: `{cli}` is not on PATH")
     if proc.returncode != 0:
         sys.exit(f"skills_check: `{cli} plugin list --json` failed: {proc.stderr.strip()}")
-    return json.loads(proc.stdout)
+    return proc
+
+
+def plugin_list(cli: str) -> object:
+    """Parsed `<cli> plugin list --json`."""
+    return json.loads(run_plugin_list(cli).stdout)
+
+
+# `codex plugin list` still exits 0 but omits every remote plugin when its catalog request fails
+# (offline, or slow under load), warning on stderr.
+CODEX_REMOTE_FAILED = "failed to list remote marketplace plugins"
+CODEX_REMOTE_MARK = ".codex-remote-plugin-install.json"  # a remote install in the plugin cache
+
+
+def codex_home() -> pathlib.Path:
+    return pathlib.Path(os.environ.get("CODEX_HOME") or pathlib.Path.home() / ".codex")
+
+
+def cached_remote_plugins() -> list[dict]:
+    """Remote plugins installed in the Codex plugin cache, at their newest cached version."""
+    plugins = []
+    for mark in sorted(codex_home().glob(f"plugins/cache/*/*/{CODEX_REMOTE_MARK}")):
+        versions = sorted(path.name for path in mark.parent.iterdir() if path.is_dir())
+        if versions:
+            name, market = mark.parent.name, mark.parent.parent.name
+            plugins.append({"name": name, "marketplaceName": market, "version": versions[-1], "installed": True, "enabled": True})
+    return plugins
+
+
+def codex_installed() -> list[dict]:
+    """`installed` of `codex plugin list --json`, plus the cached remote plugins when the remote
+    catalog request failed (so the preflight never depends on the network)."""
+    proc = run_plugin_list("codex")
+    installed = json.loads(proc.stdout).get("installed") or []
+    if CODEX_REMOTE_FAILED in proc.stderr:
+        listed = {plugin.get("name") for plugin in installed}
+        installed += [plugin for plugin in cached_remote_plugins() if plugin["name"] not in listed]
+    return installed
 
 
 def claude_plugins() -> dict[str, dict]:
@@ -77,7 +114,7 @@ def codex_plugins(*, include_disabled: bool = False) -> dict[str, dict]:
     """Plugins Codex has installed (and enabled, unless `include_disabled`), keyed by name."""
     return {
         plugin["name"]: plugin
-        for plugin in plugin_list("codex").get("installed") or []
+        for plugin in codex_installed()
         if plugin.get("installed") and (include_disabled or plugin.get("enabled"))
     }
 
@@ -90,8 +127,7 @@ def codex_plugin_root(plugin: dict) -> pathlib.Path | None:
     parts = [plugin.get(key) for key in ("marketplaceName", "name", "version")]
     if not all(parts):
         return None
-    codex_home = os.environ.get("CODEX_HOME") or pathlib.Path.home() / ".codex"
-    return pathlib.Path(codex_home, "plugins", "cache", *parts)
+    return codex_home().joinpath("plugins", "cache", *parts)
 
 
 def claude_plugin_root(plugin: dict) -> pathlib.Path | None:

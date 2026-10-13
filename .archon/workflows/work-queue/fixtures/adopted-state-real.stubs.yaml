@@ -1,17 +1,17 @@
 # g4. adopted-state runs for real: a change folder that exists in the scratch worktree is not archived,
-# so the spec step runs (this caught a quoting bug that skipped spec). Uses an active queued change
-# (repoint it when that change is archived).
+# so the spec step runs (this caught a quoting bug that skipped spec). queued-change lives in
+# fixtures/changes/ (LOOP_CHANGES_DIR, set by make loop-test), so no live queued change is needed.
 # was g2. no adopt input: adopt (real) reports "nothing to adopt" into the queue-spec prompt; a fix
 # without visible UI skips preview and the design gate and delivers.
 fixture:
   expect: completed
-  inputs: { change: remove-redundant-plugins }
+  inputs: { change: queued-change }
   reached: [pick, adopt, complete, spec-gate, design-decide, deliver__ship, deliver__shipped]
   resolved-text-contains:
     complete: "Earlier work: nothing to adopt"
 exec-code: true
 skills-check: "skills ok"
-pick: { found: true, change: remove-redundant-plugins, kind: fix, has_tasks: true }
+pick: { found: true, change: queued-change, kind: fix, has_tasks: true }
 complete: { visible_ui: false, architecture: false }
 spec-gate: "valid"
 preview: "MUST-NOT-RUN"
@@ -24,6 +24,6 @@ implement: "task 1 done"
 gate: { green: true, spec_ok: true, tasks_done: true, untested: 0, attempt: 1, failures: "" }
 review: { approve: true, findings: "", weakened_scenario: false, weakened_test: false }
 deliver__escalation: { decision: ship, escalate: false, reasons: "- none" }
-deliver__ship: { merged: true, conflict: false, branch: loop/remove-redundant-plugins, commit: abc123 }
+deliver__ship: { merged: true, conflict: false, branch: loop/queued-change, commit: abc123 }
 deliver__followup: "MUST-NOT-RUN"
 
