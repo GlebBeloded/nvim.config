@@ -4,7 +4,7 @@
 assistant: codex # `assistant: claude` switches the loop back to Claude Code
 assistants:
   codex:
-    model: gpt-6-sol
+    model: gpt-5.6-sol
     codexBinaryPath: /Users/hlebbeladzed/.config/nvim/.archon/scripts/codex-loop.sh # no sub-agents, no GUI or MCP tools
     modelReasoningEffort: medium
   claude:

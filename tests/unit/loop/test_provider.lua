@@ -37,7 +37,7 @@ end
 T["loop: Default provider is codex with the chosen model"] = function()
 	local cfg = load_yaml(".archon/config.yaml")
 	eq(cfg.assistant, "codex")
-	eq(cfg.assistants.codex.model, "gpt-6-sol")
+	eq(cfg.assistants.codex.model, "gpt-5.6-sol")
 	eq(cfg.assistants.codex.modelReasoningEffort, "medium")
 	eq(cfg.assistants.claude ~= nil, true)
 end
