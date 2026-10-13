@@ -123,6 +123,8 @@ end
 
 neo_tree.setup({
 	sources = { "filesystem", "git_status" },
+	-- neo-tree's health check validates buffers even when it is not in sources
+	buffers = { renderers = {} },
 	source_selector = {
 		winbar = false,
 		statusline = false,
