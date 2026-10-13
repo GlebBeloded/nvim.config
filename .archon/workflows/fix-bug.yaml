@@ -32,7 +32,7 @@ nodes:
       required: [change, visible_ui, architecture]
 
   - id: spec-gate
-    bash: openspec validate $spec.output.change --strict --no-interactive && python3 .archon/scripts/spec_trial.py $spec.output.change # main specs after a trial archive
+    bash: openspec validate $spec.output.change --strict --no-interactive && python3 .archon/scripts/spec_trial.py $spec.output.change && python3 .archon/scripts/scenarios.py --unknown $spec.output.change # main specs after a trial archive
     depends_on: [spec]
 
   # --- Preview + approval (only for visible UI changes) -----------------------------

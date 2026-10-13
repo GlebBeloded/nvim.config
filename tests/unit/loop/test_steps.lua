@@ -263,4 +263,15 @@ T["loop: Spec gate catches main specs a change would break"] = function()
 	eq({ result.code, result.stdout:find("very long", 1, true) ~= nil }, { 1, true })
 end
 
+T["loop: Spec gate rejects a task naming an unknown scenario"] = function()
+	local repo = H.tempdir(child)
+	write(repo, {
+		["openspec/specs/x/spec.md"] = "### Requirement: r\n#### Scenario: real\n- **THEN** ok",
+		["openspec/changes/c/tasks.md"] = "## 1. A\nScenarios: `x: real`, `x: invented`\n- [ ] 1.1 a",
+	})
+	local result =
+		H.system(child, { "python3", vim.fs.joinpath(SCRIPTS, "scenarios.py"), "--unknown", "c" }, repo, H.GIT_ENV)
+	eq({ result.code, vim.trim(result.stdout):match("[^\n]*$") }, { 1, "- x: invented" })
+end
+
 return T

@@ -57,6 +57,14 @@ def covered(change_dir: pathlib.Path) -> list[str]:
     return list(dict.fromkeys(change_scenarios(change_dir) + task_scenarios(change_dir)))
 
 
+def unknown(change_dir: pathlib.Path) -> list[str]:
+    """Scenario names on tasks.md `Scenarios:` lines that no spec defines (main specs or this change's delta)."""
+    known = set()
+    for spec in list(pathlib.Path("openspec/specs").glob("*/spec.md")) + list(change_dir.glob("specs/*/spec.md")):
+        known |= {f"{spec.parent.name}: {t}" for t in scenario_blocks(spec.read_text())}
+    return [n for n in task_scenarios(change_dir) if n not in known]
+
+
 def untested(names: list[str]) -> list[str]:
     """Scenarios no test case names exactly (replaces the verify agent's traceability check)."""
     text = "\n".join(p.read_text(errors="replace") for p in pathlib.Path("tests").rglob("test_*.lua"))
@@ -64,6 +72,11 @@ def untested(names: list[str]) -> list[str]:
 
 
 if __name__ == "__main__":
+    if sys.argv[1] == "--unknown":  # spec-gate: tasks may only name scenarios that exist
+        bad = unknown(pathlib.Path("openspec/changes") / sys.argv[2])
+        if bad:
+            print("tasks.md names scenarios no spec defines:\n" + "\n".join("- " + n for n in bad))
+        sys.exit(1 if bad else 0)
     missing = untested(covered(pathlib.Path("openspec/changes") / sys.argv[1]))
     print("\n".join(missing))
     sys.exit(1 if missing else 0)

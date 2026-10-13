@@ -39,5 +39,9 @@ Scenarios: `<capability>: <scenario title>`
 - [ ] 1.2 <the smallest code change>
 - [ ] 1.3 Run `make test FILE=tests/<layer>/<capability>/test_<x>.lua CASE="<scenario title>"` and see it pass
 ```
-No design.md unless the change alters what is drawn on screen or the module layout. Run `openspec status`
+No design.md unless the change alters what is drawn on screen (then Current + Proposed renders); a structural change is described in the proposal. Run `openspec status`
 once, at the end. Do not re-read files you just wrote; read files with `nl -ba` once.
+
+Refactor or cleanup (no behaviour change, `skip_specs: true`): tasks name existing scenarios whose tests guard the
+code you touch; each task is "run those tests and see them pass, change the code, run them again". Never
+invent a scenario name: every name on a `Scenarios:` line must be a `#### Scenario:` in openspec/specs or this change's delta.
