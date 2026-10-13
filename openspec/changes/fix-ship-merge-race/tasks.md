@@ -29,7 +29,7 @@ Scenarios: "loop: Conflicting ship is reported for reconcile"
 
 - [x] 2.1 Add the failing test "loop: Conflicting ship is reported for reconcile" to `tests/unit/loop/test_ship.lua`. The setup commits a change to line 1 of `f.txt` on `auto` after cutting a `loop/*` worktree that changes the same line, then runs ship with `INPUTS_ON_CONFLICT=report`. Decode stdout with `vim.json.decode` and assert `merged == false`, `conflict == true`, `files` containing `f.txt`, `auto` unchanged, and `expect_auto_clean`. Verify: it fails on the current `ship.py` (exit 1, no JSON).
 - [x] 2.2 In `ship.py`, after a failed merge and the abort, detect conflicts with `git merge-tree --write-tree --name-only`. When `on_conflict` is `report`, print `{"merged": false, "conflict": true, "branch", "commit": "", "files": [...]}` and exit 0; otherwise fail as before. Add `"conflict": false` to the success output. Update the module docstring. Verify: 2.1 passes and all of `tests/unit/loop/` is green.
-- [ ] 2.3 Wire the reconcile loop in `.archon/workflows/nvim-deliver.yaml`:
+- [x] 2.3 Wire the reconcile loop in `.archon/workflows/nvim-deliver.yaml`:
   - Pass `on_conflict: report` to `ship`, and add `conflict: { type: boolean }` to its `output_format` (also in `plugin-update.yaml`'s ship, which is not required there).
   - Add the `reconcile` `loop_group` (`resolve` → `regate` → `reship`, `max_iterations: 2`), run when `$ship.output.conflict == true`.
   - Make the workflow's result the merged ship. Use a `shipped` script node if `returns` cannot pick between `ship` and `reship`.

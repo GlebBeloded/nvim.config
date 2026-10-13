@@ -16,7 +16,7 @@ inputs:
   cancel_on_reject:
     default: "true"
     description: '"false" ends the block without cancelling the run when the escalation is rejected'
-returns: ship
+returns: shipped
 nodes:
   # --- Plan ---------------------------------------------------------------------------------------
   - id: plan
@@ -163,20 +163,75 @@ nodes:
     depends_on: [ship-decide]
     when: "$ship-decide.output.go == false && $ship-decide.output.go != $INPUTS.cancel_on_reject"
 
-  # --- Ship: /opsx:archive, commit, merge --no-ff into auto ----------------------------------------
+  # --- Ship: /opsx:archive, commit, merge --no-ff into auto (one at a time, under a lock) -----------
   - id: ship
     script: ship
     runtime: uv
-    timeout: 300000
+    timeout: 900000 # waits up to SHIP_LOCK_TIMEOUT (600 s) for other runs' merges
     depends_on: [ship-decide]
     when: "$ship-decide.output.go == true"
     with:
       change: $INPUTS.change
       message: $INPUTS.message
-    output_format:
+      on_conflict: report
+    output_format: &ship_output
       type: object
       properties:
         merged: { type: boolean }
+        conflict: { type: boolean }
         branch: { type: string }
         commit: { type: string }
-      required: [merged, branch, commit]
+        files: { type: array, items: { type: string } }
+      required: [merged, conflict, branch, commit]
+
+  # --- Reconcile: auto conflicts with the branch -> merge auto in, resolve, re-gate, ship again ----
+  - id: reconcile
+    depends_on: [ship]
+    when: "$ship.output.conflict == true"
+    loop_group:
+      max_iterations: 2
+      fresh_context: true
+      until_bash: test $reship.output.merged = true
+      nodes:
+        - id: resolve
+          command: resolve-conflict
+          idle_timeout: 900000
+
+        - id: regate
+          script: gate
+          runtime: uv
+          timeout: 1200000
+          depends_on: [resolve]
+          with:
+            change: $INPUTS.change
+          output_format:
+            type: object
+            properties:
+              green: { type: boolean }
+              spec_ok: { type: boolean }
+              tasks_done: { type: boolean }
+              attempt: { type: integer }
+              failures: { type: string }
+            required: [green, spec_ok, tasks_done, attempt, failures]
+
+        - id: reship
+          script: ship
+          runtime: uv
+          timeout: 900000
+          depends_on: [regate]
+          when: "$regate.output.green == true && $regate.output.spec_ok == true"
+          with:
+            change: $INPUTS.change
+            message: $INPUTS.message
+            on_conflict: report
+          output_format: *ship_output
+
+  - id: shipped # returns can name one node only: ship, or the reconcile loop's reship
+    script: shipped
+    runtime: uv
+    depends_on: [ship, reconcile]
+    trigger_rule: none_failed_min_one_success
+    with:
+      ship: $ship.output
+      reconcile: { from: $reconcile.output, if_skipped: "" }
+    output_format: *ship_output
