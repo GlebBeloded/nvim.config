@@ -6,6 +6,7 @@ local child = H.new_child()
 
 local ERROR_SYMBOL = vim.fn.nr2char(0xf057) .. " "
 local WARN_SYMBOL = vim.fn.nr2char(0xf071) .. " "
+local DIFF_SYMBOLS = { vim.fn.nr2char(0xf457), vim.fn.nr2char(0xf459), vim.fn.nr2char(0xf458) }
 
 local function start()
 	child.start_config()
@@ -17,6 +18,20 @@ local function edit_scratch(name)
 	local dir = vim.fn.tempname()
 	vim.fn.mkdir(dir, "p")
 	child.cmd("cd " .. dir .. " | edit " .. name)
+end
+
+--- Temp git repo with one committed file that has an unstaged change.
+---@return string dir
+local function modified_repo()
+	local dir = vim.fn.tempname()
+	vim.fn.mkdir(dir, "p")
+	local file = vim.fs.joinpath(dir, "a.txt")
+	vim.fn.writefile({ "one" }, file)
+	vim.system({ "git", "init", "-q" }, { cwd = dir }):wait()
+	vim.system({ "git", "add", "a.txt" }, { cwd = dir }):wait()
+	vim.system({ "git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "init" }, { cwd = dir }):wait()
+	vim.fn.writefile({ "two", "three" }, file)
+	return dir
 end
 
 ---@return string text of the last screen row (the global statusline)
@@ -72,6 +87,19 @@ T["statusline: diagnostics show error and warn counts"] = function()
 
 	expect_statusline_contains(ERROR_SYMBOL .. "2")
 	expect_statusline_contains(WARN_SYMBOL .. "1")
+end
+
+T["statusline: diff hidden in narrow windows"] = function()
+	child.o.columns = 80
+	child.cmd("cd " .. modified_repo() .. " | edit a.txt")
+	eq(child.wait([[(vim.b.gitsigns_status_dict or {}).changed == 1]], 15000), true)
+	expect_statusline_contains("NORMAL")
+	vim.uv.sleep(300)
+
+	local text = statusline_text()
+	for _, symbol in ipairs(DIFF_SYMBOLS) do
+		eq({ symbol, text:find(symbol, 1, true) }, { symbol, nil })
+	end
 end
 
 T["statusline: statusline disabled on dashboard"] = function()

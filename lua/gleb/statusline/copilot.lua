@@ -3,7 +3,7 @@
 -- disabled/offline, failed to start, no client, or reporting a warning.
 local M = {}
 
-local GLYPH = ""
+local GLYPH = "\u{F4B8}" -- nf-oct-copilot
 
 -- Don't touch Copilot until it has actually loaded (it lazy-loads on InsertEnter);
 -- requiring its modules early would force an eager load on every redraw.

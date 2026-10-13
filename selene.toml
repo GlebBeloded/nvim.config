@@ -4,3 +4,5 @@ std="vim"
 mixed_table = "allow"
 multiple_statements = "allow"
 global_usage = "allow"
+# selene allows \u{XXXX} only for Roblox; LuaJIT supports it and rejects bad escapes at load time
+bad_string_escape = "allow"

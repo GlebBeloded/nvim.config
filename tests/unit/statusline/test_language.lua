@@ -47,14 +47,22 @@ T["statusline: chip shows error cap without LSP"] = function()
 
 	eq(vim.startswith(chip, "%#StatuslineLangCapError#"), true)
 	eq(chip:find("lua", 1, true) ~= nil, true)
-	eq(chip:match("%%#StatuslineLangEdge#[^%%]*$") ~= nil, true)
+	eq(vim.endswith(chip, "%#StatuslineLangEdge#\u{E0B4}"), true)
 end
 
 T["statusline: chip shows ok cap with running LSP"] = function()
 	child.bo.filetype = "lua"
 	attach_fake_client()
 
-	eq(vim.startswith(component(), "%#StatuslineLangCapOk#"), true)
+	eq(vim.startswith(component(), "%#StatuslineLangCapOk#\u{E0B6}"), true)
+end
+
+T["statusline: chip has rounded caps"] = function()
+	child.bo.filetype = "lua"
+	local chip = component()
+
+	eq(vim.startswith(chip, "%#StatuslineLangCapError#\u{E0B6}"), true)
+	eq(vim.endswith(chip, "\u{E0B4}"), true)
 end
 
 T["statusline: chip logo highlight per filetype"] = function()
