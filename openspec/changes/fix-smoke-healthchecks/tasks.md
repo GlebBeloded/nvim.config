@@ -26,7 +26,7 @@ Scenarios: none (Smoke layer: no `ERROR` in `:checkhealth`)
 
 - [x] 1.1 **Failing test.** Remove the `hererocks` pattern from `HEALTH_IGNORE`; `make smoke-health` → FAIL (`lazy ... luarocks} not installed`).
 - [x] 1.2 **Implement** `rocks = { enabled = false }` in the lazy setup table. `HEALTH_IGNORE` is now empty and only used by `ignored()`: remove both and the filter that calls `ignored()` (design.md, Decision 1). `make smoke-health` → no lazy ERROR.
-- [ ] 1.3 **Commit** `fix(plugins): disable lazy luarocks support`.
+- [x] 1.3 **Commit** `fix(plugins): disable lazy luarocks support`.
 
 ## 2. neo-tree buffers renderers
 
@@ -34,9 +34,9 @@ Scenarios: none (Smoke layer: no `ERROR` in `:checkhealth`)
 
 **Files:** `tests/smoke/run.lua`, `lua/gleb/file_tree/init.lua`
 
-- [ ] 2.1 **Failing test.** Drop `neo-tree` from `HEALTH_EXCLUDE`; `make smoke-health` → FAIL (`config.buffers.renderers: expected ?, got nil`).
-- [ ] 2.2 **Implement** `buffers = { renderers = {} }` in `neo_tree.setup` with a one-line comment (neo-tree's health check validates `buffers` even when it is not in `sources`). `make smoke-health` → no neo-tree ERROR; `make check` green (file-tree tests, screenshots).
-- [ ] 2.3 **Commit** `fix(file_tree): satisfy neo-tree buffers healthcheck`.
+- [x] 2.1 **Failing test.** Drop `neo-tree` from `HEALTH_EXCLUDE`; `make smoke-health` → FAIL (`config.buffers.renderers: expected ?, got nil`).
+- [x] 2.2 **Implement** `buffers = { renderers = {} }` in `neo_tree.setup` with a one-line comment (neo-tree's health check validates `buffers` even when it is not in `sources`). `make smoke-health` → no neo-tree ERROR; `make check` green (file-tree tests, screenshots).
+- [x] 2.3 **Commit** `fix(file_tree): satisfy neo-tree buffers healthcheck`.
 
 ## 3. neotest-golang exclude
 
