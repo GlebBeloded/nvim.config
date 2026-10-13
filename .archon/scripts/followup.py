@@ -7,6 +7,7 @@ same work); otherwise a follow-up change `followup-<change>` is queued. No AI. P
 import json
 import os
 import re
+import shutil
 import subprocess
 import tempfile
 
@@ -92,42 +93,53 @@ def requeue(root: str, branch: str) -> None:
         f.write(set_rejected(set_adopt(text, branch), branch))
 
 
-branch = git("rev-parse", "--abbrev-ref", "HEAD")
-name = f"followup-{change}"[:60]
-lock = lock_path()
-acquire_lock(lock, 600)
-try:
-    target = base_checkout()
-    temp = None
-    if target is not None and git(
-        "status", "--porcelain", "--untracked-files=no", cwd=target
-    ):
-        print(
-            json.dumps(
-                {
-                    "queued": False,
-                    "change": name,
-                    "reason": f"{target} has uncommitted changes",
-                }
-            )
-        )
-        raise SystemExit(0)
-    if target is None:
-        temp = tempfile.mkdtemp(prefix="nvim-followup-")
-        git("worktree", "add", "--detach", temp, BASE)
-    root = temp or target
+def registered(path: str) -> bool:
+    real = os.path.realpath(path)
+    return any(
+        line.startswith("worktree ") and os.path.realpath(line.removeprefix("worktree ")) == real
+        for line in git("worktree", "list", "--porcelain").splitlines()
+    )
+
+
+def queue(root: str) -> str:
+    """Writes and commits the re-queued change in `root` (a checkout of BASE); returns its name."""
     if os.path.isfile(os.path.join(root, "openspec/changes", change, "proposal.md")):
-        name = change
         requeue(root, branch)
-        message = f"chore(openspec): re-queue {change} from {branch}"
+        name, message = change, f"chore(openspec): re-queue {change} from {branch}"
     else:
+        name = default_name
         write_change(root, name, branch)
         message = f"chore(openspec): queue {name}"
     git("add", "openspec/changes/" + name, cwd=root)
     git("commit", "-q", "-m", message, cwd=root)
-    if temp:
+    return name
+
+
+def queue_detached() -> str:
+    """`queue` in a temp worktree of BASE, then moves BASE to its commit. The worktree is removed on
+    every exit: a failing post-checkout hook fails `worktree add` after Git registered it."""
+    temp = tempfile.mkdtemp(prefix="nvim-followup-")
+    try:
+        git("worktree", "add", "--detach", temp, BASE)
+        name = queue(temp)
         git("update-ref", f"refs/heads/{BASE}", git("rev-parse", "HEAD", cwd=temp))
-        git("worktree", "remove", "--force", temp)
+        return name
+    finally:
+        if registered(temp):
+            git("worktree", "remove", "--force", temp)
+        shutil.rmtree(temp, ignore_errors=True)
+
+
+branch = git("rev-parse", "--abbrev-ref", "HEAD")
+default_name = f"followup-{change}"[:60]
+lock = lock_path()
+acquire_lock(lock, 600)
+try:
+    target = base_checkout()
+    if target is not None and git("status", "--porcelain", "--untracked-files=no", cwd=target):
+        print(json.dumps({"queued": False, "change": default_name, "reason": f"{target} has uncommitted changes"}))
+        raise SystemExit(0)
+    name = queue(target) if target is not None else queue_detached()
 finally:
     release_lock(lock)
 print(json.dumps({"queued": True, "change": name}))
