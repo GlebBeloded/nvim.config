@@ -4,6 +4,7 @@
 A single global lualine statusline styled from the gruvbox-material palette, showing mode, git branch/diff, navic breadcrumb, delayed LSP progress, a Copilot failure glyph, diagnostics and an LSP-health language chip.
 
 ## Requirements
+
 ### Requirement: Global statusline layout
 The config SHALL configure lualine with a global statusline (`laststatus=3`), no component or section separators, disabled for filetypes `alpha`, `dashboard` and `Outline`, with sections: a = mode; b = branch (icon U+E725), diff (symbols U+F457 added, U+F459 modified, U+F458 removed); c = navic breadcrumb; x = LSP progress, Copilot glyph, diagnostics (symbols U+F057 error, U+F071 warn), language chip; y and z empty; and an empty tabline.
 
@@ -39,12 +40,12 @@ The config SHALL configure lualine with a global statusline (`laststatus=3`), no
 The config SHALL color the statusline from `gleb.statusline.palette` (derived from the gruvbox-material palette: bar = `bg0` blended 5% toward orange and brightened 2%; mode accents normal=green, insert=blue, visual=purple, replace=red, command=yellow, terminal=aqua; section a text in `bg0`, bold; inactive text in `bg5`) and render the language chip as a rounded pill with `chip_bg` background.
 
 #### Scenario: statusline matches reference screenshot
-- **WHEN** a Lua file is open in Normal mode with gruvbox-material active and `MiniTest` child `expect.reference_screen()` is taken of the statusline row
-- **THEN** it matches the stored reference screenshot, including mode accent, bar color and language chip
+- **WHEN** a Lua file is open in Normal mode with gruvbox-material active, no LSP client attached to its buffer, and `MiniTest` child `expect.reference_screen()` is taken of the statusline row
+- **THEN** it matches the stored reference screenshot, including mode accent, bar color and language chip, and in an 80-column statusline the chip takes columns 72–80 with the left cap in `StatuslineLangCapError` and the right cap in `StatuslineLangEdge`
 
 #### Scenario: insert mode accent matches reference screenshot
-- **WHEN** `i` is pressed in Normal mode and a screenshot of the statusline row is taken
-- **THEN** it matches the stored reference screenshot with the insert (blue) accent on the mode section
+- **WHEN** `i` is pressed in Normal mode, no LSP client is attached to the buffer, and a screenshot of the statusline row is taken
+- **THEN** it matches the stored reference screenshot with the insert (blue) accent on the mode section, and the chip takes columns 72–80 with the left cap in `StatuslineLangCapError` and the right cap in `StatuslineLangEdge`
 
 ### Requirement: Language chip
 The config SHALL render, via `require("gleb.statusline.language").component()`, an empty string when `filetype` is empty; otherwise `<left cap><space><filetype logo><space><filetype><space><right cap>` where the left cap is the half-circle glyph U+E0B6 in highlight `StatuslineLangCapOk` if a non-stopped LSP client is attached to the current buffer and `StatuslineLangCapError` otherwise, and the right cap is the half-circle glyph U+E0B4 in `StatuslineLangEdge`.
