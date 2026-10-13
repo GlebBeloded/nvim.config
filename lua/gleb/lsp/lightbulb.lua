@@ -48,5 +48,7 @@ require("nvim-lightbulb").setup({
 		pattern = { "*" },
 		-- see :help autocmd-events
 		events = { "CursorHold", "CursorHoldI" },
+		-- negative: keep `updatetime` from gleb.options instead of the plugin's 200
+		updatetime = -1,
 	},
 })
