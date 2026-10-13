@@ -140,13 +140,13 @@ budget, no messages, health).
 
 **Files:** `plugins/plugins.lua`, `init.lua`
 
-- [ ] 5.1 **Failing test.** `nvim --headless -c 'lua for _, n in ipairs({"neotest","nvim-dap","nvim-dap-ui","nvim-dap-go","nvim-surround"}) do io.write(n, "=", tostring(require("lazy.core.config").plugins[n]._.loaded ~= nil), " ") end' -c q`
+- [x] 5.1 **Failing test.** `nvim --headless -c 'lua for _, n in ipairs({"neotest","nvim-dap","nvim-dap-ui","nvim-dap-go","nvim-surround"}) do io.write(n, "=", tostring(require("lazy.core.config").plugins[n]._.loaded ~= nil), " ") end' -c q`
   → all `true`.
-- [ ] 5.2 **Implement.** neotest: `cmd = "Neotest"`. DAP: one nvim-dap spec with `cmd` for the `Dap*`
+- [x] 5.2 **Implement.** neotest: `cmd = "Neotest"`. DAP: one nvim-dap spec with `cmd` for the `Dap*`
   commands it uses (`DapContinue`, `DapToggleBreakpoint`, …), dependencies nvim-dap-ui, nvim-dap-go,
   nvim-nio, and `config` requiring `gleb.debugging`; delete `init.lua:20`. nvim-surround:
   `event = "VeryLazy"`, `opts = {}` instead of the inline `config`.
-- [ ] 5.3 **Green.** The 5.1 probe prints all `false`; `:DapContinue` stub and `:Neotest summary` load
+- [x] 5.3 **Green.** The 5.1 probe prints all `false`; `:DapContinue` stub and `:Neotest summary` load
   their plugin in a headless child without error; nvim-surround is loaded after `child.wait_very_lazy()`;
   `make smoke` passes; `make check` passes. **Commit** `perf(plugins): lazy-load neotest, dap and surround`.
 

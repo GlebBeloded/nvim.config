@@ -176,17 +176,39 @@ local plugins = {
 	},
 	"lewis6991/foldsigns.nvim", -- Show LSP signs on folds
 
-	-- debugging plugins
-	"mfussenegger/nvim-dap",
+	-- debugging plugins: load on the first :Dap* command (or require("dap"))
 	{
-		"rcarriga/nvim-dap-ui",
-		dependencies = { "mfussenegger/nvim-dap", "nvim-neotest/nvim-nio" }, -- UI (splits) for DAP
+		"mfussenegger/nvim-dap",
+		cmd = {
+			"DapClearBreakpoints",
+			"DapContinue",
+			"DapDisconnect",
+			"DapEval",
+			"DapNew",
+			"DapPause",
+			"DapRestartFrame",
+			"DapSetLogLevel",
+			"DapShowLog",
+			"DapStepInto",
+			"DapStepOut",
+			"DapStepOver",
+			"DapTerminate",
+			"DapToggleBreakpoint",
+			"DapToggleRepl",
+		},
+		dependencies = {
+			{ "rcarriga/nvim-dap-ui", dependencies = { "nvim-neotest/nvim-nio" } }, -- UI (splits) for DAP
+			"leoluz/nvim-dap-go",
+		},
+		config = function()
+			require("gleb.debugging")
+		end,
 	},
-	"leoluz/nvim-dap-go",
 
 	-- testing
 	{
 		"nvim-neotest/neotest",
+		cmd = "Neotest",
 		dependencies = {
 			"nvim-neotest/nvim-nio",
 			"nvim-lua/plenary.nvim",
@@ -301,9 +323,8 @@ local plugins = {
 	{
 		"kylechui/nvim-surround",
 		version = "*", -- Use for stability; omit to use the main branch for the latest features
-		config = function()
-			require("nvim-surround").setup({})
-		end,
+		event = "VeryLazy",
+		opts = {},
 	},
 	"windwp/nvim-ts-autotag", -- Autoclose HTML tags
 	"lukas-reineke/indent-blankline.nvim", -- Lines for indenting

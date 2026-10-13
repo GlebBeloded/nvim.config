@@ -63,7 +63,7 @@ flowchart LR
 
 Most modules are required from `init.lua` after `lazy.setup()` and configure their plugins directly. A
 few run from a plugin spec `config` instead, so they load with their plugin (colors transparency, neotest,
-vscode-diff, 99 and `ai/`).
+`debugging/`, copilot, smart-splits, vscode-diff, 99 and `ai/`).
 
 ## Startup sequence
 

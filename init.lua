@@ -17,7 +17,6 @@ require("gleb.autopairs") -- must be after treesitter
 require("gleb.comments") -- must be after treesitter
 require("gleb.git")
 require("gleb.run")
-require("gleb.debugging")
 require("gleb.bufferline")
 require("gleb.project")
 require("gleb.indentline")
