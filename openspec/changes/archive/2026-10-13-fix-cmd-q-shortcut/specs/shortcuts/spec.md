@@ -78,6 +78,14 @@ The e2e layer SHALL deliver physical key presses to Neovim as the shortcut table
 - **WHEN** the app-menu setup is deliberately absent and Cmd+Q is pressed in a freshly started Alacritty window
 - **THEN** the Alacritty process exits
 
+#### Scenario: Controlled no-setup regressions do not mutate when e2e cannot run
+- **WHEN** the e2e preflight skips or fails before a controlled no-setup regression
+- **THEN** no defaults command runs and no Alacritty instance starts
+
+#### Scenario: Controlled no-setup regressions restore menu keys after lifecycle failures
+- **WHEN** the fresh Alacritty instance fails to start or stop during a controlled no-setup regression
+- **THEN** the versioned menu-key setup still runs before the failure is reported
+
 #### Scenario: Cmd+Shift+Q is never pressed: the key helper refuses it
 - **WHEN** `keys press <pid> cmd+shift+q` runs
 - **THEN** it exits with status 2 and prints `keys press: refused, cmd+shift+q is a denied system-wide chord` without posting an event
