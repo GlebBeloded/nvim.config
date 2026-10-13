@@ -54,6 +54,16 @@ local function load_helper(mode)
 end
 
 T["shortcuts: Controlled no-setup regressions do not mutate when e2e cannot run"] = function()
+	local E = require("tests.e2e.alacritty")
+	local preflight = E.preflight
+	rawset(E, "preflight", function()
+		return "menu keys absent", true
+	end)
+	local started, reason = pcall(E.start_or_skip)
+	rawset(E, "preflight", preflight)
+	eq(started, false)
+	eq(tostring(reason):find("menu keys absent", 1, true) ~= nil, true)
+
 	for _, mode in ipairs({ "skipped", "fatal" }) do
 		local calls, helper = load_helper(mode)
 
