@@ -35,6 +35,7 @@ end
 local function do_open_diff(path)
 	local git = require("codediff.core.git")
 	local view = require("codediff.ui.view")
+	local codediff_path = require("codediff.core.path")
 
 	-- Async chain: get_git_root -> resolve_revision -> create/update view
 	git.get_git_root(path, function(err_root, git_root)
@@ -67,8 +68,8 @@ local function do_open_diff(path)
 				local session_config = {
 					mode = "standalone",
 					git_root = git_root,
-					original_path = relative_path,
-					modified_path = relative_path,
+					original = codediff_path.make_ref(relative_path, git_root),
+					modified = codediff_path.make_ref(relative_path, git_root),
 					original_revision = commit_hash,
 					modified_revision = "WORKING",
 				}
@@ -88,8 +89,8 @@ local function do_open_diff(path)
 					M.state.diff_tab = nil
 				end
 
-				-- Create fresh diff tab
-				view.create(session_config, filetype)
+				-- Create fresh diff tab; refocus neo-tree once codediff has jumped to the first change
+				view.create(session_config, filetype, M.focus_neo_tree)
 				M.state.diff_tab = vim.api.nvim_get_current_tabpage()
 
 				-- Set up focus guard: if focus lands on diff during navigation, refocus neo-tree
