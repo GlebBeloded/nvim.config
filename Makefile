@@ -129,7 +129,7 @@ STAMP := $(shell date +%Y%m%d-%H%M%S)
 # Archon judges "merged" against local/auto without fetching it, so refresh it with the run's merge first.
 CLEANUP = { git fetch -q local; $(ARCHON) isolation cleanup --merged; } >/dev/null 2>&1 || true
 
-.PHONY: loop-setup loop-register loop-validate fix feature queue update outdated console loop-status preview
+.PHONY: loop-setup loop-register loop-validate fix feature queue update outdated console loop-report loop-status preview
 
 loop-setup: # self-remote: Archon cuts worktrees from <remote>/auto, and auto stays local
 	@git remote get-url local >/dev/null 2>&1 || git remote add local "$$(git rev-parse --path-format=absolute --git-common-dir | sed 's|/.git$$||')"
@@ -173,6 +173,9 @@ outdated: # plugins with commits past lazy-lock.json (read-only, on a private pl
 
 console: # Archon web console (runs, gates, logs): http://localhost:3090
 	$(ARCHON) serve
+
+loop-report:
+	@python3 .archon/scripts/loop_report.py --run "$(RUN)"
 
 loop-status:
 	@$(ARCHON) workflow status; $(ARCHON) workflow runs --limit 10
