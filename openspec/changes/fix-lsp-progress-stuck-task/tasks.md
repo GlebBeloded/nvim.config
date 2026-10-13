@@ -40,3 +40,7 @@ Scenarios: none new; regression of "statusline matches reference screenshot".
 
 - [x] 4.1 Run `make trace` and verify the six new scenarios show as tested with no orphans
 - [ ] 4.2 Run `make check` and verify it is green, including `make types` and the unchanged screenshot case
+
+## Blocked
+
+- 4.2: `smoke-startup` fails only from host load (load average 55–100 from parallel loop workers), not this change. Under the same load, the pre-change `lsp_progress.lua` (cd4687a) took 740.9 ms and this branch took 403.1 ms (fastest of 9, budget 400 ms). Every other `make check` layer passed in attempt 1. Re-run the gate when the host is idle.
