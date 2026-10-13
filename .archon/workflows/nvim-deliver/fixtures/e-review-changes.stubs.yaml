@@ -1,0 +1,20 @@
+# e. review requests changes on pass 1: verdict (real) gets done=false and the findings as
+# feedback; fix does not run on pass 1. Dry-run limit as in b: pass 2 (fix reading
+# $LOOP_PREV.verdict.output.feedback) cannot be simulated.
+fixture:
+  expect: completed
+  inputs: { change: demo-change }
+  reached: [gate, review, verdict, build, escalation]
+  resolved-text-contains:
+    review: "Change id: demo-change"
+exec-code: true
+skills-check: "skills ok"
+plan-check: { needed: false, has_change: true }
+plan-gate: "change demo-change is valid"
+pack: "context.md written"
+implement: "task 1 done"
+gate: { green: true, spec_ok: true, tasks_done: true, untested: 0, attempt: 1, failures: "" }
+review: { approve: false, findings: "scope creep: lua/gleb/y.lua is not in proposal.md", weakened_scenario: false, weakened_test: false }
+escalation: { decision: ship, escalate: false, reasons: "- none" }
+ship: { merged: true, conflict: false, branch: loop/demo-change, commit: abc123 }
+followup: "MUST-NOT-RUN"

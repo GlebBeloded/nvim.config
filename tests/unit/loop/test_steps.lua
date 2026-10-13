@@ -158,9 +158,9 @@ T["loop: Plan is skipped when the spec wrote tasks"] = function()
 	local with_tasks = run("tasks.py", repo, { INPUTS_CHANGE = "c" })
 	local args = { "python3", vim.fs.joinpath(SCRIPTS, "tasks.py"), "--plan-needed" }
 	local env = vim.tbl_extend("force", H.GIT_ENV, { INPUTS_CHANGE = "c" })
-	eq(vim.json.decode(H.system(child, args, repo, env).stdout), { needed = false })
+	eq(vim.json.decode(H.system(child, args, repo, env).stdout), { needed = false, has_change = true })
 	env.INPUTS_CHANGE = "none"
-	eq(vim.json.decode(H.system(child, args, repo, env).stdout), { needed = true })
+	eq(vim.json.decode(H.system(child, args, repo, env).stdout), { needed = false, has_change = false })
 	eq(with_tasks.code, 1)
 end
 

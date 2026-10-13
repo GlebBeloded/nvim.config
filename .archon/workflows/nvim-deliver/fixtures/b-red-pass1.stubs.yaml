@@ -1,0 +1,19 @@
+# b. gate red on pass 1: review and fix do NOT run on pass 1 (fix has no stub; review's stub breaks
+# its schema), verdict (real) reports done=false with the gate failures as feedback.
+# Dry-run limit: until_bash is never executed, so the loop ends after pass 1 and pass 2 (fix runs
+# with this feedback) cannot be simulated; the judge stub stands in for the final green pass.
+fixture:
+  expect: completed
+  inputs: { change: demo-change }
+  reached: [gate, verdict, build, escalation, ship-decide, ship, shipped]
+exec-code: true
+skills-check: "skills ok"
+plan-check: { needed: false, has_change: true }
+plan-gate: "change demo-change is valid"
+pack: "context.md written"
+implement: "task 1 done"
+gate: { green: false, spec_ok: true, tasks_done: true, untested: 0, attempt: 1, failures: "FAIL tests/unit/x_spec.lua: expected 1, got 2" }
+review: "MUST-NOT-RUN"
+escalation: { decision: ship, escalate: false, reasons: "- none" }
+ship: { merged: true, conflict: false, branch: loop/demo-change, commit: abc123 }
+followup: "MUST-NOT-RUN"

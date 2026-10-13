@@ -72,7 +72,9 @@ if __name__ == "__main__":
         import json
 
         change = os.environ.get("INPUTS_CHANGE", "")
-        print(json.dumps({"needed": plan_needed(pathlib.Path("openspec/changes") / change / "tasks.md")}))
+        folder = pathlib.Path("openspec/changes") / change
+        has = folder.is_dir()
+        print(json.dumps({"needed": has and plan_needed(folder / "tasks.md"), "has_change": has}))
         sys.exit(0)
     artifacts = pathlib.Path(os.environ.get("ARTIFACTS_DIR", "."))
     saved = artifacts / "change"  # written by context_pack.py: until_bash gets no INPUTS_* env

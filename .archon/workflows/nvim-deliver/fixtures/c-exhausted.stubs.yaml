@@ -1,0 +1,20 @@
+# c. third red pass: verdict (real) reports exhausted, the judge rejects, ship-decide (real) says
+# go=false/decision=reject, followup queues the work, stop cancels the run; ship never runs.
+# FAILS (workflow bug): stop's when compares two references ('... != $INPUTS.cancel_on_reject');
+# Archon conditions accept only a literal on the right, so the condition is a parse error, stop is
+# skipped and a rejected run completes instead of being cancelled.
+fixture:
+  expect: cancelled
+  inputs: { change: demo-change }
+  reached: [gate, verdict, escalation, ship-decide, followup, stop]
+exec-code: true
+skills-check: "skills ok"
+plan-check: { needed: false, has_change: true }
+plan-gate: "change demo-change is valid"
+pack: "context.md written"
+implement: "task 1 done"
+gate: { green: false, spec_ok: false, tasks_done: true, untested: 1, attempt: 3, failures: "make check red" }
+review: "MUST-NOT-RUN"
+escalation: { decision: reject, escalate: false, reasons: "- fix loop exhausted (3 attempts) with gates still red: tests,spec,verify,review" }
+followup: '{"queued": true, "change": "demo-change-followup"}'
+ship: "MUST-NOT-RUN"

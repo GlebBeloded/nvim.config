@@ -1,0 +1,25 @@
+# a. tasks exist (plan skipped), one implement pass, gate green, review approves, judge ship,
+# ship merges, no approval pause. verdict, ship-decide and shipped run for real (exec-code).
+# Guards: command nodes that must not run (plan, fix, resolve) have no stub, so reaching one fails;
+# "MUST-NOT-RUN" breaks the output_format of script nodes that must not run (followup has none:
+# reaching it would cancel the run via stop, so expect: completed guards it).
+fixture:
+  expect: completed
+  inputs: { change: demo-change, message: "fix: demo-change" }
+  reached: [plan-check, plan-gate, pack, implement, gate, review, verdict, escalation, ship-decide, ship, shipped]
+  resolved-text-contains:
+    implement: "openspec/changes/demo-change/"
+    review: "Change id: demo-change"
+exec-code: true
+skills-check: "skills ok"
+plan-gate: "change demo-change is valid"
+pack: "context.md written"
+implement: "task 1 done"
+followup: "MUST-NOT-RUN"
+regate: "MUST-NOT-RUN"
+reship: "MUST-NOT-RUN"
+plan-check: { needed: false, has_change: true }
+gate: { green: true, spec_ok: true, tasks_done: true, untested: 0, attempt: 1, failures: "" }
+review: { approve: true, findings: "", weakened_scenario: false, weakened_test: false }
+escalation: { decision: ship, escalate: false, reasons: "- none" }
+ship: { merged: true, conflict: false, branch: loop/demo-change, commit: abc123, files: [lua/gleb/x.lua] }

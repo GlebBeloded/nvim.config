@@ -20,7 +20,7 @@ returns: shipped
 nodes:
   # --- Plan ---------------------------------------------------------------------------------------
   - id: skills-check # declared skills resolve here (docs/workflow.md, Setup facts)
-    bash: python3 .archon/scripts/skills_check.py .archon/workflows/nvim-deliver.yaml
+    bash: python3 .archon/scripts/skills_check.py .archon/workflows/nvim-deliver/nvim-deliver.yaml
 
   - id: plan-check # the spec step usually wrote tasks.md already; plan only when it has no task
     bash: INPUTS_CHANGE="$INPUTS_CHANGE" python3 .archon/scripts/tasks.py --plan-needed
@@ -29,7 +29,8 @@ nodes:
       type: object
       properties:
         needed: { type: boolean }
-      required: [needed]
+        has_change: { type: boolean }
+      required: [needed, has_change]
 
   - id: plan
     command: plan
@@ -45,10 +46,13 @@ nodes:
       openspec validate "$INPUTS_CHANGE" --strict --no-interactive
     depends_on: [plan-check, plan]
     trigger_rule: all_done
+    when: "$plan-check.output.has_change == true" # an adopted, already archived change goes straight to the gate
 
   # --- Tasks: one fresh, short implement session per unchecked task (docs/workflow.md, Steps) -------
   - id: tasks
-    depends_on: [plan-gate]
+    depends_on: [plan-check, plan-gate]
+    trigger_rule: all_done
+    when: "$plan-check.output.has_change == true"
     loop_group:
       max_iterations: 31 # tasks.py ends the loop at 30 passes
       fresh_context: true
@@ -69,6 +73,7 @@ nodes:
   # --- Check -> Verify -> Review, max 3 passes; a red pass sends only its findings to fix -------------
   - id: build
     depends_on: [tasks]
+    trigger_rule: all_done
     loop_group:
       max_iterations: 3
       fresh_context: true
@@ -182,15 +187,17 @@ nodes:
     with:
       needed: $escalation.output.escalate
       verdict: $escalation.output.decision
+      cancel_on_reject: $INPUTS.cancel_on_reject
       decision: { from: $ship-gate.output.decision, if_skipped: auto }
       feedback: { from: $ship-gate.output.text, if_skipped: "" }
     output_format:
       type: object
       properties:
         go: { type: boolean }
+        cancel: { type: boolean }
         decision: { type: string }
         feedback: { type: string }
-      required: [go, decision, feedback]
+      required: [go, cancel, decision, feedback]
 
   - id: followup # rejected by the judge: queue the work again on auto, keep the branch
     script: followup
@@ -201,11 +208,11 @@ nodes:
       change: $INPUTS.change
       reasons: $escalation.output.reasons
 
-  - id: stop # go is false here, so the second test reads: cancel_on_reject is not "false"
+  - id: stop # decide.py sets cancel when not shipping, unless the caller passed cancel_on_reject: "false"
     cancel: "Not shipped: rejected. The branch and worktree are kept; a follow-up change is queued."
     depends_on: [ship-decide, followup]
     trigger_rule: all_done
-    when: "$ship-decide.output.go == false && $ship-decide.output.go != $INPUTS.cancel_on_reject"
+    when: "$ship-decide.output.cancel == true"
 
   # --- Ship: /opsx:archive, commit, merge --no-ff into auto (one at a time, under a lock) -----------
   - id: ship

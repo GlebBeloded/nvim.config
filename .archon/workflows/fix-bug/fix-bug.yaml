@@ -10,7 +10,7 @@ worktree:
 nodes:
   # --- Specify ------------------------------------------------------------------------------------
   - id: skills-check # declared skills resolve here (docs/workflow.md, Setup facts)
-    bash: python3 .archon/scripts/skills_check.py .archon/workflows/fix-bug.yaml
+    bash: python3 .archon/scripts/skills_check.py .archon/workflows/fix-bug/fix-bug.yaml
 
   - id: explore
     command: explore-bug
@@ -56,8 +56,9 @@ nodes:
     script: decide
     runtime: uv
     depends_on: [spec-gate, design-gate]
-    trigger_rule: all_done
+    trigger_rule: none_failed_min_one_success # a failed spec-gate stops the run
     with:
+      cancel_on_reject: "true"
       verdict: ""
       needed: { from: $preview.output, if_skipped: "" }
       decision: { from: $design-gate.output.decision, if_skipped: auto }

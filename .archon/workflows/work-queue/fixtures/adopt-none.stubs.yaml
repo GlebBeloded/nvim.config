@@ -1,0 +1,27 @@
+# g2. no adopt input: adopt (real) reports "nothing to adopt" into the queue-spec prompt; a fix
+# without visible UI skips preview and the design gate and delivers.
+fixture:
+  expect: completed
+  inputs: { change: demo-change }
+  reached: [pick, adopt, complete, spec-gate, design-decide, deliver__ship, deliver__shipped]
+  resolved-text-contains:
+    complete: "Earlier work: nothing to adopt"
+exec-code: true
+skills-check: "skills ok"
+pick: { found: true, change: demo-change, kind: fix, has_tasks: true }
+complete: { visible_ui: false, architecture: false }
+spec-gate: "valid"
+preview: "MUST-NOT-RUN"
+# nvim-deliver (include `deliver`): top-level ids get the deliver__ prefix, loop bodies keep theirs
+deliver__skills-check: "skills ok"
+deliver__plan-check: { needed: false, has_change: true }
+deliver__plan-gate: "valid"
+pack: "context.md written"
+implement: "task 1 done"
+gate: { green: true, spec_ok: true, tasks_done: true, untested: 0, attempt: 1, failures: "" }
+review: { approve: true, findings: "", weakened_scenario: false, weakened_test: false }
+deliver__escalation: { decision: ship, escalate: false, reasons: "- none" }
+deliver__ship: { merged: true, conflict: false, branch: loop/demo-change, commit: abc123 }
+deliver__followup: "MUST-NOT-RUN"
+
+adopted-state: { archived: false }

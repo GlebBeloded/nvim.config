@@ -43,7 +43,7 @@ T["loop: Default provider is codex with the chosen model"] = function()
 end
 
 T["loop: Review runs on claude"] = function()
-	local review = find_node(load_yaml(".archon/workflows/nvim-deliver.yaml"), "review") or {}
+	local review = find_node(load_yaml(".archon/workflows/nvim-deliver/nvim-deliver.yaml"), "review") or {}
 	eq(review.provider, "claude")
 end
 
@@ -51,7 +51,7 @@ T["loop: Configured provider resolves every declared skill here"] = function()
 	if child.lua_get("vim.fn.executable('codex') == 0 or vim.fn.executable('claude') == 0") then
 		MiniTest.skip("codex or claude not on PATH")
 	end
-	local workflows = vim.fn.glob(vim.fs.joinpath(H.root, ".archon/workflows/*.yaml"), false, true)
+	local workflows = vim.fn.glob(vim.fs.joinpath(H.root, ".archon/workflows/*/*.yaml"), false, true)
 	local result = H.system(child, vim.list_extend({ "python3", ".archon/scripts/skills_check.py" }, workflows), H.root)
 	eq(result.code, 0, { fail_reason = result.stderr })
 end

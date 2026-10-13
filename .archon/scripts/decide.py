@@ -10,4 +10,10 @@ decision = os.environ.get("INPUTS_DECISION", "") or "auto"
 needed = os.environ.get("INPUTS_NEEDED", "").strip().lower() not in ("", "false")
 rejected = os.environ.get("INPUTS_VERDICT", "").strip().lower() == "reject"
 go = not rejected and (decision == "approve" or (not needed and decision == "auto"))
-print(json.dumps({"go": go, "decision": "reject" if rejected else decision, "feedback": os.environ.get("INPUTS_FEEDBACK", "")}))
+# cancel: stop the run (not just this block) when not going; INPUTS_CANCEL_ON_REJECT="false" keeps it running
+cancel = not go and os.environ.get("INPUTS_CANCEL_ON_REJECT", "true").strip().lower() != "false"
+print(
+    json.dumps(
+        {"go": go, "cancel": cancel, "decision": "reject" if rejected else decision, "feedback": os.environ.get("INPUTS_FEEDBACK", "")}
+    )
+)

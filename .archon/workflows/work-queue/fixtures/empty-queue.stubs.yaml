@@ -1,0 +1,7 @@
+# g3. empty queue: pick finds nothing, empty cancels; adopt, complete and deliver never run.
+fixture:
+  expect: cancelled
+  reached: [pick, empty]
+exec-code: false
+skills-check: "skills ok"
+pick: { found: false, change: "", kind: "", has_tasks: false }

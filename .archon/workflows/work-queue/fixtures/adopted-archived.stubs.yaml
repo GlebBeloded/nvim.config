@@ -1,0 +1,25 @@
+# g3. the adopted branch already finished and archived the change: no spec, plan or implement;
+# straight to the build gate, review, judge and ship.
+fixture:
+  expect: completed
+  inputs: { change: demo-change, adopt: loop/demo-change }
+  reached: [pick, adopted-state, design-decide, deliver__plan-check, gate, review, verdict, deliver__ship, deliver__shipped]
+exec-code: true
+skills-check: "skills ok"
+pick: { found: true, change: demo-change, kind: fix, has_tasks: false }
+adopt: { conflict: false, summary: "adopted loop/demo-change: 11 commits" }
+adopted-state: { archived: true }
+complete: "MUST-NOT-RUN"
+spec-gate: "MUST-NOT-RUN"
+preview: "MUST-NOT-RUN"
+deliver__skills-check: "skills ok"
+deliver__plan-check: { needed: false, has_change: false }
+deliver__plan: "MUST-NOT-RUN"
+deliver__plan-gate: "MUST-NOT-RUN"
+pack: "MUST-NOT-RUN"
+implement: "MUST-NOT-RUN"
+gate: { green: true, spec_ok: true, tasks_done: true, untested: 0, attempt: 1, failures: "" }
+review: { approve: true, findings: "", weakened_scenario: false, weakened_test: false }
+deliver__escalation: { decision: ship, escalate: false, reasons: "- none" }
+deliver__ship: { merged: true, conflict: false, branch: loop/demo-change-1, commit: abc123 }
+deliver__followup: "MUST-NOT-RUN"

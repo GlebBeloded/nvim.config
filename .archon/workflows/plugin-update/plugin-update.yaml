@@ -14,7 +14,7 @@ inputs:
     description: Plugin name as in lazy-lock.json
 nodes:
   - id: skills-check # declared skills resolve here (docs/workflow.md, Setup facts)
-    bash: python3 .archon/scripts/skills_check.py .archon/workflows/plugin-update.yaml
+    bash: python3 .archon/scripts/skills_check.py .archon/workflows/plugin-update/plugin-update.yaml
 
   - id: update
     script: plugin_update

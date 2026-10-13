@@ -26,7 +26,7 @@ endif
 
 # startup timing runs alone after the rest, so the other layers do not skew it
 check:
-	@SANDBOX_START=$${E2E:-0} tests/check.sh lint types test trace chain stack e2e smoke-health +smoke-startup
+	@SANDBOX_START=$${E2E:-0} tests/check.sh lint types test trace chain stack e2e smoke-health loop-test +smoke-startup
 
 quick:
 	@tests/quick.sh
@@ -133,12 +133,12 @@ STAMP := $(shell date +%Y%m%d-%H%M%S)
 # Archon judges "merged" against local/auto without fetching it, so refresh it with the run's merge first.
 CLEANUP = { git fetch -q local; $(ARCHON) isolation cleanup --merged; } >/dev/null 2>&1 || true
 
-.PHONY: loop-setup loop-register loop-validate fix feature queue update outdated console loop-report loop-status preview
+.PHONY: loop-setup loop-register loop-validate loop-test fix feature queue update outdated console loop-report loop-status preview
 
 loop-setup: # self-remote: Archon cuts worktrees from <remote>/auto, and auto stays local
 	@git remote get-url local >/dev/null 2>&1 || git remote add local "$$(git rev-parse --path-format=absolute --git-common-dir | sed 's|/.git$$||')"
 	@git fetch -q local
-	@python3 .archon/scripts/skills_check.py --install-plugins .archon/workflows/*.yaml
+	@python3 .archon/scripts/skills_check.py --install-plugins .archon/workflows/*/*.yaml
 	@$(MAKE) -s loop-register
 	@$(ARCHON) doctor | grep -E '✓|✗' || true
 
@@ -153,6 +153,10 @@ loop-register:
 
 loop-validate:
 	@$(ARCHON) validate workflows
+
+# dry-run fixtures (.archon/workflows/<workflow>/fixtures/*.stubs.yaml): no AI, no run, ~13 s
+loop-test:
+	@LOG_LEVEL=error $(ARCHON) workflow test
 
 fix: loop-setup # make fix BUG="what is wrong"  (or BUG=<openspec change id>)
 	@test -n "$$BUG" || { echo 'usage: make fix BUG="..."'; exit 2; }
