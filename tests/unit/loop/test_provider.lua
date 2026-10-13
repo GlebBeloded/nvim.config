@@ -56,4 +56,11 @@ T["loop: Configured provider resolves every declared skill here"] = function()
 	eq(result.code, 0, { fail_reason = result.stderr })
 end
 
+T["loop: Provider switch is documented"] = function()
+	local text = table.concat(vim.fn.readfile(vim.fs.joinpath(H.root, "docs/workflow.md")), "\n")
+	for _, needle in ipairs({ "assistant: codex", "assistant: claude", "provider: claude" }) do
+		eq(text:find(needle, 1, true) ~= nil, true, { fail_reason = "docs/workflow.md lacks " .. needle })
+	end
+end
+
 return T

@@ -235,13 +235,13 @@ Scenario: "Provider switch is documented".
 - Modify: `docs/workflow.md` (`## The loop` line 10 and `### Setup facts`)
 - Test: `tests/unit/loop/test_provider.lua`
 
-- [ ] **Step 1: Write the failing test** `T["loop: Provider switch is documented"]`: read `docs/workflow.md` with `vim.fn.readfile`, then for each of `assistant: codex`, `assistant: claude`, `provider: claude` assert `text:find(needle, 1, true) ~= nil`.
+- [x] **Step 1: Write the failing test** `T["loop: Provider switch is documented"]`: read `docs/workflow.md` with `vim.fn.readfile`, then for each of `assistant: codex`, `assistant: claude`, `provider: claude` assert `text:find(needle, 1, true) ~= nil`.
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
   Run: `make test FILE=tests/unit/loop/test_provider.lua CASE="documented"`
   Expected: FAIL.
 
-- [ ] **Step 3: Edit `docs/workflow.md`.** No restating of code (rule 10).
+- [x] **Step 3: Edit `docs/workflow.md`.** No restating of code (rule 10).
   - "The loop" no longer says Claude Code only.
   - Setup facts gain:
     - the one-line `assistant: codex` / `assistant: claude` switch;
@@ -250,11 +250,11 @@ Scenario: "Provider switch is documented".
     - Archon runs Codex with no sandbox, network on and no approval prompts, so `make check E2E=1` and ssh to the sandbox VM need nothing extra, and there are no Codex hooks;
     - `skills-check` checks each node's provider, and `make loop-setup` installs the Codex plugins.
 
-- [ ] **Step 4: Verify**
+- [x] **Step 4: Verify**
   Run: `make check`
   Expected: green.
 
-- [ ] **Step 5: Commit**: `git commit -m "docs(workflow): codex provider, cross-model review"`
+- [x] **Step 5: Commit**: `git commit -m "docs(workflow): codex provider, cross-model review"`
 
 ## Unblocked
 
