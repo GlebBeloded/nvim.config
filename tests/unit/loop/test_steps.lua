@@ -186,4 +186,14 @@ T["loop: Gate names a change scenario without a test"] = function()
 	eq({ result.code, vim.trim(result.stdout) }, { 1, "x: lonely" })
 end
 
+T["loop: Gate ignores unchanged scenarios a modified requirement repeats"] = function()
+	local repo = H.tempdir(child)
+	write(repo, {
+		["openspec/specs/x/spec.md"] = "### Requirement: r\n#### Scenario: old\n- **THEN** same\n#### Scenario: edited\n- **THEN** before",
+		["openspec/changes/c/specs/x/spec.md"] = "## MODIFIED Requirements\n### Requirement: r\n#### Scenario: old\n- **THEN** same\n#### Scenario: edited\n- **THEN** after",
+	})
+	local result = H.system(child, { "python3", vim.fs.joinpath(SCRIPTS, "scenarios.py"), "c" }, repo, H.GIT_ENV)
+	eq({ result.code, vim.trim(result.stdout) }, { 1, "x: edited" })
+end
+
 return T
