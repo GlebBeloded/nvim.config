@@ -7,6 +7,7 @@ local child = H.new_child()
 local T = H.child_set(child, child.start_bare)
 
 local VERDICT = vim.fs.joinpath(H.root, ".archon/scripts/verdict.py")
+local ESCALATION = vim.fs.joinpath(H.root, ".archon/scripts/escalation.py")
 
 ---@param path string
 ---@return string
@@ -57,6 +58,26 @@ end
 local function record(repo, artifacts, candidate)
 	write(artifacts, "lesson-candidates.txt", candidate)
 	return run_verdict(repo, artifacts)
+end
+
+---@param args string[]
+---@param cwd string
+local function git_ok(args, cwd)
+	local result = H.system(child, vim.list_extend({ "git" }, args), cwd, H.GIT_ENV)
+	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
+end
+
+---@param repo string
+---@param artifacts string
+---@return test.SystemResult
+local function run_escalation(repo, artifacts)
+	local env = vim.tbl_extend("force", H.GIT_ENV, {
+		ARTIFACTS_DIR = artifacts,
+		BASE_BRANCH = "auto",
+		INPUTS_EXHAUSTED = "true",
+		INPUTS_FAILED_GATES = "tests",
+	})
+	return H.system(child, { "python3", ESCALATION }, repo, env)
 end
 
 ---@param text string
@@ -139,6 +160,26 @@ T["loop: Unfixed failures do not become lessons"] = function()
 	local result = run_verdict(repo, artifacts)
 	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
 	eq(read(vim.fs.joinpath(repo, "docs/workflow.md")), original)
+end
+
+T["loop: Exhausted run retains a corrected earlier failure"] = function()
+	local repo = H.tempdir(child)
+	local artifacts = H.tempdir(child)
+	local lesson = "Wait for asynchronous commits before asserting repository state"
+	write(repo, "docs/workflow.md", workflow({ "Existing lesson" }))
+	git_ok({ "init", "-q", "-b", "auto" }, repo)
+	git_ok({ "add", "-A" }, repo)
+	git_ok({ "commit", "-q", "-m", "initial" }, repo)
+	write(artifacts, "lesson-candidates.txt", lesson)
+
+	for _ = 1, 2 do
+		local result = run_escalation(repo, artifacts)
+		eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
+		local expected_reason = "- fix loop exhausted (3 attempts) with gates still red: tests"
+		eq(vim.json.decode(result.stdout), { escalate = true, reasons = expected_reason })
+		eq(read(vim.fs.joinpath(artifacts, "escalation.md")), "# Escalation check\n\n" .. expected_reason)
+		eq(read(vim.fs.joinpath(repo, "docs/workflow.md")), workflow({ "Existing lesson", lesson }))
+	end
 end
 
 return T
