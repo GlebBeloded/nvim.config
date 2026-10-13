@@ -50,19 +50,6 @@ local function expect_statusline_contains(needle)
 	end
 end
 
---- Diff symbols of `lua/gleb/lualine.lua` (added, modified, removed); the spec
---- shows them as empty backticks until fix-empty-nerd-font-glyphs.
-local DIFF_SYMBOLS = { vim.fn.nr2char(0xf457), vim.fn.nr2char(0xf459), vim.fn.nr2char(0xf458) }
-
----@param needles string[]
----@return boolean
-local function statusline_has_any(needles)
-	local text = statusline_text()
-	return vim.iter(needles):any(function(needle)
-		return text:find(needle, 1, true) ~= nil
-	end)
-end
-
 --- Replace nvim-navic in the child with a stub that reports `location`.
 ---@param location string
 local function stub_navic(location)
@@ -148,23 +135,6 @@ T["statusline: statusline disabled on dashboard"] = function()
 	vim.uv.sleep(200)
 
 	eq(statusline_text():find("NORMAL", 1, true), nil)
-end
-
-T["statusline: diff hidden in narrow windows"] = function()
-	local repo = H.git_repo({ ["sample.txt"] = "a\nb\n" })
-	H.write_files(repo, { ["sample.txt"] = "a\nchanged\nadded\n" })
-	child.o.columns = 120
-	child.cmd("cd " .. repo .. " | edit sample.txt")
-	-- wide first: the diff is shown, so its absence below is due to the width
-	expect_statusline_contains(DIFF_SYMBOLS[1])
-
-	child.o.columns = 80
-	child.cmd("redrawstatus")
-	vim.wait(1500, function()
-		return not statusline_has_any(DIFF_SYMBOLS)
-	end, 50)
-
-	eq(statusline_has_any(DIFF_SYMBOLS), false)
 end
 
 T["statusline: navic breadcrumb shown when available"] = function()

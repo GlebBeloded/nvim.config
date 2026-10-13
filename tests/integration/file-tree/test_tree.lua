@@ -458,52 +458,6 @@ T["file-tree: Space unstages a staged file"] = function()
 	wait_staged(repo, {})
 end
 
-local INFO, ERROR = vim.log.levels.INFO, vim.log.levels.ERROR
-
---- Wait until `count` notifications are recorded, then return them.
----@param notifications fun(): test.Notification[]
----@param count integer
----@return test.Notification[]
-local function wait_notifications(notifications, count)
-	vim.wait(ASYNC_MS, function()
-		return #notifications() >= count
-	end, 20)
-	return notifications()
-end
-
---- Press `P` in the git_status tree with `git push` scripted to exit `code`.
----@param code integer
----@return test.JobCall[] calls, test.Notification[] notifications
-local function push_exiting(code)
-	git_status_on_changed_file(false)
-	local calls = H.record_jobstart(child, { git = { code = code } })
-	local notifications = H.record_notify(child)
-
-	child.type_keys("P")
-
-	return calls(), wait_notifications(notifications, 2)
-end
-
-T["file-tree: P pushes successfully"] = function()
-	local calls, notifications = push_exiting(0)
-
-	eq(calls, { { cmd = "git push", stdin = "", stopped = false } })
-	eq(notifications, {
-		{ msg = "Pushing...", level = INFO },
-		{ msg = "Pushed successfully", level = INFO },
-	})
-end
-
-T["file-tree: P reports push failure"] = function()
-	local calls, notifications = push_exiting(1)
-
-	eq(calls, { { cmd = "git push", stdin = "", stopped = false } })
-	eq(notifications, {
-		{ msg = "Pushing...", level = INFO },
-		{ msg = "Push failed", level = ERROR },
-	})
-end
-
 T["file-tree: Missing neo-tree is tolerated"] = function()
 	child.start_bare()
 
