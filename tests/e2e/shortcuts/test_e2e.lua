@@ -2,11 +2,13 @@
 -- config), real macOS key events (tests/e2e/alacritty.lua). Skipped with a
 -- one-line fix when Accessibility is not granted, and (unless E2E=1) when key
 -- events only arrive with the window focused. Runs inside the sandbox VM only
--- (make e2e delegates there). Quitting chords (Ctrl+Q, Cmd+Q) run in their own
--- last cases; pre_case relaunches the stack when a case left it dead.
+-- (make e2e delegates there); fails when the VM lacks the app-menu key setup.
+-- Quitting chords run in their own cases; pre_case relaunches the stack when a
+-- case left it dead.
 local MiniTest = require("mini.test")
 local C = require("tests.shortcuts.chain")
 local E = require("tests.e2e.alacritty")
+local H = require("tests.helpers")
 local S = require("tests.shortcuts.stack")
 
 local eq = MiniTest.expect.equality
@@ -17,17 +19,20 @@ local CMD_CHORDS = { "Cmd+O", "Cmd+I", "Cmd+D", "Cmd+A" }
 -- what each Cmd chord could wrongly arrive as: the Super key, an Alt key, the plain letter
 local CMD_CHORD_RECORDERS =
 	{ "<D-o>", "<D-i>", "<D-d>", "<D-a>", "<M-o>", "<M-i>", "<M-d>", "<M-a>", "o", "i", "d", "a" }
--- rows that behave unlike the shortcut table from a real key press, each in its own case:
--- the app menu takes Cmd+Q (Quit) and Cmd+H (Hide) (spec: "Real key presses ...")
-local OWN_CASE = { ["Cmd+Q"] = true, ["Cmd+H"] = true }
-
 ---@type e2e.Stack?
 local stack
 ---@type string?
 local skipped
+---@type string? preflight failure: the VM is set up wrong
+local broken
+---@type fun(fn: fun(stack: e2e.Stack))
+local with_menu_keys_absent
 
 ---@return e2e.Stack
 local function get()
+	if broken then
+		error("e2e: " .. broken, 0)
+	end
 	if skipped then
 		MiniTest.skip("SKIPPED (reason on the first line)")
 	end
@@ -35,7 +40,13 @@ local function get()
 end
 
 local function start()
-	skipped = E.preflight()
+	local reason, fatal = E.preflight()
+	if fatal then
+		broken = reason
+		io.write("\ne2e: FAILED: " .. reason .. "\n")
+		return
+	end
+	skipped = reason
 	if not skipped then
 		stack = E.start()
 		if not stack.background and vim.env.E2E ~= "1" then
@@ -70,7 +81,7 @@ end
 
 --- Real mappings, one Neovim window, zellij focus on Neovim, normal mode.
 local function reset()
-	if skipped then
+	if skipped or broken then
 		return
 	end
 	local s = ensure_alive()
@@ -128,15 +139,39 @@ local function wait_pane(pane, what)
 	end, what, 3000)
 end
 
---- Bring the window back to the front (after the app menu hid it).
----@param s e2e.Stack
-local function keys_focus(s)
-	S.run({ E.keys(), "focus", tostring(s.alacritty_pid) })
-end
-
 ---@param fn fun()
 local function burst(fn)
 	E.burst(get(), fn)
+end
+
+--- Run a regression against an Alacritty instance without app-menu overrides,
+--- then restore the domain and a provisioned stack even when the callback fails.
+---@param fn fun(stack: e2e.Stack)
+with_menu_keys_absent = function(fn)
+	stop()
+	local removed = S.run({ "defaults", "delete", "org.alacritty", "NSUserKeyEquivalents" })
+	assert(removed.code == 0, removed.stderr)
+
+	local fresh = E.start()
+	local callback_ok, callback_err = xpcall(function()
+		fn(fresh)
+	end, debug.traceback)
+	fresh:stop()
+
+	local cleanup_ok, cleanup_err = pcall(function()
+		local script = vim.fs.joinpath(H.root, "terminal", "macos_menu_keys.sh")
+		local restored = S.run({ script })
+		assert(restored.code == 0, restored.stderr)
+		local reason, fatal = E.preflight()
+		assert(not fatal and not reason, reason)
+		stack = E.start()
+	end)
+	if not cleanup_ok then
+		error("failed to restore menu keys after controlled regression: " .. tostring(cleanup_err), 0)
+	end
+	if not callback_ok then
+		error(callback_err, 0)
+	end
 end
 
 T["shortcuts: Every passed shortcut reaches its Neovim key from a real key press"] = function()
@@ -145,7 +180,7 @@ T["shortcuts: Every passed shortcut reaches its Neovim key from a real key press
 	end, C.shortcut_rows()))
 	local s, rows =
 		get(), vim.tbl_filter(function(r)
-			return r.receives ~= nil and not OWN_CASE[r.shortcut] and not denied[E.chord(r.shortcut)]
+			return r.receives ~= nil and not denied[E.chord(r.shortcut)]
 		end, C.shortcut_rows())
 	E.record(
 		s,
@@ -196,18 +231,52 @@ T["shortcuts: Ctrl+Return reaches Neovim as <C-CR> from a real key press"] = fun
 	eq(hits, { "<C-CR>" })
 end
 
-T["shortcuts: Cmd+H never reaches Neovim from a real key press"] = function()
+T["shortcuts: Cmd+Q reaches Neovim as <M-q> from a real key press"] = function()
+	local s, hits = get(), {}
+	E.record(s, { "<M-q>" })
+	burst(function()
+		hits = press_and_record("Cmd+Q")
+	end)
+	eq(hits, { "<M-q>" })
+	eq(E.alive(s), true)
+	eq(E.hidden(s), false)
+end
+
+T["shortcuts: Cmd+H moves to the left Neovim split from a real key press"] = function()
 	local s = get()
 	s:lua([[vim.cmd("vsplit | wincmd l")]])
-	local right = s:lua("return vim.api.nvim_get_current_win()")
-	E.record(s, { "<C-H>" })
+	local left = s:lua("return vim.fn.win_getid(vim.fn.winnr('h'))")
 	burst(function()
 		E.press(s, "cmd+h")
-		E.wait_hits(1, SETTLE_MS)
+		wait_nvim("vim.api.nvim_get_current_win() == " .. left, "the left Neovim split current")
 	end)
-	keys_focus(s) -- the app menu's Hide hid the window
-	eq(E.events, {})
-	eq(s:lua("return vim.api.nvim_get_current_win()"), right)
+	eq(s:focused_pane(), NEOVIM_PANE)
+	eq(E.hidden(s), false)
+end
+
+T["shortcuts: Cmd+H in a non-Neovim pane moves zellij focus left from a real key press"] = function()
+	local s = get()
+	s:zellij("focus-pane-id", CAT_PANE)
+	wait_pane(CAT_PANE, "focus on the cat pane")
+	burst(function()
+		E.press(s, "cmd+h")
+		wait_pane(NEOVIM_PANE, "zellij focus on the Neovim pane")
+	end)
+end
+
+T["shortcuts: Cmd+H never reaches Neovim from a real key press"] = function()
+	with_menu_keys_absent(function(s)
+		s:lua([[vim.cmd("vsplit | wincmd l")]])
+		local right = s:lua("return vim.api.nvim_get_current_win()")
+		E.record(s, { "<C-H>" })
+		E.burst(s, function()
+			E.press(s, "cmd+h")
+			E.wait_hits(1, SETTLE_MS)
+		end)
+		eq(E.events, {})
+		eq(s:lua("return vim.api.nvim_get_current_win()"), right)
+		eq(E.hidden(s), true)
+	end)
 end
 
 T["shortcuts: Cmd+Shift+- and Cmd+Shift+= reach Neovim as <S-D--> and <S-D-=> from a real key press"] = function()
@@ -326,7 +395,7 @@ end
 ---@param chord string
 local function press_until_exit(s, chord)
 	local pid = assert(s.alacritty_pid, "Alacritty not running")
-	burst(function()
+	E.burst(s, function()
 		E.press(s, chord, true)
 		S.wait_for(function()
 			return vim.uv.kill(pid, 0) ~= 0
@@ -341,8 +410,15 @@ T["shortcuts: Ctrl+Q quits zellij and closes the Alacritty window"] = function()
 	eq(vim.list_contains(vim.split(sessions.stdout or "", "\n"), s.session), false)
 end
 
+T["shortcuts: Cmd+Option+Control+Q quits Alacritty from a real key press"] = function()
+	press_until_exit(get(), "cmd+ctrl+opt+q")
+end
+
 T["shortcuts: Cmd+Q quits Alacritty from a real key press"] = function()
-	press_until_exit(get(), "cmd+q")
+	with_menu_keys_absent(function(s)
+		press_until_exit(s, "cmd+q")
+		eq(E.alive(s), false)
+	end)
 end
 
 return T
