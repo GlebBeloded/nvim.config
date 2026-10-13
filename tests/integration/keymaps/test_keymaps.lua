@@ -56,7 +56,9 @@ local function wait_neotree(expr)
 	local started = vim.uv.hrtime()
 	local budget = async_ms()
 	repeat
-		if child.wait(expr, 100) then return true end
+		if child.wait(expr, 100) then
+			return true
+		end
 		budget = math.max(budget, async_ms())
 	until (vim.uv.hrtime() - started) / 1e6 >= budget
 	return false
