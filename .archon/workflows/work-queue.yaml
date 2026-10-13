@@ -39,21 +39,40 @@ nodes:
 
   - id: adopt # an abandoned run's branch: take its commits instead of redoing them (no AI)
     bash: |
-      b="$INPUTS_ADOPT"; [ -n "$b" ] || { echo "nothing to adopt"; exit 0; }
-      if git merge --no-edit "$b" >/dev/null 2>&1; then echo "adopted $b: $(git log --oneline auto..HEAD | wc -l | tr -d ' ') commits"
-      else git merge --abort; echo "not adopted: $b conflicts with auto; its log: $(git log --oneline -8 auto.."$b" | tr '\n' ';')"; fi
+      b="$INPUTS_ADOPT"
+      say() { python3 -c 'import json,sys; print(json.dumps({"conflict": sys.argv[1] == "1", "summary": sys.argv[2]}))' "$1" "$2"; }
+      [ -n "$b" ] || { say 0 "nothing to adopt"; exit 0; }
+      if git merge --no-edit "$b" >/dev/null 2>&1; then say 0 "adopted $b: $(git log --oneline auto..HEAD | wc -l | tr -d ' ') commits"
+      else say 1 "conflicts merging $b in: $(git diff --name-only --diff-filter=U | tr '\n' ' ')"; fi
     depends_on: [pick]
     when: "$pick.output.found == true"
+    output_format:
+      type: object
+      properties:
+        conflict: { type: boolean }
+        summary: { type: string }
+      required: [conflict, summary]
+
+  - id: adopt-resolve # finish that merge: conflicted hunks only, then the spec step plans the rest
+    command: adopt-resolve
+    context: fresh
+    idle_timeout: 900000
+    effort: low
+    depends_on: [adopt]
+    when: "$adopt.output.conflict == true"
+    with:
+      change: $pick.output.change
 
   # --- Specify: complete a queued proposal ------------------------------------------------------------
   - id: complete
     command: queue-spec
     context: fresh # reads its input artifact; no carried-over session
-    depends_on: [pick, skills-check, adopt]
+    depends_on: [pick, skills-check, adopt, adopt-resolve]
+    trigger_rule: all_done
     when: "$pick.output.found == true"
     with:
       change: $pick.output.change
-      adopted: $adopt.output
+      adopted: $adopt.output.summary
     skills: [openspec-continue-change]
     output_format:
       type: object
@@ -63,7 +82,7 @@ nodes:
       required: [visible_ui, architecture]
 
   - id: spec-gate
-    bash: openspec validate $pick.output.change --strict --no-interactive && python3 .archon/scripts/spec_trial.py $pick.output.change # main specs after a trial archive
+    bash: openspec validate $pick.output.change --strict --no-interactive && python3 .archon/scripts/spec_trial.py $pick.output.change && python3 .archon/scripts/scenarios.py --unknown $pick.output.change # main specs after a trial archive
     depends_on: [complete]
 
   # --- Preview + approval: always for features, else only for visible UI ----------------

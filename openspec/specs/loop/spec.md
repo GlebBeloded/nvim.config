@@ -267,6 +267,10 @@ The delivery loop SHALL implement one task per fresh agent session from a script
 - **WHEN** `.archon/scripts/spec_trial.py <change>` runs for a change that is valid on its own but whose MODIFIED requirement is longer than 500 characters
 - **THEN** it exits 1 and prints the main-spec warning (spec-gate runs it before implement)
 
+#### Scenario: Spec gate rejects a task naming an unknown scenario
+- **WHEN** `.archon/scripts/scenarios.py --unknown <change>` runs where tasks.md names `x: real` (a scenario in openspec/specs) and `x: invented` (in no spec)
+- **THEN** it lists only `x: invented` and exits 1
+
 #### Scenario: Gate names a change scenario without a test
 - **WHEN** `.archon/scripts/scenarios.py <change>` runs where the change adds two scenarios and a test names only one, and a REMOVED section lists a third
 - **THEN** it prints only the untested scenario as `<capability>: <title>` and exits 1

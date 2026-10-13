@@ -11,12 +11,12 @@ Flow (fix-bug / work-queue): diagnose → spec → plan → implement ×task →
 Your step: **spec** (queued change). Input: the queued proposal. Output: the completed change folder including tasks.md (so the plan step is skipped) and the JSON fields. Do not: write tests or code. Keep output brief. Loop step rules (they override general instructions about searching, skills and sub-agents): use only the skill named above, no sub-agents; search the web only for facts that are in neither the repo nor the installed plugin source; read doc sections you need (`rg -n '^## ' <doc>`, then that range), never whole docs.
 
 Change: openspec/changes/$INPUTS.change/
-Earlier work: $INPUTS.adopted (when it says "adopted", `git log --oneline auto..HEAD` and `git diff auto...HEAD --stat` show what is already done; specify and plan only the rest)
+Earlier work: $INPUTS.adopted (when it says "adopted" or "conflicts merging" (the adopt-resolve step finished that merge; see `$ARTIFACTS_DIR/adopt-notes.md` for hunks it gave up), `git log --oneline auto..HEAD` and `git diff auto...HEAD --stat` show what is already done; specify and plan only the rest)
 
 The change is a queue item (for example a finding from a review) and may
 only have proposal.md. Read it, find the root cause if it is a bug (systematic-debugging,
 no code changes), then complete the missing artifacts with the `openspec-continue-change` skill
-until specs, design (only when there is visible UI: Current + Proposed renders) and tasks exist; refresh any counts or lists the queued proposal quotes (e.g. `make trace VERBOSE=1`) instead of trusting them,
+until specs, design.md (only for visible UI: Current + Proposed renders) and tasks exist; refresh any counts or lists the queued proposal quotes (e.g. `make trace VERBOSE=1`) instead of trusting them,
 following openspec/config.yaml rules. Do not implement. Set `visible_ui` and `architecture` as in
 a fix proposal (screen output changes / module layout, load order or plugin wiring changes).
 
@@ -29,5 +29,9 @@ Scenarios: `<capability>: <scenario title>`
 - [ ] 1.2 <the smallest code change>
 - [ ] 1.3 Run `make test FILE=tests/<layer>/<capability>/test_<x>.lua CASE="<scenario title>"` and see it pass
 ```
-No design.md unless the change alters what is drawn on screen or the module layout. Run `openspec status`
+No design.md unless the change alters what is drawn on screen (then Current + Proposed renders); a structural change is described in the proposal. Run `openspec status`
 once, at the end. Do not re-read files you just wrote; read files with `nl -ba` once.
+
+Refactor or cleanup (no behaviour change, `skip_specs: true`): tasks name existing scenarios whose tests guard the
+code you touch; each task is "run those tests and see them pass, change the code, run them again". Never
+invent a scenario name: every name on a `Scenarios:` line must be a `#### Scenario:` in openspec/specs or this change's delta.
