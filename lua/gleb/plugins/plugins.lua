@@ -14,7 +14,6 @@ local plugins = {
 	"nvim-lua/plenary.nvim", -- Useful lua functions used ny lots of plugins
 	"MunifTanjim/nui.nvim", -- UI library for other plugins
 	"ray-x/guihua.lua", -- UI library
-	"lewis6991/impatient.nvim", -- Load plugins faster
 	{
 		"folke/lazydev.nvim",
 		ft = "lua", -- only load on lua files
@@ -264,13 +263,6 @@ local plugins = {
 
 	-- git
 	"lewis6991/gitsigns.nvim",
-	{
-		"echasnovski/mini.diff",
-		version = false,
-		config = function()
-			require("mini.diff").setup({})
-		end,
-	},
 	{
 		"undont/differ.nvim", -- unified diffs, staging, PR review, merge conflicts
 		build = "make go-build", -- Go sidecar; only needed for PR review
