@@ -15,7 +15,7 @@ local pid
 local function start()
 	child.start_bare()
 	pid = child.fn.getpid()
-	child.lua([[require("gleb.nvim_debug_log")]])
+	child.lua([[require("gleb.nvim_debug_log").setup()]])
 end
 
 ---@return string? path of the child's log file
@@ -83,6 +83,46 @@ T["nvim-debug-log: Log finalized on exit"] = function()
 	local ok, err = pcall(expect_logged, "BEFORE_EXIT")
 	vim.fn.delete(log_file() or "")
 	assert(ok, err)
+end
+
+T["nvim-debug-log: Require alone does not log"] = function()
+	child.start_bare()
+	pid = child.fn.getpid()
+	child.lua([[require("gleb.nvim_debug_log")]])
+	child.cmd('echom "X"')
+	vim.wait(WAIT_MS)
+
+	eq(log_file(), nil)
+end
+
+T["nvim-debug-log: Other redirection survives a flush"] = function()
+	child.cmd("redir => g:other")
+	child.cmd('echo "OTHER_REDIR"')
+	vim.wait(WAIT_MS)
+	child.cmd('echo "AFTER_FLUSH"')
+	child.cmd("redir END")
+
+	local other = child.g.other
+	eq(other:find("OTHER_REDIR", 1, true) ~= nil, true)
+	eq(other:find("AFTER_FLUSH", 1, true) ~= nil, true)
+end
+
+T["nvim-debug-log: Setup twice logs once"] = function()
+	child.lua([[require("gleb.nvim_debug_log").setup()]])
+	child.cmd('echom "LOGGED_ONCE"')
+	vim.wait(WAIT_MS)
+
+	eq(#child.api.nvim_get_autocmds({ event = "VimLeavePre" }), 1)
+	local _, count = log_text():gsub("LOGGED_ONCE", "")
+	eq(count, 1)
+end
+
+T["nvim-debug-log: Stop ends logging"] = function()
+	child.lua([[require("gleb.nvim_debug_log").stop()]])
+	child.cmd('echom "AFTER_STOP"')
+	vim.wait(WAIT_MS)
+
+	eq(log_text():find("AFTER_STOP", 1, true), nil)
 end
 
 return T

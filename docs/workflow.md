@@ -165,4 +165,5 @@ check it against the real configs. When a key does nothing, test bottom up:
 3. zellij: a bind in `shared_except "locked"` always wins, even over Neovim. KDL writes `bind "Alt d"`,
    not escape codes. `zellij setup --check` validates the config.
 4. Neovim: `:verbose map <A-d>`, and `i<C-v>` then the key shows what Neovim really receives. Map that
-   exact notation (e.g. `<S-D-=>` for Cmd+Shift+=).
+   exact notation (e.g. `<S-D-=>` for Cmd+Shift+=). The debug log takes the `Last set from` line of
+   `:verbose map`; run `:lua require("gleb.nvim_debug_log").stop()` first to see it on screen.

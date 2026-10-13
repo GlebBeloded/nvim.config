@@ -16,6 +16,7 @@ Kind: bug
 
 ## Impact
 - Code: `lua/gleb/nvim_debug_log/init.lua`, `init.lua`, `tests/integration/nvim-debug-log/test_debug_log.lua`.
+- Docs: `docs/workflow.md` notes `stop()` next to the `:verbose map` debug step (design: Proposed A).
 - Plugins: none added, removed or upgraded.
 - Core keymaps: unchanged.
 - Out of scope: cleaning up old `/tmp/nvim` logs; the 3000 ms test wait against the 2000 ms flush; log location and file name.
