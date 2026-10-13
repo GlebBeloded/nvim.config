@@ -4,7 +4,7 @@ description: Turn a root cause into an OpenSpec change (scenario delta + tasks)
 # Specify the fix
 
 First, load each of these skills before any other step: `openspec-propose`. On Claude, load each with the
-Skill tool. On Codex, invoke each by name: $openspec-propose. Report each skill as it loads. If one does not
+Skill tool. On Codex, invoke each by name: $openspec-propose. If one does not
 load, stop and report the error naming it. The skill text is already in your context once loaded: do not re-read its SKILL.md.
 
 Flow (fix-bug / work-queue): diagnose → spec → plan → implement ×task → check → fix → review → judge → ship.
@@ -39,8 +39,8 @@ Scenarios: `<capability>: <scenario title>`
 - [ ] 1.2 <the smallest code change>
 - [ ] 1.3 Run `make test FILE=tests/<layer>/<capability>/test_<x>.lua CASE="<scenario title>"` and see it pass
 ```
-No design.md unless the change alters what is drawn on screen (then Current + Proposed renders); a structural change is described in the proposal. Run `openspec status`
-once, at the end. Do not re-read files you just wrote; read files with `nl -ba` once.
+No design.md unless the change alters what is drawn on screen (then Current + Proposed renders); a structural change is described in the proposal. Do not run `openspec instructions tasks`; the tasks format is given
+above. Run `openspec status` once, at the end. Do not re-read files you just wrote; read files with `nl -ba` once.
 
 Refactor or cleanup (no behaviour change, `skip_specs: true`): tasks name existing scenarios whose tests guard the
 code you touch; each task is "run those tests and see them pass, change the code, run them again". Never

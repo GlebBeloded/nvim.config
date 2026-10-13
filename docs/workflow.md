@@ -56,7 +56,7 @@ input, output and limits). Scripts do everything that needs no judgment:
 | review | agent, Claude | `superpowers:requesting-code-review` | JSON |
 | verdict, judge, ship, follow-up | scripts | none | JSON, `escalation.md`, merge commit |
 
-Agents run only their own test case and never `make quick` or `make check`; general instructions about web searches, extra skills and sub-agents do not apply in a step (`codex-loop.sh` also turns off Codex sub-agents, hooks, GUI and MCP tools). A failure in loop tooling is never fixed inside a change: the step writes `## Blocked: loop: …`. The check/review
+Agents run only their own test case and never `make quick` or `make check`; general instructions about web searches, extra skills and sub-agents do not apply in a step (`codex-loop.sh` also turns off Codex sub-agents, hooks, apps, the skills catalog, GUI and MCP tools, and the global `~/.codex/AGENTS.md`). A failure in loop tooling is never fixed inside a change: the step writes `## Blocked: loop: …`. The check/review
 group runs at most 3 times; a red pass sends only its findings (`verdict.py` `feedback`, which also
 lists hard-rule violations from `integrity.py`) to the next pass's fix step.
 

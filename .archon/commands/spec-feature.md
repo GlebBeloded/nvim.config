@@ -4,7 +4,7 @@ description: Propose a feature as an OpenSpec change with renders
 # Propose the feature
 
 First, load each of these skills before any other step: `openspec-propose`. On Claude, load each with the
-Skill tool. On Codex, invoke each by name: $openspec-propose. Report each skill as it loads. If one does not
+Skill tool. On Codex, invoke each by name: $openspec-propose. If one does not
 load, stop and report the error naming it. The skill text is already in your context once loaded: do not re-read its SKILL.md.
 
 Flow (new-feature): brainstorm → spec + renders → user picks a render → plan → implement ×task → check → fix → review → judge → ship.
@@ -31,5 +31,5 @@ Scenarios: `<capability>: <scenario title>`
 - [ ] 1.2 <the smallest code change>
 - [ ] 1.3 Run `make test FILE=tests/<layer>/<capability>/test_<x>.lua CASE="<scenario title>"` and see it pass
 ```
-Run `openspec status`
-once, at the end. Do not re-read files you just wrote; read files with `nl -ba` once.
+Do not run `openspec instructions tasks`; the tasks format is given
+above. Run `openspec status` once, at the end. Do not re-read files you just wrote; read files with `nl -ba` once.
