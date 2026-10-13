@@ -45,7 +45,7 @@ local function callback_is(lhs, mode, expr)
 end
 
 --- Wait budget for async plugins (neo-tree, telescope, differ).
-local ASYNC_MS = 3000
+local ASYNC_MS = math.ceil(3000 * H.load_factor())
 
 --- Lua expression: number of neo-tree windows in all tabs.
 local TREE_WIN_COUNT = [[#vim.tbl_filter(function(win)
