@@ -16,14 +16,14 @@ Root cause: $ARTIFACTS_DIR/root-cause.md
 If the bug input is an existing change id under openspec/changes/, update that change (skill
 openspec continue-change). Otherwise create one with the `openspec-propose` skill, id `fix-<topic>`
 (kebab-case). Follow openspec/config.yaml rules:
-- spec delta: MODIFIED (the spec describes the buggy behaviour) or ADDED scenario that describes the
+- spec delta: only when the spec is wrong or missing the behaviour: MODIFIED (the spec describes the buggy behaviour) or ADDED scenario that describes the
   correct behaviour, verifiable in a headless child Neovim. Never remove or weaken a scenario.
 - proposal: plugin dependency change? core keymap change? out of scope.
 - design.md only when there is visible UI (then Current + Proposed renders) or a structural change.
-- tasks.md: each task names its scenario titles; its first step is the failing test
+- tasks.md: each task names its scenario titles on a `Scenarios:` line as `<capability>: <scenario title>` (the gate checks those have tests, also when the spec delta is empty); its first step is the failing test
   "<capability>: <scenario title>" (when a test with that name exists: run it and see it fail).
   Checkbox items are agent work only; no items to run `make check`/`make quick` (the gate does it).
-Read the capability spec once (`openspec/specs/<capability>/spec.md`, the requirement's line range); run
+Get the artifact instructions in one batch and skip design unless there is visible UI or a structural change; do not re-read files you just wrote. Read the capability spec once (`openspec/specs/<capability>/spec.md`, the requirement's line range); run
 `openspec status` once at the end.
 
 Stop after the artifacts exist; do not implement. Set `change` to the change id, `visible_ui` to

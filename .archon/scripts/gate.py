@@ -10,7 +10,7 @@ import shutil
 import subprocess
 import tempfile
 
-from scenarios import change_scenarios, untested
+from scenarios import covered, untested
 from tasks import tick_gate_items, unchecked
 
 
@@ -54,7 +54,7 @@ if change and change_dir.is_dir():
     spec_ok, spec_tail = run(["openspec", "validate", change, "--strict", "--no-interactive"], f"validate-{attempt}.log")
     if spec_ok:
         spec_ok, spec_tail = archived_specs_ok(f"archive-{attempt}.log")
-    missing = untested(change_scenarios(change_dir))
+    missing = untested(covered(change_dir))
     tasks = change_dir / "tasks.md"
     if green and tasks.exists():
         tasks.write_text(tick_gate_items(tasks.read_text()))

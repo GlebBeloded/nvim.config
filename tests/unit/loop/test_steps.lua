@@ -223,4 +223,14 @@ T["loop: Context pack names installed plugin sources"] = function()
 	)
 end
 
+T["loop: Gate checks scenarios named by tasks when the spec has no delta"] = function()
+	local repo = H.tempdir(child)
+	write(repo, {
+		["openspec/changes/c/tasks.md"] = "## 1. Fix\n**Scenarios:** `x: lonely`\n- [ ] 1.1 run it",
+		["tests/unit/x/test_x.lua"] = 'T["x: other"] = function() end',
+	})
+	local result = H.system(child, { "python3", vim.fs.joinpath(SCRIPTS, "scenarios.py"), "c" }, repo, H.GIT_ENV)
+	eq({ result.code, vim.trim(result.stdout) }, { 1, "x: lonely" })
+end
+
 return T

@@ -21,6 +21,7 @@ case "$1" in
 get) echo '{"name":"nvim-e2e","status":"running","ipAddress":"192.0.2.1"}' ;;
 ssh)
 	for last; do :; done
+	case "$last" in *"test -d"*SHARED*) echo SHARED; exit 0 ;; esac
 	script=$(printf '%s' "$last" | sed -n "s|^bash '/Volumes/My Shared Files/share/\([^']*\)'.*|\1|p")
 	[ -n "$script" ] || exit 0
 	line=$(cat "$SANDBOX_STATE/share/$script")
