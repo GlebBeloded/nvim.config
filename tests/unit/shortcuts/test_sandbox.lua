@@ -14,11 +14,22 @@ printf '%s\t%s\n' "$line" "$held" >>"$LOCK_LOG"
 
 --- `lume` stub: the VM is running at a documentation address. `lume ssh` runs a script from the
 --- shared folder: the stub logs that script (the guest command) to $GUEST_LOG and $LOCK_LOG; the
---- guest is provisioned at $PROVISION_REV and its GUI session belongs to `lume`.
+--- guest is provisioned at $PROVISION_REV and its GUI session belongs to `lume`. `lume stop` logs
+--- whether the locker writing $HOLDER_LOG had left by then, and the VM reports stopped afterwards.
 local LUME_STUB = [[#!/bin/sh
 echo "lume $*" >>"$GUEST_LOG"
 case "$1" in
-get) echo '{"name":"nvim-e2e","status":"running","ipAddress":"192.0.2.1"}' ;;
+get)
+	status=running
+	[ -f "$SANDBOX_STATE/stopped" ] && status=stopped
+	echo '{"name":"nvim-e2e","status":"'$status'","ipAddress":"192.0.2.1"}'
+	;;
+stop)
+	left=no
+	grep -q '^left' "${HOLDER_LOG:-/dev/null}" 2>/dev/null && left=yes
+	echo "stop holder-left=$left" >>"$GUEST_LOG"
+	touch "$SANDBOX_STATE/stopped"
+	;;
 ssh)
 	for last; do :; done
 	case "$last" in *"test -d"*SHARED*) echo SHARED; exit 0 ;; esac
@@ -47,6 +58,16 @@ local RSYNC_STUB = [[#!/bin/sh
 for dest; do :; done
 echo "rsync $dest" >>"$GUEST_LOG"
 exit 0
+]]
+
+--- `pgrep` / `pkill` stubs: no `lume run` process on this host; nothing real is ever signalled.
+local PGREP_STUB = [[#!/bin/sh
+echo "pgrep $*" >>"$GUEST_LOG"
+exit 1
+]]
+local PKILL_STUB = [[#!/bin/sh
+echo "pkill $*" >>"$GUEST_LOG"
+exit 1
 ]]
 
 --- `sysctl` stub: not inside a VM.
@@ -104,6 +125,8 @@ local function sandbox_env()
 	write_executable(vim.fs.joinpath(bin, "ssh"), SSH_STUB)
 	write_executable(vim.fs.joinpath(bin, "rsync"), RSYNC_STUB)
 	write_executable(vim.fs.joinpath(bin, "sysctl"), SYSCTL_STUB)
+	write_executable(vim.fs.joinpath(bin, "pgrep"), PGREP_STUB)
+	write_executable(vim.fs.joinpath(bin, "pkill"), PKILL_STUB)
 	child.fn.mkdir(vim.fs.joinpath(data, "lazy"), "p")
 	child.fn.mkdir(vim.fs.joinpath(data, "site"), "p")
 	return {
@@ -453,6 +476,25 @@ T["shortcuts: sandbox.sh e2e waits while another checkout holds the sandbox lock
 	eq(run.stderr:find("sandbox: waiting for", 1, true) ~= nil, true)
 	expect_sync_restore_e2e(read_lines(env.GUEST_LOG))
 	eq(wait_locker("holder").code, 0)
+end
+
+T["shortcuts: sandbox.sh down never stops the VM while another checkout holds the sandbox lock"] = function()
+	local env = sandbox_env()
+	local dir = vim.fs.joinpath(env.SANDBOX_STATE, "lock")
+	local holder = start_locker("holder", dir, 2)
+	wait_owner(dir, holder.pid)
+	env.HOLDER_LOG = holder.log
+
+	local run = system({ "tests/sandbox/sandbox.sh", "down" }, H.root, env)
+	eq(run.code, 0, { fail_reason = run.stdout .. run.stderr })
+	local wait_line = ("sandbox: waiting for sandbox lock held by pid %d ("):format(holder.pid)
+	eq(run.stderr:find(wait_line, 1, true) ~= nil, true, { fail_reason = run.stderr })
+	local stops = vim.tbl_filter(function(line)
+		return vim.startswith(line, "stop holder-left=")
+	end, read_lines(env.GUEST_LOG))
+	eq(stops, { "stop holder-left=yes" })
+	eq(wait_locker("holder").code, 0)
+	eq(child.fn.isdirectory(dir), 0)
 end
 
 return T

@@ -53,7 +53,7 @@ lock_wait() {
 			continue
 		fi
 		if [ -z "$said" ]; then
-			lock_log "waiting for $dir ($(lock_holder "$dir"))"
+			lock_log "waiting for sandbox lock held by $(lock_holder "$dir") at $dir"
 			said=1
 		fi
 		if [ $SECONDS -gt $deadline ]; then
@@ -64,12 +64,12 @@ lock_wait() {
 	done
 }
 
-# "pid N, <root>" of the holder of $1
+# "pid N (<root>)" of the holder of $1
 lock_holder() {
 	local record root
 	record=$(lock_owner "$1")
 	root=$(sed -n 2p "$1/owner" 2>/dev/null)
-	echo "pid ${record%% *}, ${root:-unknown checkout}"
+	echo "pid ${record%% *} (${root:-unknown checkout})"
 }
 
 lock_release() {
@@ -78,6 +78,11 @@ lock_release() {
 		rm -rf "$LOCK_HELD"
 	fi
 	LOCK_HELD=
+}
+
+# fails unless this process holds $1: stopping or restarting the shared VM needs the lock
+lock_held_by_me() {
+	[ -n "$LOCK_HELD" ] && [ "$LOCK_HELD" = "$1" ] && [ "$(lock_owner "$1")" = "$$ $(lock_started $$)" ]
 }
 
 sandbox_lock() {
