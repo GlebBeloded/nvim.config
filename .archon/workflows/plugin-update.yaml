@@ -77,7 +77,7 @@ nodes:
       change: $update.output.change
       old: $update.output.old
       new: $update.output.new
-    skills: [superpowers:systematic-debugging, openspec-propose, openspec-continue-change]
+    skills: [superpowers:systematic-debugging]
 
   - id: spec-gate
     bash: openspec validate $update.output.change --strict --no-interactive

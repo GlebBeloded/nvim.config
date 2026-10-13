@@ -6,6 +6,7 @@ Save the attempt as <branch>-attempt, reset the branch to its base and keep only
 import json
 import os
 import pathlib
+import re
 import subprocess
 
 BASE = os.environ.get("BASE_BRANCH") or "auto"
@@ -30,7 +31,7 @@ def pin_back() -> dict:
     git("checkout", attempt, "--", folder)
     tasks = pathlib.Path(folder) / "tasks.md"
     if tasks.exists():
-        tasks.write_text(tasks.read_text().replace("- [x]", "- [ ]"))
+        tasks.write_text(re.sub(r"^(\s*[-*]) \[x\] ", r"\1 [ ] ", tasks.read_text(), flags=re.MULTILINE))
     proposal = pathlib.Path(folder) / "proposal.md"
     proposal.write_text(
         proposal.read_text().rstrip()

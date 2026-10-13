@@ -10,20 +10,19 @@ so the workflow can reconcile the branch. The run's own worktree is removed afte
 directory it is executing in.
 """
 
-import fcntl
 import json
 import os
 import subprocess
 import sys
 import tempfile
-import time
+
+from shiplock import acquire_lock, lock_path, release_lock
 
 BASE = os.environ.get("BASE_BRANCH") or "auto"  # make targets pass --base auto
 change = os.environ.get("INPUTS_CHANGE", "")
 message = os.environ.get("INPUTS_MESSAGE", "") or (f"loop: {change}" if change else "loop: update")
 on_conflict = os.environ.get("INPUTS_ON_CONFLICT", "") or "fail"
 LOCK_TIMEOUT = float(os.environ.get("SHIP_LOCK_TIMEOUT") or 600)
-LOCK_POLL = 0.5
 
 
 def git(*args: str, cwd: str | None = None) -> str:
@@ -43,75 +42,6 @@ def base_checkout() -> str | None:
         elif line == f"branch refs/heads/{BASE}":
             return path
     return None
-
-
-def read_holder(path: str) -> str | None:
-    """Content of the lock file, None when there is none."""
-    try:
-        with open(path) as f:
-            return f.read().strip()
-    except FileNotFoundError:
-        return None
-
-
-def is_alive(pid: int) -> bool:
-    try:
-        os.kill(pid, 0)
-    except ProcessLookupError:
-        return False
-    except PermissionError:
-        return True
-    return True
-
-
-def is_stale(holder: str) -> bool:
-    return not holder.isdigit() or not is_alive(int(holder))
-
-
-def try_lock(path: str) -> bool:
-    """Creates the lock file with our pid atomically (a hard link fails if it exists), so it is
-    never seen empty."""
-    own = f"{path}.{os.getpid()}"
-    with open(own, "w") as f:
-        f.write(str(os.getpid()))
-    try:
-        os.link(own, path)
-        return True
-    except FileExistsError:
-        return False
-    finally:
-        os.remove(own)
-
-
-def remove_stale(path: str, holder: str) -> None:
-    """Removes the lock if it still holds `holder`; a flock on its directory makes the check and the
-    removal one step, so two takers cannot both remove it (the second would remove the first's)."""
-    fd = os.open(os.path.dirname(path), os.O_RDONLY)
-    try:
-        fcntl.flock(fd, fcntl.LOCK_EX)
-        if read_holder(path) == holder:
-            os.remove(path)
-    finally:
-        os.close(fd)
-
-
-def acquire_lock(path: str, timeout: float) -> None:
-    deadline = time.monotonic() + timeout
-    while not try_lock(path):
-        holder = read_holder(path)
-        if holder is None:
-            continue
-        if is_stale(holder):
-            remove_stale(path, holder)
-            continue
-        if time.monotonic() >= deadline:
-            fail(f"ship lock {path} held by pid {holder} for {timeout:g}s; delete it if that pid is not running")
-        time.sleep(LOCK_POLL)
-
-
-def release_lock(path: str) -> None:
-    if read_holder(path) == str(os.getpid()):
-        os.remove(path)
 
 
 def is_mid_merge(target: str) -> bool:
@@ -139,7 +69,7 @@ def conflicting_files(branch: str) -> list[str]:
 def merge_into_base(branch: str) -> str | None:
     """Merges `branch` into BASE under the ship lock; returns the merge commit, None on a conflict
     that is reported."""
-    lock = os.path.join(os.path.abspath(git("rev-parse", "--git-common-dir")), "nvim-ship.lock")
+    lock = lock_path()
     acquire_lock(lock, LOCK_TIMEOUT)
     try:
         return merge_locked(branch)

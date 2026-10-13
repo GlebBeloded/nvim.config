@@ -34,8 +34,25 @@ Run the targets from `~/.config/nvim` (the `auto` checkout). `fix`, `feature`, `
 pause, so they stay in the foreground. Answer gates in the terminal, in the console, or from another shell with
 `archon workflow approve|reject|respond <run-id> [text]`.
 
-Implement, verify, align and review form one group that runs at most 3 times; each pass starts with the
-previous pass's failures. After 3 red passes the run escalates.
+Steps are small and know their place in the flow (each prompt opens with the flow and its own
+input, output and limits). Scripts do everything that needs no judgment:
+
+| Step | Runs as | Skill | Output |
+|---|---|---|---|
+| diagnose (fix) / brainstorm (feature) | agent | `superpowers:systematic-debugging` / `superpowers:brainstorming` | `root-cause.md` / `idea.md`, a few lines |
+| spec | agent | `openspec-propose` (queued change: `openspec-continue-change`) | change folder + JSON |
+| plan | agent | `superpowers:writing-plans` | `tasks.md` |
+| pack | script `context_pack.py` | none | `context.md`: next task, change, named files, lessons, last failures |
+| implement, once per task | agent, fresh | `superpowers:test-driven-development` | 1 commit, task ticked |
+| check | script `gate.py` | none | `make check E2E=1` once per pass, JSON |
+| fix (pass 2-3 only) | agent, fresh | `superpowers:systematic-debugging` | 1 commit for the listed findings |
+| verify | agent | `openspec-verify-change` | JSON |
+| review | agent, Claude | `superpowers:requesting-code-review` | JSON |
+| verdict, judge, ship, follow-up | scripts | none | JSON, `escalation.md`, merge commit |
+
+Agents run only their own test case and never `make quick` or `make check`. The check/verify/review
+group runs at most 3 times; a red pass sends only its findings (`verdict.py` `feedback`, which also
+lists hard-rule violations from `integrity.py`) to the next pass's fix step.
 
 Runs merge into `auto` one at a time under `.git/nvim-ship.lock` (it holds the merging pid; delete it
 only if that pid is not running). A run whose merge conflicts with `auto` goes through `reconcile`: an
@@ -52,13 +69,15 @@ editor.
 
 ### When you get pinged
 
-- The design gate: always for a feature, and for a fix that changes visible UI or architecture.
-  `preview.html` opens in the browser (renders side by side, mermaid diagrams, proposal and design).
-- The escalation gate before ship (`.archon/scripts/escalation.py`), when the change adds a plugin,
-  changes a core keymap or the leader, removes or weakens a spec scenario, deletes or disables a test, or
-  exhausted the fix loop.
+- The design gate: always for a feature, and for a fix that changes visible UI. The gate message links
+  `preview.html`; nothing opens on the host.
+- The judge (`.archon/scripts/escalation.py`) asks only for breaking changes: a plugin added or removed,
+  a core keymap or the leader changed, behaviour (a spec scenario) removed.
 
-Everything else ships without asking. A rejected gate cancels the run and keeps its branch and worktree.
+Partial or untested work never ships and never asks: a red check, unfinished tasks, an untested
+scenario, a CRITICAL verify finding, a deleted or weakened test, an xfail without a queued change, or
+committed conflict markers go back to fix; after 3 passes the judge rejects, the branch is kept and
+`followup.py` queues `followup-<change>` on `auto`.
 
 ### Queue and known issues
 

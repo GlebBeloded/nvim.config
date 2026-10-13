@@ -1,33 +1,32 @@
 ---
-description: One TDD build pass over the unchecked tasks of a change
+description: Implement the next unchecked task of a change, test first (one task per session)
 ---
-# Implement
+# Implement one task
 
-First, load each of these skills before any other step: `openspec-apply-change`,
-`superpowers:test-driven-development`, `superpowers:systematic-debugging`. On Claude, load each with
-the Skill tool. On Codex, invoke each by name: $openspec-apply-change,
-$superpowers:test-driven-development, $superpowers:systematic-debugging. Report each skill as it
-loads. If one does not load, stop and report the error naming it.
+First, load each of these skills before any other step: `superpowers:test-driven-development`. On
+Claude, load each with the Skill tool. On Codex, invoke each by name:
+$superpowers:test-driven-development. Report each skill as it loads. If one does not load, stop and
+report the error naming it.
 
-Read the `## Loop lessons` section in `docs/workflow.md` before reading the change or starting task
-work. When this pass corrects a failure from the previous pass and the correction is directly verified,
-append one concise cause-to-action line to `$ARTIFACTS_DIR/lesson-candidates.txt`; otherwise do not
-write a candidate.
+Flow (fix-bug / work-queue): diagnose → spec → plan → implement ×task → check → fix → verify → review → judge → ship.
+Your step: **implement**, one task. Input: `context.md` (Next task). Output: 1 commit: the task's test and code, its boxes ticked. Do not: start another task, run make quick/check, edit specs, review. Keep output brief.
 
-Change: openspec/changes/$INPUTS.change/ (proposal, specs, design, tasks.md)
-Gate result of the previous pass (empty on the first pass):
-$LOOP_PREV.gate.output
-Verify findings of the previous pass: $LOOP_PREV.verify.output
-Review findings of the previous pass: $LOOP_PREV.review.output
+Read `$ARTIFACTS_DIR/context.md` first: it holds the `## Loop lessons` section of `docs/workflow.md`,
+the next task, the change artifacts and the files tasks.md names. Open other files only when the task
+needs them; do not survey the repo.
 
-Use `openspec-apply-change` for the task flow and `superpowers:test-driven-development` for every
-task: write the failing test "<capability>: <scenario title>", see it fail, make it pass with the
-smallest change, tick the task in tasks.md. Run only the test file or case you touch
-(`make test FILE=tests/<layer>/<capability>/test_x.lua CASE="…"`), then `make fmt` and `make quick`
-(lint, trace and the layers your changes vs auto touch, in seconds) before each commit, and commit
-only when it is green; never the full `make check` (the gate after you runs it once).
-Fix every failure and finding listed above first. Follow the conventions in docs/architecture.md.
+Change: openspec/changes/$INPUTS.change/ (the pack quotes proposal, specs, design and tasks.md)
 
-Never delete, skip or weaken a test or scenario to get green; if the spec is wrong, say so in
-tasks.md under "Blocked" and stop. Commit after each task (`git commit`, conventional message).
-Stop when every task is ticked and the targeted tests pass.
+Do only the task under "Next task" in the pack, then stop: write the failing test "<capability>:
+<scenario title>", see it fail, make it pass with the smallest change, tick that task's checkboxes in
+tasks.md, run `make fmt`, commit (conventional message). Run only that test:
+`make test FILE=tests/<layer>/<capability>/test_x.lua CASE="…" 2>&1 | tail -40`. Never run
+`make quick` or `make check` (the gate after the task loop runs it once). Keep tool output short: read
+file ranges, not whole files; no full logs. Follow the conventions in docs/architecture.md.
+
+When this task corrects a failure from the previous pass (pack section "Last gate failures") and the
+correction is directly verified, append one concise cause-to-action line to
+`$ARTIFACTS_DIR/lesson-candidates.txt`; otherwise do not write a candidate.
+
+Never delete, skip or weaken a test or scenario to get green; if the spec is wrong, write it in
+tasks.md under "## Blocked" and stop.

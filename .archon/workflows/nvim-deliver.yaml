@@ -28,28 +28,52 @@ nodes:
     context: fresh
     skills: [superpowers:writing-plans]
 
-  - id: plan-gate
-    bash: openspec validate "$INPUTS_CHANGE" --strict --no-interactive
+  - id: plan-gate # drop plan headers that name a sub-skill (one skill per step), then validate
+    bash: |
+      python3 -c "import re,sys;p=sys.argv[1];t=open(p).read();open(p,'w').write(re.sub(r'(?m)^.*REQUIRED SUB-SKILL.*\n','',t))" "openspec/changes/$INPUTS_CHANGE/tasks.md"
+      openspec validate "$INPUTS_CHANGE" --strict --no-interactive
     depends_on: [plan]
 
-  # --- Build (TDD) -> Verify -> Align -> Review, max 3 passes ---------------------------------------
-  - id: build
+  # --- Tasks: one fresh, short implement session per unchecked task (docs/workflow.md, Steps) -------
+  - id: tasks
     depends_on: [plan-gate]
+    loop_group:
+      max_iterations: 31 # tasks.py ends the loop at 30 passes
+      fresh_context: true
+      until_bash: python3 .archon/scripts/tasks.py "$INPUTS_CHANGE"
+      nodes:
+        - id: pack # context.md: next task, change, named files, lessons, last failures
+          script: context_pack
+          runtime: uv
+          with:
+            change: $INPUTS.change
+
+        - id: implement
+          command: implement
+          depends_on: [pack]
+          idle_timeout: 900000
+          skills: [superpowers:test-driven-development]
+
+  # --- Check -> Verify -> Review, max 3 passes; a red pass sends only its findings to fix -------------
+  - id: build
+    depends_on: [tasks]
     loop_group:
       max_iterations: 3
       fresh_context: true
       until_bash: test $verdict.output.done = true
       nodes:
-        - id: implement
-          command: implement
+        - id: fix # skipped on the first pass; later passes get only the previous verdict's feedback
+          command: fix
           idle_timeout: 900000
-          skills: [openspec-apply-change, superpowers:test-driven-development, superpowers:systematic-debugging]
+          when: "$LOOP_PREV.verdict.output.done == false"
+          skills: [superpowers:systematic-debugging]
 
         - id: gate # make check (incl. make trace) + openspec validate --strict + tasks ticked
           script: gate
           runtime: uv
           timeout: 1200000
-          depends_on: [implement]
+          depends_on: [fix]
+          trigger_rule: all_done
           with:
             change: $INPUTS.change
           output_format:
@@ -62,7 +86,7 @@ nodes:
               failures: { type: string }
             required: [green, spec_ok, tasks_done, attempt, failures]
 
-        - id: verify # /opsx:verify + make trace; CRITICAL findings send the next pass back to implement
+        - id: verify # /opsx:verify + make trace; CRITICAL findings go to the next pass's fix
           command: verify
           context: fresh
           depends_on: [gate]
@@ -91,7 +115,7 @@ nodes:
               weakened_test: { type: boolean }
             required: [approve, findings, weakened_scenario, weakened_test]
 
-        - id: verdict
+        - id: verdict # also runs the hard-rule checks (integrity.py); feedback feeds the next fix
           script: verdict
           runtime: uv
           depends_on: [gate, verify, review]
@@ -101,8 +125,11 @@ nodes:
             spec_ok: $gate.output.spec_ok
             tasks_done: $gate.output.tasks_done
             attempt: $gate.output.attempt
+            failures: $gate.output.failures
             critical: { from: $verify.output.critical, if_skipped: -1 }
+            verify_findings: { from: $verify.output.findings, if_skipped: "" }
             approve: { from: $review.output.approve, if_skipped: false }
+            review_findings: { from: $review.output.findings, if_skipped: "" }
             weakened_scenario: { from: $review.output.weakened_scenario, if_skipped: false }
             weakened_test: { from: $review.output.weakened_test, if_skipped: false }
           output_format:
@@ -113,11 +140,12 @@ nodes:
               exhausted: { type: boolean }
               attempt: { type: integer }
               failed_gates: { type: string }
+              feedback: { type: string }
               weakened_scenario: { type: boolean }
               weakened_test: { type: boolean }
-            required: [done, passed, exhausted, attempt, failed_gates, weakened_scenario, weakened_test]
+            required: [done, passed, exhausted, attempt, failed_gates, feedback, weakened_scenario, weakened_test]
 
-  # --- Escalation check: ping the user only for the cases in docs/workflow.md -----------------------
+  # --- Judge (no AI): ship, ask the user (breaking changes only), or reject ---------------------------
   - id: escalation
     script: escalation
     runtime: uv
@@ -130,16 +158,17 @@ nodes:
     output_format:
       type: object
       properties:
+        decision: { type: string }
         escalate: { type: boolean }
         reasons: { type: string }
-      required: [escalate, reasons]
+      required: [decision, escalate, reasons]
 
   - id: ship-gate
     depends_on: [escalation]
     when: "$escalation.output.escalate == true"
     approval:
       message: |
-        Escalation for change $INPUTS.change:
+        Breaking change in $INPUTS.change:
         $escalation.output.reasons
         Inspect the run worktree (archon workflow get <run-id>) before deciding.
       decisions:
@@ -153,6 +182,7 @@ nodes:
     trigger_rule: all_done
     with:
       needed: $escalation.output.escalate
+      verdict: $escalation.output.decision
       decision: { from: $ship-gate.output.decision, if_skipped: auto }
       feedback: { from: $ship-gate.output.text, if_skipped: "" }
     output_format:
@@ -163,9 +193,19 @@ nodes:
         feedback: { type: string }
       required: [go, decision, feedback]
 
-  - id: stop # go is false here, so the second test reads: cancel_on_reject is not "false"
-    cancel: "Not shipped: escalation rejected. The branch and worktree are kept."
+  - id: followup # rejected by the judge: queue the work again on auto, keep the branch
+    script: followup
+    runtime: uv
     depends_on: [ship-decide]
+    when: "$ship-decide.output.decision == 'reject'"
+    with:
+      change: $INPUTS.change
+      reasons: $escalation.output.reasons
+
+  - id: stop # go is false here, so the second test reads: cancel_on_reject is not "false"
+    cancel: "Not shipped: rejected. The branch and worktree are kept; a follow-up change is queued."
+    depends_on: [ship-decide, followup]
+    trigger_rule: all_done
     when: "$ship-decide.output.go == false && $ship-decide.output.go != $INPUTS.cancel_on_reject"
 
   # --- Ship: /opsx:archive, commit, merge --no-ff into auto (one at a time, under a lock) -----------

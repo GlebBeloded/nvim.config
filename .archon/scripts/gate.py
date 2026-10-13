@@ -10,6 +10,8 @@ import shutil
 import subprocess
 import tempfile
 
+from tasks import unchecked
+
 change = os.environ.get("INPUTS_CHANGE", "")
 artifacts = pathlib.Path(os.environ.get("ARTIFACTS_DIR", ".")).resolve()
 counter = artifacts / "attempts"
@@ -51,7 +53,7 @@ if change and change_dir.is_dir():
     if spec_ok:
         spec_ok, spec_tail = archived_specs_ok(f"archive-{attempt}.log")
     tasks = change_dir / "tasks.md"
-    tasks_done = tasks.exists() and "- [ ]" not in tasks.read_text()
+    tasks_done = tasks.exists() and unchecked(tasks.read_text()) == 0
 
 failures = []
 if not green:
