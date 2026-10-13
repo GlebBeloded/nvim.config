@@ -37,7 +37,7 @@ Scenarios: none (Static layer: `make types`)
 
 - [x] 2.1 **Failing test.** Delete `"param-type-mismatch"`; `make types` → FAIL with the 28-hit list's param-type-mismatch rows (design.md, Context).
 - [x] 2.2 **Implement** `pcall(vim.api.nvim_command, ...)` at `gruvbox-material/init.lua:9`, `diff_preview.lua:87`, `:161`; `convert.lua` annotations (`rgb_to_hsl` returns non-optional `number` 0..1, `hsl_to_rgb` takes `number`); `vim.fn.getcharstr()` at `plugins.lua:343`; `--[[@as string]]` on `finddir` at `run/init.lua:3`. `make types` → no lua/ hit of this code; `make test` green (colors and file-tree screenshots unchanged).
-- [ ] 2.3 **Commit** `fix(types): narrow param types in lua/`.
+- [x] 2.3 **Commit** `fix(types): narrow param types in lua/`.
 
 ## 3. param-type-mismatch in tests/
 
@@ -45,8 +45,8 @@ Scenarios: none (Static layer: `make types`)
 
 **Files:** `tests/render/colorize.lua`, `tests/shortcuts/chain.lua`, `tests/shortcuts/stack.lua`, `tests/e2e/shortcuts/test_e2e.lua`, `tests/unit/loop/test_cleanup.lua`
 
-- [ ] 3.1 **Failing test.** With `"param-type-mismatch"` still deleted (2.1), `make types` → FAIL with only the tests/ rows of design.md, Context.
-- [ ] 3.2 **Implement** a typed helper in `colorize.lua` that maps `vim.NIL` to nil (drops the existing `@as colorize.Hl` cast); `tonumber(code) --[[@as integer]]` in `chain.lua:116`; `Stack.env` typed `table<string, string>` with one commented cast on the constructor; `{ fail_reason = ... }` for every string third argument to `eq` in `test_cleanup.lua`. `make types` → no `param-type-mismatch`.
+- [x] 3.1 **Failing test.** With `"param-type-mismatch"` still deleted (2.1), `make types` → FAIL with only the tests/ rows of design.md, Context.
+- [x] 3.2 **Implement** a typed helper in `colorize.lua` that maps `vim.NIL` to nil (drops the existing `@as colorize.Hl` cast); `tonumber(code) --[[@as integer]]` in `chain.lua:116`; `Stack.env` typed `table<string, string>` with one commented cast on the constructor; `{ fail_reason = ... }` for every string third argument to `eq` in `test_cleanup.lua`. `make types` → no `param-type-mismatch`.
 - [ ] 3.3 **Verify** the restored messages: temporarily break one `expect_cleanup_sees_merge` expectation, `make test-unit` shows `run.output` as the failure headline; revert. `make test`, `make chain`, `make stack` green; `make colorize FILE=<an existing design.md>` output unchanged.
 - [ ] 3.4 **Commit** `fix(types): narrow param types in tests/`.
 

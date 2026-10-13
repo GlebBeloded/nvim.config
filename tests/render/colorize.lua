@@ -217,19 +217,32 @@ end
 
 -- ── output ──────────────────────────────────────────────────────────────────
 
+--- The highlight of `group`, or nil when the group does not exist.
+---@param hls table<string, colorize.Hl|vim.NIL>
+---@param group string
+---@return colorize.Hl?
+local function hl_of(hls, group)
+	local hl = hls[group]
+	if hl == vim.NIL then
+		return nil
+	end
+	-- LuaLS does not narrow on `== vim.NIL`
+	return hl --[[@as colorize.Hl]]
+end
+
 ---@param render colorize.Render
 ---@param hls table<string, colorize.Hl|vim.NIL>
 ---@return table<string, string> mask letter -> escape
 local function letter_escapes(render, hls)
-	local base = hls[H.DEFAULT_GROUP] ~= vim.NIL and hls[H.DEFAULT_GROUP] or {}
+	local base = hl_of(hls, H.DEFAULT_GROUP) or {}
 	local escapes = {}
 	for letter, group in pairs(render.legend) do
-		local hl = hls[group]
-		if hl == vim.NIL then
+		local hl = hl_of(hls, group)
+		if not hl then
 			warn(("line %d: unknown highlight group [%s], shown as %s"):format(render.line, group, H.DEFAULT_GROUP))
 			hl = base
 		end
-		escapes[letter] = sgr(hl --[[@as colorize.Hl]], base)
+		escapes[letter] = sgr(hl, base)
 	end
 	escapes[""] = sgr(base, base)
 	return escapes
