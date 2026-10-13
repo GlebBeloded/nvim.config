@@ -21,7 +21,7 @@ local plugins = {
 	-- "folke/tokyonight.nvim", -- disabled because of nvim-tree transparency bug
 	{
 		"sainnhe/gruvbox-material",
-		priorty = 1000, -- make sure to load this before all the other start plugins
+		priority = 1000, -- make sure to load this before all the other start plugins
 	},
 	"NvChad/nvim-colorizer.lua",
 	{
