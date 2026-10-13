@@ -60,34 +60,34 @@ Scenarios: "loop: Named run report contains the complete run history".
 
   ```lua
   T["loop: Named run report contains the complete run history"] = function()
-  	local fixture = make_fixture({ completed = true, missing_terminal_evidence = true })
-  	local result = run_report(fixture, "run-complete")
-  	local report = read_report(fixture, "run-complete")
+    local fixture = make_fixture({ completed = true, missing_terminal_evidence = true })
+    local result = run_report(fixture, "run-complete")
+    local report = read_report(fixture, "run-complete")
 
-  	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
-  	expect_contains(result.stdout, "run-complete")
-  	expect_contains(result.stdout, "completed")
-  	expect_contains(result.stdout, vim.uri_from_fname(fixture.report_path))
-  	eq(count(report, "deliver__build.implement"), 1)
-  	expect_contains(report, "2 invocations")
-  	expect_contains(report, "approved by operator")
-  	expect_contains(report, "rejected by operator")
-  	expect_contains(report, "Attempt 1")
-  	expect_contains(report, "tasks.md has unchecked tasks")
-  	expect_contains(report, "Attempt 2")
-  	expect_contains(report, "root-cause.md")
-  	expect_contains(report, fixture.merge_commit)
-  	expect_contains(report, "changed.txt")
-  	expect_contains(report, "Unavailable")
-  	expect_all_escaped(report, fixture.hostile_values)
-  	eq(report:find("<script", 1, true), nil)
-  	eq(report:find("http://", 1, true), nil)
-  	eq(report:find("https://", 1, true), nil)
+    eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
+    expect_contains(result.stdout, "run-complete")
+    expect_contains(result.stdout, "completed")
+    expect_contains(result.stdout, vim.uri_from_fname(fixture.report_path))
+    eq(count(report, "deliver__build.implement"), 1)
+    expect_contains(report, "2 invocations")
+    expect_contains(report, "approved by operator")
+    expect_contains(report, "rejected by operator")
+    expect_contains(report, "Attempt 1")
+    expect_contains(report, "tasks.md has unchecked tasks")
+    expect_contains(report, "Attempt 2")
+    expect_contains(report, "root-cause.md")
+    expect_contains(report, fixture.merge_commit)
+    expect_contains(report, "changed.txt")
+    expect_contains(report, "Unavailable")
+    expect_all_escaped(report, fixture.hostile_values)
+    eq(report:find("<script", 1, true), nil)
+    eq(report:find("http://", 1, true), nil)
+    eq(report:find("https://", 1, true), nil)
 
-  	local unknown = run_report(fixture, "missing-run")
-  	eq(unknown.code, 2)
-  	expect_contains(unknown.stderr, "Unknown Archon run: missing-run")
-  	eq(unknown.stderr:find("Traceback", 1, true), nil)
+    local unknown = run_report(fixture, "missing-run")
+    eq(unknown.code, 2)
+    expect_contains(unknown.stderr, "Unknown Archon run: missing-run")
+    eq(unknown.stderr:find("Traceback", 1, true), nil)
   end
   ```
 
@@ -140,17 +140,17 @@ Scenarios: "loop: Running run report tolerates incomplete evidence".
 
   ```lua
   T["loop: Running run report tolerates incomplete evidence"] = function()
-  	local fixture = make_fixture({ running = true })
-  	local result = run_report(fixture, "run-live")
-  	local report = read_report(fixture, "run-live")
+    local fixture = make_fixture({ running = true })
+    local result = run_report(fixture, "run-live")
+    local report = read_report(fixture, "run-live")
 
-  	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
-  	expect_contains(report, "running")
-  	expect_match(report, "%d+%.%d+s")
-  	expect_contains(report, "waiting")
-  	eq(count(report, "Pending") >= 2, true)
-  	eq(report:find("completed", 1, true), nil)
-  	eq(report:find("Unavailable", 1, true), nil)
+    eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
+    expect_contains(report, "running")
+    expect_match(report, "%d+%.%d+s")
+    expect_contains(report, "waiting")
+    eq(count(report, "Pending") >= 2, true)
+    eq(report:find("completed", 1, true), nil)
+    eq(report:find("Unavailable", 1, true), nil)
   end
   ```
 
@@ -194,20 +194,20 @@ Scenarios: "loop: Report without a run selects the latest run for this codebase"
 
   ```lua
   T["loop: Report without a run selects the latest run for this codebase"] = function()
-  	local fixture = make_fixture({ multiple_codebases = true, equal_local_times = true })
-  	local result = run_report(fixture)
+    local fixture = make_fixture({ multiple_codebases = true, equal_local_times = true })
+    local result = run_report(fixture)
 
-  	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
-  	expect_contains(result.stdout, "local-b")
-  	expect_contains(result.stdout, vim.uri_from_fname(fixture.latest_report_path))
-  	eq(file_exists(fixture.latest_report_path), true)
-  	eq(file_exists(fixture.foreign_report_path), false)
+    eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
+    expect_contains(result.stdout, "local-b")
+    expect_contains(result.stdout, vim.uri_from_fname(fixture.latest_report_path))
+    eq(file_exists(fixture.latest_report_path), true)
+    eq(file_exists(fixture.foreign_report_path), false)
 
-  	local stale = make_fixture({ stale_registration = true })
-  	local missing = run_report(stale)
-  	eq(missing.code, 2)
-  	expect_contains(missing.stderr, "No Archon codebase matches")
-  	eq(missing.stderr:find("Traceback", 1, true), nil)
+    local stale = make_fixture({ stale_registration = true })
+    local missing = run_report(stale)
+    eq(missing.code, 2)
+    expect_contains(missing.stderr, "No Archon codebase matches")
+    eq(missing.stderr:find("Traceback", 1, true), nil)
   end
   ```
 
@@ -251,16 +251,16 @@ Scenarios: "loop: Loop status prints a usable report link".
 
   ```lua
   T["loop: Loop status prints a usable report link"] = function()
-  	local fixture = make_fixture({ archon_stub = true })
-  	local result = run_status(fixture)
+    local fixture = make_fixture({ archon_stub = true })
+    local result = run_status(fixture)
 
-  	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
-  	eq(read_lines(fixture.archon_log), {
-  		"workflow status",
-  		"workflow runs --limit 10",
-  	})
-  	eq(file_exists(fixture.latest_report_path), true)
-  	expect_contains(result.stdout, vim.uri_from_fname(fixture.latest_report_path))
+    eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
+    eq(read_lines(fixture.archon_log), {
+      "workflow status",
+      "workflow runs --limit 10",
+    })
+    eq(file_exists(fixture.latest_report_path), true)
+    expect_contains(result.stdout, vim.uri_from_fname(fixture.latest_report_path))
   end
   ```
 
