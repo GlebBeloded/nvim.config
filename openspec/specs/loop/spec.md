@@ -357,7 +357,7 @@ The delivery loop SHALL implement one task per fresh agent session from a script
 - **THEN** its JSON `go` is false
 
 ### Requirement: Loop keeps the user's contract
-The loop SHALL leave the user's contract to the user: no step changes a requirement's bounds or the `## Decision` text unasked, main specs change only by archive, and a `## Blocked` section in a change's proposal.md or tasks.md stops agent work on it, is quoted to the user, and never ships.
+The loop SHALL leave the user's contract to the user: no step changes a requirement's bounds or the `## Decision` text unasked, main specs change only by archive, and a `## Blocked` section in a change's proposal.md or tasks.md stops agent work on it, is quoted to the user, and never ships, until a later user `## Decision` resolves it.
 
 #### Scenario: Queue spec prompt keeps the user's contract
 - **WHEN** `.archon/commands/queue-spec.md` is read
@@ -378,6 +378,10 @@ The loop SHALL leave the user's contract to the user: no step changes a requirem
 #### Scenario: Blocked queued change goes straight to the user
 - **WHEN** `.archon/scripts/blocked.py` runs for a change whose proposal.md has a `## Blocked` section, and for one without
 - **THEN** the first prints `blocked` true with the section text and writes an `ask` escalation.md quoting it; the second prints `blocked` false
+
+#### Scenario: A later user Decision resolves a Blocked section
+- **WHEN** `.archon/scripts/blocked.py` runs for a change whose tasks.md `## Blocked` section was committed before a user `## Decision` in its proposal.md, and again after tasks.md gets an uncommitted new Blocked section
+- **THEN** the first run reports `blocked` false and the second reports `blocked` true
 
 #### Scenario: Verdict ends the build loop on a Blocked section
 - **WHEN** `.archon/scripts/verdict.py` runs on the first red pass for a change whose tasks.md has a `## Blocked` section
