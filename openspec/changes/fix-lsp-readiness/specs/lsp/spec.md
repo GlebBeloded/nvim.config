@@ -18,10 +18,3 @@ The config SHALL make lua_ls answer its first `textDocument/documentSymbol` requ
 #### Scenario: vtsls ready within 1 s in a small project
 - **WHEN** a full-config Neovim with cwd at a fixture TypeScript project (`package.json`, `tsconfig.json`, one `.ts` file) runs `:edit` on that file
 - **THEN** the `vtsls` client attached to the buffer answers `textDocument/documentSymbol` without error within 1000 ms of the `:edit`
-
-### Requirement: Lua editor type metadata
-The config SHALL expose Neovim API type metadata to lua_ls in Lua buffers while keeping the editor workspace configuration free of the full static-analysis library used by `make types`.
-
-#### Scenario: lua_ls exposes typed vim API signatures
-- **WHEN** a full-config Neovim opens `lua/gleb/lsp/config/init.lua` and requests hover for `vim.lsp.enable`
-- **THEN** lua_ls returns a typed function signature including the `name` and optional `enable` parameters
