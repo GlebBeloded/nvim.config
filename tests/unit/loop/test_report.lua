@@ -14,6 +14,8 @@ local T = H.child_set(child, child.start_bare)
 ---@field report_path string
 ---@field latest_report_path? string
 ---@field foreign_report_path? string
+---@field archon? string
+---@field archon_log? string
 ---@field merge_commit string
 ---@field hostile_values string[]
 
@@ -64,6 +66,13 @@ end
 ---@param link string
 local function symlink(target, link)
 	child.lua("vim.fn.mkdir(vim.fs.dirname(select(2, ...)), 'p'); assert(vim.uv.fs_symlink(...))", { target, link })
+end
+
+---@param path string
+---@param content string
+local function write_executable(path, content)
+	write_file(path, content)
+	child.lua("assert(vim.uv.fs_chmod(..., 493))", { path })
 end
 
 ---@param args string[]
@@ -306,7 +315,7 @@ local function make_fixture(opts)
 	local extra_codebases = {}
 	local extra_runs = {}
 	local foreign_report_path
-	if opts.multiple_codebases or opts.stale_registration then
+	if opts.multiple_codebases or opts.stale_registration or opts.archon_stub then
 		invocation_cwd = vim.fs.joinpath(H.tempdir(child), "linked")
 		git({ "worktree", "add", "-q", "-b", "report-linked", invocation_cwd, "auto" }, repository)
 		symlink(vim.fs.joinpath(H.root, "Makefile"), vim.fs.joinpath(invocation_cwd, "Makefile"))
@@ -355,6 +364,14 @@ local function make_fixture(opts)
 		default_cwd = vim.fs.joinpath(H.tempdir(child), "removed-registration")
 		child.fn.delete(default_cwd, "rf")
 	end
+	local archon
+	local archon_log
+	if opts.archon_stub then
+		local bin = H.tempdir(child)
+		archon = vim.fs.joinpath(bin, "archon")
+		archon_log = vim.fs.joinpath(bin, "archon.log")
+		write_executable(archon, '#!/bin/sh\necho "$*" >> "$ARCHON_LOG"')
+	end
 
 	seed_database(vim.fs.joinpath(home, ".archon/archon.db"), {
 		run_id = run_id,
@@ -385,8 +402,12 @@ local function make_fixture(opts)
 		repository = repository,
 		invocation_cwd = invocation_cwd,
 		report_path = vim.fs.joinpath(artifact_root, "report.html"),
-		latest_report_path = vim.fs.joinpath(output_root, "artifacts/runs/local-b/report.html"),
+		latest_report_path = opts.multiple_codebases
+				and vim.fs.joinpath(output_root, "artifacts/runs/local-b/report.html")
+			or vim.fs.joinpath(artifact_root, "report.html"),
 		foreign_report_path = foreign_report_path,
+		archon = archon,
+		archon_log = archon_log,
 		merge_commit = merge_commit,
 		hostile_values = hostile_values,
 	}
@@ -412,6 +433,24 @@ end
 ---@return boolean
 local function file_exists(path)
 	return child.lua_get("vim.uv.fs_stat(...) ~= nil", { path })
+end
+
+---@param path string
+---@return string[]
+local function read_lines(path)
+	return child.lua_get("vim.fn.filereadable(...) == 1 and vim.fn.readfile(...) or {}", { path })
+end
+
+---@param fixture test.ReportFixture
+---@return test.SystemResult
+local function run_status(fixture)
+	return H.system(child, { "make", "-s", "loop-status", "ARCHON=" .. fixture.archon }, fixture.invocation_cwd, {
+		HOME = fixture.home,
+		PATH = child.lua_get("vim.env.PATH"),
+		ARCHON_LOG = fixture.archon_log,
+		MAKEFLAGS = "",
+		MAKELEVEL = "",
+	})
 end
 
 ---@param fixture test.ReportFixture
@@ -494,6 +533,19 @@ T["loop: Report without a run selects the latest run for this codebase"] = funct
 	eq(missing.code, 2)
 	expect_contains(missing.stderr, "No Archon codebase matches")
 	eq(missing.stderr:find("Traceback", 1, true), nil)
+end
+
+T["loop: Loop status prints a usable report link"] = function()
+	local fixture = make_fixture({ archon_stub = true })
+	local result = run_status(fixture)
+
+	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
+	eq(read_lines(fixture.archon_log), {
+		"workflow status",
+		"workflow runs --limit 10",
+	})
+	eq(file_exists(fixture.latest_report_path), true)
+	expect_contains(result.stdout, vim.uri_from_fname(fixture.latest_report_path))
 end
 
 return T

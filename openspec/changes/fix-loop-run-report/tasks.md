@@ -245,7 +245,7 @@ Scenarios: "loop: Loop status prints a usable report link".
 - Consumes: Task 3's no-argument `loop-report` target and fixture; existing `ARCHON ?= archon` Make interface.
 - Produces: `loop-status` output ending in Task 1's `Report: <file URI>` line; operator documentation for `make loop-report [RUN=<id>]` and `make loop-status`.
 
-- [ ] **Step 1: Write the failing mini.test case `loop: Loop status prints a usable report link`**
+- [x] **Step 1: Write the failing mini.test case `loop: Loop status prints a usable report link`**
 
   Put an executable `ARCHON` logging stub in the fixture, run `make loop-status` with the fixture `HOME`, and assert exact preserved argument order plus the generated file URI.
 
@@ -268,13 +268,13 @@ Scenarios: "loop: Loop status prints a usable report link".
 
   Expected: FAIL because `loop-status` does not invoke `loop-report` and no report file/link exists.
 
-- [ ] **Step 2: Append report generation to `loop-status`**
+- [x] **Step 2: Append report generation to `loop-status`**
 
   Keep `$(ARCHON) workflow status` and `$(ARCHON) workflow runs --limit 10` unchanged and ordered, then call the existing `loop-report` recipe through `$(MAKE) -s loop-report` so its two summary lines remain visible.
 
   Run the focused case. Expected: PASS.
 
-- [ ] **Step 3: Document the operator surface**
+- [x] **Step 3: Document the operator surface**
 
   In the existing loop command/observability sections of `docs/workflow.md`, add `make loop-report [RUN=<id>]`, its `<output_root>/artifacts/runs/<id>/report.html` output, and that `make loop-status` prints the latest report's local URI. Do not document internal SQL, event fields or rendering functions.
 
@@ -282,7 +282,7 @@ Scenarios: "loop: Loop status prints a usable report link".
 
   Expected: both operator entry points and the generated artifact are found.
 
-- [ ] **Step 4: Run focused and project gates**
+- [x] **Step 4: Run focused and project gates**
 
   Run in order:
 
@@ -296,7 +296,7 @@ Scenarios: "loop: Loop status prints a usable report link".
 
   Expected: all four scenario cases PASS, OpenSpec reports the change valid, trace has no orphan, and every project gate is green.
 
-- [ ] **Step 5: Commit the status/docs slice**
+- [x] **Step 5: Commit the status/docs slice**
 
   ```bash
   git add Makefile docs/workflow.md tests/unit/loop/test_report.lua

@@ -21,7 +21,8 @@ Each run works in its own git worktree cut from `auto` and, when every gate is g
 | `make update PLUGIN=<name>` | `plugin-update`: update that one plugin, test it, ship it or adapt the config |
 | `make preview CHANGE=<id> [OPEN=1]` | regenerate `openspec/changes/<id>/preview.html` |
 | `make console` | `archon serve`, the web console at http://localhost:3090 |
-| `make loop-status` / `make loop-validate` | active and last runs / `archon validate workflows` |
+| `make loop-report [RUN=<id>]` | generate a local HTML report for the named run, or the latest run for this codebase |
+| `make loop-status` / `make loop-validate` | active and last runs plus the latest report URI / `archon validate workflows` |
 
 Run the targets from `~/.config/nvim` (the `auto` checkout). `fix`, `feature`, `queue` and `update` can
 pause, so they stay in the foreground. Answer gates in the terminal, in the console, or from another shell with
@@ -69,6 +70,9 @@ Known issues and planned work are queued changes in `openspec/changes/`; there i
 - **Console** (`make console`): runs, node output, gate buttons, logs. Transcripts and artifacts
   (`root-cause.md`, `check-<n>.log`, `escalation.md`) are under
   `~/.archon/workspaces/GlebBeloded/nvim.config/` in `logs/` and `artifacts/runs/<run-id>/`.
+- **Run report** (`make loop-report [RUN=<id>]`): writes
+  `<output_root>/artifacts/runs/<id>/report.html` and prints its local URI. `make loop-status` prints the
+  latest report URI after the active and recent runs.
 - **git**: `git log --first-parent auto` lists one merge per shipped run; run branches are `loop/*`.
   `archon isolation cleanup --merged` removes merged run worktrees (the make targets run it).
 - **Resume or stop**: `archon workflow runs`, `archon workflow resume <run-id>`,

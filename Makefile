@@ -180,6 +180,7 @@ loop-report:
 
 loop-status:
 	@$(ARCHON) workflow status; $(ARCHON) workflow runs --limit 10
+	@$(MAKE) -s loop-report
 
 preview: # make preview CHANGE=<id> [OPEN=1]: openspec/changes/<id>/preview.html
 	@test -d "openspec/changes/$(CHANGE)" || { echo "usage: make preview CHANGE=<change id>" >&2; exit 2; }
