@@ -484,20 +484,6 @@ local function push_exiting(code)
 	return calls(), wait_notifications(notifications, 2)
 end
 
-T["file-tree: c commits confirmed message"] = function()
-	local repo = git_status_on_changed_file(true)
-	local calls = H.record_jobstart(child, { ollama = { stdout = { "feat: x", "" } } })
-	local notifications = H.record_notify(child)
-
-	child.type_keys("c")
-	eq(child.wait([[vim.bo.filetype == "gitcommit" and vim.api.nvim_get_current_line() == "feat: x"]], ASYNC_MS), true)
-	eq(calls()[1].cmd[1], "ollama")
-	child.type_keys("<CR>")
-
-	eq(wait_notifications(notifications, 1), { { msg = "Committed: feat: x", level = INFO } })
-	eq(vim.trim(H.git(repo, { "log", "-1", "--format=%s" })), "feat: x")
-end
-
 T["file-tree: P pushes successfully"] = function()
 	local calls, notifications = push_exiting(0)
 

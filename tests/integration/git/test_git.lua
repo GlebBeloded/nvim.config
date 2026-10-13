@@ -327,16 +327,13 @@ T["git: Gitlink copies current line URL"] = function()
 	eq(child.fn.getreg("+"), ("https://github.com/owner/repo/blob/%s/a.txt#L10"):format(sha))
 end
 
-T["git: Gitlink copies range URL"] = H.xfail(
-	"fix-gitlink-visual-range: :'<,'>Gitlink links only the range's first line",
-	function()
-		local sha = use_linked_repo("https://github.com/owner/repo.git")
-		child.api.nvim_win_set_cursor(0, { 3, 0 })
-		child.type_keys("V", "2j", ":Gitlink<CR>")
+T["git: Gitlink copies range URL"] = function()
+	local sha = use_linked_repo("https://github.com/owner/repo.git")
+	child.api.nvim_win_set_cursor(0, { 3, 0 })
+	child.type_keys("V", "2j", ":Gitlink<CR>")
 
-		eq(child.fn.getreg("+"), ("https://github.com/owner/repo/blob/%s/a.txt#L3-L5"):format(sha))
-	end
-)
+	eq(child.fn.getreg("+"), ("https://github.com/owner/repo/blob/%s/a.txt#L3-L5"):format(sha))
+end
 
 T["git: pgw.dev remote uses GitHub URL format"] = function()
 	local sha = use_linked_repo("git@pgw.dev:owner/repo.git")

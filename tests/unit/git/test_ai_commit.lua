@@ -117,16 +117,13 @@ T["git: Long diff is truncated"] = function()
 	eq(sent, table.concat(vim.list_slice(diff_lines, 1, 200), "\n") .. "\n... (truncated)")
 end
 
-T["git: Generated message fills popup"] = H.xfail(
-	"fix-ai-commit-stdout-lines: stdout lines are joined without newlines, the fence strip eats `feat`",
-	function()
-		show_generating()
-		finish_job("```\nfeat(git): add x\n```", 0)
+T["git: Generated message fills popup"] = function()
+	show_generating()
+	finish_job("```\nfeat(git): add x\n```", 0)
 
-		eq(popup_lines(), { "feat(git): add x" })
-		eq(child.lua_get("PopupTitle()"), " Commit Message ")
-	end
-)
+	eq(popup_lines(), { "feat(git): add x" })
+	eq(child.lua_get("PopupTitle()"), " Commit Message ")
+end
 
 T["git: Popup resizes to content"] = function()
 	child.o.columns = 200

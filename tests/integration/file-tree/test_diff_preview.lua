@@ -9,7 +9,6 @@ local TRACKED = vim.fs.joinpath(H.root, "lua/gleb/file_tree/diff_preview.lua")
 local TRACKED_B = vim.fs.joinpath(H.root, "lua/gleb/file_tree/init.lua")
 -- generous: async results land after >3 s under the 12-worker `make check` load
 local ASYNC_MS = 10000
-local CODEDIFF_CRASH = "fix-diff-preview-codediff-crash is queued"
 
 local function start()
 	child.start_config()
@@ -345,7 +344,7 @@ local function count_new_tabs()
 	]])
 end
 
-T["file-tree: Rapid calls are debounced"] = H.xfail(CODEDIFF_CRASH, function()
+T["file-tree: Rapid calls are debounced"] = function()
 	start_repo()
 	count_new_tabs()
 
@@ -354,9 +353,9 @@ T["file-tree: Rapid calls are debounced"] = H.xfail(CODEDIFF_CRASH, function()
 	eq(wait_diff_tab(), true)
 	eq(child.lua_get("TabsCreated"), 1)
 	eq(child.lua_get(diff_tab_shows(repo_path("b/y.lua"))), true)
-end)
+end
 
-T["file-tree: Diff tab is reused across files"] = H.xfail(CODEDIFF_CRASH, function()
+T["file-tree: Diff tab is reused across files"] = function()
 	start_repo()
 	eq(preview(repo_path("a/x.lua")), true)
 
@@ -364,9 +363,9 @@ T["file-tree: Diff tab is reused across files"] = H.xfail(CODEDIFF_CRASH, functi
 
 	eq(tab_count(), 2)
 	eq(child.lua_get("DiffPreview.state.current_file"), repo_path("b/y.lua"))
-end)
+end
 
-T["file-tree: Focus guard pulls focus back during navigation"] = H.xfail(CODEDIFF_CRASH, function()
+T["file-tree: Focus guard pulls focus back during navigation"] = function()
 	start_repo()
 	open_diff_timed(repo_path("a/x.lua"))
 	eq(child.wait(diff_tab_shows(repo_path("a/x.lua")), ASYNC_MS), true)
@@ -374,7 +373,7 @@ T["file-tree: Focus guard pulls focus back during navigation"] = H.xfail(CODEDIF
 	enter_diff_window_at(100)
 
 	eq(child.wait([[vim.bo.filetype == "neo-tree"]], ASYNC_MS), true)
-end)
+end
 
 T["file-tree: Enter opens file and switches to filesystem tree"] = function()
 	start_repo()
@@ -389,17 +388,19 @@ T["file-tree: Enter opens file and switches to filesystem tree"] = function()
 	eq(child.lua_get("DiffPreview.state.diff_tab"), vim.NIL)
 end
 
-T["file-tree: q closes preview and tree"] = H.xfail(CODEDIFF_CRASH, function()
+T["file-tree: q closes preview and tree"] = function()
 	start_repo()
+	local original_tab = child.api.nvim_get_current_tabpage()
 	eq(preview(repo_path("a/x.lua")), true)
 	local diff_tab = child.lua_get("DiffPreview.state.diff_tab")
 
 	eq(press_in_tree("q"), true)
 
-	eq(child.lua_get("vim.api.nvim_get_current_tabpage() == DiffPreview.state.original_tab"), true)
+	eq(child.api.nvim_get_current_tabpage(), original_tab)
 	eq(child.api.nvim_tabpage_is_valid(diff_tab), false)
 	eq(child.lua_get("DiffPreview.state.current_file"), vim.NIL)
+	eq(child.lua_get("DiffPreview.state.original_tab"), vim.NIL)
 	eq(neo_tree_in_current_tab(), false)
-end)
+end
 
 return T
