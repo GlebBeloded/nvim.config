@@ -21,18 +21,18 @@ Scenarios: "The sandbox lock is taken when free and released by its owner", "A s
 
 Scenarios: "sandbox.sh e2e holds the sandbox lock from the sync to the end of the e2e layer", "sandbox.sh e2e waits while another checkout holds the sandbox lock".
 
-- [ ] 2.1 Failing tests `shortcuts: sandbox.sh e2e holds the sandbox lock from the sync to the end of the e2e layer` and `shortcuts: sandbox.sh e2e waits while another checkout holds the sandbox lock`:
+- [x] 2.1 Failing tests `shortcuts: sandbox.sh e2e holds the sandbox lock from the sync to the end of the e2e layer` and `shortcuts: sandbox.sh e2e waits while another checkout holds the sandbox lock`:
   - The `ssh` and `rsync` stubs also append `<their GUEST_LOG line>\t<yes|no>` (`[ -d "$SANDBOX_STATE/lock" ]`) to a second log, `$LOCK_LOG` (added to `sandbox_env`). `GUEST_LOG` lines stay as they are, so the existing order assertions (`startswith`/`endswith`) are untouched.
   - The holding case also asserts that `$SANDBOX_STATE/lock` is gone after exit.
   - The waiting case starts a holder as in task 1 (2 s), runs `sandbox.sh e2e` with `vim.system` in the background, reads `GUEST_LOG` after 1 s (no `rsync` line), then waits for code 0 and asserts the stderr text and the sync → restore → e2e order.
   - Both fail, because `sandbox.sh` takes no lock.
-- [ ] 2.2 In `tests/sandbox/sandbox.sh`:
+- [x] 2.2 In `tests/sandbox/sandbox.sh`:
   - source `lock.sh`;
   - define `LOCK=$STATE/lock`;
   - in the command dispatch, call `sandbox_lock "$LOCK"` for `up`, `provision`, `down`, `ssh`, and in `e2e()` after the `in_vm` and `E2E=0` exits and before the running check;
   - update the header comment (commands that change the guest are serialized across checkouts).
   - `PROVISION_REV` is unchanged.
-- [ ] 2.3 All `test_sandbox.lua` cases pass, the earlier "sandbox.sh e2e restores guest state after syncing and before the e2e layer" included. `make quick` is green.
+- [x] 2.3 All `test_sandbox.lua` cases pass, the earlier "sandbox.sh e2e restores guest state after syncing and before the e2e layer" included. `make quick` is green.
 
 ## 3. Load-scaled deadlines
 

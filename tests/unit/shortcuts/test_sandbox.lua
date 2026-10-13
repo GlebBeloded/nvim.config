@@ -15,11 +15,19 @@ esac
 exit 0
 ]]
 
---- `ssh` stub: logs the guest command (last argument); the guest is provisioned at
---- $PROVISION_REV and its GUI session belongs to `lume`.
+--- Shell lines that append the log line "$line" with whether $SANDBOX_STATE/lock exists to $LOCK_LOG.
+local LOG_LOCK = [[held=no
+[ -d "$SANDBOX_STATE/lock" ] && held=yes
+printf '%s\t%s\n' "$line" "$held" >>"$LOCK_LOG"
+]]
+
+--- `ssh` stub: logs the guest command (last argument), also to $LOCK_LOG with the lock state;
+--- the guest is provisioned at $PROVISION_REV and its GUI session belongs to `lume`.
 local SSH_STUB = [[#!/bin/sh
 for cmd; do :; done
-echo "$cmd" >>"$GUEST_LOG"
+line=$cmd
+echo "$line" >>"$GUEST_LOG"
+]] .. LOG_LOCK .. [[
 case "$cmd" in
 "cat ~/.nvim-e2e-provisioned"*) echo "$PROVISION_REV" ;;
 "stat -f %Su /dev/console") echo lume ;;
@@ -27,10 +35,12 @@ esac
 exit 0
 ]]
 
---- `rsync` stub: logs `rsync <dest>`.
+--- `rsync` stub: logs `rsync <dest>`, also to $LOCK_LOG with the lock state.
 local RSYNC_STUB = [[#!/bin/sh
 for dest; do :; done
-echo "rsync $dest" >>"$GUEST_LOG"
+line="rsync $dest"
+echo "$line" >>"$GUEST_LOG"
+]] .. LOG_LOCK .. [[
 exit 0
 ]]
 
@@ -97,6 +107,7 @@ local function sandbox_env()
 	return {
 		PATH = bin .. ":" .. child.lua_get("vim.env.PATH"),
 		GUEST_LOG = vim.fs.joinpath(bin, "guest.log"),
+		LOCK_LOG = vim.fs.joinpath(bin, "lock.log"),
 		PROVISION_REV = provision_rev(),
 		SANDBOX_STATE = state,
 		HOME = tempdir(),
@@ -290,6 +301,50 @@ T["shortcuts: A sandbox lock wait gives up after SANDBOX_LOCK_TIMEOUT"] = functi
 	eq(wait_locker("holder").code, 0)
 end
 
+---@param line string
+---@return boolean
+local function is_repo_sync(line)
+	return vim.startswith(line, "rsync ") and vim.endswith(line, ":/Users/lume/nvim/")
+end
+
+---@param line string
+---@return boolean
+local function is_restore(line)
+	return line:find("tests/sandbox/guest_restore.sh", 1, true) ~= nil
+end
+
+---@param line string
+---@return boolean
+local function is_e2e_layer(line)
+	-- `gui` quotes the command with printf %q; the guest shell unescapes it
+	return line:gsub("\\ ", " "):find("make -s e2e-local", 1, true) ~= nil
+end
+
+--- Expects the repo sync, then the guest restore, then the e2e layer in a guest log.
+---@param log string[]
+local function expect_sync_restore_e2e(log)
+	local order = {
+		sync = first_index(log, is_repo_sync),
+		restore = first_index(log, is_restore),
+		e2e = first_index(log, is_e2e_layer),
+	}
+	eq({ order.sync ~= nil, order.restore ~= nil, order.e2e ~= nil }, { true, true, true })
+	eq({ order.sync < order.restore, order.restore < order.e2e }, { true, true })
+end
+
+--- Whether the lock existed (`yes`/`no`) at the first $LOCK_LOG line that `matches`, or nil.
+---@param lock_log string[]
+---@param matches fun(line: string): boolean
+---@return string?
+local function lock_state_at(lock_log, matches)
+	for _, entry in ipairs(lock_log) do
+		local line, held = entry:match("^(.*)\t(%a+)$")
+		if line and matches(line) then
+			return held
+		end
+	end
+end
+
 T["shortcuts: Guest restore drops Alacritty defaults the branch does not define"] = function()
 	local script = make_checkout()
 	local plist = temp_plist()
@@ -330,21 +385,42 @@ T["shortcuts: sandbox.sh e2e restores guest state after syncing and before the e
 	local run = system({ "tests/sandbox/sandbox.sh", "e2e" }, H.root, env)
 
 	eq(run.code, 0)
-	local log = read_lines(env.GUEST_LOG)
-	local order = {
-		sync = first_index(log, function(line)
-			return vim.startswith(line, "rsync ") and vim.endswith(line, ":/Users/lume/nvim/")
-		end),
-		restore = first_index(log, function(line)
-			return line:find("tests/sandbox/guest_restore.sh", 1, true) ~= nil
-		end),
-		e2e = first_index(log, function(line)
-			-- `gui` quotes the command with printf %q; the guest shell unescapes it
-			return line:gsub("\\ ", " "):find("make -s e2e-local", 1, true) ~= nil
-		end),
-	}
-	eq({ order.sync ~= nil, order.restore ~= nil, order.e2e ~= nil }, { true, true, true })
-	eq({ order.sync < order.restore, order.restore < order.e2e }, { true, true })
+	expect_sync_restore_e2e(read_lines(env.GUEST_LOG))
+end
+
+T["shortcuts: sandbox.sh e2e holds the sandbox lock from the sync to the end of the e2e layer"] = function()
+	local env = sandbox_env()
+
+	local run = system({ "tests/sandbox/sandbox.sh", "e2e" }, H.root, env)
+
+	eq(run.code, 0)
+	local lock_log = read_lines(env.LOCK_LOG)
+	eq({ sync = lock_state_at(lock_log, is_repo_sync), e2e = lock_state_at(lock_log, is_e2e_layer) }, {
+		sync = "yes",
+		e2e = "yes",
+	})
+	eq(child.fn.isdirectory(vim.fs.joinpath(env.SANDBOX_STATE, "lock")), 0)
+end
+
+T["shortcuts: sandbox.sh e2e waits while another checkout holds the sandbox lock"] = function()
+	local env = sandbox_env()
+	local dir = vim.fs.joinpath(env.SANDBOX_STATE, "lock")
+	local holder = start_locker("holder", dir, 2)
+	wait_owner(dir, holder.pid)
+
+	child.lua("_G.e2e_run = vim.system(..., { cwd = select(2, ...), env = select(3, ...), text = true })", {
+		{ "tests/sandbox/sandbox.sh", "e2e" },
+		H.root,
+		env,
+	})
+	vim.uv.sleep(1000)
+	local synced_early = first_index(read_lines(env.GUEST_LOG), is_repo_sync) ~= nil
+	local run = child.lua_get("_G.e2e_run:wait(30000)")
+
+	eq({ synced_early = synced_early, code = run.code }, { synced_early = false, code = 0 })
+	eq(run.stderr:find("sandbox: waiting for", 1, true) ~= nil, true)
+	expect_sync_restore_e2e(read_lines(env.GUEST_LOG))
+	eq(wait_locker("holder").code, 0)
 end
 
 return T
