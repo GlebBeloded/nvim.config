@@ -75,14 +75,14 @@ Scenario: "Close buffer in split matches reference screenshot".
 
 Scenario: "Smart-splits resize keys are not remapped".
 
-- [ ] 5.1 Add `T["keymaps: Smart-splits resize keys are not remapped"]`: for `<A-H>`, `<A-J>`,
+- [x] 5.1 Add `T["keymaps: Smart-splits resize keys are not remapped"]`: for `<A-H>`, `<A-J>`,
   `<A-K>`, `<A-L>`, `callback_is(lhs, "n", 'require("smart-splits").resize_left')` (…`_down`,
   `_up`, `_right`), after `child.wait_very_lazy()` so `gleb.debugging` has loaded.
-- [ ] 5.2 Prove it fails: temporarily uncomment `require("gleb.debugging.keybindings")` in
+- [x] 5.2 Prove it fails: temporarily uncomment `require("gleb.debugging.keybindings")` in
   `lua/gleb/debugging/init.lua`, run it (fails on `<A-J>`/`<A-H>`/`<A-L>`), revert.
-- [ ] 5.3 Delete `lua/gleb/debugging/keybindings.lua` and the commented require on
+- [x] 5.3 Delete `lua/gleb/debugging/keybindings.lua` and the commented require on
   `lua/gleb/debugging/init.lua:1`.
-- [ ] 5.4 The case passes; `grep -rn "debugging.keybindings" lua` finds nothing; `make quick` green.
+- [x] 5.4 The case passes; `grep -rn "debugging.keybindings" lua` finds nothing; `make quick` green.
   Commit.
 
 ## 6. Verify

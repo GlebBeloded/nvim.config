@@ -224,6 +224,14 @@ T["keymaps: Smart-splits resize changes window size"] = function()
 	eq(child.api.nvim_win_get_width(left) ~= before, true)
 end
 
+T["keymaps: Smart-splits resize keys are not remapped"] = function()
+	child.wait_very_lazy() -- after every startup and VeryLazy mapping
+	local resize = { ["<A-H>"] = "left", ["<A-J>"] = "down", ["<A-K>"] = "up", ["<A-L>"] = "right" }
+	for lhs, direction in pairs(resize) do
+		eq({ lhs, callback_is(lhs, "n", ('require("smart-splits").resize_%s'):format(direction)) }, { lhs, true })
+	end
+end
+
 -- Jump list and buffers ------------------------------------------------------
 
 T["keymaps: gb jumps back"] = function()
