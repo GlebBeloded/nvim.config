@@ -16,7 +16,7 @@ Pyramid, bottom to top. Times are wall times of one layer on its own (in `make c
 | Layer | Command | What it checks | Time |
 |---|---|---|---|
 | Static | `make lint` | `stylua --check` and `selene` on `lua/ init.lua tests/` | <1 s |
-| Static | `make types` | `lua-language-server --check` with `.luarc.jsonc` (the editor settings, LuaJIT, `vim` global, and its full `$VIMRUNTIME` static library), gate at Warning | ~6 s, 0 s cached |
+| Static | `make types` | `lua-language-server --check` with `tests/luarc.types.jsonc` (LuaJIT, `vim` global, and `$VIMRUNTIME` as a library), gate at Warning | ~6 s, 0 s cached |
 | Static | `make trace` | scenario ↔ test matrix, fails on orphan or duplicate tests | <1 s |
 | Static | `make specs` | main specs pass `openspec validate --strict` | ~1 s |
 | Static | `make loop-test` | Archon dry-run fixtures (`.archon/workflows/<workflow>/fixtures/*.stubs.yaml`): routing, loop exits, `when:` conditions and output plumbing of the loop workflows, agents and git/VM scripts stubbed, no AI | ~13 s |

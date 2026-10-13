@@ -162,7 +162,7 @@ end
 
 local T = H.child_set(child, start)
 
-T["lsp: lua_ls ready within 1 s in this config"] = function()
+T["lsp: lua_ls ready within 2.5 s in this config"] = function()
 	expect_ready(H.root, "lua/gleb/lsp/config/init.lua", "lua_ls", 2500)
 end
 
