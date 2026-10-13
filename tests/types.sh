@@ -11,12 +11,14 @@ mkdir -p "$LOG_DIR"
 trap 'rm -rf "$LOG_DIR"' EXIT
 
 # Skip when nothing LuaLS reads changed since the last green run: the Lua
-# files, the config, the LuaLS version and the libraries ($VIMRUNTIME, mini.nvim).
+# files, the config, the LuaLS version and the libraries ($VIMRUNTIME and .tests/deps).
 STAMP=.tests/types.ok
 key=$({
 	lua-language-server --version
 	echo "$VIMRUNTIME"
-	git -C .tests/deps/mini.nvim rev-parse HEAD 2>/dev/null || true
+	for lib in mini.nvim lazy.nvim vscode-diff.nvim; do
+		git -C ".tests/deps/$lib" rev-parse HEAD 2>/dev/null || true
+	done
 	git ls-files -z --cached --others --exclude-standard -- '*.lua' .luarc.jsonc | xargs -0 shasum
 } | shasum | cut -d' ' -f1)
 if [ "$(cat "$STAMP" 2>/dev/null)" = "$key" ]; then

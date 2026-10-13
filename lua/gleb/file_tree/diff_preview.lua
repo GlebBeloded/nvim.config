@@ -4,7 +4,13 @@
 
 local M = {}
 
--- State tracking
+---@class DiffPreviewState
+---@field original_tab integer? tab the preview started from
+---@field diff_tab integer? single diff tab (reused)
+---@field current_file string?
+---@field navigating_until integer timestamp when navigation mode expires
+
+---@type DiffPreviewState
 M.state = {
 	original_tab = nil,
 	diff_tab = nil, -- single diff tab (reused)
@@ -79,7 +85,7 @@ local function do_open_diff(path)
 						vim.api.nvim_set_current_tabpage(M.state.original_tab)
 					end
 					local tabnr = vim.api.nvim_tabpage_get_number(M.state.diff_tab)
-					pcall(vim.cmd, tabnr .. "tabclose!")
+					pcall(vim.api.nvim_command, tabnr .. "tabclose!")
 					M.state.diff_tab = nil
 				end
 
@@ -153,7 +159,7 @@ function M.close_current_diff()
 			vim.api.nvim_set_current_tabpage(M.state.original_tab)
 		end
 		local tabnr = vim.api.nvim_tabpage_get_number(M.state.diff_tab)
-		pcall(vim.cmd, tabnr .. "tabclose!")
+		pcall(vim.api.nvim_command, tabnr .. "tabclose!")
 		M.state.diff_tab = nil
 	end
 end
@@ -171,10 +177,23 @@ function M.focus_neo_tree()
 	return false
 end
 
+-- Restore the initial state in place, so holders of M.state see it
+local function clear_state()
+	if debounce_timer then
+		vim.fn.timer_stop(debounce_timer)
+		debounce_timer = nil
+	end
+	vim.api.nvim_clear_autocmds({ group = augroup })
+	M.state.original_tab = nil
+	M.state.diff_tab = nil
+	M.state.current_file = nil
+	M.state.navigating_until = 0
+end
+
 -- Close diff and clear state
 function M.close_all_diffs()
 	M.close_current_diff()
-	M.state.current_file = nil
+	clear_state()
 end
 
 -- Alias for semantic clarity (q keymap)
@@ -183,13 +202,6 @@ M.return_to_original = M.close_all_diffs
 -- Reset all state (used in tests)
 function M.reset()
 	M.close_all_diffs()
-	vim.api.nvim_clear_autocmds({ group = augroup })
-	M.state = {
-		original_tab = nil,
-		diff_tab = nil,
-		current_file = nil,
-		navigating_until = 0,
-	}
 end
 
 return M

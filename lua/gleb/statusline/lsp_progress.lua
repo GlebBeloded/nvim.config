@@ -71,8 +71,8 @@ local function ensure_timer()
 	if timer then
 		return
 	end
-	timer = uv.new_timer()
-	timer:start(
+	local t = assert(uv.new_timer())
+	t:start(
 		0,
 		100,
 		vim.schedule_wrap(function()
@@ -84,6 +84,7 @@ local function ensure_timer()
 			end
 		end)
 	)
+	timer = t
 end
 
 local function on_progress(args)

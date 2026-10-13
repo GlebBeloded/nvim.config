@@ -6,6 +6,7 @@ local child = H.new_child()
 
 --- Git-tracked files of this checkout used as diff targets.
 local TRACKED = vim.fs.joinpath(H.root, "lua/gleb/file_tree/diff_preview.lua")
+local TRACKED_B = vim.fs.joinpath(H.root, "lua/gleb/file_tree/init.lua")
 local ASYNC_MS = 3000
 
 local function start()
@@ -20,6 +21,11 @@ local function tab_count()
 	return #child.api.nvim_list_tabpages()
 end
 
+---@return integer
+local function focus_guard_count()
+	return child.lua_get([[#vim.api.nvim_get_autocmds({ group = "DiffPreviewFocusGuard" })]])
+end
+
 ---@param path string
 local function open_diff(path)
 	child.lua("DiffPreview.open_diff(...)", { path })
@@ -28,6 +34,12 @@ end
 ---@return boolean
 local function wait_diff_tab()
 	return child.wait("DiffPreview.state.diff_tab ~= nil", ASYNC_MS)
+end
+
+--- Replace codediff's view.create with a plain tabnew, so tab-state cases run while
+--- fix-diff-preview-codediff-crash is queued; they assert diff_preview state, not codediff rendering.
+local function stub_codediff_view()
+	child.lua([[require("codediff.ui.view").create = function() vim.cmd("tabnew") end]])
 end
 
 ---@return boolean
@@ -66,6 +78,46 @@ T["file-tree: Neo-tree is opened and focused in diff tab"] = function()
 
 	eq(child.wait([[vim.bo.filetype == "neo-tree"]], ASYNC_MS), true)
 	eq(current_is_neo_tree(), true)
+end
+
+T["file-tree: Return clears tab state and focus guard"] = function()
+	stub_codediff_view()
+	open_diff(TRACKED)
+	eq(wait_diff_tab(), true)
+
+	child.lua("DiffPreview.return_to_original()")
+
+	eq(child.lua_get("DiffPreview.state.original_tab"), vim.NIL)
+	eq(child.lua_get("DiffPreview.state.diff_tab"), vim.NIL)
+	eq(child.lua_get("DiffPreview.state.navigating_until"), 0)
+	eq(focus_guard_count(), 0)
+end
+
+T["file-tree: Next preview records the new original tab"] = function()
+	stub_codediff_view()
+	open_diff(TRACKED)
+	eq(wait_diff_tab(), true)
+	child.lua("DiffPreview.return_to_original()")
+	child.cmd("tabnew")
+	local second = child.api.nvim_get_current_tabpage()
+
+	open_diff(TRACKED_B)
+	eq(wait_diff_tab(), true)
+
+	eq(child.lua_get("DiffPreview.state.original_tab"), second)
+	child.lua("DiffPreview.return_to_original()")
+	eq(child.api.nvim_get_current_tabpage(), second)
+end
+
+T["file-tree: Return cancels a pending preview"] = function()
+	stub_codediff_view()
+	local before = tab_count()
+	open_diff(TRACKED)
+	child.lua("DiffPreview.return_to_original()")
+
+	eq(child.wait("DiffPreview.state.diff_tab ~= nil", 300), false)
+	eq(tab_count(), before)
+	eq(child.lua_get("DiffPreview.state.original_tab"), vim.NIL)
 end
 
 T["file-tree: File outside a repository"] = function()
