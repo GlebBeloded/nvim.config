@@ -21,8 +21,8 @@ local logo_defined = {}
 
 -- rounded end-caps: half-circle glyphs drawn in the block color on a
 -- transparent background, so the chip reads as a rounded pill
-local CAP_LEFT = ""
-local CAP_RIGHT = ""
+local CAP_LEFT = "\u{E0B6}"
+local CAP_RIGHT = "\u{E0B4}"
 
 local function define_highlights()
 	vim.api.nvim_set_hl(0, "StatuslineLangText", { fg = TEXT_FG, bg = BLOCK_BG })
