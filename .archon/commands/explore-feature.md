@@ -4,6 +4,9 @@ argument-hint: <feature idea>
 ---
 # Explore the idea
 
+First, load each of these skills with the Skill tool, before any other step: `openspec-explore`,
+`superpowers:brainstorming`. If one does not load, stop and report the error naming it.
+
 Idea: $ARGUMENTS
 
 Use the `openspec-explore` skill, then `superpowers:brainstorming`, without asking the user

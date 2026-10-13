@@ -3,6 +3,9 @@ description: Turn a root cause into an OpenSpec change (scenario delta + tasks)
 ---
 # Specify the fix
 
+First, load each of these skills with the Skill tool, before any other step: `openspec-propose`,
+`openspec-continue-change`. If one does not load, stop and report the error naming it.
+
 Bug: $ARGUMENTS
 Root cause: $ARTIFACTS_DIR/root-cause.md
 

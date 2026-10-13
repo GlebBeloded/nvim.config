@@ -37,13 +37,13 @@ Scenario: "Skill preflight runs before every skill-declaring node".
 
 Scenario: "Every declared skill is named and loaded by its command".
 
-- [ ] 3.1 Failing test first: write "loop: Every declared skill is named and loaded by its command". Reuse the YAML-to-JSON helper from 2.1. For every node with both `skills:` and `command:` (loop nodes included), read `.archon/commands/<command>.md` with `vim.fn.readfile` and assert:
+- [x] 3.1 Failing test first: write "loop: Every declared skill is named and loaded by its command". Reuse the YAML-to-JSON helper from 2.1. For every node with both `skills:` and `command:` (loop nodes included), read `.archon/commands/<command>.md` with `vim.fn.readfile` and assert:
   - each declared skill appears as `` `<skill>` ``;
   - the text contains the fixed load-first needles, kept in one `LOAD_FIRST_NEEDLES` list (for example `Skill tool`, `before any other step`, `stop`);
   - every `` `superpowers:<x>` `` in the command is in the node's `skills:`.
 
   Collect the violations per `{ command, problem }` and assert they are empty. Watch it fail.
-- [ ] 3.2 Give every command that a skill-declaring node uses the same opening step, placed right after the header and before any other instruction: "First, load each of these skills with the Skill tool, before any other step: `…`. If one does not load, stop and report the error naming it." That covers `plan`, `implement`, `review`, `explore-bug`, `explore-feature`, `queue-spec` and `spec-plugin-update`. The test also covers `spec-bug`, `spec-feature` and `verify`, because their nodes declare openspec skills. Keep each command's existing "use X for Y" guidance; only the loading becomes mandatory. Do not change which skills a node uses, only align names (out of scope otherwise). Make the case pass. Commit.
+- [x] 3.2 Give every command that a skill-declaring node uses the same opening step, placed right after the header and before any other instruction: "First, load each of these skills with the Skill tool, before any other step: `…`. If one does not load, stop and report the error naming it." That covers `plan`, `implement`, `review`, `explore-bug`, `explore-feature`, `queue-spec` and `spec-plugin-update`. The test also covers `spec-bug`, `spec-feature` and `verify`, because their nodes declare openspec skills. Keep each command's existing "use X for Y" guidance; only the loading becomes mandatory. Do not change which skills a node uses, only align names (out of scope otherwise). Make the case pass. Commit.
 
 ## 4. Install at user scope in loop-setup
 

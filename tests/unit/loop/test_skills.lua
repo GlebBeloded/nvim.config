@@ -220,4 +220,55 @@ T["loop: Skill preflight runs before every skill-declaring node"] = function()
 	eq(violations, {})
 end
 
+---@type string[] Plain-text needles of the load-first step every skill-declaring command opens with.
+local LOAD_FIRST_NEEDLES = { "Skill tool", "before any other step", "does not load, stop" }
+
+--- `{ command, problem }` for each way the command of `node` fails to name and load its skills.
+---@param node test.WorkflowNode
+---@return { command: string, problem: string }[]
+local function command_violations(node)
+	local path = vim.fs.joinpath(H.root, ".archon/commands", node.command .. ".md")
+	-- Joined on spaces with whitespace collapsed: markdown wraps lines anywhere.
+	local text = table.concat(vim.fn.readfile(path), " "):gsub("%s+", " ")
+	local problems = {}
+	local function add(problem)
+		table.insert(problems, { command = node.command, problem = problem })
+	end
+	for _, skill in ipairs(node.skills) do
+		if not text:find("`" .. skill .. "`", 1, true) then
+			add("does not name `" .. skill .. "`")
+		end
+	end
+	for _, needle in ipairs(LOAD_FIRST_NEEDLES) do
+		if not text:find(needle, 1, true) then
+			add("lacks load-first text: " .. needle)
+		end
+	end
+	for named in text:gmatch("`(superpowers:[%w-]+)`") do
+		if not vim.list_contains(node.skills, named) then
+			add("names undeclared `" .. named .. "`")
+		end
+	end
+	return problems
+end
+
+---@param owned { node: test.WorkflowNode }
+---@return boolean
+local function has_skills_and_command(owned)
+	return owned.node.skills ~= nil and owned.node.command ~= nil
+end
+
+T["loop: Every declared skill is named and loaded by its command"] = function()
+	local violations = vim.iter(load_workflows())
+		:map(owned_nodes)
+		:flatten()
+		:filter(has_skills_and_command)
+		:map(function(owned)
+			return command_violations(owned.node)
+		end)
+		:flatten()
+		:totable()
+	eq(violations, {})
+end
+
 return T
