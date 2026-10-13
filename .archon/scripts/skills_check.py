@@ -7,7 +7,9 @@ else claude.
   plugin reported enabled without errors by `claude plugin list --json` (run in the worktree, so scope
   and path problems show) and `<installPath>/skills/<skill>/SKILL.md`.
 - codex: a project skill needs `.agents/skills/<name>/SKILL.md`; a `<plugin>:<skill>` needs the plugin
-  reported installed and enabled by `codex plugin list --json` and `<source.path>/skills/<skill>/SKILL.md`.
+  reported installed and enabled by `codex plugin list --json` and `<root>/skills/<skill>/SKILL.md`, where
+  `<root>` is its `source.path` (a local plugin), else the Codex plugin cache
+  `${CODEX_HOME:-~/.codex}/plugins/cache/<marketplaceName>/<name>/<version>` (a remote plugin).
 `--install-plugins` (run by `make loop-setup`) instead installs at user scope every plugin that
 `.claude/settings.json` enables and Claude does not load (project scope is recorded per path, and
 every Archon run has a new worktree path), and every Codex plugin the given workflows' codex nodes
@@ -16,6 +18,7 @@ Usage: skills_check.py <workflow.yaml>... | skills_check.py --install-plugins [w
 """
 
 import json
+import os
 import pathlib
 import subprocess
 import sys
@@ -78,9 +81,21 @@ def codex_plugins(*, include_disabled: bool = False) -> dict[str, dict]:
     }
 
 
-def plugin_skill_path(provider: str, plugin: dict, skill: str) -> pathlib.Path:
-    root = plugin["installPath"] if provider == "claude" else plugin["source"]["path"]
-    return pathlib.Path(root, "skills", skill, "SKILL.md")
+def codex_plugin_root(plugin: dict) -> pathlib.Path | None:
+    """`source.path` of a local plugin, else its Codex plugin cache dir; None when a field is missing."""
+    path = (plugin.get("source") or {}).get("path")
+    if path:
+        return pathlib.Path(path)
+    parts = [plugin.get(key) for key in ("marketplaceName", "name", "version")]
+    if not all(parts):
+        return None
+    codex_home = os.environ.get("CODEX_HOME") or pathlib.Path.home() / ".codex"
+    return pathlib.Path(codex_home, "plugins", "cache", *parts)
+
+
+def plugin_skill_path(provider: str, plugin: dict, skill: str) -> pathlib.Path | None:
+    root = pathlib.Path(plugin["installPath"]) if provider == "claude" else codex_plugin_root(plugin)
+    return root and root / "skills" / skill / "SKILL.md"
 
 
 def unresolved(provider: str, names: list[str]) -> list[str]:
@@ -94,7 +109,10 @@ def unresolved(provider: str, names: list[str]) -> list[str]:
             return pathlib.Path(PROJECT_SKILL_DIRS[provider], name, "SKILL.md").is_file()
         plugin_name, skill = name.split(":", 1)
         plugin = plugins.get(plugin_name)
-        return plugin is not None and plugin_skill_path(provider, plugin, skill).is_file()
+        if plugin is None:
+            return False
+        path = plugin_skill_path(provider, plugin, skill)
+        return path is not None and path.is_file()
 
     return [name for name in names if not resolves(name)]
 

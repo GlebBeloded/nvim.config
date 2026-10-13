@@ -122,7 +122,7 @@ Every workflow SHALL run `.archon/scripts/skills_check.py` before its first skil
 - **THEN** it contains `assistant: codex`, `assistant: claude` and `provider: claude`
 
 ### Requirement: Skill preflight resolves a skill for its node's provider
-On `claude`, `skills_check.py` SHALL resolve a project skill at `.claude/skills/<name>/SKILL.md`, and a `<plugin>:<skill>` at `<installPath>/skills/<skill>/SKILL.md` of a plugin `claude plugin list --json` reports enabled without `errors`. On `codex`, it SHALL use `.agents/skills/<name>/SKILL.md`, and `<source.path>/skills/<skill>/SKILL.md` of a plugin `codex plugin list --json` reports `installed` and `enabled`.
+On `claude`, `skills_check.py` SHALL resolve a project skill at `.claude/skills/<name>/SKILL.md`, and a `<plugin>:<skill>` at `<installPath>/skills/<skill>/SKILL.md` of a plugin `claude plugin list --json` reports enabled without `errors`. On `codex`, it SHALL use `.agents/skills/<name>/SKILL.md`, and `<root>/skills/<skill>/SKILL.md` of a plugin `codex plugin list --json` reports `installed` and `enabled`. `<root>` is that plugin's root (next requirement).
 
 #### Scenario: Skill preflight fails on a plugin skill Codex does not have
 - **WHEN** the check is run in a throwaway repo:
@@ -141,3 +141,18 @@ On `claude`, `skills_check.py` SHALL resolve a project skill at `.claude/skills/
   - the repo has `.agents/skills/openspec-propose/SKILL.md`;
   - a stub `claude` reports the plugin enabled with an `installPath` that contains `skills/requesting-code-review/SKILL.md`.
 - **THEN** it exits 0
+
+### Requirement: Codex plugin root falls back to the plugin cache
+On `codex`, a plugin's root SHALL be the `codex plugin list --json` entry's `source.path` when present (a local plugin), else `${CODEX_HOME:-~/.codex}/plugins/cache/<marketplaceName>/<name>/<version>` of that entry (a remote plugin, which reports no `source.path`). A missing root or skill file SHALL count as unresolved and SHALL NOT end in a traceback.
+
+#### Scenario: Skill preflight resolves a remote Codex plugin from the plugin cache
+- **WHEN** the check is run in a throwaway repo:
+  - its `.archon/config.yaml` has `assistant: codex`;
+  - its workflow declares `superpowers:writing-plans`;
+  - a stub `codex` reports `superpowers` installed and enabled with `marketplaceName: openai-curated-remote`, `version: 6.4.2` and `source: {source: remote, id: …}` (no `path`);
+  - `CODEX_HOME` is a temp dir holding `plugins/cache/openai-curated-remote/superpowers/6.4.2/skills/writing-plans/SKILL.md`.
+- **THEN** it exits 0
+
+#### Scenario: Skill preflight fails on a remote Codex plugin missing from the plugin cache
+- **WHEN** the same check is run, but the `CODEX_HOME` temp dir has no plugin cache
+- **THEN** it exits non-zero, its stderr names `superpowers:writing-plans`, and it has no `Traceback`

@@ -157,7 +157,7 @@ Scenarios: "Skill preflight resolves a remote Codex plugin from the plugin cache
 - Produces (Python): `codex_plugin_root(plugin: dict) -> pathlib.Path | None`: `source.path` when present, else `Path(os.environ.get("CODEX_HOME") or Path.home() / ".codex", "plugins", "cache", marketplaceName, name, version)`, or `None` when one of those fields is missing. `plugin_skill_path(provider, plugin, skill) -> pathlib.Path | None` returns `None` for a `None` root, and `resolves` treats that as unresolved. `install_codex_plugins` is unchanged (it never reads the root).
 - Produces (Lua): `run_check(repo, bin, extra_env?)` passes `extra_env` to `stub_env`.
 
-- [ ] **Step 1: Write the failing tests** in `tests/unit/loop/test_skills.lua`:
+- [x] **Step 1: Write the failing tests** in `tests/unit/loop/test_skills.lua`:
   - `T["loop: Skill preflight resolves a remote Codex plugin from the plugin cache"]`:
     - repo `assistant = "codex"` declares `superpowers:writing-plans`;
     - the codex stub has `{ name = "superpowers", marketplaceName = "openai-curated-remote", version = "6.4.2", installed = true, enabled = true, source = { source = "remote", id = "plugins~Plugin_x" } }`;
@@ -166,16 +166,16 @@ Scenarios: "Skill preflight resolves a remote Codex plugin from the plugin cache
   - `T["loop: Skill preflight fails on a remote Codex plugin missing from the plugin cache"]`: same, with `CODEX_HOME` an empty temp dir. Assert non-zero, stderr contains `superpowers:writing-plans`, and has no `Traceback`. In the same test, add a second run whose stub entry has no `version` (cache dir present): same assertions.
   - Keep the existing `source.path` stubs: they cover the local case.
 
-- [ ] **Step 2: Run to verify they fail**
+- [x] **Step 2: Run to verify they fail**
   Run: `make test FILE=tests/unit/loop/test_skills.lua CASE="remote Codex plugin"`
   Expected: both FAIL (a `KeyError: 'path'` traceback).
 
-- [ ] **Step 3: Implement `codex_plugin_root`** and update the docstring's codex line.
+- [x] **Step 3: Implement `codex_plugin_root`** and update the docstring's codex line.
 
-- [ ] **Step 4: Verify**
+- [x] **Step 4: Verify**
   Run: `make test FILE=tests/unit/loop/test_skills.lua`, then `python3 .archon/scripts/skills_check.py` on a codex workflow declaring `superpowers:systematic-debugging` against the real `codex`. It exits 0.
 
-- [ ] **Step 5: Commit**: `git commit -m "fix(loop): preflight resolves remote Codex plugins from the plugin cache"`
+- [x] **Step 5: Commit**: `git commit -m "fix(loop): preflight resolves remote Codex plugins from the plugin cache"`
 
 ### Task 4: Install the Codex plugin and probe a Codex run (no commit)
 

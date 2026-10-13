@@ -124,13 +124,14 @@ end
 
 ---@param repo string
 ---@param bin string
+---@param extra_env? table<string, string>
 ---@return test.SystemResult
-local function run_check(repo, bin)
+local function run_check(repo, bin, extra_env)
 	return H.system(
 		child,
 		{ "python3", ".archon/scripts/skills_check.py", ".archon/workflows/w.yaml" },
 		repo,
-		stub_env(bin)
+		stub_env(bin, extra_env)
 	)
 end
 
@@ -227,6 +228,62 @@ T["loop: Skill preflight resolves skills for each node's provider"] = function()
 	})
 	local result = run_check(repo, bin)
 	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
+end
+
+--- Codex stub entry for the remote superpowers plugin: no `source.path`, so its root is the
+--- Codex plugin cache. `version` is dropped when `opts.no_version` is set.
+---@param opts? { no_version?: boolean }
+---@return table
+local function remote_codex_plugin(opts)
+	return {
+		name = "superpowers",
+		marketplaceName = "openai-curated-remote",
+		version = not (opts and opts.no_version) and "6.4.2" or nil,
+		installed = true,
+		enabled = true,
+		source = { source = "remote", id = "plugins~Plugin_x" },
+	}
+end
+
+--- Runs the check of a codex repo declaring writing-plans with `CODEX_HOME = codex_home` and a codex
+--- stub reporting `plugin`.
+---@param codex_home string
+---@param plugin table
+---@return test.SystemResult
+local function run_remote_codex_check(codex_home, plugin)
+	local repo = make_skill_repo({ "superpowers:writing-plans" }, { assistant = "codex" })
+	local bin = H.tempdir(child)
+	write_codex_stub(bin, { plugin })
+	return run_check(repo, bin, { CODEX_HOME = codex_home })
+end
+
+---@return string codex_home holding the 6.4.2 remote superpowers cache with writing-plans
+local function make_codex_cache()
+	local codex_home = H.tempdir(child)
+	local skill = "plugins/cache/openai-curated-remote/superpowers/6.4.2/skills/writing-plans/SKILL.md"
+	write_files(codex_home, { [skill] = "x" })
+	return codex_home
+end
+
+T["loop: Skill preflight resolves a remote Codex plugin from the plugin cache"] = function()
+	local result = run_remote_codex_check(make_codex_cache(), remote_codex_plugin())
+	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
+end
+
+---@param result test.SystemResult
+local function expect_unresolved_writing_plans(result)
+	eq(result.code ~= 0, true, { fail_reason = result.stdout .. result.stderr })
+	eq(result.stderr:find("superpowers:writing-plans", 1, true) ~= nil, true, { fail_reason = result.stderr })
+	eq(result.stderr:find("Traceback", 1, true), nil, { fail_reason = result.stderr })
+end
+
+T["loop: Skill preflight fails on a remote Codex plugin missing from the plugin cache"] = function()
+	expect_unresolved_writing_plans(run_remote_codex_check(H.tempdir(child), remote_codex_plugin()))
+
+	-- The entry names no version: no root, even with the cache present.
+	expect_unresolved_writing_plans(
+		run_remote_codex_check(make_codex_cache(), remote_codex_plugin({ no_version = true }))
+	)
 end
 
 local YAML_TO_JSON = "import json,sys,yaml; print(json.dumps(yaml.safe_load(open(sys.argv[1]))))"
