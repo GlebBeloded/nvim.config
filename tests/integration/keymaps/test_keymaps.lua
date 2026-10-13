@@ -65,6 +65,60 @@ T["keymaps: Core mappings are noremap and silent"] = function()
 	eq({ map.noremap, map.silent }, { 1, 1 })
 end
 
+--- Every `{ mode, lhs }` defined in lua/gleb/keymaps.lua.
+local core_maps = {
+	{ "n", "<C-h>" },
+	{ "n", "<A-j>" },
+	{ "n", "<A-k>" },
+	{ "n", "<C-l>" },
+	{ "n", "gb" },
+	{ "n", "gB" },
+	{ "n", "<C-Up>" },
+	{ "n", "<C-Down>" },
+	{ "n", "<C-Left>" },
+	{ "n", "<C-Right>" },
+	{ "n", "<A-H>" },
+	{ "n", "<A-J>" },
+	{ "n", "<A-K>" },
+	{ "n", "<A-L>" },
+	{ "n", "<C-q>" },
+	{ "n", "<A-e>" },
+	{ "n", "<A-g>" },
+	{ "n", "<A-G>" },
+	{ "n", "<A-F>" },
+	{ "n", "<C-CR>" },
+	{ "n", "gD" },
+	{ "n", "gd" },
+	{ "n", "K" },
+	{ "n", "gi" },
+	{ "n", "gr" },
+	{ "n", "<A-r>" },
+	{ "n", "<A-w>" },
+	{ "n", "[d" },
+	{ "n", "ge" },
+	{ "i", "jk" },
+	{ "x", "<" },
+	{ "x", ">" },
+	{ "x", "p" },
+	{ "x", "J" },
+	{ "x", "K" },
+	{ "x", "<A-j>" },
+	{ "x", "<A-k>" },
+	{ "x", "<C-CR>" },
+}
+
+T["keymaps: Every core mapping has an area-action desc"] = function()
+	local offenders = child.lua_get(
+		[[vim.iter(...):filter(function(m)
+            local desc = vim.fn.maparg(m[2], m[1], false, true).desc
+            return desc == nil or not desc:match("^%u[%w ]*: %S.*$")
+        end):totable()]],
+		{ core_maps }
+	)
+
+	eq(offenders, {})
+end
+
 T["keymaps: Leader values after startup"] = function()
 	eq({ child.g.mapleader, child.g.maplocalleader }, { "<D->", "\\" })
 end
