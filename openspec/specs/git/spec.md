@@ -103,7 +103,7 @@ With staged changes, the popup SHALL spawn `ollama run tavernari/git-commit-mess
 - **THEN** the prompt sent to the job contains only the first 200 diff lines followed by `... (truncated)`
 
 ### Requirement: AI commit message result handling
-When the job exits 0 with non-empty output, the config SHALL strip surrounding Markdown code fences and whitespace, replace the popup buffer with the result lines, set the title to ` Commit Message ` and resize the popup to width min(72, 80% of `columns`) and height equal to the wrapped line count capped at 10. When the job exits non-zero it SHALL set the title to ` Commit Message ` and the buffer to `# Error: Ollama exited with code <code>`.
+When the job exits 0 with non-empty output, the config SHALL strip surrounding Markdown code fences and whitespace, put the result lines in the popup buffer and resize the popup to width min(72, 80% of `columns`) and the wrapped line count capped at 10. On exit 0 with empty output the buffer SHALL be `# Error: Ollama returned an empty message`; on a non-zero exit it SHALL be `# Error: Ollama exited with code <code>`. In all cases the title SHALL become ` Commit Message `.
 
 #### Scenario: Generated message fills popup
 - **WHEN** the spawned job prints "```\nfeat(git): add x\n```" and exits 0
@@ -117,8 +117,12 @@ When the job exits 0 with non-empty output, the config SHALL strip surrounding M
 - **WHEN** the spawned job exits with code 1
 - **THEN** the popup buffer is `{"# Error: Ollama exited with code 1"}` and its title is ` Commit Message `
 
+#### Scenario: Empty Ollama output is shown
+- **WHEN** the spawned job prints only whitespace or an empty code fence and exits 0
+- **THEN** the popup buffer is `{"# Error: Ollama returned an empty message"}` and its title is ` Commit Message `
+
 ### Requirement: AI commit popup actions
-In the popup, normal-mode `<CR>` SHALL, if the buffer text (each line right-trimmed, whole text trimmed) is non-empty, close the popup and call `on_commit(text)`; normal-mode `q` and leaving the popup buffer (`BufLeave`) SHALL close the popup and stop a running AI job without calling `on_commit`.
+In the popup, normal-mode `<CR>` SHALL drop every line starting with `#`, right-trim the remaining lines and trim the whole text; if that text is non-empty it SHALL close the popup and call `on_commit(text)`, otherwise the popup stays open and `on_commit` is not called. Normal-mode `q` and leaving the popup buffer (`BufLeave`) SHALL close the popup and stop a running AI job without calling `on_commit`.
 
 #### Scenario: Enter confirms message
 - **WHEN** the popup buffer contains `feat: x  ` and `<CR>` is pressed in normal mode
@@ -127,6 +131,14 @@ In the popup, normal-mode `<CR>` SHALL, if the buffer text (each line right-trim
 #### Scenario: Enter on empty buffer does nothing
 - **WHEN** the popup buffer is empty and `<CR>` is pressed in normal mode
 - **THEN** the popup stays open and `on_commit` is not called
+
+#### Scenario: Enter on placeholder does nothing
+- **WHEN** the popup buffer is `{"# No staged changes"}` or `{"# Error: Ollama exited with code 1"}` and `<CR>` is pressed in normal mode
+- **THEN** the popup stays open and `on_commit` is not called
+
+#### Scenario: Enter drops comment lines
+- **WHEN** the popup buffer is `{"feat: x", "# note"}` and `<CR>` is pressed in normal mode
+- **THEN** the popup window is closed and `on_commit` is called once with `feat: x`
 
 #### Scenario: q discards popup
 - **WHEN** `q` is pressed in normal mode in the popup while the AI job is running

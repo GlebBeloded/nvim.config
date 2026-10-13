@@ -97,14 +97,32 @@ local function git_toggle_stage(state)
 	require("neo-tree.sources.manager").refresh("git_status")
 end
 
+--- Report a finished `git commit`; refresh the tree only on success.
+---@param msg string
+---@param result vim.SystemCompleted
+local function on_commit_exit(msg, result)
+	vim.schedule(function()
+		if result.code == 0 then
+			require("neo-tree.sources.manager").refresh("git_status")
+			vim.notify("Committed: " .. vim.split(msg, "\n")[1], vim.log.levels.INFO)
+			return
+		end
+		local stderr, stdout = vim.trim(result.stderr or ""), vim.trim(result.stdout or "")
+		local reason = stderr ~= "" and stderr or stdout ~= "" and stdout or ("exit " .. result.code)
+		vim.notify("Commit failed: " .. reason, vim.log.levels.ERROR)
+	end)
+end
+
+---@param msg string
+local function run_commit(msg)
+	vim.system({ "git", "commit", "-m", msg }, { text = true }, function(result)
+		on_commit_exit(msg, result)
+	end)
+end
+
 -- Git status: commit with floating input (Alt+C for AI)
 local function git_commit()
-	require("gleb.git.ai_commit").show_commit_input(function(msg)
-		vim.fn.system("git commit -m " .. vim.fn.shellescape(msg))
-		require("neo-tree.sources.manager").refresh("git_status")
-		local subject = vim.split(msg, "\n")[1]
-		vim.notify("Committed: " .. subject, vim.log.levels.INFO)
-	end)
+	require("gleb.git.ai_commit").show_commit_input(run_commit)
 end
 
 -- Git status: push to remote

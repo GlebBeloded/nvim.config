@@ -37,18 +37,12 @@ end
 
 -- Call Ollama CLI directly (using stdin to avoid shell escaping issues)
 local function call_ai(prompt, callback, on_error)
-	local stdout_chunks = {}
+	local stdout = ""
 	local job_id = vim.fn.jobstart({ "ollama", "run", "tavernari/git-commit-message:sp_commit_mini" }, {
 		stdin = "pipe",
-		stdout_buffered = false,
+		stdout_buffered = true,
 		on_stdout = function(_, data)
-			if data then
-				for _, chunk in ipairs(data) do
-					if chunk ~= "" then
-						table.insert(stdout_chunks, chunk)
-					end
-				end
-			end
+			stdout = table.concat(data, "\n")
 		end,
 		on_stderr = function(_, _)
 			-- Suppress stderr (spinner/progress noise). Real errors come from exit code.
@@ -58,12 +52,14 @@ local function call_ai(prompt, callback, on_error)
 				if code ~= 0 then
 					on_error("Ollama exited with code " .. code)
 				else
-					local response = table.concat(stdout_chunks, "")
+					local response = stdout
 					-- Strip markdown code blocks if present
 					response = response:gsub("^%s*```[%w]*%s*", ""):gsub("%s*```%s*$", "")
 					response = response:gsub("^%s+", ""):gsub("%s+$", "")
 					if response ~= "" then
 						callback(response)
+					else
+						on_error("Ollama returned an empty message")
 					end
 				end
 			end)
@@ -77,6 +73,21 @@ local function call_ai(prompt, callback, on_error)
 	end
 
 	return job_id
+end
+
+--- Buffer text without `#` comment lines, each line right-trimmed, the whole text trimmed.
+---@param bufnr integer
+---@return string
+local function get_text(bufnr)
+	local lines = vim.iter(vim.api.nvim_buf_get_lines(bufnr, 0, -1, false))
+		:filter(function(line)
+			return not vim.startswith(line, "#")
+		end)
+		:map(function(line)
+			return (line:gsub("%s+$", ""))
+		end)
+		:totable()
+	return vim.trim(table.concat(lines, "\n"))
 end
 
 -- Show commit popup with auto-generated AI message
@@ -116,13 +127,9 @@ function M.show_commit_input(on_commit)
 	-- Track active job
 	local active_job = nil
 
-	-- Helper: get buffer text, strip trailing whitespace from each line
-	local function get_text()
-		local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-		for i, line in ipairs(lines) do
-			lines[i] = line:gsub("%s+$", "")
-		end
-		return table.concat(lines, "\n"):gsub("^%s+", ""):gsub("%s+$", "")
+	-- Helper: popup still mounted (a wipe of bufnr can be aborted by autocmds, so check the window)
+	local function is_open()
+		return popup.winid ~= nil and vim.api.nvim_win_is_valid(popup.winid)
 	end
 
 	-- Helper: close popup
@@ -165,7 +172,7 @@ function M.show_commit_input(on_commit)
 
 	-- Enter in normal mode = commit
 	popup:map("n", "<CR>", function()
-		local text = get_text()
+		local text = get_text(bufnr)
 		if text ~= "" then
 			close()
 			on_commit(text)
@@ -187,7 +194,7 @@ function M.show_commit_input(on_commit)
 
 	active_job = call_ai(prompt, function(result)
 		active_job = nil
-		if result and result ~= "" and vim.api.nvim_buf_is_valid(bufnr) then
+		if result and result ~= "" and is_open() then
 			local lines = vim.split(result, "\n")
 			vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
 			set_title(" Commit Message ")
@@ -195,6 +202,9 @@ function M.show_commit_input(on_commit)
 		end
 	end, function(err)
 		active_job = nil
+		if not is_open() then
+			return
+		end
 		set_title(" Commit Message ")
 		vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { "# Error: " .. err })
 		resize_to_content()
