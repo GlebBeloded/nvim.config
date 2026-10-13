@@ -135,15 +135,31 @@ function Stack:zellij_command()
 	return table.concat(env, " ") .. " " .. table.concat(vim.tbl_map(vim.fn.shellescape, zellij), " ")
 end
 
+-- hrtime (ms) at which the innermost running M.wait_for gives up; zellij CLI retries end there too
+local wait_deadline ---@type number?
+
+---@return number
+local function now_ms()
+	return vim.uv.hrtime() / 1e6
+end
+
+--- Poll `predicate` until it returns true; a nested zellij CLI retry ends at the same deadline.
 ---@param predicate fun(): boolean
 ---@param what string
 ---@param timeout? integer
 function M.wait_for(predicate, what, timeout)
-	local ok = vim.wait(timeout or 10000, function()
+	timeout = timeout or 10000
+	local outer = wait_deadline
+	wait_deadline = math.min(outer or math.huge, now_ms() + timeout)
+	local last ---@type string?
+	local function check()
 		local done, value = pcall(predicate)
+		last = not done and tostring(value) or last
 		return done and value
-	end, 50)
-	assert(ok, "stack: timed out waiting for " .. what)
+	end
+	local ok = vim.wait(timeout, check, 50)
+	wait_deadline = outer
+	assert(ok, "stack: timed out waiting for " .. what .. (last and " (last error: " .. last .. ")" or ""))
 end
 
 --- One `zellij action ...` call against this session.
@@ -153,7 +169,7 @@ function Stack:action(args)
 	return run(vim.list_extend({ "zellij", "--session", self.session, "action" }, args), self.env)
 end
 
---- Call `attempt` every 50 ms until it reports done, within the CLI deadline.
+--- Call `attempt` every 50 ms until it reports done, within the CLI deadline (and any outer M.wait_for's).
 ---@param attempt fun(): boolean, string done, then the value or the last error text
 ---@return string value
 function Stack:retry_cli(attempt)
@@ -163,7 +179,11 @@ function Stack:retry_cli(attempt)
 		done, value = attempt()
 		return done
 	end
-	assert(vim.wait(self.cli_timeout or CLI_TIMEOUT_MS, try, 50), "stack: zellij CLI kept failing: " .. value)
+	local timeout = self.cli_timeout or CLI_TIMEOUT_MS
+	if wait_deadline then
+		timeout = math.max(1, math.min(timeout, wait_deadline - now_ms()))
+	end
+	assert(vim.wait(timeout, try, 50), "stack: zellij CLI kept failing: " .. value)
 	return value
 end
 

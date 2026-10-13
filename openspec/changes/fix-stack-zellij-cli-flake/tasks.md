@@ -46,6 +46,7 @@ Scenarios: "shortcuts: The stack harness retries a transient zellij CLI failure"
 
   Run `make test FILE=tests/unit/shortcuts/test_stack_cli.lua` → PASS; `make stack` → PASS; `make trace` → both titles `tested`, no orphans; `make lint` and `make types` → green.
 - [x] 1.4 **Commit** `fix(stack): retry transient zellij CLI failures`.
+- [x] 1.5 **Outer deadline.** Scenario "shortcuts: The stack harness keeps a zellij CLI retry within the outer wait": a `focused_pane()` retry inside `M.wait_for` ends at the outer deadline (so `connect()` still fails after about 10 s), and the `wait_for` timeout error carries the last predicate error. Commit `fix(stack): end zellij CLI retries at the outer wait deadline`.
 
 ## 2. Gate
 

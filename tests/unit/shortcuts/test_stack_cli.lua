@@ -22,8 +22,9 @@ fi
 exit 0
 ]]
 
---- Runs in the child: focused_pane() of a Stack whose `zellij` is the stub.
-local FOCUSED_PANE = [[local stub, mode, timeout = ...
+--- Runs in the child: focused_pane() of a Stack whose `zellij` is the stub,
+--- polled for terminal_0 by `M.wait_for` when `outer` (ms) is given.
+local FOCUSED_PANE = [[local stub, mode, timeout, outer = ...
 local dir = vim.fn.tempname()
 vim.fn.mkdir(dir, "p")
 local zellij = vim.fs.joinpath(dir, "zellij")
@@ -34,10 +35,18 @@ local M = require("tests.shortcuts.stack")
 local stack = setmetatable({
 	session = "s",
 	env = { PATH = dir .. ":" .. vim.env.PATH, ZELLIJ_STUB_MODE = mode, ZELLIJ_STUB_COUNT = count },
-	cli_timeout = timeout,
+	cli_timeout = timeout ~= vim.NIL and timeout or nil,
 }, M.Stack)
 local t0 = vim.uv.hrtime()
-local ok, value = pcall(stack.focused_pane, stack)
+local function on_neovim_pane()
+	return stack:focused_pane() == "terminal_0"
+end
+local ok, value
+if outer then
+	ok, value = pcall(M.wait_for, on_neovim_pane, "the Neovim pane", outer)
+else
+	ok, value = pcall(stack.focused_pane, stack)
+end
 return {
 	ok = ok,
 	value = tostring(value),
@@ -53,9 +62,10 @@ return {
 
 ---@param mode "flaky"|"gone"
 ---@param timeout? integer
+---@param outer? integer
 ---@return StackCliResult
-local function focused_pane(mode, timeout)
-	return child.lua(FOCUSED_PANE, { ZELLIJ_STUB, mode, timeout })
+local function focused_pane(mode, timeout, outer)
+	return child.lua(FOCUSED_PANE, { ZELLIJ_STUB, mode, timeout, outer })
 end
 
 T["shortcuts: The stack harness retries a transient zellij CLI failure"] = function()
@@ -66,6 +76,14 @@ end
 
 T["shortcuts: The stack harness fails when the zellij session stays gone"] = function()
 	local result = focused_pane("gone", 300)
+
+	eq(result.ok, false)
+	eq(result.value:find("There is no active session!", 1, true) ~= nil, true)
+	eq(result.ms < 2000, true)
+end
+
+T["shortcuts: The stack harness keeps a zellij CLI retry within the outer wait"] = function()
+	local result = focused_pane("gone", nil, 300)
 
 	eq(result.ok, false)
 	eq(result.value:find("There is no active session!", 1, true) ~= nil, true)

@@ -79,6 +79,10 @@ The stack harness SHALL read zellij state through `zellij action` calls that ret
 - **WHEN** `focused_pane()` is called with `zellij` stubbed on `PATH` so that every `action list-clients` exits 1 printing `There is no active session!`
 - **THEN** it raises an error containing `There is no active session!` within the harness deadline
 
+#### Scenario: The stack harness keeps a zellij CLI retry within the outer wait
+- **WHEN** `M.wait_for` polls `focused_pane()` with a 300 ms timeout, the Stack has the default CLI deadline, and every stubbed `action list-clients` exits 1 printing `There is no active session!`
+- **THEN** it raises an error containing `There is no active session!` in under 2 s
+
 ### Requirement: Real key presses in the sandbox VM deliver shortcuts
 The e2e layer SHALL deliver physical key presses to Neovim as the shortcut table says, in a dedicated Alacritty instance (repo config) running real zellij (user keybinds, the stack layer's layout), with key events posted to that process inside the sandbox macOS VM, never on the host. Exceptions: the app menu takes Cmd+Q and Cmd+H, Cmd+Shift+-/= arrive in Alacritty's kitty encoding, and the key helper never presses Cmd+Shift+Q (system Log Out).
 

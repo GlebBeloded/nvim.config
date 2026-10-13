@@ -10,3 +10,7 @@ The stack harness SHALL read zellij state through `zellij action` calls that ret
 #### Scenario: The stack harness fails when the zellij session stays gone
 - **WHEN** `focused_pane()` is called with `zellij` stubbed on `PATH` so that every `action list-clients` exits 1 printing `There is no active session!`
 - **THEN** it raises an error containing `There is no active session!` within the harness deadline
+
+#### Scenario: The stack harness keeps a zellij CLI retry within the outer wait
+- **WHEN** `M.wait_for` polls `focused_pane()` with a 300 ms timeout, the Stack has the default CLI deadline, and every stubbed `action list-clients` exits 1 printing `There is no active session!`
+- **THEN** it raises an error containing `There is no active session!` in under 2 s
