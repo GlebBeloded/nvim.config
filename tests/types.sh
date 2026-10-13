@@ -35,7 +35,7 @@ if grep -q "Setting file loading error" "$OUT"; then
 	echo "types: .luarc.jsonc failed to load"
 	exit 1
 fi
-# drop the progress bar, keep diagnostics and the summary
-tr '\r' '\n' <"$OUT" | grep -v '^ *>*=* *[0-9]*/[0-9]*$' | grep -v '^Initializing' | sed '/^[[:space:]]*$/d'
+# drop the progress bar (`>>>>=== 12/369 [Found 5 problems in 1 files]`), keep diagnostics and the summary
+tr '\r' '\n' <"$OUT" | grep -Ev '^ *[>=]* *[0-9]+/[0-9]+( *\[[^]]*\])? *$' | grep -v '^Initializing' | sed '/^[[:space:]]*$/d'
 [ "$status" -eq 0 ] && mkdir -p .tests && echo "$key" >"$STAMP"
 exit "$status"

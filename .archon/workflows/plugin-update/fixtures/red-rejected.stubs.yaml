@@ -18,7 +18,7 @@ spec-gate: "valid"
 deliver__skills-check: "skills ok"
 deliver__plan-check: { needed: false, has_change: true }
 deliver__plan-gate: "valid"
-pack: "context.md written"
+pack: { has_task: true, context: context.md }
 implement: "task 1 done"
 gate: { green: true, spec_ok: true, tasks_done: true, untested: 0, attempt: 1, failures: "" }
 review: { approve: true, findings: "", weakened_scenario: false, weakened_test: false }

@@ -1,7 +1,8 @@
 """Context pack for one change: everything an agent step needs, gathered once into
 $ARTIFACTS_DIR/context.md so steps read one file instead of exploring the repo (docs/workflow.md,
 Steps). Holds the change artifacts, the Loop lessons, the files tasks.md names (capped) and the
-failures of the last gate. Prints the pack path.
+failures of the last gate. Prints {"has_task", "context"}: has_task is false when no task is left
+(or tasks.md is blocked), so the task loop skips its implement session.
 """
 
 import json
@@ -74,6 +75,10 @@ def last_failures() -> str:
     return "\n".join(line for line in lines if re.match(r"^(FAIL|check:)", line) or "FAIL in" in line)[:4000]
 
 
+def has_task(tasks: pathlib.Path, task: str) -> bool:
+    return bool(task) and "## Blocked" not in tasks.read_text()
+
+
 def main() -> None:
     change_dir = pathlib.Path("openspec/changes") / CHANGE
     task = next_task(change_dir / "tasks.md")
@@ -90,7 +95,7 @@ def main() -> None:
     (ARTIFACTS / "change").write_text(CHANGE)  # until_bash gets no INPUTS_* env; tasks.py reads this
     out = ARTIFACTS / "context.md"
     out.write_text("\n".join(parts))
-    print(out)
+    print(json.dumps({"has_task": has_task(change_dir / "tasks.md", task), "context": str(out)}))
 
 
 if __name__ == "__main__":

@@ -1,21 +1,18 @@
 """End of one build pass: passed when every gate holds (check, spec, tasks, hard rules, /opsx:verify
 without CRITICAL, AI review approves). `feedback` carries only the failures and findings, so the next
 pass's fix step reads nothing else. The loop stops when passed or after MAX_ATTEMPTS, so an exhausted
-loop reaches the judge instead of failing the run.
+loop reaches the judge instead of failing the run. Lessons are persisted by the judge
+(escalation.py) after the loop, never here: docs/workflow.md stays clean between passes.
 """
 
 import json
 import os
 import subprocess
-from pathlib import Path
 
 from integrity import hard_rule_violations
-from lessons import persist_lessons
 
 MAX_ATTEMPTS = 3
 FEEDBACK_CHARS = 6000
-
-persist_lessons(Path(os.environ.get("ARTIFACTS_DIR", ".")))
 
 
 def value(name: str, default):

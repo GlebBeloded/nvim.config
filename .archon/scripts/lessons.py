@@ -1,4 +1,5 @@
-"""Persist verified loop lessons in the bounded section of docs/workflow.md."""
+"""Persist verified loop lessons in the bounded section of docs/workflow.md. Persisted candidates are
+cleared, so a later call (a reconcile pass, a second judge) never merges them again."""
 
 import re
 from pathlib import Path
@@ -59,3 +60,4 @@ def persist_lessons(artifacts: Path, workflow: Path = WORKFLOW) -> None:
     lessons = lessons[-LIMIT:]
     body = newline + newline.join("- " + lesson for lesson in lessons) + newline * 2
     workflow.write_text(text[:body_start] + body + text[body_end:])
+    candidates_path.write_text("")
