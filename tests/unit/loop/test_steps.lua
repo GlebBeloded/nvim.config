@@ -70,7 +70,7 @@ T["loop: Task loop reads the change the pack saved"] = function()
 		["openspec/changes/c/tasks.md"] = "## 1. Task\n- [ ] 1.1 todo",
 	})
 	eq(run("context_pack.py", repo, { INPUTS_CHANGE = "c", ARTIFACTS_DIR = artifacts }).code, 0)
-	eq(run("tasks.py", repo, { ARTIFACTS_DIR = artifacts }).code, 1)
+	eq(run("tasks.py", repo, { ARTIFACTS_DIR = artifacts, INPUTS_CHANGE = "" }).code, 1)
 end
 
 T["loop: Context pack names the next task"] = function()
@@ -128,6 +128,20 @@ end
 T["loop: A rejected judge never ships"] = function()
 	local result = run("decide.py", H.tempdir(child), { INPUTS_VERDICT = "reject", INPUTS_DECISION = "auto" })
 	eq(vim.json.decode(result.stdout).go, false)
+end
+
+T["loop: Trace counts scenarios an active change adds"] = function()
+	local repo = H.tempdir(child)
+	write(repo, {
+		["openspec/specs/x/spec.md"] = "#### Scenario: base",
+		["openspec/changes/c/specs/x/spec.md"] = "## ADDED Requirements\n#### Scenario: added\n## REMOVED Requirements\n#### Scenario: gone",
+		["openspec/changes/archive/old/specs/x/spec.md"] = "#### Scenario: archived",
+		["tests/unit/x/test_x.lua"] = 'local T = MiniTest.new_set()\nT["x: base"] = function() end\nT["x: added"] = function() end\nreturn T',
+	})
+	local nvim = { vim.v.progpath, "--clean", "--headless", "-u", vim.fs.joinpath(H.root, "tests/minimal_init.lua") }
+	local result = H.system(child, vim.list_extend(nvim, { "-l", vim.fs.joinpath(H.root, "tests/trace.lua") }), repo)
+	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
+	eq((result.stdout .. result.stderr):find("2 scenarios, 2 tested, 0 missing, 0 orphan", 1, true) ~= nil, true)
 end
 
 return T

@@ -1,6 +1,8 @@
 -- `make trace`: traceability matrix between OpenSpec scenarios and mini.test
 -- cases. A case is linked to a scenario when its name is exactly
--- "<capability>: <scenario title>" (capability = openspec/specs/<capability>).
+-- "<capability>: <scenario title>" (capability = openspec/specs/<capability>). Scenarios that an
+-- active change adds or modifies (openspec/changes/<id>/specs/, not archive/) count too, so a
+-- change's new tests trace while it is being built.
 --   tested  - scenario has at least one case
 --   missing - scenario has no case (reported, not fatal yet)
 --   orphan  - case name matches no scenario (fatal)
@@ -9,6 +11,7 @@
 local MiniTest = require("mini.test")
 
 local SPECS_DIR = "openspec/specs"
+local CHANGE_SPECS = "openspec/changes/*/specs/*/spec.md" -- archive/ is one level deeper
 local TEST_LAYERS = { "unit", "integration", "screen", "chain", "stack", "e2e" }
 local quiet = vim.list_contains(_G.arg or {}, "--quiet")
 
@@ -17,17 +20,36 @@ local quiet = vim.list_contains(_G.arg or {}, "--quiet")
 ---@field title string
 ---@field cases string[] files of linked cases
 
+--- Scenario titles in a spec file, skipping a delta's `## REMOVED Requirements` section.
 ---@param path string
 ---@return string[]
 local function scenario_titles(path)
-	local titles = {}
+	local titles, removed = {}, false
 	for _, line in ipairs(vim.fn.readfile(path)) do
+		local section = line:match("^## (.-)%s*$")
+		if section then
+			removed = vim.startswith(section, "REMOVED")
+		end
 		local title = line:match("^#### Scenario:%s*(.-)%s*$")
-		if title then
+		if title and not removed then
 			table.insert(titles, title)
 		end
 	end
 	return titles
+end
+
+---@param specs table<string, table<string, trace.Scenario>>
+---@param capabilities string[]
+---@param path string
+local function add_spec(specs, capabilities, path)
+	local capability = vim.fs.basename(vim.fs.dirname(path))
+	if not specs[capability] then
+		specs[capability] = {}
+		table.insert(capabilities, capability)
+	end
+	for _, title in ipairs(scenario_titles(path)) do
+		specs[capability][title] = specs[capability][title] or { capability = capability, title = title, cases = {} }
+	end
 end
 
 ---@return table<string, table<string, trace.Scenario>> by capability, then title
@@ -35,12 +57,10 @@ end
 local function load_specs()
 	local specs, capabilities = {}, {}
 	for _, path in ipairs(vim.fn.glob(SPECS_DIR .. "/*/spec.md", false, true)) do
-		local capability = vim.fs.basename(vim.fs.dirname(path))
-		specs[capability] = {}
-		table.insert(capabilities, capability)
-		for _, title in ipairs(scenario_titles(path)) do
-			specs[capability][title] = { capability = capability, title = title, cases = {} }
-		end
+		add_spec(specs, capabilities, path)
+	end
+	for _, path in ipairs(vim.fn.glob(CHANGE_SPECS, false, true)) do
+		add_spec(specs, capabilities, path)
 	end
 	table.sort(capabilities)
 	return specs, capabilities
