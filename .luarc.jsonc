@@ -5,8 +5,7 @@
   "runtime.pathStrict": true,
   "diagnostics.globals": ["vim"],
   "diagnostics.severity": {
-    "undefined-doc-name": "Information",
-    "need-check-nil": "Information"
+    "undefined-doc-name": "Information"
   },
   "workspace.checkThirdParty": false,
   "workspace.library": ["$VIMRUNTIME", "${3rd}/luv/library", ".tests/deps/mini.nvim"],

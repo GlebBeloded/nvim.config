@@ -68,7 +68,7 @@ Scenarios: none (Static layer: `make types`)
 
 - [x] 5.1 **Failing test.** Delete `"duplicate-set-field"`; `make types` → FAIL at `select/init.lua:13`.
 - [x] 5.2 **Implement** `---@diagnostic disable-next-line: duplicate-set-field` above the override, with a one-line reason (intended `vim.ui.select` override). `make types` → no `duplicate-set-field`.
-- [ ] 5.3 **Commit** `fix(select): mark the vim.ui.select override as intended`.
+- [x] 5.3 **Commit** `fix(select): mark the vim.ui.select override as intended`.
 
 ## 6. need-check-nil
 
@@ -76,8 +76,8 @@ Scenarios: none (Static layer: `make types`)
 
 **Files:** `lua/gleb/statusline/lsp_progress.lua`, `.luarc.jsonc`
 
-- [ ] 6.1 **Failing test.** If `fix-lsp-progress-stuck-task` has not landed on `auto`: delete `"need-check-nil"`; `make types` → FAIL at `lsp_progress.lua:75`.
-- [ ] 6.2 **Implement** a local timer in `ensure_timer` (`local t = assert(uv.new_timer())`, start `t`, assign `timer = t`). `make types` → no `need-check-nil`; statusline unit/integration tests green.
+- [x] 6.1 **Failing test.** If `fix-lsp-progress-stuck-task` has not landed on `auto`: delete `"need-check-nil"`; `make types` → FAIL at `lsp_progress.lua:75`.
+- [x] 6.2 **Implement** a local timer in `ensure_timer` (`local t = assert(uv.new_timer())`, start `t`, assign `timer = t`). `make types` → no `need-check-nil`; statusline unit/integration tests green.
 - [ ] 6.3 **Commit** `fix(statusline): narrow lsp_progress refresh timer`.
 
 ## 7. Gate
