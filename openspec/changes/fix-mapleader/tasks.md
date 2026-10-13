@@ -18,7 +18,7 @@ Scenarios: "shortcuts: Cmd chords reach Neovim through real zellij", "shortcuts:
 
 - [x] 3.1 Failing tests: sync the `shortcuts` delta into `openspec/specs/shortcuts/spec.md` and add four `kitty` rows to its shortcut table: `Cmd+O | kitty | \e[111;9u | pass | <D-o> | none`, `Cmd+I … \e[105;9u … <D-i>`, `Cmd+D … \e[100;9u … <D-d>`, `Cmd+A … \e[97;9u … <D-a>`. Add the stack case to `tests/stack/shortcuts/` and the e2e case to `tests/e2e/shortcuts/test_e2e.lua` (recorders for `<D-x>`, `<M-x>` and the plain letters; assert exactly the four `<D-x>` hits in order; e2e also asserts Alacritty is alive). `make chain` and `make stack` run; the new cases fail only where the harness lacks support (fix that harness, not the expectation).
 - [x] 3.2 Make the harness support the rows if needed. Expected none: `tests/shortcuts/chain.lua` already encodes and decodes the Super bit (`alacritty_kitty_bytes` Command = 8, `kitty_mods` → `D-`) and `tests/e2e/keys.swift` already maps `o`, `i`, `d`, `a`; touch `stack.lua` only if a stack case fails on the harness. `make chain` and `make stack` green.
-- [ ] 3.3 `make e2e` in the sandbox VM (`make check E2E=1`): the new e2e case and "Every passed shortcut reaches its Neovim key from a real key press" pass for the four rows. If a chord does not arrive as `<D-x>`, stop and escalate (the chord choice is a user decision); never drop the row.
+- [x] 3.3 `make e2e` in the sandbox VM (`make check E2E=1`): the new e2e case and "Every passed shortcut reaches its Neovim key from a real key press" pass for the four rows. If a chord does not arrive as `<D-x>`, stop and escalate (the chord choice is a user decision); never drop the row.
 
 ## 4. Docs and gate
 
