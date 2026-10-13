@@ -141,6 +141,155 @@ local function temp_plist()
 	return vim.fs.joinpath(tempdir(), "org.alacritty.plist")
 end
 
+--- Bash that takes `sandbox_lock "$1"` from tests/sandbox/lock.sh, appends the time it got it to
+--- "$2", and holds the lock for "$3" s; just before exiting it appends its leaving time to "$2".
+local LOCK_SCRIPT = [[source "$LOCK_SH"
+sandbox_lock "$1"
+now() { perl -MTime::HiRes=time -e 'printf "%.3f\n", time'; }
+echo "got $(now)" >>"$2"
+sleep "$3"
+echo "left $(now)" >>"$2"
+]]
+
+---@class SandboxLocker
+---@field pid integer
+---@field log string the `got <time>` / `left <time>` lines
+
+--- Starts LOCK_SCRIPT on `dir` in the background, holding the lock `hold` s; `name` keys it in the child.
+---@param name string
+---@param dir string
+---@param hold number
+---@param env? table<string, string>
+---@return SandboxLocker
+local function start_locker(name, dir, hold, env)
+	local log = vim.fs.joinpath(tempdir(), "times")
+	local pid = child.lua_get(
+		[[(function(name, cmd, env)
+			_G.lockers = _G.lockers or {}
+			_G.lockers[name] = vim.system(cmd, { env = env, text = true })
+			return _G.lockers[name].pid
+		end)(...)]],
+		{
+			name,
+			{ "bash", "-c", LOCK_SCRIPT, "_", dir, log, tostring(hold) },
+			vim.tbl_extend("force", { LOCK_SH = vim.fs.joinpath(H.root, "tests/sandbox/lock.sh") }, env or {}),
+		}
+	)
+	return { pid = pid, log = log }
+end
+
+--- Waits for the locker `name` to exit.
+---@param name string
+---@return { code: integer, stdout: string, stderr: string }
+local function wait_locker(name)
+	return child.lua_get("_G.lockers[...]:wait(30000)", { name })
+end
+
+--- The `owner` pid recorded in lock dir `dir`, or nil.
+---@param dir string
+---@return integer?
+local function lock_owner(dir)
+	local lines = read_lines(vim.fs.joinpath(dir, "owner"))
+	return lines[1] and tonumber(lines[1]:match("^(%d+)"))
+end
+
+--- Waits until lock dir `dir` names `pid` as owner.
+---@param dir string
+---@param pid integer
+local function wait_owner(dir, pid)
+	local named = [[(function(owner, pid)
+		local function names_pid()
+			return vim.fn.filereadable(owner) == 1 and (vim.fn.readfile(owner)[1] or ""):match("^%d+") == pid
+		end
+		return vim.wait(5000, names_pid, 20)
+	end)(...)]]
+	eq(child.lua_get(named, { vim.fs.joinpath(dir, "owner"), tostring(pid) }), true)
+end
+
+--- The time (s) on the `kind` line of a locker log.
+---@param log string
+---@param kind "got"|"left"
+---@return number?
+local function locker_time(log, kind)
+	for _, line in ipairs(read_lines(log)) do
+		local time = line:match("^" .. kind .. " ([%d.]+)$")
+		if time then
+			return tonumber(time)
+		end
+	end
+end
+
+---@return number ms
+local function now_ms()
+	return child.lua_get("vim.uv.hrtime() / 1e6")
+end
+
+T["shortcuts: The sandbox lock is taken when free and released by its owner"] = function()
+	local dir = vim.fs.joinpath(tempdir(), "lock")
+
+	local locker = start_locker("holder", dir, 1)
+	wait_owner(dir, locker.pid)
+	local held = child.fn.isdirectory(dir)
+	local result = wait_locker("holder")
+
+	eq({ held = held, code = result.code, stderr = result.stderr }, { held = 1, code = 0, stderr = "" })
+	eq(child.fn.isdirectory(dir), 0)
+end
+
+T["shortcuts: A second sandbox lock waits for the first and says so"] = function()
+	local dir = vim.fs.joinpath(tempdir(), "lock")
+	local holder = start_locker("holder", dir, 2)
+	wait_owner(dir, holder.pid)
+
+	local waiter = start_locker("waiter", dir, 0.5)
+	wait_owner(dir, waiter.pid)
+	local owner = lock_owner(dir)
+	local holder_result, waiter_result = wait_locker("holder"), wait_locker("waiter")
+
+	eq({ holder_result.code, waiter_result.code, owner }, { 0, 0, waiter.pid })
+	eq(waiter_result.stderr:find("sandbox: waiting for", 1, true) ~= nil, true)
+	eq(waiter_result.stderr:find("pid " .. holder.pid, 1, true) ~= nil, true)
+	local left, got = locker_time(holder.log, "left"), locker_time(waiter.log, "got")
+	eq({ left ~= nil, got ~= nil }, { true, true })
+	eq(got >= left, true)
+end
+
+T["shortcuts: A sandbox lock left by a dead process is reclaimed"] = function()
+	local dir = vim.fs.joinpath(tempdir(), "lock")
+	local dead = tonumber(vim.trim(system({ "sh", "-c", "echo $$" }, H.root).stdout))
+	child.fn.mkdir(dir, "p")
+	child.fn.writefile({ dead .. " Thu Jan  1 00:00:00 1970", "/nowhere" }, vim.fs.joinpath(dir, "owner"))
+	local t0 = now_ms()
+
+	local locker = start_locker("reclaimer", dir, 3)
+	wait_owner(dir, locker.pid)
+	local elapsed = now_ms() - t0
+	local result = wait_locker("reclaimer")
+
+	eq(elapsed < 2000, true)
+	eq(result.stderr:find("sandbox: reclaiming stale lock", 1, true) ~= nil, true)
+end
+
+T["shortcuts: A sandbox lock wait gives up after SANDBOX_LOCK_TIMEOUT"] = function()
+	local dir = vim.fs.joinpath(tempdir(), "lock")
+	local holder = start_locker("holder", dir, 4)
+	wait_owner(dir, holder.pid)
+	local t0 = now_ms()
+
+	start_locker("waiter", dir, 0, { SANDBOX_LOCK_TIMEOUT = "1", SANDBOX_LOCK_POLL = "0.2" })
+	local result = wait_locker("waiter")
+	local elapsed = now_ms() - t0
+
+	MiniTest.expect.no_equality(result.code, 0)
+	eq(
+		{ at_least_timeout = elapsed >= 1000, within_bound = elapsed < 5000 },
+		{ at_least_timeout = true, within_bound = true }
+	)
+	eq(result.stderr:find("pid " .. holder.pid, 1, true) ~= nil, true)
+	eq(lock_owner(dir), holder.pid)
+	eq(wait_locker("holder").code, 0)
+end
+
 T["shortcuts: Guest restore drops Alacritty defaults the branch does not define"] = function()
 	local script = make_checkout()
 	local plist = temp_plist()

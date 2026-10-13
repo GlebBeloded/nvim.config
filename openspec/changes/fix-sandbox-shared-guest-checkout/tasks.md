@@ -9,13 +9,13 @@
 
 Scenarios: "The sandbox lock is taken when free and released by its owner", "A second sandbox lock waits for the first and says so", "A sandbox lock left by a dead process is reclaimed", "A sandbox lock wait gives up after SANDBOX_LOCK_TIMEOUT".
 
-- [ ] 1.1 Failing tests `shortcuts: The sandbox lock is taken when free and released by its owner`, `shortcuts: A second sandbox lock waits for the first and says so`, `shortcuts: A sandbox lock left by a dead process is reclaimed` and `shortcuts: A sandbox lock wait gives up after SANDBOX_LOCK_TIMEOUT` in `tests/unit/shortcuts/test_sandbox.lua`:
+- [x] 1.1 Failing tests `shortcuts: The sandbox lock is taken when free and released by its owner`, `shortcuts: A second sandbox lock waits for the first and says so`, `shortcuts: A sandbox lock left by a dead process is reclaimed` and `shortcuts: A sandbox lock wait gives up after SANDBOX_LOCK_TIMEOUT` in `tests/unit/shortcuts/test_sandbox.lua`:
   - For the dead owner, write `<dir>/owner` with the pid of a finished `sh -c 'echo $$'`.
   - The waiter case: the holder sleeps 2 s; the waiter appends a timestamp to a file right after `sandbox_lock` returns, then reads its own `owner`. Assert that timestamp is at or after the holder's exit, the stderr text and the owner pid.
   - The timeout case runs the waiter with `SANDBOX_LOCK_TIMEOUT=1 SANDBOX_LOCK_POLL=0.2` and asserts its code, elapsed time, stderr and `owner`.
   - `make test FILE=tests/unit/shortcuts/test_sandbox.lua` fails, because `tests/sandbox/lock.sh` does not exist.
-- [ ] 1.2 Add `tests/sandbox/lock.sh` (bash, header comment, sourced, no `set -e` of its own) with `sandbox_lock <dir>` per design decision 1: an owner record of pid, start time and root; atomic reclaim by `mv`; `SANDBOX_LOCK_POLL` / `SANDBOX_LOCK_TIMEOUT`; an `EXIT` trap that releases only the caller's own lock (plus `INT`/`TERM` traps that `exit`, so a Ctrl-C releases it too; `sandbox.sh` sets no other `EXIT` trap). A lock dir with no `owner` file yet counts as alive (its owner is between `mkdir` and the write). Use small named functions.
-- [ ] 1.3 The four cases pass. `shellcheck tests/sandbox/lock.sh` is clean (`make lint` covers only Lua). `make quick` is green.
+- [x] 1.2 Add `tests/sandbox/lock.sh` (bash, header comment, sourced, no `set -e` of its own) with `sandbox_lock <dir>` per design decision 1: an owner record of pid, start time and root; atomic reclaim by `mv`; `SANDBOX_LOCK_POLL` / `SANDBOX_LOCK_TIMEOUT`; an `EXIT` trap that releases only the caller's own lock (plus `INT`/`TERM` traps that `exit`, so a Ctrl-C releases it too; `sandbox.sh` sets no other `EXIT` trap). A lock dir with no `owner` file yet counts as alive (its owner is between `mkdir` and the write). Use small named functions.
+- [x] 1.3 The four cases pass. `shellcheck tests/sandbox/lock.sh` is clean (`make lint` covers only Lua). `make quick` is green.
 
 ## 2. sandbox.sh takes the lock
 
