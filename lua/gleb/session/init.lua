@@ -13,7 +13,7 @@
 
 local status_ok, resession = pcall(require, "resession")
 if not status_ok then
-	return {}
+	return
 end
 
 local key = require("gleb.session.key")
@@ -58,7 +58,7 @@ resession.setup({
 
 local group = vim.api.nvim_create_augroup("gleb_session", { clear = true })
 
--- Registered before alpha-nvim's VimEnter so a restored buffer makes the
+-- Registered before gleb.alpha's VimEnter so a restored buffer makes the
 -- dashboard self-skip. `nested` lets FileType/LSP fire for restored buffers.
 vim.api.nvim_create_autocmd("VimEnter", {
 	group = group,
@@ -70,5 +70,3 @@ vim.api.nvim_create_autocmd({ "BufWritePost", "VimLeavePre" }, {
 	group = group,
 	callback = save,
 })
-
-return {}

@@ -7,25 +7,25 @@ local function merge(...)
 	return tbl
 end
 
-local langauge_configs = {
-	require("gleb/lsp/config/go"), -- golang
-	require("gleb/lsp/config/lua"), -- lua
-	require("gleb/lsp/config/html"), -- html
-	require("gleb/lsp/config/css"), -- css
-	require("gleb/lsp/config/js"), -- javascript
-	require("gleb/lsp/config/json"), -- json
-	require("gleb/lsp/config/yaml"), -- yaml
-	require("gleb/lsp/config/shell"), -- sh,bash,zsh
-	require("gleb/lsp/config/terraform"), -- hashicorp yucky
-	require("gleb/lsp/config/rust"), -- rust
-	require("gleb/lsp/config/python"), -- python
+local language_configs = {
+	require("gleb.lsp.config.go"), -- golang
+	require("gleb.lsp.config.lua"), -- lua
+	require("gleb.lsp.config.html"), -- html
+	require("gleb.lsp.config.css"), -- css
+	require("gleb.lsp.config.js"), -- javascript
+	require("gleb.lsp.config.json"), -- json
+	require("gleb.lsp.config.yaml"), -- yaml
+	require("gleb.lsp.config.shell"), -- sh,bash,zsh
+	require("gleb.lsp.config.terraform"), -- hashicorp yucky
+	require("gleb.lsp.config.rust"), -- rust
+	require("gleb.lsp.config.python"), -- python
 }
 
 require("mason").setup()
 
 local function update()
 	-- list of binaries (dependencies) to install. Stuff like linters, lsp, formatters.
-	local deps = vim.iter(langauge_configs)
+	local deps = vim.iter(language_configs)
 		:map(function(c)
 			return c.mason or {}
 		end)
@@ -37,10 +37,10 @@ end
 
 vim.api.nvim_create_user_command("MasonSync", update, {})
 
-local global_config = require("gleb/lsp/config/handlers")
+local global_config = require("gleb.lsp.config.handlers")
 global_config.setup()
 
-for _, language in ipairs(langauge_configs) do
+for _, language in ipairs(language_configs) do
 	local names = language.lsp_names or (language.lsp_name and { language.lsp_name })
 	if names then
 		local config = merge(global_config, language.lsp_config)
@@ -54,7 +54,7 @@ end
 local null_ls = require("null-ls")
 
 local diagnostics = { null_ls.builtins.formatting.prettier }
-for _, language in ipairs(langauge_configs) do
+for _, language in ipairs(language_configs) do
 	if language.null_ls then
 		for _, builtin in ipairs(language.null_ls(null_ls)) do
 			table.insert(diagnostics, builtin)

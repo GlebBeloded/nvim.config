@@ -37,7 +37,7 @@ Feature code lives in `lua/gleb/<feature>/`; the capability name is the kebab-ca
 | `git/` | Signs, diff viewers, permalinks, AI commit popup | [git](../openspec/specs/git/spec.md) |
 | `file_tree/` | neo-tree, git status tree with live diff preview | [file-tree](../openspec/specs/file-tree/spec.md) |
 | `session/` | zellij-aware session save and restore | [session](../openspec/specs/session/spec.md) |
-| `lualine.lua`, `statusline/`, `bufferline.lua` | Global statusline and tabline from one palette | [statusline](../openspec/specs/statusline/spec.md) |
+| `statusline/`, `bufferline.lua` | Global statusline and tabline from one palette | [statusline](../openspec/specs/statusline/spec.md) |
 | `ai/` | 99 prompts backed by the `pi` CLI | [ai](../openspec/specs/ai/spec.md) |
 | `debugging/`, `run/`, `testing.lua` | DAP, `:Run`, neotest | |
 
@@ -48,7 +48,7 @@ flowchart LR
     lazy["plugins/ — lazy.nvim"]
     core["options · colors · keymaps · autocommands"]
     edit["lsp · cmp · telescope · treesitter · folding"]
-    ui["lualine + statusline/ · bufferline · alpha"]
+    ui["statusline/ · bufferline · alpha"]
     ft["file_tree/"]
     git["git/"]
     ses["session/"]
@@ -63,7 +63,7 @@ flowchart LR
 
 Most modules are required from `init.lua` after `lazy.setup()` and configure their plugins directly. A
 few run from a plugin spec `config` instead, so they load with their plugin (colors transparency, neotest,
-vscode-diff, 99 and `ai/`).
+`debugging/`, copilot, smart-splits, vscode-diff, 99 and `ai/`).
 
 ## Startup sequence
 
@@ -77,7 +77,7 @@ sequenceDiagram
     I->>M: leader Space, then nvim_debug_log.setup(): log to /tmp/nvim
     I->>L: plugins: bootstrap, lazy.setup, start plugins
     I->>M: options, colors, keymaps
-    I->>M: lsp … git, session, alpha, autocommands, lualine, file_tree
+    I->>M: lsp … git, session, alpha, autocommands, statusline, file_tree
     E->>M: VimEnter: session restore (nested)
     E->>M: VimEnter: alpha shows only if nothing was restored
     E->>L: User VeryLazy after UIEnter
