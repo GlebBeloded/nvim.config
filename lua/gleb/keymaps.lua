@@ -22,10 +22,10 @@ map("n", "gb", "<C-O>", "Jump: Back")
 map("n", "gB", "<C-I>", "Jump: Forward")
 
 -- Resize windows
-map("n", "<C-Up>", ":resize +2<CR>", "Window: Increase height")
-map("n", "<C-Down>", ":resize -2<CR>", "Window: Decrease height")
-map("n", "<C-Left>", ":vertical resize -2<CR>", "Window: Decrease width")
-map("n", "<C-Right>", ":vertical resize +2<CR>", "Window: Increase width")
+map("n", "<C-Up>", "<Cmd>resize +2<CR>", "Window: Increase height")
+map("n", "<C-Down>", "<Cmd>resize -2<CR>", "Window: Decrease height")
+map("n", "<C-Left>", "<Cmd>vertical resize -2<CR>", "Window: Decrease width")
+map("n", "<C-Right>", "<Cmd>vertical resize +2<CR>", "Window: Increase width")
 
 -- Resize with Cmd+Shift+H/J/K/L (via smart-splits)
 -- Cmd+Shift sends Alt+Shift sequences (ESC + uppercase letter)
@@ -90,13 +90,13 @@ map("n", "<A-e>", function()
 	smart_toggle_neotree("filesystem")
 end, "Tree: Toggle filesystem")
 -- <A-g>: differ.nvim (new). <A-G>: old neo-tree git_status + vscode-diff preview.
-map("n", "<A-g>", ":Differ<cr>", "Git: Open Differ")
+map("n", "<A-g>", "<Cmd>Differ<CR>", "Git: Open Differ")
 map("n", "<A-G>", function()
 	smart_toggle_neotree("git_status")
 end, "Tree: Toggle git status")
 
 -- Telescope
-map("n", "<A-F>", ":Telescope live_grep<cr>", "Search: Live grep")
+map("n", "<A-F>", "<Cmd>Telescope live_grep<CR>", "Search: Live grep")
 
 -- Code actions
 map("n", "<C-CR>", vim.lsp.buf.code_action, "LSP: Code action")

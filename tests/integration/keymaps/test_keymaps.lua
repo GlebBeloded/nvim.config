@@ -202,6 +202,19 @@ T["keymaps: Increase width"] = function()
 	eq(child.api.nvim_win_get_width(left), before + 2)
 end
 
+T["keymaps: Command maps do not enter the command line"] = function()
+	two_windows("split")
+	child.g.cmdline_enters = 0
+	child.lua([[vim.api.nvim_create_autocmd("CmdlineEnter", {
+        callback = function()
+            vim.g.cmdline_enters = vim.g.cmdline_enters + 1
+        end,
+    })]])
+	child.type_keys("<C-Up>", "<C-Down>", "<C-Left>", "<C-Right>")
+
+	eq(child.g.cmdline_enters, 0)
+end
+
 T["keymaps: Smart-splits resize changes window size"] = function()
 	local left = two_windows("vsplit")
 	child.api.nvim_set_current_win(left)

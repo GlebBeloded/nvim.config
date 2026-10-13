@@ -27,15 +27,15 @@ Scenarios: "Every core mapping has an area-action desc", "Core mappings are nore
 Scenarios: "Command maps do not enter the command line"; regression: "Increase height",
 "Decrease height", "Decrease width", "Increase width".
 
-- [ ] 2.1 Add the failing case `T["keymaps: Command maps do not enter the command line"]`:
+- [x] 2.1 Add the failing case `T["keymaps: Command maps do not enter the command line"]`:
   `two_windows("split")`, create a `CmdlineEnter` autocmd in the child that increments
   `vim.g.cmdline_enters` (start 0), `type_keys` `<C-Up>`, `<C-Down>`, `<C-Left>`, `<C-Right>`, then
   `eq(child.g.cmdline_enters, 0)`.
-- [ ] 2.2 Run it: fails with count 4.
-- [ ] 2.3 Change the rhs of `<C-Up>`/`<C-Down>`/`<C-Left>`/`<C-Right>` to
+- [x] 2.2 Run it: fails with count 4.
+- [x] 2.3 Change the rhs of `<C-Up>`/`<C-Down>`/`<C-Left>`/`<C-Right>` to
   `<Cmd>resize ±2<CR>` / `<Cmd>vertical resize ±2<CR>`, `<A-g>` to `<Cmd>Differ<CR>`, `<A-F>` to
   `<Cmd>Telescope live_grep<CR>`. Leave the visual `:move` maps unchanged (they need `'<`/`'>`).
-- [ ] 2.4 The new case and the four resize cases pass; `make quick` green. Commit.
+- [x] 2.4 The new case and the four resize cases pass; `make quick` green. Commit.
 
 ## 3. `<C-q>` closes via vim-bbye `Bdelete`
 
