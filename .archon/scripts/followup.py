@@ -33,7 +33,7 @@ def write_change(root: str, name: str, branch: str) -> None:
     folder = os.path.join(root, "openspec/changes", name)
     os.makedirs(folder, exist_ok=True)
     with open(os.path.join(folder, ".openspec.yaml"), "w") as f:
-        f.write("schema: spec-driven\n")
+        f.write(f"schema: spec-driven\nadopt: {branch}\n")  # make queue merges the rejected run's work first
     with open(os.path.join(folder, "proposal.md"), "w") as f:
         f.write(
             f"## Why\nRun on `{branch}` for `{change}` was rejected by the judge:\n{reasons}\n\nKind: bug\n\n"
