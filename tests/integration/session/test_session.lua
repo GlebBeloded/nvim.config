@@ -56,26 +56,19 @@ local function set_mtime(path, mtime)
 	assert(vim.uv.fs_utime(path, mtime, mtime))
 end
 
---- Restart in either a named zellij session/pane (three arguments) or just a pane
---- (one or two arguments), preserving both existing test call shapes.
----@param zellij_or_pane string
----@param pane_or_args? string|string[]
+--- Restart the full config in `dir` under zellij pane `zellij`/`pane` with
+--- `files` as arguments (bare by default), keeping the child's state.
+---@param zellij string
+---@param pane string
 ---@param files? string[]
-local function restart_in_pane(zellij_or_pane, pane_or_args, files)
-	if type(pane_or_args) == "string" then
-		vim.env.ZELLIJ_SESSION_NAME, vim.env.ZELLIJ_PANE_ID = zellij_or_pane, pane_or_args
-		MiniTest.finally(function()
-			vim.env.ZELLIJ_SESSION_NAME, vim.env.ZELLIJ_PANE_ID = nil, nil
-		end)
-		local args = vim.list_extend({ "--cmd", "cd " .. dir }, H.config_args())
-		child.restart(vim.list_extend(args, files or {}))
-		vim.iter(H.DISABLED_PLUGINS):each(child.disable_plugin)
-		return
-	end
-
-	local cd = { "--cmd", "cd " .. vim.fn.fnameescape(dir) }
-	child.restart_config(vim.list_extend(cd, pane_or_args or {}), { env = { ZELLIJ_PANE_ID = zellij_or_pane } })
-	wait_vim_enter()
+local function restart_in_pane(zellij, pane, files)
+	vim.env.ZELLIJ_SESSION_NAME, vim.env.ZELLIJ_PANE_ID = zellij, pane
+	MiniTest.finally(function()
+		vim.env.ZELLIJ_SESSION_NAME, vim.env.ZELLIJ_PANE_ID = nil, nil
+	end)
+	local args = vim.list_extend({ "--cmd", "cd " .. dir }, H.config_args())
+	child.restart(vim.list_extend(args, files or {}))
+	vim.iter(H.DISABLED_PLUGINS):each(child.disable_plugin)
 end
 
 local T = H.child_set(child, start)

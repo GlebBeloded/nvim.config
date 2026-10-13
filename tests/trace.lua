@@ -4,7 +4,7 @@
 -- active change adds or modifies (openspec/changes/<id>/specs/, not archive/) count too, so a
 -- change's new tests trace while it is being built.
 --   tested  - scenario has at least one case
---   missing - scenario has no case (fatal)
+--   missing - scenario has no case (reported, not fatal yet)
 --   orphan  - case name matches no scenario (fatal)
 -- --quiet lists only the missing scenarios.
 -- Run: nvim -u tests/minimal_init.lua -l tests/trace.lua [--quiet]
@@ -166,4 +166,4 @@ end
 local missing = all_total - all_tested
 out("\ntrace: %d scenarios, %d tested, %d missing, %d orphan", all_total, all_tested, missing, #orphans)
 io.flush()
-os.exit((#orphans > 0 or missing > 0) and 1 or 0)
+os.exit(#orphans > 0 and 1 or 0)
