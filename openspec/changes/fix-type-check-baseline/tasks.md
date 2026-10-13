@@ -78,9 +78,14 @@ Scenarios: none (Static layer: `make types`)
 
 - [x] 6.1 **Failing test.** If `fix-lsp-progress-stuck-task` has not landed on `auto`: delete `"need-check-nil"`; `make types` → FAIL at `lsp_progress.lua:75`.
 - [x] 6.2 **Implement** a local timer in `ensure_timer` (`local t = assert(uv.new_timer())`, start `t`, assign `timer = t`). `make types` → no `need-check-nil`; statusline unit/integration tests green.
-- [ ] 6.3 **Commit** `fix(statusline): narrow lsp_progress refresh timer`.
+- [x] 6.3 **Commit** `fix(statusline): narrow lsp_progress refresh timer`.
 
 ## 7. Gate
 
 - [ ] 7.1 `"diagnostics.severity"` is gone from `.luarc.jsonc` (or empty); `make types` green.
 - [ ] 7.2 `make check` green.
+
+## Blocked
+
+- **1.2 / 7.1 wait for `fix-diff-preview-codediff-crash`.** With `.tests/deps/lazy.nvim` and `.tests/deps/vscode-diff.nvim` in `workspace.library` and every severity line removed, `make types` reports exactly one Warning: `diff_preview.lua:67` `missing-fields` (`SessionConfig` needs `original` / `modified`). That is the runtime crash `fix-diff-preview-codediff-crash` already queues (old `original_path` / `modified_path` keys vs the pinned vscode-diff Path refs); fixing it here is a behaviour change outside this change's Non-Goals, and suppressing it would hide a real bug. Done so far: `tests/bootstrap.sh` (`fetch_pinned`, lock-file commits), `tests/types.sh` cache key, `docs/testing.md` deps line (commit `chore(deps): fetch lazy.nvim and vscode-diff type libraries at pinned commits`). Remaining after that change lands on `auto`: add the two dirs to `workspace.library`, delete the `"undefined-doc-name"` line (the last one, so drop `"diagnostics.severity"`), update the `make types` line of `docs/testing.md`, commit 1.3, then 7.
+- **3.2 note:** LuaLS does not narrow `hl == vim.NIL` (nor `type(hl) == "table"`), so the existing `@as colorize.Hl` cast moved into the `hl_of` helper (commented) instead of disappearing; call sites have no cast.
