@@ -24,8 +24,8 @@ Scenarios: none (Smoke layer: no `ERROR` in `:checkhealth`)
 
 **Files:** `tests/smoke/run.lua`, `lua/gleb/plugins/init.lua`
 
-- [ ] 1.1 **Failing test.** Remove the `hererocks` pattern from `HEALTH_IGNORE`; `make smoke-health` → FAIL (`lazy ... luarocks} not installed`).
-- [ ] 1.2 **Implement** `rocks = { enabled = false }` in the lazy setup table. `HEALTH_IGNORE` is now empty and only used by `ignored()`: remove both and the filter that calls `ignored()` (design.md, Decision 1). `make smoke-health` → no lazy ERROR.
+- [x] 1.1 **Failing test.** Remove the `hererocks` pattern from `HEALTH_IGNORE`; `make smoke-health` → FAIL (`lazy ... luarocks} not installed`).
+- [x] 1.2 **Implement** `rocks = { enabled = false }` in the lazy setup table. `HEALTH_IGNORE` is now empty and only used by `ignored()`: remove both and the filter that calls `ignored()` (design.md, Decision 1). `make smoke-health` → no lazy ERROR.
 - [ ] 1.3 **Commit** `fix(plugins): disable lazy luarocks support`.
 
 ## 2. neo-tree buffers renderers
