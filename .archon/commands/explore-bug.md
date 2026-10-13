@@ -4,8 +4,10 @@ argument-hint: <bug description or openspec change id>
 ---
 # Explore the bug
 
-First, load each of these skills with the Skill tool, before any other step:
-`superpowers:systematic-debugging`. If one does not load, stop and report the error naming it.
+First, load each of these skills before any other step: `superpowers:systematic-debugging`. On
+Claude, load each with the Skill tool. On Codex, invoke each by name:
+$superpowers:systematic-debugging. Report each skill as it loads. If one does not load, stop and
+report the error naming it.
 
 Bug: $ARGUMENTS
 

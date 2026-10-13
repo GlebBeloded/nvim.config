@@ -7,7 +7,8 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 ## The loop
 
 Agents fix bugs, build features and update plugins on this machine only. Nothing is pushed and no PR is
-opened. [Archon](https://archon.diy/docs/) runs the workflows in `.archon/workflows/` with Claude Code.
+opened. [Archon](https://archon.diy/docs/) runs the workflows in `.archon/workflows/` on Codex by default,
+with review on Claude Code (Setup facts).
 Each run works in its own git worktree cut from `auto` and, when every gate is green, merges back into
 `auto` with `--no-ff`. `main` is never touched.
 
@@ -77,17 +78,26 @@ Known issues and planned work are queued changes in `openspec/changes/`; there i
 
 - `.archon/config.yaml`: base branch `auto`, remote `local` (a self-remote added by `make loop-setup`), so
   `auto` never has to exist on GitHub.
+- Provider: `assistant: codex` in `.archon/config.yaml` runs the loop on Codex; the one line
+  `assistant: claude` switches it back to Claude Code. The `review` node keeps `provider: claude`
+  under either default, so review is always cross-model.
+- Codex loads repo skills from `.agents/skills` and superpowers from the Codex plugin
+  `superpowers@openai-curated-remote`. Archon hides Codex's skill list, so commands invoke each skill
+  as `$<skill>`. Archon runs Codex with no sandbox, network on and no approval prompts: `make check
+  E2E=1` and ssh to the sandbox VM need nothing extra, and there are no Codex hooks.
 - Claude runs with `bypassPermissions` and project settings. There are no Claude Code hooks: the
   `implement` command runs `make fmt` and `make quick` itself, and the full `make check E2E=1` runs
   once per build pass in the `gate` script.
 - Plugins: `make loop-setup` installs the plugins that `.claude/settings.json` enables at **user**
   scope. Project scope is recorded per path, and every Archon worktree is a new path, so a
-  project-scope install never loads in a run.
+  project-scope install never loads in a run. It also installs every Codex plugin a codex node
+  declares.
 - AI nodes can use only the skills they declare (`skills:` on the node). Add a skill there before a
   prompt mentions it. Each workflow's `skills-check` node fails the run when a declared skill does
-  not resolve in the worktree, and every command loads its declared skills with the Skill tool as
-  its first step. Archon's "Claude skills not found on disk: superpowers:…" warning is expected for
-  plugin skills; `skills-check` is the real check.
+  not resolve in the worktree for the provider that runs the node, and every command loads its
+  declared skills (Skill tool on Claude, `$<skill>` on Codex) as its first step. Archon's "Claude
+  skills not found on disk: superpowers:…" warning is expected for plugin skills; `skills-check` is
+  the real check.
 - `--dry-run` auto-approves gates with the plain string `approved`, so nodes that read
   `$gate.output.decision` fail in a dry run. Pass `--pause-at-gates`, or stub the nodes after the gate.
 

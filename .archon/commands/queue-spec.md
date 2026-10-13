@@ -3,9 +3,10 @@ description: Complete the artifacts of a queued change
 ---
 # Complete the queued change
 
-First, load each of these skills with the Skill tool, before any other step:
-`openspec-continue-change`, `superpowers:systematic-debugging`. If one does not load, stop and
-report the error naming it.
+First, load each of these skills before any other step: `openspec-continue-change`,
+`superpowers:systematic-debugging`. On Claude, load each with the Skill tool. On Codex, invoke each
+by name: $openspec-continue-change, $superpowers:systematic-debugging. Report each skill as it
+loads. If one does not load, stop and report the error naming it.
 
 Change: openspec/changes/$INPUTS.change/
 
