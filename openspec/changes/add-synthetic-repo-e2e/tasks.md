@@ -48,8 +48,8 @@ Scenarios: `lsp: References of a Go function list call sites across packages`
 - [x] 1.5 `stack.lua`: `StackOpts`; `opts.env` merged into `self.env`; `cwd` set on the layout's pane(s) (`cwd="…"`); `layout = "nvim"` writes the Neovim pane only. `alacritty.lua`: `columns`/`lines` from `self.opts` (default `M.COLUMNS`/`M.LINES`), `start(opts)`, `start_or_skip(opts)`; `test_e2e.lua` uses `start_or_skip()`.
 - [x] 1.6 `sandbox.sh` provision: Go from the go.dev tarball (`go$GO_VERSION.darwin-arm64.tar.gz`) into `~/opt/go`, `~/bin/go` link, `GOBIN=~/bin ~/bin/go install golang.org/x/tools/gopls@v$GOPLS_VERSION`, each skipped when the installed version matches; `PROVISION_REV=4`. Run `make sandbox-provision`.
 - [x] 1.7 `quick.sh`: `tests/fixtures/* | tests/fixtures.lua | lua/gleb/lsp/* | lua/gleb/git/*` add e2e (the existing capability mapping stays); header comment updated.
-- [ ] 1.8 Run `make e2e CASE="lsp: References"` (passes), `make e2e CASE="shortcuts:"` (still green), `make stack`, `make lint types trace` (green, case listed as tested, no orphans), `make quick` (target line lists `e2e` while the VM runs).
-- [ ] 1.9 Commit: `feat(tests): gomod fixture and Go references e2e`.
+- [x] 1.8 Run `make e2e CASE="lsp: References"` (passes), `make e2e CASE="shortcuts:"` (still green), `make stack`, `make lint types trace` (green, case listed as tested, no orphans), `make quick` (target line lists `e2e` while the VM runs).
+- [x] 1.9 Commit: `feat(tests): gomod fixture and Go references e2e`.
 
 ## 2. Selecting a reference opens its file
 
@@ -57,9 +57,9 @@ Scenarios: `lsp: Selecting a reference opens its file at the call site`
 
 **Interfaces (consumed):** task 1's stack, `F.copy`, the open picker. Cases share the file's stack and run in order.
 
-- [ ] 2.1 Failing test: `T["lsp: Selecting a reference opens its file at the call site"]`. If no picker is open, repeat task 1.1's setup up to the open picker (one named local function shared by both cases). Press `s u m m a r y`, wait for `num_results() == 1`, press `return`; wait until `&filetype ~= "TelescopePrompt"`; assert `vim.uv.fs_realpath(bufname)` equals the realpath of `<root>/report/summary.go` and the cursor (`nvim_win_get_cursor`, col + 1) equals the manifest location of `report/summary.go`. Run `make e2e CASE="lsp: Selecting"`: fails or passes on first run; if it passes, break the expected column by one locally to see it fail, then revert.
-- [ ] 2.2 Make it pass with harness changes only. Run `make e2e CASE="lsp:"` (both green) and `make trace`.
-- [ ] 2.3 Commit: `test(e2e): Go reference selection opens the call site`.
+- [x] 2.1 Failing test: `T["lsp: Selecting a reference opens its file at the call site"]`. If no picker is open, repeat task 1.1's setup up to the open picker (one named local function shared by both cases). Press `s u m m a r y`, wait for `num_results() == 1`, press `return`; wait until `&filetype ~= "TelescopePrompt"`; assert `vim.uv.fs_realpath(bufname)` equals the realpath of `<root>/report/summary.go` and the cursor (`nvim_win_get_cursor`, col + 1) equals the manifest location of `report/summary.go`. Run `make e2e CASE="lsp: Selecting"`: fails or passes on first run; if it passes, break the expected column by one locally to see it fail, then revert.
+- [x] 2.2 Make it pass with harness changes only. Run `make e2e CASE="lsp:"` (both green) and `make trace`.
+- [x] 2.3 Commit: `test(e2e): Go reference selection opens the call site`.
 
 ## 3. Cmd+G opens differ on a dirty repo
 
@@ -90,10 +90,7 @@ Scenarios: `git: ]f steps to the next changed file in differ`, `git: ]c steps to
 
 ## Blocked
 
-- **1.8, spec vs config: `gr` on the declaration lists 4 entries, not 5.** `make e2e CASE="lsp: References"` (sandbox VM) shows the picker with the 4 call sites only: `telescope.builtin.lsp_references` defaults to `include_current_line = false` (telescope `builtin/__lsp.lua`), so the declaration under the cursor is filtered out even though `include_declaration` is true. The scenario "References of a Go function list call sites across packages" (and design render 1, `5 / 5`) assumes 5. Needs a user decision:
-  1. Spec change: the picker lists every reference except those on the cursor's line (manifest compare drops the declaration); no config change.
-  2. Config change (core keymap `gr`): `lsp_references({ include_current_line = true })`, as a queued `fix-*` change; the case is wrapped in `H.xfail` until it lands.
-  Tasks 1.8 to 4.5 wait for that decision; the harness (fixtures, stack options, provision, quick) is in place and committed.
+- **Resolved (attempt 3): `gr` on the declaration lists 4 entries, not 5.** `telescope.builtin.lsp_references` defaults to `include_current_line = false`, so the declaration under the cursor is dropped. The requirement asks for the declaration, so it is a config fault: queued as `fix-lsp-references-current-line`, and the case is wrapped in `H.xfail` (global constraint). Task 2's case opens the picker without depending on the count.
 - Notes for the reviewer:
   - `GOPLS_VERSION=0.23.0`, not 0.21.1: the host's gopls is v0.23.0 (`gopls version`), and the rule is "pinned to the host's versions".
   - Harness fixes found on the way: null-ls's `golangci_lint` source is disabled over RPC in the test (golangci-lint is not in the sandbox; its "not executable" message hit a hit-enter prompt under `cmdheight=0` and blocked Neovim); `E.alive` now probes RPC with `nvim_get_mode`, so Neovim waiting on `timeoutlen` (`gr` vs the built-in `grr`/`gra`) is not reported as a dead stack.

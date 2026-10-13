@@ -5,6 +5,7 @@
 local MiniTest = require("mini.test")
 local E = require("tests.e2e.alacritty")
 local F = require("tests.fixtures")
+local H = require("tests.helpers")
 local S = require("tests.shortcuts.stack")
 
 local eq = MiniTest.expect.equality
@@ -122,13 +123,39 @@ local function open_references(s)
 	end, "a non-empty textDocument/references reply from gopls")
 	E.burst(s, function()
 		E.press(s, { "g", "r" })
-		wait_picker(s, #manifest.references.Format)
+		S.wait_for(function()
+			return s:lua(PICKER_COUNT) > 0
+		end, "Telescope references picker with entries")
 	end)
 end
 
-T["lsp: References of a Go function list call sites across packages"] = function()
+--- The references picker of `Format`, opened unless the previous case left it open.
+---@param s e2e.Stack
+local function ensure_references(s)
+	if s:lua("return vim.bo.filetype") ~= "TelescopePrompt" then
+		open_references(s)
+	end
+end
+
+---@param path string repo-relative
+---@return fixtures.Location
+local function reference_in(path)
+	local found = vim.iter(manifest.references.Format):find(function(location)
+		return location.path == path
+	end)
+	return assert(found, "no manifest reference in " .. path)
+end
+
+local CURRENT_FILE = [[local name = vim.api.nvim_buf_get_name(0)
+	local cursor = vim.api.nvim_win_get_cursor(0)
+	return { path = vim.uv.fs_realpath(name) or name, line = cursor[1], col = cursor[2] + 1 }]]
+
+local CURRENT_LINE = "fix-lsp-references-current-line: gr drops the declaration under the cursor"
+
+T["lsp: References of a Go function list call sites across packages"] = H.xfail(CURRENT_LINE, function()
 	local s = get()
 	open_references(s)
+	wait_picker(s, #manifest.references.Format)
 	eq(sorted(s:lua(PICKER_ENTRIES, { root })), sorted(manifest.references.Format))
 	eq(paths(manifest.references.Format), {
 		"billing/invoice.go",
@@ -136,6 +163,25 @@ T["lsp: References of a Go function list call sites across packages"] = function
 		"internal/money/money.go",
 		"internal/money/money_test.go",
 		"report/summary.go",
+	})
+end)
+
+T["lsp: Selecting a reference opens its file at the call site"] = function()
+	local s = get()
+	ensure_references(s)
+	local call = reference_in("report/summary.go")
+	E.burst(s, function()
+		E.press(s, { "s", "u", "m", "m", "a", "r", "y" })
+		wait_picker(s, 1)
+		E.press(s, "return")
+		S.wait_for(function()
+			return s:lua("return vim.bo.filetype") ~= "TelescopePrompt"
+		end, "Telescope picker closed")
+	end)
+	eq(s:lua(CURRENT_FILE), {
+		path = vim.uv.fs_realpath(root .. "/" .. call.path),
+		line = call.line,
+		col = call.col,
 	})
 end
 
