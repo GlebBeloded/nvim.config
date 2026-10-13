@@ -17,7 +17,7 @@ Git integration loaded from `lua/gleb/git/`: gutter signs, unified/split diff vi
 - **THEN** user commands `Gitsigns`, `Differ`, `DiffviewOpen` and `Gitlink` exist (`vim.fn.exists(":<cmd>") == 2`)
 
 ### Requirement: Gutter signs
-The config SHALL show git hunk signs in the sign column using `┃` for added, untracked, changed and changed-deleted lines and `` for deleted and top-deleted lines, with number highlighting, line highlighting, word diff and current-line blame disabled by default.
+The config SHALL show git hunk signs in the sign column using `┃` for added, untracked, changed and changed-deleted lines and `` for deleted and top-deleted lines, with number highlighting, line highlighting, word diff and current-line blame disabled by default. No other plugin SHALL draw hunk signs over them.
 
 #### Scenario: Added line shows bar sign
 - **WHEN** a tracked file is edited to add a new line and gitsigns has refreshed the buffer
@@ -26,6 +26,10 @@ The config SHALL show git hunk signs in the sign column using `┃` for added, u
 #### Scenario: Blame is off by default
 - **WHEN** a tracked file is opened and the cursor rests on a line for more than 300 ms
 - **THEN** no blame virtual text is shown at end of line
+
+#### Scenario: Added line sign matches reference screenshot
+- **WHEN** Neovim starts with the full config at 60x8 and `:edit sample.lua` opens a committed file in a temp git repo whose working copy adds `M.x = 1` as line 2, and gitsigns has refreshed the buffer
+- **THEN** screen rows 2-5 match the reference screenshot of design.md "Proposed": the sign column of line 2 draws `┃` in [GitSignsAdd] and no other line has a sign
 
 ### Requirement: Differ viewer
 The config SHALL set up differ.nvim with split (side-by-side) layout, 3 lines of context, word-granularity deep diff, and a file panel on the left, 35 columns wide, listing files as a tree.
