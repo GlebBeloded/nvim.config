@@ -75,7 +75,7 @@ The config SHALL map `<A-9>` in normal mode to a one-key menu that echoes `99> [
 - **THEN** no 99 entry mapping exists for either key in select mode
 
 ### Requirement: Prompt submit keymap
-The config SHALL, on `FileType` `99` (augroup `99PromptKeymaps`, cleared on each setup), map `<S-CR>` buffer-locally in normal and insert modes to `<Cmd>write<CR>` with description `99: Submit prompt`, overriding the global `<S-CR>` vibe mapping inside prompt buffers.
+The config SHALL, on `FileType` `99` (augroup `gleb_ai_prompt_keymaps`, cleared on each setup), map `<S-CR>` buffer-locally in normal and insert modes to `<Cmd>write<CR>` with description `99: Submit prompt`, overriding the global `<S-CR>` vibe mapping inside prompt buffers.
 
 #### Scenario: submits with Shift+Enter in normal and insert modes
 - **WHEN** `require("gleb.ai.prompt_keymaps").setup()` is called, then `:enew` and `vim.bo.filetype = "99"`
@@ -87,4 +87,4 @@ The config SHALL, on `FileType` `99` (augroup `99PromptKeymaps`, cleared on each
 
 #### Scenario: Setup is idempotent
 - **WHEN** `require("gleb.ai.prompt_keymaps").setup()` is called twice
-- **THEN** `vim.api.nvim_get_autocmds({ group = "99PromptKeymaps" })` returns exactly one autocmd
+- **THEN** `vim.api.nvim_get_autocmds({ group = "gleb_ai_prompt_keymaps" })` returns exactly one autocmd
