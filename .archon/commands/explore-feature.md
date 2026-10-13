@@ -5,7 +5,7 @@ argument-hint: <feature idea>
 # Explore the idea
 
 First, load each of these skills before any other step: `superpowers:brainstorming`. On Claude, load each with the
-Skill tool. On Codex, invoke each by name: $superpowers:brainstorming. Report each skill as it loads. If one does not
+Skill tool. On Codex, invoke each by name: $brainstorming. Report each skill as it loads. If one does not
 load, stop and report the error naming it.
 
 Flow (new-feature): brainstorm → spec + renders → user picks a render → plan → implement ×task → check → fix → verify → review → judge → ship.

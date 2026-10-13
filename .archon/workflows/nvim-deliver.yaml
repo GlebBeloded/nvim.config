@@ -40,7 +40,7 @@ nodes:
     loop_group:
       max_iterations: 31 # tasks.py ends the loop at 30 passes
       fresh_context: true
-      until_bash: python3 .archon/scripts/tasks.py "$INPUTS_CHANGE"
+      until_bash: python3 .archon/scripts/tasks.py
       nodes:
         - id: pack # context.md: next task, change, named files, lessons, last failures
           script: context_pack

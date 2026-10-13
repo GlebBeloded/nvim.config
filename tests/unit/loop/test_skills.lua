@@ -409,8 +409,9 @@ local function command_violations(node)
 		if not text:find("`" .. skill .. "`", 1, true) then
 			add("does not name `" .. skill .. "`")
 		end
-		if not text:find("$" .. skill, 1, true) then
-			add("does not name $" .. skill)
+		local codex_name = "$" .. skill:gsub("^[%w-]+:", "") -- Codex loads `$<skill>` copies (skills_check.py)
+		if not text:find(codex_name, 1, true) then
+			add("does not name " .. codex_name)
 		end
 	end
 	for _, needle in ipairs(LOAD_FIRST_NEEDLES) do

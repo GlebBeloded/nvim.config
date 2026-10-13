@@ -41,6 +41,10 @@ def loop_done(tasks: pathlib.Path, artifacts: pathlib.Path) -> bool:
 
 
 if __name__ == "__main__":
-    change = os.environ.get("INPUTS_CHANGE", sys.argv[1] if len(sys.argv) > 1 else "")
     artifacts = pathlib.Path(os.environ.get("ARTIFACTS_DIR", "."))
+    saved = artifacts / "change"  # written by context_pack.py: until_bash gets no INPUTS_* env
+    change = os.environ.get("INPUTS_CHANGE") or (sys.argv[1] if len(sys.argv) > 1 else "")
+    change = change or (saved.read_text().strip() if saved.exists() else "")
+    if not (pathlib.Path("openspec/changes") / change / "tasks.md").exists():
+        print(f"tasks.py: no tasks.md for change {change!r}", file=sys.stderr)
     sys.exit(0 if loop_done(pathlib.Path("openspec/changes") / change / "tasks.md", artifacts) else 1)

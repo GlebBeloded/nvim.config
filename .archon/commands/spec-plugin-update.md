@@ -4,7 +4,7 @@ description: Turn a plugin update that breaks make check into an OpenSpec change
 # Specify the adaptation
 
 First, load each of these skills before any other step: `superpowers:systematic-debugging`. On Claude, load each with the
-Skill tool. On Codex, invoke each by name: $superpowers:systematic-debugging. Report each skill as it loads. If one does not
+Skill tool. On Codex, invoke each by name: $systematic-debugging. Report each skill as it loads. If one does not
 load, stop and report the error naming it.
 
 Flow (plugin-adapt): context + changelog → **diagnose + spec** → plan → implement ×task → check → fix → review → judge → ship.

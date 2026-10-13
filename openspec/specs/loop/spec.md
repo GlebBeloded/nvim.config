@@ -223,6 +223,10 @@ The delivery loop SHALL implement one task per fresh agent session from a script
 - **WHEN** `.archon/scripts/tasks.py` runs on a tasks.md with an unchecked `- [ ]` list item
 - **THEN** it exits 1
 
+#### Scenario: Task loop reads the change the pack saved
+- **WHEN** `.archon/scripts/context_pack.py` ran for a change with an unchecked task and `.archon/scripts/tasks.py` then runs with only `ARTIFACTS_DIR` set (as in `until_bash`, which gets no `INPUTS_*` env)
+- **THEN** it exits 1 (a task is left)
+
 #### Scenario: Context pack names the next task
 - **WHEN** `.archon/scripts/context_pack.py` runs for a change whose first task is ticked and second is not
 - **THEN** `$ARTIFACTS_DIR/context.md` has a `## Next task` section holding the second task and includes the Loop lessons

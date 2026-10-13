@@ -72,6 +72,7 @@ def main() -> None:
     if failures:
         parts.append(section("Last gate failures", failures))
     parts += referenced_files(change_dir)
+    (ARTIFACTS / "change").write_text(CHANGE)  # until_bash gets no INPUTS_* env; tasks.py reads this
     out = ARTIFACTS / "context.md"
     out.write_text("\n".join(parts))
     print(out)

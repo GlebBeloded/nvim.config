@@ -5,7 +5,7 @@ description: Implement the next unchecked task of a change, test first (one task
 
 First, load each of these skills before any other step: `superpowers:test-driven-development`. On
 Claude, load each with the Skill tool. On Codex, invoke each by name:
-$superpowers:test-driven-development. Report each skill as it loads. If one does not load, stop and
+$test-driven-development. Report each skill as it loads. If one does not load, stop and
 report the error naming it.
 
 Flow (fix-bug / work-queue): diagnose → spec → plan → implement ×task → check → fix → verify → review → judge → ship.

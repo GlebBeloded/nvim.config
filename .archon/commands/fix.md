@@ -5,7 +5,7 @@ description: Fix only the findings of the last gate, verify and review (one shor
 
 First, load each of these skills before any other step: `superpowers:systematic-debugging`. On
 Claude, load each with the Skill tool. On Codex, invoke each by name:
-$superpowers:systematic-debugging. Report each skill as it loads. If one does not load, stop and
+$systematic-debugging. Report each skill as it loads. If one does not load, stop and
 report the error naming it.
 
 Flow (fix-bug / work-queue): diagnose → spec → plan → implement ×task → check → fix → verify → review → judge → ship.

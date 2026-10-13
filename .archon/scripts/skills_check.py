@@ -20,6 +20,7 @@ Usage: skills_check.py <workflow.yaml>... | skills_check.py --install-plugins [w
 import json
 import os
 import pathlib
+import shutil
 import subprocess
 import sys
 
@@ -104,6 +105,16 @@ def plugin_skill_path(provider: str, plugin: dict, skill: str) -> pathlib.Path |
     return root and root / "skills" / skill / "SKILL.md"
 
 
+USER_SKILLS = pathlib.Path(os.environ.get("AGENTS_SKILLS_DIR") or pathlib.Path.home() / ".agents" / "skills")
+COPY_MARK = ".copied-by-nvim-loop"  # only copies carrying this mark are ever replaced
+
+
+def codex_skill_copy(skill: str) -> pathlib.Path:
+    """Codex `codex exec` loads no plugin skills, only real (not symlinked) skill folders such as
+    ~/.agents/skills/<skill>, invoked as `$<skill>`; loop-setup copies each plugin skill there."""
+    return USER_SKILLS / skill / "SKILL.md"
+
+
 def unresolved(provider: str, names: list[str]) -> list[str]:
     if any(":" in name for name in names):
         plugins = claude_plugins() if provider == "claude" else codex_plugins()
@@ -118,6 +129,9 @@ def unresolved(provider: str, names: list[str]) -> list[str]:
         if plugin is None:
             return False
         path = plugin_skill_path(provider, plugin, skill)
+        if provider == "codex":
+            copy = codex_skill_copy(skill)
+            return path is not None and path.is_file() and copy.is_file() and not copy.parent.is_symlink()
         return path is not None and path.is_file()
 
     return [name for name in names if not resolves(name)]
@@ -167,6 +181,25 @@ def install_codex_plugins(paths: list[str]) -> int:
         print(f"skills_check: installing Codex plugin {plugin}@{CODEX_MARKETPLACE}", flush=True)
         if subprocess.run(["codex", "plugin", "add", f"{plugin}@{CODEX_MARKETPLACE}"]).returncode != 0:
             return 1
+    return copy_codex_skills(names)
+
+
+def copy_codex_skills(names: list[str]) -> int:
+    """Fresh copy of every declared `<plugin>:<skill>` into USER_SKILLS, so plugin updates reach Codex."""
+    plugins = codex_plugins() if any(":" in n for n in names) else {}
+    for name in [n for n in names if ":" in n]:
+        plugin_name, skill = name.split(":", 1)
+        source = plugins.get(plugin_name) and plugin_skill_path("codex", plugins[plugin_name], skill)
+        target = USER_SKILLS / skill
+        if not source or not source.is_file():  # the run preflight then fails and names it
+            print(f"skills_check: {name} not found in the Codex plugin cache; not copied", file=sys.stderr)
+            continue
+        if target.exists() and not (target / COPY_MARK).exists():
+            print(f"skills_check: {target} exists and is not a loop copy; leaving it", file=sys.stderr)
+            continue
+        shutil.rmtree(target, ignore_errors=True)
+        shutil.copytree(source.parent, target, symlinks=False)
+        (target / COPY_MARK).write_text(f"{name}\n")
     return 0
 
 

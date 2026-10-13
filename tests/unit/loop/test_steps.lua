@@ -62,6 +62,17 @@ T["loop: Task loop continues while a task is unchecked"] = function()
 	eq(run("tasks.py", repo, { INPUTS_CHANGE = "c" }).code, 1)
 end
 
+T["loop: Task loop reads the change the pack saved"] = function()
+	local repo = H.tempdir(child)
+	local artifacts = H.tempdir(child)
+	write(repo, {
+		["docs/workflow.md"] = "## Loop lessons\n\n## The loop\n",
+		["openspec/changes/c/tasks.md"] = "## 1. Task\n- [ ] 1.1 todo",
+	})
+	eq(run("context_pack.py", repo, { INPUTS_CHANGE = "c", ARTIFACTS_DIR = artifacts }).code, 0)
+	eq(run("tasks.py", repo, { ARTIFACTS_DIR = artifacts }).code, 1)
+end
+
 T["loop: Context pack names the next task"] = function()
 	local repo = H.tempdir(child)
 	local artifacts = H.tempdir(child)

@@ -4,7 +4,7 @@ description: Turn an OpenSpec change into a TDD task plan
 # Plan
 
 First, load each of these skills before any other step: `superpowers:writing-plans`. On Claude, load
-each with the Skill tool. On Codex, invoke each by name: $superpowers:writing-plans. Report each
+each with the Skill tool. On Codex, invoke each by name: $writing-plans. Report each
 skill as it loads. If one does not load, stop and report the error naming it.
 
 Flow (fix-bug / work-queue): diagnose → spec → plan → implement ×task → check → fix → verify → review → judge → ship.

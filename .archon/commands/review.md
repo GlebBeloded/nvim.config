@@ -5,7 +5,7 @@ description: Independent AI review of the change branch
 
 First, load each of these skills before any other step: `superpowers:requesting-code-review`. On
 Claude, load each with the Skill tool. On Codex, invoke each by name:
-$superpowers:requesting-code-review. Report each skill as it loads. If one does not load, stop and
+$requesting-code-review. Report each skill as it loads. If one does not load, stop and
 report the error naming it.
 
 Flow (fix-bug / work-queue): diagnose → spec → plan → implement ×task → check → fix → verify → review → judge → ship.
