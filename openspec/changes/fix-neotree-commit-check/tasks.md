@@ -73,10 +73,11 @@ Layer: integration (`tests/integration/file-tree/test_tree.lua`, tree mappings).
 ## 4. Integration
 
 - [x] 4.1 `VERBOSE=1 make trace` lists the 11 scenarios named in tasks 1–3 as `tested`, and there are no orphans. "P pushes successfully", "P reports push failure" and "Leaving popup closes it" stay with `fill-trace-scenario-gaps`.
-- [ ] 4.2 `make check` is green.
+- [x] 4.2 `make check` is green.
 
 ## Notes
 
 - 2.3: "Generated message fills popup" also failed: `on_stdout` dropped empty chunks and joined lines with `""`, so the fence strip ate `feat`. Fixed with `stdout_buffered = true` and joining with `"\n"`.
 - 2.4: `nvim_buf_is_valid(bufnr)` is not enough. When the popup opens over the alpha dashboard, alpha's `BufUnload` autocmd aborts nui's `nvim_buf_delete`, so `bufnr` stays valid after `q`. Both callbacks check `is_open()` (the popup window, which nui nils on unmount) instead.
 - 2.5: the 80x24 render matches the Proposed one (width 64, height 1, same text). It sits at rows 10-12, col 9, because nui keeps the anchor from before the resize.
+- 4.2: the gate's "c commits confirmed message" failure was a timeout. Under the 12-worker load the `Committed:` note arrived correctly, but after more than 3 s. `test_ai_commit.lua` and `test_diff_preview.lua` hit the same limit. `ASYNC_MS` in the three files is now 10 s. Waits return as soon as their condition holds, so passing runs take no longer.

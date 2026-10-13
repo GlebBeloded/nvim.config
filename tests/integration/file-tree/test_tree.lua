@@ -4,7 +4,8 @@ local H = require("tests.helpers")
 local eq = MiniTest.expect.equality
 local child = H.new_child()
 
-local ASYNC_MS = 3000
+-- generous: async results land after >3 s under the 12-worker `make check` load
+local ASYNC_MS = 10000
 
 --- Temp git repo with one committed file that has an unstaged change.
 ---@return string dir
