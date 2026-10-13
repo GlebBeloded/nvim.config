@@ -14,3 +14,4 @@ None. `skip_specs: true`.
 ## Impact
 - Code: `tests/integration/git/test_git.lua`, `tests/integration/git/test_gitsigns.lua`.
 - Plugins: none. Core keymaps: unchanged.
+- Out of scope: changing the gutter sign appearance or gitsigns configuration.

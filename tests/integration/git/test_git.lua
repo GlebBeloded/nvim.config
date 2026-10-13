@@ -49,6 +49,18 @@ function GitsignsSigns()
 	return signs
 end]]
 
+--- Child-side: hunk signs placed by MiniDiff namespaces in the current buffer.
+local MINIDIFF_SIGNS_LUA = [[
+local signs = {}
+for name, ns in pairs(vim.api.nvim_get_namespaces()) do
+	if name:find("^MiniDiff") then
+		for _, mark in ipairs(vim.api.nvim_buf_get_extmarks(0, ns, 0, -1, { details = true, type = "sign" })) do
+			table.insert(signs, { name, mark[2] + 1, vim.trim(mark[4].sign_text or "") })
+		end
+	end
+end
+return signs]]
+
 --- Child-side: end-of-line virtual texts in the current buffer, all namespaces.
 local EOL_VIRT_TEXT_LUA = [[
 local texts = {}
@@ -228,6 +240,7 @@ T["git: Added line shows bar sign"] = function()
 
 	eq(child.wait("GitsignsSigns()['2'] ~= nil", ASYNC_MS), true)
 	eq(child.lua_get("GitsignsSigns()['2']"), "┃")
+	eq(child.lua(MINIDIFF_SIGNS_LUA), {})
 end
 
 T["git: Blame is off by default"] = function()
