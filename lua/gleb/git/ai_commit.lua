@@ -79,6 +79,21 @@ local function call_ai(prompt, callback, on_error)
 	return job_id
 end
 
+--- Buffer text without `#` comment lines, each line right-trimmed, the whole text trimmed.
+---@param bufnr integer
+---@return string
+local function get_text(bufnr)
+	local lines = vim.iter(vim.api.nvim_buf_get_lines(bufnr, 0, -1, false))
+		:filter(function(line)
+			return not vim.startswith(line, "#")
+		end)
+		:map(function(line)
+			return (line:gsub("%s+$", ""))
+		end)
+		:totable()
+	return vim.trim(table.concat(lines, "\n"))
+end
+
 -- Show commit popup with auto-generated AI message
 function M.show_commit_input(on_commit)
 	local Popup = require("nui.popup")
@@ -115,15 +130,6 @@ function M.show_commit_input(on_commit)
 
 	-- Track active job
 	local active_job = nil
-
-	-- Helper: get buffer text, strip trailing whitespace from each line
-	local function get_text()
-		local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-		for i, line in ipairs(lines) do
-			lines[i] = line:gsub("%s+$", "")
-		end
-		return table.concat(lines, "\n"):gsub("^%s+", ""):gsub("%s+$", "")
-	end
 
 	-- Helper: close popup
 	local function close()
@@ -165,7 +171,7 @@ function M.show_commit_input(on_commit)
 
 	-- Enter in normal mode = commit
 	popup:map("n", "<CR>", function()
-		local text = get_text()
+		local text = get_text(bufnr)
 		if text ~= "" then
 			close()
 			on_commit(text)
