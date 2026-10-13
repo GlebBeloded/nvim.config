@@ -39,11 +39,14 @@ local function link_from_checkout(repo, name)
 	child.lua("vim.uv.fs_symlink(...)", { vim.fs.joinpath(H.root, name), target })
 end
 
---- Throwaway repo whose `.archon/workflows/w.yaml` has one node declaring `skills`, with this
---- checkout's skills_check.py linked in.
+--- Throwaway repo whose `.archon/workflows/w.yaml` has one node declaring `skills` (then the
+--- `extra_yaml` lines) and whose `.archon/config.yaml` names `assistant`, with this checkout's
+--- skills_check.py linked in.
 ---@param skills string[]
+---@param opts? { assistant?: string, extra_yaml?: string[] }
 ---@return string
-local function make_skill_repo(skills)
+local function make_skill_repo(skills, opts)
+	opts = opts or {}
 	local repo = H.tempdir(child)
 	local workflow = {
 		"name: w",
@@ -52,7 +55,11 @@ local function make_skill_repo(skills)
 		"    prompt: p",
 		"    skills: [" .. table.concat(skills, ", ") .. "]",
 	}
-	write_files(repo, { [".archon/workflows/w.yaml"] = table.concat(workflow, "\n") })
+	vim.list_extend(workflow, opts.extra_yaml or {})
+	write_files(repo, {
+		[".archon/workflows/w.yaml"] = table.concat(workflow, "\n"),
+		[".archon/config.yaml"] = "assistant: " .. (opts.assistant or "claude"),
+	})
 	link_from_checkout(repo, ".archon/scripts/skills_check.py")
 	return repo
 end
@@ -72,6 +79,30 @@ local function write_claude_stub(bin, plugins)
 			"#!/bin/sh",
 			string.format('echo "$*" >>"%s"', log),
 			string.format('[ "$1 $2 $3" = "plugin list --json" ] && cat "%s"', list),
+			"exit 0",
+		}, "\n")
+	)
+	return log
+end
+
+--- `codex` stub in `bin`: `plugin list --json` prints `{ installed = installed, available = {} }`
+--- as JSON and exits `list_code` (default 0); every call appends its arguments to `bin/codex.log`.
+---@param bin string
+---@param installed table[]
+---@param list_code? integer
+---@return string log
+local function write_codex_stub(bin, installed, list_code)
+	local log = vim.fs.joinpath(bin, "codex.log")
+	local list = vim.fs.joinpath(bin, "codex-plugins.json")
+	-- vim.json.encode turns an empty table into `{}`; Codex reports an empty list as `[]`.
+	local encoded = #installed == 0 and "[]" or vim.json.encode(installed)
+	write_files(bin, { ["codex-plugins.json"] = '{"installed":' .. encoded .. ',"available":[]}' })
+	write_executable(
+		vim.fs.joinpath(bin, "codex"),
+		table.concat({
+			"#!/bin/sh",
+			string.format('echo "$*" >>"%s"', log),
+			string.format('[ "$1 $2 $3" = "plugin list --json" ] && { cat "%s"; exit %d; }', list, list_code or 0),
 			"exit 0",
 		}, "\n")
 	)
@@ -104,7 +135,7 @@ local function run_check(repo, bin)
 end
 
 T["loop: Skill preflight fails on an unresolved plugin skill"] = function()
-	local repo = make_skill_repo({ "superpowers:writing-plans" })
+	local repo = make_skill_repo({ "superpowers:writing-plans" }, { assistant = "claude" })
 	local bin = H.tempdir(child)
 	write_claude_stub(bin, {
 		{ id = PLUGIN_ID, scope = "project", enabled = true, installPath = bin, errors = { "not installed" } },
@@ -115,12 +146,85 @@ T["loop: Skill preflight fails on an unresolved plugin skill"] = function()
 end
 
 T["loop: Skill preflight passes when every declared skill resolves"] = function()
-	local repo = make_skill_repo({ "superpowers:writing-plans", "openspec-propose" })
+	local repo = make_skill_repo({ "superpowers:writing-plans", "openspec-propose" }, { assistant = "claude" })
 	write_files(repo, { [".claude/skills/openspec-propose/SKILL.md"] = "x" })
 	local install = H.tempdir(child)
 	write_files(install, { ["skills/writing-plans/SKILL.md"] = "x" })
 	local bin = H.tempdir(child)
 	write_claude_stub(bin, { { id = PLUGIN_ID, scope = "user", enabled = true, installPath = install } })
+	local result = run_check(repo, bin)
+	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
+end
+
+--- Dir holding `skills/<skill>/SKILL.md` for each of `skills`: a plugin install or source path.
+---@param skills string[]
+---@return string
+local function make_plugin_dir(skills)
+	local dir = H.tempdir(child)
+	for _, skill in ipairs(skills) do
+		write_files(dir, { ["skills/" .. skill .. "/SKILL.md"] = "x" })
+	end
+	return dir
+end
+
+--- Runs the check with a claude stub that loads writing-plans and a codex stub with `installed`.
+---@param installed table[]
+---@param list_code? integer
+---@return test.SystemResult
+local function run_codex_check(installed, list_code)
+	local repo = make_skill_repo({ "superpowers:writing-plans" }, { assistant = "codex" })
+	local bin = H.tempdir(child)
+	write_claude_stub(bin, {
+		{ id = PLUGIN_ID, scope = "user", enabled = true, installPath = make_plugin_dir({ "writing-plans" }) },
+	})
+	write_codex_stub(bin, installed, list_code)
+	return run_check(repo, bin)
+end
+
+T["loop: Skill preflight fails on a plugin skill Codex does not have"] = function()
+	local result = run_codex_check({})
+	eq(result.code ~= 0, true, { fail_reason = result.stdout .. result.stderr })
+	eq(result.stderr:find("superpowers:writing-plans", 1, true) ~= nil, true, { fail_reason = result.stderr })
+
+	-- Installed but disabled: still unresolved.
+	local source = { path = make_plugin_dir({ "writing-plans" }) }
+	result = run_codex_check({ { name = "superpowers", installed = true, enabled = false, source = source } })
+	eq(result.code ~= 0, true, { fail_reason = result.stdout .. result.stderr })
+	eq(result.stderr:find("superpowers:writing-plans", 1, true) ~= nil, true, { fail_reason = result.stderr })
+
+	-- `codex plugin list --json` fails: a message naming codex, not a traceback.
+	result = run_codex_check({}, 1)
+	eq(result.code ~= 0, true, { fail_reason = result.stdout .. result.stderr })
+	eq(result.stderr:find("codex", 1, true) ~= nil, true, { fail_reason = result.stderr })
+	eq(result.stderr:find("Traceback", 1, true), nil, { fail_reason = result.stderr })
+end
+
+T["loop: Skill preflight resolves skills for each node's provider"] = function()
+	local repo = make_skill_repo({ "superpowers:writing-plans", "openspec-propose" }, {
+		assistant = "codex",
+		extra_yaml = {
+			"  - id: l",
+			"    provider: claude",
+			"    loop_group:",
+			"      nodes:",
+			"        - id: r",
+			"          prompt: p",
+			"          skills: [superpowers:requesting-code-review]",
+		},
+	})
+	write_files(repo, { [".agents/skills/openspec-propose/SKILL.md"] = "x" })
+	local bin = H.tempdir(child)
+	write_codex_stub(bin, {
+		{
+			name = "superpowers",
+			installed = true,
+			enabled = true,
+			source = { path = make_plugin_dir({ "writing-plans" }) },
+		},
+	})
+	write_claude_stub(bin, {
+		{ id = PLUGIN_ID, scope = "user", enabled = true, installPath = make_plugin_dir({ "requesting-code-review" }) },
+	})
 	local result = run_check(repo, bin)
 	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
 end
