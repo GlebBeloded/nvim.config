@@ -198,7 +198,7 @@ local function make_fixture(opts)
 	local home = H.tempdir(child)
 	local output_root = H.tempdir(child)
 	local repository, merge_commit = make_repository()
-	local run_id = opts.running and "run-live" or "run-complete"
+	local run_id = opts.cancelled and "run-cancelled" or (opts.running and "run-live" or "run-complete")
 	local artifact_root = vim.fs.joinpath(output_root, "artifacts/runs", run_id)
 	local hostile_values = {
 		"<run&unsafe>",
@@ -210,7 +210,7 @@ local function make_fixture(opts)
 		"git-<unsafe&>.txt",
 	}
 
-	if not opts.running then
+	if not opts.running and not opts.cancelled then
 		write_file(vim.fs.joinpath(artifact_root, "root-cause.md"), "root cause " .. hostile_values[6])
 		write_file(vim.fs.joinpath(artifact_root, "check-1.log"), "check failed")
 		write_file(vim.fs.joinpath(artifact_root, ".archon/secret.txt"), "must not render")
@@ -250,6 +250,11 @@ local function make_fixture(opts)
 			data = { node = { id = "implement" }, reason = "prior_success" },
 		},
 		{
+			event_type = "node_skipped",
+			step_name = "preview",
+			data = { node = { id = "preview" }, reason = "condition", duration_ms = 50 },
+		},
+		{
 			event_type = "node_started",
 			step_name = hostile_values[2],
 			data = node_data(hostile_values[2], "hostile-node"),
@@ -284,6 +289,25 @@ local function make_fixture(opts)
 		},
 		{
 			event_type = "node_completed",
+			step_name = "deliver__build.verdict",
+			data = node_data("verdict", "verdict-1", 100, {
+				structured_output = { passed = false, attempt = 1, failed_gates = "tasks" },
+			}),
+		},
+		{ event_type = "node_started", step_name = "repeat-failed", data = node_data("repeat-failed", "repeat-1") },
+		{
+			event_type = "node_completed",
+			step_name = "repeat-failed",
+			data = node_data("repeat-failed", "repeat-1", 100),
+		},
+		{ event_type = "node_started", step_name = "repeat-failed", data = node_data("repeat-failed", "repeat-2") },
+		{
+			event_type = "node_failed",
+			step_name = "repeat-failed",
+			data = node_data("repeat-failed", "repeat-2", 200),
+		},
+		{
+			event_type = "node_completed",
 			step_name = "deliver__build.gate",
 			data = node_data("gate", "gate-2", 600, {
 				structured_output = { green = true, attempt = 2, failures = "" },
@@ -298,8 +322,15 @@ local function make_fixture(opts)
 		},
 	}
 	local events = completed_events
-	local terminal_nodes = { "skills-check", "deliver__build.implement", "deliver__build.gate", "deliver__ship" }
-	if opts.running then
+	local terminal_nodes = {
+		"skills-check",
+		"deliver__build.implement",
+		"deliver__build.gate",
+		"repeat-failed",
+		"preview",
+		"deliver__ship",
+	}
+	if opts.running or opts.cancelled then
 		events = {
 			{
 				event_type = "node_started",
@@ -307,6 +338,25 @@ local function make_fixture(opts)
 				data = node_data("live-node", "live-1"),
 			},
 		}
+		if opts.pending_gate then
+			vim.list_extend(events, {
+				{
+					event_type = "approval_requested",
+					step_name = "first-gate",
+					data = { message = "First approval" },
+				},
+				{
+					event_type = "approval_received",
+					step_name = "first-gate",
+					data = { decision = "approved", comment = "approved" },
+				},
+				{
+					event_type = "approval_requested",
+					step_name = "pending-gate",
+					data = { message = "Waiting for operator" },
+				},
+			})
+		end
 		terminal_nodes = { "live-node", "waiting-node" }
 	end
 
@@ -378,16 +428,16 @@ local function make_fixture(opts)
 		codebase_name = "project " .. hostile_values[1],
 		workflow_name = "fix-bug " .. hostile_values[1],
 		user_message = hostile_values[1],
-		status = opts.running and "running" or "completed",
-		outcome = opts.running and nil or "succeeded",
+		status = opts.cancelled and "cancelled" or (opts.running and "running" or "completed"),
+		outcome = (opts.running or opts.cancelled) and nil or "succeeded",
 		metadata = {
 			terminal_graph = {
 				node_ids = terminal_nodes,
 			},
 		},
 		started_at = "2026-10-13T10:00:00Z",
-		completed_at = opts.running and nil or "2026-10-13T10:10:00Z",
-		last_activity_at = opts.running and "2026-10-13T10:00:00Z" or "2026-10-13T10:10:00Z",
+		completed_at = opts.running and nil or (opts.cancelled and "2026-10-13T10:00:10Z" or "2026-10-13T10:10:00Z"),
+		last_activity_at = (opts.running or opts.cancelled) and "2026-10-13T10:00:10Z" or "2026-10-13T10:10:00Z",
 		repository = repository,
 		default_cwd = default_cwd,
 		output_root = output_root,
@@ -484,6 +534,8 @@ T["loop: Named run report contains the complete run history"] = function()
 	expect_contains(result.stdout, vim.uri_from_fname(fixture.report_path))
 	eq(count(report, "deliver__build.implement"), 1)
 	expect_contains(report, "2 invocations")
+	expect_contains(report, "<td>repeat-failed</td><td>failed</td><td>2 invocations</td>")
+	expect_contains(report, "<td>preview</td><td>skipped</td><td>0 invocations</td>")
 	expect_contains(report, "approved by operator")
 	expect_contains(report, "rejected by operator")
 	expect_contains(report, "Attempt 1")
@@ -516,6 +568,19 @@ T["loop: Running run report tolerates incomplete evidence"] = function()
 	eq(count(report, "Pending") >= 2, true)
 	eq(report:find("completed", 1, true), nil)
 	eq(report:find("Unavailable", 1, true), nil)
+
+	local cancelled = make_fixture({ cancelled = true })
+	local cancelled_result = run_report(cancelled, "run-cancelled")
+	local cancelled_report = read_report(cancelled, "run-cancelled")
+	eq(cancelled_result.code, 0, { fail_reason = cancelled_result.stdout .. cancelled_result.stderr })
+	expect_contains(cancelled_report, "<td>live-node</td><td>cancelled</td><td>1 invocation</td><td>10.0s</td>")
+
+	local pending = make_fixture({ running = true, pending_gate = true })
+	local pending_result = run_report(pending, "run-live")
+	local pending_report = read_report(pending, "run-live")
+	eq(pending_result.code, 0, { fail_reason = pending_result.stdout .. pending_result.stderr })
+	expect_contains(pending_report, "pending-gate")
+	expect_contains(pending_report, "Waiting for operator")
 end
 
 T["loop: Report without a run selects the latest run for this codebase"] = function()

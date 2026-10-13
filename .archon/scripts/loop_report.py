@@ -237,8 +237,12 @@ def _datetime(value: object) -> datetime | None:
 
 
 def fold_nodes(run: RunRecord, events: Sequence[EventRecord], now: datetime) -> list[NodeRow]:
+    live = run.status in {"pending", "running", "paused"}
+    terminal_at = _datetime(run.completed_at) or _datetime(run.last_activity_at)
+    elapsed_until = now if live else terminal_at or now
     order = list(dict.fromkeys(_terminal_nodes(run)))
     invocations: dict[str, dict[str, tuple[str, int, datetime | None]]] = {name: {} for name in order}
+    skipped: dict[str, int] = {}
 
     for event in events:
         if not event.step_name or event.event_type not in {
@@ -246,6 +250,7 @@ def fold_nodes(run: RunRecord, events: Sequence[EventRecord], now: datetime) -> 
             "node_completed",
             "node_failed",
             "node_suspended",
+            "node_skipped",
             "node_skipped_prior_success",
         }:
             continue
@@ -254,6 +259,9 @@ def fold_nodes(run: RunRecord, events: Sequence[EventRecord], now: datetime) -> 
             order.append(name)
             invocations[name] = {}
         if event.event_type == "node_skipped_prior_success":
+            continue
+        if event.event_type == "node_skipped":
+            skipped[name] = _integer(event.data.get("duration_ms")) or 0
             continue
         invocation = _object(event.data.get("invocation"))
         invocation_id = _string(invocation.get("id"))
@@ -279,23 +287,29 @@ def fold_nodes(run: RunRecord, events: Sequence[EventRecord], now: datetime) -> 
     for name in order:
         states = list(invocations[name].values())
         if not states:
-            rows.append(NodeRow(name=name, status="waiting", invocations=0, duration_ms=0))
+            rows.append(
+                NodeRow(
+                    name=name,
+                    status="skipped" if name in skipped else "waiting",
+                    invocations=0,
+                    duration_ms=skipped.get(name, 0),
+                )
+            )
             continue
-        statuses = [state for state, _, _ in states]
-        if statuses[-1] == "completed" or "completed" in statuses:
-            status = "completed"
-        else:
-            status = statuses[-1]
+        status = "skipped" if name in skipped else states[-1][0]
+        if status == "running" and not live:
+            status = run.status if run.status in {"cancelled", "canceled", "failed"} else "incomplete"
         rows.append(
             NodeRow(
                 name=name,
                 status=status,
                 invocations=len(states),
-                duration_ms=sum(
-                    max(0, int((now - started).total_seconds() * 1000))
-                    if status == "running" and started is not None
+                duration_ms=skipped.get(name, 0)
+                + sum(
+                    max(0, int((elapsed_until - started).total_seconds() * 1000))
+                    if invocation_status == "running" and started is not None
                     else duration
-                    for status, duration, started in states
+                    for invocation_status, duration, started in states
                 ),
             )
         )
@@ -320,6 +334,9 @@ def fold_gates(events: Sequence[EventRecord]) -> list[GateRecord]:
                     comment=_string(event.data.get(comment_key)),
                 )
             )
+    gates.extend(
+        GateRecord(name=name, reason=reason, decision="pending", comment="Pending") for name, reason in pending
+    )
     return gates
 
 
@@ -332,9 +349,12 @@ def fold_attempts(events: Sequence[EventRecord]) -> list[AttemptRecord]:
         number = _integer(output.get("attempt"))
         if number is None:
             continue
-        failures = _string(output.get("failures")) or _string(output.get("failed_gates"))
-        passed_value = output.get("passed", output.get("green", False))
-        attempts[number] = AttemptRecord(number=number, passed=passed_value is True and not failures, failures=failures)
+        prior = attempts.get(number)
+        new_failures = _string(output.get("failures")) or _string(output.get("failed_gates"))
+        failures = prior.failures if prior and prior.failures else new_failures
+        passed_value = output.get("passed", output.get("green"))
+        passed = prior.passed if prior and not isinstance(passed_value, bool) else passed_value is True
+        attempts[number] = AttemptRecord(number=number, passed=passed and not failures, failures=failures)
     return [attempts[number] for number in sorted(attempts)]
 
 
