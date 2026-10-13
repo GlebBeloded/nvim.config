@@ -6,7 +6,7 @@ local utils = require("gleb.colors.gruvbox-material.util")
 -- should be called before colorscheme
 vim.cmd([[ set background=dark ]])
 
-pcall(vim.cmd, "colorscheme " .. colorscheme)
+pcall(vim.api.nvim_command, "colorscheme " .. colorscheme)
 
 require("gleb.colors.gruvbox-material.tree-sitter")
 require("gleb.colors.gruvbox-material.lsp")

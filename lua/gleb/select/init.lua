@@ -10,6 +10,8 @@
 local defaultSelect = vim.ui.select
 local codeAction = require("gleb.select.code_action")
 
+-- Intended override: route code actions to the custom picker.
+---@diagnostic disable-next-line: duplicate-set-field
 vim.ui.select = function(items, opts, on_choice)
 	if opts.kind == "codeaction" then
 		codeAction:new(items, opts, on_choice):select()

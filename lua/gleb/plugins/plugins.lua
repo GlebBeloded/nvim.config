@@ -1,3 +1,12 @@
+--- Only touch real, named files — never terminals, prompts, unnamed buffers, etc.
+---@param buf integer
+---@return boolean
+local function should_autosave(buf)
+	return vim.api.nvim_buf_get_name(buf) ~= ""
+		and vim.bo[buf].buftype == ""
+		and not vim.tbl_contains({ "gitcommit", "gitrebase" }, vim.bo[buf].filetype)
+end
+
 -- Install your plugins here
 local plugins = {
 	-- utility plugins
@@ -271,11 +280,7 @@ local plugins = {
 		version = "^1",
 		config = function()
 			require("auto-save").setup({
-				-- only touch real, normal files — never terminals, prompts, etc.
-				condition = function(buf)
-					return vim.bo[buf].buftype == ""
-						and not vim.tbl_contains({ "gitcommit", "gitrebase" }, vim.bo[buf].filetype)
-				end,
+				condition = should_autosave,
 				debounce_delay = 1000, -- wait out bursts of typing before writing
 			})
 		end,
@@ -335,7 +340,7 @@ local plugins = {
 
 			local function normal_menu()
 				vim.api.nvim_echo({ { "99> [s]earch [v]ibe: ", "Question" } }, false, {})
-				local key = vim.fn.nr2char(vim.fn.getchar())
+				local key = vim.fn.getcharstr()
 				vim.cmd("redraw")
 				local actions = { s = nn.search, v = nn.vibe }
 				if actions[key] then

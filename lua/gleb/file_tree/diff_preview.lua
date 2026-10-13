@@ -84,7 +84,7 @@ local function do_open_diff(path)
 						vim.api.nvim_set_current_tabpage(M.state.original_tab)
 					end
 					local tabnr = vim.api.nvim_tabpage_get_number(M.state.diff_tab)
-					pcall(vim.cmd, tabnr .. "tabclose!")
+					pcall(vim.api.nvim_command, tabnr .. "tabclose!")
 					M.state.diff_tab = nil
 				end
 
@@ -158,7 +158,7 @@ function M.close_current_diff()
 			vim.api.nvim_set_current_tabpage(M.state.original_tab)
 		end
 		local tabnr = vim.api.nvim_tabpage_get_number(M.state.diff_tab)
-		pcall(vim.cmd, tabnr .. "tabclose!")
+		pcall(vim.api.nvim_command, tabnr .. "tabclose!")
 		M.state.diff_tab = nil
 	end
 end

@@ -8,21 +8,16 @@
 
 local H = require("tests.helpers")
 
---- Healthchecks skipped because they need external tools or report plugin
---- issues queued as openspec/changes/fix-smoke-healthchecks.
+--- Healthchecks skipped because they need external tools, or fail on an
+--- upstream plugin bug (linked at the entry; remove it once fixed upstream).
 local HEALTH_EXCLUDE = {
 	"null-ls", -- external formatters/linters (markuplint, stylelint, shfmt, ...)
 	"rustaceanvim", -- rust-analyzer binary
-	"neotest-golang", -- testify queries need extra treesitter query files
-	"neo-tree", -- config validation false positive (fix-smoke-healthchecks)
+	-- health.lua loads testify query files renamed in
+	-- https://github.com/fredrikaverpil/neotest-golang/pull/563
+	"neotest-golang",
 	"mason", -- package registry/network checks, external toolchains
 	"vim.provider", -- python/node/ruby/perl providers are optional
-}
-
---- ERROR lines that are known-benign (Lua patterns).
-local HEALTH_IGNORE = {
-	-- lazy reports "no plugins require luarocks, so you can ignore any warnings below"
-	"lazy%-rocks/hererocks/bin/luarocks} not installed",
 }
 
 local STARTUP_RUNS = 3
@@ -65,17 +60,6 @@ local function nvim(args, env)
 	return spawn(args, env)()
 end
 
----@param line string
----@return boolean
-local function ignored(line)
-	for _, pattern in ipairs(HEALTH_IGNORE) do
-		if line:find(pattern) then
-			return true
-		end
-	end
-	return false
-end
-
 ---@param result vim.SystemCompleted
 ---@param out string report path
 local function check_report(result, out)
@@ -90,10 +74,8 @@ local function check_report(result, out)
 	check(vim.trim(report.messages) == "", "no startup messages", report.messages)
 	check(report.errmsg == "", "v:errmsg empty", report.errmsg)
 
-	local errors = vim.tbl_filter(function(line)
-		return not ignored(line)
-	end, report.health)
-	check(#errors == 0, "checkhealth without ERROR: " .. table.concat(report.checks, " "), table.concat(errors, "\n"))
+	local checks = table.concat(report.checks, " ")
+	check(#report.health == 0, "checkhealth without ERROR: " .. checks, table.concat(report.health, "\n"))
 end
 
 --- Start the probe (own sandbox); the returned function checks its report.
