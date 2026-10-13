@@ -18,6 +18,10 @@ The config SHALL set `g:mapleader` to the literal string `<D->` and `g:maplocall
 - **WHEN** the full config is loaded and `vim.g.mapleader` and `vim.g.maplocalleader` are read
 - **THEN** `vim.g.mapleader == "<D->"` and `vim.g.maplocalleader == "\\"`
 
+#### Scenario: Leader is set before the debug log starts
+- **WHEN** the full config is started with a `--cmd` hook that wraps `require("gleb.nvim_debug_log").setup` to record `vim.g.mapleader` at call time
+- **THEN** the setup wrapper ran exactly once and the recorded value is `" "`
+
 ### Requirement: Window navigation
 The config SHALL map, in normal mode, `<C-h>`, `<A-j>`, `<A-k>` and `<C-l>` to move the cursor to the window left, below, above and right respectively (via smart-splits, stopping at the edge rather than wrapping).
 

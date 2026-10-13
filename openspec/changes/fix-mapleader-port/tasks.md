@@ -85,7 +85,7 @@ Scenarios: "keymaps: Leader is set before the debug log starts", "keymaps: Leade
 - Consumes: `H.isolate()`, `H.config_args()`, `H.DISABLED_PLUGINS`, `child.disable_plugin`, `H.xfail(reason, case)` from `tests/helpers.lua`.
 - Produces: in `test_keymaps.lua`, `RECORD_LEADER_AT_DEBUG_LOG_SETUP` (string, a `--cmd` Lua hook) and `start_recording_leader_at_debug_log_setup()`, shaped like the branch's `RECORD_LEADER_AT_LAZY_SETUP` / `start_recording_leader_at_lazy_setup()`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `RECORD_LEADER_AT_DEBUG_LOG_SETUP`: a `lua package.preload["gleb.nvim_debug_log"] = function() … end` hook that clears its own preload entry, requires the real module, and wraps `setup` to append `vim.g.mapleader` to `_G.leaders_at_debug_log_setup` (create the table on first call) before calling the original. `start_recording_leader_at_debug_log_setup()` restarts the child with `vim.list_extend({ "--cmd", RECORD_LEADER_AT_DEBUG_LOG_SETUP }, H.config_args())` after `H.isolate()`, then disables `H.DISABLED_PLUGINS`.
 
@@ -99,12 +99,12 @@ end)
 
 Place it in the "Mapping options and leaders" area, where the branch adds "Leader is set before lazy.nvim loads plugins". `H.xfail` is there only so the red case can be committed before the merge; step 8 removes it.
 
-- [ ] **Step 2: Verify it fails for the expected reason**
+- [x] **Step 2: Verify it fails for the expected reason**
 
 Temporarily drop the `H.xfail(...)` wrapper. Run: `make test FILE=tests/integration/keymaps/test_keymaps.lua CASE="Leader is set before the debug log starts"`
 Expected: FAIL, equality of `{}` (leader still unset at `setup()` on `auto`) vs `{ " " }`. If it fails with `nil` instead, the hook never ran: fix the hook, not the assertion. Restore the wrapper; rerun; expected: skipped with `XFAIL: fix-mapleader-port`.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add tests/integration/keymaps/test_keymaps.lua
