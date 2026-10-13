@@ -58,7 +58,7 @@ Scenarios: none (Static layer: `make types`)
 
 - [x] 4.1 **Failing test.** Delete `"deprecated"`; `make types` → FAIL at `typecheck.lua:7` only (`fix-diagnostic-navigation` is archived).
 - [x] 4.2 **Implement** `client:stop()`. `make types` → no `deprecated`.
-- [ ] 4.3 **Commit** `fix(lsp): use client:stop() in PyTypeCheck`.
+- [x] 4.3 **Commit** `fix(lsp): use client:stop() in PyTypeCheck`.
 
 ## 5. duplicate-set-field
 
@@ -66,8 +66,8 @@ Scenarios: none (Static layer: `make types`)
 
 **Files:** `lua/gleb/select/init.lua`, `.luarc.jsonc`
 
-- [ ] 5.1 **Failing test.** Delete `"duplicate-set-field"`; `make types` → FAIL at `select/init.lua:13`.
-- [ ] 5.2 **Implement** `---@diagnostic disable-next-line: duplicate-set-field` above the override, with a one-line reason (intended `vim.ui.select` override). `make types` → no `duplicate-set-field`.
+- [x] 5.1 **Failing test.** Delete `"duplicate-set-field"`; `make types` → FAIL at `select/init.lua:13`.
+- [x] 5.2 **Implement** `---@diagnostic disable-next-line: duplicate-set-field` above the override, with a one-line reason (intended `vim.ui.select` override). `make types` → no `duplicate-set-field`.
 - [ ] 5.3 **Commit** `fix(select): mark the vim.ui.select override as intended`.
 
 ## 6. need-check-nil
