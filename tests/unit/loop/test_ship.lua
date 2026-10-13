@@ -186,4 +186,19 @@ T["failed merge"]["loop: Failed merge leaves auto clean"] = function(abort)
 	expect_auto_clean(repo)
 end
 
+T["loop: Conflicting ship is reported for reconcile"] = function()
+	local repo = make_repo()
+	local worktree = add_run(repo, "conflict", { ["f.txt"] = "branch" })
+	write_files(repo, { ["f.txt"] = "auto" })
+	git_ok({ "commit", "-q", "-am", "auto edit" }, repo)
+	local before = rev(repo, "auto")
+	local result = ship(worktree, { INPUTS_ON_CONFLICT = "report" })
+	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
+	local report = vim.json.decode(result.stdout)
+	eq({ report.merged, report.conflict }, { false, true })
+	eq(vim.list_contains(report.files, "f.txt"), true)
+	eq(rev(repo, "auto"), before)
+	expect_auto_clean(repo)
+end
+
 return T
