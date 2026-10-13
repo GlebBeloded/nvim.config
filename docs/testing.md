@@ -16,7 +16,7 @@ Pyramid, bottom to top. Times are wall times of one layer on its own (in `make c
 | Layer | Command | What it checks | Time |
 |---|---|---|---|
 | Static | `make lint` | `stylua --check` and `selene` on `lua/ init.lua tests/` | <1 s |
-| Static | `make types` | `lua-language-server --check` with `.luarc.jsonc` (LuaJIT, `vim` global, `$VIMRUNTIME` as library), gate at Warning | ~6 s, 0 s cached |
+| Static | `make types` | `lua-language-server --check` with `.luarc.jsonc` (the editor settings, LuaJIT, `vim` global, and its full `$VIMRUNTIME` static library), gate at Warning | ~6 s, 0 s cached |
 | Static | `make trace` | scenario ↔ test matrix, fails on orphan or duplicate tests | <1 s |
 | Static | `make specs` | main specs pass `openspec validate --strict` | ~1 s |
 | Static | `make loop-test` | Archon dry-run fixtures (`.archon/workflows/<workflow>/fixtures/*.stubs.yaml`): routing, loop exits, `when:` conditions and output plumbing of the loop workflows, agents and git/VM scripts stubbed, no AI | ~13 s |
@@ -32,7 +32,9 @@ Pyramid, bottom to top. Times are wall times of one layer on its own (in `make c
 
 To narrow a run, use `FILE=tests/unit/session/test_key.lua make test`, `CAPS=session,keymaps make test` (only `tests/<layer>/<cap>/`) or `CASE="Move to left" make test-integration`.
 
-`make types` caches a green result in `.tests/types.ok`, keyed by the content of every Lua file, `.luarc.jsonc`, the LuaLS version and the libraries; it skips LuaLS while that key is unchanged.
+`make types` uses `tests/luarc.types.jsonc`, so the editor `.luarc.jsonc` stays lean while the static check retains its full library. It caches a green result in `.tests/types.ok`, keyed by every Lua file, `tests/luarc.types.jsonc`, the LuaLS version and the libraries; it skips LuaLS while that key is unchanged.
+
+The LSP readiness cases run serially (`JOBS=1`): `lua_ls` has a fixed 2500 ms bound for this config, while gopls, basedpyright, and vtsls each have a fixed 1000 ms bound. These limits never scale with host load.
 
 Run make from inside Neovim's `:terminal` as usual: the binary is `NVIM_BIN` (not `NVIM`, which Neovim sets to its server address).
 
@@ -62,7 +64,7 @@ tests/
 
 Every child gets its own sandbox (`tests/helpers.lua`), so tests never touch your sessions, shada, undo files or clipboard:
 - `XDG_CONFIG_HOME/nvim` is a symlink to this checkout, so `stdpath("config")` is the worktree and not `~/.config/nvim`.
-- `XDG_DATA_HOME` and `XDG_STATE_HOME` are fresh temp dirs for each child start. Only `lazy/` (plugins) and `site/` (treesitter parsers) are symlinked from `NVIM_TEST_DATA_DIR` (default `~/.local/share/nvim`; point it at any dir where `Lazy! restore` installed the plugins). `XDG_CACHE_HOME` is a temp dir shared by one runner process (each parallel worker has its own). Neovims never start concurrently on one cache: vim.loader writes its byte code in place, so a concurrent start can load a half-written module (smoke warms the cache before its probe and timing overlap).
+- `XDG_DATA_HOME` and `XDG_STATE_HOME` are fresh temp dirs for each child start. Only `lazy/` (plugins), `site/` (treesitter parsers) and `mason/` (language servers, tools) are symlinked from `NVIM_TEST_DATA_DIR` (default `~/.local/share/nvim`; point it at any dir where `Lazy! restore` installed the plugins). `XDG_CACHE_HOME` is a temp dir shared by one runner process (each parallel worker has its own). Neovims never start concurrently on one cache: vim.loader writes its byte code in place, so a concurrent start can load a half-written module (smoke warms the cache before its probe and timing overlap).
 - mini.test passes `--clean`, so the child reads and writes no shada.
 - Multiplexer env vars (`ZELLIJ*`, `TMUX*`, `WEZTERM_PANE`, `KITTY_*`) are unset, so smart-splits never moves your terminal panes.
 - `g:clipboard` is an in-memory provider (`tests/child_init.lua`).
