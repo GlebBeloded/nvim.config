@@ -46,7 +46,6 @@ for f in $changed; do
 	init.lua | lazy-lock.json | lua/gleb/plugins/* | lua/gleb/options.lua | lua/gleb/autocommands.lua)
 		all=1 smoke=1 ;;
 	lua/gleb/keymaps.lua) add_cap keymaps && chain=1 e2e=1 ;;
-	lua/gleb/lualine.lua) add_cap statusline ;;
 	lua/gleb/*/*) d=${f#lua/gleb/} && d=${d%%/*} && cap_or_all "$(echo "$d" | tr _ -)" ;;
 	lua/*) all=1 ;;
 	tests/helpers.lua | tests/minimal_init.lua | tests/child_init.lua | tests/runner.lua | tests/parallel.lua)

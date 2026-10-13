@@ -39,19 +39,19 @@ matching session leaves startup untouched".
 **Files:** `init.lua`, `lualine.lua` → `statusline/lualine.lua`, `statusline/init.lua` (new),
 `alpha-nvim.lua` → `alpha.lua`, `session/init.lua`, `tests/quick.sh`, `docs/architecture.md`
 
-- [ ] 1.1 **Failing test.** `rg -n 'gleb\.lualine|gleb\.alpha-nvim|lualine\.lua\)' init.lua tests/quick.sh`
+- [x] 1.1 **Failing test.** `rg -n 'gleb\.lualine|gleb\.alpha-nvim|lualine\.lua\)' init.lua tests/quick.sh`
   and `rg -n '^\s*return \{\}' lua/gleb/session/init.lua` → hits (`init.lua:25,27`, `quick.sh:49`,
   `session/init.lua:13,52`).
-- [ ] 1.2 **Implement.** `git mv lua/gleb/lualine.lua lua/gleb/statusline/lualine.lua`; new
+- [x] 1.2 **Implement.** `git mv lua/gleb/lualine.lua lua/gleb/statusline/lualine.lua`; new
   `statusline/init.lua` only requires `gleb.statusline.lualine`; `init.lua:27` requires `gleb.statusline`
   (keep the trailing comment); drop the `lua/gleb/lualine.lua)` case from `tests/quick.sh:49` (the folder
   rule covers it); update the module row in `docs/architecture.md`.
-- [ ] 1.3 **Implement.** `git mv lua/gleb/alpha-nvim.lua lua/gleb/alpha.lua`; update `init.lua:24-25`
+- [x] 1.3 **Implement.** `git mv lua/gleb/alpha-nvim.lua lua/gleb/alpha.lua`; update `init.lua:24-25`
   (require and comment), the `session/init.lua:61` comment and `docs/architecture.md:91` (module name; the
   plugin name `alpha-nvim` in `plugins.lua:315` stays).
-- [ ] 1.4 **Implement.** `session/init.lua:13` becomes a bare `return`; delete `:52`. Confirm
+- [x] 1.4 **Implement.** `session/init.lua:13` becomes a bare `return`; delete `:52`. Confirm
   `rg -n 'require\("gleb\.session"\)' init.lua lua tests` shows no caller using the value.
-- [ ] 1.5 **Green.** 1.1 checks list nothing; `make test CASE=statusline`, `make test CASE=session`,
+- [x] 1.5 **Green.** 1.1 checks list nothing; `make test CASE=statusline`, `make test CASE=session`,
   `make smoke` pass. **Commit** `refactor: statusline owns lualine setup, alpha.lua, session returns nothing`.
 
 ## 2. Options and naming (1.7, 4.2, 4.3)
