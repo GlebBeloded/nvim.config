@@ -9,8 +9,12 @@ worktree:
   enabled: true
 nodes:
   # --- Specify ------------------------------------------------------------------------------------
+  - id: skills-check # declared skills resolve here (docs/workflow.md, Setup facts)
+    bash: python3 .archon/scripts/skills_check.py .archon/workflows/fix-bug.yaml
+
   - id: explore
     command: explore-bug
+    depends_on: [skills-check]
     skills: [superpowers:systematic-debugging]
     idle_timeout: 900000
 

@@ -19,8 +19,12 @@ inputs:
 returns: shipped
 nodes:
   # --- Plan ---------------------------------------------------------------------------------------
+  - id: skills-check # declared skills resolve here (docs/workflow.md, Setup facts)
+    bash: python3 .archon/scripts/skills_check.py .archon/workflows/nvim-deliver.yaml
+
   - id: plan
     command: plan
+    depends_on: [skills-check]
     context: fresh
     skills: [superpowers:writing-plans]
 

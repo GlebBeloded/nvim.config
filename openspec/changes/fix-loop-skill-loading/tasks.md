@@ -19,12 +19,12 @@ Scenarios: "Skill preflight fails on an unresolved plugin skill", "Skill preflig
 
 Scenario: "Skill preflight runs before every skill-declaring node".
 
-- [ ] 2.1 Failing test first: write "loop: Skill preflight runs before every skill-declaring node". Parse each `.archon/workflows/*.yaml` with `python3 -c 'import json,sys,yaml; print(json.dumps(yaml.safe_load(sys.stdin)))'` via `H.system`, then `vim.json.decode`. Assert:
+- [x] 2.1 Failing test first: write "loop: Skill preflight runs before every skill-declaring node". Parse each `.archon/workflows/*.yaml` with `python3 -c 'import json,sys,yaml; print(json.dumps(yaml.safe_load(sys.stdin)))'` via `H.system`, then `vim.json.decode`. Assert:
   - the workflow has a node with `bash` containing `.archon/scripts/skills_check.py`;
   - every node whose `skills:` holds a name with `:` reaches that node through the transitive `depends_on` closure. A node inside `loop.nodes` uses its parent loop node's `depends_on`.
 
   Collect the violations as `{ workflow, node }` and assert `eq(violations, {})`. Watch it fail for all five workflows.
-- [ ] 2.2 Add a `skills-check` node, `bash: python3 .archon/scripts/skills_check.py .archon/workflows/<this workflow>.yaml`, with no `depends_on`, to each workflow, and wire the dependencies:
+- [x] 2.2 Add a `skills-check` node, `bash: python3 .archon/scripts/skills_check.py .archon/workflows/<this workflow>.yaml`, with no `depends_on`, to each workflow, and wire the dependencies:
   - `fix-bug`: `explore` depends on `skills-check`;
   - `new-feature`: `explore` depends on `skills-check`;
   - `nvim-deliver`: `plan` depends on `skills-check` (the `build` loop reaches it through `plan-gate`);

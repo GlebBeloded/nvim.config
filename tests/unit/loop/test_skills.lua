@@ -125,4 +125,99 @@ T["loop: Skill preflight passes when every declared skill resolves"] = function(
 	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
 end
 
+local YAML_TO_JSON = "import json,sys,yaml; print(json.dumps(yaml.safe_load(open(sys.argv[1]))))"
+
+---@class test.WorkflowNode
+---@field id string
+---@field bash? string
+---@field command? string
+---@field skills? string[]
+---@field depends_on? string[]
+---@field loop_group? { nodes: test.WorkflowNode[] }
+
+---@class test.Workflow
+---@field name string
+---@field nodes test.WorkflowNode[]
+
+--- Every `.archon/workflows/*.yaml` of this checkout, parsed by PyYAML.
+---@return test.Workflow[]
+local function load_workflows()
+	local paths = vim.fn.glob(vim.fs.joinpath(H.root, ".archon/workflows/*.yaml"), false, true)
+	return vim.tbl_map(function(path)
+		local result = H.system(child, { "python3", "-c", YAML_TO_JSON, path }, H.root)
+		eq(result.code, 0, { fail_reason = path .. "\n" .. result.stderr })
+		return vim.json.decode(result.stdout)
+	end, paths)
+end
+
+--- Top-level nodes paired with each node they own: itself and its `loop_group.nodes`.
+---@param workflow test.Workflow
+---@return { top: test.WorkflowNode, node: test.WorkflowNode }[]
+local function owned_nodes(workflow)
+	local owned = {}
+	for _, top in ipairs(workflow.nodes) do
+		table.insert(owned, { top = top, node = top })
+		for _, inner in ipairs(top.loop_group and top.loop_group.nodes or {}) do
+			table.insert(owned, { top = top, node = inner })
+		end
+	end
+	return owned
+end
+
+---@param node test.WorkflowNode
+---@return boolean
+local function declares_plugin_skill(node)
+	return vim.iter(node.skills or {}):any(function(skill)
+		return skill:find(":", 1, true) ~= nil
+	end)
+end
+
+--- Whether `from` reaches node `target` through the transitive `depends_on` of `by_id`.
+---@param by_id table<string, test.WorkflowNode>
+---@param from test.WorkflowNode
+---@param target string
+---@return boolean
+local function reaches(by_id, from, target)
+	local seen, stack = {}, vim.deepcopy(from.depends_on or {})
+	while #stack > 0 do
+		local id = table.remove(stack)
+		if id == target then
+			return true
+		end
+		if not seen[id] and by_id[id] then
+			seen[id] = true
+			vim.list_extend(stack, by_id[id].depends_on or {})
+		end
+	end
+	return false
+end
+
+--- `{ workflow, node }` for each plugin-skill node that does not depend on the preflight node.
+---@param workflow test.Workflow
+---@return { workflow: string, node: string }[]
+local function preflight_violations(workflow)
+	local check = vim.iter(workflow.nodes):find(function(node)
+		return (node.bash or ""):find(".archon/scripts/skills_check.py", 1, true) ~= nil
+	end)
+	if not check then
+		return { { workflow = workflow.name, node = "(no skills_check.py bash node)" } }
+	end
+	local by_id = {}
+	for _, node in ipairs(workflow.nodes) do
+		by_id[node.id] = node
+	end
+	local violations = {}
+	for _, owned in ipairs(owned_nodes(workflow)) do
+		if declares_plugin_skill(owned.node) and not reaches(by_id, owned.top, check.id) then
+			table.insert(violations, { workflow = workflow.name, node = owned.node.id })
+		end
+	end
+	return violations
+end
+
+T["loop: Skill preflight runs before every skill-declaring node"] = function()
+	local violations = vim.iter(load_workflows()):map(preflight_violations):flatten():totable()
+	eq(violations, {})
+end
+
 return T

@@ -7,8 +7,12 @@ interactive: true
 worktree:
   enabled: true
 nodes:
+  - id: skills-check # declared skills resolve here (docs/workflow.md, Setup facts)
+    bash: python3 .archon/scripts/skills_check.py .archon/workflows/new-feature.yaml
+
   - id: explore
     command: explore-feature
+    depends_on: [skills-check]
     skills: [openspec-explore, superpowers:brainstorming]
     idle_timeout: 900000
 

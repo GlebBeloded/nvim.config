@@ -12,6 +12,9 @@ inputs:
     default: ""
     description: Change id to work on; empty picks the oldest untaken one
 nodes:
+  - id: skills-check # declared skills resolve here (docs/workflow.md, Setup facts)
+    bash: python3 .archon/scripts/skills_check.py .archon/workflows/work-queue.yaml
+
   - id: pick
     script: queue_pick
     runtime: uv
@@ -34,7 +37,7 @@ nodes:
   # --- Specify: complete a queued proposal ------------------------------------------------------------
   - id: complete
     command: queue-spec
-    depends_on: [pick]
+    depends_on: [pick, skills-check]
     when: "$pick.output.found == true"
     with:
       change: $pick.output.change

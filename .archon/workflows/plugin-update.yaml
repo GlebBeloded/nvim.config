@@ -13,6 +13,9 @@ inputs:
     required: true
     description: Plugin name as in lazy-lock.json
 nodes:
+  - id: skills-check # declared skills resolve here (docs/workflow.md, Setup facts)
+    bash: python3 .archon/scripts/skills_check.py .archon/workflows/plugin-update.yaml
+
   - id: update
     script: plugin_update
     runtime: uv
@@ -66,7 +69,7 @@ nodes:
   # --- Red: adapt the config through the fix loop ----------------------------------------------------
   - id: spec
     command: spec-plugin-update
-    depends_on: [changelog]
+    depends_on: [changelog, skills-check]
     when: "$update.output.green == false"
     idle_timeout: 900000
     with:
