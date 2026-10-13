@@ -5,8 +5,13 @@ loop reaches the escalation check instead of failing the run.
 
 import json
 import os
+from pathlib import Path
+
+from lessons import persist_lessons
 
 MAX_ATTEMPTS = 3
+
+persist_lessons(Path(os.environ.get("ARTIFACTS_DIR", ".")))
 
 
 def value(name: str, default):

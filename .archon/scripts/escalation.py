@@ -9,6 +9,9 @@ import json
 import os
 import re
 import subprocess
+from pathlib import Path
+
+from lessons import persist_lessons
 
 BASE = os.environ.get("BASE_BRANCH") or "auto"  # make targets pass --base auto
 
@@ -26,6 +29,7 @@ def lines(diff: str, sign: str) -> list[str]:
     return [l[1:] for l in diff.splitlines() if l.startswith(sign) and not l.startswith(sign * 3)]
 
 
+persist_lessons(Path(os.environ.get("ARTIFACTS_DIR", ".")))
 git("add", "-A")  # ship commits everything; stage now so new files show in the diff
 base = git("merge-base", "HEAD", BASE).strip()
 diff = lambda *paths: git("diff", "--cached", base, "--", *paths)  # noqa: E731
