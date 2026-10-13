@@ -8,12 +8,14 @@
 
 local H = require("tests.helpers")
 
---- Healthchecks skipped because they need external tools or report plugin
---- issues queued as openspec/changes/fix-smoke-healthchecks.
+--- Healthchecks skipped because they need external tools, or fail on an
+--- upstream plugin bug (linked at the entry; remove it once fixed upstream).
 local HEALTH_EXCLUDE = {
 	"null-ls", -- external formatters/linters (markuplint, stylelint, shfmt, ...)
 	"rustaceanvim", -- rust-analyzer binary
-	"neotest-golang", -- testify queries need extra treesitter query files
+	-- health.lua loads testify query files renamed in
+	-- https://github.com/fredrikaverpil/neotest-golang/pull/563
+	"neotest-golang",
 	"mason", -- package registry/network checks, external toolchains
 	"vim.provider", -- python/node/ruby/perl providers are optional
 }

@@ -44,11 +44,11 @@ Scenarios: none (Smoke layer tooling)
 
 **Files:** `tests/smoke/run.lua`
 
-- [ ] 3.1 **Confirm.** Drop `neotest-golang` from `HEALTH_EXCLUDE`; `make smoke-health` → FAIL with only `testify/namespace` and `testify/test_method` (no other neotest-golang ERROR). Restore the entry.
-- [ ] 3.2 **Document** the entry: stale testify query paths in upstream `health.lua` since https://github.com/fredrikaverpil/neotest-golang/pull/563; remove when fixed upstream. Rewrite the `HEALTH_EXCLUDE` doc comment (external tools plus this upstream bug, no reference to this change).
-- [ ] 3.3 **Commit** `chore(smoke): document neotest-golang health exclude`.
+- [x] 3.1 **Confirm.** Drop `neotest-golang` from `HEALTH_EXCLUDE`; `make smoke-health` → FAIL with only `testify/namespace` and `testify/test_method` (no other neotest-golang ERROR). Restore the entry.
+- [x] 3.2 **Document** the entry: stale testify query paths in upstream `health.lua` since https://github.com/fredrikaverpil/neotest-golang/pull/563; remove when fixed upstream. Rewrite the `HEALTH_EXCLUDE` doc comment (external tools plus this upstream bug, no reference to this change).
+- [x] 3.3 **Commit** `chore(smoke): document neotest-golang health exclude`.
 
 ## 4. Gate
 
-- [ ] 4.1 `make smoke-health` green with `HEALTH_EXCLUDE` = external-tool checks + `neotest-golang` only, `HEALTH_IGNORE` gone.
+- [x] 4.1 `make smoke-health` green with `HEALTH_EXCLUDE` = external-tool checks + `neotest-golang` only, `HEALTH_IGNORE` gone.
 - [ ] 4.2 `make check` green.
