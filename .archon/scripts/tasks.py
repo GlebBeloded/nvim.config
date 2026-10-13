@@ -3,7 +3,7 @@ list items count: prose such as "checkbox (`- [ ]`) syntax" in a plan header is 
 
 `--adopted-state` prints {archived, tasks_done, visible_ui} for work-queue after adopt: no change folder
 means an adopted branch archived it; every task ticked means the spec step has nothing left (visible
-UI is then read from design.md, which only visible-UI changes have). LOOP_CHANGES_DIR overrides
+UI is then read from design.md: true only when it holds a render section, as visible-UI designs do). LOOP_CHANGES_DIR overrides
 openspec/changes (fixtures).
 
 As a script: exits 0 when the per-task loop is done (no unchecked task, a `## Blocked` section, or
@@ -19,6 +19,11 @@ UNCHECKED = re.compile(r"^\s*[-*] \[ \] ", re.MULTILINE)
 TASK_HEADING = re.compile(r"^#{2,4} .*$", re.MULTILINE)
 MAX_PASSES = 30
 SMALL = 4  # changes with at most this many tasks are implemented in one session
+
+
+def has_render(design) -> bool:
+    """A visible-UI design.md holds a `Current render` / `Proposed render` section; a technical one does not."""
+    return design.is_file() and re.search(r"(?mi)^#+ .*\brender\b", design.read_text()) is not None
 
 
 def task_sections(text: str) -> list[str]:
@@ -75,7 +80,7 @@ def plan_needed(tasks: pathlib.Path) -> bool:
 def adopted_state(folder: pathlib.Path) -> dict[str, bool]:
     tasks = folder / "tasks.md"
     done = tasks.exists() and bool(task_sections(tasks.read_text())) and unchecked(tasks.read_text()) == 0
-    return {"archived": not folder.is_dir(), "tasks_done": done, "visible_ui": (folder / "design.md").exists()}
+    return {"archived": not folder.is_dir(), "tasks_done": done, "visible_ui": has_render(folder / "design.md")}
 
 
 if __name__ == "__main__":
