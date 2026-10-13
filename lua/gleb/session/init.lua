@@ -3,7 +3,7 @@
 -- A session is keyed by (zellij session, pane id, cwd) so every nvim pane gets
 -- its own restore point. Pane ids are NOT stable across zellij resurrection, so
 -- restore falls back to the most recent session for the same cwd when the exact
--- key is missing.
+-- key is missing (newest first via `load_order` in resession.setup below).
 --
 -- resession only persists file paths / layout — never unsaved content — so
 -- okuuva/auto-save.nvim (see plugins.lua) keeps buffers flushed to disk.
@@ -32,6 +32,7 @@ end
 
 resession.setup({
 	autosave = { enabled = false }, -- saves are driven by the autocmds below
+	load_order = "modification_time", -- list() newest first: the cwd fallback picks the latest
 })
 
 local group = vim.api.nvim_create_augroup("gleb_session", { clear = true })
