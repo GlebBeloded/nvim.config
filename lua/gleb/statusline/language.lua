@@ -4,7 +4,7 @@
 -- language name. Pick the layout with STYLE below.
 local M = {}
 
-local devicons = require("nvim-web-devicons")
+local has_devicons, devicons = pcall(require, "nvim-web-devicons")
 local c = require("gleb.statusline.palette")
 
 -- ── appearance ──────────────────────────────────────────────────────────────
@@ -67,7 +67,12 @@ local function logo_group(filetype)
 	return "StatuslineLang_" .. (filetype:gsub("[^%w_]", "_"))
 end
 
+---@param filetype string
+---@return string
 local function logo(filetype)
+	if not has_devicons then
+		return ""
+	end
 	local glyph, color = devicons.get_icon_color_by_filetype(filetype, { default = true })
 	if not glyph then
 		return ""
@@ -93,6 +98,8 @@ local function pieces_for(filetype)
 	}
 end
 
+--- Statusline component: the language chip for the current buffer.
+---@return string
 function M.component()
 	local filetype = vim.bo.filetype
 	if filetype == "" then

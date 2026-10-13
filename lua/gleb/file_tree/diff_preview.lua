@@ -120,7 +120,9 @@ local function do_open_diff(path)
 	end)
 end
 
--- Open diff for file using vscode-diff internal API (debounced)
+--- Open diff for file using vscode-diff internal API (debounced).
+---@param path string?
+---@return nil
 function M.open_diff(path)
 	if not path then
 		return
@@ -151,7 +153,8 @@ function M.open_diff(path)
 	end)
 end
 
--- Close the diff tab
+--- Close the diff tab.
+---@return nil
 function M.close_current_diff()
 	if M.state.diff_tab and vim.api.nvim_tabpage_is_valid(M.state.diff_tab) then
 		-- Return to original tab first
@@ -164,7 +167,8 @@ function M.close_current_diff()
 	end
 end
 
--- Focus neo-tree window in current tab
+--- Focus neo-tree window in current tab.
+---@return boolean focused whether a neo-tree window was found
 function M.focus_neo_tree()
 	for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
 		local buf = vim.api.nvim_win_get_buf(win)
@@ -190,7 +194,8 @@ local function clear_state()
 	M.state.navigating_until = 0
 end
 
--- Close diff and clear state
+--- Close diff and clear state.
+---@return nil
 function M.close_all_diffs()
 	M.close_current_diff()
 	clear_state()
@@ -199,7 +204,8 @@ end
 -- Alias for semantic clarity (q keymap)
 M.return_to_original = M.close_all_diffs
 
--- Reset all state (used in tests)
+--- Reset all state (used in tests).
+---@return nil
 function M.reset()
 	M.close_all_diffs()
 end

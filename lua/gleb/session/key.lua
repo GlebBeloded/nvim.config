@@ -3,12 +3,15 @@
 
 local M = {}
 
--- Make a path safe to embed in a session filename.
+--- Make a path safe to embed in a session filename.
+---@param path string
+---@return string
 function M.slugify(path)
 	return (path:gsub("[/\\:]", "%%"))
 end
 
--- Unique key per zellij pane and directory; degrades gracefully outside zellij.
+--- Unique key per zellij pane and directory; degrades gracefully outside zellij.
+---@return string
 function M.session_name()
 	local parts = {
 		vim.env.ZELLIJ_SESSION_NAME or "no-zellij",

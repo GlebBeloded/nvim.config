@@ -176,17 +176,39 @@ local plugins = {
 	},
 	"lewis6991/foldsigns.nvim", -- Show LSP signs on folds
 
-	-- debugging plugins
-	"mfussenegger/nvim-dap",
+	-- debugging plugins: load on the first :Dap* command (or require("dap"))
 	{
-		"rcarriga/nvim-dap-ui",
-		dependencies = { "mfussenegger/nvim-dap", "nvim-neotest/nvim-nio" }, -- UI (splits) for DAP
+		"mfussenegger/nvim-dap",
+		cmd = {
+			"DapClearBreakpoints",
+			"DapContinue",
+			"DapDisconnect",
+			"DapEval",
+			"DapNew",
+			"DapPause",
+			"DapRestartFrame",
+			"DapSetLogLevel",
+			"DapShowLog",
+			"DapStepInto",
+			"DapStepOut",
+			"DapStepOver",
+			"DapTerminate",
+			"DapToggleBreakpoint",
+			"DapToggleRepl",
+		},
+		dependencies = {
+			{ "rcarriga/nvim-dap-ui", dependencies = { "nvim-neotest/nvim-nio" } }, -- UI (splits) for DAP
+			"leoluz/nvim-dap-go",
+		},
+		config = function()
+			require("gleb.debugging")
+		end,
 	},
-	"leoluz/nvim-dap-go",
 
 	-- testing
 	{
 		"nvim-neotest/neotest",
+		cmd = "Neotest",
 		dependencies = {
 			"nvim-neotest/nvim-nio",
 			"nvim-lua/plenary.nvim",
@@ -292,12 +314,7 @@ local plugins = {
 		"mrjones2014/smart-splits.nvim",
 		lazy = false,
 		config = function()
-			require("smart-splits").setup({
-				ignored_filetypes = { "nofile", "quickfix", "qf", "prompt" },
-				ignored_buftypes = { "nofile" },
-				-- Ensure multiplexer detection is enabled
-				at_edge = "stop", -- don't wrap at edges
-			})
+			require("gleb.smart_splits")
 		end,
 	},
 
@@ -306,9 +323,8 @@ local plugins = {
 	{
 		"kylechui/nvim-surround",
 		version = "*", -- Use for stability; omit to use the main branch for the latest features
-		config = function()
-			require("nvim-surround").setup({})
-		end,
+		event = "VeryLazy",
+		opts = {},
 	},
 	"windwp/nvim-ts-autotag", -- Autoclose HTML tags
 	"lukas-reineke/indent-blankline.nvim", -- Lines for indenting
@@ -372,31 +388,7 @@ local plugins = {
 		cmd = "Copilot",
 		event = "InsertEnter",
 		config = function()
-			require("copilot").setup({
-				suggestion = {
-					auto_trigger = true,
-					keymap = {
-						accept = false,
-						next = "<M-]>",
-						prev = "<M-[>",
-						dismiss = "<C-]>",
-					},
-				},
-			})
-
-			vim.api.nvim_create_autocmd("User", {
-				pattern = "BlinkCmpMenuOpen",
-				callback = function()
-					require("copilot.suggestion").dismiss()
-					vim.b.copilot_suggestion_hidden = true
-				end,
-			})
-			vim.api.nvim_create_autocmd("User", {
-				pattern = "BlinkCmpMenuClose",
-				callback = function()
-					vim.b.copilot_suggestion_hidden = false
-				end,
-			})
+			require("gleb.copilot")
 		end,
 	},
 }

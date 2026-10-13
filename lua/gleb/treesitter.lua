@@ -20,6 +20,7 @@ require("nvim-treesitter").install(parsers)
 
 -- Enable treesitter highlighting for all filetypes
 vim.api.nvim_create_autocmd("FileType", {
+	group = vim.api.nvim_create_augroup("gleb_treesitter", { clear = true }),
 	callback = function()
 		pcall(vim.treesitter.start)
 	end,

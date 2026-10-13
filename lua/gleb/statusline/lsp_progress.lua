@@ -177,7 +177,8 @@ local function on_detach(args)
 	end
 end
 
--- statusline component: spinner + readable label, only for tasks past the threshold
+--- Statusline component: spinner + readable label, only for tasks past the threshold.
+---@return string
 function M.progress()
 	prune_stale()
 	local parts = {}
