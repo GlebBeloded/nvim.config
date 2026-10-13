@@ -21,13 +21,13 @@ Scenario: `Missing 99 is tolerated`.
 
 Scenario: `Entry mappings are silent`.
 
-- [ ] 2.1 Failing mini.test first: extend `tests/unit/ai/test_entry_keymaps.lua` with the case
+- [x] 2.1 Failing mini.test first: extend `tests/unit/ai/test_entry_keymaps.lua` with the case
   `ai: Entry mappings are silent`. Assert via `maparg(..., false, true)` that `<A-9>` and `<S-CR>`
   are silent in normal and visual modes. Run the focused case; expect all four assertions to fail
   because the option is absent.
-- [ ] 2.2 In `lua/gleb/ai/entry_keymaps.lua`, add `silent = true` beside the existing description in
+- [x] 2.2 In `lua/gleb/ai/entry_keymaps.lua`, add `silent = true` beside the existing description in
   each of the four declarations; do not introduce an options helper.
-- [ ] 2.3 Run the focused case and `make quick`; both pass. Commit the test and implementation.
+- [x] 2.3 Run the focused case and `make quick`; both pass. Commit the test and implementation.
 
 ## 3. Keep entry mappings out of Select mode
 

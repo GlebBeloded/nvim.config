@@ -86,4 +86,11 @@ T["ai: Visual Shift-Enter opens visual prompt"] = function()
 	expect_prompt("visual")
 end
 
+T["ai: Entry mappings are silent"] = function()
+	eq(child.lua_get([[vim.fn.maparg("<A-9>", "n", false, true).silent]]), 1)
+	eq(child.lua_get([[vim.fn.maparg("<S-CR>", "n", false, true).silent]]), 1)
+	eq(child.lua_get([[vim.fn.maparg("<A-9>", "v", false, true).silent]]), 1)
+	eq(child.lua_get([[vim.fn.maparg("<S-CR>", "v", false, true).silent]]), 1)
+end
+
 return T
