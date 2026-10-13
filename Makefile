@@ -22,11 +22,11 @@ export NVIM_TEST_DATA_DIR ?= $(CURDIR)/.tests/xdg/data/nvim
 endif
 
 .PHONY: check quick install deps fmt lint types test test-unit test-integration test-screen \
-	screenshots smoke smoke-health smoke-startup trace render colorize clean
+	screenshots smoke smoke-health smoke-startup trace specs render colorize clean
 
 # startup timing runs alone after the rest, so the other layers do not skew it
 check:
-	@SANDBOX_START=$${E2E:-0} tests/check.sh lint types test trace chain stack e2e smoke-health loop-test +smoke-startup
+	@SANDBOX_START=$${E2E:-0} tests/check.sh lint types test trace specs chain stack e2e smoke-health loop-test +smoke-startup
 
 quick:
 	@tests/quick.sh
@@ -76,6 +76,10 @@ smoke-startup: deps
 
 trace: deps
 	@$(NVIM_LUA) tests/trace.lua $(if $(VERBOSE),,--quiet)
+
+# main specs pass strict validation (what a trial archive needs)
+specs:
+	@openspec validate --specs --strict --no-interactive
 
 # colored capture in a private tmux (MONO=1: plain mini.test screenshot)
 render: deps
