@@ -47,8 +47,8 @@ Scenarios: none (Static layer: `make types`)
 
 - [x] 3.1 **Failing test.** With `"param-type-mismatch"` still deleted (2.1), `make types` → FAIL with only the tests/ rows of design.md, Context.
 - [x] 3.2 **Implement** a typed helper in `colorize.lua` that maps `vim.NIL` to nil (drops the existing `@as colorize.Hl` cast); `tonumber(code) --[[@as integer]]` in `chain.lua:116`; `Stack.env` typed `table<string, string>` with one commented cast on the constructor; `{ fail_reason = ... }` for every string third argument to `eq` in `test_cleanup.lua`. `make types` → no `param-type-mismatch`.
-- [ ] 3.3 **Verify** the restored messages: temporarily break one `expect_cleanup_sees_merge` expectation, `make test-unit` shows `run.output` as the failure headline; revert. `make test`, `make chain`, `make stack` green; `make colorize FILE=<an existing design.md>` output unchanged.
-- [ ] 3.4 **Commit** `fix(types): narrow param types in tests/`.
+- [x] 3.3 **Verify** the restored messages: temporarily break one `expect_cleanup_sees_merge` expectation, `make test-unit` shows `run.output` as the failure headline; revert. `make test`, `make chain`, `make stack` green; `make colorize FILE=<an existing design.md>` output unchanged.
+- [x] 3.4 **Commit** `fix(types): narrow param types in tests/`.
 
 ## 4. deprecated
 
@@ -56,8 +56,8 @@ Scenarios: none (Static layer: `make types`)
 
 **Files:** `lua/gleb/lsp/config/python/typecheck.lua`, `.luarc.jsonc`
 
-- [ ] 4.1 **Failing test.** Delete `"deprecated"`; `make types` → FAIL at `typecheck.lua:7` only (`fix-diagnostic-navigation` is archived).
-- [ ] 4.2 **Implement** `client:stop()`. `make types` → no `deprecated`.
+- [x] 4.1 **Failing test.** Delete `"deprecated"`; `make types` → FAIL at `typecheck.lua:7` only (`fix-diagnostic-navigation` is archived).
+- [x] 4.2 **Implement** `client:stop()`. `make types` → no `deprecated`.
 - [ ] 4.3 **Commit** `fix(lsp): use client:stop() in PyTypeCheck`.
 
 ## 5. duplicate-set-field

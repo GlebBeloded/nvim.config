@@ -6,7 +6,6 @@
   "diagnostics.globals": ["vim"],
   "diagnostics.severity": {
     "undefined-doc-name": "Information",
-    "deprecated": "Information",
     "duplicate-set-field": "Information",
     "need-check-nil": "Information"
   },
