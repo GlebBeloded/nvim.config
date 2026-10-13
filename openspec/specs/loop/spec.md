@@ -60,6 +60,14 @@ The repo root SHALL expose the agent rules as both `CLAUDE.md` and `AGENTS.md`, 
 - **WHEN** `python3 .archon/scripts/ship.py` is started via `vim.system`, all at once, in four worktrees of a throwaway repo whose main checkout is on `auto`, each worktree on a `loop/*` branch with one commit that does not conflict with the others
 - **THEN** all four exit 0, `git log --first-parent auto` shows four new merges (one per branch), the `auto` checkout has no `MERGE_HEAD`, `git status --porcelain --untracked-files=no` there is empty, and no ship lock file remains
 
+#### Scenario: Ship waits for a dirty auto checkout
+- **WHEN** `.archon/scripts/ship.py` runs while the `auto` checkout has a tracked edit that is reverted 1.5 s later
+- **THEN** it prints that it is waiting, then merges the branch into `auto`
+
+#### Scenario: Ship gives up on an auto checkout that stays dirty
+- **WHEN** `.archon/scripts/ship.py` runs with `SHIP_DIRTY_WAIT=1` while the `auto` checkout keeps a tracked edit
+- **THEN** it exits non-zero and says to merge the branch by hand
+
 #### Scenario: Stale ship lock is taken over
 - **WHEN** the ship lock file already exists and holds the pid of a process that has exited, and `ship.py` is run via `vim.system` in a worktree on a `loop/*` branch with one commit
 - **THEN** ship exits 0 within its timeout, `auto` contains the merge of that branch, and no ship lock file remains

@@ -58,7 +58,7 @@ Agents run only their own test case and never `make quick` or `make check`. The 
 group runs at most 3 times; a red pass sends only its findings (`verdict.py` `feedback`, which also
 lists hard-rule violations from `integrity.py`) to the next pass's fix step.
 
-Runs merge into `auto` one at a time under `.git/nvim-ship.lock` (it holds the merging pid; delete it
+Runs merge into `auto` one at a time under `.git/nvim-ship.lock`; ship waits up to 5 min (`SHIP_DIRTY_WAIT`) while the `auto` checkout has tracked edits, so edit the loop on a branch, not in `~/.config/nvim` (it holds the merging pid; delete it
 only if that pid is not running). A run whose merge conflicts with `auto` goes through `reconcile`: an
 agent merges `auto` into the branch and resolves it, the gate runs again, and ship retries, at most twice.
 

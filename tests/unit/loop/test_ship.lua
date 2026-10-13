@@ -143,6 +143,31 @@ T["loop: Concurrent ships merge one at a time"] = function()
 	expect_auto_clean(repo)
 end
 
+T["loop: Ship waits for a dirty auto checkout"] = function()
+	local repo = make_repo()
+	local run = add_run(repo, "w", { ["w.txt"] = "w" })
+	write_files(repo, { ["f.txt"] = "edited" })
+	child.lua("_G.ship_run = vim.system(..., { cwd = select(2, ...), env = select(3, ...), text = true })", {
+		{ "python3", SHIP },
+		run,
+		ship_env(),
+	})
+	vim.uv.sleep(1500)
+	git_ok({ "checkout", "--", "f.txt" }, repo)
+	local result = child.lua_get("_G.ship_run:wait(30000)")
+	expect_shipped(result)
+	eq(result.stderr:find("uncommitted changes, waiting", 1, true) ~= nil, true)
+end
+
+T["loop: Ship gives up on an auto checkout that stays dirty"] = function()
+	local repo = make_repo()
+	local run = add_run(repo, "d", { ["d.txt"] = "d" })
+	write_files(repo, { ["f.txt"] = "edited" })
+	local result = ship(run, { SHIP_DIRTY_WAIT = "1" })
+	eq(result.code ~= 0, true)
+	eq(result.stderr:find("merge loop/d by hand", 1, true) ~= nil, true)
+end
+
 T["loop: Stale ship lock is taken over"] = function()
 	local repo = make_repo()
 	local worktree = add_run(repo, "stale", { ["s.txt"] = "s" })

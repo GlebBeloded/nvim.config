@@ -15,6 +15,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import time
 
 from shiplock import acquire_lock, lock_path, release_lock
 
@@ -23,6 +24,7 @@ change = os.environ.get("INPUTS_CHANGE", "")
 message = os.environ.get("INPUTS_MESSAGE", "") or (f"loop: {change}" if change else "loop: update")
 on_conflict = os.environ.get("INPUTS_ON_CONFLICT", "") or "fail"
 LOCK_TIMEOUT = float(os.environ.get("SHIP_LOCK_TIMEOUT") or 600)
+DIRTY_WAIT = float(os.environ.get("SHIP_DIRTY_WAIT") or 300)  # s to wait for tracked edits in the auto checkout
 
 
 def git(*args: str, cwd: str | None = None) -> str:
@@ -77,11 +79,20 @@ def merge_into_base(branch: str) -> str | None:
         release_lock(lock)
 
 
+def wait_clean(target: str, branch: str) -> None:
+    """Someone editing the auto checkout is usually about to commit: wait for it, then give up."""
+    deadline = time.monotonic() + DIRTY_WAIT
+    while git("status", "--porcelain", "--untracked-files=no", cwd=target):
+        if time.monotonic() >= deadline:
+            fail(f"{target} ({BASE}) has uncommitted changes; merge {branch} by hand: git merge --no-ff {branch}")
+        print(f"ship: {target} has uncommitted changes, waiting", file=sys.stderr, flush=True)
+        time.sleep(2)
+
+
 def merge_locked(branch: str) -> str | None:
     target = base_checkout()
     if target is not None:
-        if git("status", "--porcelain", "--untracked-files=no", cwd=target):
-            fail(f"{target} ({BASE}) has uncommitted changes; merge {branch} by hand: git merge --no-ff {branch}")
+        wait_clean(target, branch)
         return merge_in(target, branch)
     temp = tempfile.mkdtemp(prefix="nvim-ship-")
     git("worktree", "add", temp, BASE)
