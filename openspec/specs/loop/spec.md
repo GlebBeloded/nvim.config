@@ -483,8 +483,8 @@ When `make check` fails only in its `test` target, gate.py SHALL rerun each `FAI
 work-queue SHALL skip the queue-spec step when the adopted change's tasks.md has tasks and all are ticked (`tasks.py --adopted-state`), reading visible UI from design.md; queue-spec SHALL read adopt notes only if they exist and never let a task empty a test file.
 
 #### Scenario: Adopted change with every task ticked skips the spec step
-- **WHEN** `tasks.py --adopted-state` runs for change `c` with all tasks ticked (with and without design.md), with one unticked, with no tasks.md and with no change folder
-- **THEN** it prints `tasks_done` true only for the ticked ones, `visible_ui` true only with design.md and `archived` true only without the folder; work-queue's `complete` requires `tasks_done == false` and queue-spec reads adopt-notes.md only if it exists
+- **WHEN** `tasks.py --adopted-state` runs for change `c` with all tasks ticked (with a design.md holding a render section, with a technical design.md, and without one), with one unticked, with no tasks.md and with no change folder
+- **THEN** it prints `tasks_done` true only for the ticked ones, `visible_ui` true only with the render-holding design.md and `archived` true only without the folder; work-queue's `complete` requires `tasks_done == false` and queue-spec reads adopt-notes.md only if it exists
 
 #### Scenario: Queue spec prompt never empties a test file
 - **WHEN** `.archon/commands/queue-spec.md` is read
