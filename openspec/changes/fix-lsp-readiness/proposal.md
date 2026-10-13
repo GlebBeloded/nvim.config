@@ -2,7 +2,7 @@
 Every Neovim starts its own language servers (`lua/gleb/lsp/config/init.lua:43-49`, default lspconfig `cmd`), and each new server loads the whole workspace before it answers. Measured from `:edit` to the first `textDocument/documentSymbol` answer (root cause: `artifacts/runs/b1c94bd6-…/root-cause.md`): lua_ls in this checkout 2.8–3.2 s, gopls in a 542-package module 1.5–4.3 s, basedpyright 1.1–2.8 s, vtsls 0.7–0.9 s. The user wants every server ready in under 1 s.
 
 Kind: bug
-Adopt: loop/fix-lsp-readiness-20261013-213032
+Adopt: loop/fix-lsp-readiness-20261014-004515
 
 ## What Changes
 - Add a `Language server readiness` requirement to `lsp`: each server answers its first request within 1 s of `:edit`. Each server gets a scenario on a fixture project the test controls.
@@ -31,11 +31,9 @@ Adopt: loop/fix-lsp-readiness-20261013-213032
 1. lua_ls library: add `folke/lazydev.nvim`; `make types` keeps the full `$VIMRUNTIME` library.
 2. gopls: option A — the 1 s target applies to small modules (fixtures); large modules are tracked upstream (golang/go#69523), out of scope.
 
-## Rejected run
-Run on `loop/fix-lsp-readiness` was rejected by the judge:
-- fix loop exhausted (3 attempts) with gates still red: tests,review_skipped
-- Readiness cases failed only on time (lua_ls 3157 ms, gopls 1498 ms, vtsls 1789 ms) inside the 12-worker `test` layer. Timing bounds must not share CPU with other cases: run `tests/integration/lsp/test_readiness.lua` in its own check layer that runs alone after the rest (like `+smoke-startup` in `make check`), excluded from `make test`.
-- lua_ls at 3.1 s means the editor still indexes the full library: verify `.luarc.jsonc` has no `workspace.library` and lazydev loads types lazily in this config before tuning anything else.
-
 ## Decision (user, 2026-10-14)
 3. lua_ls readiness bound is 2.5 s with lazydev kept (option A); gopls, basedpyright and vtsls keep 1 s. Readiness cases run in their own check layer alone after all other layers (like `+smoke-startup`), not inside `make test`.
+
+## Rejected run
+Run on `loop/fix-lsp-readiness-20261014-004515` was rejected by the judge:
+- fix loop exhausted (3 attempts) with gates still red: tests,review_skipped
