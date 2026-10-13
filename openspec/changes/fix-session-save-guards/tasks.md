@@ -40,9 +40,9 @@ Scenarios: "session: unnamed buffer is not auto-written", "session: modified fil
 
 **Files:** `lua/gleb/plugins/plugins.lua`, `tests/integration/session/test_session.lua`
 
-- [ ] 2.1 **Failing test.** Add `T["session: unnamed buffer is not auto-written"]`: `child.cmd("enew")`, `child.v.errmsg = ""`, `child.type_keys("i", "hello", "<Esc>")`, `vim.uv.sleep(AUTOSAVE_WAIT_MS)`; assert `{ child.bo.modified, child.v.errmsg:find("E32") }` equals `{ true, nil }`. Run `make test-integration FILE=tests/integration/session/test_session.lua CASE="unnamed buffer"` → FAIL (E32).
-- [ ] 2.2 **Implement** a named `---@param buf integer ---@return boolean local function should_autosave(buf)` in the auto-save spec that also requires `vim.api.nvim_buf_get_name(buf) ~= ""`; pass it as `condition`. Run the same command → PASS, including the existing auto-save cases.
-- [ ] 2.3 **Commit** `fix(session): auto-save skips unnamed buffers`.
+- [x] 2.1 **Failing test.** Add `T["session: unnamed buffer is not auto-written"]`: `child.cmd("enew")`, `child.v.errmsg = ""`, `child.type_keys("i", "hello", "<Esc>")`, `vim.uv.sleep(AUTOSAVE_WAIT_MS)`; assert `{ child.bo.modified, child.v.errmsg:find("E32") }` equals `{ true, nil }`. Run `make test-integration FILE=tests/integration/session/test_session.lua CASE="unnamed buffer"` → FAIL (E32).
+- [x] 2.2 **Implement** a named `---@param buf integer ---@return boolean local function should_autosave(buf)` in the auto-save spec that also requires `vim.api.nvim_buf_get_name(buf) ~= ""`; pass it as `condition`. Run the same command → PASS, including the existing auto-save cases.
+- [x] 2.3 **Commit** `fix(session): auto-save skips unnamed buffers`.
 
 ## 3. Gate
 

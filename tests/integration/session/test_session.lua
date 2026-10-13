@@ -195,4 +195,13 @@ T["session: special buffer is not auto-written"] = function()
 	eq({ child.bo.modified, vim.fn.readfile(path) }, { modified, { "original" } })
 end
 
+T["session: unnamed buffer is not auto-written"] = function()
+	child.cmd("enew")
+	child.v.errmsg = ""
+	child.type_keys("i", "hello", "<Esc>")
+	vim.uv.sleep(AUTOSAVE_WAIT_MS)
+
+	eq({ child.bo.modified, child.v.errmsg:find("E32") }, { true, nil })
+end
+
 return T
