@@ -43,4 +43,4 @@ Scenarios: "session: bare nvim restores the newest cwd session"
 
 ## 3. Gate
 
-- [ ] 3.1 `make check` green; `make trace` reports no orphans for the new scenario titles.
+- [x] 3.1 `make check` green; `make trace` reports no orphans for the new scenario titles.
