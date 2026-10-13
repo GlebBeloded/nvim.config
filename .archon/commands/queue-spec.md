@@ -4,21 +4,23 @@ description: Complete the artifacts of a queued change
 # Complete the queued change
 
 First, load each of these skills before any other step: `openspec-continue-change`. On Claude, load each with the
-Skill tool. On Codex, invoke each by name: $openspec-continue-change. Report each skill as it loads. If one does not
+Skill tool. On Codex, invoke each by name: $openspec-continue-change. If one does not
 load, stop and report the error naming it. The skill text is already in your context once loaded: do not re-read its SKILL.md.
 
 Flow (fix-bug / work-queue): diagnose → spec → plan → implement ×task → check → fix → review → judge → ship.
 Your step: **spec** (queued change). Input: the queued proposal. Output: the completed change folder including tasks.md (so the plan step is skipped) and the JSON fields. Do not: write tests or code. Keep output brief. Loop step rules (they override general instructions about searching, skills and sub-agents): use only the skill named above, no sub-agents; search the web only for facts that are in neither the repo nor the installed plugin source; read doc sections you need (`rg -n '^## ' <doc>`, then that range), never whole docs.
 
 Change: openspec/changes/$INPUTS.change/
-Earlier work: $INPUTS.adopted (when it says "adopted" or "conflicts merging" (the adopt-resolve step finished that merge; see `$ARTIFACTS_DIR/adopt-notes.md` for hunks it gave up), `git log --oneline auto..HEAD` and `git diff auto...HEAD --stat` show what is already done; specify and plan only the rest)
+Earlier work: $INPUTS.adopted. Only if that is not "nothing to adopt" (it says "adopted" or "conflicts merging"; the adopt-resolve step finished that merge, `$ARTIFACTS_DIR/adopt-notes.md` lists hunks it gave up): `git log --oneline auto..HEAD` and `git diff auto...HEAD --stat` show what is already done; specify and plan only the rest.
 
 The change is a queue item (for example a finding from a review) and may
 only have proposal.md. Read it, find the root cause if it is a bug (systematic-debugging,
 no code changes), then complete the missing artifacts with the `openspec-continue-change` skill
 until specs, design.md (only for visible UI: Current + Proposed renders) and tasks exist; refresh any counts or lists the queued proposal quotes (e.g. `make trace VERBOSE=1`) instead of trusting them,
-following openspec/config.yaml rules. Do not implement. Set `visible_ui` and `architecture` as in
-a fix proposal (screen output changes / module layout, load order or plugin wiring changes).
+following openspec/config.yaml rules. If the proposal cites file:line and names the requirement, read only those
+ranges (`rg -n 'Requirement:' <spec>`, then that range). Drop main spec paths from the proposal's Impact; the delta
+covers them. Do not implement. Set `visible_ui` to true when the change alters what is drawn on screen,
+`architecture` to true when it changes module layout, load order or plugin wiring (docs/architecture.md).
 
 tasks.md format (each task one section of at most 5 scenarios, split by requirement; the gate reads the `Scenarios:` line):
 
@@ -29,7 +31,8 @@ Scenarios: `<capability>: <scenario title>`
 - [ ] 1.2 <the smallest code change>
 - [ ] 1.3 Run `make test FILE=tests/<layer>/<capability>/test_<x>.lua CASE="<scenario title>"` and see it pass
 ```
-No design.md unless the change alters what is drawn on screen (then Current + Proposed renders); a structural change is described in the proposal. Run `openspec status`
+No design.md unless the change alters what is drawn on screen (then Current + Proposed renders); a structural change is described in the proposal. Do not run
+`openspec list` or `openspec instructions tasks`; the change and tasks format are given above. Run `openspec status`
 once, at the end. Do not re-read files you just wrote; read files with `nl -ba` once.
 
 Refactor or cleanup (no behaviour change, `skip_specs: true`): tasks name existing scenarios whose tests guard the

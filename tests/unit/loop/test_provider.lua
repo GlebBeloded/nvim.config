@@ -63,4 +63,64 @@ T["loop: Provider switch is documented"] = function()
 	end
 end
 
+local WRAPPER = ".archon/scripts/codex-loop.sh"
+local STUB = '#!/bin/sh\nprintf "%s\\n" "$CODEX_HOME" "$@" > "$STUB_LOG"\n'
+
+---@class test.WrapperRun
+---@field args string[] stub arguments
+---@field codex_home string `CODEX_HOME` the stub saw
+---@field user_home string
+---@field loop_home string
+
+--- Runs the Codex wrapper with `args` against a stub codex and a fake user Codex home.
+---@param args string[]
+---@return test.WrapperRun
+local function run_wrapper(args)
+	local dir = H.tempdir(child)
+	local user_home, loop_home = dir .. "/user", dir .. "/loop"
+	local stub, log = dir .. "/codex", dir .. "/stub.log"
+	child.lua(
+		[[
+        local dir, user_home, stub, script = ...
+        vim.fn.mkdir(user_home .. "/sessions", "p")
+        for _, name in ipairs({ "AGENTS.md", "auth.json", "config.toml" }) do
+            vim.fn.writefile({ name }, user_home .. "/" .. name)
+        end
+        vim.fn.writefile(vim.split(script, "\n"), stub)
+        vim.uv.fs_chmod(stub, 493)
+        ]],
+		{ dir, user_home, stub, STUB }
+	)
+	local env = { CODEX_LOOP_BIN = stub, CODEX_LOOP_USER_HOME = user_home, CODEX_LOOP_HOME = loop_home, STUB_LOG = log }
+	local result = H.system(child, vim.list_extend({ "bash", WRAPPER }, args), H.root, env)
+	eq(result.code, 0, { fail_reason = result.stderr })
+	local lines = child.lua_get("vim.fn.readfile(...)", { log })
+	return { codex_home = table.remove(lines, 1), args = lines, user_home = user_home, loop_home = loop_home }
+end
+
+T["loop: Codex wrapper passes its overrides after the subcommand"] = function()
+	local run = run_wrapper({ "exec", "--experimental-json" })
+	eq(run.args[1], "exec")
+	eq(run.args[#run.args], "--experimental-json")
+	for _, override in ipairs({
+		"skills.include_instructions=false",
+		"features.apps=false",
+		"features.tool_suggest=false",
+		"include_collaboration_mode_instructions=false",
+		"agents.enabled=false",
+		"features.hooks=false",
+	}) do
+		eq(vim.tbl_contains(run.args, override), true, { fail_reason = "missing -c " .. override })
+	end
+end
+
+T["loop: Codex wrapper home mirrors the user's Codex home without global instructions"] = function()
+	local run = run_wrapper({ "exec" })
+	eq(run.codex_home, run.loop_home)
+	for _, name in ipairs({ "auth.json", "config.toml", "sessions" }) do
+		eq(child.lua_get("vim.uv.fs_realpath(...)", { run.loop_home .. "/" .. name }), run.user_home .. "/" .. name)
+	end
+	eq(child.lua_get("vim.uv.fs_lstat(...) == nil", { run.loop_home .. "/AGENTS.md" }), true)
+end
+
 return T

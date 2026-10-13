@@ -155,6 +155,17 @@ Every workflow SHALL run `.archon/scripts/skills_check.py` before its first skil
 - **WHEN** `docs/workflow.md` is read with `vim.fn.readfile`
 - **THEN** it contains `assistant: codex`, `assistant: claude` and `provider: claude`
 
+### Requirement: Codex wrapper trims the fixed context of every call
+`.archon/scripts/codex-loop.sh` SHALL pass its `-c` overrides after the subcommand (`codex -c k=v exec` ignores them), turning off sub-agents, hooks, apps, tool suggestions (recommended plugins), the skills catalog, the collaboration-mode and multi-agent usage hints, and the GUI and MCP tools. It SHALL run Codex with `CODEX_HOME` set to a directory that links every entry of the user's Codex home (auth, config, plugins, sessions) except `AGENTS.md` and `AGENTS.override.md`, so the global instructions are not loaded while sessions still land in `~/.codex/sessions`.
+
+#### Scenario: Codex wrapper passes its overrides after the subcommand
+- **WHEN** the wrapper is run as `codex-loop.sh exec --experimental-json` with `CODEX_LOOP_BIN` set to a stub that logs its arguments
+- **THEN** the stub's first argument is `exec`, `--experimental-json` follows the overrides, and the overrides include `skills.include_instructions=false`, `features.apps=false`, `features.tool_suggest=false`, `include_collaboration_mode_instructions=false`, `agents.enabled=false` and `features.hooks=false`
+
+#### Scenario: Codex wrapper home mirrors the user's Codex home without global instructions
+- **WHEN** the wrapper runs the stub with `CODEX_LOOP_USER_HOME` set to a directory holding `AGENTS.md`, `auth.json`, `config.toml` and `sessions/`, and `CODEX_LOOP_HOME` set to an empty directory
+- **THEN** the stub sees `CODEX_HOME` equal to that `CODEX_LOOP_HOME`, whose `auth.json`, `config.toml` and `sessions` resolve to the user's entries, and which has no `AGENTS.md`
+
 ### Requirement: Skill preflight resolves a skill for its node's provider
 On `claude`, `skills_check.py` SHALL resolve a project skill at `.claude/skills/<name>/SKILL.md`, and a `<plugin>:<skill>` at `<installPath>/skills/<skill>/SKILL.md` of a plugin `claude plugin list --json` reports enabled without `errors`. On `codex`, it SHALL use `.agents/skills/<name>/SKILL.md`, and `<root>/skills/<skill>/SKILL.md` of a plugin `codex plugin list --json` reports `installed` and `enabled`. `<root>` is that plugin's root (next requirement).
 
