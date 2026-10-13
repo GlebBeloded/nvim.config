@@ -2,7 +2,7 @@
 
 **Goal:** stack and e2e cases no longer fail on one transient `zellij action` answer; `make check E2E=1` passes 5 times in a row.
 
-**Spec:** `specs/shortcuts/spec.md` (requirement "Real zellij delivers shortcuts"). No design.md: no visible UI and no structural change.
+**Spec:** `specs/shortcuts/spec.md` (new requirement "The stack harness retries transient zellij CLI failures", split out of "Real zellij delivers shortcuts" to keep requirement text under 500 characters). No design.md: no visible UI and no structural change.
 
 ## Global Constraints
 
@@ -27,7 +27,7 @@ Scenarios: "shortcuts: The stack harness retries a transient zellij CLI failure"
 
 **Files:** `openspec/specs/shortcuts/spec.md`, `tests/unit/shortcuts/test_stack_cli.lua` (new), `tests/shortcuts/stack.lua`
 
-- [x] 1.1 **Sync spec.** Apply the delta of `specs/shortcuts/spec.md` to `openspec/specs/shortcuts/spec.md` (requirement text plus the two scenarios), so `make trace` knows the new titles.
+- [x] 1.1 **Sync spec.** Apply the delta of `specs/shortcuts/spec.md` to `openspec/specs/shortcuts/spec.md` (the new requirement plus its two scenarios), so `make trace` knows the new titles.
 - [x] 1.2 **Failing test.** Create `tests/unit/shortcuts/test_stack_cli.lua` with `H.child_set(child, child.start_bare)`. A `zellij` shell stub, written into a temp dir by the child and chmod 755, appends one line per call to a count file and answers by call number from `$ZELLIJ_STUB_MODE`:
   - `flaky`: call 1 prints `There is no active session!` to stderr and exits 1; call 2 prints only the header `CLIENT_ID ZELLIJ_PANE_ID RUNNING_COMMAND`; call 3+ prints the header and `1 terminal_0 nvim`.
   - `gone`: every call prints `There is no active session!` to stderr and exits 1.

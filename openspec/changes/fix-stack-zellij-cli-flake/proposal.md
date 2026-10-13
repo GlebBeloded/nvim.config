@@ -11,7 +11,7 @@ Kind: bug
 
 ## Capabilities
 ### Modified Capabilities
-- `shortcuts`: requirement "Real zellij delivers shortcuts" gains two harness scenarios. A transient zellij CLI failure is retried, and a session that is really gone still fails.
+- `shortcuts`: new requirement "The stack harness retries transient zellij CLI failures" with two harness scenarios. A transient zellij CLI failure is retried, and a session that is really gone still fails.
 
 ## Impact
 - Code: `tests/shortcuts/stack.lua` only. The e2e harness (`tests/e2e/alacritty.lua`) and both test files use it unchanged.
