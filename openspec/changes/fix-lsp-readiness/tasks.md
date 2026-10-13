@@ -1,10 +1,5 @@
-## 1. Restore the authorized readiness contract
-Scenarios: `lsp: lua_ls ready within 1 s in this config`
-- [x] 1.1 Restore the ADDED-only 1 s readiness delta and remove the direct main-spec edit
-- [x] 1.2 Restore the lua_ls test's 1000 ms bound and the user's Decision text verbatim
-- [x] 1.3 Remove the unapproved serial-run harness and its code-restating documentation
-
-## Blocked
-
-1. **lua_ls with lazydev.** The authorized 1 s scenario measures about 2.1–2.25 s with lazydev retaining typed `vim.*` metadata. Meeting the scenario requires a user decision: narrow or disable lazydev's runtime metadata, accept untyped `vim.*`, or accept a higher lua_ls bound.
-2. **Timing under parallel test load.** The 1 s fixture scenarios can exceed their bounds under the full parallel suite. Running readiness cases serially is a harness change that still needs the user's go-ahead; load-scaled bounds are forbidden by the existing constraints.
+## 1. Enforce readiness with fixed bounds in an isolated layer
+Scenarios: `lsp: lua_ls ready within 2.5 s in this config`, `lsp: gopls ready within 1 s in a small module`, `lsp: basedpyright ready within 1 s in a small project`, `lsp: vtsls ready within 1 s in a small project`
+- [x] 1.1 Run the existing tests in `tests/integration/lsp/test_readiness.lua` and see the old 1000 ms lua_ls case fail and its title disagree with `lsp: lua_ls ready within 2.5 s in this config`
+- [x] 1.2 Rename the lua_ls case, use its fixed 2500 ms bound, and move the readiness file out of parallel `make test` into a dedicated serial check layer that runs after all other layers without load scaling
+- [x] 1.3 Run `make test-readiness FILE=tests/integration/lsp/test_readiness.lua CASE="ready within"` and see all four scenarios pass

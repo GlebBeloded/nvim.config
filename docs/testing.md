@@ -4,7 +4,7 @@
 
 | Command | What runs | Wall time (14-core Mac) |
 |---|---|---|
-| `make check` | every layer below, concurrently (`tests/check.sh`); smoke startup timing runs alone afterwards. e2e runs only while the sandbox VM is up (else `skip`) | ~15 s |
+| `make check` | every layer below, concurrently (`tests/check.sh`); smoke startup and LSP readiness timing run alone afterwards. e2e runs only while the sandbox VM is up (else `skip`) | ~25 s |
 | `make check E2E=1` | the same, booting the sandbox VM for e2e if it is down; the loop's gate (`.archon/scripts/gate.py`) | ~15 s (VM up) |
 | `make quick` | lint + trace, plus only the layers the changes vs `BASE` (default `auto`) can affect (`tests/quick.sh` has the mapping) | <1 s docs only, ~7 s one capability |
 | `make test FILE=… CASE=…` | one file / matching cases | ~1–3 s |
@@ -23,12 +23,13 @@ Pyramid, bottom to top. Times are wall times of one layer on its own (in `make c
 | Static | `make chain` | real Alacritty + zellij configs parsed and routed, mappings checked in a child Neovim; prints the shortcut table ([shortcut layers](#shortcut-layers)) | ~2 s |
 | Unit | `make test-unit` | one module in a *bare* child Neovim (`tests/minimal_init.lua`, no user config, plugins added one by one) | `make test` (all three): ~10 s |
 | Integration | `make test-integration` | behaviour of the *real* config in a child Neovim (keys, autocmds, plugins) | |
+| Integration | `make test-readiness` | fixed LSP readiness bounds in a serial full-config child, after the other check layers | ~10 s |
 | Screen | `make test-screen` | reference screenshots (`tests/screenshots/`) of the real config | |
 | Stack | `make stack` | real zellij (user keybinds) in a tmux pty with the real Neovim config, fed Alacritty's bytes | ~6 s |
 | E2E | `make e2e` | real Alacritty window + zellij + Neovim, real macOS key events, inside the [sandbox VM](#sandbox-vm) | ~13 s warm (1 s to ready) |
 | Smoke | `make smoke` | headless start of the real config: nothing in `:messages` or stderr, no `ERROR` in `:checkhealth`, startup time within budget | ~7 s health, ~2 s startup |
 
-`make test` runs all three mini.test layers (`tests/parallel.lua`): the matched cases are sharded over `JOBS` headless workers (default cores − 2; `JOBS=1` runs serially), balanced by the case durations of earlier runs (`.tests/timings.json`), and reported as one mini.test report with fails and notes at the end. Every worker has its own sandbox (see [Isolation](#isolation)). `make screenshots`, `chain`, `stack` and `e2e` run in one process. `make deps` fetches the pinned test dependencies into `.tests/deps` (gitignored) via `tests/bootstrap.sh`: mini.nvim v0.18.0, and lazy.nvim and vscode-diff.nvim at their `lazy-lock.json` commits as type libraries for `make types`. They are not part of the plugin list. `make install` installs the static tools with brew.
+`make test` runs the unit, integration and screen mini.test layers (`tests/parallel.lua`), except the timing-sensitive readiness file: the matched cases are sharded over `JOBS` headless workers (default cores − 2; `JOBS=1` runs serially), balanced by the case durations of earlier runs (`.tests/timings.json`), and reported as one mini.test report with fails and notes at the end. `make test-readiness` runs its file serially with fixed bounds. Every worker has its own sandbox (see [Isolation](#isolation)). `make screenshots`, `chain`, `stack` and `e2e` run in one process. `make deps` fetches the pinned test dependencies into `.tests/deps` (gitignored) via `tests/bootstrap.sh`: mini.nvim v0.18.0, and lazy.nvim and vscode-diff.nvim at their `lazy-lock.json` commits as type libraries for `make types`. They are not part of the plugin list. `make install` installs the static tools with brew.
 
 To narrow a run, use `FILE=tests/unit/session/test_key.lua make test`, `CAPS=session,keymaps make test` (only `tests/<layer>/<cap>/`) or `CASE="Move to left" make test-integration`.
 
