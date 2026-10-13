@@ -23,3 +23,5 @@ Run on `loop/fix-lsp-references-current-line` was rejected by the judge:
 - blocked: tasks.md: ## Blocked
 
 - loop: `tests/unit/shortcuts/test_sandbox.lua` has a check-then-read race while a stale lock owner file is replaced; the gate hit E484, while the exact file passed on rerun.
+- Review findings to fix: (1) add a MODIFIED delta for the keymaps scenario at `openspec/specs/keymaps/spec.md:207-209` (the `gr` callback now calls `lsp_references` with `include_current_line = true`, as `tests/integration/keymaps/test_keymaps.lua:509-511` checks) and list `keymaps` under Modified Capabilities; (2) add a MODIFIED delta for `openspec/specs/file-tree/spec.md:140-142`, and restore an assertion in `tests/integration/file-tree/test_tree.lua:522` that proves the global `gr` callback reaches Telescope `lsp_references` (stub it as `test_keymaps.lua:47-61` does) instead of only checking the desc.
+- The `loop:` sandbox-lock race is a loop issue fixed outside this change: delete that Blocked section from tasks.md.
