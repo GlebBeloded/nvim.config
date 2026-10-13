@@ -32,10 +32,10 @@ Scenarios: "tabline with tree open matches reference screenshot", "tabline witho
   pre-fix code: temporarily set the filetype back to `"NvimTree"`, run
   `make test-screen CASE="bufferline: tabline with tree open"` and confirm `wait_for_tab(37)` times out;
   restore `"neo-tree"` and delete any reference file that run created
-- [ ] 2.2 With the fix in place run `make screenshots` (only the two new references should appear); review
+- [x] 2.2 With the fix in place run `make screenshots` (only the two new references should appear); review
   them with `git status tests/screenshots`: the tree-open text row equals design.md Proposed row 1, the
   tree-closed one equals Current row 1. Commit both references
-- [ ] 2.3 `make test-screen` passes all three bufferline cases; `make trace` lists the three scenarios as
+- [x] 2.3 `make test-screen` passes all three bufferline cases; `make trace` lists the three scenarios as
   tested with no orphans
 
 ## 3. Verify
