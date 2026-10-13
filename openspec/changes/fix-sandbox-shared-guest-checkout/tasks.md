@@ -53,5 +53,5 @@ Scenarios: none (docs and the gate only, so no failing test; tasks 1-3 hold ever
   - Smoke details: the budget is multiplied by the load factor when the load exceeds the CPU count.
   - stack bullet: deadlines scale the same way.
   - Layout: add `lock.sh` to the `sandbox/` line.
-- [ ] 4.2 Manual concurrency check (VM up): run `make e2e` from this worktree and from a second checkout at once. One prints `sandbox: waiting for`, and both pass.
+- [x] 4.2 Manual concurrency check (VM up): run `make e2e` from this worktree and from a second checkout at once. One prints `sandbox: waiting for`, and both pass.
 - [ ] 4.3 `make check E2E=1` is green.
