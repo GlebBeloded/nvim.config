@@ -164,7 +164,7 @@ connection.execute(
   (payload["run_id"], "conversation", "local", payload["workflow_name"], payload["user_message"],
    payload["status"], payload.get("outcome"), json.dumps(payload["metadata"]),
    payload["started_at"], payload.get("completed_at"), payload["last_activity_at"],
-   payload["repository"], payload["output_root"]),
+   payload.get("working_path", payload["repository"]), payload["output_root"]),
 )
 for order, event in enumerate(payload["events"], 1):
   connection.execute(
@@ -198,6 +198,11 @@ local function make_fixture(opts)
 	local home = H.tempdir(child)
 	local output_root = H.tempdir(child)
 	local repository, merge_commit = make_repository()
+	local run_working_path = repository
+	if opts.removed_run_worktree then
+		run_working_path = vim.fs.joinpath(H.tempdir(child), "run-worktree")
+		git({ "worktree", "add", "-q", "--detach", run_working_path, merge_commit }, repository)
+	end
 	local run_id = opts.cancelled and "run-cancelled" or (opts.running and "run-live" or "run-complete")
 	local artifact_root = vim.fs.joinpath(output_root, "artifacts/runs", run_id)
 	local hostile_values = {
@@ -317,7 +322,11 @@ local function make_fixture(opts)
 			event_type = "node_completed",
 			step_name = "deliver__ship",
 			data = node_data("deliver__ship", "ship-1", 700, {
-				structured_output = { merged = true, conflict = false, commit = merge_commit },
+				structured_output = {
+					merged = true,
+					conflict = false,
+					commit = opts.unresolvable_merge and string.rep("f", 40) or merge_commit,
+				},
 			}),
 		},
 	}
@@ -439,12 +448,17 @@ local function make_fixture(opts)
 		completed_at = opts.running and nil or (opts.cancelled and "2026-10-13T10:00:10Z" or "2026-10-13T10:10:00Z"),
 		last_activity_at = (opts.running or opts.cancelled) and "2026-10-13T10:00:10Z" or "2026-10-13T10:10:00Z",
 		repository = repository,
+		working_path = run_working_path,
 		default_cwd = default_cwd,
 		output_root = output_root,
 		events = events,
 		extra_codebases = extra_codebases,
 		extra_runs = extra_runs,
 	})
+	if opts.removed_run_worktree then
+		git({ "worktree", "remove", "--force", run_working_path }, repository)
+		eq(child.lua_get("vim.uv.fs_stat(...) == nil", { run_working_path }), true)
+	end
 
 	return {
 		home = home,
@@ -524,7 +538,7 @@ local function expect_all_escaped(report, values)
 end
 
 T["loop: Named run report contains the complete run history"] = function()
-	local fixture = make_fixture({ completed = true, missing_terminal_evidence = true })
+	local fixture = make_fixture({ removed_run_worktree = true })
 	local result = run_report(fixture, "run-complete")
 	local report = read_report(fixture, "run-complete")
 
@@ -537,6 +551,7 @@ T["loop: Named run report contains the complete run history"] = function()
 	expect_contains(report, "<td>repeat-failed</td><td>failed</td><td>2 invocations</td>")
 	expect_contains(report, "<td>preview</td><td>skipped</td><td>0 invocations</td>")
 	expect_contains(report, "approved by operator")
+	expect_contains(report, "Ship approval")
 	expect_contains(report, "rejected by operator")
 	expect_contains(report, "Attempt 1")
 	expect_contains(report, "tasks.md has unchecked tasks")
@@ -554,6 +569,12 @@ T["loop: Named run report contains the complete run history"] = function()
 	eq(unknown.code, 2)
 	expect_contains(unknown.stderr, "Unknown Archon run: missing-run")
 	eq(unknown.stderr:find("Traceback", 1, true), nil)
+
+	local unavailable = make_fixture({ unresolvable_merge = true })
+	local unavailable_result = run_report(unavailable, "run-complete")
+	local unavailable_report = read_report(unavailable, "run-complete")
+	eq(unavailable_result.code, 0, { fail_reason = unavailable_result.stdout .. unavailable_result.stderr })
+	expect_contains(unavailable_report, "<p>Merge " .. string.rep("f", 40) .. "</p><pre>Unavailable</pre>")
 end
 
 T["loop: Running run report tolerates incomplete evidence"] = function()
@@ -584,7 +605,7 @@ T["loop: Running run report tolerates incomplete evidence"] = function()
 end
 
 T["loop: Report without a run selects the latest run for this codebase"] = function()
-	local fixture = make_fixture({ multiple_codebases = true, equal_local_times = true })
+	local fixture = make_fixture({ multiple_codebases = true })
 	local result = run_report(fixture)
 
 	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })

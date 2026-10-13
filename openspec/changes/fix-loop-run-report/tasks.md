@@ -302,3 +302,28 @@ Scenarios: "loop: Loop status prints a usable report link".
   git add Makefile docs/workflow.md tests/unit/loop/test_report.lua
   git commit -m "feat(loop): link reports from loop status"
   ```
+
+### Task 5: Preserve ship evidence after worktree cleanup
+
+Scenarios: "loop: Named run report contains the complete run history".
+
+**Files:**
+- Modify: `tests/unit/loop/test_report.lua`
+- Modify: `.archon/scripts/loop_report.py`
+
+- [x] **Step 1: Reproduce deleted and unavailable run-worktree evidence**
+
+  Make the completed-run fixture use a linked run worktree, remove it before report generation, and assert
+  that the final diff stat still comes from the registered checkout. Add a separate unresolvable recorded
+  merge commit and assert its ship stat is `Unavailable`. Assert every gate reason directly and remove
+  fixture options that never affected setup.
+
+- [x] **Step 2: Resolve Git evidence through the registered codebase**
+
+  Load the run's registered checkout from `remote_agent_codebases`, use it as the durable Git candidate,
+  and keep missing commits non-fatal. Split node folding and HTML section rendering into small named
+  helpers while the strengthened scenario protects behavior.
+
+- [x] **Step 3: Verify and commit the follow-up**
+
+  Run the named scenario, `make fmt`, and `make quick`, then commit the green task.

@@ -36,6 +36,7 @@ class RunRecord:
     last_activity_at: str
     working_path: Path
     output_root: Path
+    repository_path: Path | None
 
 
 @dataclass(frozen=True)
@@ -128,6 +129,7 @@ def _run_from_row(row: sqlite3.Row) -> RunRecord:
         last_activity_at=row["last_activity_at"],
         working_path=Path(row["working_path"]),
         output_root=Path(row["output_root"]),
+        repository_path=Path(row["repository_path"]) if row["repository_path"] else None,
     )
 
 
@@ -135,7 +137,9 @@ def load_named_run(connection: sqlite3.Connection, run_id: str) -> RunRecord:
     row = connection.execute(
         """SELECT id, codebase_id, workflow_name, user_message, status, outcome,
                   metadata, started_at, completed_at, last_activity_at,
-                  working_path, output_root
+                  working_path, output_root,
+                  (SELECT default_cwd FROM remote_agent_codebases
+                   WHERE id = remote_agent_workflow_runs.codebase_id) AS repository_path
            FROM remote_agent_workflow_runs WHERE id = ?""",
         (run_id,),
     ).fetchone()
@@ -177,7 +181,9 @@ def load_latest_run(connection: sqlite3.Connection, codebase_id: str) -> RunReco
     row = connection.execute(
         """SELECT id, codebase_id, workflow_name, user_message, status, outcome,
                   metadata, started_at, completed_at, last_activity_at,
-                  working_path, output_root
+                  working_path, output_root,
+                  (SELECT default_cwd FROM remote_agent_codebases
+                   WHERE id = remote_agent_workflow_runs.codebase_id) AS repository_path
            FROM remote_agent_workflow_runs WHERE codebase_id = ?
            ORDER BY started_at DESC, id DESC LIMIT 1""",
         (codebase_id,),
@@ -236,84 +242,92 @@ def _datetime(value: object) -> datetime | None:
     return parsed.replace(tzinfo=parsed.tzinfo or timezone.utc)
 
 
+NodeState = tuple[str, int, datetime | None]
+
+
+def _fold_node_event(
+    event: EventRecord,
+    order: list[str],
+    invocations: dict[str, dict[str, NodeState]],
+    skipped: dict[str, int],
+) -> None:
+    node_events = {
+        "node_started",
+        "node_completed",
+        "node_failed",
+        "node_suspended",
+        "node_skipped",
+        "node_skipped_prior_success",
+    }
+    if not event.step_name or event.event_type not in node_events:
+        return
+    name = event.step_name
+    if name not in invocations:
+        order.append(name)
+        invocations[name] = {}
+    if event.event_type == "node_skipped_prior_success":
+        return
+    if event.event_type == "node_skipped":
+        skipped[name] = _integer(event.data.get("duration_ms")) or 0
+        return
+    invocation = _object(event.data.get("invocation"))
+    invocation_id = _string(invocation.get("id"))
+    if not invocation_id:
+        return
+    _, prior_duration, prior_started = invocations[name].get(invocation_id, ("running", 0, None))
+    if event.event_type == "node_started":
+        timing = _object(event.data.get("timing"))
+        started = _datetime(timing.get("startedAt")) or _datetime(invocation.get("startedAt"))
+        invocations[name].setdefault(invocation_id, ("running", 0, started))
+        return
+    timing = _object(event.data.get("timing"))
+    duration = _integer(event.data.get("duration_ms"))
+    duration = duration if duration is not None else (_integer(timing.get("durationMs")) or prior_duration)
+    status = {"node_completed": "completed", "node_failed": "failed", "node_suspended": "waiting"}[
+        event.event_type
+    ]
+    invocations[name][invocation_id] = (status, duration, prior_started)
+
+
+def _node_row(
+    name: str,
+    states: Sequence[NodeState],
+    skipped: dict[str, int],
+    live: bool,
+    run_status: str,
+    elapsed_until: datetime,
+) -> NodeRow:
+    if not states:
+        return NodeRow(
+            name=name,
+            status="skipped" if name in skipped else "waiting",
+            invocations=0,
+            duration_ms=skipped.get(name, 0),
+        )
+    status = "skipped" if name in skipped else states[-1][0]
+    if status == "running" and not live:
+        status = run_status if run_status in {"cancelled", "canceled", "failed"} else "incomplete"
+    duration_ms = skipped.get(name, 0)
+    for invocation_status, duration, started in states:
+        if invocation_status == "running" and started is not None:
+            duration_ms += max(0, int((elapsed_until - started).total_seconds() * 1000))
+        else:
+            duration_ms += duration
+    return NodeRow(name=name, status=status, invocations=len(states), duration_ms=duration_ms)
+
+
 def fold_nodes(run: RunRecord, events: Sequence[EventRecord], now: datetime) -> list[NodeRow]:
     live = run.status in {"pending", "running", "paused"}
     terminal_at = _datetime(run.completed_at) or _datetime(run.last_activity_at)
     elapsed_until = now if live else terminal_at or now
     order = list(dict.fromkeys(_terminal_nodes(run)))
-    invocations: dict[str, dict[str, tuple[str, int, datetime | None]]] = {name: {} for name in order}
+    invocations: dict[str, dict[str, NodeState]] = {name: {} for name in order}
     skipped: dict[str, int] = {}
-
     for event in events:
-        if not event.step_name or event.event_type not in {
-            "node_started",
-            "node_completed",
-            "node_failed",
-            "node_suspended",
-            "node_skipped",
-            "node_skipped_prior_success",
-        }:
-            continue
-        name = event.step_name
-        if name not in invocations:
-            order.append(name)
-            invocations[name] = {}
-        if event.event_type == "node_skipped_prior_success":
-            continue
-        if event.event_type == "node_skipped":
-            skipped[name] = _integer(event.data.get("duration_ms")) or 0
-            continue
-        invocation = _object(event.data.get("invocation"))
-        invocation_id = _string(invocation.get("id"))
-        if not invocation_id:
-            continue
-        prior_status, prior_duration, prior_started = invocations[name].get(invocation_id, ("running", 0, None))
-        if event.event_type == "node_started":
-            timing = _object(event.data.get("timing"))
-            started = _datetime(timing.get("startedAt")) or _datetime(invocation.get("startedAt"))
-            invocations[name].setdefault(invocation_id, ("running", 0, started))
-            continue
-        duration = _integer(event.data.get("duration_ms"))
-        timing = _object(event.data.get("timing"))
-        duration = duration if duration is not None else (_integer(timing.get("durationMs")) or prior_duration)
-        status = {
-            "node_completed": "completed",
-            "node_failed": "failed",
-            "node_suspended": "waiting",
-        }[event.event_type]
-        invocations[name][invocation_id] = (status, duration, prior_started)
-
-    rows: list[NodeRow] = []
-    for name in order:
-        states = list(invocations[name].values())
-        if not states:
-            rows.append(
-                NodeRow(
-                    name=name,
-                    status="skipped" if name in skipped else "waiting",
-                    invocations=0,
-                    duration_ms=skipped.get(name, 0),
-                )
-            )
-            continue
-        status = "skipped" if name in skipped else states[-1][0]
-        if status == "running" and not live:
-            status = run.status if run.status in {"cancelled", "canceled", "failed"} else "incomplete"
-        rows.append(
-            NodeRow(
-                name=name,
-                status=status,
-                invocations=len(states),
-                duration_ms=skipped.get(name, 0)
-                + sum(
-                    max(0, int((elapsed_until - started).total_seconds() * 1000))
-                    if invocation_status == "running" and started is not None
-                    else duration
-                    for invocation_status, duration, started in states
-                ),
-            )
-        )
-    return rows
+        _fold_node_event(event, order, invocations, skipped)
+    return [
+        _node_row(name, list(invocations[name].values()), skipped, live, run.status, elapsed_until) for name in order
+    ]
 
 
 def fold_gates(events: Sequence[EventRecord]) -> list[GateRecord]:
@@ -400,8 +414,8 @@ def load_ship(run: RunRecord, events: Sequence[EventRecord]) -> ShipRecord:
     if not commit:
         return ShipRecord(commit=None, diff_stat=None)
 
-    for repository in dict.fromkeys((run.working_path, run.output_root)):
-        if not repository.is_dir():
+    for repository in dict.fromkeys((run.repository_path, run.working_path, run.output_root)):
+        if repository is None or not repository.is_dir():
             continue
         resolved = _git(["rev-parse", "--verify", "--end-of-options", f"{commit}^{{commit}}"], repository)
         if resolved.returncode != 0:
@@ -429,8 +443,8 @@ def build_report(run: RunRecord, events: Sequence[EventRecord], now: datetime) -
     )
 
 
-def render_html(report: Report) -> str:
-    node_rows = "".join(
+def _render_nodes(report: Report) -> str:
+    return "".join(
         "<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>".format(
             html.escape(node.name),
             html.escape(node.status),
@@ -439,7 +453,10 @@ def render_html(report: Report) -> str:
         )
         for node in report.nodes
     )
-    gate_rows = "".join(
+
+
+def _render_gates(report: Report) -> str:
+    return "".join(
         "<article><h3>{}</h3><p>{}</p><p>{}: {}</p></article>".format(
             html.escape(gate.name),
             html.escape(gate.reason),
@@ -448,6 +465,9 @@ def render_html(report: Report) -> str:
         )
         for gate in report.gates
     ) or f"<p>{html.escape(report.missing)}</p>"
+
+
+def _render_attempts(report: Report) -> str:
     attempt_parts: list[str] = []
     for attempt in report.attempts:
         has_evidence = any(artifact.name.endswith(f"-{attempt.number}.log") for artifact in report.artifacts)
@@ -459,21 +479,29 @@ def render_html(report: Report) -> str:
                 evidence,
             )
         )
-    attempt_rows = "".join(attempt_parts) or f"<p>{html.escape(report.missing)}</p>"
-    artifact_rows = "".join(
+    return "".join(attempt_parts) or f"<p>{html.escape(report.missing)}</p>"
+
+
+def _render_artifacts(report: Report) -> str:
+    return "".join(
         "<details><summary>{}</summary><pre>{}</pre></details>".format(
             html.escape(artifact.name),
             html.escape(artifact.content),
         )
         for artifact in report.artifacts
     ) or f"<p>{html.escape(report.missing)}</p>"
+
+
+def _render_ship(report: Report) -> str:
     if report.ship.commit:
-        ship_row = "<p>Merge {}</p><pre>{}</pre>".format(
+        return "<p>Merge {}</p><pre>{}</pre>".format(
             html.escape(report.ship.commit),
             html.escape(report.ship.diff_stat or report.missing),
         )
-    else:
-        ship_row = f"<p>{html.escape(report.missing)}</p>"
+    return f"<p>{html.escape(report.missing)}</p>"
+
+
+def render_html(report: Report) -> str:
     return """<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><title>Archon run {run_id}</title>
 <style>body{{font:15px system-ui;max-width:1100px;margin:2rem auto;padding:0 1rem}}table{{border-collapse:collapse;width:100%}}th,td{{border-bottom:1px solid #ccc;padding:.5rem;text-align:left}}article{{border:1px solid #ccc;padding:0 1rem;margin:.5rem 0}}pre{{white-space:pre-wrap}}</style></head>
@@ -485,11 +513,11 @@ def render_html(report: Report) -> str:
         workflow=html.escape(report.run.workflow_name),
         status=html.escape(report.run.status),
         message=html.escape(report.run.user_message),
-        nodes=node_rows,
-        gates=gate_rows,
-        attempts=attempt_rows,
-        artifacts=artifact_rows,
-        ship=ship_row,
+        nodes=_render_nodes(report),
+        gates=_render_gates(report),
+        attempts=_render_attempts(report),
+        artifacts=_render_artifacts(report),
+        ship=_render_ship(report),
     )
 
 
