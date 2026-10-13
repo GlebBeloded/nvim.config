@@ -255,6 +255,10 @@ The delivery loop SHALL implement one task per fresh agent session from a script
 - **WHEN** `.archon/scripts/scenarios.py <change>` runs where a MODIFIED requirement repeats one scenario unchanged and edits another, and no test names either
 - **THEN** it prints only the edited scenario and exits 1
 
+#### Scenario: Gate checks scenarios named by tasks when the spec has no delta
+- **WHEN** `.archon/scripts/scenarios.py <change>` runs for a change with no spec delta whose tasks.md names `x: lonely` on a Scenarios line, and no test has that name
+- **THEN** it prints `x: lonely` and exits 1
+
 #### Scenario: Gate names a change scenario without a test
 - **WHEN** `.archon/scripts/scenarios.py <change>` runs where the change adds two scenarios and a test names only one, and a REMOVED section lists a third
 - **THEN** it prints only the untested scenario as `<capability>: <title>` and exits 1

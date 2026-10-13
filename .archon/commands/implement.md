@@ -19,7 +19,7 @@ Change: openspec/changes/$INPUTS.change/ (the pack quotes proposal, specs, desig
 
 Do the task(s) under "Next task" in the pack (a small change lists all of its tasks there), then stop. Per task: write the failing test "<capability>:
 <scenario title>", see it fail, make it pass with the smallest change, tick that task's checkboxes (including an item that only runs that task's test, once it passes) in
-tasks.md, run `make fmt`, commit (conventional message). Run only that test:
+tasks.md, run `make fmt`, commit with `git add -A <touched files> openspec/changes/$INPUTS.change` (conventional message), once. Run only that test:
 `make test FILE=tests/<layer>/<capability>/test_x.lua CASE="…" 2>&1 | tail -40`. Never run
 `make quick` or `make check` (the gate after the task loop runs it once). Keep tool output short: read
 file ranges, not whole files; no full logs. Follow the conventions in docs/architecture.md.
@@ -32,3 +32,5 @@ Never delete, skip or weaken a test or scenario to get green; if the spec is wro
 tasks.md under "## Blocked" and stop.
 
 If a failure comes from loop tooling (`.archon/`, `tests/trace.lua`, `tests/sandbox/`, the `make check` targets) and not from this change, do not fix it here: write `## Blocked` with `loop: <failure>` in tasks.md and stop.
+
+Ad-hoc headless runs: write the probe to a scratch file and run `timeout 30 nvim -n --headless -u NONE -l /tmp/probe.lua` (body in `pcall`, `vim.cmd('qa!')` last); never inline `+lua` with shell quoting. Visual marks need `exe "normal! V2j\<Esc>"` or `nvim_buf_set_mark`.

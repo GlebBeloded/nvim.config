@@ -40,6 +40,23 @@ def change_scenarios(change_dir: pathlib.Path) -> list[str]:
     return names
 
 
+TASK_SCENARIO = re.compile(r"`([a-z0-9-]+: [^`]+)`")
+
+
+def task_scenarios(change_dir: pathlib.Path) -> list[str]:
+    """"<capability>: <title>" names on tasks.md `Scenarios:` lines (covers a fix whose spec needs no delta)."""
+    tasks = change_dir / "tasks.md"
+    if not tasks.exists():
+        return []
+    lines = [l for l in tasks.read_text().splitlines() if "scenario" in l.lower()]
+    return [n for l in lines for n in TASK_SCENARIO.findall(l)]
+
+
+def covered(change_dir: pathlib.Path) -> list[str]:
+    """Every scenario the change is responsible for: added or changed in its delta, or named by its tasks."""
+    return list(dict.fromkeys(change_scenarios(change_dir) + task_scenarios(change_dir)))
+
+
 def untested(names: list[str]) -> list[str]:
     """Scenarios no test case names exactly (replaces the verify agent's traceability check)."""
     text = "\n".join(p.read_text(errors="replace") for p in pathlib.Path("tests").rglob("test_*.lua"))
@@ -47,6 +64,6 @@ def untested(names: list[str]) -> list[str]:
 
 
 if __name__ == "__main__":
-    missing = untested(change_scenarios(pathlib.Path("openspec/changes") / sys.argv[1]))
+    missing = untested(covered(pathlib.Path("openspec/changes") / sys.argv[1]))
     print("\n".join(missing))
     sys.exit(1 if missing else 0)

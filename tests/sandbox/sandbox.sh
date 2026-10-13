@@ -125,14 +125,43 @@ boot() {
 	boot_wait
 }
 
-# a VM booted without the shared folder (older sandbox.sh) is restarted once with it
-ensure_share() {
-	lume ssh "$VM" -t 10 "test -d '$GSHARE'" >/dev/null 2>&1 && return
-	log "restarting $VM with the shared folder ($SHARE)"
+# `lume ssh` exit status for "test -d <shared folder>": 0 shared, 1 not shared, else the guest did not answer
+share_probe() {
+	local out rc=0
+	out=$(lume ssh "$VM" -t 10 "test -d '$GSHARE' && echo SHARED || echo UNSHARED" 2>&1) || rc=$?
+	case "$out" in
+	*UNSHARED*) return 1 ;;
+	*SHARED*) return 0 ;;
+	esac
+	log "lume ssh did not answer (rc=$rc): ${out##*$'\n'}"
+	return 2
+}
+
+# Lume can lose track of a detached VM (`lume get` says stopped while its `lume run` is alive); then
+# `lume ssh` refuses every command. Stop that orphaned run (SIGTERM, SIGKILL after 60 s) and boot again.
+restart_vm() {
+	log "$1; restarting $VM"
 	lume ssh "$VM" -t 10 sync >/dev/null 2>&1 || true # lume stop is a power-off
 	lume stop "$VM" >/dev/null 2>&1 || true
-	for _ in $(seq 30); do running || break; sleep 1; done
+	pkill -TERM -f "libexec/lume run $VM( |\$)" 2>/dev/null || true
+	for _ in $(seq 60); do pgrep -qf "libexec/lume run $VM( |\$)" || break; sleep 1; done
+	pkill -KILL -f "libexec/lume run $VM( |\$)" 2>/dev/null || true
 	boot
+}
+
+# the guest answers and mounts the shared folder (a VM booted by an older sandbox.sh has none)
+ensure_share() {
+	local tries=0 rc
+	while :; do
+		rc=0; share_probe || rc=$?
+		case $rc in
+		0) return ;;
+		1) restart_vm "$VM runs without the shared folder ($SHARE)"; return ;;
+		esac
+		tries=$((tries + 1))
+		[ $tries -lt 3 ] || { restart_vm "Lume lost track of $VM (lume ssh refuses it)"; return; }
+		sleep 3
+	done
 }
 
 boot_wait() {
