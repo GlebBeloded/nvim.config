@@ -4,7 +4,8 @@
 -- into a temp sandbox. `stdpath("config")` is a symlink to this checkout and
 -- the cache is shared per run; data/state are fresh for every child start
 -- (no sessions, shada, undo files carried over). Only installed plugins
--- (`lazy/`) and treesitter parsers (`site/`) are linked from NVIM_TEST_DATA_DIR.
+-- (`lazy/`), treesitter parsers (`site/`) and mason packages (`mason/`) are
+-- linked from NVIM_TEST_DATA_DIR.
 
 local MiniTest = require("mini.test")
 
@@ -13,7 +14,7 @@ local M = {}
 ---@type string Absolute path of the config checkout (worktree root).
 M.root = vim.fn.fnamemodify(debug.getinfo(1, "S").source:sub(2), ":p:h:h")
 
----@type string Data dir holding installed plugins (`lazy/`) and parsers (`site/`).
+---@type string Data dir holding installed plugins (`lazy/`), parsers (`site/`) and mason packages (`mason/`).
 M.data_dir = vim.env.NVIM_TEST_DATA_DIR or vim.fs.joinpath(vim.env.HOME, ".local/share/nvim")
 
 --- Env vars that make plugins talk to a terminal multiplexer (smart-splits).
@@ -46,6 +47,7 @@ local function fresh_state()
 	local dir = vim.fn.tempname()
 	symlink(vim.fs.joinpath(M.data_dir, "lazy"), vim.fs.joinpath(dir, "data/nvim/lazy"))
 	symlink(vim.fs.joinpath(M.data_dir, "site"), vim.fs.joinpath(dir, "data/nvim/site"))
+	symlink(vim.fs.joinpath(M.data_dir, "mason"), vim.fs.joinpath(dir, "data/nvim/mason"))
 	vim.fn.mkdir(vim.fs.joinpath(dir, "state"), "p")
 	vim.env.XDG_DATA_HOME = vim.fs.joinpath(dir, "data")
 	vim.env.XDG_STATE_HOME = vim.fs.joinpath(dir, "state")
