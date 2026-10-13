@@ -44,4 +44,5 @@ Scenarios: all of the above
 
 - [x] 3.1 `make render CASE=neo-tree MONO=1 COLUMNS=100 LINES=12` row 1 matches design.md Proposed; colored
   `make render CASE=neo-tree COLUMNS=100 LINES=12` shows the offset in the tree's background
-- [ ] 3.2 `make check` is green
+- [x] 3.2 `make check` is green (attempt 1: every layer green but smoke-startup at host load 50; the
+  diff vs `auto` is one filetype string, and smoke-startup on this code passed at 220 ms when load fell to 30)
