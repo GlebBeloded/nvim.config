@@ -4,6 +4,8 @@ local H = require("tests.helpers")
 local eq = MiniTest.expect.equality
 local child = H.new_child()
 
+---@param dir string
+---@param args string[]
 local function git(dir, args)
 	local result = vim.system(vim.list_extend({ "git" }, args), { cwd = dir }):wait()
 	eq(result.code, 0)
@@ -32,6 +34,43 @@ T["git: Gitlink copies range URL"] = function()
 	child.type_keys("3GV5G", ":Gitlink<CR>")
 	eq(child.fn.getreg("+"):match("#L%d+%-L%d+$"), "#L3-L5")
 	eq(child.fn.mode(), "n")
+	eq(child.api.nvim_win_get_cursor(0), { 3, 0 })
+end
+
+T["git: Gitlink range preserves editor state"] = function()
+	child.cmd("edit " .. vim.fn.fnameescape(repo_file()))
+	child.type_keys("ggVj<Esc>", "4G2l")
+	local cursor = child.api.nvim_win_get_cursor(0)
+	local visual_start = child.api.nvim_buf_get_mark(0, "<")
+	local visual_end = child.api.nvim_buf_get_mark(0, ">")
+
+	child.cmd("3,5Gitlink")
+
+	eq(child.fn.mode(), "n")
+	eq(child.api.nvim_win_get_cursor(0), cursor)
+	eq(child.api.nvim_buf_get_mark(0, "<"), visual_start)
+	eq(child.api.nvim_buf_get_mark(0, ">"), visual_end)
+end
+
+T["git: Gitlink range failure restores editor state"] = function()
+	child.cmd("edit " .. vim.fn.fnameescape(repo_file()))
+	child.type_keys("ggVj<Esc>", "4G2l")
+	local cursor = child.api.nvim_win_get_cursor(0)
+	local visual_start = child.api.nvim_buf_get_mark(0, "<")
+	local visual_end = child.api.nvim_buf_get_mark(0, ">")
+	child.lua([[require("gitlinker").get_buf_range_url = function() error("gitlink test failure", 0) end]])
+
+	local result = child.lua([[
+		local ok, err = pcall(vim.cmd, "3,5Gitlink")
+		return { ok, err }
+	]])
+
+	eq(result[1], false)
+	eq(result[2]:find("gitlink test failure", 1, true) ~= nil, true)
+	eq(child.fn.mode(), "n")
+	eq(child.api.nvim_win_get_cursor(0), cursor)
+	eq(child.api.nvim_buf_get_mark(0, "<"), visual_start)
+	eq(child.api.nvim_buf_get_mark(0, ">"), visual_end)
 end
 
 return T
