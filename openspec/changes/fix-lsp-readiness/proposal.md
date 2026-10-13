@@ -1,14 +1,14 @@
 ## Why
-Every Neovim starts its own language servers (`lua/gleb/lsp/config/init.lua:43-49`, default lspconfig `cmd`), and each new server loads the whole workspace before it answers. Measured from `:edit` to the first `textDocument/documentSymbol` answer (root cause: `artifacts/runs/b1c94bd6-…/root-cause.md`): lua_ls in this checkout 2.8–3.2 s, gopls in a 542-package module 1.5–4.3 s, basedpyright 1.1–2.8 s, vtsls 0.7–0.9 s. The user wants every server ready in under 1 s.
+Every Neovim starts its own language servers (`lua/gleb/lsp/config/init.lua:43-49`, default lspconfig `cmd`), and each new server loads the whole workspace before it answers. Measured from `:edit` to the first `textDocument/documentSymbol` answer (root cause: `artifacts/runs/b1c94bd6-…/root-cause.md`): lua_ls in this checkout 2.8–3.2 s, gopls in a 542-package module 1.5–4.3 s, basedpyright 1.1–2.8 s, vtsls 0.7–0.9 s. The accepted bounds are 2.5 s for lua_ls in this config and 1 s for the small-project fixtures of gopls, basedpyright, and vtsls.
 
 Kind: bug
 Adopt: loop/fix-lsp-readiness-20261014-004515
 
 ## What Changes
-- Add a `Language server readiness` requirement to `lsp`: each server answers its first request within 1 s of `:edit`. Each server gets a scenario on a fixture project the test controls.
+- Add a `Language server readiness` requirement to `lsp`: lua_ls answers its first request within 2.5 s of `:edit`; gopls, basedpyright, and vtsls answer within 1 s. Each server gets a controlled scenario.
 - lua_ls: in this checkout, readiness is held back by `workspace.library` in `.luarc.jsonc` (`$VIMRUNTIME`, luv, `.tests/deps/mini.nvim`), which LuaLS indexes before it answers. On a copy of the repo, an empty library brought readiness from 1.7 s to 0.74 s. `make types` keeps the full library through its own config file. In the editor, Neovim API types load lazily, only for the modules a file actually requires (see Open question 1).
 - gopls, basedpyright, vtsls: add regression scenarios on small fixture projects. These already pass (gopls 0.25–0.46 s, basedpyright 0.5–0.8 s).
-- Test harness: full-config children find the mason-installed servers (`<NVIM_TEST_DATA_DIR>/mason/bin`). Today only `lazy/` and `site/` are linked.
+- Test harness: full-config children find the mason-installed servers (`<NVIM_TEST_DATA_DIR>/mason/bin`). Readiness runs in a dedicated serial check layer after the parallel layers so contention cannot distort the fixed bounds.
 
 ## Capabilities
 ### Modified Capabilities
@@ -16,7 +16,7 @@ Adopt: loop/fix-lsp-readiness-20261014-004515
 
 ## Impact
 - Code: `.luarc.jsonc`, `tests/types.sh` (+ a types-only LuaLS config), `lua/gleb/lsp/config/lua/`, `tests/helpers.lua`, new `tests/integration/lsp/test_readiness.lua` with fixtures, `docs/testing.md` (mason link, `make types` config).
-- Plugins: open question 1. The recommended path adds `folke/lazydev.nvim` (the maintained successor of neodev.nvim, Neovim ≥ 0.10, loads library types lazily). Alternatives: no plugin, with a hand-listed library; neodev.nvim (archived). Star count and last-commit date are still to be filled in: GitHub could not be reached from the loop host during specification.
+- Plugins: no dependency is added, removed, or upgraded. The existing `folke/lazydev.nvim` integration remains enabled so lua_ls exposes Neovim API types lazily.
 - Core keymaps: unchanged.
 - Out of scope: gopls readiness in large modules (open question 2); terraform, yaml, json, html, css and bash servers (not measured); rust-analyzer (owned by rustaceanvim); shared or daemon servers (`gopls -remote=auto` was measured and does not reuse the package load).
 

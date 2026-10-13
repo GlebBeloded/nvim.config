@@ -13,6 +13,10 @@ local M = {}
 
 M.DEFAULT_LAYERS = { "unit", "integration", "screen" }
 
+local SERIAL_FILES = {
+	["tests/integration/lsp/test_readiness.lua"] = true,
+}
+
 ---@param layer string? comma-separated layer directories, nil/"" for the default layers
 ---@return string[]
 function M.find_files(layer)
@@ -28,6 +32,9 @@ function M.find_files(layer)
 			vim.list_extend(files, vim.fn.globpath(vim.fs.joinpath("tests", dir, cap), "**/test_*.lua", false, true))
 		end
 	end
+	files = vim.tbl_filter(function(file)
+		return not SERIAL_FILES[file]
+	end, files)
 	table.sort(files)
 	return files
 end

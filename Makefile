@@ -21,12 +21,12 @@ ifneq ($(wildcard .tests/xdg/data/nvim/lazy),)
 export NVIM_TEST_DATA_DIR ?= $(CURDIR)/.tests/xdg/data/nvim
 endif
 
-.PHONY: check quick install deps fmt lint types test test-unit test-integration test-screen \
+.PHONY: check quick install deps fmt lint types test test-unit test-integration test-screen test-readiness \
 	screenshots smoke smoke-health smoke-startup trace specs render colorize clean
 
-# startup timing runs alone after the rest, so the other layers do not skew it
+# timing-sensitive layers run alone after the rest, so other layers do not skew them
 check:
-	@SANDBOX_START=$${E2E:-0} tests/check.sh lint types test trace specs chain stack e2e smoke-health loop-test +smoke-startup
+	@SANDBOX_START=$${E2E:-0} tests/check.sh lint types test trace specs chain stack e2e smoke-health loop-test +smoke-startup +test-readiness
 
 quick:
 	@tests/quick.sh
@@ -60,6 +60,9 @@ test-integration: deps
 
 test-screen: deps
 	@$(call PARALLEL,screen)
+
+test-readiness: deps
+	@FILE=tests/integration/lsp/test_readiness.lua $(call MINITEST,integration)
 
 screenshots: deps
 	@UPDATE_SCREENSHOTS=1 $(call MINITEST,screen)

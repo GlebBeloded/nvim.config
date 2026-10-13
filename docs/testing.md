@@ -4,7 +4,7 @@
 
 | Command | What runs | Wall time (14-core Mac) |
 |---|---|---|
-| `make check` | every layer below, concurrently (`tests/check.sh`); smoke startup timing runs alone afterwards. e2e runs only while the sandbox VM is up (else `skip`) | ~15 s |
+| `make check` | every layer below, concurrently (`tests/check.sh`); smoke startup and LSP readiness timing run alone afterwards. e2e runs only while the sandbox VM is up (else `skip`) | ~25 s |
 | `make check E2E=1` | the same, booting the sandbox VM for e2e if it is down; the loop's gate (`.archon/scripts/gate.py`) | ~15 s (VM up) |
 | `make quick` | lint + trace, plus only the layers the changes vs `BASE` (default `auto`) can affect (`tests/quick.sh` has the mapping) | <1 s docs only, ~7 s one capability |
 | `make test FILE=… CASE=…` | one file / matching cases | ~1–3 s |
@@ -16,23 +16,24 @@ Pyramid, bottom to top. Times are wall times of one layer on its own (in `make c
 | Layer | Command | What it checks | Time |
 |---|---|---|---|
 | Static | `make lint` | `stylua --check` and `selene` on `lua/ init.lua tests/` | <1 s |
-| Static | `make types` | `lua-language-server --check` with `.luarc.jsonc` (LuaJIT, `vim` global, `$VIMRUNTIME` as library), gate at Warning | ~6 s, 0 s cached |
+| Static | `make types` | `lua-language-server --check` with `tests/luarc.types.jsonc` (LuaJIT, `vim` global, and `$VIMRUNTIME` as a library), gate at Warning | ~6 s, 0 s cached |
 | Static | `make trace` | scenario ↔ test matrix, fails on orphan or duplicate tests | <1 s |
 | Static | `make specs` | main specs pass `openspec validate --strict` | ~1 s |
 | Static | `make loop-test` | Archon dry-run fixtures (`.archon/workflows/<workflow>/fixtures/*.stubs.yaml`): routing, loop exits, `when:` conditions and output plumbing of the loop workflows, agents and git/VM scripts stubbed, no AI | ~13 s |
 | Static | `make chain` | real Alacritty + zellij configs parsed and routed, mappings checked in a child Neovim; prints the shortcut table ([shortcut layers](#shortcut-layers)) | ~2 s |
 | Unit | `make test-unit` | one module in a *bare* child Neovim (`tests/minimal_init.lua`, no user config, plugins added one by one) | `make test` (all three): ~10 s |
 | Integration | `make test-integration` | behaviour of the *real* config in a child Neovim (keys, autocmds, plugins) | |
+| Integration | `make test-readiness` | fixed LSP readiness bounds in a serial full-config child, after the other check layers | ~10 s |
 | Screen | `make test-screen` | reference screenshots (`tests/screenshots/`) of the real config | |
 | Stack | `make stack` | real zellij (user keybinds) in a tmux pty with the real Neovim config, fed Alacritty's bytes | ~6 s |
 | E2E | `make e2e` | real Alacritty window + zellij + Neovim, real macOS key events, inside the [sandbox VM](#sandbox-vm) | ~13 s warm (1 s to ready) |
 | Smoke | `make smoke` | headless start of the real config: nothing in `:messages` or stderr, no `ERROR` in `:checkhealth`, startup time within budget | ~7 s health, ~2 s startup |
 
-`make test` runs all three mini.test layers (`tests/parallel.lua`): the matched cases are sharded over `JOBS` headless workers (default cores − 2; `JOBS=1` runs serially), balanced by the case durations of earlier runs (`.tests/timings.json`), and reported as one mini.test report with fails and notes at the end. Every worker has its own sandbox (see [Isolation](#isolation)). `make screenshots`, `chain`, `stack` and `e2e` run in one process. `make deps` fetches the pinned test dependencies into `.tests/deps` (gitignored) via `tests/bootstrap.sh`: mini.nvim v0.18.0, and lazy.nvim and vscode-diff.nvim at their `lazy-lock.json` commits as type libraries for `make types`. They are not part of the plugin list. `make install` installs the static tools with brew.
+`make test` runs the unit, integration and screen mini.test layers (`tests/parallel.lua`), except the timing-sensitive readiness file: the matched cases are sharded over `JOBS` headless workers (default cores − 2; `JOBS=1` runs serially), balanced by the case durations of earlier runs (`.tests/timings.json`), and reported as one mini.test report with fails and notes at the end. `make test-readiness` runs its file serially with fixed bounds. Every worker has its own sandbox (see [Isolation](#isolation)). `make screenshots`, `chain`, `stack` and `e2e` run in one process. `make deps` fetches the pinned test dependencies into `.tests/deps` (gitignored) via `tests/bootstrap.sh`: mini.nvim v0.18.0, and lazy.nvim and vscode-diff.nvim at their `lazy-lock.json` commits as type libraries for `make types`. They are not part of the plugin list. `make install` installs the static tools with brew.
 
 To narrow a run, use `FILE=tests/unit/session/test_key.lua make test`, `CAPS=session,keymaps make test` (only `tests/<layer>/<cap>/`) or `CASE="Move to left" make test-integration`.
 
-`make types` caches a green result in `.tests/types.ok`, keyed by the content of every Lua file, `.luarc.jsonc`, the LuaLS version and the libraries; it skips LuaLS while that key is unchanged.
+`make types` uses `tests/luarc.types.jsonc`, so the editor `.luarc.jsonc` stays lean while the static check retains its full library. It caches a green result in `.tests/types.ok`, keyed by every Lua file, `tests/luarc.types.jsonc`, the LuaLS version and the libraries; it skips LuaLS while that key is unchanged.
 
 Run make from inside Neovim's `:terminal` as usual: the binary is `NVIM_BIN` (not `NVIM`, which Neovim sets to its server address).
 
@@ -62,7 +63,7 @@ tests/
 
 Every child gets its own sandbox (`tests/helpers.lua`), so tests never touch your sessions, shada, undo files or clipboard:
 - `XDG_CONFIG_HOME/nvim` is a symlink to this checkout, so `stdpath("config")` is the worktree and not `~/.config/nvim`.
-- `XDG_DATA_HOME` and `XDG_STATE_HOME` are fresh temp dirs for each child start. Only `lazy/` (plugins) and `site/` (treesitter parsers) are symlinked from `NVIM_TEST_DATA_DIR` (default `~/.local/share/nvim`; point it at any dir where `Lazy! restore` installed the plugins). `XDG_CACHE_HOME` is a temp dir shared by one runner process (each parallel worker has its own). Neovims never start concurrently on one cache: vim.loader writes its byte code in place, so a concurrent start can load a half-written module (smoke warms the cache before its probe and timing overlap).
+- `XDG_DATA_HOME` and `XDG_STATE_HOME` are fresh temp dirs for each child start. Only `lazy/` (plugins), `site/` (treesitter parsers) and `mason/` (language servers, tools) are symlinked from `NVIM_TEST_DATA_DIR` (default `~/.local/share/nvim`; point it at any dir where `Lazy! restore` installed the plugins). `XDG_CACHE_HOME` is a temp dir shared by one runner process (each parallel worker has its own). Neovims never start concurrently on one cache: vim.loader writes its byte code in place, so a concurrent start can load a half-written module (smoke warms the cache before its probe and timing overlap).
 - mini.test passes `--clean`, so the child reads and writes no shada.
 - Multiplexer env vars (`ZELLIJ*`, `TMUX*`, `WEZTERM_PANE`, `KITTY_*`) are unset, so smart-splits never moves your terminal panes.
 - `g:clipboard` is an in-memory provider (`tests/child_init.lua`).
