@@ -257,3 +257,6 @@ neo_tree.setup({
 		},
 	},
 })
+
+-- Remove when neo-tree's porcelain v2 parser stops skipping leading unmerged (`u`) records.
+require("neo-tree.git")._supported_status_porcelain_version = 1
