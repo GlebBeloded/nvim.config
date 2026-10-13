@@ -20,8 +20,17 @@ local EXTRA_OPTIONS = {
 	"show_startup_tips false",
 }
 
+---@class shortcuts.StackOpts
+---@field cwd? string|fun(dir: string): string Neovim's and zellij's start dir (a function gets the stack's temp dir)
+---@field env? table<string, string> extra variables for zellij and Neovim
+---@field layout? "default"|"nvim" "nvim": the Neovim pane alone (default: Neovim left, `cat` right)
+---@field columns? integer frontend size (tests/e2e/alacritty.lua)
+---@field lines? integer
+
 ---@class shortcuts.Stack
 ---@field dir string
+---@field opts shortcuts.StackOpts
+---@field cwd string? resolved opts.cwd
 ---@field session string
 ---@field env table<string, string?>
 ---@field channel integer? RPC channel to Neovim
@@ -82,14 +91,11 @@ local function write_zellij_files(self)
 		self:nvim_socket(),
 	}
 	local quoted = table.concat(vim.tbl_map(vim.json.encode, nvim_args), " ")
-	write(vim.fs.joinpath(self.dir, "layout.kdl"), {
-		"layout {",
-		'  pane split_direction="vertical" {',
-		'    pane command="nvim" { args ' .. quoted .. "; }",
-		'    pane command="cat"',
-		"  }",
-		"}",
-	})
+	local cwd = self.cwd and " cwd=" .. vim.json.encode(self.cwd) or ""
+	local nvim = 'pane command="nvim"' .. cwd .. " { args " .. quoted .. "; }"
+	local panes = self.opts.layout == "nvim" and { "  " .. nvim }
+		or { '  pane split_direction="vertical" {', "    " .. nvim, '    pane command="cat"' .. cwd, "  }" }
+	write(vim.fs.joinpath(self.dir, "layout.kdl"), vim.list_extend({ "layout {" }, vim.list_extend(panes, { "}" })))
 end
 
 ---@return string
@@ -237,12 +243,24 @@ M.TMUX = {
 	end,
 }
 
+---@param self shortcuts.Stack
+---@return string?
+local function resolve_cwd(self)
+	local cwd = self.opts.cwd
+	if type(cwd) == "function" then
+		return cwd(self.dir)
+	end
+	return cwd
+end
+
 --- Start the frontend (default tmux) + zellij + Neovim. Call stack:stop() when done.
 ---@param frontend? shortcuts.Frontend
+---@param opts? shortcuts.StackOpts
 ---@return shortcuts.Stack
-function M.start(frontend)
+function M.start(frontend, opts)
 	H.isolate()
-	local self = setmetatable({ frontend = frontend or M.TMUX, t0 = vim.uv.hrtime(), timeline = {} }, Stack)
+	local self =
+		setmetatable({ frontend = frontend or M.TMUX, opts = opts or {}, t0 = vim.uv.hrtime(), timeline = {} }, Stack)
 	self.dir = vim.trim(vim.fn.system({ "mktemp", "-d", "/tmp/nvst.XXXXXX" }))
 	self.session = string.format("nvim-shortcuts-%d-%d", vim.fn.getpid(), vim.uv.hrtime() % 100000)
 	self.env = {
@@ -255,12 +273,16 @@ function M.start(frontend)
 		PATH = vim.env.PATH,
 		TERM = self.frontend.term,
 	}
+	for name, value in pairs(self.opts.env or {}) do
+		self.env[name] = value
+	end
 	vim.api.nvim_create_autocmd("VimLeavePre", {
 		callback = function()
 			self:stop()
 		end,
 	})
 	local ok, err = pcall(function()
+		self.cwd = resolve_cwd(self)
 		write_zellij_files(self)
 		self.frontend.start(self)
 		connect(self)

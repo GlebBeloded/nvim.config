@@ -7,8 +7,9 @@
 #   any Lua or .luarc.jsonc -> types (cached by content, tests/types.sh)
 #   init.lua, plugin spec, lazy-lock.json, options, autocommands, tests/smoke/ -> smoke
 #   terminal/, keymaps -> chain; shortcuts capability -> chain + stack
-#   terminal/, keymaps, shortcuts capability, tests/e2e/, tests/sandbox/ -> e2e, only while the
-#     sandbox VM runs (make sandbox-up; e2e never runs on the host)
+#   terminal/, keymaps, shortcuts capability, tests/e2e/, tests/sandbox/, tests/fixtures/,
+#     lua/gleb/lsp/, lua/gleb/git/ -> e2e, only while the sandbox VM runs (make sandbox-up;
+#     e2e never runs on the host)
 # Overrides: ALL=1 all mini.test layers, STACK=1 stack, E2E=1 e2e, SMOKE=1 smoke, TYPES=1 types.
 set -eu
 
@@ -47,6 +48,7 @@ for f in $changed; do
 		all=1 smoke=1 ;;
 	lua/gleb/keymaps.lua) add_cap keymaps && chain=1 e2e=1 ;;
 	lua/gleb/lualine.lua) add_cap statusline ;;
+	lua/gleb/lsp/* | lua/gleb/git/*) d=${f#lua/gleb/} && cap_or_all "${d%%/*}" && e2e=1 ;;
 	lua/gleb/*/*) d=${f#lua/gleb/} && d=${d%%/*} && cap_or_all "$(echo "$d" | tr _ -)" ;;
 	lua/*) all=1 ;;
 	tests/helpers.lua | tests/minimal_init.lua | tests/child_init.lua | tests/runner.lua | tests/parallel.lua)
@@ -55,7 +57,7 @@ for f in $changed; do
 	tests/shortcuts/* | openspec/specs/shortcuts/* | openspec/changes/*/specs/shortcuts/*)
 		chain=1 stack=1 e2e=1 ;;
 	tests/chain/* | tests/stack/*) chain=1 stack=1 ;;
-	tests/e2e/* | tests/sandbox/*) e2e=1 ;;
+	tests/e2e/* | tests/sandbox/* | tests/fixtures/* | tests/fixtures.lua) e2e=1 ;;
 	terminal/*) chain=1 e2e=1 ;;
 	tests/screenshots/tests-*-*-*) c=${f#tests/screenshots/tests-*-} && add_cap "${c%%-test_*}" ;;
 	tests/unit/*/* | tests/integration/*/* | tests/screen/*/*) c=${f#tests/*/} && add_cap "${c%%/*}" ;;
