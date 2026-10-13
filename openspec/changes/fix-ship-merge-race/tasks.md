@@ -36,7 +36,7 @@ Scenarios: "loop: Conflicting ship is reported for reconcile"
   - Add `.archon/commands/resolve-conflict.md`: merge `auto` into the run branch in the worktree, resolve the conflicts keeping both changes' intent and every test and scenario, run `make quick`, commit, and never touch the `auto` checkout.
 
   Verify: `make loop-validate` passes.
-- [ ] 2.4 Add one line to `docs/workflow.md` on the ship lock (`.git/nvim-ship.lock`, delete it only if its pid is not running) and the reconcile loop. Verify: `make check` is green, and `openspec validate fix-ship-merge-race --strict` passes.
+- [x] 2.4 Add one line to `docs/workflow.md` on the ship lock (`.git/nvim-ship.lock`, delete it only if its pid is not running) and the reconcile loop. Verify: `make check` is green, and `openspec validate fix-ship-merge-race --strict` passes.
 
 ## Workflow follow-up
 
