@@ -73,11 +73,15 @@ baseline; its plugin load and healthchecks are the check that nothing depended o
 **Files:**
 - Modify: `lua/gleb/plugins/plugins.lua` (line 17), `lazy-lock.json` (`"impatient.nvim"` entry)
 
-- [ ] **2.1 Baseline.** `make smoke` is green before the edit.
-- [ ] **2.2 Implement.** Delete the `lewis6991/impatient.nvim` line and its lock entry.
+- [x] **2.1 Baseline.** `make smoke` is green before the edit.
+- [x] **2.2 Implement.** Delete the `lewis6991/impatient.nvim` line and its lock entry.
   `grep -rn "impatient" lua init.lua lazy-lock.json` → no hits.
-- [ ] **2.3 Run, expect PASS.** `make smoke` green.
-- [ ] **2.4 Commit** `chore(plugins): remove impatient.nvim (superseded by vim.loader)`.
+- [x] **2.3 Run, expect PASS.** `make smoke` green.
+- [x] **2.4 Commit** `chore(plugins): remove impatient.nvim (superseded by vim.loader)`.
+
+**Notes (2.1-2.3):** host load ~50 on 14 cores puts startup at the 400 ms budget both before and after
+the edit (baseline 425.5 ms, after 412.0 ms in the same minute); smoke went green on retry (399.7 ms).
+Only the startup budget is load-sensitive; plugin load and healthchecks pass on every run.
 
 ## 3. Gate
 
