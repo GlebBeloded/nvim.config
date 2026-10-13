@@ -283,24 +283,36 @@ TCC_CLIENTS=(
 	io.alacritty
 )
 
+# Each sync stages into a new folder: the guest's VirtioFS mount can serve a cached old copy of a path the
+# host rewrote (a stale init.lua broke e2e), but never of a path it has not seen.
+sync_dir() {
+	local dir
+	dir=$(mktemp -d "$SHARE/sync.XXXXXX")
+	echo "${dir##*/}"
+}
+
 sync_repo() {
-	stage --exclude .git --exclude /.tests --exclude '/.archon/' "$ROOT/" "$SHARE/repo/"
+	local d
+	d=$(sync_dir)
+	stage --exclude .git --exclude /.tests --exclude '/.archon/' "$ROOT/" "$SHARE/$d/repo/"
 	# test deps the host already pinned (mini.nvim); the guest builds keys and the venv itself
-	mkdir -p "$SHARE/deps"
-	[ ! -d "$ROOT/.tests/deps" ] || stage "$ROOT/.tests/deps/" "$SHARE/deps/"
-	gssh "rsync -a --delete --exclude /.tests '$GSHARE/repo/' $GUEST_REPO/ && mkdir -p $GUEST_REPO/.tests && rsync -a --delete '$GSHARE/deps/' $GUEST_REPO/.tests/deps/"
+	mkdir -p "$SHARE/$d/deps"
+	[ ! -d "$ROOT/.tests/deps" ] || stage "$ROOT/.tests/deps/" "$SHARE/$d/deps/"
+	gssh "rsync -a --delete --exclude /.tests '$GSHARE/$d/repo/' $GUEST_REPO/ && mkdir -p $GUEST_REPO/.tests && rsync -a --delete '$GSHARE/$d/deps/' $GUEST_REPO/.tests/deps/"
+	rm -rf "${SHARE:?}/$d"
 	sync_plugins
 }
 
 # host ~/.local/share/nvim/{lazy,site} into the guest, again when lazy-lock.json changes
 sync_plugins() {
-	local data=${NVIM_TEST_DATA_DIR:-$HOME/.local/share/nvim} stamp
+	local data=${NVIM_TEST_DATA_DIR:-$HOME/.local/share/nvim} stamp d
 	stamp=$(shasum "$ROOT/lazy-lock.json" | cut -c1-12)
 	[ "$(gssh "cat $GUEST_DATA/.lock-stamp 2>/dev/null")" = "$stamp" ] && return
 	log "syncing plugins (lazy-lock.json $stamp)"
-	mkdir -p "$SHARE/data"
-	stage "$data/lazy" "$data/site" "$SHARE/data/"
-	gssh "mkdir -p $GUEST_DATA && rsync -a --delete '$GSHARE/data/lazy' '$GSHARE/data/site' $GUEST_DATA/ && echo $stamp > $GUEST_DATA/.lock-stamp"
+	d=$(sync_dir)
+	stage "$data/lazy" "$data/site" "$SHARE/$d/"
+	gssh "mkdir -p $GUEST_DATA && rsync -a --delete '$GSHARE/$d/lazy' '$GSHARE/$d/site' $GUEST_DATA/ && echo $stamp > $GUEST_DATA/.lock-stamp"
+	rm -rf "${SHARE:?}/$d"
 }
 
 # the guest state the checkout controls (tests/sandbox/guest_restore.sh)
