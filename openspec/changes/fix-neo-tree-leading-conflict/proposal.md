@@ -4,7 +4,8 @@ neo-tree's `git_status` source shows "working tree clean" in a repository whose 
 Kind: bug
 
 ## What Changes
-- Report or fix upstream (add `u` to `status_beginning_chars`), then pin the fixed neo-tree via `make update PLUGIN=neo-tree.nvim`.
+- Upstream has no fix, issue or PR (checked 2026-10-13: v3.x tip and main still use `"12?!"`; cause is b48ed11632, PR #2008). Opening an upstream PR is left to the user.
+- Work around it locally: after neo-tree setup, use porcelain v1 status (`require("neo-tree.git")._supported_status_porcelain_version = 1`, `git/init.lua:115`; v1's `status_chars` includes `U`), in the neo-tree plugin config with a comment naming the upstream bug so it is dropped once fixed upstream.
 - Drop the `a.txt` workaround from the conflict fixture so the scenario runs with a lone conflict.
 
 ## Capabilities
@@ -12,7 +13,7 @@ Kind: bug
 None. The file-tree "Conflicted file shows conflict symbol" scenario already describes the intended behaviour; `skip_specs: true`.
 
 ## Impact
-- Code: `tests/integration/file-tree/test_tree_icons.lua`; `lazy-lock.json` (neo-tree pin)
-- Plugins: neo-tree.nvim upgraded once fixed upstream
+- Code: neo-tree plugin config; `tests/integration/file-tree/test_tree_icons.lua`
+- Plugins: none added, removed or upgraded
 - Core keymaps: unchanged
 - Out of scope: neo-tree icons (fix-empty-nerd-font-glyphs).
