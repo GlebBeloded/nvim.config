@@ -17,7 +17,7 @@ Pyramid, bottom to top. Times are wall times of one layer on its own (in `make c
 |---|---|---|---|
 | Static | `make lint` | `stylua --check` and `selene` on `lua/ init.lua tests/` | <1 s |
 | Static | `make types` | `lua-language-server --check` with `.luarc.jsonc` (LuaJIT, `vim` global, `$VIMRUNTIME` as library), gate at Warning | ~6 s, 0 s cached |
-| Static | `make trace` | scenario ↔ test matrix, fails on orphan tests | <1 s |
+| Static | `make trace` | scenario ↔ test matrix, fails on orphan or missing tests | <1 s |
 | Static | `make loop-test` | Archon dry-run fixtures (`.archon/workflows/<workflow>/fixtures/*.stubs.yaml`): routing, loop exits, `when:` conditions and output plumbing of the loop workflows, agents and git/VM scripts stubbed, no AI | ~13 s |
 | Static | `make chain` | real Alacritty + zellij configs parsed and routed, mappings checked in a child Neovim; prints the shortcut table ([shortcut layers](#shortcut-layers)) | ~2 s |
 | Unit | `make test-unit` | one module in a *bare* child Neovim (`tests/minimal_init.lua`, no user config, plugins added one by one) | `make test` (all three): ~10 s |
@@ -76,7 +76,7 @@ A test case name is exactly `"<capability>: <scenario title>"`, matching a `####
 T["keymaps: Move to left window"] = function() ... end
 ```
 
-`make trace` collects every case with `MiniTest.collect`, parses every spec, and prints `tested` / `MISSING` per scenario (`VERBOSE=1` lists them) plus orphans. It exits non-zero only for orphans, i.e. cases whose name matches no scenario. Missing scenarios are reported as a count.
+`make trace` collects every case with `MiniTest.collect`, parses every spec, and prints `tested` / `MISSING` per scenario (`VERBOSE=1` lists them) plus orphans. It exits non-zero for orphans (cases whose name matches no scenario) and for missing scenarios (no case), so a new scenario lands with its test.
 
 ## Adding a test for a scenario
 
