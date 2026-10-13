@@ -50,7 +50,7 @@ The repo root SHALL expose the agent rules as both `CLAUDE.md` and `AGENTS.md`, 
 `.archon/scripts/queue_pick.py` SHALL write exactly one JSON document to stdout in every case (with or without `INPUTS_CHANGE`, whether or not any `loop/<change>` branch exists, found or not found), so `make queue` without `CHANGE` can always read the picked change.
 
 #### Scenario: Queue adopts the branch a follow-up names
-- **WHEN** `make queue CHANGE=followup-x` runs where `openspec/changes/followup-x/.openspec.yaml` says `adopt: loop/x-rejected` and that branch exists, with `ARCHON` stubbed
+- **WHEN** `make queue CHANGE=followup-x` runs where `openspec/changes/followup-x/proposal.md` has the line `Adopt: loop/x-rejected` (written by followup.py) and that branch exists, with `ARCHON` stubbed
 - **THEN** Archon is asked to run work-queue with `--input adopt=loop/x-rejected` (the rejected run's work is merged first)
 
 #### Scenario: Queue skips a taken change
