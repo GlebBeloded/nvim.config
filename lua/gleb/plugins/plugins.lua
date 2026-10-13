@@ -14,7 +14,6 @@ local plugins = {
 	"nvim-lua/plenary.nvim", -- Useful lua functions used ny lots of plugins
 	"MunifTanjim/nui.nvim", -- UI library for other plugins
 	"ray-x/guihua.lua", -- UI library
-	"lewis6991/impatient.nvim", -- Load plugins faster
 	{
 		"folke/lazydev.nvim",
 		ft = "lua", -- only load on lua files
