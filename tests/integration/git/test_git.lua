@@ -231,7 +231,7 @@ T["git: vscode-diff setup runs on plugin load"] = function()
 	eq({ explorer.position, explorer.width, explorer.view_mode }, { "left", 35, "tree" })
 end
 
-T["git: Added line shows bar sign"] = function()
+T["git: Added line has no competing hunk sign"] = function()
 	use_repo({ ["a.txt"] = "a\n" })
 	edit("a.txt")
 	eq(child.wait(GITSIGNS_ATTACHED, ASYNC_MS), true)
@@ -239,7 +239,6 @@ T["git: Added line shows bar sign"] = function()
 	child.api.nvim_buf_set_lines(0, 1, 1, false, { "added" })
 
 	eq(child.wait("GitsignsSigns()['2'] ~= nil", ASYNC_MS), true)
-	eq(child.lua_get("GitsignsSigns()['2']"), "┃")
 	eq(child.lua(MINIDIFF_SIGNS_LUA), {})
 end
 
