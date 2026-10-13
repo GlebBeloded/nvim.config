@@ -1,5 +1,5 @@
 local function git_root()
-	local dot_git_path = vim.fn.finddir(".git", ".;")
+	local dot_git_path = vim.fn.finddir(".git", ".;") --[[@as string]]
 	return vim.fn.fnamemodify(dot_git_path, ":h")
 end
 

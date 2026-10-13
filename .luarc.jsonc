@@ -5,7 +5,6 @@
   "runtime.pathStrict": true,
   "diagnostics.globals": ["vim"],
   "diagnostics.severity": {
-    "param-type-mismatch": "Information",
     "undefined-doc-name": "Information",
     "deprecated": "Information",
     "duplicate-set-field": "Information",

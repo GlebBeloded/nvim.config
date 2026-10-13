@@ -35,8 +35,8 @@ Scenarios: none (Static layer: `make types`)
 
 **Files:** `.luarc.jsonc`, `lua/gleb/colors/gruvbox-material/init.lua`, `lua/gleb/colors/gruvbox-material/util/convert.lua`, `lua/gleb/file_tree/diff_preview.lua`, `lua/gleb/plugins/plugins.lua`, `lua/gleb/run/init.lua`
 
-- [ ] 2.1 **Failing test.** Delete `"param-type-mismatch"`; `make types` → FAIL with the 28-hit list's param-type-mismatch rows (design.md, Context).
-- [ ] 2.2 **Implement** `pcall(vim.api.nvim_command, ...)` at `gruvbox-material/init.lua:9`, `diff_preview.lua:87`, `:161`; `convert.lua` annotations (`rgb_to_hsl` returns non-optional `number` 0..1, `hsl_to_rgb` takes `number`); `vim.fn.getcharstr()` at `plugins.lua:343`; `--[[@as string]]` on `finddir` at `run/init.lua:3`. `make types` → no lua/ hit of this code; `make test` green (colors and file-tree screenshots unchanged).
+- [x] 2.1 **Failing test.** Delete `"param-type-mismatch"`; `make types` → FAIL with the 28-hit list's param-type-mismatch rows (design.md, Context).
+- [x] 2.2 **Implement** `pcall(vim.api.nvim_command, ...)` at `gruvbox-material/init.lua:9`, `diff_preview.lua:87`, `:161`; `convert.lua` annotations (`rgb_to_hsl` returns non-optional `number` 0..1, `hsl_to_rgb` takes `number`); `vim.fn.getcharstr()` at `plugins.lua:343`; `--[[@as string]]` on `finddir` at `run/init.lua:3`. `make types` → no lua/ hit of this code; `make test` green (colors and file-tree screenshots unchanged).
 - [ ] 2.3 **Commit** `fix(types): narrow param types in lua/`.
 
 ## 3. param-type-mismatch in tests/
