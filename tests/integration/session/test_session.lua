@@ -128,6 +128,46 @@ T["session: writing a buffer saves the session"] = function()
 	eq(saved, true)
 end
 
+T["session: quitting saves the session"] = function()
+	edit_file("a.txt")
+	local name = child.lua_get([[require("gleb.session.key").session_name()]])
+	local path = vim.fs.joinpath(child.fn.stdpath("data"), "session", name .. ".json")
+
+	child.stop()
+
+	eq(vim.fn.filereadable(path), 1)
+	eq(table.concat(vim.fn.readfile(path), "\n"):find("a.txt", 1, true) ~= nil, true)
+end
+
+T["session: nvim with a file argument does not save the session"] = function()
+	local path = save_pane_session("z", "5", "a.txt")
+	child.stop()
+	local before = vim.fn.readfile(path)
+	-- Absolute: file arguments resolve against the process cwd, not `--cmd cd`.
+	local b = vim.fs.joinpath(dir, "b.txt")
+	vim.fn.writefile({ "b" }, b)
+
+	restart_in_pane("z", "5", { b })
+	child.cmd("write")
+	child.stop()
+
+	eq(vim.fn.readfile(path), before)
+	eq(table.concat(before, "\n"):find("a.txt", 1, true) ~= nil, true)
+end
+
+T["session: quitting without file buffers keeps the previous session"] = function()
+	local path = save_pane_session("z", "5", "a.txt")
+	child.stop()
+	local before = vim.fn.readfile(path)
+
+	restart_in_pane("z", "5")
+	child.cmd("%bwipeout!")
+	child.stop()
+
+	eq(vim.fn.readfile(path), before)
+	eq(table.concat(before, "\n"):find("a.txt", 1, true) ~= nil, true)
+end
+
 T["session: modified file buffer is auto-written"] = function()
 	local path = edit_file("a.txt", { "" })
 	child.type_keys("i", "hello", "<Esc>")
@@ -153,6 +193,15 @@ T["session: special buffer is not auto-written"] = function()
 	vim.uv.sleep(AUTOSAVE_WAIT_MS)
 
 	eq({ child.bo.modified, vim.fn.readfile(path) }, { modified, { "original" } })
+end
+
+T["session: unnamed buffer is not auto-written"] = function()
+	child.cmd("enew")
+	child.v.errmsg = ""
+	child.type_keys("i", "hello", "<Esc>")
+	vim.uv.sleep(AUTOSAVE_WAIT_MS)
+
+	eq({ child.bo.modified, child.v.errmsg:find("E32") }, { true, nil })
 end
 
 return T
