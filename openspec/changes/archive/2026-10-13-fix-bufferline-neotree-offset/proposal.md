@@ -11,8 +11,11 @@ Proposal only: the work-queue (queue-spec) writes the spec delta and design.
 - Open questions for the user (visible UI, needs Current and Proposed renders per `docs/workflow.md` (Design renders)): the offset label (`text = ""`, `"Files"`, or the cwd name), its alignment and highlight, and whether a separator is drawn between the offset and the tabs.
 
 ## Capabilities
+### New Capabilities
+- `bufferline`: tabline offset for the neo-tree window, specified by reference screenshots of the tabline row with the tree open and closed.
+
 ### Modified Capabilities
-- None yet; queue-spec adds a `bufferline` capability or extends `file-tree` (see What Changes).
+- None
 
 ## Impact
 - Code: `lua/gleb/bufferline.lua`; a screen test with a reference screenshot of the tabline row.

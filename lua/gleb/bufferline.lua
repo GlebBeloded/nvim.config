@@ -53,7 +53,7 @@ bufferline.setup({
 		-- end,
 		-- NOTE: this will be called a lot so don't do any heavy processing here
 		custom_filter = buferFilter,
-		offsets = { { filetype = "NvimTree", text = "", padding = 1 } },
+		offsets = { { filetype = "neo-tree", text = "", padding = 1 } },
 		show_buffer_icons = true,
 		show_buffer_close_icons = false,
 		show_close_icon = false,
