@@ -200,18 +200,72 @@ T["loop: Queue skips a taken change"] = function()
 	expect_queue_works(run_target(repo, { "queue" }, list), "t-next")
 end
 
+--- Writes `lines` as the proposal of the committed change `name` in `repo`.
+---@param repo string
+---@param name string
+---@param lines string[]
+local function write_proposal(repo, name, lines)
+	child.fn.writefile(lines, vim.fs.joinpath(repo, "openspec/changes", name, "proposal.md"))
+end
+
+---@param repo string
+---@param branch string
+local function add_branch(repo, branch)
+	eq(H.system(child, { "git", "branch", branch }, repo, H.GIT_ENV).code, 0)
+end
+
+--- Whether some `workflow run` the stub received has `needle` in its arguments.
+---@param run test.LoopRun
+---@param needle string
+---@return boolean
+local function ran_with(run, needle)
+	return vim.iter(run.runs):any(function(line)
+		return line:find(needle, 1, true) ~= nil
+	end)
+end
+
 T["loop: Queue adopts the branch a follow-up names"] = function()
 	local repo = make_repo()
 	write_change(repo, "followup-x", "2026-01-01")
-	local proposal = vim.fs.joinpath(repo, "openspec/changes/followup-x/proposal.md")
-	child.fn.writefile({ "## Why", "rejected", "", "Kind: bug", "Adopt: loop/x-rejected" }, proposal)
-	eq(H.system(child, { "git", "branch", "loop/x-rejected" }, repo, H.GIT_ENV).code, 0)
+	write_proposal(
+		repo,
+		"followup-x",
+		{ "## Why", "rejected", "", "Kind: bug", "Adopt: loop/x-rejected", "Adopt: loop/x-other" }
+	)
+	add_branch(repo, "loop/x-rejected")
+	add_branch(repo, "loop/x-other")
 	local list = { OPENSPEC_LIST = '{"changes":[{"name":"followup-x"}]}' }
 	local run = run_target(repo, { "queue", "CHANGE=followup-x" }, list)
-	local adopted = vim.iter(run.runs):any(function(line)
-		return line:find("--input adopt=loop/x-rejected", 1, true) ~= nil
-	end)
-	eq(adopted, true, { fail_reason = run.output .. table.concat(run.runs, "\n") })
+	eq(
+		ran_with(run, "--input adopt=loop/x-rejected "),
+		true,
+		{ fail_reason = run.output .. table.concat(run.runs, "\n") }
+	)
+end
+
+--- `make queue CHANGE=x` with branch `loop/x` and `Adopt: loop/x-20260101`; the Adopt branch exists
+--- only when `adopt_exists`. Returns the run.
+---@param adopt_exists boolean
+---@return test.LoopRun
+local function queue_with_adopt(adopt_exists)
+	local repo = make_repo()
+	write_change(repo, "x", "2026-01-01")
+	write_proposal(repo, "x", { "## Why", "w", "", "Kind: bug", "Adopt: loop/x-20260101" })
+	add_branch(repo, "loop/x")
+	if adopt_exists then
+		add_branch(repo, "loop/x-20260101")
+	end
+	return run_target(repo, { "queue", "CHANGE=x" }, { OPENSPEC_LIST = '{"changes":[{"name":"x"}]}' })
+end
+
+T["loop: Queue prefers the Adopt branch over loop/<change>"] = function()
+	for _, case in ipairs({ { true, "loop/x-20260101" }, { false, "loop/x" } }) do
+		local run = queue_with_adopt(case[1])
+		local fail = { fail_reason = run.output .. table.concat(run.runs, "\n") }
+		eq(run.code, 0, fail)
+		eq(ran_with(run, "--input adopt=" .. case[2] .. " "), true, fail)
+		eq(ran_with(run, "--branch loop/x-"), true, fail)
+	end
 end
 
 return T
