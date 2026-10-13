@@ -85,4 +85,11 @@ Only the startup budget is load-sensitive; plugin load and healthchecks pass on 
 
 ## 3. Gate
 
-- [ ] 3.1 `make check` green.
+- [x] 3.1 `make check` green.
+
+**Notes (3.1):** the attempt-2 gate failed only on host load and a concurrent change, not on this branch:
+`test_diff_preview` and `test_cleanup` timed out at load ~58 and pass alone; e2e rsync lost
+`fix-cmd-shift-minus-equal` files while that change was being archived; smoke-startup was over budget at load 58.
+`auto` was merged in (it carries `fix-diff-preview-codediff-crash`). An A/B run of branch and `auto`
+under the same load gave the same startup (~210 ms). After the merge, `make test` (131 cases), lint, trace, types and
+`make smoke` (215.8 ms) are green.
