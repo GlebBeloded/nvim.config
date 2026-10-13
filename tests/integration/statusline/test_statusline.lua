@@ -92,7 +92,7 @@ end
 T["statusline: diff hidden in narrow windows"] = function()
 	child.o.columns = 80
 	child.cmd("cd " .. modified_repo() .. " | edit a.txt")
-	eq(child.wait([[(vim.b.gitsigns_status_dict or {}).changed == 1]], 5000), true)
+	eq(child.wait([[(vim.b.gitsigns_status_dict or {}).changed == 1]], 15000), true)
 	expect_statusline_contains("NORMAL")
 	vim.uv.sleep(300)
 

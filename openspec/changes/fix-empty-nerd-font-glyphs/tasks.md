@@ -77,3 +77,4 @@ Layer: screen (new `tests/screen/file-tree/test_tree_screen.lua`).
 - [x] 7.3 `make trace VERBOSE=1` lists every scenario of tasks 1–6 as tested; `make check` green.
   Note: `make trace VERBOSE=1` lists every scenario of tasks 1–6 as tested; `make check` is left to the gate (the implement pass must not run it).
   Previous gate: `e2e` failed on an rsync race in the sandbox VM shared by parallel loops (green on rerun, no code change); `smoke-startup` failed at host load 64–72 (391.7 ms ≤ 400 ms on rerun). Neither touches this change's code.
+  Gate attempt 2: `test` red on "diff hidden in narrow windows" at host load ~50 (gitsigns wait raised to 15 s; the other two `test` fails and `stack` Cmd+L are outside this change and green on rerun); `e2e` rsync race and `smoke-startup` at load 44.9 as before.
