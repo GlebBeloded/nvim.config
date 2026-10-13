@@ -185,6 +185,40 @@ Every workflow SHALL run `.archon/scripts/skills_check.py` before its first skil
 - **WHEN** the wrapper runs the stub with `CODEX_LOOP_USER_HOME` set to a directory holding `AGENTS.md`, `auth.json`, `config.toml` and `sessions/`, and `CODEX_LOOP_HOME` set to an empty directory
 - **THEN** the stub sees `CODEX_HOME` equal to that `CODEX_LOOP_HOME`, whose `auth.json`, `config.toml` and `sessions` resolve to the user's entries, and which has no `AGENTS.md`
 
+### Requirement: Codex wrapper refuses an untested Codex or a GUI or MCP tool
+Before running Codex, `codex-loop.sh` SHALL run `codex_preflight.py`, which reads `codex --version`, the user's `config.toml` and the plugin cache's `.mcp.json` files without a model call. It SHALL exit 2, naming every reason on stderr and never running Codex, when the version is outside the tested range or an MCP server or GUI plugin stays enabled after the wrapper's `enabled=false` overrides.
+
+#### Scenario: Codex wrapper refuses an untested Codex version
+- **WHEN** the wrapper runs `exec` against a stub codex whose `--version` prints `codex-cli 0.99.0`
+- **THEN** it exits 2, stderr names `0.99.0` and the tested range, and the stub never ran `exec`
+
+#### Scenario: Codex wrapper refuses an MCP server or GUI plugin it does not turn off
+- **WHEN** the wrapper runs `exec` with a user `config.toml` holding `[mcp_servers.extra]` and `[plugins."chrome-pilot@m"]` with `enabled = true`
+- **THEN** it exits 2, stderr names `MCP server extra` and `GUI plugin chrome-pilot@m`, and the stub never ran `exec`
+
+#### Scenario: Codex wrapper refuses a plugin's bundled MCP server
+- **WHEN** the wrapper runs `exec` with a cached plugin `plugins/cache/m/tool/1.0/.mcp.json` declaring an enabled server `tool-server`
+- **THEN** it exits 2, stderr names `MCP server tool-server (plugin tool@m)`, and the stub never ran `exec`
+
+#### Scenario: Codex wrapper runs when every GUI tool and MCP server is off
+- **WHEN** the user `config.toml` holds `[mcp_servers.computer-use]`, `[mcp_servers.idle]` with `enabled = false`, and `[plugins."browser@openai-bundled"]` with `enabled = true`, and the stub reports `codex-cli 0.153.4`
+- **THEN** the wrapper exits 0 and the stub ran `exec`
+
+### Requirement: Loop never opens anything on the host
+No file under `.archon/` SHALL run `open`, `osascript`, `xdg-open` or a browser launcher, or pass `OPEN=1`. Every `preview` node SHALL run `make -s preview` with `OPEN=` (which beats an exported `OPEN`), and `make preview` SHALL print the absolute path of `preview.html`. Every `design-gate` message SHALL show `$preview.output` and say that nothing opens on the host.
+
+#### Scenario: Loop automation launches no host application
+- **WHEN** every file under `.archon/` is scanned line by line for host launchers
+- **THEN** none matches, while the same scanner flags `open "$out"`, `subprocess.run(["open", p])`, `osascript -e x`, `xdg-open x`, `python3 -m webbrowser x` and `make preview OPEN=1`, and does not flag `open(path)`
+
+#### Scenario: Design gate prints the preview path
+- **WHEN** every workflow under `.archon/workflows/` is parsed and its `preview` and `design-gate` nodes are found (loop nodes included)
+- **THEN** each `preview` node runs `make -s preview` with `OPEN=` as its last argument, and each `design-gate` message contains `$preview.output` and `nothing opens on the host`
+
+#### Scenario: Preview prints the absolute preview path and opens nothing
+- **WHEN** `make -s preview CHANGE=<a change in openspec/changes/> OPEN=` runs with `OPEN=1` in the environment and an `open` stub first on `PATH`
+- **THEN** it prints one absolute path ending in `/openspec/changes/<change>/preview.html` and the `open` stub never ran
+
 ### Requirement: Skill preflight resolves a skill for its node's provider
 On `claude`, `skills_check.py` SHALL resolve a project skill at `.claude/skills/<name>/SKILL.md`, and a `<plugin>:<skill>` at `<installPath>/skills/<skill>/SKILL.md` of a plugin `claude plugin list --json` reports enabled without `errors`. On `codex`, it SHALL use `.agents/skills/<name>/SKILL.md`, and `<root>/skills/<skill>/SKILL.md` of a plugin `codex plugin list --json` reports `installed` and `enabled`. `<root>` is that plugin's root (next requirement).
 
