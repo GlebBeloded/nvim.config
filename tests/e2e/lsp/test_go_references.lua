@@ -150,9 +150,9 @@ local CURRENT_FILE = [[local name = vim.api.nvim_buf_get_name(0)
 	local cursor = vim.api.nvim_win_get_cursor(0)
 	return { path = vim.uv.fs_realpath(name) or name, line = cursor[1], col = cursor[2] + 1 }]]
 
-local CURRENT_LINE = "fix-lsp-references-current-line: gr drops the declaration under the cursor"
+local CURRENT_LINE = "gr drops the declaration under the cursor"
 
-T["lsp: References of a Go function list call sites across packages"] = H.xfail(CURRENT_LINE, function()
+local references_across_packages = H.xfail("fix-lsp-references-current-line: " .. CURRENT_LINE, function()
 	local s = get()
 	open_references(s)
 	wait_picker(s, #manifest.references.Format)
@@ -165,6 +165,7 @@ T["lsp: References of a Go function list call sites across packages"] = H.xfail(
 		"report/summary.go",
 	})
 end)
+T["lsp: References of a Go function list call sites across packages"] = references_across_packages
 
 T["lsp: Selecting a reference opens its file at the call site"] = function()
 	local s = get()
