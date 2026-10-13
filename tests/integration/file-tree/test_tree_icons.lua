@@ -31,9 +31,7 @@ local function git(dir, args)
 	vim.system(vim.list_extend(cmd, args), { cwd = dir }):wait()
 end
 
---- Temp git repo where `conflict.txt` is unmerged after a failed `git merge`. `a.txt` is also
---- modified: neo-tree drops unmerged entries that come before the first ordinary one
---- (queued as fix-neo-tree-leading-conflict).
+--- Temp git repo where `conflict.txt` is unmerged after a failed `git merge`.
 ---@return string dir
 local function conflicted_repo()
 	local dir = vim.fn.tempname()
@@ -41,7 +39,6 @@ local function conflicted_repo()
 	local file = vim.fs.joinpath(dir, "conflict.txt")
 	git(dir, { "init", "-q" })
 	vim.fn.writefile({ "base" }, file)
-	vim.fn.writefile({ "a" }, vim.fs.joinpath(dir, "a.txt"))
 	git(dir, { "add", "." })
 	git(dir, { "commit", "-qm", "base" })
 	git(dir, { "checkout", "-qb", "other" })
@@ -51,7 +48,6 @@ local function conflicted_repo()
 	vim.fn.writefile({ "main" }, file)
 	git(dir, { "commit", "-qam", "main" })
 	git(dir, { "merge", "-q", "other" })
-	vim.fn.writefile({ "b" }, vim.fs.joinpath(dir, "a.txt"))
 	return dir
 end
 
