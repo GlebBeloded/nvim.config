@@ -45,11 +45,11 @@ Scenarios: ai: Keymaps exist after VeryLazy
 
 **Files:** `lua/gleb/ai/init.lua` (new), `lua/gleb/plugins/plugins.lua`, `tests/integration/ai/test_setup.lua`
 
-- [ ] 3.1 **Failing test.** Extend "ai: Keymaps exist after VeryLazy" to also assert the visual maps: `maparg("<A-9>", "v", false, true).desc` and `maparg("<S-CR>", "v", false, true).desc` are `"99: Visual"`, and that `package.loaded["gleb.ai"]` is set. `make test-integration` → FAIL (`gleb.ai` not loaded).
-- [ ] 3.2 **Implement** `ai/init.lua` `M.setup()` (99 setup with `provider.MODEL`, prompt keymaps, entry keymaps, in that order) and replace the inline `config` with `function() require("gleb.ai").setup() end`. `make test-integration` → pass; `make types` shows no new diagnostic (the `nvim_echo` `param-type-mismatch` may move to `entry_keymaps.lua`; fix only if it does, design.md Risks).
-- [ ] 3.3 **Commit** `refactor(ai): move 99 config into gleb.ai`.
+- [x] 3.1 **Failing test.** Extend "ai: Keymaps exist after VeryLazy" to also assert the visual maps: `maparg("<A-9>", "v", false, true).desc` and `maparg("<S-CR>", "v", false, true).desc` are `"99: Visual"`, and that `package.loaded["gleb.ai"]` is set. `make test-integration` → FAIL (`gleb.ai` not loaded).
+- [x] 3.2 **Implement** `ai/init.lua` `M.setup()` (99 setup with `provider.MODEL`, prompt keymaps, entry keymaps, in that order) and replace the inline `config` with `function() require("gleb.ai").setup() end`. `make test-integration` → pass; `make types` shows no new diagnostic (the `nvim_echo` `param-type-mismatch` may move to `entry_keymaps.lua`; fix only if it does, design.md Risks).
+- [x] 3.3 **Commit** `refactor(ai): move 99 config into gleb.ai`.
 
 ## 4. Gate
 
-- [ ] 4.1 `rg -F gpt-5.6-sol lua/` → one hit (`pi_provider.lua`); `rg 'require\("99"\)' lua/gleb/ai/pi_provider.lua` → only inside the `__index` function.
+- [x] 4.1 `rg -F gpt-5.6-sol lua/` → one hit (`pi_provider.lua`); `rg 'require\("99"\)' lua/gleb/ai/pi_provider.lua` → only inside the `__index` function.
 - [ ] 4.2 `make check` green.
