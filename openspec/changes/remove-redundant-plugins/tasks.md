@@ -54,7 +54,7 @@ Scenarios: "git: Added line shows bar sign", "git: Added line sign matches refer
   `make render CASE=git-hunk COLUMNS=60 LINES=8 MONO=1` shows the same rows.
   `grep -rn "mini.diff\|MiniDiff" lua lazy-lock.json` → no hits. `make trace` lists both scenarios
   as tested, no orphans.
-- [ ] **1.5 Commit** `fix(git): remove mini.diff, whose signs hid gitsigns` (tests, reference
+- [x] **1.5 Commit** `fix(git): remove mini.diff, whose signs hid gitsigns` (tests, reference
   screenshot, plugin removal).
 
 **Notes (1.1-1.4):** mini.test children have no `set_size`; the screen test sets
