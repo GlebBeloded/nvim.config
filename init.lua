@@ -4,7 +4,7 @@
 vim.g.mapleader = " "
 vim.g.maplocalleader = "\\"
 
--- debug pluggin which writes to /tmp before any plugin loads
+-- debug plugin which writes to /tmp before any plugin loads
 require("gleb.nvim_debug_log").setup()
 
 require("gleb.plugins")

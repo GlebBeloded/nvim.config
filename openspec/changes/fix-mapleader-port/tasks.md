@@ -1,6 +1,6 @@
 # fix-mapleader-port Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use markdown checkbox syntax for tracking.
 
 **Goal:** Land the approved, archived `fix-mapleader` branch on `auto` by a real merge, without losing `auto`'s debug-log `setup()`, sandbox and fold work, and pin the `init.lua` order with tests.
 
