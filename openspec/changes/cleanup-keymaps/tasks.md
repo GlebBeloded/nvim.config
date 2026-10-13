@@ -57,19 +57,19 @@ Scenarios: "Close buffer keeps split layout", "Close modified buffer is refused"
 
 Scenario: "Close buffer in split matches reference screenshot".
 
-- [ ] 4.1 Add a `close-buffer-split` case to `tests/render/cases.lua` (named setup function, like
+- [x] 4.1 Add a `close-buffer-split` case to `tests/render/cases.lua` (named setup function, like
   `lua_file`): `lua_ls` disabled, a temp dir with `init.lua` = `require("sample")` and `sample.lua` =
   `local M = {}`, ``, `return M`; `edit init.lua | edit sample.lua | vsplit`, wait for
   `filetype == "lua"`, then `type_keys("<C-q>")` and wait until no window shows `sample.lua`.
-- [ ] 4.2 Add `tests/screen/keymaps/test_keymaps_screen.lua` with
+- [x] 4.2 Add `tests/screen/keymaps/test_keymaps_screen.lua` with
   `T["keymaps: Close buffer in split matches reference screenshot"]`: a child sized 12x80
   (`child.set_size(12, 80)`), the render case's setup driven by the child, then
   `H.expect_screenshot(child.get_screenshot())`. Delete any old reference, run it, then
   `make screenshots`.
-- [ ] 4.3 Check the reference's text block equals the approved Proposed render in `design.md`
+- [x] 4.3 Check the reference's text block equals the approved Proposed render in `design.md`
   (also `make render CASE=close-buffer-split MONO=1 COLUMNS=80 LINES=12`). If they differ, stop and
   escalate; do not edit the design render.
-- [ ] 4.4 `make test-screen` passes; commit the reference with the test.
+- [x] 4.4 `make test-screen` passes; commit the reference with the test.
 
 ## 5. Delete the dead debugging keybindings
 
