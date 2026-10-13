@@ -5,6 +5,8 @@ local cases = require("tests.render.cases")
 local eq = MiniTest.expect.equality
 local child = H.new_child()
 
+local ASYNC_MS = 5000
+
 local function start()
 	child.start_config()
 	child.wait_very_lazy()
@@ -26,6 +28,7 @@ end)()]]
 local T = H.child_set(child, start)
 
 T["git: Added line shows bar sign"] = function()
+	eq(child.wait(LINE2_SIGN_LUA .. " ~= nil", ASYNC_MS), true)
 	eq(vim.trim(child.lua_get(LINE2_SIGN_LUA)), "┃")
 end
 

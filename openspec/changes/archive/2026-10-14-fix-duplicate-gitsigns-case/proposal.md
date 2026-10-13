@@ -4,13 +4,14 @@
 Kind: bug
 
 ## What Changes
-- Keep one case named `git: Added line shows bar sign` (the waiting one in `test_git.lua`) and remove the other; fold in an assertion that gitsigns is the only hunk sign source (no `MiniDiff*` namespace), so the removal stays guarded.
+- Keep and harden the existing `git: Added line shows bar sign` case, and give the new `git: Added line has no competing hunk sign` case the distinct responsibility of asserting that no `MiniDiff*` namespace contributes hunk signs.
 - `make trace` reports 0 duplicates.
 
 ## Capabilities
 ### Modified Capabilities
-None. `skip_specs: true`.
+- `git`: cover the requirement that no other plugin draws a competing hunk sign with a distinct scenario.
 
 ## Impact
-- Code: `tests/integration/git/test_git.lua`, `tests/integration/git/test_gitsigns.lua`.
+- Code: `tests/integration/git/test_git.lua`, `tests/integration/git/test_gitsigns.lua`; spec delta: `openspec/changes/fix-duplicate-gitsigns-case/specs/git/spec.md`.
 - Plugins: none. Core keymaps: unchanged.
+- Out of scope: changing the gutter sign appearance or gitsigns configuration.
