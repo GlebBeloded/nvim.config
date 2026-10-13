@@ -4,6 +4,7 @@
 Configures neo-tree as the file explorer with a `filesystem` source and a `git_status` source, where the `git_status` source previews each changed file in a reusable side-by-side diff tab and supports staging, committing and pushing (`lua/gleb/file_tree/`).
 
 ## Requirements
+
 ### Requirement: Tree sources and window
 The config SHALL set up neo-tree with exactly the sources `filesystem` and `git_status`, no source selector in winbar or statusline, a left-docked window 35 columns wide, and SHALL close Neovim's last window when only the tree remains (`close_if_last_window`). If neo-tree cannot be required, `lua/gleb/file_tree` SHALL return without error.
 
@@ -251,7 +252,7 @@ When resolving the git root or `HEAD` for `open_diff(path)` fails, the config SH
 
 #### Scenario: Return clears tab state and focus guard
 - **WHEN** `diff_preview.open_diff(p)` has completed for a git-tracked file and `diff_preview.return_to_original()` is called
-- **THEN** `state.original_tab` and `state.diff_tab` are nil, `state.navigating_until` is 0, and `vim.api.nvim_get_autocmds({ group = "DiffPreviewFocusGuard" })` is empty
+- **THEN** `state.original_tab` and `state.diff_tab` are nil, `state.navigating_until` is 0, and `vim.api.nvim_get_autocmds({ group = "gleb_file_tree_focus_guard" })` is empty
 
 #### Scenario: Next preview records the new original tab
 - **WHEN** `diff_preview.open_diff(a)` completed from tab T1, `diff_preview.return_to_original()` was called, `:tabnew` makes tab T2 current, and `diff_preview.open_diff(b)` completes
