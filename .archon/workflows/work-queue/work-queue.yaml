@@ -65,7 +65,7 @@ nodes:
 
   - id: adopted-state # the adopted branch may have finished and archived the change already
     bash: |
-      if [ -d "openspec/changes/$pick.output.change" ]; then echo '{"archived": false}'; else echo '{"archived": true}'; fi
+      if [ -d openspec/changes/$pick.output.change ]; then echo '{"archived": false}'; else echo '{"archived": true}'; fi
     depends_on: [adopt, adopt-resolve]
     trigger_rule: none_failed_min_one_success
     output_format:

@@ -19,3 +19,4 @@ titles it satisfies, and its first step is a failing mini.test case named exactl
 "<capability>: <scenario title>" (docs/testing.md picks the layer). Keep tasks small, reuse
 plugins and built-ins (docs/architecture.md, Conventions). Do not write code.
 When a test with the scenario name already exists, the first step is to run it and see it fail, not to add it. Checkbox items are work an agent does; do not add items to run `make check` or `make quick` (the gate does that).
+Do not run `make check`, `make quick` or tests, and do not create worktrees: the gate verifies. Use the tasks.md template of the spec prompts.

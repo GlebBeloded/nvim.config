@@ -203,8 +203,8 @@ end
 T["loop: Queue adopts the branch a follow-up names"] = function()
 	local repo = make_repo()
 	write_change(repo, "followup-x", "2026-01-01")
-	local yaml = vim.fs.joinpath(repo, "openspec/changes/followup-x/.openspec.yaml")
-	child.fn.writefile({ "created: 2026-01-01", "adopt: loop/x-rejected" }, yaml)
+	local proposal = vim.fs.joinpath(repo, "openspec/changes/followup-x/proposal.md")
+	child.fn.writefile({ "## Why", "rejected", "", "Kind: bug", "Adopt: loop/x-rejected" }, proposal)
 	eq(H.system(child, { "git", "branch", "loop/x-rejected" }, repo, H.GIT_ENV).code, 0)
 	local list = { OPENSPEC_LIST = '{"changes":[{"name":"followup-x"}]}' }
 	local run = run_target(repo, { "queue", "CHANGE=followup-x" }, list)

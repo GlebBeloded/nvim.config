@@ -172,7 +172,7 @@ queue: loop-setup # make queue [CHANGE=<id>]: work the next (or the given) chang
 	test -n "$$id" || { echo "Queue is empty: no untaken change in openspec/changes/"; exit 0; }; \
 	echo "Working on $$id"; branch=loop/$$id; adopt=; \
 	if git show-ref -q --verify "refs/heads/loop/$$id"; then adopt=loop/$$id; branch=loop/$$id-$(STAMP); fi; \
-	from=$$(sed -n 's/^adopt: *//p' "openspec/changes/$$id/.openspec.yaml" 2>/dev/null); \
+	from=$$(sed -n 's/^Adopt: *//p' "openspec/changes/$$id/proposal.md" 2>/dev/null); \
 	if [ -z "$$adopt" ] && [ -n "$$from" ] && git show-ref -q --verify "refs/heads/$$from"; then adopt=$$from; fi; \
 	[ -z "$$adopt" ] || echo "Adopting $$adopt"; \
 	$(ARCHON) workflow run work-queue --base auto --branch $$branch --input change=$$id --input adopt=$$adopt "Work queued change $$id"; status=$$?; $(CLEANUP); exit $$status
