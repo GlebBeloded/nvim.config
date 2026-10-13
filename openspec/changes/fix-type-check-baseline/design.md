@@ -35,7 +35,7 @@ See proposal.md - Why. A re-run on 2026-10-13 (lua-language-server 3.19.1, `make
 - **Fix `convert.lua` annotations, not the call site.** `rgb_to_hsl` returns `number` (0..1, non-optional) and `hsl_to_rgb` takes `number`s; the comments say 0..1. The annotations are wrong, the code is right.
 - **`vim.fn.nr2char(vim.fn.getchar())` → `vim.fn.getcharstr()`.** Built-in since 0.9, returns the key as a string, one call. Alternative: branch on `type()`, more code for the same result.
 - **`finddir` → `--[[@as string]]` cast.** With no count argument `finddir` returns a string (documented); `vim.fs.root` would change the start directory from cwd to the buffer, which is a behaviour change.
-- **`colorize.lua`: narrow through a small typed helper** (`---@return colorize.Hl?`) that maps `vim.NIL` to nil, then `or base`. Removes the existing `--[[@as colorize.Hl]]` cast as well.
+- **`colorize.lua`: narrow through a small typed helper** (`---@return colorize.Hl?`) that maps `vim.NIL` to nil, then `or base`. LuaLS does not narrow `vim.NIL` checks, so the existing `--[[@as colorize.Hl]]` cast moves into the helper (commented); call sites have none.
 - **`chain.lua`: `tonumber(code) --[[@as integer]]`**: the Lua pattern `(%d+)` guarantees digits.
 - **`Stack.env` typed `table<string, string>`**; the constructor that reads `vim.env.*` gets one `--[[@as table<string, string>]]` cast with a comment that nil values are absent keys. Alternative: widen `run`'s parameter, which only moves the mismatch to `vim.system`.
 - **`test_cleanup.lua`: pass `{ fail_reason = <msg> }`.** mini.test's documented option; the message then shows as the failure headline, with Left/Right context kept.
