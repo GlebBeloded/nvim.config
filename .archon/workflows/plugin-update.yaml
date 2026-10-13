@@ -81,7 +81,7 @@ nodes:
     skills: [superpowers:systematic-debugging]
 
   - id: spec-gate
-    bash: openspec validate $update.output.change --strict --no-interactive
+    bash: openspec validate $update.output.change --strict --no-interactive && python3 .archon/scripts/spec_trial.py $update.output.change # main specs after a trial archive
     depends_on: [spec]
 
   - id: deliver

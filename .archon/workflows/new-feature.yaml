@@ -34,7 +34,7 @@ nodes:
             required: [change]
 
         - id: spec-gate
-          bash: openspec validate $spec.output.change --strict --no-interactive && printf %s $spec.output.change >"$ARTIFACTS_DIR/change-id"
+          bash: openspec validate $spec.output.change --strict --no-interactive && python3 .archon/scripts/spec_trial.py $spec.output.change && printf %s $spec.output.change >"$ARTIFACTS_DIR/change-id"
           depends_on: [spec]
 
         - id: preview

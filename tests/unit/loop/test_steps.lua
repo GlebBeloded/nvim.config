@@ -248,4 +248,19 @@ T["loop: An abandoned run's branch does not take its change"] = function()
 	eq(vim.json.decode(vim.trim(result.stdout):match("[^\n]*$")).change, "c")
 end
 
+T["loop: Spec gate catches main specs a change would break"] = function()
+	local repo = H.tempdir(child)
+	local long = "The thing SHALL " .. string.rep("work very well ", 40) .. "."
+	local scenario = "\n\n#### Scenario: s\n- **WHEN** a\n- **THEN** b\n"
+	write(repo, {
+		["openspec/specs/x/spec.md"] = "# x\n\n## Purpose\nA purpose that is long enough for the validator to accept.\n\n## Requirements\n\n### Requirement: R\nThe thing SHALL work."
+			.. scenario,
+		["openspec/changes/c/specs/x/spec.md"] = "## MODIFIED Requirements\n\n### Requirement: R\n" .. long .. scenario,
+		["openspec/changes/c/proposal.md"] = "## Why\nBecause it matters a lot here.\n\n## What Changes\n- x\n",
+		["openspec/changes/c/.openspec.yaml"] = "schema: spec-driven",
+	})
+	local result = H.system(child, { "python3", vim.fs.joinpath(SCRIPTS, "spec_trial.py"), "c" }, repo, H.GIT_ENV)
+	eq({ result.code, result.stdout:find("very long", 1, true) ~= nil }, { 1, true })
+end
+
 return T
