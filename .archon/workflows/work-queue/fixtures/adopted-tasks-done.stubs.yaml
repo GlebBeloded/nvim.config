@@ -1,0 +1,24 @@
+# g6. the adopted branch ticked every task (fixtures/changes/adopted-done, LOOP_CHANGES_DIR, no design.md):
+# adopted-state (real) reports tasks_done, so the spec step is skipped; spec-gate still validates, no
+# visible UI means no preview, and the change delivers.
+fixture:
+  expect: completed
+  inputs: { change: adopted-done }
+  reached: [pick, adopt, adopted-state, spec-gate, design-decide, deliver__ship, deliver__shipped]
+exec-code: true
+skills-check: "skills ok"
+pick: { found: true, change: adopted-done, kind: fix, has_tasks: true }
+complete: "MUST-NOT-RUN"
+spec-gate: "valid"
+preview: "MUST-NOT-RUN"
+# nvim-deliver (include `deliver`): top-level ids get the deliver__ prefix, loop bodies keep theirs
+deliver__skills-check: "skills ok"
+deliver__plan-check: { needed: false, has_change: true }
+deliver__plan-gate: "valid"
+pack: { has_task: false, context: context.md }
+implement: "MUST-NOT-RUN"
+gate: { green: true, spec_ok: true, tasks_done: true, untested: 0, attempt: 1, failures: "" }
+review: { approve: true, findings: "", weakened_scenario: false, weakened_test: false }
+deliver__escalation: { decision: ship, escalate: false, reasons: "- none" }
+deliver__ship: { merged: true, conflict: false, branch: loop/adopted-done, commit: abc123 }
+deliver__followup: "MUST-NOT-RUN"

@@ -34,6 +34,15 @@ def sections(lines: list[str]) -> list[tuple[str, list[str]]]:
     return found
 
 
+FAILED = re.compile(r"^check: FAILED:((?: \S+)+) \(")
+
+
+def failed_targets(text: str) -> list[str]:
+    """Targets the `check: FAILED: <targets> (<s> s)` line of a check log names; empty when none."""
+    match = next((m for line in text.splitlines() if (m := FAILED.match(line))), None)
+    return match.group(1).split() if match else []
+
+
 def failing_cases(lines: list[str]) -> list[str]:
     cases = []
     for line in lines:

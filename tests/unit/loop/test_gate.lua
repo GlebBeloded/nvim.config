@@ -199,4 +199,148 @@ T["loop: Startup timing fails on a startup error"] = function()
 	has(result.stdout, "smoke-startup-boom")
 end
 
+--- Repo on `auto` holding `files`, then on branch `run`.
+---@param files table<string, string>
+---@return string
+local function branch_repo(files)
+	local repo = H.tempdir(child)
+	write(repo, files)
+	for _, args in ipairs({
+		{ "init", "-q", "-b", "auto" },
+		{ "add", "-A" },
+		{ "commit", "-q", "-m", "i" },
+		{ "checkout", "-q", "-b", "run" },
+	}) do
+		local result = H.system(child, vim.list_extend({ "git" }, args), repo, H.GIT_ENV)
+		eq(result.code, 0, { fail_reason = result.stderr })
+	end
+	return repo
+end
+
+---@param script string gate.py, verdict.py or escalation.py
+---@param repo string
+---@param env table<string, string>
+---@return table
+local function loop_script(script, repo, env)
+	local full = vim.tbl_extend("force", H.GIT_ENV, { BASE_BRANCH = "auto", INPUTS_CHANGE = "" }, env)
+	local result = H.system(child, { "python3", vim.fs.joinpath(SCRIPTS, script) }, repo, full)
+	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
+	return vim.json.decode(result.stdout)
+end
+
+---@param artifacts string
+---@param extra? table<string, string>
+---@return table<string, string> verdict inputs of a pass whose gates all hold
+local function verdict_env(artifacts, extra)
+	local env =
+		{ ARTIFACTS_DIR = artifacts, INPUTS_GREEN = "true", INPUTS_SPEC_OK = "true", INPUTS_TASKS_DONE = "true" }
+	env = vim.tbl_extend("force", env, { INPUTS_CRITICAL = "0", INPUTS_APPROVE = "true", INPUTS_ATTEMPT = "1" })
+	return vim.tbl_extend("force", env, extra or {})
+end
+
+T["loop: Gate checks hard rules before make check"] = function()
+	local repo = branch_repo({ ["tests/unit/a/test_a.lua"] = 'T["a: one"] = function() end' })
+	write(repo, { ["tests/unit/a/test_a.lua"] = "-- emptied" })
+	local scratch = H.tempdir(child)
+	local artifacts = H.tempdir(child)
+	local bin = fake_tool(scratch, "make", ('touch "%s/make-ran"'):format(scratch))
+
+	local gate = loop_script("gate.py", repo, { ARTIFACTS_DIR = artifacts, PATH = bin .. ":" .. vim.env.PATH })
+	eq(
+		{ gate.green, vim.fn.filereadable(vim.fs.joinpath(scratch, "make-ran")) },
+		{ false, 0 },
+		{ fail_reason = gate.failures }
+	)
+	has(gate.failures, "hard rule: 1 test case(s) removed: a: one")
+	local env = verdict_env(artifacts, { INPUTS_GREEN = "false", INPUTS_FAILURES = gate.failures })
+	local verdict = loop_script("verdict.py", repo, env)
+	local _, count = verdict.feedback:gsub("test case%(s%) removed", "")
+	eq({ verdict.done, count }, { false, 1 }, { fail_reason = verdict.feedback })
+end
+
+T["loop: Gate lists planning files a fix pass edited"] = function()
+	local change = {
+		["openspec/changes/c/proposal.md"] = "# c",
+		["openspec/changes/c/tasks.md"] = "## 1. Task\n- [ ] 1.1 a",
+		["openspec/changes/c/specs/x/spec.md"] = "## ADDED Requirements",
+	}
+	local repo = branch_repo(change)
+	local artifacts = H.tempdir(child)
+	local scratch = H.tempdir(child)
+	fake_tool(scratch, "openspec", "exit 0")
+	local bin = fake_tool(scratch, "make", "exit 0")
+	local env = { ARTIFACTS_DIR = artifacts, INPUTS_CHANGE = "c", PATH = bin .. ":" .. vim.env.PATH }
+	local scope = vim.fs.joinpath(artifacts, "fix-scope.md")
+
+	loop_script("verdict.py", repo, verdict_env(artifacts, { INPUTS_CHANGE = "c", INPUTS_APPROVE = "false" }))
+	write(repo, {
+		["openspec/changes/c/proposal.md"] = "# c, rescoped",
+		["openspec/changes/c/tasks.md"] = "## 1. Task\n- [x] 1.1 a",
+	})
+	loop_script("gate.py", repo, env)
+	has(read(scope), "openspec/changes/c/proposal.md")
+	eq(read(scope):find("tasks.md", 1, true), nil)
+	local red = verdict_env(artifacts, { INPUTS_CHANGE = "c", INPUTS_GREEN = "false" })
+	has(loop_script("verdict.py", repo, red).feedback, "fix pass edited planning files")
+	loop_script("gate.py", repo, env)
+	eq(vim.fn.filereadable(scope), 0)
+	has(read(vim.fs.joinpath(H.root, ".archon/commands/review.md")), "`$ARTIFACTS_DIR/fix-scope.md`")
+end
+
+T["loop: Fix prompt stays on the listed findings"] = function()
+	local fix = read(vim.fs.joinpath(H.root, ".archon/commands/fix.md")):gsub("%s+", " ")
+	has(fix, "when every finding below starts with `hard rule:`, load none")
+	has(fix, "never edit the change's proposal.md, .openspec.yaml or spec deltas unless a finding is about them")
+end
+
+--- make stub: `make check` prints a check log whose `targets` failed with `case` failing; `make test`
+--- appends its arguments to `<scratch>/reruns` and exits `rerun_code`.
+---@param scratch string
+---@param targets string
+---@param rerun_code integer
+---@return string bin
+local function flaky_make(scratch, targets, rerun_code)
+	local log = table.concat({
+		"FAIL test 1.0 s",
+		"===== test =====",
+		"FAIL in tests/unit/a/test_a.lua | a: flaky case:",
+		"check: FAILED: " .. targets .. " (1.0 s)",
+	}, "\n")
+	write(scratch, { ["check.log"] = log })
+	local body = 'if [ "$1" = test ]; then echo "$2 $3" >>"%s/reruns"; exit %d; fi\ncat "%s/check.log"\nexit 1'
+	return fake_tool(scratch, "make", body:format(scratch, rerun_code, scratch))
+end
+
+T["loop: Gate passes a test case that passes on rerun"] = function()
+	local repo = branch_repo({ ["README.md"] = "x" })
+	local case = "tests/unit/a/test_a.lua | a: flaky case"
+	local function gate(targets, rerun_code)
+		local scratch, artifacts = H.tempdir(child), H.tempdir(child)
+		local env =
+			{ ARTIFACTS_DIR = artifacts, PATH = flaky_make(scratch, targets, rerun_code) .. ":" .. vim.env.PATH }
+		local reruns = vim.fs.joinpath(scratch, "reruns")
+		local out = loop_script("gate.py", repo, env)
+		return out,
+			vim.fn.filereadable(reruns) == 1 and read(reruns) or "",
+			read(vim.fs.joinpath(artifacts, "check-1.log"))
+	end
+
+	local passed, reruns, log = gate("test", 0)
+	eq({ passed.green, passed.flaky, reruns }, { true, { case }, "FILE=tests/unit/a/test_a.lua CASE=a: flaky case" })
+	has(log, "flaky (failed, then passed on rerun): " .. case)
+	local failed, failed_reruns = gate("test", 1)
+	eq({ failed.green, failed.flaky, failed_reruns ~= "" }, { false, {}, true })
+	local other, other_reruns = gate("lint test", 0)
+	eq({ other.green, other.flaky, other_reruns }, { false, {}, "" })
+
+	local artifacts = H.tempdir(child)
+	local env = verdict_env(artifacts, { INPUTS_FLAKY = vim.json.encode(passed.flaky) })
+	local verdict = loop_script("verdict.py", repo, env)
+	eq(verdict.passed, true)
+	has(verdict.notes, case)
+	local judge = loop_script("escalation.py", repo, { ARTIFACTS_DIR = artifacts, INPUTS_NOTES = verdict.notes })
+	eq(judge.decision, "ship")
+	has(judge.reasons, "- note: flaky test cases (failed, then passed on rerun): " .. case)
+end
+
 return T

@@ -147,4 +147,12 @@ T["loop: Judge rejects a lost test case by name"] = function()
 	eq({ moved.decision, has(moved.reasons, "c: old title") }, { "reject", true })
 end
 
+T["loop: Judge ships a deleted test file whose cases all moved"] = function()
+	local base = { [C_SPEC] = spec("c", { "kept" }), [C_TEST] = cases({ "c: kept" }) }
+	local moved = judge(base, { [C_TEST] = false, ["tests/unit/c/test_d.lua"] = cases({ "c: kept" }) })
+	eq(moved.decision, "ship", { fail_reason = moved.reasons })
+	local deleted = judge(base, { [C_TEST] = false, ["tests/unit/c/test_d.lua"] = cases({ "c: other" }) })
+	eq({ deleted.decision, has(deleted.reasons, "test files deleted: " .. C_TEST) }, { "reject", true })
+end
+
 return T

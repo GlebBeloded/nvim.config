@@ -145,7 +145,7 @@ T["loop: Repeated lessons stay deduplicated and bounded"] = function()
 	local repo = lessons_repo(workflow({ "Existing lesson", "Older lesson" }))
 	local artifacts = H.tempdir(child)
 	local candidates = {}
-	for i = 1, 10 do
+	for i = 1, 15 do
 		table.insert(candidates, "New lesson " .. i)
 	end
 	table.insert(candidates, "  existing   LESSON  ")
@@ -153,7 +153,7 @@ T["loop: Repeated lessons stay deduplicated and bounded"] = function()
 	local result = record(repo, artifacts, table.concat(candidates, "\n"))
 	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
 	local expected = {}
-	for i = 2, 10 do
+	for i = 2, 15 do
 		table.insert(expected, "New lesson " .. i)
 	end
 	table.insert(expected, "existing LESSON")
@@ -219,6 +219,37 @@ T["loop: Persisted lesson candidates are cleared"] = function()
 	result = run_escalation(repo, artifacts, false)
 	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
 	eq(read(vim.fs.joinpath(repo, "docs/workflow.md")), workflow({ "Existing lesson" }))
+end
+
+T["loop: Near-duplicate and loop tooling lessons are not kept"] = function()
+	local old = "Keep requirement prose under 500 characters before the trial archive validation"
+	local repo = lessons_repo(workflow({ old, "Other lesson" }))
+	local near = "Keep the requirement prose under 500 characters before trial archive validation runs."
+	local candidates = { near, "loop: integrity flags a test file whose cases all moved", "LOOP: gate false positive" }
+
+	local result = record(repo, H.tempdir(child), table.concat(candidates, "\n"))
+	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
+	eq(read(vim.fs.joinpath(repo, "docs/workflow.md")), workflow({ "Other lesson", near }))
+end
+
+T["loop: Lessons of a pass the review rejected are not kept"] = function()
+	local repo = lessons_repo(workflow({ "Existing lesson" }))
+	local artifacts = H.tempdir(child)
+	local candidates = vim.fs.joinpath(artifacts, "lesson-candidates.txt")
+	write(artifacts, "lesson-candidates.txt", "Earlier verified lesson")
+	eq(run_verdict(repo, artifacts).code, 0)
+	vim.fn.writefile({ "Lesson of the overturned pass" }, candidates, "a")
+	local env = vim.tbl_extend("force", H.GIT_ENV, { ARTIFACTS_DIR = artifacts, INPUTS_GREEN = "true" })
+	env = vim.tbl_extend("force", env, { INPUTS_SPEC_OK = "true", INPUTS_CRITICAL = "0", INPUTS_APPROVE = "false" })
+	local rejected = H.system(child, { "python3", VERDICT }, repo, env)
+	eq(rejected.code, 0, { fail_reason = rejected.stderr })
+	eq(read(candidates), "Earlier verified lesson")
+	vim.fn.writefile({ "Lesson of the approved pass" }, candidates, "a")
+
+	local result = record(repo, artifacts, read(candidates))
+	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
+	local lessons = { "Existing lesson", "Earlier verified lesson", "Lesson of the approved pass" }
+	eq(read(vim.fs.joinpath(repo, "docs/workflow.md")), workflow(lessons))
 end
 
 return T

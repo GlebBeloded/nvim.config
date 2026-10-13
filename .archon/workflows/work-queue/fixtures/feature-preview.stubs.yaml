@@ -15,4 +15,4 @@ complete: { visible_ui: false, architecture: false }
 spec-gate: "valid"
 preview: "http://localhost:8000/preview/demo-change"
 
-adopted-state: { archived: false }
+adopted-state: { archived: false, tasks_done: false, visible_ui: false }

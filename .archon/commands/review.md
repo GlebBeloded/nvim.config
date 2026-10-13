@@ -16,7 +16,9 @@ Change id: $INPUTS.change. Diff: `git diff $(git merge-base HEAD $BASE_BRANCH)` 
 Use `superpowers:requesting-code-review` as the checklist, acting as the reviewer yourself. Judge
 the diff against the conventions in docs/architecture.md and openspec/specs plus the change's spec delta:
 - consistency with the conventions (cite the rule number);
-- scope creep beyond proposal.md;
+- scope creep beyond proposal.md; if `$ARTIFACTS_DIR/fix-scope.md` exists, the last fix pass edited
+  the planning files it lists (proposal.md, .openspec.yaml, spec deltas): a finding unless the edit only
+  repairs a failed `openspec validate` or trial archive;
 - test integrity: no deleted, skipped, xfailed or weakened tests, no loosened assertions, test
   names match scenario titles; new case names must not already exist under tests/;
 - spec integrity: no scenario removed or weakened;

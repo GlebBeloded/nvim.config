@@ -83,6 +83,12 @@ T["loop: Queue spec prompt keeps the user's contract"] = function()
 	has(prompt, "keep any `## Blocked` section as it is")
 end
 
+T["loop: Queue spec prompt never empties a test file"] = function()
+	local prompt = read(vim.fs.joinpath(H.root, ".archon/commands/queue-spec.md")):gsub("%s+", " ")
+	has(prompt, "A task never empties a test file: removing a file's last case deletes the file")
+	has(prompt, "keep the copy in the file that would be emptied")
+end
+
 T["loop: Judge asks when a change re-adds a removed requirement"] = function()
 	local delta = table.concat({
 		"## REMOVED Requirements",

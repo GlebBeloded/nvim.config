@@ -26,7 +26,7 @@ file ranges, not whole files; no full logs. Follow the conventions in docs/archi
 
 When this task corrects a failure from the previous pass (pack section "Last gate failures") and the
 correction is directly verified, append one concise cause-to-action line to
-`$ARTIFACTS_DIR/lesson-candidates.txt`; otherwise do not write a candidate.
+`$ARTIFACTS_DIR/lesson-candidates.txt` (start it with `loop:` when it is about loop tooling: such lessons are dropped); otherwise do not write a candidate.
 
 Never delete, skip or weaken a test or scenario to get green; if the spec is wrong, write it in
 tasks.md under "## Blocked" and stop.

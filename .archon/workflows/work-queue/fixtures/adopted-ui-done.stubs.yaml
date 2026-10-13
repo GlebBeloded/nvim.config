@@ -1,0 +1,14 @@
+# g7. as g6, but the adopted change has design.md (fixtures/changes/adopted-ui-done): with the spec
+# step skipped, visible UI comes from design.md, so the preview and the design gate run. Dry-run limit
+# as in g4: the auto-approved gate outputs "approved", so design-decide fails here.
+fixture:
+  expect: failed
+  fail-node: design-decide
+  inputs: { change: adopted-ui-done }
+  reached: [pick, adopt, adopted-state, spec-gate, preview, design-gate]
+exec-code: true
+skills-check: "skills ok"
+pick: { found: true, change: adopted-ui-done, kind: fix, has_tasks: true }
+complete: "MUST-NOT-RUN"
+spec-gate: "valid"
+preview: "http://localhost:8000/preview/adopted-ui-done"

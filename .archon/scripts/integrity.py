@@ -4,6 +4,7 @@
 """
 
 import difflib
+import hashlib
 import os
 import re
 import subprocess
@@ -156,14 +157,25 @@ def rewritten_decisions() -> list[str]:
     return reasons
 
 
+def case_names(text: str) -> set[str]:
+    return {CASE_KEY.findall(m.group(1))[-1] for l in text.splitlines() if (m := CASE_CHAIN.match(l))}
+
+
+def moved_test_files(base: str, deleted: list[str]) -> bool:
+    """Every case of the deleted test files still exists by name in a test file of the branch."""
+    kept = {path for path in git("ls-files", "--cached", "--", "tests/").split() if path.endswith(".lua")}
+    present = set().union(*(case_names(open(path).read()) for path in kept if os.path.isfile(path)))
+    return all(case_names(git("show", f"{base}:{path}")) <= present for path in deleted)
+
+
 def hard_rule_violations() -> list[str]:
     base = git("merge-base", "HEAD", BASE).strip()
     tests = diff("tests/")
     reasons = []
-    deleted = git("diff", "--cached", "--diff-filter=D", "--name-only", base, "--", "tests/").split()
-    if deleted:
-        reasons.append("test files deleted: " + ", ".join(deleted))
     lost = sorted(Coverage().lost)  # by name: an unrelated new case cannot offset a lost one
+    deleted = git("diff", "--cached", "--diff-filter=D", "--name-only", base, "--", "tests/").split()
+    if deleted and (lost or not moved_test_files(base, deleted)):  # a file whose cases all moved is no loss
+        reasons.append("test files deleted: " + ", ".join(deleted))
     if lost:
         reasons.append(f"{len(lost)} test case(s) removed: " + ", ".join(lost))
     for line in lines(tests, "+"):
@@ -176,6 +188,27 @@ def hard_rule_violations() -> list[str]:
     if markers.stdout:
         reasons.append("conflict markers committed: " + markers.stdout.splitlines()[0][:120])
     return reasons
+
+
+PLAN_FILES = re.compile(r"proposal\.md|\.openspec\.yaml|specs/.+\.md")
+
+
+def plan_files(change: str) -> dict[str, str]:
+    """sha256 of the change's planning files (proposal.md, .openspec.yaml, spec deltas) by path."""
+    folder = os.path.join("openspec/changes", change)
+    found = {}
+    for root, _, names in os.walk(folder) if change else []:
+        for name in names:
+            path = os.path.join(root, name)
+            if PLAN_FILES.fullmatch(os.path.relpath(path, folder)):
+                found[path] = hashlib.sha256(open(path, "rb").read()).hexdigest()
+    return found
+
+
+def plan_edits(before: dict[str, str], change: str) -> list[str]:
+    """Planning files of the change added, edited or removed since the `before` snapshot."""
+    after = plan_files(change)
+    return sorted(p for p in before.keys() | after.keys() if before.get(p) != after.get(p))
 
 
 def breaking_changes() -> list[str]:

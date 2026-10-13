@@ -58,17 +58,17 @@ nodes:
     with:
       change: $pick.output.change
 
-  - id: adopted-state # the adopted branch may have finished and archived the change already
-    bash: | # LOOP_CHANGES_DIR: fixtures point it at their own changes (Makefile loop-test)
-      changes=openspec/changes; [ -z "$LOOP_CHANGES_DIR" ] || changes=$LOOP_CHANGES_DIR
-      if [ -d "$changes"/$pick.output.change ]; then echo '{"archived": false}'; else echo '{"archived": true}'; fi
+  - id: adopted-state # the adopted branch may have archived the change, or ticked every task (no spec step)
+    bash: INPUTS_CHANGE=$pick.output.change python3 .archon/scripts/tasks.py --adopted-state # LOOP_CHANGES_DIR: fixtures' own changes
     depends_on: [adopt, adopt-resolve]
     trigger_rule: none_failed_min_one_success
     output_format:
       type: object
       properties:
         archived: { type: boolean }
-      required: [archived]
+        tasks_done: { type: boolean }
+        visible_ui: { type: boolean }
+      required: [archived, tasks_done, visible_ui]
 
   - id: blocked # a `## Blocked` section (proposal.md or tasks.md) needs the user: no spec, no build
     script: blocked
@@ -107,7 +107,7 @@ nodes:
     command: queue-spec
     context: fresh # reads its input artifact; no carried-over session
     depends_on: [pick, skills-check, adopted-state, blocked]
-    when: "$pick.output.found == true && $adopted-state.output.archived == false && $blocked.output.blocked == false"
+    when: "$pick.output.found == true && $adopted-state.output.archived == false && $adopted-state.output.tasks_done == false && $blocked.output.blocked == false"
     with:
       change: $pick.output.change
       adopted: $adopt.output.summary
@@ -121,13 +121,16 @@ nodes:
 
   - id: spec-gate
     bash: openspec validate $pick.output.change --strict --no-interactive && python3 .archon/scripts/spec_trial.py $pick.output.change && python3 .archon/scripts/scenarios.py --unknown $pick.output.change # main specs after a trial archive
-    depends_on: [complete]
+    depends_on: [complete, adopted-state, blocked]
+    trigger_rule: none_failed_min_one_success # complete is skipped when the adopted tasks are all ticked
+    when: "$adopted-state.output.archived == false && $blocked.output.blocked == false"
 
   # --- Preview + approval: always for features, else only for visible UI ----------------
   - id: preview
     bash: make -s preview CHANGE=$pick.output.change OPEN= # OPEN= beats an exported OPEN: nothing opens on the host
     depends_on: [spec-gate]
-    when: "$pick.output.kind == 'feature' || $complete.output.visible_ui == true"
+    # left to right, && before ||: complete's output is read only when complete ran (tasks not all ticked)
+    when: "$pick.output.kind == 'feature' || $adopted-state.output.visible_ui == true || $adopted-state.output.tasks_done == false && $complete.output.visible_ui == true"
 
   - id: design-gate
     depends_on: [preview]

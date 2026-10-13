@@ -1,0 +1,19 @@
+# j. gate.py checks the hard rules first: a violation is red at once (no make check), with the
+# `hard rule:` finding as its failures, so review does not run (its stub breaks its schema) and
+# verdict (real) sends the finding to the next pass. Same dry-run limit as b: the loop ends after
+# pass 1, the judge stub stands in for the final pass. Unit test "Gate checks hard rules before make check".
+fixture:
+  expect: completed
+  inputs: { change: demo-change }
+  reached: [gate, verdict, build, escalation, ship-decide, ship, shipped]
+exec-code: true
+skills-check: "skills ok"
+plan-check: { needed: false, has_change: true }
+plan-gate: "change demo-change is valid"
+pack: { has_task: true, context: context.md }
+implement: "task 1 done"
+gate: { green: false, spec_ok: true, tasks_done: true, untested: 0, attempt: 1, failures: "hard rule: test files deleted: tests/unit/x/test_x.lua" }
+review: "MUST-NOT-RUN"
+escalation: { decision: ship, escalate: false, reasons: "- none" }
+ship: { merged: true, conflict: false, branch: loop/demo-change, commit: abc123 }
+followup: "MUST-NOT-RUN"
