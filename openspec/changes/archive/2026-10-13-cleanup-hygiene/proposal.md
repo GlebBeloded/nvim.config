@@ -11,16 +11,18 @@ Kind: bug
 ## What Changes
 - `plugins.lua:24`: `priorty` -> `priority`.
 - Remove `set updatetime=1000` from `lsp/init.lua:4` and set the single value in `options.lua:22`. Keep the effective value 1000 (no behaviour change) and fix the comment; lowering it to 300 is a user decision and out of scope.
-- Log cleanup that keeps every spec'd scenario: at startup, `gleb.nvim_debug_log` deletes `/tmp/nvim/*.txt` files older than 7 days (never the current session's file), and `gleb.statusline.lsp_progress` truncates `/tmp/nvim-lsp-progress.log` once it exceeds 1 MB. The nvim-debug-log scenarios (file `<digits>_<pid>.txt` is created, messages land in it, `BEFORE_EXIT` is in the file after exit) and "progress events are logged" still hold, so no scenario changes. Note: this adds unspecified cleanup behaviour; deleting the log on exit was rejected because the spec reads it after exit.
+- Log cleanup that keeps every spec'd scenario: at startup, `gleb.nvim_debug_log` deletes `/tmp/nvim/<time>_<pid>.txt` files whose `<time>` is more than 7 days old (the current session's file is created after pruning and is never touched), and `gleb.statusline.lsp_progress` empties its log before appending once it exceeds 1 MiB. The log path can be overridden with `$NVIM_LSP_PROGRESS_LOG` so the size-cap test does not wipe the shared `/tmp` log under parallel test workers. The existing nvim-debug-log scenarios (file `<digits>_<pid>.txt` is created, messages land in it, `BEFORE_EXIT` is in the file after exit) and "progress events are logged" still hold. Deleting the log on exit was rejected because the spec reads it after exit.
 - Delete the dead `inactive_sections` table from `lualine.lua`.
 - Fix the three stale comments above.
 
 ## Capabilities
 ### Modified Capabilities
-- None (`skip_specs: true`: no scenario of `statusline`, `nvim-debug-log` or any other capability changes).
+- `nvim-debug-log`: ADDED requirement "Old log pruning" (logs older than 7 days are deleted at startup).
+- `statusline`: ADDED requirement "LSP progress log size cap" (log emptied past 1 MiB; `$NVIM_LSP_PROGRESS_LOG` override).
+- The other items (priority typo, `updatetime`, dead `inactive_sections`, comments) change no scenario.
 
 ## Impact
-- Code: `lua/gleb/plugins/plugins.lua`, `lua/gleb/lsp/init.lua`, `lua/gleb/options.lua`, `lua/gleb/nvim_debug_log/init.lua`, `lua/gleb/statusline/lsp_progress.lua`, `lua/gleb/lualine.lua`, `lua/gleb/file_tree/init.lua`, `lua/gleb/git/vscode_diff.lua`; unit tests for the log pruning.
+- Code: `lua/gleb/plugins/plugins.lua`, `lua/gleb/lsp/init.lua`, `lua/gleb/options.lua`, `lua/gleb/nvim_debug_log/init.lua`, `lua/gleb/statusline/lsp_progress.lua`, `lua/gleb/lualine.lua`, `lua/gleb/file_tree/init.lua`, `lua/gleb/git/vscode_diff.lua`; tests for the two ADDED requirements.
 - Plugins: none added, removed or upgraded (gruvbox-material now actually loads with priority 1000)
 - Core keymaps: unchanged
 - Out of scope:

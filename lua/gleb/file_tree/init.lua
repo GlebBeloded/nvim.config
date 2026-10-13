@@ -120,7 +120,7 @@ local function run_commit(msg)
 	end)
 end
 
--- Git status: commit with floating input (Alt+C for AI)
+-- Git status: commit with floating input
 local function git_commit()
 	require("gleb.git.ai_commit").show_commit_input(run_commit)
 end
