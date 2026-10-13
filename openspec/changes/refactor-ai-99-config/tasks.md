@@ -24,9 +24,9 @@ Scenarios: ai: runs Pi ephemerally with low thinking, ai: defaults to Codex Sol,
 
 **Files:** `tests/unit/ai/test_pi_provider.lua`, `lua/gleb/ai/pi_provider.lua`
 
-- [ ] 1.1 **Failing test.** In `test_pi_provider.lua`, require the provider in a bare child with no `99` stub for the first three cases; for "Provider inherits base provider", require the provider first and install the `package.loaded["99"]` stub after. `make test-unit` → FAIL (`module '99' not found`).
-- [ ] 1.2 **Implement** Decisions 2 and 3: `PiProvider.MODEL`, `_get_default_model()` returns it, base provider resolved in a named `__index` function. `make test-unit` → the four provider cases pass.
-- [ ] 1.3 **Commit** `refactor(ai): resolve 99 base provider lazily`.
+- [x] 1.1 **Failing test.** In `test_pi_provider.lua`, require the provider in a bare child with no `99` stub for the first three cases; for "Provider inherits base provider", require the provider first and install the `package.loaded["99"]` stub after. `make test-unit` → FAIL (`module '99' not found`).
+- [x] 1.2 **Implement** Decisions 2 and 3: `PiProvider.MODEL`, `_get_default_model()` returns it, base provider resolved in a named `__index` function. `make test-unit` → the four provider cases pass.
+- [x] 1.3 **Commit** `refactor(ai): resolve 99 base provider lazily`.
 
 ## 2. Entry keymaps module
 

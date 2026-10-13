@@ -6,12 +6,11 @@ local child = H.new_child()
 
 local STUB_99 = [[
 	package.loaded["99"] = { Providers = { BaseProvider = { inherited = "from base" } } }
-	Provider = require("gleb.ai.pi_provider")
 ]]
 
 local function start()
 	child.start_bare()
-	child.lua(STUB_99)
+	child.lua([[Provider = require("gleb.ai.pi_provider")]])
 end
 
 local T = H.child_set(child, start)
@@ -40,6 +39,7 @@ T["ai: Provider name"] = function()
 end
 
 T["ai: Provider inherits base provider"] = function()
+	child.lua(STUB_99)
 	eq(child.lua_get("Provider.inherited"), "from base")
 end
 
