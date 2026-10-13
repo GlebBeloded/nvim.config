@@ -16,6 +16,8 @@ CASE_KEY = re.compile(r'\["([^"]+)"\]')
 SPEC_HEADER = re.compile(r"^diff --git a/openspec/specs/([^/]+)/spec\.md b/openspec/specs/([^/]+)/spec\.md$")
 SCENARIO = re.compile(r"^#### Scenario:\s*(.+?)\s*$")
 XFAIL_RE = re.compile(r'H\.xfail\(\s*"([\w.-]+)')
+XFAIL_ARG = re.compile(r'H\.xfail\(\s*(?:"([\w.-]+)|([A-Za-z_]\w*))')  # a literal reason, or a local holding it
+LOCAL_STRING = re.compile(r'^\s*local\s+([A-Za-z_]\w*)\s*=\s*"([^"]*)"', re.MULTILINE)
 DELTA_SECTION = re.compile(r"^## (ADDED|MODIFIED|REMOVED|RENAMED) Requirements\s*$", re.MULTILINE)
 REQUIREMENT = re.compile(r"^### Requirement:\s*(.+?)\s*$", re.MULTILINE)
 DECISION = re.compile(r"^## Decision\b.*?(?=^## |\Z)", re.MULTILINE | re.DOTALL)
@@ -168,6 +170,30 @@ def moved_test_files(base: str, deleted: list[str]) -> bool:
     return all(case_names(git("show", f"{base}:{path}")) <= present for path in deleted)
 
 
+def xfail_refs(text: str) -> list[str]:
+    """Change ids named by each `H.xfail(` in a test file: a string literal (possibly on the next line)
+    or a local string constant holding it; "" when the reason cannot be resolved."""
+    consts = dict(LOCAL_STRING.findall(text))
+    refs = []
+    for m in XFAIL_ARG.finditer(text):
+        reason = m.group(1) or consts.get(m.group(2) or "", "")
+        refs.append(re.match(r"[\w.-]*", reason).group(0))
+    return refs
+
+
+def unqueued_xfails(base: str) -> list[str]:
+    """Each changed test file's xfails must each name a queued change (openspec/changes/<id>)."""
+    changed = git("diff", "--cached", "--diff-filter=AM", "--name-only", base, "--", "tests/").split()
+    out = []
+    for path in changed:
+        if not path.endswith(".lua") or not os.path.isfile(path):
+            continue
+        for ref in xfail_refs(git("show", f":{path}")):
+            if not ref or not os.path.isdir(f"openspec/changes/{ref}"):
+                out.append(f"xfail without a queued openspec change: {path} ({ref or 'unresolved reason'})")
+    return out
+
+
 def hard_rule_violations() -> list[str]:
     base = git("merge-base", "HEAD", BASE).strip()
     tests = diff("tests/")
@@ -178,12 +204,7 @@ def hard_rule_violations() -> list[str]:
         reasons.append("test files deleted: " + ", ".join(deleted))
     if lost:
         reasons.append(f"{len(lost)} test case(s) removed: " + ", ".join(lost))
-    for line in lines(tests, "+"):
-        if "H.xfail(" not in line:
-            continue
-        ref = XFAIL_RE.search(line)
-        if not ref or not os.path.isdir(f"openspec/changes/{ref.group(1)}"):
-            reasons.append("xfail without a queued openspec change: " + line.strip()[:120])
+    reasons += unqueued_xfails(base)
     markers = subprocess.run(["git", "grep", "-n", "-E", "^(<<<<<<<|>>>>>>>) ", "--cached"], capture_output=True, text=True)
     if markers.stdout:
         reasons.append("conflict markers committed: " + markers.stdout.splitlines()[0][:120])

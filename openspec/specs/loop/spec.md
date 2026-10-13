@@ -426,6 +426,10 @@ The delivery loop SHALL implement one task per fresh agent session from a script
 - **WHEN** `.archon/scripts/escalation.py` runs on a branch that adds `H.xfail("<id>", …)` for an id with no `openspec/changes/<id>`
 - **THEN** its JSON `decision` is `reject`
 
+#### Scenario: Judge resolves an xfail reason held in a local
+- **WHEN** escalation.py runs on a branch whose test file has `local WHY = "queued-x: reason"` and an `H.xfail(` call split over lines that passes `WHY`, once with `openspec/changes/queued-x/` present and once without
+- **THEN** the first decision is not `reject` and the second is `reject`
+
 #### Scenario: Judge asks only for a breaking change
 - **WHEN** `.archon/scripts/escalation.py` runs on a branch that adds a `vim.keymap.set` line to `lua/gleb/keymaps.lua`
 - **THEN** its JSON `decision` is `ask`

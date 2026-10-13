@@ -28,7 +28,7 @@ Get the artifact instructions in one batch and skip design unless there is visib
 
 Stop after the artifacts exist; do not implement. Set `change` to the change id, `visible_ui` to
 true when the change alters what is drawn on screen, `architecture` to true when it changes module
-layout, load order or plugin wiring (docs/architecture.md).
+layout, load order or plugin wiring (docs/architecture.md). A bug fix that only makes the screen match what an existing spec scenario already requires is not `visible_ui` (no design.md, no design gate); `visible_ui` means a new or changed look.
 
 tasks.md format (each task one section of at most 5 scenarios, split by requirement; the gate reads the `Scenarios:` line):
 

@@ -20,7 +20,7 @@ until specs, design.md (only for visible UI: Current + Proposed renders) and tas
 following openspec/config.yaml rules. If the proposal cites file:line and names the requirement, read only those
 ranges (`rg -n 'Requirement:' <spec>`, then that range). Drop main spec paths from the proposal's Impact; the delta
 covers them. Do not implement. Set `visible_ui` to true when the change alters what is drawn on screen,
-`architecture` to true when it changes module layout, load order or plugin wiring (docs/architecture.md).
+`architecture` to true when it changes module layout, load order or plugin wiring (docs/architecture.md). A bug fix that only makes the screen match what an existing spec scenario already requires is not `visible_ui` (no design.md, no design gate); `visible_ui` means a new or changed look.
 
 The contract is the user's: never change a number or bound (time, size, count) in a requirement or scenario the proposal or an existing delta states, never REMOVE a requirement to ADD it again, never reword the `## Decision` text, and keep any `## Blocked` section as it is, unless a user `## Decision` in the proposal answers it: then delete that Blocked section and follow the Decision. If the contract cannot be met, write `## Blocked` with the reason in tasks.md and stop (the judge asks the user).
 
