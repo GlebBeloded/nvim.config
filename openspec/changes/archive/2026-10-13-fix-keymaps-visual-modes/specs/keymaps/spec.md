@@ -36,8 +36,8 @@ The config SHALL keep the selection after `<` and `>` in visual mode, SHALL make
 - **THEN** each returns `""`
 
 #### Scenario: Typing p in select mode inserts p
-- **WHEN** the unnamed register contains `foo`, the buffer line is `bar baz`, the cursor is on column 1, and `gh` then `p` is typed
-- **THEN** the buffer line is `par baz` and `getreg('"')` is still `foo`
+- **WHEN** the full config is loaded, the unnamed register contains `foo`, the buffer line is `bar baz` with the cursor on column 1, and `v` then `<C-g>` (Select mode) then `p` is typed
+- **THEN** the buffer line is `par baz` and the mode is Insert
 
 ### Requirement: LSP actions and navigation
 The config SHALL map `<C-CR>` in normal mode and in visual mode (`x` only) to `vim.lsp.buf.code_action`, and in normal mode `gD` to `vim.lsp.buf.declaration`, `gd` to `vim.lsp.buf.definition`, `K` to `vim.lsp.buf.hover`, `gi` to `vim.lsp.buf.implementation`, `gr` to Telescope `lsp_references`, and `<A-r>` to `vim.lsp.buf.rename`.

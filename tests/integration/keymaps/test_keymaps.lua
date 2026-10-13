@@ -289,6 +289,23 @@ T["keymaps: Alt-k moves selected lines up"] = function()
 	eq({ get_lines(), child.fn.mode() }, { { "a", "c", "b" }, "V" })
 end
 
+T["keymaps: Visual helpers are not mapped in select mode"] = function()
+	local lhs = { "<", ">", "p", "<A-j>", "<A-k>", "<C-CR>" }
+	local select_maps = vim.tbl_map(function(key)
+		return child.fn.maparg(key, "s")
+	end, lhs)
+
+	eq(select_maps, { "", "", "", "", "", "" })
+end
+
+T["keymaps: Typing p in select mode inserts p"] = function()
+	-- Yank because clipboard=unnamedplus makes direct setreg setup misleading.
+	set_lines({ "foo", "bar baz" })
+	child.type_keys("gg", "yiw", "j", "0", "v", "<C-g>", "p")
+
+	eq({ get_lines(), child.fn.mode() }, { { "foo", "par baz" }, "i" })
+end
+
 -- LSP and diagnostics --------------------------------------------------------
 
 T["keymaps: LSP mappings bound to vim.lsp.buf"] = function()
