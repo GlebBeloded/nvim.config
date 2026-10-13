@@ -13,6 +13,10 @@ local eq = MiniTest.expect.equality
 local NEOVIM_PANE, CAT_PANE = "terminal_0", "terminal_1"
 local CONSUMED = { "Cmd+J", "Cmd+K", "Cmd+[", "Cmd+]" }
 local SETTLE_MS = 300
+local CMD_CHORDS = { "Cmd+O", "Cmd+I", "Cmd+D", "Cmd+A" }
+-- what each Cmd chord could wrongly arrive as: the Super key, an Alt key, the plain letter
+local CMD_CHORD_RECORDERS =
+	{ "<D-o>", "<D-i>", "<D-d>", "<D-a>", "<M-o>", "<M-i>", "<M-d>", "<M-a>", "o", "i", "d", "a" }
 -- rows that behave unlike the shortcut table from a real key press, each in its own case:
 -- the app menu takes Cmd+Q (Quit) and Cmd+H (Hide) (spec: "Real key presses ...")
 local OWN_CASE = { ["Cmd+Q"] = true, ["Cmd+H"] = true }
@@ -269,6 +273,18 @@ T["shortcuts: Cmd+Shift+- and Cmd+Shift+= close and open all folds from a real k
 		E.press(s, E.chord("Cmd+Shift+="))
 		wait_folds_closed(false)
 	end)
+end
+
+T["shortcuts: Cmd+O, Cmd+I, Cmd+D and Cmd+A reach Neovim as <D-…> from a real key press"] = function()
+	local s, hits = get(), {}
+	E.record(s, CMD_CHORD_RECORDERS)
+	burst(function()
+		for _, shortcut in ipairs(CMD_CHORDS) do
+			vim.list_extend(hits, press_and_record(shortcut))
+		end
+	end)
+	eq(hits, { "<D-o>", "<D-i>", "<D-d>", "<D-a>" })
+	eq(E.alive(s), true)
 end
 
 T["shortcuts: Ctrl+Up grows the current Neovim split from a real key press"] = function()

@@ -203,6 +203,17 @@ The stack harness deadlines (`M.wait_for` default, zellij CLI retry) and the smo
 - **WHEN** `startup_budget(400)` from `tests/smoke/budget.lua` is called with a load factor of 1, then of 3
 - **THEN** it returns `400`, then `1200`
 
+### Requirement: Cmd chords reach Neovim as <D-…>
+Cmd+O, Cmd+I, Cmd+D and Cmd+A SHALL have no Alacritty binding and no zellij `normal`-mode binding, so Alacritty sends its kitty flag-1 encoding with the Super bit (`\e[<codepoint>;9u`), zellij passes it to the Neovim pane, and Neovim receives `<D-o>`, `<D-i>`, `<D-d>`, `<D-a>`. The shortcut table lists them as `kitty` rows.
+
+#### Scenario: Cmd chords reach Neovim through real zellij
+- **WHEN** recorders are set in Neovim normal mode for `<D-o>`, `<D-i>`, `<D-d>`, `<D-a>`, `<M-o>`, `<M-i>`, `<M-d>`, `<M-a>`, `o`, `i`, `d`, `a` and the bytes `\e[111;9u`, `\e[105;9u`, `\e[100;9u`, `\e[97;9u` are sent in that order
+- **THEN** exactly `<D-o>`, `<D-i>`, `<D-d>`, `<D-a>` are recorded, in that order
+
+#### Scenario: Cmd+O, Cmd+I, Cmd+D and Cmd+A reach Neovim as <D-…> from a real key press
+- **WHEN** recorders are set in Neovim normal mode for `<D-o>`, `<D-i>`, `<D-d>`, `<D-a>`, `<M-o>`, `<M-i>`, `<M-d>`, `<M-a>`, `o`, `i`, `d`, `a` and Cmd+O, Cmd+I, Cmd+D, Cmd+A are pressed in that order in the Alacritty window
+- **THEN** exactly `<D-o>`, `<D-i>`, `<D-d>`, `<D-a>` are recorded, in that order, and the Alacritty process is still running
+
 ## Shortcut table
 Columns of the table the "Shortcut table" requirement refers to:
 - *Source* `chars`: an Alacritty `chars` binding sends the bytes verbatim. `kitty`: no binding; Alacritty's own encoding while zellij has pushed kitty keyboard flag 1 (zellij always does at startup).
@@ -264,6 +275,10 @@ Columns of the table the "Shortcut table" requirement refers to:
 | Ctrl+Down | kitty | `\e[1;5B` | pass | `<C-Down>` | `:resize -2<CR>` |
 | Ctrl+Left | kitty | `\e[1;5D` | pass | `<C-Left>` | `:vertical resize -2<CR>` |
 | Ctrl+Right | kitty | `\e[1;5C` | pass | `<C-Right>` | `:vertical resize +2<CR>` |
+| Cmd+O | kitty | `\e[111;9u` | pass | `<D-o>` | none |
+| Cmd+I | kitty | `\e[105;9u` | pass | `<D-i>` | none |
+| Cmd+D | kitty | `\e[100;9u` | pass | `<D-d>` | none |
+| Cmd+A | kitty | `\e[97;9u` | pass | `<D-a>` | none |
 
 Known gaps this table pins down: Cmd+J/Cmd+K never reach Neovim (the later `shared_except "locked" "scroll"` block rebinds `Alt j`/`Alt k` to zellij `MoveFocus`); Cmd+Shift+H/J/K/L reach Neovim as lowercase `<M-h/j/k/l>` (the navigator's resize writes `ESC <dir>`), so the `<A-H/J/K/L>` resize maps are unreachable and Cmd+Shift+J/K move the cursor between splits; Ctrl+Q quits zellij.
 

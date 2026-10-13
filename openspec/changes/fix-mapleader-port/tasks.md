@@ -111,41 +111,41 @@ git add tests/integration/keymaps/test_keymaps.lua
 git commit -m "test(keymaps): leader is set before the debug log starts (xfail until merge)"
 ```
 
-- [ ] **Step 4: Merge**
+- [x] **Step 4: Merge**
 
 Run: `git merge --no-ff --no-commit loop/fix-mapleader`
 Expected: conflicts in exactly `init.lua`, `openspec/specs/shortcuts/spec.md`, `tests/e2e/shortcuts/test_e2e.lua`. If `tests/integration/keymaps/test_keymaps.lua` also conflicts, keep both sides' cases and helpers.
 
-- [ ] **Step 5: Resolve `init.lua`**
+- [x] **Step 5: Resolve `init.lua`**
 
 Top of file: the branch's comment and leader block, then `auto`'s comment and `require("gleb.nvim_debug_log").setup()`, then `require("gleb.plugins")`; the rest from the branch (its `gleb.keymaps` comment). No bare `require("gleb.nvim_debug_log")` left: `grep -c 'nvim_debug_log' init.lua` prints `1`.
 
-- [ ] **Step 6: Resolve `openspec/specs/shortcuts/spec.md`**
+- [x] **Step 6: Resolve `openspec/specs/shortcuts/spec.md`**
 
 Keep `auto`'s requirements "Concurrent sandbox runs never share the guest" and "Test harness deadlines scale with host load" and the branch's "Cmd chords reach Neovim as <D-…>", every scenario under each, plus the Cmd+O/I/D/A table rows and `auto`'s "Known gaps" paragraph.
 Verify: `grep -c '^#### Scenario:'` on the result equals the count on `auto` plus the scenarios only the branch adds (`git diff auto...loop/fix-mapleader -- openspec/specs/shortcuts/spec.md | grep -c '^+#### Scenario:'`); `openspec validate --specs --strict` passes.
 
-- [ ] **Step 7: Resolve `tests/e2e/shortcuts/test_e2e.lua`**
+- [x] **Step 7: Resolve `tests/e2e/shortcuts/test_e2e.lua`**
 
 Keep `auto`'s fold fixture and case "Cmd+Shift+- and Cmd+Shift+= close and open all folds from a real key press" with its closing `end`, `auto`'s `OWN_CASE` (Cmd+Q, Cmd+H), and the branch's `CMD_CHORDS` / `CMD_CHORD_RECORDERS` and case "Cmd+O, Cmd+I, Cmd+D and Cmd+A reach Neovim as <D-…> from a real key press".
 Verify: `git diff auto -- tests/e2e/shortcuts/test_e2e.lua` and `git diff loop/fix-mapleader -- tests/e2e/shortcuts/test_e2e.lua` show no `-` line that is not re-added unchanged elsewhere; `make lint` passes.
 
-- [ ] **Step 8: Remove the xfail and verify the leader tests pass**
+- [x] **Step 8: Remove the xfail and verify the leader tests pass**
 
 Unwrap `H.xfail("fix-mapleader-port", …)` from "keymaps: Leader is set before the debug log starts".
 Run: `make test FILE=tests/integration/keymaps/test_keymaps.lua` and `make test FILE=tests/integration/nvim-debug-log/test_debug_log.lua`
 Expected: PASS, including "Leader values after startup", "Leader is set before lazy.nvim loads plugins", "Leader is set before the debug log starts", "Full config starts the log".
 
-- [ ] **Step 9: Check the archive and the docs**
+- [x] **Step 9: Check the archive and the docs**
 
 Verify `openspec/changes/fix-mapleader/` is gone and `git diff loop/fix-mapleader -- openspec/changes/archive/2026-10-13-fix-mapleader/` is empty. Reread the leader notes in `docs/architecture.md` (load order, rules 3.7/3.8); fix any statement that contradicts the resolved `init.lua` (leader, then debug-log `setup()`, then lazy.nvim).
 
-- [ ] **Step 10: Full gate**
+- [ ] **Step 10: Full gate** (left to the gate after this pass, which runs it once)
 
 Run: `make check E2E=1` (sandbox VM).
 Expected: every layer green; e2e runs (not `skip`) and both the Cmd+O/I/D/A and fold cases pass; `make trace` reports no orphans.
 
-- [ ] **Step 11: Commit the merge**
+- [x] **Step 11: Commit the merge**
 
 ```bash
 git add -A init.lua openspec/specs/shortcuts/spec.md tests/e2e/shortcuts/test_e2e.lua tests/integration/keymaps/test_keymaps.lua docs/architecture.md
