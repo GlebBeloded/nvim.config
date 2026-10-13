@@ -83,7 +83,8 @@ editor.
 Partial or untested work never ships and never asks: a red check, unfinished tasks, an untested
 scenario, a CRITICAL verify finding, a deleted or weakened test, an xfail without a queued change, or
 committed conflict markers go back to fix; after 3 passes the judge rejects, the branch is kept and
-`followup.py` queues `followup-<change>` on `auto`.
+`followup.py` re-queues it on `auto`: a change still active there gets `Adopt: <branch>` and a
+`## Rejected run` section, an archived one a new `followup-<change>`.
 
 ### Queue and known issues
 

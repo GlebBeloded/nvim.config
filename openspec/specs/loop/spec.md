@@ -50,12 +50,31 @@ The repo root SHALL expose the agent rules as both `CLAUDE.md` and `AGENTS.md`, 
 `.archon/scripts/queue_pick.py` SHALL write exactly one JSON document to stdout in every case (with or without `INPUTS_CHANGE`, whether or not any `loop/<change>` branch exists, found or not found), so `make queue` without `CHANGE` can always read the picked change.
 
 #### Scenario: Queue adopts the branch a follow-up names
-- **WHEN** `make queue CHANGE=followup-x` runs where `openspec/changes/followup-x/proposal.md` has the line `Adopt: loop/x-rejected` (written by followup.py) and that branch exists, with `ARCHON` stubbed
-- **THEN** Archon is asked to run work-queue with `--input adopt=loop/x-rejected` (the rejected run's work is merged first)
+- **WHEN** `make queue CHANGE=followup-x` runs where `openspec/changes/followup-x/proposal.md` has the line `Adopt: loop/x-rejected` (written by followup.py) followed by a second `Adopt: loop/x-other` line, both branches exist, with `ARCHON` stubbed
+- **THEN** Archon is asked to run work-queue with `--input adopt=loop/x-rejected` (the first `Adopt:` line; the rejected run's work is merged first)
+
+#### Scenario: Queue prefers the Adopt branch over loop/<change>
+- **WHEN** `make queue CHANGE=x` runs, with `ARCHON` stubbed, where branch `loop/x` exists and `openspec/changes/x/proposal.md` has `Adopt: loop/x-20260101` (the newer rejected run), once with that branch present and once without it
+- **THEN** with the branch present Archon is asked for `--input adopt=loop/x-20260101`; without it, for `--input adopt=loop/x`; both runs use a `--branch loop/x-<stamp>` branch
 
 #### Scenario: Queue skips a taken change
 - **WHEN** `make queue` is run without `CHANGE` (via `vim.system`) in a repo on `auto` whose stub `openspec list --json` lists two changes, the older of which already has a `loop/<change>` branch and a running Archon run working it (an `ARCHON_DB` with that row), with `ARCHON` set to a stub that logs its `workflow run` arguments
 - **THEN** make exits 0, its output contains `Working on <newer change>` and no `JSONDecodeError`, and the stub was called with `--branch loop/<newer change>`, while `python3 .archon/scripts/queue_pick.py` run in the same repo prints a stdout that `vim.json.decode` parses as one object with `change` equal to the newer change
+
+### Requirement: Rejected run is re-queued once
+`.archon/scripts/followup.py` SHALL, after a judge reject, re-queue the work on `auto` under the ship lock without creating a second change for the same work: when `openspec/changes/<change>/proposal.md` exists on `auto`, it SHALL rewrite that proposal to hold exactly one `Adopt: <rejected branch>` line (in place of the existing one, else after the `Kind:` line, else at the end of `## Why`) and one `## Rejected run` section with the judge's reasons, committed as `chore(openspec): re-queue <change> from <branch>`; otherwise it SHALL queue a new change `followup-<change>` that adopts the branch. It prints `{queued, change}` naming the change that was queued.
+
+#### Scenario: Rejected active change is re-queued in place
+- **WHEN** `python3 .archon/scripts/followup.py` runs with `INPUTS_CHANGE=x` and `INPUTS_REASONS` in a worktree on `loop/x-20260101` of a throwaway repo whose main checkout is on `auto` and holds `openspec/changes/x/proposal.md` with `Kind: bug`, an `Adopt: loop/x` line and an old `## Rejected run` section
+- **THEN** it prints `queued` true and `change` `x`, no `openspec/changes/followup-x` exists on `auto`, the proposal's only `Adopt:` line is `Adopt: loop/x-20260101`, it has one `## Rejected run` section holding the new reasons and not the old ones, the latest `auto` commit is `chore(openspec): re-queue x from loop/x-20260101`, and no ship lock file remains
+
+#### Scenario: Adopt line is added to a proposal without one
+- **WHEN** followup.py re-queues a change whose proposal has a `Kind:` line and no `Adopt:` line, and one whose proposal has neither (only `## Why` and `## What Changes`)
+- **THEN** the first gets `Adopt: <branch>` on the line after `Kind:`, the second at the end of `## Why`, before `## What Changes`
+
+#### Scenario: Rejected archived change gets a follow-up change
+- **WHEN** followup.py runs with `INPUTS_CHANGE=x` where `auto` has no `openspec/changes/x/proposal.md`
+- **THEN** it prints `queued` true and `change` `followup-x`, and `openspec/changes/followup-x/proposal.md` on `auto` has the line `Adopt: <branch>` and the reasons
 
 ### Requirement: Ship merges into auto one at a time and never leaves it mid-merge
 `.archon/scripts/ship.py` SHALL merge into the `auto` checkout only while it holds a host-side lock: a pid file in the repo's common git dir. A lock whose pid is no longer alive SHALL be taken over, and the lock SHALL be released on every exit. After any failed merge, ship SHALL leave `auto` at its pre-merge commit with no `MERGE_HEAD` and no staged or modified tracked files.
