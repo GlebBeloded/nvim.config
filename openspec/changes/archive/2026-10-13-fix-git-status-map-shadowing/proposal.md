@@ -17,6 +17,7 @@ Open question (needs the user): which keys replace `gr` (revert) and `c` (commit
 
 ## Impact
 - Code: `lua/gleb/file_tree/init.lua`
+- Port: first implemented on `loop/fix-git-status-map-shadowing`, which conflicts with `auto` after fix-neotree-commit-check landed; this change merges it and moves commit-check's async commit and `Commit failed:` reporting from `c` to `gc` (design.md, Port onto `auto`).
 - Plugins: none added, removed or upgraded
 - Core keymaps: unchanged globally; buffer-local `git_status` keys change (user decision)
 - Out of scope: commit/stage correctness (fix-neotree-commit-check, fix-neotree-stage-toggle), other neo-tree default maps.

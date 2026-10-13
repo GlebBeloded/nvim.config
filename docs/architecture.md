@@ -57,7 +57,7 @@ flowchart LR
     init --> dbg & lazy & core & edit & ui & ft & git & ses
     lazy -- "VeryLazy config" --> ai
     core -- "Alt-e, Alt-G, Alt-g" --> ft
-    ft -- "c: ai_commit" --> git
+    ft -- "gc: ai_commit" --> git
     ui -- "palette" --> core
 ```
 
