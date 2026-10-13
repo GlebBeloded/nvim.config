@@ -47,21 +47,13 @@ end
 --- Wait budget for async plugins (neo-tree, telescope, differ).
 ---@return integer
 local function async_ms()
-	return math.ceil(3000 * H.load_factor())
+	return math.ceil(10000 * H.load_factor())
 end
 
 ---@param expr string
 ---@return boolean
 local function wait_neotree(expr)
-	local started = vim.uv.hrtime()
-	local budget = async_ms()
-	repeat
-		if child.wait(expr, 100) then
-			return true
-		end
-		budget = math.max(budget, async_ms())
-	until (vim.uv.hrtime() - started) / 1e6 >= budget
-	return false
+	return child.wait(expr, async_ms())
 end
 
 --- Lua expression: number of neo-tree windows in all tabs.
