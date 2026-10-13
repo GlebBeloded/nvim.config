@@ -27,7 +27,7 @@ Scenarios: "gc commits confirmed message", "c is copy in git status tree", "Help
 
 ## 3. Integration
 
-- [ ] 3.1 Run `make trace` and verify that the six new scenarios show as tested and there are no orphans.
+- [x] 3.1 Run `make trace` and verify that the six new scenarios show as tested and there are no orphans.
 - [ ] 3.2 Run `make check` and verify it is green, with no test or scenario removed or weakened.
 
 ## Workflow follow-up
