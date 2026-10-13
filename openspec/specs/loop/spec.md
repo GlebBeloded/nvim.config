@@ -88,19 +88,23 @@ After a judge reject, `.archon/scripts/followup.py` SHALL re-queue the work on `
 - **THEN** the first run picks `t-b`, the named run finds nothing and its stderr names `t-b`, and the last run picks `t-a`
 
 ### Requirement: Drain works the queue one run at a time
-`make drain [N=<max runs>]` SHALL work queued changes one at a time through `make queue CHANGE=<id> DETACH=1` and `archon workflow wait`, skip a change with a `## Blocked` section, go on after a failed run, run no change twice, and stop when the queue is empty, after N runs, or at the first run that waits for the user.
+`make drain [N=<max runs>]` SHALL work queued changes one at a time through a foreground `make queue CHANGE=<id>` (never `--detach`), read each run's status from the newest row of its run in the Archon DB, skip a change with a `## Blocked` section, go on after a failed run, run no change twice, and stop when the queue is empty, after N runs, or at the first run that waits for the user.
 
 #### Scenario: Drain works queued changes until the queue is empty
-- **WHEN** `make drain` runs via `vim.system` in a throwaway repo with `ARCHON` stubbed and changes `t-a`, `t-b` (with a `## Blocked` section) and `t-c`, oldest first, where the run of `t-a` fails and the run of `t-c` completes
-- **THEN** it exits 0, Archon is asked for detached work-queue runs of `t-a` then `t-c` only, each once, and the output reports `t-b` skipped and the queue empty
+- **WHEN** `make drain` runs via `vim.system` in a throwaway repo with `ARCHON` stubbed to record runs in a throwaway `ARCHON_DB` and changes `t-a`, `t-b` (with a `## Blocked` section) and `t-c`, oldest first, where the run of `t-a` fails and the run of `t-c` completes
+- **THEN** it exits 0, Archon is asked for foreground work-queue runs of `t-a` then `t-c` only, each once, and the output reports `t-b` skipped and the queue empty
 
 #### Scenario: Drain stops after N runs
 - **WHEN** `make drain N=1` runs with the same stubs and two runnable changes
 - **THEN** it exits 0 after exactly one work-queue run, of the older change
 
 #### Scenario: Drain stops at a run that waits for the user
-- **WHEN** `make drain` runs where `archon workflow wait` reports the first run `awaiting_response` and a second change is queued
+- **WHEN** `make drain` runs where the first run is recorded `paused` and a second change is queued
 - **THEN** it exits 0, starts no second run and its output names the paused change
+
+#### Scenario: Drain runs each change in the foreground
+- **WHEN** `make drain` runs with the same stubs and one runnable change
+- **THEN** it exits 0, no Archon call gets `--detach`, and the run's output and `completed` status appear in drain's output
 
 ### Requirement: Done loop runs are cleaned up
 `.archon/scripts/loop_clean.py` SHALL remove the worktree and branch of each `loop/*` branch whose tip is on `auto` (shipped or superseded), and keep and list `auto`/`main`, branches with commits not on `auto` or at its tip, branches a running or paused Archon run holds, and dirty worktrees. `make loop-clean` is a dry run unless `APPLY=1`; ship starts the cleanup of its own run.
