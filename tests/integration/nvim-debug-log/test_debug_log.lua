@@ -18,9 +18,26 @@ local function start()
 	child.lua([[require("gleb.nvim_debug_log").setup()]])
 end
 
+---@param file string
+---@return integer
+local function started_at(file)
+	return tonumber(vim.fs.basename(file):match("^(%d+)_")) or 0
+end
+
+---@param a string
+---@param b string
+---@return boolean
+local function newer(a, b)
+	return started_at(a) > started_at(b)
+end
+
+--- A stale log of an earlier process with the same pid may still lie in the
+--- directory; the child's own file is the newest.
 ---@return string? path of the child's log file
 local function log_file()
-	return vim.fn.glob(string.format("%s/*_%d.txt", LOG_DIR, pid), false, true)[1]
+	local files = vim.fn.glob(string.format("%s/*_%d.txt", LOG_DIR, pid), false, true)
+	table.sort(files, newer)
+	return files[1]
 end
 
 ---@return string

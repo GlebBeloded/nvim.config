@@ -1,51 +1,57 @@
-local opts = { noremap = true, silent = true }
-local kmap = vim.keymap.set
+--- Set a silent, non-recursive mapping named `<Area>: <Action>`.
+---@param mode string|string[]
+---@param lhs string
+---@param rhs string|function
+---@param desc string
+local function map(mode, lhs, rhs, desc)
+	vim.keymap.set(mode, lhs, rhs, { silent = true, desc = desc })
+end
 
 -- Modes: n=normal, i=insert, v=visual, x=visual_block, t=term, c=command
 
 -- Window navigation (seamless with Zellij via smart-splits)
 -- Cmd+H sends Ctrl+H, Cmd+L sends Ctrl+L
 -- Cmd+J sends Alt+j, Cmd+K sends Alt+k (to avoid terminal conflicts)
-kmap("n", "<C-h>", require("smart-splits").move_cursor_left, opts)
-kmap("n", "<A-j>", require("smart-splits").move_cursor_down, opts)
-kmap("n", "<A-k>", require("smart-splits").move_cursor_up, opts)
-kmap("n", "<C-l>", require("smart-splits").move_cursor_right, opts)
+map("n", "<C-h>", require("smart-splits").move_cursor_left, "Window: Move left")
+map("n", "<A-j>", require("smart-splits").move_cursor_down, "Window: Move down")
+map("n", "<A-k>", require("smart-splits").move_cursor_up, "Window: Move up")
+map("n", "<C-l>", require("smart-splits").move_cursor_right, "Window: Move right")
 
 -- Jump list navigation
-kmap("n", "gb", "<C-O>", opts)
-kmap("n", "gB", "<C-I>", opts)
+map("n", "gb", "<C-O>", "Jump: Back")
+map("n", "gB", "<C-I>", "Jump: Forward")
 
 -- Resize windows
-kmap("n", "<C-Up>", ":resize +2<CR>", opts)
-kmap("n", "<C-Down>", ":resize -2<CR>", opts)
-kmap("n", "<C-Left>", ":vertical resize -2<CR>", opts)
-kmap("n", "<C-Right>", ":vertical resize +2<CR>", opts)
+map("n", "<C-Up>", "<Cmd>resize +2<CR>", "Window: Increase height")
+map("n", "<C-Down>", "<Cmd>resize -2<CR>", "Window: Decrease height")
+map("n", "<C-Left>", "<Cmd>vertical resize -2<CR>", "Window: Decrease width")
+map("n", "<C-Right>", "<Cmd>vertical resize +2<CR>", "Window: Increase width")
 
 -- Resize with Cmd+Shift+H/J/K/L (via smart-splits)
 -- Cmd+Shift sends Alt+Shift sequences (ESC + uppercase letter)
-kmap("n", "<A-H>", require("smart-splits").resize_left, opts) -- Cmd+Shift+H
-kmap("n", "<A-J>", require("smart-splits").resize_down, opts) -- Cmd+Shift+J
-kmap("n", "<A-K>", require("smart-splits").resize_up, opts) -- Cmd+Shift+K
-kmap("n", "<A-L>", require("smart-splits").resize_right, opts) -- Cmd+Shift+L
+map("n", "<A-H>", require("smart-splits").resize_left, "Window: Resize left") -- Cmd+Shift+H
+map("n", "<A-J>", require("smart-splits").resize_down, "Window: Resize down") -- Cmd+Shift+J
+map("n", "<A-K>", require("smart-splits").resize_up, "Window: Resize up") -- Cmd+Shift+K
+map("n", "<A-L>", require("smart-splits").resize_right, "Window: Resize right") -- Cmd+Shift+L
 
 -- Buffer management
-kmap("n", "<C-q>", ":bdelete<CR>", opts)
+map("n", "<C-q>", "<Cmd>Bdelete<CR>", "Buffer: Close")
 
 -- Insert mode
-kmap("i", "jk", "<ESC>", opts)
+map("i", "jk", "<ESC>", "Edit: Leave insert mode")
 
 -- Visual mode: stay in indent mode
-kmap("x", "<", "<gv", opts)
-kmap("x", ">", ">gv", opts)
+map("x", "<", "<gv", "Edit: Outdent selection")
+map("x", ">", ">gv", "Edit: Indent selection")
 
 -- Visual mode: move text and paste without yanking
-kmap("x", "p", '"_dP', opts)
+map("x", "p", '"_dP', "Edit: Paste without yanking")
 
 -- Visual block: move text
-kmap("x", "J", ":move '>+1<CR>gv-gv", opts)
-kmap("x", "K", ":move '<-2<CR>gv-gv", opts)
-kmap("x", "<A-j>", ":move '>+1<CR>gv-gv", opts)
-kmap("x", "<A-k>", ":move '<-2<CR>gv-gv", opts)
+map("x", "J", ":move '>+1<CR>gv-gv", "Edit: Move selection down")
+map("x", "K", ":move '<-2<CR>gv-gv", "Edit: Move selection up")
+map("x", "<A-j>", ":move '>+1<CR>gv-gv", "Edit: Move selection down")
+map("x", "<A-k>", ":move '<-2<CR>gv-gv", "Edit: Move selection up")
 
 -- Smart neo-tree toggle: switch source, close if same & focused, focus if not
 local function smart_toggle_neotree(source)
@@ -78,29 +84,29 @@ local function smart_toggle_neotree(source)
 end
 
 -- Neo-tree (Cmd+E/G via Alt escape sequences from Alacritty)
-kmap("n", "<A-e>", function()
+map("n", "<A-e>", function()
 	smart_toggle_neotree("filesystem")
-end, opts)
+end, "Tree: Toggle filesystem")
 -- <A-g>: differ.nvim (new). <A-G>: old neo-tree git_status + vscode-diff preview.
-kmap("n", "<A-g>", ":Differ<cr>", opts)
-kmap("n", "<A-G>", function()
+map("n", "<A-g>", "<Cmd>Differ<CR>", "Git: Open Differ")
+map("n", "<A-G>", function()
 	smart_toggle_neotree("git_status")
-end, opts)
+end, "Tree: Toggle git status")
 
 -- Telescope
-kmap("n", "<A-F>", ":Telescope live_grep<cr>", opts)
+map("n", "<A-F>", "<Cmd>Telescope live_grep<CR>", "Search: Live grep")
 
 -- Code actions
-kmap("n", "<C-CR>", vim.lsp.buf.code_action, opts)
-kmap("x", "<C-CR>", vim.lsp.buf.code_action, opts)
+map("n", "<C-CR>", vim.lsp.buf.code_action, "LSP: Code action")
+map("x", "<C-CR>", vim.lsp.buf.code_action, "LSP: Code action")
 
 -- LSP navigation
-kmap("n", "gD", vim.lsp.buf.declaration, opts)
-kmap("n", "gd", vim.lsp.buf.definition, opts)
-kmap("n", "K", vim.lsp.buf.hover, opts)
-kmap("n", "gi", vim.lsp.buf.implementation, opts)
-kmap("n", "gr", require("telescope.builtin").lsp_references, opts)
-kmap("n", "<A-r>", vim.lsp.buf.rename, opts)
+map("n", "gD", vim.lsp.buf.declaration, "LSP: Go to declaration")
+map("n", "gd", vim.lsp.buf.definition, "LSP: Go to definition")
+map("n", "K", vim.lsp.buf.hover, "LSP: Hover")
+map("n", "gi", vim.lsp.buf.implementation, "LSP: Go to implementation")
+map("n", "gr", require("telescope.builtin").lsp_references, "LSP: References")
+map("n", "<A-r>", vim.lsp.buf.rename, "LSP: Rename")
 
 -- Diagnostics
 --- Open the diagnostic float at the cursor after a jump (`on_jump` of `vim.diagnostic.jump`).
