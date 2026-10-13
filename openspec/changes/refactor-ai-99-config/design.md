@@ -12,8 +12,8 @@ note are stale, tests are already mini.test.
 
 The previous implementation run completed the refactor on `loop/refactor-ai-99-config`; its three gates
 failed only in shared test infrastructure. Current `auto` already contains the sandbox lock and
-load-scaled startup budget identified in `root-cause.md`, so applying this change means merging the
-existing branch into current `auto`, preserving both the refactor and the newer infrastructure.
+load-scaled startup budget identified by that run, so applying this change means merging the existing
+branch into current `auto`, preserving both the refactor and the newer infrastructure.
 
 No visible UI change: same keys, descs, menu text (`99> [s]earch [v]ibe: `, `Question`), so no renders.
 

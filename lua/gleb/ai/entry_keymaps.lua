@@ -34,6 +34,7 @@ end
 
 ---Map the 99 entry keys: the normal-mode menu, Shift-Enter vibe and the visual prompts.
 ---@param ninety_nine gleb.ai.Actions the 99 module (or a stub with the same actions)
+---@return nil
 function M.setup(ninety_nine)
 	nn = ninety_nine
 	vim.keymap.set("n", "<A-9>", normal_menu, { desc = "99: Menu" })
