@@ -11,6 +11,10 @@ local SETTLE_MS = 300
 -- Gap between key presses, like a human. Bursts such as "\e[\e]" in one read
 -- leave zellij's parser waiting and swallow the next CSI u key.
 local KEY_GAP_MS = 100
+local CMD_CHORDS = { "Cmd+O", "Cmd+I", "Cmd+D", "Cmd+A" }
+-- what each Cmd chord could wrongly arrive as: the Super key, an Alt key, the plain letter
+local CMD_CHORD_RECORDERS =
+	{ "<D-o>", "<D-i>", "<D-d>", "<D-a>", "<M-o>", "<M-i>", "<M-d>", "<M-a>", "o", "i", "d", "a" }
 
 ---@type shortcuts.Stack?
 local stack
@@ -124,6 +128,20 @@ T["shortcuts: Ctrl+Return reaches Neovim through the kitty keyboard protocol"] =
 	s:record({ "<C-CR>", "<CR>" })
 	eq(r.bytes, "\27[13;5u")
 	eq(send_and_record(r.bytes), { "<C-CR>" })
+end
+
+T["shortcuts: Cmd chords reach Neovim through real zellij"] = function()
+	local s = get()
+	s:record(CMD_CHORD_RECORDERS)
+	for _, physical in ipairs(CMD_CHORDS) do
+		s:send(row(physical).bytes)
+		vim.wait(KEY_GAP_MS)
+	end
+	pcall(S.wait_for, function()
+		return #s:hits() >= #CMD_CHORDS
+	end, "recorders", 1500)
+	vim.wait(SETTLE_MS)
+	eq(s:hits(), { "<D-o>", "<D-i>", "<D-d>", "<D-a>" })
 end
 
 T["shortcuts: Cmd+H moves to the left Neovim split"] = function()
