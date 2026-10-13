@@ -76,7 +76,7 @@ local function git_toggle_stage(state)
 	end
 end
 
--- Git status: commit with floating input (Alt+C for AI)
+-- Git status: commit with floating input
 local function git_commit()
 	require("gleb.git.ai_commit").show_commit_input(function(msg)
 		vim.fn.system("git commit -m " .. vim.fn.shellescape(msg))
