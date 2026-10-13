@@ -15,7 +15,8 @@
 - Default: `assistant: codex`, `assistants.codex.model: gpt-5.6-sol`, `assistants.codex.modelReasoningEffort: medium`, and the `assistants.claude` block is kept. Rollback is the one line `assistant: claude`.
 - The `review` node of `nvim-deliver.yaml` sets `provider: claude` and no `model:`.
 - Node provider: `node.provider`, else the parent loop node's `provider`, else `assistant:` in `.archon/config.yaml`, else `claude`.
-- Codex project skill: `.agents/skills/<name>/SKILL.md`. Codex plugin skill: `codex plugin list --json` → `installed[]` entry with `name == <plugin>`, `installed` and `enabled` true, and `<source.path>/skills/<skill>/SKILL.md`.
+- Codex project skill: `.agents/skills/<name>/SKILL.md`. Codex plugin skill: `codex plugin list --json` → `installed[]` entry with `name == <plugin>`, `installed` and `enabled` true, and `<root>/skills/<skill>/SKILL.md`, where `<root>` is `source.path` when present, else `${CODEX_HOME:-~/.codex}/plugins/cache/<marketplaceName>/<name>/<version>` of that entry.
+- Never run `make loop-setup` from a worktree: `loop-register` repoints the Archon registration to it. Install Codex plugins with `codex plugin add` directly.
 - Codex plugin marketplace is the one constant `openai-curated-remote` (`codex plugin add <plugin>@openai-curated-remote`).
 - `claude plugin list --json` runs only when a claude node declares a plugin skill. `codex plugin list --json` runs only when a codex node does.
 - Superpowers for Codex comes only from the Codex plugin: do not vendor or symlink `SKILL.md` copies into `.agents/skills/`.
@@ -144,15 +145,47 @@ Scenario: "Every declared skill is named and loaded by its command".
 
 - [x] **Step 5: Commit**: `git commit -m "fix(loop): commands load skills via Skill tool or \$skill"`
 
+### Task 3b: Resolve remote Codex plugins from the plugin cache
+
+Scenarios: "Skill preflight resolves a remote Codex plugin from the plugin cache", "Skill preflight fails on a remote Codex plugin missing from the plugin cache".
+
+**Files:**
+- Modify: `.archon/scripts/skills_check.py` (`plugin_skill_path`, module docstring)
+- Test: `tests/unit/loop/test_skills.lua`
+
+**Interfaces:**
+- Produces (Python): `codex_plugin_root(plugin: dict) -> pathlib.Path | None`: `source.path` when present, else `Path(os.environ.get("CODEX_HOME") or Path.home() / ".codex", "plugins", "cache", marketplaceName, name, version)`, or `None` when one of those fields is missing. `plugin_skill_path(provider, plugin, skill) -> pathlib.Path | None` returns `None` for a `None` root, and `resolves` treats that as unresolved. `install_codex_plugins` is unchanged (it never reads the root).
+- Produces (Lua): `run_check(repo, bin, extra_env?)` passes `extra_env` to `stub_env`.
+
+- [ ] **Step 1: Write the failing tests** in `tests/unit/loop/test_skills.lua`:
+  - `T["loop: Skill preflight resolves a remote Codex plugin from the plugin cache"]`:
+    - repo `assistant = "codex"` declares `superpowers:writing-plans`;
+    - the codex stub has `{ name = "superpowers", marketplaceName = "openai-curated-remote", version = "6.4.2", installed = true, enabled = true, source = { source = "remote", id = "plugins~Plugin_x" } }`;
+    - `CODEX_HOME` = a temp dir with `plugins/cache/openai-curated-remote/superpowers/6.4.2/skills/writing-plans/SKILL.md`;
+    - assert `code == 0`.
+  - `T["loop: Skill preflight fails on a remote Codex plugin missing from the plugin cache"]`: same, with `CODEX_HOME` an empty temp dir. Assert non-zero, stderr contains `superpowers:writing-plans`, and has no `Traceback`. In the same test, add a second run whose stub entry has no `version` (cache dir present): same assertions.
+  - Keep the existing `source.path` stubs: they cover the local case.
+
+- [ ] **Step 2: Run to verify they fail**
+  Run: `make test FILE=tests/unit/loop/test_skills.lua CASE="remote Codex plugin"`
+  Expected: both FAIL (a `KeyError: 'path'` traceback).
+
+- [ ] **Step 3: Implement `codex_plugin_root`** and update the docstring's codex line.
+
+- [ ] **Step 4: Verify**
+  Run: `make test FILE=tests/unit/loop/test_skills.lua`, then `python3 .archon/scripts/skills_check.py` on a codex workflow declaring `superpowers:systematic-debugging` against the real `codex`. It exits 0.
+
+- [ ] **Step 5: Commit**: `git commit -m "fix(loop): preflight resolves remote Codex plugins from the plugin cache"`
+
 ### Task 4: Install the Codex plugin and probe a Codex run (no commit)
 
 Scenarios: none (a gate before Task 5; the design's Decision 6).
 
-- [x] **Step 1:** Run `make loop-setup`, then `codex plugin list --json`. Expected: `superpowers` with `installed: true, enabled: true`.
+- [x] **Step 1:** Install with `codex plugin add superpowers@openai-curated-remote` (not `make loop-setup` from a worktree), then `codex plugin list --json`. Expected: `superpowers` with `installed: true, enabled: true`.
 - [ ] **Step 2:** With `assistant: claude` still set, write the uncommitted `.archon/workflows/probe-codex.yaml`. It has one node with `provider: codex`, `model: gpt-5.6-sol`, and a prompt that:
   - invokes `$superpowers:systematic-debugging` and `$openspec-explore`;
   - reports which loaded;
-  - runs `make quick` and `tests/sandbox/sandbox.sh status`.
+  - runs `make quick` and `tests/sandbox/sandbox.sh status` (shows `make check E2E=1` can reach the sandbox VM).
 
   Run it with `$(ARCHON) workflow run probe-codex --base auto --branch loop/probe-codex "probe"`.
 - [ ] **Step 3:** Read the transcript.
@@ -223,12 +256,8 @@ Scenario: "Provider switch is documented".
 
 - [ ] **Step 5: Commit**: `git commit -m "docs(workflow): codex provider, cross-model review"`
 
-## Blocked
+## Unblocked
 
-The spec's Codex plugin resolver is wrong for the plugin it targets (found in Task 4 Step 1, 2026-10-13).
-- `codex plugin add superpowers@openai-curated-remote` succeeded (6.4.2, `installed: true, enabled: true`). It was run directly, not through `make loop-setup`: run from a worktree, `loop-register` repoints the Archon registration to that worktree.
-- `codex plugin list --json` reports this plugin as `source: {"source": "remote", "id": "plugins~Plugin_…"}`, with no `path`. Only local/bundled plugins carry `source.path`.
-- Its skills live in `~/.codex/plugins/cache/openai-curated-remote/superpowers/6.4.2/skills/<skill>/SKILL.md`, which is `$CODEX_HOME/plugins/cache/<marketplaceName>/<name>/<version>` with fields the list does report (`marketplaceName`, `name`, `version`).
-- So "a `<plugin>:<skill>` needs … `<source.path>/skills/<skill>/SKILL.md`" (specs/loop/spec.md, design Decision 3, Global Constraints) never resolves `superpowers:*` on Codex. After the flip, every run's preflight would fail, and "loop: Configured provider resolves every declared skill here" would fail.
+Task 4 Step 1 found that `codex plugin list --json` reports the remote `superpowers` plugin with no `source.path`; its skills are in the Codex plugin cache. Decided 2026-10-13 (proposal `## Decision`): the root falls back to `${CODEX_HOME:-~/.codex}/plugins/cache/<marketplaceName>/<name>/<version>`. Task 3b implements it (requirement "Codex plugin root falls back to the plugin cache"); then Task 4 Steps 2–4, Tasks 5–6, archive, and `make check E2E=1` green.
 
-Proposed spec fix (needs a decision): the codex plugin root is `source.path` when present, else `${CODEX_HOME:-~/.codex}/plugins/cache/<marketplaceName>/<name>/<version>`. The stubs in the codex scenarios would then also cover a remote entry. Tasks 1–3 are done and committed; Task 4 Steps 2–4 (probe), 5 and 6 wait on this.
+Archive note: `openspec/specs/loop/spec.md` already holds this change's ADDED requirements (synced in 9013a6b), so a plain `openspec archive` refuses the delta ("already exists"). Before archiving, sync the main spec to the final delta (including the new requirement and the reworded resolver requirement) and archive with `--skip-specs`, then check `openspec validate --specs --strict`.

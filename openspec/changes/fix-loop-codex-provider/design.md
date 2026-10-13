@@ -7,7 +7,7 @@ See proposal.md (Why) and the run's `root-cause.md`. These facts about Archon 0.
 What Codex 0.153.4 itself loads:
 - Repo skills from `.agents/skills` (the 10 `openspec-*` skills are already there and load), plus Codex plugins, whose skills are named `<plugin>:<skill>`.
 - `AGENTS.md`, through its symlink.
-- `codex plugin list --json` returns `{installed: [{name, installed, enabled, source: {path}}], available: [...]}`. `codex plugin add <plugin>@<marketplace>` installs a plugin, and `superpowers@openai-curated-remote` (6.4.2) is available.
+- `codex plugin list --json` returns `{installed: [{name, marketplaceName, version, installed, enabled, source}], available: [...]}`. A local plugin has `source.path`. A remote one such as `superpowers@openai-curated-remote` has only `source: {source: remote, id}`, and its files live in `${CODEX_HOME:-~/.codex}/plugins/cache/<marketplaceName>/<name>/<version>`. `codex plugin add <plugin>@<marketplace>` installs a plugin, and `superpowers@openai-curated-remote` (6.4.2) is available.
 
 ## Goals / Non-Goals
 **Goals:**
@@ -23,7 +23,8 @@ What Codex 0.153.4 itself loads:
    - Rejected: vendoring copies. They go stale.
 2. **Load-first step names both forms.** The step says to load each skill with the Skill tool (Claude) or by invoking `$<skill>` (Codex), and to stop when one does not load. Naming `$<skill>` in the prompt is what Archon documents as the way a codex node loads a skill.
    - Rejected: per-provider command files. They would duplicate 10 commands.
-3. **Preflight resolves per node provider.** `skills_check.py` computes each node's provider: `node.provider`, else the parent loop node's `provider`, else `assistant:` from `.archon/config.yaml`, else `claude`. It then checks that node's skills with the claude or codex resolver. It runs `codex plugin list --json` only when some codex node declares a plugin skill, and `claude plugin list --json` only when a claude node does.
+3. **Preflight resolves per node provider.** `skills_check.py` computes each node's provider: `node.provider`, else the parent loop node's `provider`, else `assistant:` from `.archon/config.yaml`, else `claude`. It then checks that node's skills with the claude or codex resolver. The codex plugin root is `source.path` when present, else `${CODEX_HOME:-~/.codex}/plugins/cache/<marketplaceName>/<name>/<version>` from the same list entry (decided 2026-10-13, see proposal `## Decision`). A missing root counts as unresolved.
+   - Rejected: globbing the cache for any version. The list entry names the version Codex loads. It runs `codex plugin list --json` only when some codex node declares a plugin skill, and `claude plugin list --json` only when a claude node does.
 4. **Setup installs Codex plugins from declared skills.** `skills_check.py --install-plugins .archon/workflows/*.yaml` (called by `make loop-setup`) installs the Claude plugins as before. For each `<plugin>` of a plugin skill declared on a codex node and not installed, it runs `codex plugin add <plugin>@openai-curated-remote`. The marketplace is one constant: Codex has no project-level plugin manifest like `.claude/settings.json`.
 5. **Review on claude via `provider: claude` on the review node only.** That one line keeps review cross-model whichever default is set. `model:` is not set, so Claude uses its own default.
 6. **Probe before the flip.**
