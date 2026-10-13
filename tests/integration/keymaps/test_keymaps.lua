@@ -542,14 +542,14 @@ T["keymaps: Alt-e reveals current file"] = function()
 	eq(tree_cursor_path(), vim.fs.joinpath(repo, "foo.lua"))
 end
 
-T["keymaps: Alt-e on URI buffer focuses filesystem"] = H.xfail("fix-neotree-uri-reveal: URI reveal prompts", function()
+T["keymaps: Alt-e on URI buffer focuses filesystem"] = function()
 	edit_repo_file()
 	child.cmd("enew | file vscodediff://x | messages clear")
 	child.type_keys("<M-e>")
 
 	eq(wait_tree_focused("filesystem"), true)
 	eq({ child.v.errmsg, child.cmd_capture("messages") }, { "", "" })
-end)
+end
 
 T["keymaps: Alt-e closes focused filesystem tree"] = function()
 	edit_repo_file()
