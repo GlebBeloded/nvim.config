@@ -1,7 +1,7 @@
 # Tasks
 
-Layer: unit (`tests/unit/ai/`), using a bare child Neovim. Cases are named exactly
-`"<capability>: <scenario title>"`. No plugin dependency, core key, or documentation changes.
+Layer: unit (`tests/unit/ai/`, `tests/unit/loop/`), using a bare child Neovim. Cases are named exactly
+`"<capability>: <scenario title>"`. No plugin dependency or core key changes.
 
 ## 1. Tolerate a missing 99 module at the wiring boundary
 
@@ -41,3 +41,11 @@ Scenario: `Select mode keeps its default behavior`.
   `x`; preserve their functions, descriptions, and silent options.
 - [x] 3.3 Run `make test FILE=tests/unit/ai/test_entry_keymaps.lua` to cover the new scenario and every
   existing entry-key behavior, then run `make quick`; both pass. Commit the test and implementation.
+
+## 4. Trace scenarios added by active changes
+
+Scenario: `Trace counts scenarios an active change adds`.
+
+- [x] 4.1 Add a loop test with active, archived, and removed delta scenarios.
+- [x] 4.2 Load active change deltas in `tests/trace.lua`, excluding archived changes and removed
+  requirements, and clear inherited `INPUTS_CHANGE` in the isolated task-loop test.

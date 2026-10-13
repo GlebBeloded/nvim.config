@@ -9,13 +9,16 @@ Kind: bug
 - Give all four 99 entry mappings `silent = true`.
 - Register the two visual-selection mappings in `x` mode only, leaving select mode unmapped.
 - Make `require("gleb.ai").setup()` return cleanly when 99 is unavailable.
+- Count scenarios from active change deltas in traceability while excluding archived changes and removed
+  requirements, and isolate the task-loop test from inherited change input.
 
 ## Capabilities
 ### Modified Capabilities
 - `ai`: specify silent entry mappings, select-mode behavior, and missing-plugin tolerance.
+- `loop`: specify traceability for scenarios added by active changes.
 
 ## Impact
-- Code: `lua/gleb/ai/init.lua`, `lua/gleb/ai/entry_keymaps.lua`, and AI tests.
+- Code: `lua/gleb/ai/init.lua`, `lua/gleb/ai/entry_keymaps.lua`, `tests/trace.lua`, and AI and loop tests.
 - Plugins: none added, removed, or upgraded.
 - Core keymaps: unchanged; two 99 feature mappings stop applying in select mode.
 - Out of scope: splitting `ai/init.lua` further; it only wires the feature parts in the order recorded
