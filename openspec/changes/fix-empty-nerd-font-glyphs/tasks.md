@@ -42,8 +42,8 @@ Scenarios: "lsp: diagnostic signs use Nerd Font glyphs", "lsp: error sign drawn 
 
 Layer: integration (new `tests/integration/lsp/test_signs.lua`, real config).
 
-- [ ] 4.1 Failing tests: `T["lsp: diagnostic signs use Nerd Font glyphs"]` reads `vim.diagnostic.config().signs.text` after `child.wait_very_lazy()` and compares the four severities to `\u{F057}`, `\u{F071}`, `\u{F0335}`, `\u{F05A}`; `T["lsp: error sign drawn in sign column"]` edits a scratch `sample.lua`, `vim.diagnostic.set` one ERROR on line 1, redraws and asserts the first buffer row of `H.screen_rows` starts with U+F057. Confirm both fail (`M.setup` runs when the LSP config loads; if it is lazy, trigger it the way the config does, e.g. `:edit` a Lua file).
-- [ ] 4.2 In `lua/gleb/lsp/config/handlers.lua` set the sign texts to `"\u{F057}"` (ERROR), `"\u{F071}"` (WARN), `"\u{F0335}"` (HINT), `"\u{F05A}"` (INFO). 4.1 passes.
+- [x] 4.1 Failing tests: `T["lsp: diagnostic signs use Nerd Font glyphs"]` reads `vim.diagnostic.config().signs.text` after `child.wait_very_lazy()` and compares the four severities to `\u{F057}`, `\u{F071}`, `\u{F0335}`, `\u{F05A}`; `T["lsp: error sign drawn in sign column"]` edits a scratch `sample.lua`, `vim.diagnostic.set` one ERROR on line 1, redraws and asserts the first buffer row of `H.screen_rows` starts with U+F057. Confirm both fail (`M.setup` runs when the LSP config loads; if it is lazy, trigger it the way the config does, e.g. `:edit` a Lua file).
+- [x] 4.2 In `lua/gleb/lsp/config/handlers.lua` set the sign texts to `"\u{F057}"` (ERROR), `"\u{F071}"` (WARN), `"\u{F0335}"` (HINT), `"\u{F05A}"` (INFO). 4.1 passes.
 
 ## 5. Neo-tree icons
 
