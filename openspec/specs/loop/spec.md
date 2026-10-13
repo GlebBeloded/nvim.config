@@ -175,15 +175,11 @@ Every workflow SHALL run `.archon/scripts/skills_check.py` before its first skil
 - **THEN** it contains `assistant: codex`, `assistant: claude` and `provider: claude`
 
 ### Requirement: Codex wrapper trims the fixed context of every call
-`.archon/scripts/codex-loop.sh` SHALL pass its `-c` overrides after the subcommand, turning off sub-agents, hooks, apps, tool suggestions, the skills catalog, the plugin, collaboration-mode and multi-agent usage hints, and the GUI and MCP tools, while plugin skills still load. It SHALL set `CODEX_HOME` to a directory linking every entry of the user's Codex home except `AGENTS.md` and `AGENTS.override.md`, so global instructions are skipped while sessions land in `~/.codex/sessions`.
+`.archon/scripts/codex-loop.sh` SHALL pass its `-c` overrides after the subcommand (`codex -c k=v exec` ignores them), turning off sub-agents, hooks, apps, tool suggestions (recommended plugins), the skills catalog, the collaboration-mode and multi-agent usage hints, and the GUI and MCP tools. It SHALL run Codex with `CODEX_HOME` set to a directory that links every entry of the user's Codex home (auth, config, plugins, sessions) except `AGENTS.md` and `AGENTS.override.md`, so the global instructions are not loaded while sessions still land in `~/.codex/sessions`.
 
 #### Scenario: Codex wrapper passes its overrides after the subcommand
 - **WHEN** the wrapper is run as `codex-loop.sh exec --experimental-json` with `CODEX_LOOP_BIN` set to a stub that logs its arguments
 - **THEN** the stub's first argument is `exec`, `--experimental-json` follows the overrides, and the overrides include `skills.include_instructions=false`, `features.apps=false`, `features.tool_suggest=false`, `include_collaboration_mode_instructions=false`, `agents.enabled=false` and `features.hooks=false`
-
-#### Scenario: Codex wrapper runs on the cached model catalog without plugin usage guidance
-- **WHEN** the wrapper runs the stub with a user Codex home whose `models_cache.json` has a model with `include_plugin_usage_instructions` true
-- **THEN** the overrides include `model_catalog_json="<CODEX_LOOP_HOME>/model-catalog.json"`, a file holding the cache's `models` with `include_plugin_usage_instructions` false
 
 #### Scenario: Codex wrapper home mirrors the user's Codex home without global instructions
 - **WHEN** the wrapper runs the stub with `CODEX_LOOP_USER_HOME` set to a directory holding `AGENTS.md`, `auth.json`, `config.toml` and `sessions/`, and `CODEX_LOOP_HOME` set to an empty directory

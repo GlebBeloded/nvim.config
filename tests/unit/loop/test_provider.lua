@@ -74,26 +74,22 @@ local STUB = '#!/bin/sh\nprintf "%s\\n" "$CODEX_HOME" "$@" > "$STUB_LOG"\n'
 
 --- Runs the Codex wrapper with `args` against a stub codex and a fake user Codex home.
 ---@param args string[]
----@param files? table<string, string> extra user home files, by name
 ---@return test.WrapperRun
-local function run_wrapper(args, files)
+local function run_wrapper(args)
 	local dir = H.tempdir(child)
 	local user_home, loop_home = dir .. "/user", dir .. "/loop"
 	local stub, log = dir .. "/codex", dir .. "/stub.log"
 	child.lua(
 		[[
-        local dir, user_home, stub, script, files = ...
+        local dir, user_home, stub, script = ...
         vim.fn.mkdir(user_home .. "/sessions", "p")
         for _, name in ipairs({ "AGENTS.md", "auth.json", "config.toml" }) do
             vim.fn.writefile({ name }, user_home .. "/" .. name)
         end
-        for name, text in pairs(files) do
-            vim.fn.writefile({ text }, user_home .. "/" .. name)
-        end
         vim.fn.writefile(vim.split(script, "\n"), stub)
         vim.uv.fs_chmod(stub, 493)
         ]],
-		{ dir, user_home, stub, STUB, files or vim.empty_dict() }
+		{ dir, user_home, stub, STUB }
 	)
 	local env = { CODEX_LOOP_BIN = stub, CODEX_LOOP_USER_HOME = user_home, CODEX_LOOP_HOME = loop_home, STUB_LOG = log }
 	local result = H.system(child, vim.list_extend({ "bash", WRAPPER }, args), H.root, env)
@@ -116,15 +112,6 @@ T["loop: Codex wrapper passes its overrides after the subcommand"] = function()
 	}) do
 		eq(vim.tbl_contains(run.args, override), true, { fail_reason = "missing -c " .. override })
 	end
-end
-
-T["loop: Codex wrapper runs on the cached model catalog without plugin usage guidance"] = function()
-	local cache = vim.json.encode({ etag = "x", models = { { slug = "m", include_plugin_usage_instructions = true } } })
-	local run = run_wrapper({ "exec" }, { ["models_cache.json"] = cache })
-	local catalog = run.loop_home .. "/model-catalog.json"
-	eq(vim.tbl_contains(run.args, ('model_catalog_json="%s"'):format(catalog)), true)
-	local decoded = child.lua_get("vim.json.decode(table.concat(vim.fn.readfile(...), '\\n'))", { catalog })
-	eq(decoded, { models = { { slug = "m", include_plugin_usage_instructions = false } } })
 end
 
 T["loop: Codex wrapper home mirrors the user's Codex home without global instructions"] = function()
