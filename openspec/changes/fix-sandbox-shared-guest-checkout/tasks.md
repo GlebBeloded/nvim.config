@@ -48,7 +48,7 @@ Scenarios: "The load factor is 1 on an idle host", "The load factor is the load 
 
 Scenarios: none (docs and the gate only, so no failing test; tasks 1-3 hold every scenario).
 
-- [ ] 4.1 `docs/testing.md`:
+- [x] 4.1 `docs/testing.md`:
   - Sandbox VM: `sandbox.sh` commands that change the guest are serialized by `~/.cache/nvim-e2e-sandbox/lock` (wait message, stale reclaim, `SANDBOX_LOCK_TIMEOUT`).
   - Smoke details: the budget is multiplied by the load factor when the load exceeds the CPU count.
   - stack bullet: deadlines scale the same way.
