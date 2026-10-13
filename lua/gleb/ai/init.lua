@@ -3,7 +3,10 @@ local M = {}
 ---Set up 99 with the Pi provider, then the prompt and entry keymaps.
 ---@return nil
 function M.setup()
-	local nn = require("99")
+	local ok, nn = pcall(require, "99")
+	if not ok then
+		return
+	end
 	local provider = require("gleb.ai.pi_provider")
 	nn.setup({ provider = provider, model = provider.MODEL })
 	require("gleb.ai.prompt_keymaps").setup()
