@@ -47,7 +47,9 @@ end
 
 vim.cmd("set whichwrap+=<,>,[,],h,l")
 vim.cmd([[set iskeyword+=-]])
-vim.cmd([[set formatoptions-=cro]]) -- TODO: this doesn't seem to work
+
+-- nvim 0.11+: vim.o.winborder applies to all floating windows (hover, signature_help, etc.)
+vim.o.winborder = "rounded"
 
 -- remove tilde from blank lines (formatters take care of that)
 vim.o.fillchars = "eob: "

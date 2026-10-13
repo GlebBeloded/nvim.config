@@ -1,10 +1,10 @@
 local Menu = require("nui.menu")
 
 -- Meta class
-local codeAction = {}
+local code_action = {}
 
 -- @returns lib
-function codeAction:new(items, opts, on_choice)
+function code_action:new(items, opts, on_choice)
 	local l = {}
 
 	setmetatable(l, self)
@@ -16,7 +16,7 @@ function codeAction:new(items, opts, on_choice)
 	return l
 end
 
-function codeAction:defaultKeymap()
+function code_action:default_keymap()
 	return {
 		focus_next = { "j", "<Down>", "<Tab>" },
 		focus_prev = { "k", "<Up>", "<S-Tab>" },
@@ -25,17 +25,17 @@ function codeAction:defaultKeymap()
 	}
 end
 
-function codeAction:popupName()
+function code_action:popup_name()
 	return self.opts.prompt
 end
 
 -- @return number
-function codeAction:longestEntryLength()
+function code_action:longest_entry_length()
 	return 255
 end
 
--- popupUnderCursorOptions returns popupOptions for menu under cursor
-function codeAction:popupUnderCursorOptions()
+-- popup_under_cursor_options returns popup_options for menu under cursor
+function code_action:popup_under_cursor_options()
 	return {
 		position = {
 			row = 1, -- 1 row below the code action
@@ -43,12 +43,12 @@ function codeAction:popupUnderCursorOptions()
 		},
 		relative = "cursor",
 		size = {
-			width = self:longestEntryLength(),
+			width = self:longest_entry_length(),
 		},
 		border = {
 			style = "single",
 			text = {
-				top = self:popupName(),
+				top = self:popup_name(),
 				top_align = "center",
 			},
 		},
@@ -58,7 +58,7 @@ function codeAction:popupUnderCursorOptions()
 	}
 end
 
-function codeAction:menu()
+function code_action:menu()
 	local options = {}
 	for key, value in pairs(self.items) do
 		local text = self.opts.format_item and self.opts.format_item(value) or tostring(value)
@@ -68,7 +68,7 @@ function codeAction:menu()
 	return {
 		lines = { unpack(options) },
 		max_width = 20,
-		keymap = codeAction.keymap,
+		keymap = code_action.keymap,
 		on_submit = function(item)
 			self.on_choice(item.data, item.index)
 		end,
@@ -76,9 +76,9 @@ function codeAction:menu()
 end
 
 -- this functions draws menu window
-function codeAction:select()
+function code_action:select()
 	-- mount the component
-	Menu(self:popupUnderCursorOptions(), self:menu()):mount()
+	Menu(self:popup_under_cursor_options(), self:menu()):mount()
 end
 
-return codeAction
+return code_action

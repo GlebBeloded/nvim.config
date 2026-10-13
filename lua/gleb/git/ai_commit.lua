@@ -90,7 +90,9 @@ local function get_text(bufnr)
 	return vim.trim(table.concat(lines, "\n"))
 end
 
--- Show commit popup with auto-generated AI message
+--- Show commit popup with auto-generated AI message.
+---@param on_commit fun(message: string) called with the confirmed message
+---@return nil
 function M.show_commit_input(on_commit)
 	local Popup = require("nui.popup")
 	local event = require("nui.utils.autocmd").event

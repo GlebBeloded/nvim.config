@@ -2,9 +2,8 @@ local colorscheme = "gruvbox-material"
 -- TODO: must be not inside gruvbox
 local utils = require("gleb.colors.gruvbox-material.util")
 
--- for dark theme
--- should be called before colorscheme
-vim.cmd([[ set background=dark ]])
+-- owned by the colorscheme, not options.lua: must be set before :colorscheme
+vim.o.background = "dark"
 
 pcall(vim.api.nvim_command, "colorscheme " .. colorscheme)
 

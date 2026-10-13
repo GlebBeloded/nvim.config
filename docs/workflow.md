@@ -6,8 +6,6 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 
 ## Loop lessons
 
-- Under host load, scale startup and test budgets before diagnosing a regression.
-- Wait for asynchronous git commit outcomes before asserting repository state.
 - Serialize access to the shared sandbox VM and reset guest state between runs.
 - Load active change scenarios in trace so new tests are not orphaned before archive.
 - Clear inherited workflow inputs in isolated tests so ambient gate state cannot override fixtures.
@@ -17,6 +15,7 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - `setpos("v", …)` cannot set the visual start (E474); enter Visual mode with `normal! V` at the start line instead, and restore cursor and mode afterwards.
 - Keep modified requirement prose below 500 characters so the archived main spec passes strict validation.
 - e2e "Neovim is blocked in mode r" is a startup error message: reproduce on the host with `XDG_CONFIG_HOME=$(mktemp -d)`, a symlink `$XDG_CONFIG_HOME/nvim` to the worktree, and `timeout 30 nvim --headless +"lua print(vim.fn.execute('messages'))" +qa`; if the host starts clean, the guest has stale files (a loop bug).
+- For an implementation-free follow-up, replace ignored adoption metadata with `skip_specs: true` so strict validation accepts zero deltas.
 
 ## The loop
 

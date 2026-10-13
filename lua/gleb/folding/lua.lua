@@ -1,16 +1,16 @@
 local handler = { virtText = nil, lnum = nil, endLnum = nil, width = nil, truncate = nil }
 
-function handler:getFoldText() -- returns array of lines
+function handler:get_fold_text() -- returns array of lines
 	return vim.api.nvim_buf_get_lines(vim.api.nvim_get_current_buf(), self.lnum, self.endLnum, false)
 end
 
 -- returns nth word of the handler.virtText
-function handler:nThWordOfLine(n)
+function handler:nth_word_of_line(n)
 	return self.virtText[n][n]
 end
 
 -- returns nth word of the handler.virtText
-function handler:lastWordOfLine(_)
+function handler:last_word_of_line(_)
 	return self.virtText[#self.virtText][1]
 end
 
@@ -21,7 +21,7 @@ function handler:handle(virtText, lnum, endLnum, width, truncate)
 	handler.width = width
 	handler.truncate = truncate
 
-	if handler:lastWordOfLine(1) == "{" then
+	if handler:last_word_of_line(1) == "{" then
 		table.insert(virtText, { " ... " })
 		table.insert(self.virtText, { "}" })
 	else
