@@ -3,7 +3,7 @@
 ## MODIFIED Requirements
 
 ### Requirement: Gitlink permalink command
-The config SHALL configure gitlinker with no default mappings, without printing the URL, and with host `pgw.dev` producing GitHub-style URLs. It SHALL define the `:Gitlink` command accepting a range: without a range it copies the URL for the current line, with a range it copies the URL for the inclusive line endpoints supplied to the command; the URL SHALL be copied to the `+` register. After a ranged command, including one that fails, it SHALL restore the cursor and visual selection marks, leave Normal mode, and propagate any failure.
+The config SHALL configure gitlinker with no default mappings, without printing the URL, and with host `pgw.dev` producing GitHub-style URLs. It SHALL define the `:Gitlink` command accepting a range: without a range it copies the URL for the current line, with a range it copies the URL for the inclusive line endpoints supplied to the command; the URL SHALL be copied to the `+` register. Ranged commands SHALL restore the cursor and visual marks, leave Normal mode, and propagate failures.
 
 #### Scenario: Gitlink copies current line URL
 - **WHEN** `:Gitlink` is executed in a tracked file of a repository with a GitHub remote, cursor on line 10
