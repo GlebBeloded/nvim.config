@@ -504,4 +504,44 @@ function M.expect_screenshot(screenshot)
 	MiniTest.expect.reference_screenshot(screenshot, nil, { force = vim.env.UPDATE_SCREENSHOTS == "1" })
 end
 
+--- Git identity and an empty config, so commits in throwaway repos work without the user's
+--- (signing) setup.
+---@type table<string, string>
+M.GIT_ENV = {
+	GIT_AUTHOR_NAME = "test",
+	GIT_AUTHOR_EMAIL = "test@example.com",
+	GIT_COMMITTER_NAME = "test",
+	GIT_COMMITTER_EMAIL = "test@example.com",
+	GIT_CONFIG_GLOBAL = "/dev/null",
+	GIT_CONFIG_NOSYSTEM = "1",
+}
+
+---@class test.SystemResult
+---@field code integer
+---@field stdout string
+---@field stderr string
+
+--- Runs `cmd` in the child via `vim.system` and waits for it.
+---@param child MiniTest.child
+---@param cmd string[]
+---@param cwd string
+---@param env? table<string, string>
+---@return test.SystemResult
+function M.system(child, cmd, cwd, env)
+	return child.lua_get("vim.system(..., { cwd = select(2, ...), env = select(3, ...), text = true }):wait(30000)", {
+		cmd,
+		cwd,
+		env or vim.empty_dict(),
+	})
+end
+
+--- Fresh temp directory of the child, as a resolved real path.
+---@param child MiniTest.child
+---@return string
+function M.tempdir(child)
+	return child.lua_get(
+		"(function() local d = vim.fn.tempname(); vim.fn.mkdir(d, 'p'); return vim.uv.fs_realpath(d) end)()"
+	)
+end
+
 return M
