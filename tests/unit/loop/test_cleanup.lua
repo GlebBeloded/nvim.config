@@ -200,4 +200,18 @@ T["loop: Queue skips a taken change"] = function()
 	expect_queue_works(run_target(repo, { "queue" }, list), "t-next")
 end
 
+T["loop: Queue adopts the branch a follow-up names"] = function()
+	local repo = make_repo()
+	write_change(repo, "followup-x", "2026-01-01")
+	local yaml = vim.fs.joinpath(repo, "openspec/changes/followup-x/.openspec.yaml")
+	child.fn.writefile({ "created: 2026-01-01", "adopt: loop/x-rejected" }, yaml)
+	eq(H.system(child, { "git", "branch", "loop/x-rejected" }, repo, H.GIT_ENV).code, 0)
+	local list = { OPENSPEC_LIST = '{"changes":[{"name":"followup-x"}]}' }
+	local run = run_target(repo, { "queue", "CHANGE=followup-x" }, list)
+	local adopted = vim.iter(run.runs):any(function(line)
+		return line:find("--input adopt=loop/x-rejected", 1, true) ~= nil
+	end)
+	eq(adopted, true, { fail_reason = run.output .. table.concat(run.runs, "\n") })
+end
+
 return T
