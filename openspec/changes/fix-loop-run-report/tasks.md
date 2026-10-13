@@ -134,7 +134,7 @@ Scenarios: "loop: Running run report tolerates incomplete evidence".
 - Consumes: Task 1's fixture helpers and `fold_nodes`, `build_report`, `render_html`, `write_atomic` interfaces.
 - Produces: live-node states `running` and `waiting`; outcome-sensitive evidence state helper `missing_label(run: RunRecord) -> Literal["Pending", "Unavailable"]`.
 
-- [ ] **Step 1: Write the failing mini.test case `loop: Running run report tolerates incomplete evidence`**
+- [x] **Step 1: Write the failing mini.test case `loop: Running run report tolerates incomplete evidence`**
 
   Seed a running run with one `node_started` event whose `timing.startedAt` has no terminal event, one seeded-but-not-started terminal-graph node, and no approvals, attempts, artifacts or ship output.
 
@@ -158,13 +158,13 @@ Scenarios: "loop: Running run report tolerates incomplete evidence".
 
   Expected: FAIL because Task 1 renders missing evidence as terminal `Unavailable` and does not calculate live elapsed state.
 
-- [ ] **Step 2: Add live-state folding without inventing results**
+- [x] **Step 2: Add live-state folding without inventing results**
 
   Make `fold_nodes` calculate elapsed milliseconds from `timing.startedAt` to the captured `now` for an unterminated invocation and label seeded unstarted nodes `waiting`. Use `missing_label` in gate/attempt/ship sections so live absence is `Pending`; keep terminal absence `Unavailable`. Capture `now` once per report so all durations use one snapshot.
 
   Run the focused case. Expected: PASS.
 
-- [ ] **Step 3: Verify both named-run cases and commit**
+- [x] **Step 3: Verify both named-run cases and commit**
 
   Run: `make test FILE=tests/unit/loop/test_report.lua CASE="loop: (Named run report|Running run report)" JOBS=1`
 

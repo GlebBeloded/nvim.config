@@ -27,6 +27,12 @@ local function expect_contains(haystack, needle)
 end
 
 ---@param haystack string
+---@param pattern string
+local function expect_match(haystack, pattern)
+	eq(haystack:find(pattern) ~= nil, true, { fail_reason = ("missing /%s/ in:\n%s"):format(pattern, haystack) })
+end
+
+---@param haystack string
 ---@param needle string
 ---@return integer
 local function count(haystack, needle)
@@ -171,12 +177,14 @@ local function make_fixture(opts)
 		"git-<unsafe&>.txt",
 	}
 
-	write_file(vim.fs.joinpath(artifact_root, "root-cause.md"), "root cause " .. hostile_values[6])
-	write_file(vim.fs.joinpath(artifact_root, "check-1.log"), "check failed")
-	write_file(vim.fs.joinpath(artifact_root, ".archon/secret.txt"), "must not render")
-	write_file(vim.fs.joinpath(artifact_root, "ignored.txt"), "must not render")
+	if not opts.running then
+		write_file(vim.fs.joinpath(artifact_root, "root-cause.md"), "root cause " .. hostile_values[6])
+		write_file(vim.fs.joinpath(artifact_root, "check-1.log"), "check failed")
+		write_file(vim.fs.joinpath(artifact_root, ".archon/secret.txt"), "must not render")
+		write_file(vim.fs.joinpath(artifact_root, "ignored.txt"), "must not render")
+	end
 
-	local events = {
+	local completed_events = {
 		{ event_type = "node_started", step_name = "skills-check", data = node_data("skills-check", "skills-1") },
 		{
 			event_type = "node_completed",
@@ -256,22 +264,34 @@ local function make_fixture(opts)
 			}),
 		},
 	}
+	local events = completed_events
+	local terminal_nodes = { "skills-check", "deliver__build.implement", "deliver__build.gate", "deliver__ship" }
+	if opts.running then
+		events = {
+			{
+				event_type = "node_started",
+				step_name = "live-node",
+				data = node_data("live-node", "live-1"),
+			},
+		}
+		terminal_nodes = { "live-node", "waiting-node" }
+	end
 
 	seed_database(vim.fs.joinpath(home, ".archon/archon.db"), {
 		run_id = run_id,
 		codebase_name = "project " .. hostile_values[1],
 		workflow_name = "fix-bug " .. hostile_values[1],
 		user_message = hostile_values[1],
-		status = "completed",
-		outcome = "succeeded",
+		status = opts.running and "running" or "completed",
+		outcome = opts.running and nil or "succeeded",
 		metadata = {
 			terminal_graph = {
-				node_ids = { "skills-check", "deliver__build.implement", "deliver__build.gate", "deliver__ship" },
+				node_ids = terminal_nodes,
 			},
 		},
 		started_at = "2026-10-13T10:00:00Z",
-		completed_at = "2026-10-13T10:10:00Z",
-		last_activity_at = "2026-10-13T10:10:00Z",
+		completed_at = opts.running and nil or "2026-10-13T10:10:00Z",
+		last_activity_at = opts.running and "2026-10-13T10:00:00Z" or "2026-10-13T10:10:00Z",
 		repository = repository,
 		output_root = output_root,
 		events = events,
@@ -352,6 +372,20 @@ T["loop: Named run report contains the complete run history"] = function()
 	eq(unknown.code, 2)
 	expect_contains(unknown.stderr, "Unknown Archon run: missing-run")
 	eq(unknown.stderr:find("Traceback", 1, true), nil)
+end
+
+T["loop: Running run report tolerates incomplete evidence"] = function()
+	local fixture = make_fixture({ running = true })
+	local result = run_report(fixture, "run-live")
+	local report = read_report(fixture, "run-live")
+
+	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
+	expect_contains(report, "running")
+	expect_match(report, "running</td><td>1 invocation</td><td>[1-9]%d*%.%ds")
+	expect_contains(report, "waiting")
+	eq(count(report, "Pending") >= 2, true)
+	eq(report:find("completed", 1, true), nil)
+	eq(report:find("Unavailable", 1, true), nil)
 end
 
 return T

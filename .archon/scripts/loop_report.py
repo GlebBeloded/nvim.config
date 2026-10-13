@@ -183,10 +183,19 @@ def _terminal_nodes(run: RunRecord) -> list[str]:
     return [node for node in node_ids if isinstance(node, str)]
 
 
+def _datetime(value: object) -> datetime | None:
+    if not isinstance(value, str):
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return parsed.replace(tzinfo=parsed.tzinfo or timezone.utc)
+
+
 def fold_nodes(run: RunRecord, events: Sequence[EventRecord], now: datetime) -> list[NodeRow]:
-    del now  # Live elapsed time is added with the running-run scenario.
     order = list(dict.fromkeys(_terminal_nodes(run)))
-    invocations: dict[str, dict[str, tuple[str, int]]] = {name: {} for name in order}
+    invocations: dict[str, dict[str, tuple[str, int, datetime | None]]] = {name: {} for name in order}
 
     for event in events:
         if not event.step_name or event.event_type not in {
@@ -207,9 +216,11 @@ def fold_nodes(run: RunRecord, events: Sequence[EventRecord], now: datetime) -> 
         invocation_id = _string(invocation.get("id"))
         if not invocation_id:
             continue
-        prior_status, prior_duration = invocations[name].get(invocation_id, ("running", 0))
+        prior_status, prior_duration, prior_started = invocations[name].get(invocation_id, ("running", 0, None))
         if event.event_type == "node_started":
-            invocations[name].setdefault(invocation_id, ("running", 0))
+            timing = _object(event.data.get("timing"))
+            started = _datetime(timing.get("startedAt")) or _datetime(invocation.get("startedAt"))
+            invocations[name].setdefault(invocation_id, ("running", 0, started))
             continue
         duration = _integer(event.data.get("duration_ms"))
         timing = _object(event.data.get("timing"))
@@ -219,7 +230,7 @@ def fold_nodes(run: RunRecord, events: Sequence[EventRecord], now: datetime) -> 
             "node_failed": "failed",
             "node_suspended": "waiting",
         }[event.event_type]
-        invocations[name][invocation_id] = (status, duration)
+        invocations[name][invocation_id] = (status, duration, prior_started)
 
     rows: list[NodeRow] = []
     for name in order:
@@ -227,7 +238,7 @@ def fold_nodes(run: RunRecord, events: Sequence[EventRecord], now: datetime) -> 
         if not states:
             rows.append(NodeRow(name=name, status="waiting", invocations=0, duration_ms=0))
             continue
-        statuses = [state for state, _ in states]
+        statuses = [state for state, _, _ in states]
         if statuses[-1] == "completed" or "completed" in statuses:
             status = "completed"
         else:
@@ -237,7 +248,12 @@ def fold_nodes(run: RunRecord, events: Sequence[EventRecord], now: datetime) -> 
                 name=name,
                 status=status,
                 invocations=len(states),
-                duration_ms=sum(duration for _, duration in states),
+                duration_ms=sum(
+                    max(0, int((now - started).total_seconds() * 1000))
+                    if status == "running" and started is not None
+                    else duration
+                    for status, duration, started in states
+                ),
             )
         )
     return rows
