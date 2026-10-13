@@ -112,7 +112,8 @@ end
 function M.decode(bytes)
 	local code, bits = bytes:match("^\27%[(%d+);(%d+)u$")
 	if code then
-		code, bits = tonumber(code), tonumber(bits) - 1
+		code = tonumber(code) --[[@as integer]]
+		bits = tonumber(bits) - 1
 		return make_key(kitty_mods(bits), KITTY_NAMED[code] or vim.fn.nr2char(code))
 	end
 	local arrow_bits, arrow = bytes:match("^\27%[1;(%d+)([ABCD])$")

@@ -26,7 +26,7 @@ local EXTRA_OPTIONS = {
 ---@class shortcuts.Stack
 ---@field dir string
 ---@field session string
----@field env table<string, string?>
+---@field env table<string, string>
 ---@field channel integer? RPC channel to Neovim
 ---@field nvim_pid integer?
 ---@field frontend shortcuts.Frontend
@@ -327,7 +327,7 @@ function M.start(frontend)
 		XDG_CACHE_HOME = vim.env.XDG_CACHE_HOME,
 		PATH = vim.env.PATH,
 		TERM = self.frontend.term,
-	}
+	} --[[@as table<string, string>]] -- unset vim.env values are absent keys, never nil values
 	vim.api.nvim_create_autocmd("VimLeavePre", {
 		callback = function()
 			self:stop()
