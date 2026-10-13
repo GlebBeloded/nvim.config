@@ -6,6 +6,7 @@
 --   tested  - scenario has at least one case
 --   missing - scenario has no case (reported, not fatal yet)
 --   orphan  - case name matches no scenario (fatal)
+--   duplicate - case name used in more than one test file (fatal)
 -- --quiet lists only the missing scenarios.
 -- Run: nvim -u tests/minimal_init.lua -l tests/trace.lua [--quiet]
 
@@ -102,6 +103,31 @@ local function link(specs, cases)
 	return orphans
 end
 
+--- Case names used in more than one test file, each with its files.
+---@param cases { name: string, file: string }[]
+---@return string[] duplicates
+local function find_duplicates(cases)
+	local files_by_name, names = {}, {}
+	for _, case in ipairs(cases) do
+		local files = files_by_name[case.name]
+		if not files then
+			files = {}
+			files_by_name[case.name] = files
+			table.insert(names, case.name)
+		end
+		if not vim.list_contains(files, case.file) then
+			table.insert(files, case.file)
+		end
+	end
+	local duplicates = {}
+	for _, name in ipairs(names) do
+		if #files_by_name[name] > 1 then
+			table.insert(duplicates, string.format("%s  (%s)", name, table.concat(files_by_name[name], ", ")))
+		end
+	end
+	return duplicates
+end
+
 ---@param fmt string
 local function out(fmt, ...)
 	io.write(string.format(fmt, ...) .. "\n")
@@ -141,7 +167,9 @@ local function count(scenarios)
 end
 
 local specs, capabilities = load_specs()
-local orphans = link(specs, collect_cases())
+local cases = collect_cases()
+local orphans = link(specs, cases)
+local duplicates = find_duplicates(cases)
 local all_tested, all_total = 0, 0
 
 for _, capability in ipairs(capabilities) do
@@ -163,7 +191,21 @@ if #orphans > 0 then
 	end
 end
 
+if #duplicates > 0 then
+	out("\nDUPLICATE cases (same name in more than one test file):")
+	for _, duplicate in ipairs(duplicates) do
+		out("  %s", duplicate)
+	end
+end
+
 local missing = all_total - all_tested
-out("\ntrace: %d scenarios, %d tested, %d missing, %d orphan", all_total, all_tested, missing, #orphans)
+out(
+	"\ntrace: %d scenarios, %d tested, %d missing, %d orphan, %d duplicate",
+	all_total,
+	all_tested,
+	missing,
+	#orphans,
+	#duplicates
+)
 io.flush()
-os.exit(#orphans > 0 and 1 or 0)
+os.exit((#orphans > 0 or #duplicates > 0) and 1 or 0)

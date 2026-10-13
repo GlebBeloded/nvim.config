@@ -275,6 +275,10 @@ T["git: tab moves to next entry"] = function()
 
 	eq(child.wait(("WindowWithFile(%q) ~= nil"):format(path("b.txt")), ASYNC_MS), true)
 	eq(child.lua_get(("WindowWithFile(%q)"):format(path("a.txt"))), vim.NIL)
+	local current_b = ([[vim.wo.diff and vim.bo.buftype == "" and vim.api.nvim_buf_get_name(0) == %q]]):format(
+		path("b.txt")
+	)
+	eq(child.wait(current_b, ASYNC_MS), true)
 end
 
 T["git: s stages entry from file panel"] = function()
@@ -325,14 +329,6 @@ T["git: Gitlink copies current line URL"] = function()
 	child.cmd("Gitlink")
 
 	eq(child.fn.getreg("+"), ("https://github.com/owner/repo/blob/%s/a.txt#L10"):format(sha))
-end
-
-T["git: Gitlink copies range URL"] = function()
-	local sha = use_linked_repo("https://github.com/owner/repo.git")
-	child.api.nvim_win_set_cursor(0, { 3, 0 })
-	child.type_keys("V", "2j", ":Gitlink<CR>")
-
-	eq(child.fn.getreg("+"), ("https://github.com/owner/repo/blob/%s/a.txt#L3-L5"):format(sha))
 end
 
 T["git: pgw.dev remote uses GitHub URL format"] = function()

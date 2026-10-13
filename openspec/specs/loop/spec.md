@@ -357,6 +357,13 @@ scenarios under `## REMOVED Requirements`.
 - **WHEN** `make trace` runs where an active change (`openspec/changes/<id>/specs/<capability>/spec.md`) adds a scenario that a test names, and an archived change and a `## REMOVED Requirements` section list other scenarios
 - **THEN** the added scenario is tested, the archived and removed ones are not scenarios, and nothing is orphan
 
+### Requirement: Trace rejects duplicate case names
+Traceability SHALL fail when one case name is used in more than one test file and list that name with every file that uses it.
+
+#### Scenario: Trace fails on a case name in two test files
+- **WHEN** `make trace` runs where a unit and an integration test file both define a case with the same scenario name
+- **THEN** it exits non-zero and lists the name with both file paths under duplicate cases
+
 ### Requirement: Red gates send every failed section to fix
 The build gate SHALL save the check log without ANSI codes and send the next fix pass the exact log path, the status lines, the head of every failed target section in log order (lint first) and the failing test cases (`FAIL in …`), within the feedback budget. LuaLS progress lines SHALL not appear in the types output.
 

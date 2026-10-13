@@ -118,9 +118,9 @@ Every task follows the same steps:
   2. None.
   3. Verify (statusline 28/28).
 
-## 8. Make missing fatal (design D6)
+## 8. Make missing fatal (design D6), dropped
 
-- [x] 8.1 Scenarios: none (harness).
+- [x] 8.1 Dropped: not done; missing scenarios stay non-fatal (`make trace` reports them as a count and exits 0). Scenarios: none (harness).
   1. Confirm `make trace` reports `0 missing` (else return to that capability's group). Failing check: add a temporary scenario without a test to a spec and see `make trace` still exit 0.
   2. `tests/trace.lua` exits non-zero when `missing > 0`; update its header comment and `docs/testing.md` (Static `make trace` row, "Naming rule = traceability").
   3. Verify the temporary scenario makes `make trace` fail, remove it, then `make check` green.
