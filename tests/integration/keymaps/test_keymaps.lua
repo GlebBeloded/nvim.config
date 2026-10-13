@@ -50,6 +50,18 @@ local function async_ms()
 	return math.ceil(3000 * H.load_factor())
 end
 
+---@param expr string
+---@return boolean
+local function wait_neotree(expr)
+	local started = vim.uv.hrtime()
+	local budget = async_ms()
+	repeat
+		if child.wait(expr, 100) then return true end
+		budget = math.max(budget, async_ms())
+	until (vim.uv.hrtime() - started) / 1e6 >= budget
+	return false
+end
+
 --- Lua expression: number of neo-tree windows in all tabs.
 local TREE_WIN_COUNT = [[#vim.tbl_filter(function(win)
 	return vim.bo[vim.api.nvim_win_get_buf(win)].filetype == "neo-tree"
@@ -60,12 +72,12 @@ end, vim.api.nvim_list_wins())]]
 ---@return boolean
 local function wait_tree_focused(source)
 	local expr = [[vim.bo.filetype == "neo-tree" and vim.api.nvim_buf_get_name(0):find("neo-tree %s", 1, true) ~= nil]]
-	return child.wait(expr:format(source), async_ms())
+	return wait_neotree(expr:format(source))
 end
 
 ---@return boolean
 local function wait_no_tree()
-	return child.wait(TREE_WIN_COUNT .. " == 0", async_ms())
+	return wait_neotree(TREE_WIN_COUNT .. " == 0")
 end
 
 --- `cd` the child into a temp git repo and edit its `foo.lua`.
@@ -541,7 +553,7 @@ T["keymaps: Alt-e reveals current file"] = function()
 	child.type_keys("<M-e>")
 
 	eq(wait_tree_focused("filesystem"), true)
-	eq(child.wait([[vim.api.nvim_get_current_line():find("foo.lua", 1, true) ~= nil]], async_ms()), true)
+	eq(wait_neotree([[vim.api.nvim_get_current_line():find("foo.lua", 1, true) ~= nil]]), true)
 	eq(tree_cursor_path(), vim.fs.joinpath(repo, "foo.lua"))
 end
 
