@@ -326,40 +326,7 @@ local plugins = {
 			"nvim-telescope/telescope.nvim",
 		},
 		config = function()
-			local nn = require("99")
-			nn.setup({
-				provider = require("gleb.ai.pi_provider"),
-				model = "openai-codex/gpt-5.6-sol",
-			})
-			require("gleb.ai.prompt_keymaps").setup()
-
-			local function enter_prompt(action)
-				action()
-				vim.schedule(vim.cmd.startinsert)
-			end
-
-			local function normal_menu()
-				vim.api.nvim_echo({ { "99> [s]earch [v]ibe: ", "Question" } }, false, {})
-				local key = vim.fn.getcharstr()
-				vim.cmd("redraw")
-				local actions = { s = nn.search, v = nn.vibe }
-				if actions[key] then
-					enter_prompt(actions[key])
-				end
-			end
-
-			local function vibe_prompt()
-				enter_prompt(nn.vibe)
-			end
-
-			local function visual_prompt()
-				enter_prompt(nn.visual)
-			end
-
-			vim.keymap.set("n", "<A-9>", normal_menu, { desc = "99: Menu" })
-			vim.keymap.set("n", "<S-CR>", vibe_prompt, { desc = "99: Vibe" })
-			vim.keymap.set("v", "<A-9>", visual_prompt, { desc = "99: Visual" })
-			vim.keymap.set("v", "<S-CR>", visual_prompt, { desc = "99: Visual" })
+			require("gleb.ai").setup()
 		end,
 	},
 
