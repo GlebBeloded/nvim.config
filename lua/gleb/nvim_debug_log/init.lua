@@ -1,10 +1,13 @@
 -- Per-session message log in /tmp/nvim/<ts>_<pid>.txt, started first from init.lua so it sees
 -- every message after it. A repeating timer reopens the log so it is readable while the session runs.
+-- setup() first deletes logs older than 7 days, judged by the start time in their name.
 local M = {}
 
 local LOG_DIR = "/tmp/nvim"
 local FLUSH_INTERVAL_MS = 2000
 local AUGROUP = "gleb_nvim_debug_log"
+---@type integer
+local MAX_AGE_S = 7 * 24 * 60 * 60
 
 ---@class gleb.NvimDebugLogState
 ---@field path string? log file of this session, set by the first setup()
@@ -17,6 +20,18 @@ local state = {}
 ---@param path string
 local function set_verbosefile(path)
 	vim.cmd("noautocmd set verbosefile=" .. vim.fn.fnameescape(path))
+end
+
+--- Deletes `<time>_<pid>.txt` logs whose start time is older than `max_age_s`.
+---@param dir string
+---@param max_age_s integer
+local function prune_old_logs(dir, max_age_s)
+	for name, type in vim.fs.dir(dir) do
+		local time = type == "file" and name:match("^(%d+)_%d+%.txt$")
+		if time and os.time() - tonumber(time) > max_age_s then
+			os.remove(vim.fs.joinpath(dir, name))
+		end
+	end
 end
 
 ---@return boolean
@@ -44,6 +59,7 @@ function M.setup()
 		return
 	end
 	vim.fn.mkdir(LOG_DIR, "p")
+	prune_old_logs(LOG_DIR, MAX_AGE_S)
 	state.path = state.path or string.format("%s/%d_%d.txt", LOG_DIR, os.time(), vim.fn.getpid())
 	set_verbosefile(state.path)
 	state.timer = vim.fn.timer_start(FLUSH_INTERVAL_MS, flush, { ["repeat"] = -1 })

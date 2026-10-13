@@ -4,7 +4,7 @@ if not status_ok then
 end
 
 codediff.setup({
-	-- Explorer disabled - we use neo-tree for file navigation
+	-- Explorer: file tree panel on the left, 35 columns wide
 	explorer = {
 		position = "left",
 		width = 35,

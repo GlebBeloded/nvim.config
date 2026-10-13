@@ -9,11 +9,17 @@
 --   * readable: raw server messages are mapped to short aliases via ALIASES.
 --   * debuggable: every raw progress event is appended to LOG_PATH so you can
 --     `grep` it and grow the alias list:  tail -f /tmp/nvim-lsp-progress.log
+--     $NVIM_LSP_PROGRESS_LOG overrides the path; the log is emptied before an
+--     append once it exceeds LOG_MAX_BYTES.
 local M = {}
 
 local SHOW_AFTER_MS = 500
 local STALE_AFTER_MS = 60000
-local LOG_PATH = "/tmp/nvim-lsp-progress.log"
+local LOG_PATH = vim.env.NVIM_LSP_PROGRESS_LOG or ""
+if LOG_PATH == "" then
+	LOG_PATH = "/tmp/nvim-lsp-progress.log"
+end
+local LOG_MAX_BYTES = 1024 * 1024
 local SPINNER = { "⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏" }
 
 -- raw title/message -> readable alias. First matching Lua pattern wins.
@@ -68,8 +74,15 @@ local function readable(text)
 	return text
 end
 
+--- "w" empties an oversized log before writing, "a" appends.
+---@return "a"|"w"
+local function log_mode()
+	local stat = uv.fs_stat(LOG_PATH)
+	return stat and stat.size > LOG_MAX_BYTES and "w" or "a"
+end
+
 local function log(client_name, value)
-	local fd = io.open(LOG_PATH, "a")
+	local fd = io.open(LOG_PATH, log_mode())
 	if not fd then
 		return
 	end
