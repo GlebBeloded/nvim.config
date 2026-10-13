@@ -53,3 +53,4 @@ Scenarios: ai: Keymaps exist after VeryLazy
 
 - [x] 4.1 `rg -F gpt-5.6-sol lua/` → one hit (`pi_provider.lua`); `rg 'require\("99"\)' lua/gleb/ai/pi_provider.lua` → only inside the `__index` function.
 - [ ] 4.2 `make check` green.
+  - Note (attempt 1): only `smoke-startup` failed, at host load 52 (sandbox VM ~230% CPU). Neither `gleb.ai` nor `99` appears in `--startuptime` (both load on VeryLazy). Back to back under the same load, this branch started in 740-1260 ms and `auto` in 1950-7100 ms. No code change; re-run the gate when load is normal.
