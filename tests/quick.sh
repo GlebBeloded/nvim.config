@@ -4,7 +4,7 @@
 # concurrently by tests/check.sh. `make check` stays the merge gate.
 #   lua/gleb/<feature>/, openspec/specs/<cap>/, tests/<layer>/<cap>/ -> mini.test for <cap>
 #   init.lua, plugin spec, options, test harness, other lua/gleb files -> all mini.test layers
-#   any Lua or .luarc.jsonc -> types (cached by content, tests/types.sh)
+#   any Lua or LuaLS config -> types (cached by content, tests/types.sh)
 #   init.lua, plugin spec, lazy-lock.json, options, autocommands, tests/smoke/ -> smoke
 #   terminal/, keymaps -> chain; shortcuts capability -> chain + stack
 #   terminal/, keymaps, shortcuts capability, tests/e2e/, tests/sandbox/ -> e2e, only while the
@@ -40,7 +40,7 @@ cap_or_all() {
 
 for f in $changed; do
 	case "$f" in
-	*.lua | .luarc.jsonc) types=1 ;;
+	*.lua | .luarc.jsonc | tests/luarc.types.jsonc) types=1 ;;
 	esac
 	case "$f" in
 	init.lua | lazy-lock.json | lua/gleb/plugins/* | lua/gleb/options.lua | lua/gleb/autocommands.lua)
