@@ -183,3 +183,7 @@ Scenarios: none (Static layer: `make types`). Regression guards: `make check`.
 
 - [x] 8.1 Re-run every **Failing test** check from groups 1-7: only the hits named in 3.4 remain.
 - [x] 8.2 `openspec validate cleanup-convention-targets --strict` passes; `make check` green.
+
+## Blocked
+
+- loop: the sandbox shared mount exposes a stale `init.lua` to the guest after sync, so e2e starts Neovim with the deleted `gleb.alpha-nvim` require and blocks at the error prompt.
