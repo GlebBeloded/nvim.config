@@ -1,7 +1,7 @@
 -- if ever lost, user :help lua-guide
 
 -- debug pluggin which writes to /tmp before anything else
-require("gleb.nvim_debug_log")
+require("gleb.nvim_debug_log").setup()
 
 require("gleb.plugins")
 require("gleb.options")

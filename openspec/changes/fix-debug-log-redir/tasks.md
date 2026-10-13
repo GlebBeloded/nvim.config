@@ -10,19 +10,19 @@ Scenarios: `Log directory and file created`, `Require alone does not log`, `capt
 `periodic flush works during session`, `Log finalized on exit`, `Setup twice logs once`,
 `Stop ends logging`.
 
-- [ ] 1.1 Failing test first: `start()` runs `require("gleb.nvim_debug_log").setup()`; add
+- [x] 1.1 Failing test first: `start()` runs `require("gleb.nvim_debug_log").setup()`; add
   `"nvim-debug-log: Require alone does not log"` (restarts with `child.start_bare()`, only
   requires, `:echom "X"`, `vim.wait(3000)`, asserts `log_file()` is nil),
   `"nvim-debug-log: Setup twice logs once"` (second `setup()`, one `VimLeavePre` autocmd,
   `LOGGED_ONCE` counted once in `log_text()`) and `"nvim-debug-log: Stop ends logging"` (`stop()`,
   `:echom "AFTER_STOP"`, wait 3000 ms, absent from `log_text()`). Verify with
   `CAPS=nvim-debug-log make test-integration` that the existing cases and the three new ones fail.
-- [ ] 1.2 Rewrite `lua/gleb/nvim_debug_log/init.lua` as a LuaCATS-typed module `M` (design: Module
+- [x] 1.2 Rewrite `lua/gleb/nvim_debug_log/init.lua` as a LuaCATS-typed module `M` (design: Module
   shape): `M.setup()` returns early when started, `M.stop()` stops the timer, deletes augroup
   `gleb_nvim_debug_log` and ends the redirection; `VimLeavePre` in that augroup with
   `{ clear = true }` calls `M.stop()`. Still logs via `:redir` here. Small named functions only.
   Verify every task-1 case passes.
-- [ ] 1.3 Change `init.lua:4` to `require("gleb.nvim_debug_log").setup()`, still the first require.
+- [x] 1.3 Change `init.lua:4` to `require("gleb.nvim_debug_log").setup()`, still the first require.
   Verify `make quick` is green and `nvim --headless +'echom "INIT_LOG"' +qa` writes
   `INIT_LOG` to a new `/tmp/nvim/<ts>_<pid>.txt`.
 
