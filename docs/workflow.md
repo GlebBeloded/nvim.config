@@ -6,8 +6,6 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 
 ## Loop lessons
 
-- Declare incidental loop behavior in the proposal and an active change delta instead of editing the baseline spec.
-- When an adapter creates a temporary Visual selection, exit Visual mode and restore the cursor after the delegated action.
 - `setpos("v", …)` cannot set the visual start (E474); enter Visual mode with `normal! V` at the start line instead, and restore cursor and mode afterwards.
 - Keep modified requirement prose below 500 characters so the archived main spec passes strict validation.
 - e2e "Neovim is blocked in mode r" is a startup error message: reproduce on the host with `XDG_CONFIG_HOME=$(mktemp -d)`, a symlink `$XDG_CONFIG_HOME/nvim` to the worktree, and `timeout 30 nvim --headless +"lua print(vim.fn.execute('messages'))" +qa`; if the host starts clean, the guest has stale files (a loop bug).
@@ -16,6 +14,8 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - Regenerate a screen reference only when the cell diff is limited to UI a merged commit changed; name that commit.
 - When review evidence contradicts a queued task or proposal, preserve the declared scope and remove unverified bug claims before shipping.
 - When consolidating duplicate test names, preserve the original file and case, then split new coverage into a distinct specified scenario.
+- When async work runs under rising parallel load, refresh and monotonically extend the load-scaled polling budget instead of fixing it at poll start.
+- When StyLua reports a multiline replacement, apply its exact formatting before the lint gate.
 
 ## The loop
 
