@@ -243,6 +243,10 @@ The delivery loop SHALL implement one task per fresh agent session from a script
 - **WHEN** `.archon/scripts/context_pack.py` runs for a change with at most 4 tasks, the first one ticked
 - **THEN** the pack's `## Next task` section holds every remaining task, so one implement session does them all
 
+#### Scenario: Gate ignores unchanged scenarios a modified requirement repeats
+- **WHEN** `.archon/scripts/scenarios.py <change>` runs where a MODIFIED requirement repeats one scenario unchanged and edits another, and no test names either
+- **THEN** it prints only the edited scenario and exits 1
+
 #### Scenario: Gate names a change scenario without a test
 - **WHEN** `.archon/scripts/scenarios.py <change>` runs where the change adds two scenarios and a test names only one, and a REMOVED section lists a third
 - **THEN** it prints only the untested scenario as `<capability>: <title>` and exits 1
