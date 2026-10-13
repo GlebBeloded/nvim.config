@@ -64,4 +64,4 @@ No scenario (docs only).
   - Archon's "Claude skills not found on disk: superpowers:…" warning is expected for plugin skills.
 
   Do not restate the script's logic (rule 10).
-- [ ] 5.2 `make check` green. Run `openspec validate fix-loop-skill-loading --strict --no-interactive`. Commit.
+- [x] 5.2 `make check` green. Run `openspec validate fix-loop-skill-loading --strict --no-interactive`. Commit.
