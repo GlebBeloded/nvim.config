@@ -10,7 +10,7 @@ There is one Lume guest with one checkout path (`/Users/lume/nvim`) and one Aqua
 - `tests/sandbox/lock.sh` is sourced by `sandbox.sh`. It provides `sandbox_lock <dir>` with small named functions: `lock_try`, `lock_owner_alive`, `lock_reclaim`, `lock_wait`, `lock_release`.
   - Owner record: `<dir>/owner` holds `<pid> <start time>` (`ps -o lstart= -p <pid>`) and a line with `$ROOT`. Alive means `kill -0` succeeds and the start time matches, which survives pid reuse.
   - Reclaim: `mv <dir> <dir>.stale.$$` and then `rm -rf`. Only one reclaimer's `mv` succeeds, so two waiters never both take the lock.
-  - Wait: polls every `SANDBOX_LOCK_POLL` s (default 1) and prints one `sandbox: waiting for <dir> (pid N, <root>)` line. It gives up after `SANDBOX_LOCK_TIMEOUT` s (default 3600, longer than a cold boot + provision) with `die`.
+  - Wait: polls every `SANDBOX_LOCK_POLL` s (default 1) and prints one `sandbox: waiting for <dir> (pid N, <root>)` line. It gives up after `SANDBOX_LOCK_TIMEOUT` s (default 3600, longer than a cold boot + provision) with `lock_log` and `exit 1`, so lock.sh stays self-contained.
   - The owner is `$$` of `sandbox.sh`. The lock spans `gui "make -s e2e-local"`, which runs synchronously over ssh.
   - The `E2E=0` skip exits before the lock. The `SANDBOX_START=0` "sandbox down" check runs after it, because the holder may be booting the VM.
 
