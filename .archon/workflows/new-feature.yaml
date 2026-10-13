@@ -25,6 +25,7 @@ nodes:
       nodes:
         - id: spec
           command: spec-feature
+          context: fresh # reads its input artifact; no carried-over session
           skills: [openspec-propose]
           output_format:
             type: object

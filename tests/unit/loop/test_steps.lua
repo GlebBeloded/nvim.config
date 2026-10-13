@@ -205,4 +205,22 @@ T["loop: A make check item does not hold the task loop"] = function()
 	eq(run("tasks.py", repo, { INPUTS_CHANGE = "c" }).code, 0)
 end
 
+T["loop: Context pack names installed plugin sources"] = function()
+	local repo = H.tempdir(child)
+	local artifacts = H.tempdir(child)
+	write(repo, {
+		["docs/workflow.md"] = "## Loop lessons\n\n## The loop\n",
+		["lazy-lock.json"] = '{ "gitlinker.nvim": { "commit": "x" }, "other.nvim": { "commit": "y" } }',
+		["openspec/changes/c/proposal.md"] = "gitlinker reads getpos",
+		["openspec/changes/c/tasks.md"] = "## 1. A\n- [ ] 1.1 a",
+	})
+	local env = { INPUTS_CHANGE = "c", ARTIFACTS_DIR = artifacts, NVIM_TEST_DATA_DIR = "/data" }
+	eq(run("context_pack.py", repo, env).code, 0)
+	local pack = table.concat(vim.fn.readfile(vim.fs.joinpath(artifacts, "context.md")), "\n")
+	eq(
+		{ pack:find("gitlinker.nvim: /data/lazy/gitlinker.nvim", 1, true) ~= nil, pack:find("other.nvim", 1, true) },
+		{ true, nil }
+	)
+end
+
 return T

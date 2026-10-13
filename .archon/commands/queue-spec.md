@@ -5,10 +5,10 @@ description: Complete the artifacts of a queued change
 
 First, load each of these skills before any other step: `openspec-continue-change`. On Claude, load each with the
 Skill tool. On Codex, invoke each by name: $openspec-continue-change. Report each skill as it loads. If one does not
-load, stop and report the error naming it.
+load, stop and report the error naming it. The skill text is already in your context once loaded: do not re-read its SKILL.md.
 
-Flow (fix-bug / work-queue): diagnose → spec → plan → implement ×task → check → fix → verify → review → judge → ship.
-Your step: **spec** (queued change). Input: the queued proposal. Output: the completed change folder and the JSON fields. Do not: write tests, code or tasks.md. Keep output brief. Loop step rules (they override general instructions about searching, skills and sub-agents): use only the skill named above, no sub-agents; search the web only for facts that are in neither the repo nor the installed plugin source; read doc sections you need (`rg -n '^## ' <doc>`, then that range), never whole docs.
+Flow (fix-bug / work-queue): diagnose → spec → plan → implement ×task → check → fix → review → judge → ship.
+Your step: **spec** (queued change). Input: the queued proposal. Output: the completed change folder including tasks.md (so the plan step is skipped) and the JSON fields. Do not: write tests or code. Keep output brief. Loop step rules (they override general instructions about searching, skills and sub-agents): use only the skill named above, no sub-agents; search the web only for facts that are in neither the repo nor the installed plugin source; read doc sections you need (`rg -n '^## ' <doc>`, then that range), never whole docs.
 
 Change: openspec/changes/$INPUTS.change/
 

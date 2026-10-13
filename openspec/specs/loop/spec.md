@@ -243,6 +243,10 @@ The delivery loop SHALL implement one task per fresh agent session from a script
 - **WHEN** `.archon/scripts/tasks.py --plan-needed` runs for a change whose tasks.md has a task, and for one with no tasks.md
 - **THEN** it prints `{"needed": false}` and then `{"needed": true}`
 
+#### Scenario: Context pack names installed plugin sources
+- **WHEN** `.archon/scripts/context_pack.py` runs for a change whose proposal mentions a plugin listed in `lazy-lock.json`
+- **THEN** the pack has an `Installed plugin sources` section with that plugin's lazy.nvim install path and no other plugin
+
 #### Scenario: Small change packs all remaining tasks
 - **WHEN** `.archon/scripts/context_pack.py` runs for a change with at most 4 tasks, the first one ticked
 - **THEN** the pack's `## Next task` section holds every remaining task, so one implement session does them all

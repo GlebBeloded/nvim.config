@@ -69,6 +69,7 @@ nodes:
   # --- Red: adapt the config through the fix loop ----------------------------------------------------
   - id: spec
     command: spec-plugin-update
+    context: fresh # reads its input artifact; no carried-over session
     depends_on: [changelog, skills-check]
     when: "$update.output.green == false"
     idle_timeout: 900000
