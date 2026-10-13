@@ -23,4 +23,4 @@ Scenarios: "file-tree: Diff tab is created", "file-tree: Neo-tree is opened and 
 ## 2. Integration
 
 - [x] 2.1 `make quick` is green (lint, trace, file-tree mini.test layers, types).
-- [ ] 2.2 `make check` is green.
+- [x] 2.2 `make check` is green. The previous gate's `e2e` (a concurrent worktree synced over the shared guest checkout: queued as `fix-sandbox-shared-guest-checkout`) and `smoke-startup` (host load ~80) failures pass when rerun alone.
