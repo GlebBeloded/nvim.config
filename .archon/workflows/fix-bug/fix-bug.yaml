@@ -60,6 +60,7 @@ nodes:
     with:
       cancel_on_reject: "true"
       verdict: ""
+      blocked: "false"
       needed: { from: $preview.output, if_skipped: "" }
       decision: { from: $design-gate.output.decision, if_skipped: auto }
       feedback: { from: $design-gate.output.text, if_skipped: "" }

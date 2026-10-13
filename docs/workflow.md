@@ -78,13 +78,18 @@ editor.
 - The design gate: always for a feature, and for a fix that changes visible UI. The gate message links
   `preview.html`; nothing opens on the host.
 - The judge (`.archon/scripts/escalation.py`) asks only for breaking changes: a plugin added or removed,
-  a core keymap or the leader changed, behaviour (a spec scenario) removed.
+  a core keymap or the leader changed, behaviour (a spec scenario) removed, a requirement removed and
+  re-added, or your `## Decision` text reworded.
+- A `## Blocked` section in a change's proposal.md or tasks.md: `work-queue` stops before spec, and a
+  build loop stops at once; you get its text, the change never ships and is re-queued. Answer in
+  `## Decision` and delete the `## Blocked` section.
 
 Partial or untested work never ships and never asks: a red check, unfinished tasks, an untested
 scenario, a CRITICAL verify finding, a deleted or weakened test, an xfail without a queued change, or
 committed conflict markers go back to fix; after 3 passes the judge rejects, the branch is kept and
 `followup.py` re-queues it on `auto`: a change still active there gets `Adopt: <branch>` and a
-`## Rejected run` section, an archived one a new `followup-<change>`.
+`## Rejected run` section, an archived one a new `followup-<change>`. The next run merges the kept branch
+first (`adopt.py`) and reverts its edits to `openspec/specs/`: main specs change only by archive.
 
 ### Queue and known issues
 

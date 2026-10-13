@@ -37,13 +37,8 @@ nodes:
     depends_on: [pick]
     when: "$pick.output.found == false"
 
-  - id: adopt # an abandoned run's branch: take its commits instead of redoing them (no AI)
-    bash: |
-      b="$INPUTS_ADOPT"
-      say() { python3 -c 'import json,sys; print(json.dumps({"conflict": sys.argv[1] == "1", "summary": sys.argv[2]}))' "$1" "$2"; }
-      [ -n "$b" ] || { say 0 "nothing to adopt"; exit 0; }
-      if git merge --no-edit "$b" >/dev/null 2>&1; then say 0 "adopted $b: $(git log --oneline auto..HEAD | wc -l | tr -d ' ') commits"
-      else say 1 "conflicts merging $b in: $(git diff --name-only --diff-filter=U | tr '\n' ' ')"; fi
+  - id: adopt # an abandoned run's branch: take its commits instead of redoing them (no AI); main spec edits are reverted
+    bash: python3 .archon/scripts/adopt.py
     depends_on: [pick]
     when: "$pick.output.found == true"
     output_format:
@@ -75,12 +70,44 @@ nodes:
         archived: { type: boolean }
       required: [archived]
 
+  - id: blocked # a `## Blocked` section (proposal.md or tasks.md) needs the user: no spec, no build
+    script: blocked
+    runtime: uv
+    depends_on: [adopted-state]
+    with:
+      change: $pick.output.change
+    output_format:
+      type: object
+      properties:
+        blocked: { type: boolean }
+        text: { type: string }
+      required: [blocked, text]
+
+  - id: blocked-gate
+    depends_on: [blocked]
+    when: "$blocked.output.blocked == true"
+    approval:
+      message: |
+        Queued change $pick.output.change is blocked and needs your decision:
+        $blocked.output.text
+        Answer in its proposal.md `## Decision` and delete each `## Blocked` section quoted above, then `make queue CHANGE=$pick.output.change`.
+        Either button stops this run.
+      decisions:
+        - { id: approve, label: "Stop: I will answer in the proposal" }
+        - { id: reject, label: Stop }
+
+  - id: blocked-stop
+    cancel: "Stopped: the change is blocked (see escalation.md)."
+    depends_on: [blocked, blocked-gate]
+    trigger_rule: all_done
+    when: "$blocked.output.blocked == true"
+
   # --- Specify: complete a queued proposal ------------------------------------------------------------
   - id: complete
     command: queue-spec
     context: fresh # reads its input artifact; no carried-over session
-    depends_on: [pick, skills-check, adopted-state]
-    when: "$pick.output.found == true && $adopted-state.output.archived == false"
+    depends_on: [pick, skills-check, adopted-state, blocked]
+    when: "$pick.output.found == true && $adopted-state.output.archived == false && $blocked.output.blocked == false"
     with:
       change: $pick.output.change
       adopted: $adopt.output.summary
@@ -116,11 +143,13 @@ nodes:
   - id: design-decide
     script: decide
     runtime: uv
-    depends_on: [adopted-state, spec-gate, design-gate]
+    depends_on: [adopted-state, blocked, spec-gate, design-gate]
     trigger_rule: none_failed_min_one_success
+    when: "$blocked.output.blocked == false"
     with:
       cancel_on_reject: "true"
       verdict: ""
+      blocked: "false"
       needed: { from: $preview.output, if_skipped: "" }
       decision: { from: $design-gate.output.decision, if_skipped: auto }
       feedback: { from: $design-gate.output.text, if_skipped: "" }

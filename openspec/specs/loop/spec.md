@@ -356,6 +356,41 @@ The delivery loop SHALL implement one task per fresh agent session from a script
 - **WHEN** `.archon/scripts/decide.py` runs with `INPUTS_VERDICT=reject` and no gate decision
 - **THEN** its JSON `go` is false
 
+### Requirement: Loop keeps the user's contract
+The loop SHALL leave the user's contract to the user: no step changes a requirement's bounds or the `## Decision` text unasked, main specs change only by archive, and a `## Blocked` section in a change's proposal.md or tasks.md stops agent work on it, is quoted to the user, and never ships.
+
+#### Scenario: Queue spec prompt keeps the user's contract
+- **WHEN** `.archon/commands/queue-spec.md` is read
+- **THEN** it forbids changing a requirement's numbers or bounds, removing a requirement to add it again and rewording `## Decision`, and keeps any `## Blocked` section
+
+#### Scenario: Judge asks when a change re-adds a removed requirement
+- **WHEN** `.archon/scripts/escalation.py` runs on a branch whose change delta REMOVES requirement `Server readiness` and ADDS `Server readiness.` (a near name)
+- **THEN** its JSON `decision` is `ask` and `reasons` names the re-added requirement
+
+#### Scenario: Judge asks when a change rewrites the user's Decision
+- **WHEN** `.archon/scripts/escalation.py` runs on a branch that rewords the `## Decision` section of a proposal on `auto`, and on one that edits only its `## Why`
+- **THEN** the first JSON `decision` is `ask` with a reason naming the proposal, and the second is `ship`
+
+#### Scenario: Adopt reverts main spec edits
+- **WHEN** `.archon/scripts/adopt.py` merges a branch that edits and adds files under `openspec/specs/` and edits another file
+- **THEN** `openspec/specs/` equals the pre-merge state in a new commit, the other edit is kept, and the summary names the reverted spec
+
+#### Scenario: Blocked queued change goes straight to the user
+- **WHEN** `.archon/scripts/blocked.py` runs for a change whose proposal.md has a `## Blocked` section, and for one without
+- **THEN** the first prints `blocked` true with the section text and writes an `ask` escalation.md quoting it; the second prints `blocked` false
+
+#### Scenario: Verdict ends the build loop on a Blocked section
+- **WHEN** `.archon/scripts/verdict.py` runs on the first red pass for a change whose tasks.md has a `## Blocked` section
+- **THEN** it reports `done` true, `blocked` true and `exhausted` false
+
+#### Scenario: Judge quotes a Blocked section and asks
+- **WHEN** `.archon/scripts/escalation.py` runs with `exhausted` true for a change whose tasks.md has a `## Blocked` section
+- **THEN** its JSON `decision` is `ask` and escalation.md quotes the Blocked text
+
+#### Scenario: A blocked run never ships
+- **WHEN** `.archon/scripts/decide.py` runs with `INPUTS_BLOCKED=true`, verdict `ask` and gate decision `approve`
+- **THEN** its JSON `go` is false and `decision` is `reject` (followup re-queues it)
+
 ### Requirement: Active change scenarios participate in traceability
 Traceability SHALL count scenarios added by active change deltas while excluding archived changes and
 scenarios under `## REMOVED Requirements`.

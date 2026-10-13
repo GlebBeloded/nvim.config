@@ -1,6 +1,7 @@
 """Join after an optional approval gate. go is true when the gate was not needed (INPUTS_NEEDED empty
 or "false", gate skipped) or the user picked `approve`, and never when the judge's INPUTS_VERDICT is
-`reject`; feedback carries the user's text onward.
+`reject` or INPUTS_BLOCKED is true (a blocked change is asked about, then re-queued, never shipped);
+feedback carries the user's text onward.
 """
 
 import json
@@ -8,7 +9,8 @@ import os
 
 decision = os.environ.get("INPUTS_DECISION", "") or "auto"
 needed = os.environ.get("INPUTS_NEEDED", "").strip().lower() not in ("", "false")
-rejected = os.environ.get("INPUTS_VERDICT", "").strip().lower() == "reject"
+blocked = os.environ.get("INPUTS_BLOCKED", "").strip().lower() == "true"
+rejected = blocked or os.environ.get("INPUTS_VERDICT", "").strip().lower() == "reject"
 go = not rejected and (decision == "approve" or (not needed and decision == "auto"))
 # cancel: stop the run (not just this block) when not going; INPUTS_CANCEL_ON_REJECT="false" keeps it running
 cancel = not go and os.environ.get("INPUTS_CANCEL_ON_REJECT", "true").strip().lower() != "false"

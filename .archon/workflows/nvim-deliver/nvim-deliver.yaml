@@ -127,12 +127,13 @@ nodes:
               weakened_test: { type: boolean }
             required: [approve, findings, weakened_scenario, weakened_test]
 
-        - id: verdict # also runs the hard-rule checks (integrity.py); feedback feeds the next fix
+        - id: verdict # also runs the hard-rule checks (integrity.py); a `## Blocked` section ends the loop
           script: verdict
           runtime: uv
           depends_on: [gate, review]
           trigger_rule: all_done
           with:
+            change: $INPUTS.change
             green: $gate.output.green
             spec_ok: $gate.output.spec_ok
             tasks_done: $gate.output.tasks_done
@@ -149,12 +150,13 @@ nodes:
               done: { type: boolean }
               passed: { type: boolean }
               exhausted: { type: boolean }
+              blocked: { type: boolean }
               attempt: { type: integer }
               failed_gates: { type: string }
               feedback: { type: string }
               weakened_scenario: { type: boolean }
               weakened_test: { type: boolean }
-            required: [done, passed, exhausted, attempt, failed_gates, feedback, weakened_scenario, weakened_test]
+            required: [done, passed, exhausted, blocked, attempt, failed_gates, feedback, weakened_scenario, weakened_test]
 
   # --- Judge (no AI): ship, ask the user (breaking changes only), or reject ---------------------------
   - id: escalation
@@ -162,6 +164,7 @@ nodes:
     runtime: uv
     depends_on: [build]
     with:
+      change: $INPUTS.change # a `## Blocked` section is quoted and asked about
       exhausted: $build.output.exhausted
       failed_gates: $build.output.failed_gates
       weakened_scenario: $build.output.weakened_scenario
@@ -179,7 +182,7 @@ nodes:
     when: "$escalation.output.escalate == true"
     approval:
       message: |
-        Breaking change in $INPUTS.change:
+        Asking about $INPUTS.change (a breaking change, or a `## Blocked` section: that one never ships, either button re-queues it):
         $escalation.output.reasons
         Inspect the run worktree (archon workflow get <run-id>) before deciding.
       decisions:
@@ -194,6 +197,7 @@ nodes:
     with:
       needed: $escalation.output.escalate
       verdict: $escalation.output.decision
+      blocked: $build.output.blocked
       cancel_on_reject: $INPUTS.cancel_on_reject
       decision: { from: $ship-gate.output.decision, if_skipped: auto }
       feedback: { from: $ship-gate.output.text, if_skipped: "" }

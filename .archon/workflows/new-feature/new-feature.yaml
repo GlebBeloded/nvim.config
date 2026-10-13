@@ -65,6 +65,7 @@ nodes:
     with:
       cancel_on_reject: "true"
       verdict: ""
+      blocked: "false"
       needed: "true"
       decision: $design.output.decision # the body's sink is design-gate: {decision, text}
       feedback: $design.output.text
