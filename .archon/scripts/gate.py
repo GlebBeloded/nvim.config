@@ -1,4 +1,7 @@
-"""Test gate for one build iteration: make check (lint, types, tests, smoke, trace), strict OpenSpec
+"""Test gate for one build iteration. Hard rules (integrity.py) first: a violation is red at once, with
+no make check and no review. When only the `test` layer fails, each failing case is rerun once,
+serially: all passing makes the check green with them listed as `flaky` (a note, not a finding). Planning files the fix pass edited (vs. the snapshot verdict.py took
+at the pass's start) go to $ARTIFACTS_DIR/fix-scope.md for the review. Then make check (lint, types, tests, smoke, trace), strict OpenSpec
 validation of the change and of the main specs after a trial archive, and tasks.md completion. Never fails the node: prints one JSON verdict so
 the build loop can feed failures back to the next implement pass. Counts attempts in ARTIFACTS_DIR.
 """
@@ -6,11 +9,11 @@ the build loop can feed failures back to the next implement pass. Counts attempt
 import json
 import os
 import pathlib
-import shutil
 import subprocess
-import tempfile
+import sys
 
-from check_log import strip_ansi, summarize
+from check_log import failed_targets, failing_cases, strip_ansi, summarize
+from integrity import hard_rule_violations, plan_edits
 from scenarios import covered, untested
 from spec_trial import archived_specs_ok as trial_archive
 from tasks import tick_gate_items, unchecked
@@ -45,9 +48,56 @@ def archived_specs_ok(log: str) -> tuple[bool, str]:
     return ok, tail(out)
 
 
+def hard_rules() -> list[str]:
+    try:
+        return hard_rule_violations()
+    except subprocess.CalledProcessError:  # not a git repo, or no base branch: nothing to compare
+        return []
+
+
+def record_fix_scope() -> None:
+    """fix-scope.md lists the planning files edited since verdict's snapshot; absent when none were."""
+    snapshot, scope = artifacts / "plan-snapshot.json", artifacts / "fix-scope.md"
+    edits = plan_edits(json.loads(snapshot.read_text()), change) if snapshot.exists() and change else []
+    scope.unlink(missing_ok=True)
+    if edits:
+        scope.write_text("fix pass edited planning files (allowed only when a listed finding needs it): " + ", ".join(edits) + "\n")
+
+
+def red(failures: str) -> None:
+    out = {"green": False, "spec_ok": True, "tasks_done": True, "untested": 0, "attempt": attempt, "failures": failures, "flaky": []}
+    print(json.dumps(out))
+    sys.exit(0)
+
+
+record_fix_scope()
+violations = hard_rules()
+if violations:  # never shipped: a full make check and a review would be wasted on it
+    red("\n".join(f"hard rule: {v}" for v in violations))
+
+def rerun_flaky(out: str, log: str) -> list[str]:
+    """The failing cases of a check where only the `test` layer failed, if each passes on one serial
+    rerun (`make test FILE=<file> CASE=<name>`); otherwise none. Reruns are appended to `log`."""
+    cases = failing_cases(out.splitlines())
+    if failed_targets(out) != ["test"] or not cases or any(" | " not in c for c in cases):
+        return []
+    for index, case in enumerate(cases):
+        file, name = case.split(" | ", 1)
+        ok, rerun_out = run(["make", "test", f"FILE={file}", f"CASE={name}"], f"rerun-{attempt}-{index + 1}.log")
+        with (artifacts / log).open("a") as f:
+            f.write(f"\n===== rerun {case}: {'ok' if ok else 'FAIL'} =====\n{tail(rerun_out)}\n")
+        if not ok:
+            return []
+    with (artifacts / log).open("a") as f:
+        f.write("\nflaky (failed, then passed on rerun): " + ", ".join(cases) + "\n")
+    return cases
+
+
 # E2E=1: e2e runs in the sandbox VM and boots it when it is down (docs/testing.md, Sandbox VM)
 check_log = f"check-{attempt}.log"
 green, check_out = run(["make", "check", "E2E=1"], check_log)
+flaky = [] if green else rerun_flaky(check_out, check_log)
+green = green or bool(flaky)
 spec_ok, spec_tail = True, ""
 tasks_done = True
 change_dir = pathlib.Path("openspec/changes") / change
@@ -82,6 +132,7 @@ print(
             "untested": len(missing),
             "attempt": attempt,
             "failures": "\n\n".join(failures),
+            "flaky": flaky,
         }
     )
 )

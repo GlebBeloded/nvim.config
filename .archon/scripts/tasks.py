@@ -1,6 +1,11 @@
 """tasks.md helpers shared by the gate, the context pack and the per-task loop. Only real checkbox
 list items count: prose such as "checkbox (`- [ ]`) syntax" in a plan header is not a task.
 
+`--adopted-state` prints {archived, tasks_done, visible_ui} for work-queue after adopt: no change folder
+means an adopted branch archived it; every task ticked means the spec step has nothing left (visible
+UI is then read from design.md, which only visible-UI changes have). LOOP_CHANGES_DIR overrides
+openspec/changes (fixtures).
+
 As a script: exits 0 when the per-task loop is done (no unchecked task, a `## Blocked` section, or
 MAX_PASSES implement passes counted in $ARTIFACTS_DIR/task-passes), 1 while a task is left.
 """
@@ -67,7 +72,19 @@ def plan_needed(tasks: pathlib.Path) -> bool:
     return not tasks.exists() or not task_sections(tasks.read_text())
 
 
+def adopted_state(folder: pathlib.Path) -> dict[str, bool]:
+    tasks = folder / "tasks.md"
+    done = tasks.exists() and bool(task_sections(tasks.read_text())) and unchecked(tasks.read_text()) == 0
+    return {"archived": not folder.is_dir(), "tasks_done": done, "visible_ui": (folder / "design.md").exists()}
+
+
 if __name__ == "__main__":
+    if sys.argv[1:2] == ["--adopted-state"]:
+        import json
+
+        changes = pathlib.Path(os.environ.get("LOOP_CHANGES_DIR") or "openspec/changes")
+        print(json.dumps(adopted_state(changes / os.environ.get("INPUTS_CHANGE", ""))))
+        sys.exit(0)
     if sys.argv[1:2] == ["--plan-needed"]:
         import json
 

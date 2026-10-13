@@ -54,14 +54,18 @@ input, output and limits). Scripts do everything that needs no judgment:
 | plan (only when spec wrote no tasks) | agent, low effort | `superpowers:writing-plans` | `tasks.md` |
 | pack | script `context_pack.py` | none | `context.md`: next task, change, named files, lessons, last failures; `has_task` (false skips implement) |
 | implement, once per task (one session for ≤ 4 tasks) | agent, fresh | `superpowers:test-driven-development` | 1 commit per task, ticked |
-| check | script `gate.py` | none | `make check E2E=1` once per pass, strict validate, untested change scenarios (`scenarios.py`, replaces a verify agent), JSON |
-| fix (pass 2-3 only) | agent, fresh | `superpowers:systematic-debugging` | 1 commit for the listed findings |
+| check | script `gate.py` | none | hard rules first (a violation is red at once: no `make check`, no review), then `make check E2E=1` once per pass, strict validate, untested change scenarios (`scenarios.py`, replaces a verify agent), JSON |
+| fix (pass 2-3 only) | agent, fresh | `superpowers:systematic-debugging` (none when every finding is a hard rule) | 1 commit for the listed findings |
 | review | agent, Claude | `superpowers:requesting-code-review` | JSON |
 | verdict, judge, ship, follow-up | scripts | none | JSON, `escalation.md`, merge commit |
 
 Agents run only their own test case and never `make quick` or `make check`; general instructions about web searches, extra skills and sub-agents do not apply in a step (`codex-loop.sh` also turns off Codex sub-agents, hooks, apps, the skills catalog, GUI and MCP tools, and the global `~/.codex/AGENTS.md`, and `codex_preflight.py` refuses the call when `codex --version` is outside its tested range or an MCP server or GUI plugin is still enabled; widen the range only after checking the overrides against the new Codex). A failure in loop tooling is never fixed inside a change: the step writes `## Blocked: loop: …`. The check/review
 group runs at most 3 times; a red pass sends only its findings (`verdict.py` `feedback`, which also
-lists hard-rule violations from `integrity.py`) to the next pass's fix step.
+lists hard-rule violations from `integrity.py`) to the next pass's fix step. A fix pass stays on those
+findings: verdict snapshots the change's proposal.md, `.openspec.yaml` and spec deltas, and the next gate
+lists any of them the fix edited in `fix-scope.md`, a finding for the review. The judge keeps the 15 newest
+lessons in `## Loop lessons` (`lessons.py`), a new one replacing a near duplicate; a lesson about loop
+tooling starts with `loop:` and is never kept.
 
 Runs merge into `auto` one at a time under `.git/nvim-ship.lock`; ship waits up to 5 min (`SHIP_DIRTY_WAIT`) while the `auto` checkout has tracked edits, so edit the loop on a branch, not in `~/.config/nvim` (it holds the merging pid; delete it
 only if that pid is not running). A run whose merge conflicts with `auto` goes through `reconcile`: an
@@ -84,7 +88,8 @@ editor.
   a core keymap or the leader changed, behaviour (a spec scenario) removed, a requirement removed and
   re-added, or your `## Decision` text reworded. A scenario or capability renamed together with its
   `<capability>: <title>` tests, or a `## RENAMED Requirements` delta, is no removal; test cases count
-  by name, so a lost one is rejected even when others are added.
+  by name, so a lost one is rejected even when others are added. A deleted test file is no loss when
+every case it held still exists by name in another test file.
 - A `## Blocked` section in a change's proposal.md or tasks.md: `work-queue` stops before spec, and a
   build loop stops at once; you get its text, the change never ships and is re-queued. Answer in
   `## Decision` and delete the `## Blocked` section.
@@ -94,7 +99,9 @@ scenario, a CRITICAL verify finding, a deleted or weakened test, an xfail withou
 committed conflict markers go back to fix; after 3 passes the judge rejects, the branch is kept and
 `followup.py` re-queues it on `auto`: a change still active there gets `Adopt: <branch>` and a
 `## Rejected run` section, an archived one a new `followup-<change>`. The next run merges the kept branch
-first (`adopt.py`) and reverts its edits to `openspec/specs/`: main specs change only by archive.
+first (`adopt.py`) and reverts its edits to `openspec/specs/`: main specs change only by archive. When
+the adopted tasks.md has every task ticked, the spec step is skipped (`tasks.py --adopted-state`;
+visible UI is then read from design.md).
 
 ### Queue and known issues
 

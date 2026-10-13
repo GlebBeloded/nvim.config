@@ -11,7 +11,7 @@ Flow (fix-bug / work-queue): diagnose → spec → plan → implement ×task →
 Your step: **spec** (queued change). Input: the queued proposal. Output: the completed change folder including tasks.md (so the plan step is skipped) and the JSON fields. Do not: write tests or code. Keep output brief. Loop step rules (they override general instructions about searching, skills and sub-agents): use only the skill named above, no sub-agents; search the web only for facts that are in neither the repo nor the installed plugin source; read doc sections you need (`rg -n '^## ' <doc>`, then that range), never whole docs.
 
 Change: openspec/changes/$INPUTS.change/
-Earlier work: $INPUTS.adopted. Only if that is not "nothing to adopt" (it says "adopted" or "conflicts merging"; the adopt-resolve step finished that merge, `$ARTIFACTS_DIR/adopt-notes.md` lists hunks it gave up): `git log --oneline auto..HEAD` and `git diff auto...HEAD --stat` show what is already done; specify and plan only the rest.
+Earlier work: $INPUTS.adopted. Only if that is not "nothing to adopt" (it says "adopted" or "conflicts merging"; the adopt-resolve step finished that merge; read `$ARTIFACTS_DIR/adopt-notes.md`, the hunks it gave up, only if it exists; never search for it): `git log --oneline auto..HEAD` and `git diff auto...HEAD --stat` show what is already done; specify and plan only the rest.
 
 The change is a queue item (for example a finding from a review) and may
 only have proposal.md. Read it, find the root cause if it is a bug (systematic-debugging,
@@ -33,6 +33,8 @@ Scenarios: `<capability>: <scenario title>`
 - [ ] 1.2 <the smallest code change>
 - [ ] 1.3 Run `make test FILE=tests/<layer>/<capability>/test_<x>.lua CASE="<scenario title>"` and see it pass
 ```
+A task never empties a test file: removing a file's last case deletes the file (a hard rule). When a
+task moves or merges duplicate cases, keep the copy in the file that would be emptied and drop the other.
 No design.md unless the change alters what is drawn on screen (then Current + Proposed renders); a structural change is described in the proposal. Do not run
 `openspec list` or `openspec instructions tasks`; the change and tasks format are given above. Run `openspec status`
 once, at the end. Do not re-read files you just wrote; read files with `nl -ba` once.

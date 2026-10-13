@@ -325,7 +325,7 @@ The fix workflow's exploration prompt and every implementation pass SHALL read t
 - **THEN** both direct the agent to read the `Loop lessons` section of `docs/workflow.md` before starting their task
 
 ### Requirement: Corrected attempt failures become bounded lessons
-The judge (escalation) after the build loop SHALL append a supplied one-line lesson only for a failure from an earlier attempt that a later attempt reports fixed; a build pass's verdict SHALL never edit docs/workflow.md. It SHALL normalize whitespace, compare lessons case-insensitively, retain only one copy, keep at most the 10 newest lesson lines without changing other workflow documentation, and clear the persisted candidates.
+The judge SHALL append a supplied one-line lesson only for an earlier attempt's failure a later attempt reports fixed; a pass's verdict SHALL never edit docs/workflow.md. It SHALL normalize whitespace, let a candidate replace an exact or near duplicate (80% word overlap), drop `loop:` candidates and those of a pass whose review rejected the change, keep the 15 newest lessons without changing other docs, and clear persisted candidates.
 
 #### Scenario: Passing retry records its corrected failure
 - **WHEN** a later build attempt passes after an earlier failed attempt and supplies the one-line lesson `Under host load, scale startup budgets before diagnosing a regression`
@@ -337,7 +337,7 @@ The judge (escalation) after the build loop SHALL append a supplied one-line les
 
 #### Scenario: Repeated lessons stay deduplicated and bounded
 - **WHEN** the verdict/escalation path is invoked in a throwaway checkout with a lesson that differs from an existing lesson only by case or repeated whitespace, followed by enough distinct fixed lessons to exceed the limit
-- **THEN** the equivalent lesson occurs once, the section contains the 10 newest lesson lines, and text outside the section is unchanged
+- **THEN** the equivalent lesson occurs once, the section contains the 15 newest lesson lines, and text outside the section is unchanged
 
 #### Scenario: Unfixed failures do not become lessons
 - **WHEN** an attempt fails and no later attempt supplies a lesson saying that failure was fixed
@@ -346,6 +346,14 @@ The judge (escalation) after the build loop SHALL append a supplied one-line les
 #### Scenario: Build passes leave workflow docs unchanged
 - **WHEN** `.archon/scripts/verdict.py` runs in a throwaway checkout while `lesson-candidates.txt` holds a lesson
 - **THEN** `docs/workflow.md` is unchanged and the checkout has no uncommitted change
+
+#### Scenario: Near-duplicate and loop tooling lessons are not kept
+- **WHEN** the judge persists a candidate whose words nearly match an existing lesson, and candidates starting with `loop:` or `LOOP:`
+- **THEN** the candidate replaces the near duplicate at the end of the section and no `loop:` candidate is written
+
+#### Scenario: Lessons of a pass the review rejected are not kept
+- **WHEN** a verdict with review approval false ends a pass that appended a candidate, and a later approved pass appends another
+- **THEN** the rejected pass's candidate is removed from `lesson-candidates.txt` and the judge persists only the earlier and the approved candidates
 
 #### Scenario: Persisted lesson candidates are cleared
 - **WHEN** the judge persists a lesson candidate and runs again on a workflow doc without that lesson
@@ -437,6 +445,46 @@ The delivery loop SHALL implement one task per fresh agent session from a script
 #### Scenario: A rejected judge never ships
 - **WHEN** `.archon/scripts/decide.py` runs with `INPUTS_VERDICT=reject` and no gate decision
 - **THEN** its JSON `go` is false
+
+### Requirement: Hard rules run first and spare moved test files
+`.archon/scripts/gate.py` SHALL check the hard rules before `make check`: a violation is a red gate whose failures are its `hard rule:` lines, with no `make check` and no review, and verdict SHALL not repeat them. A deleted test file SHALL be no violation when every case it held still exists by name in another test file and no case is lost.
+
+#### Scenario: Gate checks hard rules before make check
+- **WHEN** gate.py runs on a branch that empties a test file, with a `make` stub that records being called, and verdict.py runs on its failures
+- **THEN** gate's `green` is false, its failures name `hard rule: 1 test case(s) removed: a: one`, make never ran, and verdict's feedback names the removed case once
+
+#### Scenario: Judge ships a deleted test file whose cases all moved
+- **WHEN** `.archon/scripts/escalation.py` runs on a branch that deletes a test file whose case `c: kept` now lives in another test file, and on one where the other file holds only `c: other`
+- **THEN** the first `decision` is `ship`; the second is `reject` with `test files deleted:` naming the file
+
+### Requirement: Fix pass stays on its findings
+verdict.py SHALL snapshot the change's proposal.md, `.openspec.yaml` and spec deltas at the end of each pass; the next gate.py SHALL list in `$ARTIFACTS_DIR/fix-scope.md` those the fix pass changed, for the review (and verdict feedback when no review ran). The fix prompt SHALL keep to the listed findings and load no skill when every finding is a hard rule.
+
+#### Scenario: Gate lists planning files a fix pass edited
+- **WHEN** verdict.py ends a pass of change `c`, then proposal.md and tasks.md are edited and gate.py runs, then verdict.py and gate.py run again with no edit
+- **THEN** fix-scope.md names proposal.md and not tasks.md, the red verdict's feedback carries it, the second gate removes it, and review.md reads it
+
+#### Scenario: Fix prompt stays on the listed findings
+- **WHEN** `.archon/commands/fix.md` is read
+- **THEN** it loads no skill when every finding starts with `hard rule:` and never edits proposal.md, .openspec.yaml or spec deltas unless a finding is about them
+
+### Requirement: Gate reruns failed test cases once
+When `make check` fails only in its `test` target, gate.py SHALL rerun each `FAIL in` case once, serially (`make test FILE=<file> CASE=<name>`). When all pass, the gate is green, lists them in `flaky` and the check log, verdict passes them as `notes` and the judge lists them as a note, never a reason. A case failing again stays red; other targets never rerun.
+
+#### Scenario: Gate passes a test case that passes on rerun
+- **WHEN** gate.py runs with a `make` stub whose check fails in `test` on one case and whose rerun passes, then one whose rerun fails, then one whose check fails in `lint test`, and verdict and the judge run on the first gate's `flaky`
+- **THEN** the first gate is green with that case in `flaky` and the check log; the second is red; the third is red with no rerun; the verdict passes and the judge ships with a `- note:` naming the case
+
+### Requirement: Spec step plans only unfinished adopted work
+work-queue SHALL skip the queue-spec step when the adopted change's tasks.md has tasks and all are ticked (`tasks.py --adopted-state`), reading visible UI from design.md; queue-spec SHALL read adopt notes only if they exist and never let a task empty a test file.
+
+#### Scenario: Adopted change with every task ticked skips the spec step
+- **WHEN** `tasks.py --adopted-state` runs for change `c` with all tasks ticked (with and without design.md), with one unticked, with no tasks.md and with no change folder
+- **THEN** it prints `tasks_done` true only for the ticked ones, `visible_ui` true only with design.md and `archived` true only without the folder; work-queue's `complete` requires `tasks_done == false` and queue-spec reads adopt-notes.md only if it exists
+
+#### Scenario: Queue spec prompt never empties a test file
+- **WHEN** `.archon/commands/queue-spec.md` is read
+- **THEN** it says a task never empties a test file and keeps the copy in the file that would be emptied
 
 ### Requirement: Judge tells a tested rename from a removal
 The judge SHALL count a removed main-spec scenario as renamed when, one for one, an added scenario of the same capability (or the capability Git sees its spec renamed to) gains its `<capability>: <title>` test and the old test name is removed; a renamed capability's renamed tests are kept too. `## RENAMED Requirements` is no removal. Test cases SHALL be compared by name, so an added case never offsets a lost one.

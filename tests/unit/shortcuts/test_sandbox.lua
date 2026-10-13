@@ -313,8 +313,10 @@ T["shortcuts: A sandbox lock left by a dead process is reclaimed"] = function()
 	local elapsed = now_ms() - t0
 	local result = wait_locker("reclaimer")
 
-	eq(elapsed < 2000, true)
+	-- reclaimed at once, never after a poll sleep: the waiting message precedes every sleep (lock.sh)
+	eq(elapsed < 2000 * H.load_factor(), true, { fail_reason = ("took %d ms"):format(elapsed) })
 	eq(result.stderr:find("sandbox: reclaiming stale lock", 1, true) ~= nil, true)
+	eq(result.stderr:find("sandbox: waiting for", 1, true), nil)
 end
 
 T["shortcuts: A sandbox lock wait gives up after SANDBOX_LOCK_TIMEOUT"] = function()

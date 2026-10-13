@@ -1,7 +1,7 @@
 """Judge after the build loop, no AI: `ask` when the change has a `## Blocked` section (quoted in
 escalation.md; ship-decide never ships it, verdict.py's `blocked`), `reject` when the loop is exhausted
 or a hard rule is broken (never shipped; followup.py queues the work), `ask` for breaking changes (the
-user decides), otherwise `ship`. Writes a short escalation.md and prints {decision, escalate, reasons}.
+user decides), otherwise `ship`. `notes` (flaky cases) are listed, never decide. Writes a short escalation.md and prints {decision, escalate, reasons}.
 """
 
 import json
@@ -30,6 +30,8 @@ ask = ["blocked: " + blocked] if blocked else [] if reject else breaking_changes
 decision = "ask" if blocked else "reject" if reject else "ask" if ask else "ship"
 
 summary = "\n".join("- " + r for r in reject + ask) or "- none"
+notes = os.environ.get("INPUTS_NOTES", "").strip()
+summary += f"\n- note: {notes}" if notes else ""  # flaky cases a gate rerun passed: never a reason
 with open(os.path.join(os.environ.get("ARTIFACTS_DIR", "."), "escalation.md"), "w") as f:
     f.write(f"# Judge: {decision}\n\n{summary}\n")
 print(json.dumps({"decision": decision, "escalate": decision == "ask", "reasons": summary}))

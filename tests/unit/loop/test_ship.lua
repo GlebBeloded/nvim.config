@@ -288,14 +288,19 @@ T["loop: Ship cleans up its run after the run ends"] = function()
 	local done = add_run(repo, "done", { ["done.txt"] = "d" })
 	expect_shipped(ship_in_shell(done))
 	local timeout = math.ceil(20000 * H.load_factor())
+	-- the cleanup removes the worktree first and the branch after it: wait for both
 	local gone = child.lua_get(
-		[[(function(dir, timeout)
-			return vim.wait(timeout, function() return vim.uv.fs_stat(dir) == nil end, 100)
+		[[(function(dir, repo, timeout)
+			local function branch_gone()
+				local ref = { "git", "rev-parse", "--verify", "--quiet", "refs/heads/loop/done" }
+				return vim.system(ref, { cwd = repo }):wait().code ~= 0
+			end
+			local dir_gone = vim.wait(timeout, function() return vim.uv.fs_stat(dir) == nil end, 100)
+			return { dir_gone, vim.wait(timeout, branch_gone, 100) }
 		end)(...)]],
-		{ done, timeout }
+		{ done, repo, timeout }
 	)
-	eq(gone, true, { fail_reason = "worktree not removed" })
-	eq(H.system(child, { "git", "rev-parse", "--verify", "--quiet", "refs/heads/loop/done" }, repo).code ~= 0, true)
+	eq(gone, { true, true }, { fail_reason = "worktree or branch not removed" })
 
 	local live = add_run(repo, "live", { ["live.txt"] = "l" })
 	expect_shipped(ship_in_shell(live, { ARCHON_DB = live_run_db(live), LOOP_CLEAN_WAIT = "2" }))

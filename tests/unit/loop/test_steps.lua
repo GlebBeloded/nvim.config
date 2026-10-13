@@ -305,4 +305,52 @@ T["loop: Judge ignores a plugin spec moved into dependencies"] = function()
 	eq(vim.json.decode(result.stdout).decision, "ship")
 end
 
+---@param files table<string, string>
+---@return table adopted-state JSON of change `c` in a repo holding `files`
+local function adopted_state(files)
+	local repo = H.tempdir(child)
+	write(repo, files)
+	local result = H.system(child, { "python3", vim.fs.joinpath(SCRIPTS, "tasks.py"), "--adopted-state" }, repo, {
+		INPUTS_CHANGE = "c",
+		LOOP_CHANGES_DIR = "",
+	})
+	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
+	return vim.json.decode(result.stdout)
+end
+
+T["loop: Adopted change with every task ticked skips the spec step"] = function()
+	local done, todo = "## 1. Task\n- [x] 1.1 a", "## 1. Task\n- [x] 1.1 a\n- [ ] 1.2 b"
+	local ui = { ["openspec/changes/c/tasks.md"] = done, ["openspec/changes/c/design.md"] = "# Design" }
+	eq(adopted_state(ui), { archived = false, tasks_done = true, visible_ui = true })
+	eq(
+		adopted_state({ ["openspec/changes/c/tasks.md"] = done }),
+		{ archived = false, tasks_done = true, visible_ui = false }
+	)
+	eq(
+		adopted_state({ ["openspec/changes/c/tasks.md"] = todo }),
+		{ archived = false, tasks_done = false, visible_ui = false }
+	)
+	eq(
+		adopted_state({ ["openspec/changes/c/proposal.md"] = "# c" }),
+		{ archived = false, tasks_done = false, visible_ui = false }
+	)
+	eq(adopted_state({ ["README.md"] = "x" }), { archived = true, tasks_done = false, visible_ui = false })
+	local queue =
+		table.concat(vim.fn.readfile(vim.fs.joinpath(H.root, ".archon/workflows/work-queue/work-queue.yaml")), "\n")
+	eq(
+		queue:find("$adopted-state.output.tasks_done == false && $blocked.output.blocked == false", 1, true) ~= nil,
+		true
+	)
+	local prompt = table.concat(vim.fn.readfile(vim.fs.joinpath(H.root, ".archon/commands/queue-spec.md")), " ")
+	prompt = prompt:gsub("%s+", " ")
+	eq(
+		prompt:find(
+			"`$ARTIFACTS_DIR/adopt-notes.md`, the hunks it gave up, only if it exists; never search for it",
+			1,
+			true
+		) ~= nil,
+		true
+	)
+end
+
 return T

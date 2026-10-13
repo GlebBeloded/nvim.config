@@ -24,4 +24,4 @@ deliver__escalation: { decision: ship, escalate: false, reasons: "- none" }
 deliver__ship: { merged: true, conflict: false, branch: loop/demo-change, commit: abc123 }
 deliver__followup: "MUST-NOT-RUN"
 
-adopted-state: { archived: false }
+adopted-state: { archived: false, tasks_done: false, visible_ui: false }
