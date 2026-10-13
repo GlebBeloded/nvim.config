@@ -36,11 +36,11 @@ The config SHALL load the 99 plugin on the `VeryLazy` event, configure it with t
 - **THEN** the call returns without an error
 
 ### Requirement: 99 entry keymaps
-The config SHALL map `<A-9>` in normal mode to a one-key menu that echoes `99> [s]earch [v]ibe: ` (highlight `Question`), reads one key, redraws, and opens the 99 search prompt for `s` or the vibe prompt for `v`, ignoring other keys. It SHALL map `<S-CR>` in normal mode to open the vibe prompt, and `<A-9>` and `<S-CR>` in visual mode only (not select mode) to open the visual-selection prompt. All four mappings SHALL be silent. After opening any prompt it SHALL enter insert mode (scheduled).
+The config SHALL map `<A-9>` in normal mode to a one-key menu whose `Question`-highlighted prompt remains visible while it waits, including when `cmdheight` starts at zero. It SHALL dispatch `s` to search and `v` to vibe, ignore other keys, restore the prior `cmdheight`, keep the normal and visual `<S-CR>`/`<A-9>` prompt mappings silent, and enter insert mode after opening a prompt.
 
 #### Scenario: Menu shows prompt
-- **WHEN** `<A-9>` is pressed in normal mode
-- **THEN** the message area shows `99> [s]earch [v]ibe: `
+- **WHEN** `<A-9>` is pressed in normal mode with `cmdheight = 0`
+- **THEN** the message area shows `99> [s]earch [v]ibe: ` while the menu waits for a key
 
 #### Scenario: Menu s opens search prompt
 - **WHEN** `<A-9>` then `s` is pressed in normal mode
