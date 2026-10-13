@@ -130,4 +130,31 @@ T["file-tree: gr keeps its global meaning in git status tree"] = function()
 	)
 end
 
+T["file-tree: gc commits confirmed message"] = function()
+	local dir = modified_repo()
+	git(dir, { "config", "user.name", "t" })
+	git(dir, { "config", "user.email", "t@t" })
+	git(dir, { "add", "a.txt" })
+	open_git_status(dir)
+	child.lua([[
+		Notes = {}
+		vim.notify = function(msg, level) table.insert(Notes, { msg, level }) end
+		require("gleb.git.ai_commit").show_commit_input = function(on_confirm) on_confirm("feat: x") end
+	]])
+
+	child.type_keys("gc")
+
+	eq(git(dir, { "log", "-1", "--format=%s" }), "feat: x\n")
+	eq(child.lua_get("Notes"), { { "Committed: feat: x", vim.log.levels.INFO } })
+end
+
+T["file-tree: c is copy in git status tree"] = function()
+	open_git_status(modified_repo())
+
+	local desc = child.lua_get([[vim.iter(vim.api.nvim_buf_get_keymap(0, "n")):find(function(map)
+		return map.lhs == "c"
+	end).desc]])
+	eq(desc, "copy")
+end
+
 return T

@@ -214,7 +214,7 @@ neo_tree.setup({
 				["k"] = git_nav_up,
 				["<cr>"] = git_open_file,
 				["<space>"] = git_toggle_stage,
-				["c"] = git_commit,
+				["gc"] = { git_commit, desc = "commit (AI)" },
 				["P"] = git_push,
 				["A"] = "git_add_all",
 				["X"] = "git_revert_file",
