@@ -51,14 +51,15 @@ Scenarios: "file-tree: Collapsed directory shows expander and folder icon", "fil
 
 Layer: integration (new `tests/integration/file-tree/test_tree_icons.lua`; reuse fixture and wait helpers from `test_tree.lua` where they fit, by moving shared ones into a local module only if both files need them).
 
-- [ ] 5.1 Failing tests, one case per scenario, each in a temp fixture dir as cwd and a typed `tree_row(name)` helper that returns the neo-tree buffer line containing `name`:
+- [x] 5.1 Failing tests, one case per scenario, each in a temp fixture dir as cwd and a typed `tree_row(name)` helper that returns the neo-tree buffer line containing `name`:
   - collapsed: `:Neotree filesystem`, row of `docs` matches `\u{F460}.*\u{E5FF}.*docs`;
   - expanded: cursor on `docs`, `<cr>` in normal mode, row matches `\u{F47C}.*\u{E5FE}.*docs`;
   - empty: cursor on `empty`, `<cr>` twice, row contains `\u{F0256}` before `empty`;
   - diagnostics: `sample.lua` shown, `vim.diagnostic.set` one ERROR on its buffer, wait for the tree refresh, row of `sample.lua` contains U+F057 (depends on 4.2);
   - conflict: temp git repo, two branches editing `conflict.txt`, failed `git merge`, `:Neotree git_status`, row of `conflict.txt` contains U+E727.
   Run `make test FILE=tests/integration/file-tree/test_tree_icons.lua`; expander, folder and diagnostic cases fail. The conflict case passes already (neo-tree's default `conflict` is U+E727, design Context) and is a regression guard: show red by setting `conflict = "x"` locally.
-- [ ] 5.2 In `lua/gleb/file_tree/init.lua`: `expander_collapsed = "\u{F460}"`, `expander_expanded = "\u{F47C}"`; `folder_closed = "\u{E5FF}"`, `folder_open = "\u{E5FE}"`, `folder_empty = "\u{F0256}"`; rename the dead `git_status.symbols.unmerged` key to `conflict = "\u{E727}"`; delete the `diagnostics.symbols` override so neo-tree uses `vim.diagnostic.config().signs.text` (design Decision 3). 5.1 passes; `tests/integration/file-tree/test_tree.lua` stays green.
+  Note: the design's "conflict already draws U+E727" holds only when an ordinary change sorts before the conflict; neo-tree's porcelain v2 parser drops leading unmerged entries. The fixture also modifies `a.txt`; queued as `fix-neo-tree-leading-conflict`.
+- [x] 5.2 In `lua/gleb/file_tree/init.lua`: `expander_collapsed = "\u{F460}"`, `expander_expanded = "\u{F47C}"`; `folder_closed = "\u{E5FF}"`, `folder_open = "\u{E5FE}"`, `folder_empty = "\u{F0256}"`; rename the dead `git_status.symbols.unmerged` key to `conflict = "\u{E727}"`; delete the `diagnostics.symbols` override so neo-tree uses `vim.diagnostic.config().signs.text` (design Decision 3). 5.1 passes; `tests/integration/file-tree/test_tree.lua` stays green.
 
 ## 6. Neo-tree reference screenshot
 

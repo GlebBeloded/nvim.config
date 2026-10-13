@@ -117,13 +117,13 @@ neo_tree.setup({
 			indent_marker = "│",
 			last_indent_marker = "└",
 			with_expanders = true,
-			expander_collapsed = "",
-			expander_expanded = "",
+			expander_collapsed = "\u{F460}",
+			expander_expanded = "\u{F47C}",
 		},
 		icon = {
-			folder_closed = "",
-			folder_open = "",
-			folder_empty = "",
+			folder_closed = "\u{E5FF}",
+			folder_open = "\u{E5FE}",
+			folder_empty = "\u{F0256}",
 		},
 		name = {
 			use_git_status_colors = true, -- Color filenames by git status
@@ -132,19 +132,11 @@ neo_tree.setup({
 			symbols = {
 				unstaged = " ", -- empty (no indicator)
 				staged = "»", -- chevron (queued/ready to commit)
-				unmerged = "",
+				conflict = "\u{E727}",
 				renamed = "➜",
 				untracked = "?",
 				deleted = "✗",
 				ignored = "◌",
-			},
-		},
-		diagnostics = {
-			symbols = {
-				hint = "",
-				info = "",
-				warn = "",
-				error = "",
 			},
 		},
 	},
