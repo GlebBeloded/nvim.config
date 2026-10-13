@@ -74,5 +74,6 @@ Layer: screen (new `tests/screen/file-tree/test_tree_screen.lua`).
 
 - [x] 7.1 `grep -nE '= ""' lua/gleb/statusline/language.lua lua/gleb/statusline/copilot.lua lua/gleb/file_tree/init.lua lua/gleb/lsp/config/handlers.lua` lists only the intentionally empty fields (handlers `prefix` / `header`) (rule 9.5).
 - [x] 7.2 `make render CASE=lua-file` and `make render CASE=neo-tree` next to `make colorize FILE=openspec/changes/fix-empty-nerd-font-glyphs/design.md`: caps, Copilot glyph, signs and tree icons draw as glyphs, not tofu or blanks.
-- [ ] 7.3 `make trace VERBOSE=1` lists every scenario of tasks 1–6 as tested; `make check` green.
+- [x] 7.3 `make trace VERBOSE=1` lists every scenario of tasks 1–6 as tested; `make check` green.
   Note: `make trace VERBOSE=1` lists every scenario of tasks 1–6 as tested; `make check` is left to the gate (the implement pass must not run it).
+  Previous gate: `e2e` failed on an rsync race in the sandbox VM shared by parallel loops (green on rerun, no code change); `smoke-startup` failed at host load 64–72 (391.7 ms ≤ 400 ms on rerun). Neither touches this change's code.
