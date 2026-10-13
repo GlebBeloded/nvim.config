@@ -318,6 +318,19 @@ local function adopted_state(files)
 	return vim.json.decode(result.stdout)
 end
 
+T["loop: Agents never load the host to reproduce a flake"] = function()
+	for _, name in ipairs({ "fix", "implement" }) do
+		local prompt =
+			table.concat(vim.fn.readfile(vim.fs.joinpath(H.root, ".archon/commands/" .. name .. ".md")), "\n")
+		eq(
+			prompt:find("never load the host", 1, true) ~= nil or prompt:find("Never load the host", 1, true) ~= nil,
+			true
+		)
+	end
+	local fix = table.concat(vim.fn.readfile(vim.fs.joinpath(H.root, ".archon/commands/fix.md")), "\n")
+	eq(fix:find("Run `make fmt`, then commit", 1, true) ~= nil, true)
+end
+
 T["loop: Adopted change with every task ticked skips the spec step"] = function()
 	local done, todo = "## 1. Task\n- [x] 1.1 a", "## 1. Task\n- [x] 1.1 a\n- [ ] 1.2 b"
 	local ui = {

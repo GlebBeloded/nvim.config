@@ -44,3 +44,4 @@ code you touch; each task is "run those tests and see them pass, change the code
 invent a scenario name: every name on a `Scenarios:` line must be a `#### Scenario:` in openspec/specs or this change's delta.
 
 Before finishing, when the change has a spec delta: keep each requirement's text (between `### Requirement:` and its first scenario, MODIFIED ones restated in full) under 500 characters, and run `python3 .archon/scripts/spec_trial.py <change>`; fix the delta until it exits 0.
+For a timing flake, task 1.1 cites the gate log's `FAIL in` line as the failing evidence; it never asks to reproduce under artificial load.
