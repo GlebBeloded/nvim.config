@@ -241,11 +241,11 @@
 
   Preserve current load-scaled deadlines and guest-restore wording while documenting `make menu-keys`, the required Alacritty relaunch, Cmd+Option+Control+Q, and why the app menu must release Cmd+Q/Cmd+H. Run `openspec validate fix-cmd-q-shortcut --strict` and `make check E2E=1`; both pass with zero missing or orphan shortcut scenarios.
 
-- [ ] **Step 6: Merge the approved topic history and resolve semantically**
+- [x] **Step 6: Merge the approved topic history and resolve semantically**
 
   Run `git merge --no-ff loop/fix-cmd-q-shortcut`. Resolve `docs/testing.md`, `openspec/specs/shortcuts/spec.md` and `tests/e2e/shortcuts/test_e2e.lua` by keeping the now-green combined versions: all current-auto scenarios/recorders, all approved menu-key scenarios, no generic exceptions for Cmd+Q/Cmd+H or Cmd+Shift+-/=, and both controlled no-setup regressions. Preserve the topic's `design.md` and archive move, update the archived proposal/spec/tasks to this final change, and leave no stale live `openspec/changes/fix-cmd-q-shortcut/` copy.
 
-- [ ] **Step 7: Verify the merge result**
+- [x] **Step 7: Verify the merge result**
 
   Run: `git diff --check && ! git grep -nE '^(<<<<<<<|=======|>>>>>>>)' && make trace VERBOSE=1 && make check E2E=1`
 
