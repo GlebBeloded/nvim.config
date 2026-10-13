@@ -44,3 +44,4 @@ Scenarios: none new; regression of "statusline matches reference screenshot".
 ## Blocked
 
 - 4.2: `smoke-startup` fails only from host load (load average 55–100 from parallel loop workers), not this change. Under the same load, the pre-change `lsp_progress.lua` (cd4687a) took 740.9 ms and this branch took 403.1 ms (fastest of 9, budget 400 ms). Every other `make check` layer passed in attempt 1. Re-run the gate when the host is idle.
+- 4.2 (attempt 2): the `stack` failures ("stack not started") were the zellij CLI flake fixed on `auto` by `fix-stack-zellij-cli-flake`; after merging `auto`, `make stack` passes and `make quick` is green. `smoke-startup` still fails from host load only: at load 50, `auto` itself measured 560.4 ms and this branch 424.2 ms (fastest of 9, budget 400 ms). Re-run the gate when the host is idle.
