@@ -181,5 +181,5 @@ Scenarios: none (Static layer: `make types`). Regression guards: `make check`.
 
 ## 8. Gate
 
-- [ ] 8.1 Re-run every **Failing test** check from groups 1-7: only the hits named in 3.4 remain.
-- [ ] 8.2 `openspec validate cleanup-convention-targets --strict` passes; `make check` green.
+- [x] 8.1 Re-run every **Failing test** check from groups 1-7: only the hits named in 3.4 remain.
+- [x] 8.2 `openspec validate cleanup-convention-targets --strict` passes; `make check` green.
