@@ -113,7 +113,7 @@ Known issues and planned work are queued changes in `openspec/changes/`; there i
 - Codex loads repo skills from `.agents/skills` and superpowers from the Codex plugin
   `superpowers@openai-curated-remote`. Archon hides Codex's skill list, so commands invoke each skill
   as `$<skill>`. Archon runs Codex with no sandbox, network on and no approval prompts: `make check
-  E2E=1` and ssh to the sandbox VM need nothing extra, and there are no Codex hooks.
+  E2E=1` and `lume ssh` to the sandbox VM need nothing extra, and there are no Codex hooks.
 - Claude runs with `bypassPermissions` and project settings. There are no Claude Code hooks: the
   `implement` command runs `make fmt` and `make quick` itself, and the full `make check E2E=1` runs
   once per build pass in the `gate` script.
