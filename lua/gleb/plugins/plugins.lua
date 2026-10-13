@@ -243,13 +243,6 @@ local plugins = {
 	-- git
 	"lewis6991/gitsigns.nvim",
 	{
-		"echasnovski/mini.diff",
-		version = false,
-		config = function()
-			require("mini.diff").setup({})
-		end,
-	},
-	{
 		"undont/differ.nvim", -- unified diffs, staging, PR review, merge conflicts
 		build = "make go-build", -- Go sidecar; only needed for PR review
 	}, -- configured in lua/gleb/git/differ.lua
