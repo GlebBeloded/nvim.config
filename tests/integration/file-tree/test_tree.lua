@@ -27,6 +27,31 @@ local function current_tab_has_neo_tree()
 	end)]])
 end
 
+---@param dir string
+---@param args string[]
+---@return string stdout
+local function git(dir, args)
+	return vim.system(vim.list_extend({ "git" }, args), { cwd = dir, text = true }):wait().stdout
+end
+
+--- Open the git_status tree on `dir` with the cursor on `a.txt`.
+---@param dir string
+local function open_git_status(dir)
+	child.start_config()
+	child.wait_very_lazy()
+	child.cmd("cd " .. dir .. " | enew | Neotree git_status")
+	eq(child.wait([[vim.bo.filetype == "neo-tree" and vim.fn.search("a.txt", "nw") > 0]], ASYNC_MS), true)
+	child.lua([[vim.fn.search("a.txt")]])
+end
+
+--- Press X on the cursor node and answer the neo-tree confirm popup.
+---@param answer "y"|"n"
+local function revert_with_answer(answer)
+	child.type_keys("X")
+	eq(child.wait([[vim.fn.getline("."):find(" y/n: ", 1, true) ~= nil]], ASYNC_MS), true)
+	child.type_keys(answer, "<CR>")
+end
+
 local T = MiniTest.new_set({ hooks = { post_once = child.stop } })
 
 T["file-tree: Filesystem tree opens on the left at width 35"] = function()
@@ -67,6 +92,42 @@ T["file-tree: q closes preview and tree"] = function()
 	eq(child.lua_get("DiffPreview.state.current_file"), vim.NIL)
 	eq(child.lua_get("DiffPreview.state.original_tab"), vim.NIL)
 	eq(current_tab_has_neo_tree(), false)
+end
+
+T["file-tree: X reverts a file after confirmation"] = function()
+	local dir = modified_repo()
+	open_git_status(dir)
+
+	revert_with_answer("y")
+
+	eq(
+		vim.wait(ASYNC_MS, function()
+			return git(dir, { "status", "--porcelain" }) == ""
+		end, 20),
+		true
+	)
+	eq(vim.fn.readfile(vim.fs.joinpath(dir, "a.txt")), { "one" })
+end
+
+T["file-tree: X keeps a file when revert is declined"] = function()
+	local dir = modified_repo()
+	open_git_status(dir)
+
+	revert_with_answer("n")
+
+	eq(child.wait([[vim.bo.filetype == "neo-tree"]], ASYNC_MS), true)
+	eq(vim.fn.readfile(vim.fs.joinpath(dir, "a.txt")), { "two" })
+	eq(git(dir, { "status", "--porcelain" }), " M a.txt\n")
+end
+
+T["file-tree: gr keeps its global meaning in git status tree"] = function()
+	open_git_status(modified_repo())
+
+	eq(child.lua_get([[vim.fn.maparg("gr", "n", false, true).buffer]]), 0)
+	eq(
+		child.lua_get([[vim.fn.maparg("gr", "n", false, true).callback == require("telescope.builtin").lsp_references]]),
+		true
+	)
 end
 
 return T
