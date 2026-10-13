@@ -317,7 +317,7 @@ end
 ---@param line string
 ---@return boolean
 local function is_repo_sync(line)
-	return line:find("'/Volumes/My Shared Files/share/repo/' /Users/lume/nvim/", 1, true) ~= nil
+	return line:find("'/Volumes/My Shared Files/share/sync%.[^/]+/repo/' /Users/lume/nvim/") ~= nil
 end
 
 ---@param line string

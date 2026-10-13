@@ -16,6 +16,7 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - When an adapter creates a temporary Visual selection, exit Visual mode and restore the cursor after the delegated action.
 - `setpos("v", …)` cannot set the visual start (E474); enter Visual mode with `normal! V` at the start line instead, and restore cursor and mode afterwards.
 - Keep modified requirement prose below 500 characters so the archived main spec passes strict validation.
+- e2e "Neovim is blocked in mode r" is a startup error message: reproduce on the host with `XDG_CONFIG_HOME=$(mktemp -d)`, a symlink `$XDG_CONFIG_HOME/nvim` to the worktree, and `timeout 30 nvim --headless +"lua print(vim.fn.execute('messages'))" +qa`; if the host starts clean, the guest has stale files (a loop bug).
 
 ## The loop
 
