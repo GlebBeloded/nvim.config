@@ -8,7 +8,7 @@ local function set_prompt_keymaps(event)
 end
 
 function M.setup()
-	local group = vim.api.nvim_create_augroup("99PromptKeymaps", { clear = true })
+	local group = vim.api.nvim_create_augroup("gleb_ai_prompt_keymaps", { clear = true })
 	vim.api.nvim_create_autocmd("FileType", {
 		group = group,
 		pattern = "99",

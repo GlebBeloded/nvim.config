@@ -37,7 +37,7 @@ end
 T["ai: Setup is idempotent"] = function()
 	child.lua("PromptKeymaps.setup(); PromptKeymaps.setup()")
 
-	eq(child.lua_get([[#vim.api.nvim_get_autocmds({ group = "99PromptKeymaps" })]]), 1)
+	eq(child.lua_get([[#vim.api.nvim_get_autocmds({ group = "gleb_ai_prompt_keymaps" })]]), 1)
 end
 
 return T
