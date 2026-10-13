@@ -36,16 +36,16 @@ Scenarios: "git: Empty Ollama output is shown" (regression guards: "git: Generat
 
 Layer: integration (same file). Use a staged repo with `fake_ollama()`.
 
-- [ ] 2.1 Add the failing tests:
+- [x] 2.1 Add the failing tests:
   - `T["git: Empty Ollama output is shown"]`: run it once with `FAKE_OLLAMA_OUT="\`\`\`\n\`\`\`\n"` and once with `"  \n"`, each with exit 0. Each time, `wait_title(" Commit Message ")`, then assert `popup_lines() == {"# Error: Ollama returned an empty message"}`.
   - `T["git: q discards popup"]`: set `FAKE_OLLAMA_SLEEP=1` and `open_popup()`. Press `q` and assert the window is invalid. Let the stopped job's `on_exit` run with `child.lua("vim.wait(500)")`. Then assert `#Commits == 0` and that `v:errmsg` is `""` (the deleted-buffer error from Review focus).
-- [ ] 2.2 Add the regression guards:
+- [x] 2.2 Add the regression guards:
   - `T["git: Generated message fills popup"]`: `FAKE_OLLAMA_OUT="\`\`\`\nfeat(git): add x\n\`\`\`\n"`, expect lines `{"feat(git): add x"}` and title ` Commit Message `.
   - `T["git: Popup resizes to content"]`: set `columns` to 200, use a one-line output, then assert `nvim_win_get_width == 72` and height 1.
   - `T["git: Ollama failure is shown"]`: `FAKE_OLLAMA_CODE=1`, expect `{"# Error: Ollama exited with code 1"}` and the title.
-- [ ] 2.3 Run the file. The empty-output case must fail on `wait_title` (the title stays ` 🦙 Generating... `) and `q discards popup` on `v:errmsg`. The 2.2 cases must pass.
-- [ ] 2.4 In `call_ai`'s exit handler, when the cleaned response is empty, call `on_error("Ollama returned an empty message")` (design, "Empty output goes through on_error"). In `show_commit_input`, the error callback returns early unless `vim.api.nvim_buf_is_valid(bufnr)`, the same guard the success callback has (convention 6.3).
-- [ ] 2.5 Both new cases and the guards pass. In a child at 80x24, check the popup against the Proposed render in design.md with `MONO=1 make render`, or with `H.screen_rows` in a scratch run. Run `make quick`.
+- [x] 2.3 Run the file. The empty-output case must fail on `wait_title` (the title stays ` 🦙 Generating... `) and `q discards popup` on `v:errmsg`. The 2.2 cases must pass.
+- [x] 2.4 In `call_ai`'s exit handler, when the cleaned response is empty, call `on_error("Ollama returned an empty message")` (design, "Empty output goes through on_error"). In `show_commit_input`, the error callback returns early unless `vim.api.nvim_buf_is_valid(bufnr)`, the same guard the success callback has (convention 6.3).
+- [x] 2.5 Both new cases and the guards pass. In a child at 80x24, check the popup against the Proposed render in design.md with `MONO=1 make render`, or with `H.screen_rows` in a scratch run. Run `make quick`.
 
 ## 3. git_commit checks the exit code
 
@@ -74,3 +74,9 @@ Layer: integration (`tests/integration/file-tree/test_tree.lua`, tree mappings).
 
 - [ ] 4.1 `VERBOSE=1 make trace` lists the 11 scenarios named in tasks 1–3 as `tested`, and there are no orphans. "P pushes successfully", "P reports push failure" and "Leaving popup closes it" stay with `fill-trace-scenario-gaps`.
 - [ ] 4.2 `make check` is green.
+
+## Notes
+
+- 2.3: "Generated message fills popup" also failed: `on_stdout` dropped empty chunks and joined lines with `""`, so the fence strip ate `feat`. Fixed with `stdout_buffered = true` and joining with `"\n"`.
+- 2.4: `nvim_buf_is_valid(bufnr)` is not enough. When the popup opens over the alpha dashboard, alpha's `BufUnload` autocmd aborts nui's `nvim_buf_delete`, so `bufnr` stays valid after `q`. Both callbacks check `is_open()` (the popup window, which nui nils on unmount) instead.
+- 2.5: the 80x24 render matches the Proposed one (width 64, height 1, same text). It sits at rows 10-12, col 9, because nui keeps the anchor from before the resize.
