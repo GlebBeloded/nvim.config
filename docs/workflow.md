@@ -6,8 +6,6 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 
 ## Loop lessons
 
-- Serialize access to the shared sandbox VM and reset guest state between runs.
-- Load active change scenarios in trace so new tests are not orphaned before archive.
 - Clear inherited workflow inputs in isolated tests so ambient gate state cannot override fixtures.
 - Keep requirement prose within OpenSpec's 500-character limit before trial archive validation.
 - Declare incidental loop behavior in the proposal and an active change delta instead of editing the baseline spec.
@@ -16,6 +14,8 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - Keep modified requirement prose below 500 characters so the archived main spec passes strict validation.
 - e2e "Neovim is blocked in mode r" is a startup error message: reproduce on the host with `XDG_CONFIG_HOME=$(mktemp -d)`, a symlink `$XDG_CONFIG_HOME/nvim` to the worktree, and `timeout 30 nvim --headless +"lua print(vim.fn.execute('messages'))" +qa`; if the host starts clean, the guest has stale files (a loop bug).
 - For an implementation-free follow-up, replace ignored adoption metadata with `skip_specs: true` so strict validation accepts zero deltas.
+- When merging a keymap-helper rewrite, convert retained mappings to the new helper so removed option tables cannot break startup.
+- After merging statusline appearance changes, regenerate affected screen references so their cells match the integrated UI.
 
 ## The loop
 
