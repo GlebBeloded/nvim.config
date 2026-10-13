@@ -9,6 +9,9 @@ Claude, load each with the Skill tool. On Codex, invoke each by name:
 $superpowers:systematic-debugging. Report each skill as it loads. If one does not load, stop and
 report the error naming it.
 
+Read the `## Loop lessons` section in `docs/workflow.md` before reading the bug context or
+investigating the project.
+
 Bug: $ARGUMENTS
 
 Use the `superpowers:systematic-debugging` skill (phase 1-3 only: reproduce, trace, root cause).

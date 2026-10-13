@@ -4,6 +4,12 @@ How to operate this repo: the local AI loop, the queue, design renders, and debu
 and their layers are in [testing](testing.md). The loop's stages and gates are drawn in
 [architecture](architecture.md#ai-maintenance-loop).
 
+## Loop lessons
+
+- Under host load, scale startup and test budgets before diagnosing a regression.
+- Wait for asynchronous git commit outcomes before asserting repository state.
+- Serialize access to the shared sandbox VM and reset guest state between runs.
+
 ## The loop
 
 Agents fix bugs, build features and update plugins on this machine only. Nothing is pushed and no PR is

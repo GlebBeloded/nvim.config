@@ -163,3 +163,10 @@ On `codex`, a plugin's root SHALL be the `codex plugin list --json` entry's `sou
 #### Scenario: Skill preflight fails on a remote Codex plugin missing from the plugin cache
 - **WHEN** the same check is run, but the `CODEX_HOME` temp dir has no plugin cache
 - **THEN** it exits non-zero, its stderr names `superpowers:writing-plans`, and it has no `Traceback`
+
+### Requirement: Agents start with durable loop lessons
+The fix workflow's exploration prompt and every implementation pass SHALL read the curated `Loop lessons` section in `docs/workflow.md` after loading required skills and before investigating or changing the project.
+
+#### Scenario: Fix and implement prompts read loop lessons
+- **WHEN** the fix/explore and implement command sources are read in a headless child Neovim
+- **THEN** both direct the agent to read the `Loop lessons` section of `docs/workflow.md` before starting their task

@@ -9,6 +9,11 @@ the Skill tool. On Codex, invoke each by name: $openspec-apply-change,
 $superpowers:test-driven-development, $superpowers:systematic-debugging. Report each skill as it
 loads. If one does not load, stop and report the error naming it.
 
+Read the `## Loop lessons` section in `docs/workflow.md` before reading the change or starting task
+work. When this pass corrects a failure from the previous pass and the correction is directly verified,
+append one concise cause-to-action line to `$ARTIFACTS_DIR/lesson-candidates.txt`; otherwise do not
+write a candidate.
+
 Change: openspec/changes/$INPUTS.change/ (proposal, specs, design, tasks.md)
 Gate result of the previous pass (empty on the first pass):
 $LOOP_PREV.gate.output

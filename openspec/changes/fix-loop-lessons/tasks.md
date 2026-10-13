@@ -1,0 +1,11 @@
+# Tasks
+
+## 1. First-read lessons
+
+- [x] 1.1 Scenario: `Fix and implement prompts read loop lessons`. First add the failing case `loop: Fix and implement prompts read loop lessons` in `tests/unit/loop/test_lessons.lua`: read `docs/workflow.md`, `.archon/commands/explore-bug.md`, and `.archon/commands/implement.md`; assert the section exists, both prompts name it after their skill-loading block and before task context, and implement names `$ARTIFACTS_DIR/lesson-candidates.txt` with the prior-failure plus direct-verification condition. Run that case and see it fail. Then add the bounded `## Loop lessons` section seeded with the load-budget, async-commit-wait, and shared-VM rules, and update both prompts. Verify with `make test FILE=tests/unit/loop/test_lessons.lua CASE="loop: Fix and implement prompts read loop lessons"`, `make trace`, and `make quick`.
+
+## 2. Deterministic lesson persistence
+
+- [ ] 2.1 Scenarios: `Passing retry records its corrected failure`, `Repeated lessons stay deduplicated and bounded`, `Unfixed failures do not become lessons`. First add those three failing cases to `tests/unit/loop/test_lessons.lua`; invoke `verdict.py` via `vim.system` against a temporary checkout/artifact directory and assert exact append, case/whitespace-normalized deduplication, newest-10 trimming, preservation outside the section, and no write without a candidate. Run the three cases and see them fail. Then add a small shared `.archon/scripts/lessons.py` writer and call it from `verdict.py`; make malformed/missing sections fail without rewriting the file. Verify the three targeted cases pass, then run `make quick`.
+
+- [ ] 2.2 Scenario: `Exhausted run retains a corrected earlier failure`. First add the failing case `loop: Exhausted run retains a corrected earlier failure`: create a throwaway git checkout on `auto`, place a verified candidate in its artifact directory, run `escalation.py` with exhausted inputs, and assert the lesson is recorded once before the escalation result is returned. Run it and see it fail. Then invoke the shared writer idempotently from `escalation.py`, keeping its existing escalation reasons and artifact output unchanged. Verify the targeted case, all of `tests/unit/loop/`, `openspec validate fix-loop-lessons --strict --no-interactive`, and `make check`.
