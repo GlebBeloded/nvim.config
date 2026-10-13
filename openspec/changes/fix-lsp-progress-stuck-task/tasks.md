@@ -28,15 +28,15 @@ Scenarios: "stale task is removed", "report keeps a task fresh".
 
 Scenarios: "refresh timer stops when idle", "refresh timer stops on exit".
 
-- [ ] 3.1 Add a `count_refreshes()` test helper that replaces `package.loaded.lualine.refresh` in the child with a counter (`Refreshes = Refreshes + 1`) and a `refreshes()` getter
-- [ ] 3.2 Add failing case "statusline: refresh timer stops on exit": `count_refreshes()`, `fire` begin, wait ~150 ms, `nvim_exec_autocmds("VimLeavePre", {})`, read the count, wait 300 ms, `eq` the count unchanged; verify it fails (timer keeps ticking)
-- [ ] 3.3 Add case "statusline: refresh timer stops when idle": `count_refreshes()`, `fire` begin, `fire` end, wait ~150 ms for the tick that sees `active` empty, read the count, wait 300 ms, `eq` unchanged; it passes today and guards the idle stop through the refactor
-- [ ] 3.4 Refactor into `ensure_timer()` (creates into a local `local t = assert(uv.new_timer())`, starts it, then assigns the upvalue), a named `tick()` (prune, refresh, stop when `active` is empty) and `stop_timer()` (stop, close, clear the upvalue; no-op when there is no timer); register `VimLeavePre` → `stop_timer` in `gleb_lsp_progress` (design decision 4, rules 6.5, 7.3)
-- [ ] 3.5 Verify both cases pass, then confirm the `need-check-nil` at `lsp_progress.lua:75` is gone: `lua-language-server --check lua/gleb/statusline --configpath="$PWD/.luarc.jsonc" --checklevel=Information` reports no `need-check-nil` for this file (`.luarc.jsonc` keeps it at Information; restoring the severity is `fix-type-check-baseline`'s job, do not change it here)
+- [x] 3.1 Add a `count_refreshes()` test helper that replaces `package.loaded.lualine.refresh` in the child with a counter (`Refreshes = Refreshes + 1`) and a `refreshes()` getter
+- [x] 3.2 Add failing case "statusline: refresh timer stops on exit": `count_refreshes()`, `fire` begin, wait ~150 ms, `nvim_exec_autocmds("VimLeavePre", {})`, read the count, wait 300 ms, `eq` the count unchanged; verify it fails (timer keeps ticking)
+- [x] 3.3 Add case "statusline: refresh timer stops when idle": `count_refreshes()`, `fire` begin, `fire` end, wait ~150 ms for the tick that sees `active` empty, read the count, wait 300 ms, `eq` unchanged; it passes today and guards the idle stop through the refactor
+- [x] 3.4 Refactor into `ensure_timer()` (creates into a local `local t = assert(uv.new_timer())`, starts it, then assigns the upvalue), a named `tick()` (prune, refresh, stop when `active` is empty) and `stop_timer()` (stop, close, clear the upvalue; no-op when there is no timer); register `VimLeavePre` → `stop_timer` in `gleb_lsp_progress` (design decision 4, rules 6.5, 7.3)
+- [x] 3.5 Verify both cases pass, then confirm the `need-check-nil` at `lsp_progress.lua:75` is gone: `lua-language-server --check lua/gleb/statusline --configpath="$PWD/.luarc.jsonc" --checklevel=Information` reports no `need-check-nil` for this file (`.luarc.jsonc` keeps it at Information; restoring the severity is `fix-type-check-baseline`'s job, do not change it here)
 
 ## 4. Integration
 
 Scenarios: none new; regression of "statusline matches reference screenshot".
 
-- [ ] 4.1 Run `make trace` and verify the six new scenarios show as tested with no orphans
+- [x] 4.1 Run `make trace` and verify the six new scenarios show as tested with no orphans
 - [ ] 4.2 Run `make check` and verify it is green, including `make types` and the unchanged screenshot case

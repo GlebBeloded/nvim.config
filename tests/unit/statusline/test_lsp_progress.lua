@@ -57,6 +57,20 @@ local function advance_clock(ms)
 	)
 end
 
+local function count_refreshes()
+	child.lua([[
+        Refreshes = 0
+        package.loaded.lualine.refresh = function()
+            Refreshes = Refreshes + 1
+        end
+    ]])
+end
+
+---@return integer
+local function refreshes()
+	return child.lua_get("Refreshes")
+end
+
 ---@return string
 local function progress_after_delay()
 	vim.uv.sleep(SHOW_AFTER_MS + 50)
@@ -181,6 +195,28 @@ T["statusline: report keeps a task fresh"] = function()
 	advance_clock(40000)
 
 	expect_entry(child.lua_get("Progress.progress()"), "building")
+end
+
+T["statusline: refresh timer stops when idle"] = function()
+	count_refreshes()
+	fire({ kind = "begin", title = "Building" })
+	fire({ kind = "end" })
+	vim.uv.sleep(150)
+	local count = refreshes()
+	vim.uv.sleep(300)
+
+	eq(refreshes(), count)
+end
+
+T["statusline: refresh timer stops on exit"] = function()
+	count_refreshes()
+	fire({ kind = "begin", title = "Building" })
+	vim.uv.sleep(150)
+	child.lua([[vim.api.nvim_exec_autocmds("VimLeavePre", {})]])
+	local count = refreshes()
+	vim.uv.sleep(300)
+
+	eq(refreshes(), count)
 end
 
 return T

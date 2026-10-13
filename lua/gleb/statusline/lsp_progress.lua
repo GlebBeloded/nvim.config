@@ -40,6 +40,7 @@ local uv = vim.uv or vim.loop
 
 ---@type table<string, gleb.lsp_progress.Task> keyed by client_id .. ":" .. token
 local active = {}
+---@type uv.uv_timer_t?
 local timer
 
 local function now_ms()
@@ -86,25 +87,31 @@ local function log(client_name, value)
 	fd:close()
 end
 
+local function stop_timer()
+	if not timer then
+		return
+	end
+	timer:stop()
+	timer:close()
+	timer = nil
+end
+
 -- refresh lualine while there is work; stop the timer once everything is idle
+local function tick()
+	prune_stale()
+	require("lualine").refresh()
+	if next(active) == nil then
+		stop_timer()
+	end
+end
+
 local function ensure_timer()
 	if timer then
 		return
 	end
-	timer = uv.new_timer()
-	timer:start(
-		0,
-		100,
-		vim.schedule_wrap(function()
-			prune_stale()
-			require("lualine").refresh()
-			if next(active) == nil and timer then
-				timer:stop()
-				timer:close()
-				timer = nil
-			end
-		end)
-	)
+	local t = assert(uv.new_timer())
+	t:start(0, 100, vim.schedule_wrap(tick))
+	timer = t
 end
 
 local function on_progress(args)
@@ -181,5 +188,6 @@ end
 local group = vim.api.nvim_create_augroup("gleb_lsp_progress", { clear = true })
 vim.api.nvim_create_autocmd("LspProgress", { group = group, callback = on_progress })
 vim.api.nvim_create_autocmd("LspDetach", { group = group, callback = on_detach })
+vim.api.nvim_create_autocmd("VimLeavePre", { group = group, callback = stop_timer })
 
 return M
