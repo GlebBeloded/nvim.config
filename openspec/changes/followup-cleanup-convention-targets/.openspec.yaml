@@ -1,2 +1,2 @@
 schema: spec-driven
-adopt: loop/cleanup-convention-targets-20261013-190032
+skip_specs: true
