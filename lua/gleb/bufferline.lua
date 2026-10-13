@@ -7,7 +7,7 @@ end
 -- (lualine) lines are the same color and blend in together
 local c = require("gleb.statusline.palette")
 
-local function buferFilter(buf_number)
+local function buffer_filter(buf_number)
 	-- filter out filetypes you don't want to see
 	if vim.bo[buf_number].filetype == "dap-repl" then
 		return false
@@ -52,7 +52,7 @@ bufferline.setup({
 		--   return "("..count..")"
 		-- end,
 		-- NOTE: this will be called a lot so don't do any heavy processing here
-		custom_filter = buferFilter,
+		custom_filter = buffer_filter,
 		offsets = { { filetype = "NvimTree", text = "", padding = 1 } },
 		show_buffer_icons = true,
 		show_buffer_close_icons = false,

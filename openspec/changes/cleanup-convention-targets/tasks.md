@@ -62,19 +62,19 @@ startup), `make smoke`.
 **Files:** `options.lua`, `lsp/config/handlers.lua`, `lsp/config/init.lua`,
 `colors/gruvbox-material/init.lua`, `bufferline.lua`, `select/init.lua`, `select/code_action.lua`
 
-- [ ] 2.1 **Failing test.** `rg -n 'winborder' lua/gleb/lsp`, `rg -n 'require\("gleb/' lua`,
+- [x] 2.1 **Failing test.** `rg -n 'winborder' lua/gleb/lsp`, `rg -n 'require\("gleb/' lua`,
   `rg -n 'buferFilter|langauge|defaultSelect|codeAction|function \w+:[a-z]+[A-Z]' lua` and
   `rg -n 'set background' lua` → hits.
-- [ ] 2.2 **Implement.** Move `vim.o.winborder = "rounded"` and its comment from
+- [x] 2.2 **Implement.** Move `vim.o.winborder = "rounded"` and its comment from
   `lsp/config/handlers.lua:33-34` to `options.lua`. In `colors/gruvbox-material/init.lua:7` replace
   `vim.cmd([[ set background=dark ]])` with `vim.o.background = "dark"` and a one-line comment: the
   colorscheme owns it and it must precede `:colorscheme`.
-- [ ] 2.3 **Implement.** Dot require paths at `lsp/config/init.lua:11-21,40`; rename `buferFilter` →
+- [x] 2.3 **Implement.** Dot require paths at `lsp/config/init.lua:11-21,40`; rename `buferFilter` →
   `buffer_filter` (`bufferline.lua:10,55`), `langauge_configs` → `language_configs`
   (`lsp/config/init.lua:10,28,43,57`), `defaultSelect` → `default_select`, `codeAction` → `code_action`
   (`select/init.lua:10-17`; the module table and its methods `defaultKeymap`, `popupName`,
   `longestEntryLength`, `popupUnderCursorOptions` in `select/code_action.lua` to snake_case, callers updated).
-- [ ] 2.4 **Green.** 2.1 checks list nothing; `nvim --headless -c 'lua io.write(vim.o.winborder)' -c q`
+- [x] 2.4 **Green.** 2.1 checks list nothing; `nvim --headless -c 'lua io.write(vim.o.winborder)' -c q`
   prints `rounded`; `make check` passes. **Commit** `refactor: options own winborder, snake_case names, dot
   requires`.
 
