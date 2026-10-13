@@ -3,7 +3,10 @@ worktree. Archon only warns for `plugin:skill` names and the SDK treats `skills:
 a missing plugin would otherwise go unnoticed. A project skill needs `.claude/skills/<name>/SKILL.md`;
 a `<plugin>:<skill>` needs the plugin reported enabled without errors by `claude plugin list --json`
 (run in the worktree, so scope and path problems show) and `<installPath>/skills/<skill>/SKILL.md`.
-Usage: skills_check.py <workflow.yaml>...
+`--install-plugins` (run by `make loop-setup`) instead installs at user scope every plugin that
+`.claude/settings.json` enables and Claude does not load: project scope is recorded per path, and
+every Archon run has a new worktree path.
+Usage: skills_check.py <workflow.yaml>... | skills_check.py --install-plugins
 """
 
 import json
@@ -56,8 +59,27 @@ def unresolved(names: list[str]) -> list[str]:
     ]
 
 
+def enabled_plugins() -> list[str]:
+    settings = pathlib.Path(".claude/settings.json")
+    enabled = json.loads(settings.read_text()).get("enabledPlugins") or {} if settings.is_file() else {}
+    return [plugin_id for plugin_id, on in enabled.items() if on]
+
+
+def install_plugins() -> int:
+    enabled = enabled_plugins()
+    loaded = loaded_plugins() if enabled else {}
+    for plugin_id in enabled:
+        if plugin_id.split("@")[0] not in loaded:
+            print(f"skills_check: installing {plugin_id} at user scope")
+            if subprocess.run(["claude", "plugin", "install", plugin_id, "--scope", "user"]).returncode != 0:
+                return 1
+    return 0
+
+
 def main(paths: list[str]) -> int:
-    import yaml
+    if paths == ["--install-plugins"]:
+        return install_plugins()
+    import yaml  # only the workflow check needs PyYAML; --install-plugins is stdlib only
 
     names = sorted({name for path in paths for name in declared_skills(yaml.safe_load(pathlib.Path(path).read_text()))})
     missing = unresolved(names)

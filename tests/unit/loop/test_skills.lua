@@ -271,4 +271,33 @@ T["loop: Every declared skill is named and loaded by its command"] = function()
 	eq(violations, {})
 end
 
+--- Repo on branch `auto` with one commit, this checkout's Makefile and skills_check.py linked in
+--- (as in test_cleanup.lua) and `.claude/settings.json` enabling the superpowers plugin.
+---@return string
+local function make_setup_repo()
+	local repo = H.tempdir(child)
+	eq(H.system(child, { "git", "init", "-q", "-b", "auto" }, repo, H.GIT_ENV).code, 0)
+	eq(H.system(child, { "git", "commit", "-q", "--allow-empty", "-m", "init" }, repo, H.GIT_ENV).code, 0)
+	link_from_checkout(repo, "Makefile")
+	link_from_checkout(repo, ".archon/scripts/skills_check.py")
+	write_files(repo, { [".claude/settings.json"] = vim.json.encode({ enabledPlugins = { [PLUGIN_ID] = true } }) })
+	return repo
+end
+
+T["loop: Loop setup installs a missing enabled plugin"] = function()
+	local repo = make_setup_repo()
+	local bin = H.tempdir(child)
+	local log = write_claude_stub(bin, {
+		{ id = PLUGIN_ID, scope = "project", enabled = true, installPath = bin, errors = { "not installed" } },
+	})
+	local archon = vim.fs.joinpath(bin, "archon")
+	write_executable(archon, "#!/bin/sh\nexit 0")
+	local env = stub_env(bin, { HOME = H.tempdir(child), ARCHON = archon })
+	local result = H.system(child, { "make", "loop-setup" }, repo, env)
+	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
+	local calls = child.lua_get("vim.fn.filereadable(...) == 1 and vim.fn.readfile(...) or {}", { log })
+	local installed = vim.list_contains(calls, "plugin install " .. PLUGIN_ID .. " --scope user")
+	eq(installed, true, { fail_reason = table.concat(calls, "\n") })
+end
+
 return T

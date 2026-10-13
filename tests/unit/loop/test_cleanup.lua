@@ -38,8 +38,8 @@ local function write_executable(path, content)
 	})
 end
 
---- Repo on branch `auto` with one commit, no `local` remote, this checkout's Makefile and
---- queue_pick.py (for `make queue`).
+--- Repo on branch `auto` with one commit, no `local` remote, this checkout's Makefile,
+--- queue_pick.py (for `make queue`) and skills_check.py (for `make loop-setup`).
 ---@return string
 local function make_repo()
 	local repo = H.tempdir(child)
@@ -48,10 +48,12 @@ local function make_repo()
 	child.lua("vim.uv.fs_symlink(...)", { vim.fs.joinpath(H.root, "Makefile"), vim.fs.joinpath(repo, "Makefile") })
 	local scripts = vim.fs.joinpath(repo, ".archon/scripts")
 	child.fn.mkdir(scripts, "p")
-	child.lua(
-		"vim.uv.fs_copyfile(...)",
-		{ vim.fs.joinpath(H.root, ".archon/scripts/queue_pick.py"), vim.fs.joinpath(scripts, "queue_pick.py") }
-	)
+	for _, script in ipairs({ "queue_pick.py", "skills_check.py" }) do
+		child.lua(
+			"vim.uv.fs_copyfile(...)",
+			{ vim.fs.joinpath(H.root, ".archon/scripts", script), vim.fs.joinpath(scripts, script) }
+		)
+	end
 	return repo
 end
 
