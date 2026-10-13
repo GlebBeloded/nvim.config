@@ -90,12 +90,14 @@ Known issues and planned work are queued changes in `openspec/changes/`; there i
   once per build pass in the `gate` script.
 - Plugins: `make loop-setup` installs the plugins that `.claude/settings.json` enables at **user**
   scope. Project scope is recorded per path, and every Archon worktree is a new path, so a
-  project-scope install never loads in a run. It also installs every Codex plugin a codex node declares.
+  project-scope install never loads in a run. It also installs every Codex plugin a codex node
+  declares.
 - AI nodes can use only the skills they declare (`skills:` on the node). Add a skill there before a
   prompt mentions it. Each workflow's `skills-check` node fails the run when a declared skill does
   not resolve in the worktree for the provider that runs the node, and every command loads its
-  declared skills (Skill tool on Claude, `$<skill>` on Codex) as its first step. Archon's "Claude skills not found on disk: superpowers:…" warning is expected for
-  plugin skills; `skills-check` is the real check.
+  declared skills (Skill tool on Claude, `$<skill>` on Codex) as its first step. Archon's "Claude
+  skills not found on disk: superpowers:…" warning is expected for plugin skills; `skills-check` is
+  the real check.
 - `--dry-run` auto-approves gates with the plain string `approved`, so nodes that read
   `$gate.output.decision` fail in a dry run. Pass `--pause-at-gates`, or stub the nodes after the gate.
 

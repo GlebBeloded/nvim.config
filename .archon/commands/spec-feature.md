@@ -3,9 +3,10 @@ description: Propose a feature as an OpenSpec change with renders
 ---
 # Propose the feature
 
-First, load each of these skills before any other step: `openspec-propose`, `openspec-continue-change`.
-On Claude, load each with the Skill tool. On Codex, invoke each by name: $openspec-propose, $openspec-continue-change.
-Report each skill as it loads. If one does not load, stop and report the error naming it.
+First, load each of these skills before any other step: `openspec-propose`,
+`openspec-continue-change`. On Claude, load each with the Skill tool. On Codex, invoke each by name:
+$openspec-propose, $openspec-continue-change. Report each skill as it loads. If one does not load,
+stop and report the error naming it.
 
 Idea: $ARGUMENTS
 Brainstorm: $ARTIFACTS_DIR/brainstorm.md
