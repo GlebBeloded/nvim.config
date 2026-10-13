@@ -30,16 +30,16 @@ Scenarios: `Log directory and file created`, `Require alone does not log`, `capt
 
 Scenarios: `Other redirection survives a flush`; every task-1 scenario as regression.
 
-- [ ] 2.1 Failing test first: add `"nvim-debug-log: Other redirection survives a flush"`
+- [x] 2.1 Failing test first: add `"nvim-debug-log: Other redirection survives a flush"`
   (`:redir => g:other`, `:echo "OTHER_REDIR"`, `vim.wait(3000)`, `:echo "AFTER_FLUSH"`,
   `:redir END`, assert `child.g.other` contains both). Verify it fails against the `:redir`
   implementation.
-- [ ] 2.2 Switch `setup()`, the flush and `stop()` to `'verbosefile'` (design: Proposed A, Flush
+- [x] 2.2 Switch `setup()`, the flush and `stop()` to `'verbosefile'` (design: Proposed A, Flush
   without side effects): `setup()` sets it to the module's path; the flush runs
   `noautocmd set verbosefile=` then `noautocmd set verbosefile=<path>` only while the option equals
   that path; `stop()` resets it to `""` under the same check. Verify every `nvim-debug-log` case
   passes.
-- [ ] 2.3 In `docs/workflow.md:167` (Neovim keys debug step) add that `:verbose map`'s
+- [x] 2.3 In `docs/workflow.md:167` (Neovim keys debug step) add that `:verbose map`'s
   `Last set from` line goes to the debug log unless
   `:lua require("gleb.nvim_debug_log").stop()` runs first. Verify by hand in a headless child:
   after `setup()` + `stop()`, `execute("verbose nmap <C-h>")` contains `Last set from`.

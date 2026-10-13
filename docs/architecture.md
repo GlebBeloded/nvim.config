@@ -74,7 +74,7 @@ sequenceDiagram
     participant M as gleb modules
     participant E as Events
 
-    I->>M: nvim_debug_log first: redir to /tmp/nvim
+    I->>M: nvim_debug_log.setup() first: log to /tmp/nvim
     I->>L: plugins: bootstrap, lazy.setup, start plugins
     I->>M: options, colors, keymaps
     I->>M: lsp … git, session, alpha, autocommands, lualine, file_tree

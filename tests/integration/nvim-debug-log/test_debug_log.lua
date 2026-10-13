@@ -95,6 +95,18 @@ T["nvim-debug-log: Require alone does not log"] = function()
 	eq(log_file(), nil)
 end
 
+T["nvim-debug-log: Other redirection survives a flush"] = function()
+	child.cmd("redir => g:other")
+	child.cmd('echo "OTHER_REDIR"')
+	vim.wait(WAIT_MS)
+	child.cmd('echo "AFTER_FLUSH"')
+	child.cmd("redir END")
+
+	local other = child.g.other
+	eq(other:find("OTHER_REDIR", 1, true) ~= nil, true)
+	eq(other:find("AFTER_FLUSH", 1, true) ~= nil, true)
+end
+
 T["nvim-debug-log: Setup twice logs once"] = function()
 	child.lua([[require("gleb.nvim_debug_log").setup()]])
 	child.cmd('echom "LOGGED_ONCE"')
