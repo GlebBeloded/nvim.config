@@ -11,11 +11,17 @@ local AUTOSAVE_WAIT_MS = 1500
 ---@type string
 local dir
 
+--- RPC can be served while init.lua still runs; restore happens on VimEnter.
+local function wait_vim_enter()
+	assert(child.wait("vim.v.vim_did_enter == 1", 5000), "VimEnter did not fire")
+end
+
 --- Full config started bare in a fresh temp cwd (child state is sandboxed).
 local function start()
 	dir = vim.fn.tempname()
 	vim.fn.mkdir(dir, "p")
 	child.start_config()
+	wait_vim_enter()
 	child.cmd("cd " .. dir)
 end
 
@@ -50,20 +56,26 @@ local function set_mtime(path, mtime)
 	assert(vim.uv.fs_utime(path, mtime, mtime))
 end
 
---- Restart the full config in `dir` under zellij pane `zellij`/`pane` with
---- `files` as arguments (bare by default), keeping the child's state
---- (start_config would reset it).
----@param zellij string
----@param pane string
+--- Restart in either a named zellij session/pane (three arguments) or just a pane
+--- (one or two arguments), preserving both existing test call shapes.
+---@param zellij_or_pane string
+---@param pane_or_args? string|string[]
 ---@param files? string[]
-local function restart_in_pane(zellij, pane, files)
-	vim.env.ZELLIJ_SESSION_NAME, vim.env.ZELLIJ_PANE_ID = zellij, pane
-	MiniTest.finally(function()
-		vim.env.ZELLIJ_SESSION_NAME, vim.env.ZELLIJ_PANE_ID = nil, nil
-	end)
-	local args = vim.list_extend({ "--cmd", "cd " .. dir }, H.config_args())
-	child.restart(vim.list_extend(args, files or {}))
-	vim.iter(H.DISABLED_PLUGINS):each(child.disable_plugin)
+local function restart_in_pane(zellij_or_pane, pane_or_args, files)
+	if type(pane_or_args) == "string" then
+		vim.env.ZELLIJ_SESSION_NAME, vim.env.ZELLIJ_PANE_ID = zellij_or_pane, pane_or_args
+		MiniTest.finally(function()
+			vim.env.ZELLIJ_SESSION_NAME, vim.env.ZELLIJ_PANE_ID = nil, nil
+		end)
+		local args = vim.list_extend({ "--cmd", "cd " .. dir }, H.config_args())
+		child.restart(vim.list_extend(args, files or {}))
+		vim.iter(H.DISABLED_PLUGINS):each(child.disable_plugin)
+		return
+	end
+
+	local cd = { "--cmd", "cd " .. vim.fn.fnameescape(dir) }
+	child.restart_config(vim.list_extend(cd, pane_or_args or {}), { env = { ZELLIJ_PANE_ID = zellij_or_pane } })
+	wait_vim_enter()
 end
 
 local T = H.child_set(child, start)

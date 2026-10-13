@@ -72,8 +72,12 @@ function M.isolate()
 	return sandbox
 end
 
+---@class test.RestartOpts
+---@field env? table<string, string> env vars set for this start only (e.g. ZELLIJ_PANE_ID)
+
 ---@class test.Child: MiniTest.child
 ---@field start_config fun() Restart with the real config (init.lua); copilot.lua disabled.
+---@field restart_config fun(args?: string[], opts?: test.RestartOpts) Start the real config again on the previous start's data/state (sessions, shada kept), with extra Neovim args.
 ---@field start_bare fun(plugins?: string[]) Restart with tests/minimal_init.lua plus the named lazy plugins on rtp.
 ---@field disable_plugin fun(name: string) Remove lazy.nvim load handlers of a plugin.
 ---@field wait_very_lazy fun() Fire UIEnter (absent headless) and wait for VeryLazy.
@@ -121,6 +125,23 @@ function M.config_args()
 	}
 end
 
+--- Run `fn` with `env` set in this process (inherited by a child started
+--- inside it), then restore the previous values.
+---@param env table<string, string>
+---@param fn fun()
+local function with_env(env, fn)
+	local saved = {}
+	for name, value in pairs(env) do
+		saved[name] = vim.env[name] or false
+		vim.env[name] = value
+	end
+	local ok, err = pcall(fn)
+	for name, value in pairs(saved) do
+		vim.env[name] = value or nil
+	end
+	assert(ok, err)
+end
+
 --- New child Neovim with config/bare start helpers.
 ---@return test.Child
 function M.new_child()
@@ -139,6 +160,13 @@ function M.new_child()
 		-- mini.test always passes --clean, which drops stdpath("config") from rtp
 		M.isolate()
 		child.restart(M.config_args())
+		vim.iter(M.DISABLED_PLUGINS):each(child.disable_plugin)
+	end
+
+	function child.restart_config(args, opts)
+		with_env(opts and opts.env or {}, function()
+			child.restart(vim.list_extend(M.config_args(), args or {}))
+		end)
 		vim.iter(M.DISABLED_PLUGINS):each(child.disable_plugin)
 	end
 
@@ -195,6 +223,164 @@ function M.xfail(reason, case)
 			error("XPASS (bug fixed? remove H.xfail): " .. reason)
 		end
 		MiniTest.skip("XFAIL: " .. reason)
+	end
+end
+
+---@class test.GitRepoOpts
+---@field remote? string URL added as `origin`
+
+--- Run git in `dir` on the host and fail the case on a non-zero exit.
+---@param dir string
+---@param args string[]
+---@return string stdout
+function M.git(dir, args)
+	local result = vim.system(vim.list_extend({ "git", "-C", dir }, args), { text = true }):wait()
+	assert(result.code == 0, ("git %s: %s"):format(table.concat(args, " "), result.stderr))
+	return result.stdout
+end
+
+--- Write `files` (path relative to `dir` -> content) into `dir`.
+---@param dir string
+---@param files table<string, string>
+function M.write_files(dir, files)
+	for name, content in pairs(files) do
+		local path = vim.fs.joinpath(dir, name)
+		vim.fn.mkdir(vim.fs.dirname(path), "p")
+		vim.fn.writefile(vim.split(content, "\n", { plain = true }), path, "b")
+	end
+end
+
+--- Temp git repository on branch `main` with `files` committed, so cases
+--- that stage, commit or diff never touch this checkout.
+---@param files table<string, string> path relative to the repo -> content
+---@param opts? test.GitRepoOpts
+---@return string path of the repo
+function M.git_repo(files, opts)
+	local dir = vim.fs.normalize(vim.fn.resolve(vim.fn.tempname()))
+	vim.fn.mkdir(dir, "p")
+	M.git(dir, { "init", "-q", "-b", "main" })
+	M.git(dir, { "config", "user.name", "Test" })
+	M.git(dir, { "config", "user.email", "test@example.com" })
+	M.git(dir, { "config", "commit.gpgsign", "false" })
+	M.write_files(dir, files)
+	M.git(dir, { "add", "-A" })
+	M.git(dir, { "commit", "-q", "--allow-empty", "-m", "initial" })
+	if opts and opts.remote then
+		M.git(dir, { "remote", "add", "origin", opts.remote })
+	end
+	return dir
+end
+
+---@class test.JobScript
+---@field stdout? string[] `data` passed to `on_stdout` (not called when nil)
+---@field code? integer exit code passed to `on_exit` (default 0)
+---@field hold? boolean keep the job running until `M.finish_job`
+
+---@class test.JobCall
+---@field cmd string|string[] command given to `jobstart`
+---@field stdin string everything sent to the job with `chansend`
+---@field stopped boolean `jobstop` was called on it
+
+--- Child-side: replace `vim.fn.jobstart` with a recorder (see M.record_jobstart).
+--- Fake job ids start at 100000 so `chansend`/`chanclose`/`jobstop` pass
+--- other channels through to the originals.
+local RECORD_JOBSTART_LUA = [[
+local scripts = ...
+local orig = { chansend = vim.fn.chansend, chanclose = vim.fn.chanclose, jobstop = vim.fn.jobstop }
+local jobs = {}
+JobstartCalls = {}
+
+local function program(cmd)
+	return type(cmd) == "table" and cmd[1] or vim.split(cmd, " ", { trimempty = true })[1]
+end
+
+local function finish(id, opts, script)
+	if script.stdout and opts.on_stdout then opts.on_stdout(id, script.stdout, "stdout") end
+	if opts.on_exit then opts.on_exit(id, script.code or 0, "exit") end
+	-- queued after anything the callbacks schedule, so it runs once that is done
+	vim.schedule(function() LastHandledJob = id end)
+end
+
+local held_opts
+
+function FinishHeldJob(script)
+	local id, opts = HeldJob, held_opts
+	vim.schedule(function() finish(id, opts, script) end)
+end
+
+function vim.fn.jobstart(cmd, opts)
+	opts = opts or {}
+	local id = 100000 + #JobstartCalls
+	local call = { cmd = cmd, stdin = "", stopped = false }
+	table.insert(JobstartCalls, call)
+	jobs[id] = call
+	local script = scripts[program(cmd)] or {}
+	if script.hold then
+		HeldJob, held_opts = id, opts
+	else
+		vim.schedule(function() finish(id, opts, script) end)
+	end
+	return id
+end
+
+function vim.fn.chansend(id, data)
+	if not jobs[id] then return orig.chansend(id, data) end
+	jobs[id].stdin = jobs[id].stdin .. (type(data) == "table" and table.concat(data, "\n") or data)
+	return #jobs[id].stdin
+end
+
+function vim.fn.chanclose(id, ...)
+	if not jobs[id] then return orig.chanclose(id, ...) end
+	return 1
+end
+
+function vim.fn.jobstop(id)
+	if not jobs[id] then return orig.jobstop(id) end
+	jobs[id].stopped = true
+	return 1
+end]]
+
+--- Replace `vim.fn.jobstart` in `child` with a recorder: no process is
+--- spawned; each call records its command and the stdin sent via `chansend`,
+--- then on `vim.schedule` calls `on_stdout` (if scripted) and `on_exit` with
+--- the script of the command's program (`cmd[1]`, or the first word of a
+--- string command; unscripted programs exit 0 without output). A `hold`
+--- script keeps the job running until `M.finish_job`.
+---@param child MiniTest.child
+---@param scripts? table<string, test.JobScript> program name -> scripted result
+---@return fun(): test.JobCall[] calls recorded so far
+function M.record_jobstart(child, scripts)
+	child.lua(RECORD_JOBSTART_LUA, { scripts or vim.empty_dict() })
+	return function()
+		return child.lua_get("JobstartCalls")
+	end
+end
+
+--- Finish the last held job (see M.record_jobstart) with stdout `text`, split
+--- into lines as a channel delivers it, and exit `code`; wait until the
+--- callbacks and what they scheduled have run.
+---@param child test.Child
+---@param text string
+---@param code integer
+function M.finish_job(child, text, code)
+	child.lua("FinishHeldJob(...)", { { stdout = vim.split(text, "\n"), code = code } })
+	assert(child.wait("LastHandledJob == HeldJob"), "job result was not handled")
+end
+
+---@class test.Notification
+---@field msg string
+---@field level? integer vim.log.levels value
+
+--- Replace `vim.notify` in `child` with a recorder (nothing is shown).
+---@param child MiniTest.child
+---@return fun(): test.Notification[] notifications recorded so far
+function M.record_notify(child)
+	child.lua([[
+		Notifications = {}
+		vim.notify = function(msg, level) table.insert(Notifications, { msg = msg, level = level }) end
+	]])
+	return function()
+		return child.lua_get("Notifications")
 	end
 end
 
