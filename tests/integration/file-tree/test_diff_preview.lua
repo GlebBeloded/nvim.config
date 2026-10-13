@@ -24,7 +24,7 @@ end
 
 ---@return integer
 local function focus_guard_count()
-	return child.lua_get([[#vim.api.nvim_get_autocmds({ group = "DiffPreviewFocusGuard" })]])
+	return child.lua_get([[#vim.api.nvim_get_autocmds({ group = "gleb_file_tree_focus_guard" })]])
 end
 
 ---@param path string
@@ -85,6 +85,7 @@ T["file-tree: Return clears tab state and focus guard"] = function()
 	stub_codediff_view()
 	open_diff(TRACKED)
 	eq(wait_diff_tab(), true)
+	eq(focus_guard_count() > 0, true)
 
 	child.lua("DiffPreview.return_to_original()")
 

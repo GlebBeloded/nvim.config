@@ -24,7 +24,7 @@ local DEBOUNCE_MS = 50
 local NAVIGATION_WINDOW_MS = 300 -- refocus neo-tree if diff gets focus within this window
 
 -- Autocmd group for focus correction
-local augroup = vim.api.nvim_create_augroup("DiffPreviewFocusGuard", { clear = true })
+local augroup = vim.api.nvim_create_augroup("gleb_file_tree_focus_guard", { clear = true })
 
 -- Check if we're in navigation mode (recently pressed j/k)
 local function is_navigating()
