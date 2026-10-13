@@ -329,6 +329,24 @@ status() {
 	fi
 }
 
+E2E_LOCK=$STATE/e2e.lock
+
+# one host-side e2e run at a time: worktrees share the guest repo (rsync --delete) and its GUI session
+lock_e2e() {
+	mkdir -p "$STATE"
+	local owner
+	until mkdir "$E2E_LOCK" 2>/dev/null; do
+		owner=$(cat "$E2E_LOCK/pid" 2>/dev/null || true)
+		if [ -n "$owner" ] && ! kill -0 "$owner" 2>/dev/null; then
+			rm -rf "$E2E_LOCK" # stale: its run died without the EXIT trap
+			continue
+		fi
+		sleep 2
+	done
+	echo $$ >"$E2E_LOCK/pid"
+	trap 'rm -rf "$E2E_LOCK"' EXIT
+}
+
 e2e() {
 	if in_vm; then
 		exec make -s -C "$ROOT" e2e-local
@@ -337,6 +355,7 @@ e2e() {
 		echo "e2e: SKIPPED: E2E=0"
 		return
 	}
+	lock_e2e
 	if ! command -v lume >/dev/null || ! running; then
 		if [ "${SANDBOX_START:-1}" != 1 ]; then
 			echo "e2e: SKIPPED: sandbox down — make sandbox-up"
