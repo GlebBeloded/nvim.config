@@ -285,8 +285,8 @@ Known gaps this table pins down: Cmd+J/Cmd+K never reach Neovim (the later `shar
 ## Collision table
 | zellij key | zellij action | Shadowed Neovim key | Neovim modes |
 |---|---|---|---|
-| alt j | MoveFocus down | `<M-j>` | n s x |
-| alt k | MoveFocus up | `<M-k>` | n s x |
+| alt j | MoveFocus down | `<M-j>` | n x |
+| alt k | MoveFocus up | `<M-k>` | n x |
 | alt shift h | navigator resize left | `<M-H>` | n |
 | alt shift j | navigator resize down | `<M-J>` | n |
 | alt shift k | navigator resize up | `<M-K>` | n |

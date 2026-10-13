@@ -35,13 +35,11 @@ kmap("n", "<C-q>", ":bdelete<CR>", opts)
 kmap("i", "jk", "<ESC>", opts)
 
 -- Visual mode: stay in indent mode
-kmap("v", "<", "<gv", opts)
-kmap("v", ">", ">gv", opts)
+kmap("x", "<", "<gv", opts)
+kmap("x", ">", ">gv", opts)
 
 -- Visual mode: move text and paste without yanking
-kmap("v", "<A-j>", ":m .+1<CR>==", opts)
-kmap("v", "<A-k>", ":m .-2<CR>==", opts)
-kmap("v", "p", '"_dP', opts)
+kmap("x", "p", '"_dP', opts)
 
 -- Visual block: move text
 kmap("x", "J", ":move '>+1<CR>gv-gv", opts)
@@ -95,7 +93,6 @@ kmap("n", "<A-F>", ":Telescope live_grep<cr>", opts)
 -- Code actions
 kmap("n", "<C-CR>", vim.lsp.buf.code_action, opts)
 kmap("x", "<C-CR>", vim.lsp.buf.code_action, opts)
-kmap("v", "<C-CR>", vim.lsp.buf.code_action, opts)
 
 -- LSP navigation
 kmap("n", "gD", vim.lsp.buf.declaration, opts)
