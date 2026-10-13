@@ -68,6 +68,7 @@ def breaking_changes() -> list[str]:
     gone = set(l for l in lines(specs, "-") if l.startswith("#### Scenario:")) - set(
         l for l in lines(specs, "+") if l.startswith("#### Scenario:")
     )
-    if gone or "## REMOVED Requirements" in diff("openspec/changes"):
+    removed_req = any(l.startswith("## REMOVED Requirements") for l in lines(diff("openspec/changes"), "+"))
+    if gone or removed_req:
         reasons.append("removes behaviour: " + ("; ".join(sorted(gone)) if gone else "REMOVED Requirements"))
     return reasons

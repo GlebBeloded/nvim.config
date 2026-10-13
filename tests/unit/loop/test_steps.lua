@@ -103,6 +103,14 @@ T["loop: Judge asks only for a breaking change"] = function()
 	eq(vim.json.decode(result.stdout).decision, "ask")
 end
 
+T["loop: Judge ignores REMOVED Requirements mentioned in prose"] = function()
+	local repo = branch_repo({
+		["openspec/changes/c/specs/loop/spec.md"] = "#### Scenario: s\n- **WHEN** a `## REMOVED Requirements` section lists x",
+	})
+	local result = run("escalation.py", repo)
+	eq(vim.json.decode(result.stdout).decision, "ship")
+end
+
 T["loop: Judge ships an internal change without asking"] = function()
 	local repo = branch_repo({ ["lua/gleb/util.lua"] = "return {}" })
 	local result = run("escalation.py", repo)
