@@ -38,7 +38,7 @@ The chain SHALL have exactly the zellij `normal`-mode bindings in the collision 
 - **THEN** the shadowed keys are exactly the collision table
 
 ### Requirement: Real zellij delivers shortcuts
-The stack SHALL behave as the shortcut table when real zellij 0.45 runs the user's keybinds (session serialization off, fixed two-pane layout: Neovim with the real config on the left, `cat` on the right) inside a tmux pty and the rows' bytes are written with `tmux send-keys -H`.
+The stack SHALL behave as the shortcut table when real zellij 0.45 runs the user's keybinds (session serialization off, fixed two-pane layout: Neovim with the real config on the left, `cat` on the right) inside a tmux pty and the rows' bytes are written with `tmux send-keys -H`. The harness SHALL read zellij state through `zellij action` calls that retry zellij's transient CLI failures (`There is no active session!`, or `list-clients` with no client row) until a valid answer or a bounded deadline, so a case fails only when the session or its client is really gone.
 
 #### Scenario: Every passed shortcut reaches its Neovim key through zellij
 - **WHEN** a recorder mapping is set in Neovim normal mode for each row's *Neovim receives* key and the row's bytes are sent
@@ -67,6 +67,14 @@ The stack SHALL behave as the shortcut table when real zellij 0.45 runs the user
 #### Scenario: Cmd+H in a non-Neovim pane moves zellij focus left
 - **WHEN** the `cat` pane is focused and `\x08` is sent
 - **THEN** zellij focus moves to the Neovim pane on the left
+
+#### Scenario: The stack harness retries a transient zellij CLI failure
+- **WHEN** `focused_pane()` of a `tests.shortcuts.stack` Stack is called with `zellij` stubbed on `PATH` so that `action list-clients` first exits 1 printing `There is no active session!`, then exits 0 with only the header line, then prints a client row on `terminal_0`
+- **THEN** it returns `terminal_0` and the stub was called 3 times
+
+#### Scenario: The stack harness fails when the zellij session stays gone
+- **WHEN** `focused_pane()` is called with `zellij` stubbed on `PATH` so that every `action list-clients` exits 1 printing `There is no active session!`
+- **THEN** it raises an error containing `There is no active session!` within the harness deadline
 
 ### Requirement: Real key presses in the sandbox VM deliver shortcuts
 The e2e layer SHALL deliver physical key presses to Neovim as the shortcut table says, in a dedicated Alacritty instance (repo config) running real zellij (user keybinds, the stack layer's layout), with key events posted to that process inside the sandbox macOS VM, never on the host. Exceptions: the app menu takes Cmd+Q and Cmd+H, Cmd+Shift+-/= arrive in Alacritty's kitty encoding, and the key helper never presses Cmd+Shift+Q (system Log Out).
