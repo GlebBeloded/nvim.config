@@ -131,7 +131,3 @@ local jump_prev_opts = vim.tbl_extend("force", opts, { desc = "Diagnostics: Prev
 kmap("n", "<A-w>", jump_next, jump_next_opts)
 kmap("n", "ge", jump_next, jump_next_opts)
 kmap("n", "[d", jump_prev, jump_prev_opts)
-
--- Leader keys
-vim.g.mapleader = "<D->"
-vim.g.maplocalleader = "\\"
