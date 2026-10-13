@@ -93,9 +93,17 @@ end
 -- nvim_input, not child.type_keys: type_keys' `v:errmsg` round-trips make the
 -- menu's pending getchar() return, so the prompt would be gone before reading.
 T["ai: Menu shows prompt"] = function()
+	child.lua([[Echoed = {}
+local echo = vim.api.nvim_echo
+vim.api.nvim_echo = function(chunks, ...)
+	vim.list_extend(Echoed, chunks)
+	return echo(chunks, ...)
+end]])
 	child.api.nvim_input("<A-9>")
 
 	eq(wait_menu_row():sub(1, #MENU), MENU)
+	eq(child.lua_get("Echoed"), { { MENU, "Question" } })
+	eq(prompt_buffers(), 0)
 end
 
 T["ai: Menu s opens search prompt"] = function()
