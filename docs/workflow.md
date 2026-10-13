@@ -77,12 +77,17 @@ Known issues and planned work are queued changes in `openspec/changes/`; there i
 
 - `.archon/config.yaml`: base branch `auto`, remote `local` (a self-remote added by `make loop-setup`), so
   `auto` never has to exist on GitHub.
-- Claude runs with `bypassPermissions` and project settings, so the superpowers plugin in
-  `.claude/settings.json` is active. There are no Claude Code hooks: the `implement` command runs
-  `make fmt` and `make quick` itself, and the full `make check E2E=1` runs once per build pass in the
-  `gate` script.
+- Claude runs with `bypassPermissions` and project settings. There are no Claude Code hooks: the
+  `implement` command runs `make fmt` and `make quick` itself, and the full `make check E2E=1` runs
+  once per build pass in the `gate` script.
+- Plugins: `make loop-setup` installs the plugins that `.claude/settings.json` enables at **user**
+  scope. Project scope is recorded per path, and every Archon worktree is a new path, so a
+  project-scope install never loads in a run.
 - AI nodes can use only the skills they declare (`skills:` on the node). Add a skill there before a
-  prompt mentions it.
+  prompt mentions it. Each workflow's `skills-check` node fails the run when a declared skill does
+  not resolve in the worktree, and every command loads its declared skills with the Skill tool as
+  its first step. Archon's "Claude skills not found on disk: superpowers:…" warning is expected for
+  plugin skills; `skills-check` is the real check.
 - `--dry-run` auto-approves gates with the plain string `approved`, so nodes that read
   `$gate.output.decision` fail in a dry run. Pass `--pause-at-gates`, or stub the nodes after the gate.
 

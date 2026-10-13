@@ -57,7 +57,7 @@ Scenario: "Loop setup installs a missing enabled plugin".
 
 No scenario (docs only).
 
-- [ ] 5.1 `docs/workflow.md`, Setup facts: replace the "superpowers plugin … is active" sentence. The new text says:
+- [x] 5.1 `docs/workflow.md`, Setup facts: replace the "superpowers plugin … is active" sentence. The new text says:
   - `make loop-setup` installs the plugins that `.claude/settings.json` enables at user scope, because project scope is recorded per path and every Archon worktree is a new path;
   - the `skills-check` node fails a run whose declared skills do not resolve;
   - every command loads its declared skills first;
