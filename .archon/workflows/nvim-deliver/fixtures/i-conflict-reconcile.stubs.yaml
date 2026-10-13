@@ -8,7 +8,7 @@ fixture:
     resolve: "lua/gleb/keymaps.lua"
 exec-code: true
 skills-check: "skills ok"
-plan-check: { needed: false }
+plan-check: { needed: false, has_change: true }
 plan-gate: "change demo-change is valid"
 pack: "context.md written"
 implement: "task 1 done"

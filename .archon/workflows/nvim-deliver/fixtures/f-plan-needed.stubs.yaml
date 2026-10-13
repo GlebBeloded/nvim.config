@@ -8,7 +8,7 @@ fixture:
     plan: "User feedback from the approval gate (may be empty, it overrides the proposal): use option B"
 exec-code: true
 skills-check: "skills ok"
-plan-check: { needed: true }
+plan-check: { needed: true, has_change: true }
 plan: "tasks.md written"
 plan-gate: "change demo-change is valid"
 pack: "context.md written"

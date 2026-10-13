@@ -245,7 +245,7 @@ The delivery loop SHALL implement one task per fresh agent session from a script
 
 #### Scenario: Plan is skipped when the spec wrote tasks
 - **WHEN** `.archon/scripts/tasks.py --plan-needed` runs for a change whose tasks.md has a task, and for one with no tasks.md
-- **THEN** it prints `{"needed": false}` and then `{"needed": true}`
+- **THEN** it prints `{"needed": false, "has_change": true}` and then `{"needed": false, "has_change": false}` (no change folder: an adopted change that is already archived, so plan, tasks and implement are skipped)
 
 #### Scenario: Context pack names installed plugin sources
 - **WHEN** `.archon/scripts/context_pack.py` runs for a change whose proposal mentions a plugin listed in `lazy-lock.json`

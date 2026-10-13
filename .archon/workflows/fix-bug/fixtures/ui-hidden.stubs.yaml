@@ -11,7 +11,7 @@ spec-gate: "valid"
 preview: "MUST-NOT-RUN"
 # nvim-deliver (include `deliver`): top-level ids get the deliver__ prefix, loop bodies keep theirs
 deliver__skills-check: "skills ok"
-deliver__plan-check: { needed: false }
+deliver__plan-check: { needed: false, has_change: true }
 deliver__plan-gate: "valid"
 pack: "context.md written"
 implement: "task 1 done"

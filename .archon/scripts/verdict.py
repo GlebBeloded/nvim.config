@@ -50,7 +50,7 @@ attempt = int(value("attempt", 0))
 exhausted = not passed and attempt >= MAX_ATTEMPTS
 feedback = [str(value("failures", "") or "")]
 feedback += [f"hard rule: {v}" for v in violations]
-feedback += [f"verify: {value('verify_findings', '')}" if int(value("critical", -1)) > 0 else ""]
+feedback += [f"verify: {value('verify_findings', '')}" if int(value("critical", -1)) > 0 and value("verify_findings", "") else ""]
 feedback += [f"review: {value('review_findings', '')}" if value("approve", False) is not True and value("review_findings", "") else ""]
 print(
     json.dumps(

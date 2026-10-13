@@ -18,7 +18,7 @@ implement: "task 1 done"
 followup: "MUST-NOT-RUN"
 regate: "MUST-NOT-RUN"
 reship: "MUST-NOT-RUN"
-plan-check: { needed: false }
+plan-check: { needed: false, has_change: true }
 gate: { green: true, spec_ok: true, tasks_done: true, untested: 0, attempt: 1, failures: "" }
 review: { approve: true, findings: "", weakened_scenario: false, weakened_test: false }
 escalation: { decision: ship, escalate: false, reasons: "- none" }

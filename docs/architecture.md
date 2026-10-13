@@ -88,7 +88,7 @@ sequenceDiagram
 Order in `init.lua` is load order, and the code relies on it:
 
 - `nvim_debug_log` is the first module, so it captures messages and errors from everything after it.
-- `session` comes before `alpha-nvim`, so its `VimEnter` restore runs first and the dashboard skips itself.
+- `session` comes before `alpha`, so its `VimEnter` restore runs first and the dashboard skips itself.
 - `folding`, `autopairs` and `comments` come after `treesitter`.
 - The leader (Space, only a fallback for plugin defaults) is set at the top of `init.lua`, before `lazy.setup()`, so plugin `<leader>` maps bind to it.
 
