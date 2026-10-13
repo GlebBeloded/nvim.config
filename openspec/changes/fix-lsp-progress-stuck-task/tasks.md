@@ -18,11 +18,11 @@ Scenarios: "detached client tasks are removed", "detach keeps tasks of a client 
 
 Scenarios: "stale task is removed", "report keeps a task fresh".
 
-- [ ] 2.1 Add an `advance_clock(ms)` test helper that replaces `vim.uv.hrtime` in the child with a wrapper adding a cumulative offset of `ms * 1e6` ns to the real clock (design decision 3; no sleeping 60 s, no test-only API)
-- [ ] 2.2 Add failing case "statusline: stale task is removed": `fire` begin, `advance_clock(61000)`, `eq(child.lua_get("Progress.progress()"), "")`; verify it fails (task shown, since it is also past the 500 ms delay)
-- [ ] 2.3 Add case "statusline: report keeps a task fresh": `fire` begin, `advance_clock(40000)`, `fire` report, `advance_clock(40000)`, assert one entry (`expect_entry`, label only; the frame shifts with the clock); it passes today and guards against pruning by `start_ms`
-- [ ] 2.4 Add `STALE_AFTER_MS = 60000` at the top (rule 4.3) and document it in the header comment (rule 9.1); store `seen_ms` on `begin` and refresh it on `report`; update the `active` comment / add a `---@class` for the task entry (rule 5.2); add `prune_stale()` and call it at the start of `M.progress()` and in the timer tick (design decision 2)
-- [ ] 2.5 Verify both cases and all task-1 and existing cases pass
+- [x] 2.1 Add an `advance_clock(ms)` test helper that replaces `vim.uv.hrtime` in the child with a wrapper adding a cumulative offset of `ms * 1e6` ns to the real clock (design decision 3; no sleeping 60 s, no test-only API)
+- [x] 2.2 Add failing case "statusline: stale task is removed": `fire` begin, `advance_clock(61000)`, `eq(child.lua_get("Progress.progress()"), "")`; verify it fails (task shown, since it is also past the 500 ms delay)
+- [x] 2.3 Add case "statusline: report keeps a task fresh": `fire` begin, `advance_clock(40000)`, `fire` report, `advance_clock(40000)`, assert one entry (`expect_entry`, label only; the frame shifts with the clock); it passes today and guards against pruning by `start_ms`
+- [x] 2.4 Add `STALE_AFTER_MS = 60000` at the top (rule 4.3) and document it in the header comment (rule 9.1); store `seen_ms` on `begin` and refresh it on `report`; update the `active` comment / add a `---@class` for the task entry (rule 5.2); add `prune_stale()` and call it at the start of `M.progress()` and in the timer tick (design decision 2)
+- [x] 2.5 Verify both cases and all task-1 and existing cases pass
 
 ## 3. Refresh timer lifecycle
 

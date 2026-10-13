@@ -3,12 +3,16 @@
 -- Design goals (see config below):
 --   * no flicker: a task is only rendered once it has run longer than
 --     SHOW_AFTER_MS, so sub-half-second work never reaches the statusline.
+--   * never stuck: a task with no begin/report for STALE_AFTER_MS is dropped,
+--     so a server that never sends `end` cannot spin forever; raise it if a
+--     slow server goes quiet longer than that mid-task.
 --   * readable: raw server messages are mapped to short aliases via ALIASES.
 --   * debuggable: every raw progress event is appended to LOG_PATH so you can
 --     `grep` it and grow the alias list:  tail -f /tmp/nvim-lsp-progress.log
 local M = {}
 
 local SHOW_AFTER_MS = 500
+local STALE_AFTER_MS = 60000
 local LOG_PATH = "/tmp/nvim-lsp-progress.log"
 local SPINNER = { "⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏" }
 
@@ -27,12 +31,28 @@ local ALIASES = {
 
 local uv = vim.uv or vim.loop
 
--- active[client_id .. ":" .. token] = { start_ms, title, message, pct }
+---@class gleb.lsp_progress.Task
+---@field start_ms number when `begin` arrived; drives the SHOW_AFTER_MS delay
+---@field seen_ms number last `begin`/`report`; drives the STALE_AFTER_MS timeout
+---@field title? string
+---@field message? string
+---@field pct? number
+
+---@type table<string, gleb.lsp_progress.Task> keyed by client_id .. ":" .. token
 local active = {}
 local timer
 
 local function now_ms()
 	return uv.hrtime() / 1e6
+end
+
+local function prune_stale()
+	local now = now_ms()
+	for key, task in pairs(active) do
+		if now - task.seen_ms > STALE_AFTER_MS then
+			active[key] = nil
+		end
+	end
 end
 
 local function readable(text)
@@ -76,6 +96,7 @@ local function ensure_timer()
 		0,
 		100,
 		vim.schedule_wrap(function()
+			prune_stale()
 			require("lualine").refresh()
 			if next(active) == nil and timer then
 				timer:stop()
@@ -94,11 +115,14 @@ local function on_progress(args)
 	log(client and client.name or "lsp", value)
 
 	if value.kind == "begin" then
-		active[key] = { start_ms = now_ms(), title = value.title, message = value.message, pct = value.percentage }
+		local now = now_ms()
+		active[key] =
+			{ start_ms = now, seen_ms = now, title = value.title, message = value.message, pct = value.percentage }
 		ensure_timer()
 	elseif value.kind == "report" and active[key] then
 		active[key].message = value.message or active[key].message
 		active[key].pct = value.percentage or active[key].pct
+		active[key].seen_ms = now_ms()
 	elseif value.kind == "end" then
 		active[key] = nil
 	end
@@ -135,6 +159,7 @@ end
 
 -- statusline component: spinner + readable label, only for tasks past the threshold
 function M.progress()
+	prune_stale()
 	local parts = {}
 	local elapsed_from = now_ms()
 	local spinner = SPINNER[math.floor(elapsed_from / 80) % #SPINNER + 1]

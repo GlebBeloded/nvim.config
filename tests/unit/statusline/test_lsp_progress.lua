@@ -40,6 +40,23 @@ local function detach(buf)
 	)
 end
 
+--- Shifts the child's `vim.uv.hrtime` forward; offsets add up across calls.
+---@param ms number
+local function advance_clock(ms)
+	child.lua(
+		[[
+        if not RealHrtime then
+            RealHrtime, ClockOffset = vim.uv.hrtime, 0
+            vim.uv.hrtime = function()
+                return RealHrtime() + ClockOffset
+            end
+        end
+        ClockOffset = ClockOffset + ... * 1e6
+    ]],
+		{ ms }
+	)
+end
+
 ---@return string
 local function progress_after_delay()
 	vim.uv.sleep(SHOW_AFTER_MS + 50)
@@ -148,6 +165,22 @@ T["statusline: detach keeps tasks of a client still attached elsewhere"] = funct
 	detach(1)
 
 	expect_entry(progress_after_delay(), "building")
+end
+
+T["statusline: stale task is removed"] = function()
+	fire({ kind = "begin", title = "Building" })
+	advance_clock(61000)
+
+	eq(child.lua_get("Progress.progress()"), "")
+end
+
+T["statusline: report keeps a task fresh"] = function()
+	fire({ kind = "begin", title = "Building" })
+	advance_clock(40000)
+	fire({ kind = "report", message = "Building" })
+	advance_clock(40000)
+
+	expect_entry(child.lua_get("Progress.progress()"), "building")
 end
 
 return T
