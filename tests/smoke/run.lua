@@ -7,6 +7,7 @@
 -- Without an argument both parts run, the probe concurrently with the timing.
 
 local H = require("tests.helpers")
+local budget = require("tests.smoke.budget")
 
 --- Healthchecks skipped because they need external tools, or fail on an
 --- upstream plugin bug (linked at the entry; remove it once fixed upstream).
@@ -125,31 +126,42 @@ local function startup_samples(runs)
 	return samples
 end
 
+--- "budget N ms", with the load factor when the host is busy (the budget stretches with it).
+---@return integer budget_ms
+---@return string label
+local function startup_budget()
+	local budget_ms, factor = budget.startup_budget(STARTUP_BUDGET_MS), H.load_factor()
+	local label = string.format("budget %d ms", budget_ms)
+	if factor > 1 then
+		label = string.format("%s (x%.1f load)", label, factor)
+	end
+	return budget_ms, label
+end
+
 --- Median of STARTUP_RUNS starts (after warm_up). Over budget, it retries
 --- once and judges the fastest of all samples instead: machine load only ever
---- adds time, so the minimum is the load-robust estimate.
+--- adds time, so the minimum is the load-robust estimate. Both are judged against
+--- the budget stretched by the host load at that moment.
 local function check_startup_time()
 	H.isolate()
 	local samples = startup_samples(STARTUP_RUNS)
 	local median = samples[math.ceil(#samples / 2)]
-	if median <= STARTUP_BUDGET_MS then
-		return check(
-			true,
-			string.format("startup %.1f ms (median of %d) <= budget %d ms", median, #samples, STARTUP_BUDGET_MS)
-		)
+	local budget_ms, label = startup_budget()
+	if median <= budget_ms then
+		return check(true, string.format("startup %.1f ms (median of %d) <= %s", median, #samples, label))
 	end
 	vim.list_extend(samples, startup_samples(STARTUP_RUNS * 2))
 	table.sort(samples)
-	local load = vim.uv.loadavg()
+	budget_ms, label = startup_budget()
 	check(
-		samples[1] <= STARTUP_BUDGET_MS,
+		samples[1] <= budget_ms,
 		string.format(
-			"startup %.1f ms (median %.1f over budget, retried: fastest of %d) <= budget %d ms, load %.1f",
+			"startup %.1f ms (median %.1f over budget, retried: fastest of %d) <= %s, load %.1f",
 			samples[1],
 			median,
 			#samples,
-			STARTUP_BUDGET_MS,
-			load
+			label,
+			vim.uv.loadavg()
 		)
 	)
 end

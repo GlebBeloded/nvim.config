@@ -38,11 +38,11 @@ Scenarios: "sandbox.sh e2e holds the sandbox lock from the sync to the end of th
 
 Scenarios: "The load factor is 1 on an idle host", "The load factor is the load per CPU on a busy host", "The stack harness wait stretches with host load", "The stack harness wait keeps its timeout on an idle host", "The smoke startup budget scales with host load only when busy".
 
-- [ ] 3.1 Failing tests with those five titles (prefix `shortcuts: `). Pin `vim.uv.loadavg` to `0, 0, 0` in `FOCUSED_PANE` of `test_stack_cli.lua`, so the existing "fails when the zellij session stays gone" and "keeps a zellij CLI retry within the outer wait" cases keep their 2 s bounds whatever the machine's load. That makes the test more deterministic, not weaker. The cases fail, because `H.load_factor` and `tests/smoke/budget.lua` do not exist.
-- [ ] 3.2 Add `H.load_factor()` to `tests/helpers.lua` (LuaCATS, `max(1, loadavg / available_parallelism)`).
-- [ ] 3.3 In `tests/shortcuts/stack.lua`, scale the timeout in `M.wait_for` (default and explicit, before `wait_deadline` is set) and `self.cli_timeout or CLI_TIMEOUT_MS` in `Stack:retry_cli` by `H.load_factor()`, read when each wait starts. The clamp to the outer `wait_deadline` stays.
-- [ ] 3.4 Add `tests/smoke/budget.lua` (`local M = {}`, LuaCATS) with `startup_budget(base_ms)` = `base_ms * H.load_factor()`, rounded. `tests/smoke/run.lua` judges both the median and the fastest-of-9 against it and prints `budget N ms (x<factor> load)` when the factor is above 1.
-- [ ] 3.5 The five cases and the existing `test_stack_cli.lua` cases pass. `make smoke-startup` passes. `make quick` is green.
+- [x] 3.1 Failing tests with those five titles (prefix `shortcuts: `). Pin `vim.uv.loadavg` to `0, 0, 0` in `FOCUSED_PANE` of `test_stack_cli.lua`, so the existing "fails when the zellij session stays gone" and "keeps a zellij CLI retry within the outer wait" cases keep their 2 s bounds whatever the machine's load. That makes the test more deterministic, not weaker. The cases fail, because `H.load_factor` and `tests/smoke/budget.lua` do not exist.
+- [x] 3.2 Add `H.load_factor()` to `tests/helpers.lua` (LuaCATS, `max(1, loadavg / available_parallelism)`).
+- [x] 3.3 In `tests/shortcuts/stack.lua`, scale the timeout in `M.wait_for` (default and explicit, before `wait_deadline` is set) and `self.cli_timeout or CLI_TIMEOUT_MS` in `Stack:retry_cli` by `H.load_factor()`, read when each wait starts. The clamp to the outer `wait_deadline` stays.
+- [x] 3.4 Add `tests/smoke/budget.lua` (`local M = {}`, LuaCATS) with `startup_budget(base_ms)` = `base_ms * H.load_factor()`, rounded. `tests/smoke/run.lua` judges both the median and the fastest-of-9 against it and prints `budget N ms (x<factor> load)` when the factor is above 1.
+- [x] 3.5 The five cases and the existing `test_stack_cli.lua` cases pass. `make smoke-startup` passes. `make quick` is green.
 
 ## 4. Docs and gate
 

@@ -144,11 +144,12 @@ local function now_ms()
 end
 
 --- Poll `predicate` until it returns true; a nested zellij CLI retry ends at the same deadline.
+--- The timeout stretches with host load (H.load_factor).
 ---@param predicate fun(): boolean
 ---@param what string
 ---@param timeout? integer
 function M.wait_for(predicate, what, timeout)
-	timeout = timeout or 10000
+	timeout = math.ceil((timeout or 10000) * H.load_factor())
 	local outer = wait_deadline
 	wait_deadline = math.min(outer or math.huge, now_ms() + timeout)
 	local last ---@type string?
@@ -179,7 +180,7 @@ function Stack:retry_cli(attempt)
 		done, value = attempt()
 		return done
 	end
-	local timeout = self.cli_timeout or CLI_TIMEOUT_MS
+	local timeout = math.ceil((self.cli_timeout or CLI_TIMEOUT_MS) * H.load_factor())
 	if wait_deadline then
 		timeout = math.max(1, math.min(timeout, wait_deadline - now_ms()))
 	end
