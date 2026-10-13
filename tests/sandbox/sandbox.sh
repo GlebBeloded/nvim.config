@@ -4,11 +4,14 @@
 #   sandbox.sh up         install Lume, pull the VM image once, boot headless, provision
 #   sandbox.sh down       stop the VM
 #   sandbox.sh status     state, IP, provisioning (exit 0 only if running and provisioned)
-#   sandbox.sh provision  idempotent guest setup over SSH (tools, plugins, Accessibility)
+#   sandbox.sh provision  idempotent guest setup (tools, plugins, Accessibility)
 #   sandbox.sh e2e        sync the repo, restore repo-controlled guest state, run the e2e layer
 #                         in the guest's GUI session
 #                         (SANDBOX_START=0: print a skip line instead of booting a stopped VM)
 # Inside a VM, `sandbox.sh e2e` runs the harness directly (make e2e-local).
+# Host and guest talk only through Lume: `lume ssh` runs a script file from the shared folder
+# (`lume run --shared-dir`), and files travel through that folder. No host ssh/rsync to the guest,
+# and no guest command text on a host command line (endpoint security reads both as attacks).
 # The commands that change the guest (all but status) are serialized across checkouts by
 # $SANDBOX_STATE/lock (tests/sandbox/lock.sh): a second one waits until the first exits.
 set -euo pipefail
@@ -18,7 +21,9 @@ IMAGE=${SANDBOX_IMAGE:-macos-tahoe-vanilla:latest} # ghcr.io/trycua, ~21 GB down
 IMAGE_GB=21
 MIN_FREE_GB=25
 CPU=4 MEMORY=8GB
-STATE=${SANDBOX_STATE:-$HOME/.cache/nvim-e2e-sandbox} # ssh key, control sockets (shared by worktrees)
+STATE=${SANDBOX_STATE:-$HOME/.cache/nvim-e2e-sandbox} # lock, VM log, shared folder (all worktrees)
+SHARE=$STATE/share                       # host side of the folder the guest mounts
+GSHARE="/Volumes/My Shared Files/share" # the same folder in the guest
 GUEST_USER=lume GUEST_PASS=lume
 GUEST_REPO=/Users/$GUEST_USER/nvim
 GUEST_DATA=/Users/$GUEST_USER/.local/share/nvim
@@ -65,7 +70,7 @@ running() {
 	[ "$(vm_field status)" = running ] || pgrep -qf "libexec/lume run $VM( |\$)"
 }
 
-IP= # cached by boot() / bootstrap_ssh() in the main shell
+IP= # cached by boot() / bootstrap_guest() in the main shell
 ip() {
 	[ -n "$IP" ] && { echo "$IP"; return; }
 	local addr mac
@@ -77,21 +82,25 @@ ip() {
 	echo "$addr"
 }
 
-ssh_opts() {
-	echo -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR \
-		-o ConnectTimeout=5 -o ControlMaster=auto -o "ControlPath=/tmp/nve2e-%C" -o ControlPersist=300 \
-		-i "$STATE/id_ed25519"
-}
-
-# guest shell command over key-based ssh (after provision), stdout/stderr streamed
+# run "$*" as a bash script in the guest (via a file in the shared folder), output streamed back
 gssh() {
-	# shellcheck disable=SC2046,SC2029 # ssh_opts is a word list; the command runs in the guest
-	ssh $(ssh_opts) "$GUEST_USER@$(ip)" "$@"
+	mkdir -p "$SHARE/cmd"
+	local script rc=0
+	script=$(mktemp "$SHARE/cmd/XXXXXX")
+	printf '%s\n' "$*" >"$script"
+	lume ssh "$VM" -u "$GUEST_USER" -p "$GUEST_PASS" -t 0 "bash '$GSHARE/cmd/${script##*/}'" || rc=$?
+	rm -f "$script"
+	return "$rc"
 }
 
-grsync() {
-	rsync -a --delete -e "ssh $(ssh_opts)" "$@"
+# $1 > shared file $2 (relative to the shared folder), for the guest to run or copy
+put() {
+	mkdir -p "$(dirname "$SHARE/$2")"
+	"$1" >"$SHARE/$2"
 }
+
+# host dirs/files into the shared folder: plain local copies, then the guest copies from the mount
+stage() { rsync -a --delete "$@"; }
 
 create() {
 	[ -n "$(vm_field name)" ] && return
@@ -111,8 +120,19 @@ boot() {
 	running && return
 	log "booting $VM headless"
 	mkdir -p "$STATE"
-	lume run "$VM" --no-display --detach --log-file "$STATE/vm.log" >/dev/null
+	mkdir -p "$SHARE"
+	lume run "$VM" --no-display --detach --shared-dir "$SHARE" --log-file "$STATE/vm.log" >/dev/null
 	boot_wait
+}
+
+# a VM booted without the shared folder (older sandbox.sh) is restarted once with it
+ensure_share() {
+	lume ssh "$VM" -t 10 "test -d '$GSHARE'" >/dev/null 2>&1 && return
+	log "restarting $VM with the shared folder ($SHARE)"
+	lume ssh "$VM" -t 10 sync >/dev/null 2>&1 || true # lume stop is a power-off
+	lume stop "$VM" >/dev/null 2>&1 || true
+	for _ in $(seq 30); do running || break; sleep 1; done
+	boot
 }
 
 boot_wait() {
@@ -124,17 +144,21 @@ boot_wait() {
 	done
 }
 
-# key-based SSH + passwordless sudo, via lume's password SSH (lume/lume)
-bootstrap_ssh() {
-	mkdir -p "$STATE"
+# passwordless sudo for the guest user (provisioning needs it); lume ssh logs in with the password
+guest_sudo_script() {
+	cat <<EOF
+echo $GUEST_PASS | sudo -S sh -c 'echo "$GUEST_USER ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/nvim-e2e && chmod 440 /etc/sudoers.d/nvim-e2e'
+EOF
+}
+
+bootstrap_guest() {
 	IP=$(ip)
-	[ -f "$STATE/id_ed25519" ] || ssh-keygen -q -t ed25519 -N '' -C nvim-e2e-sandbox -f "$STATE/id_ed25519"
-	gssh true 2>/dev/null && return
-	local key
-	key=$(cat "$STATE/id_ed25519.pub")
-	lume ssh "$VM" "mkdir -p ~/.ssh && chmod 700 ~/.ssh && grep -qF '$key' ~/.ssh/authorized_keys 2>/dev/null || echo '$key' >> ~/.ssh/authorized_keys; chmod 600 ~/.ssh/authorized_keys" >/dev/null
-	lume ssh "$VM" "echo $GUEST_PASS | sudo -S sh -c 'echo \"$GUEST_USER ALL=(ALL) NOPASSWD: ALL\" > /etc/sudoers.d/nvim-e2e && chmod 440 /etc/sudoers.d/nvim-e2e'" >/dev/null 2>&1
-	gssh true || die "key-based SSH to $VM failed"
+	ensure_share
+	gssh "sudo -n true" >/dev/null 2>&1 && return
+	put guest_sudo_script sudo.sh
+	gssh "bash '$GSHARE/sudo.sh'" >/dev/null 2>&1 || true
+	rm -f "$SHARE/sudo.sh"
+	gssh "sudo -n true" >/dev/null || die "passwordless sudo in $VM failed"
 }
 
 provisioned() { [ "$(gssh "cat ~/.nvim-e2e-provisioned 2>/dev/null" 2>/dev/null)" = "$PROVISION_REV" ]; }
@@ -231,9 +255,11 @@ TCC_CLIENTS=(
 )
 
 sync_repo() {
-	grsync --exclude .git --exclude /.tests/ --exclude '/.archon/' "$ROOT/" "$GUEST_USER@$(ip):$GUEST_REPO/"
+	stage --exclude .git --exclude /.tests/ --exclude '/.archon/' "$ROOT/" "$SHARE/repo/"
 	# test deps the host already pinned (mini.nvim); the guest builds keys and the venv itself
-	[ -d "$ROOT/.tests/deps" ] && grsync "$ROOT/.tests/deps/" "$GUEST_USER@$(ip):$GUEST_REPO/.tests/deps/"
+	mkdir -p "$SHARE/deps"
+	[ ! -d "$ROOT/.tests/deps" ] || stage "$ROOT/.tests/deps/" "$SHARE/deps/"
+	gssh "rsync -a --delete --exclude /.tests/ '$GSHARE/repo/' $GUEST_REPO/ && mkdir -p $GUEST_REPO/.tests && rsync -a --delete '$GSHARE/deps/' $GUEST_REPO/.tests/deps/"
 	sync_plugins
 }
 
@@ -243,25 +269,26 @@ sync_plugins() {
 	stamp=$(shasum "$ROOT/lazy-lock.json" | cut -c1-12)
 	[ "$(gssh "cat $GUEST_DATA/.lock-stamp 2>/dev/null")" = "$stamp" ] && return
 	log "syncing plugins (lazy-lock.json $stamp)"
-	gssh "mkdir -p $GUEST_DATA"
-	grsync "$data/lazy" "$data/site" "$GUEST_USER@$(ip):$GUEST_DATA/"
-	gssh "echo $stamp > $GUEST_DATA/.lock-stamp"
+	mkdir -p "$SHARE/data"
+	stage "$data/lazy" "$data/site" "$SHARE/data/"
+	gssh "mkdir -p $GUEST_DATA && rsync -a --delete '$GSHARE/data/lazy' '$GSHARE/data/site' $GUEST_DATA/ && echo $stamp > $GUEST_DATA/.lock-stamp"
 }
 
 # the guest state the checkout controls (tests/sandbox/guest_restore.sh)
 restore_guest() { gssh "$GUEST_REPO/tests/sandbox/guest_restore.sh"; }
 
 provision() {
-	bootstrap_ssh
+	bootstrap_guest
 	local t0=$SECONDS
 	# as a file: brew and the Homebrew installer would eat a script piped into bash's stdin
-	guest_provision_script | gssh "cat > /tmp/nvim-e2e-provision.sh"
-	gssh "bash /tmp/nvim-e2e-provision.sh </dev/null"
+	put guest_provision_script provision.sh
+	gssh "bash '$GSHARE/provision.sh' </dev/null"
 	# the zellij config loads the navigator plugin from its absolute host path
 	local plugin_dir
 	plugin_dir=$(grep -o 'file:[^"]*vim-zellij-navigator.wasm' "$ROOT/terminal/zellij/config.kdl" | head -1 | sed 's|^file:||; s|/[^/]*$||')
 	gssh "sudo mkdir -p '$plugin_dir' && sudo chown -R $GUEST_USER '${plugin_dir%%/.config/*}'"
-	grsync "$ROOT/terminal/zellij/plugins/vim-zellij-navigator.wasm" "$GUEST_USER@$(ip):$plugin_dir/"
+	stage "$ROOT/terminal/zellij/plugins/vim-zellij-navigator.wasm" "$SHARE/"
+	gssh "cp '$GSHARE/vim-zellij-navigator.wasm' '$plugin_dir/'"
 	sync_repo
 	gssh "cd $GUEST_REPO && zsh -lc 'tests/e2e/build.sh >/dev/null && make -s deps deps-shortcuts'"
 	if ! gssh "csrutil status" | grep -q disabled; then
@@ -278,21 +305,22 @@ provision() {
 			"$ROOT/tests/sandbox/sip_off.sh" "$VM" "$STATE/venv/bin/vncdo" "$STATE"
 		fi
 		boot
-		bootstrap_ssh
+		bootstrap_guest
 		gssh "csrutil status" | grep -q disabled || die "SIP is still enabled in the guest (screenshots: $STATE/sip)"
 	fi
-	guest_autologin_script | gssh "bash -s"
+	put guest_autologin_script autologin.sh
+	gssh "bash '$GSHARE/autologin.sh'"
 	if ! wait_gui 5; then
 		log "no GUI session; restarting the guest into autologin"
 		gssh "sync; sudo shutdown -h now" || true
 		for _ in $(seq 60); do running || break; sleep 1; done
 		lume stop "$VM" >/dev/null 2>&1 || true
 		boot
-		bootstrap_ssh
+		bootstrap_guest
 		wait_gui 90 || die "the guest did not log in $GUEST_USER (autologin); see: lume attach $VM --display vnc"
 	fi
-	guest_tcc_script | gssh "cat > /tmp/nvim-e2e-tcc.sh"
-	gssh "bash /tmp/nvim-e2e-tcc.sh $(printf '%q ' "${TCC_CLIENTS[@]}") </dev/null"
+	put guest_tcc_script tcc.sh
+	gssh "bash '$GSHARE/tcc.sh' $(printf '%q ' "${TCC_CLIENTS[@]}") </dev/null"
 	gssh "echo $PROVISION_REV > ~/.nvim-e2e-provisioned"
 	log "provisioned in $((SECONDS - t0)) s"
 	gui "$GUEST_REPO/.tests/e2e/keys trusted" || die "Accessibility is not granted in the guest (see above: the responsible app); open VNC (lume attach $VM --display vnc), System Settings > Privacy & Security > Accessibility, enable it, then: make sandbox-provision"
@@ -308,7 +336,7 @@ start_vm() {
 	ensure_lume
 	create
 	boot
-	bootstrap_ssh
+	bootstrap_guest
 }
 
 up() {
@@ -326,7 +354,7 @@ status() {
 		echo "sandbox: $VM $(vm_field status) (make sandbox-up)"
 		return 1
 	fi
-	if [ -f "$STATE/id_ed25519" ] && provisioned; then
+	if provisioned; then
 		echo "sandbox: $VM running at $(ip), provisioned (rev $PROVISION_REV)"
 	else
 		echo "sandbox: $VM running at $(ip), NOT provisioned (make sandbox-provision)"
@@ -350,7 +378,7 @@ e2e() {
 		fi
 		up >/dev/null
 	fi
-	bootstrap_ssh
+	bootstrap_guest
 	if ! provisioned; then provision >&2; fi
 	sync_repo
 	restore_guest # per run, not in provision(): independent of PROVISION_REV
@@ -378,7 +406,7 @@ provision)
 down)
 	sandbox_lock "$LOCK"
 	if command -v lume >/dev/null && running; then
-		{ bootstrap_ssh && gssh "sync"; } || true # lume stop is a power-off
+		{ bootstrap_guest && gssh "sync"; } || true # lume stop is a power-off
 		lume stop "$VM" >/dev/null 2>&1 || true
 		# the owning `lume run` stops the VM on SIGTERM (when lume get lost track of it)
 		pkill -TERM -f "libexec/lume run $VM( |\$)" || true

@@ -6,41 +6,45 @@ local child = H.new_child()
 
 local T = H.child_set(child, child.start_bare)
 
---- `lume` stub: the VM is running at a documentation address.
-local LUME_STUB = [[#!/bin/sh
-echo "lume $*" >>"$GUEST_LOG"
-case "$1" in
-get) echo '{"name":"nvim-e2e","status":"running","ipAddress":"192.0.2.1"}' ;;
-esac
-exit 0
-]]
-
 --- Shell lines that append the log line "$line" with whether $SANDBOX_STATE/lock exists to $LOCK_LOG.
 local LOG_LOCK = [[held=no
 [ -d "$SANDBOX_STATE/lock" ] && held=yes
 printf '%s\t%s\n' "$line" "$held" >>"$LOCK_LOG"
 ]]
 
---- `ssh` stub: logs the guest command (last argument), also to $LOCK_LOG with the lock state;
---- the guest is provisioned at $PROVISION_REV and its GUI session belongs to `lume`.
-local SSH_STUB = [[#!/bin/sh
-for cmd; do :; done
-line=$cmd
-echo "$line" >>"$GUEST_LOG"
+--- `lume` stub: the VM is running at a documentation address. `lume ssh` runs a script from the
+--- shared folder: the stub logs that script (the guest command) to $GUEST_LOG and $LOCK_LOG; the
+--- guest is provisioned at $PROVISION_REV and its GUI session belongs to `lume`.
+local LUME_STUB = [[#!/bin/sh
+echo "lume $*" >>"$GUEST_LOG"
+case "$1" in
+get) echo '{"name":"nvim-e2e","status":"running","ipAddress":"192.0.2.1"}' ;;
+ssh)
+	for last; do :; done
+	script=$(printf '%s' "$last" | sed -n "s|^bash '/Volumes/My Shared Files/share/\([^']*\)'.*|\1|p")
+	[ -n "$script" ] || exit 0
+	line=$(cat "$SANDBOX_STATE/share/$script")
+	echo "$line" >>"$GUEST_LOG"
 ]] .. LOG_LOCK .. [[
-case "$cmd" in
-"cat ~/.nvim-e2e-provisioned"*) echo "$PROVISION_REV" ;;
-"stat -f %Su /dev/console") echo lume ;;
+	case "$line" in
+	"cat ~/.nvim-e2e-provisioned"*) echo "$PROVISION_REV" ;;
+	"stat -f %Su /dev/console") echo lume ;;
+	esac
+	;;
 esac
 exit 0
 ]]
 
---- `rsync` stub: logs `rsync <dest>`, also to $LOCK_LOG with the lock state.
+--- `ssh` stub: the host never runs ssh to the guest; any call is logged as HOST-SSH.
+local SSH_STUB = [[#!/bin/sh
+echo "HOST-SSH $*" >>"$GUEST_LOG"
+exit 99
+]]
+
+--- `rsync` stub (host-side copies into the shared folder only): logs `rsync <dest>`.
 local RSYNC_STUB = [[#!/bin/sh
 for dest; do :; done
-line="rsync $dest"
-echo "$line" >>"$GUEST_LOG"
-]] .. LOG_LOCK .. [[
+echo "rsync $dest" >>"$GUEST_LOG"
 exit 0
 ]]
 
@@ -90,8 +94,8 @@ local function provision_rev()
 	return assert(source:match("\nPROVISION_REV=(%d+)"))
 end
 
---- Env with the `lume`, `ssh`, `rsync` and `sysctl` stubs first on PATH, a pre-made SSH key in
---- a temp SANDBOX_STATE, a temp HOME and plugin dir, and no e2e selection from the caller.
+--- Env with the `lume`, `ssh`, `rsync` and `sysctl` stubs first on PATH, a temp SANDBOX_STATE,
+--- a temp HOME and plugin dir, and no e2e selection from the caller.
 ---@return table<string, string>
 local function sandbox_env()
 	local bin, state, data = tempdir(), tempdir(), tempdir()
@@ -99,9 +103,6 @@ local function sandbox_env()
 	write_executable(vim.fs.joinpath(bin, "ssh"), SSH_STUB)
 	write_executable(vim.fs.joinpath(bin, "rsync"), RSYNC_STUB)
 	write_executable(vim.fs.joinpath(bin, "sysctl"), SYSCTL_STUB)
-	for _, key in ipairs({ "id_ed25519", "id_ed25519.pub" }) do
-		child.fn.writefile({}, vim.fs.joinpath(state, key))
-	end
 	child.fn.mkdir(vim.fs.joinpath(data, "lazy"), "p")
 	child.fn.mkdir(vim.fs.joinpath(data, "site"), "p")
 	return {
@@ -315,7 +316,7 @@ end
 ---@param line string
 ---@return boolean
 local function is_repo_sync(line)
-	return vim.startswith(line, "rsync ") and vim.endswith(line, ":/Users/lume/nvim/")
+	return line:find("'/Volumes/My Shared Files/share/repo/' /Users/lume/nvim/", 1, true) ~= nil
 end
 
 ---@param line string
@@ -397,6 +398,25 @@ T["shortcuts: sandbox.sh e2e restores guest state after syncing and before the e
 
 	eq(run.code, 0)
 	expect_sync_restore_e2e(read_lines(env.GUEST_LOG))
+end
+
+T["shortcuts: sandbox.sh e2e talks to the guest only through Lume"] = function()
+	local env = sandbox_env()
+
+	local run = system({ "tests/sandbox/sandbox.sh", "e2e" }, H.root, env)
+
+	eq(run.code, 0)
+	local log = read_lines(env.GUEST_LOG)
+	local host_ssh = vim.tbl_filter(function(line)
+		return vim.startswith(line, "HOST-SSH")
+	end, log)
+	local lume_args = vim.tbl_filter(function(line)
+		return vim.startswith(line, "lume ssh") and line:find("guest_restore", 1, true) ~= nil
+	end, log)
+	eq(
+		{ host_ssh = host_ssh, guest_command_on_host_argv = lume_args },
+		{ host_ssh = {}, guest_command_on_host_argv = {} }
+	)
 end
 
 T["shortcuts: sandbox.sh e2e holds the sandbox lock from the sync to the end of the e2e layer"] = function()

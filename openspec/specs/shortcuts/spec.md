@@ -207,6 +207,10 @@ Every `tests/sandbox/sandbox.sh` command that changes the guest (`up`, `provisio
 - **WHEN** a live process holds `<dir>` and another calls `sandbox_lock <dir>` with `SANDBOX_LOCK_TIMEOUT=1`
 - **THEN** the caller exits non-zero within 5 s, with the holder's pid in its stderr, and `<dir>/owner` still names the holder
 
+#### Scenario: sandbox.sh e2e talks to the guest only through Lume
+- **WHEN** `tests/sandbox/sandbox.sh e2e` runs with `lume`, `ssh` and `rsync` stubbed (VM running, provisioned, GUI session up)
+- **THEN** it never runs `ssh` on the host, and no `lume ssh` command line carries a guest command (each runs a script file from the shared folder)
+
 #### Scenario: sandbox.sh e2e holds the sandbox lock from the sync to the end of the e2e layer
 - **WHEN** `tests/sandbox/sandbox.sh e2e` runs with `lume`, `ssh` and `rsync` stubbed (VM running, provisioned, GUI session up), and the stubs log whether `$SANDBOX_STATE/lock` exists at each call
 - **THEN** the lock exists at the repo sync and at `make -s e2e-local`, and after `sandbox.sh` exits it no longer exists
