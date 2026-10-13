@@ -7,7 +7,8 @@ local child = H.new_child()
 --- Git-tracked files of this checkout used as diff targets.
 local TRACKED = vim.fs.joinpath(H.root, "lua/gleb/file_tree/diff_preview.lua")
 local TRACKED_B = vim.fs.joinpath(H.root, "lua/gleb/file_tree/init.lua")
-local ASYNC_MS = 3000
+--- Debounce plus two git subprocesses; `make check` runs every layer at once, so 3 s overran under load.
+local ASYNC_MS = 10000
 
 local function start()
 	child.start_config()
