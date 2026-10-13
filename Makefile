@@ -175,7 +175,8 @@ console: # Archon web console (runs, gates, logs): http://localhost:3090
 	$(ARCHON) serve
 
 loop-report:
-	@python3 .archon/scripts/loop_report.py --run "$(RUN)"
+	@if [ -n "$(RUN)" ]; then python3 .archon/scripts/loop_report.py --run "$(RUN)"; \
+	else python3 .archon/scripts/loop_report.py; fi
 
 loop-status:
 	@$(ARCHON) workflow status; $(ARCHON) workflow runs --limit 10

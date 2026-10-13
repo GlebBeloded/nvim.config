@@ -10,7 +10,10 @@ local T = H.child_set(child, child.start_bare)
 ---@field home string
 ---@field output_root string
 ---@field repository string
+---@field invocation_cwd? string
 ---@field report_path string
+---@field latest_report_path? string
+---@field foreign_report_path? string
 ---@field merge_commit string
 ---@field hostile_values string[]
 
@@ -55,6 +58,12 @@ local function write_file(path, content)
 		vim.fn.writefile(vim.split(content, "\n", { plain = true }), path)]],
 		{ path, content }
 	)
+end
+
+---@param target string
+---@param link string
+local function symlink(target, link)
+	child.lua("vim.fn.mkdir(vim.fs.dirname(select(2, ...)), 'p'); assert(vim.uv.fs_symlink(...))", { target, link })
 end
 
 ---@param args string[]
@@ -131,8 +140,13 @@ CREATE TABLE remote_agent_workflow_events (
 """)
 connection.execute(
   "INSERT INTO remote_agent_codebases (id, name, default_cwd, default_branch) VALUES (?, ?, ?, ?)",
-  ("local", payload["codebase_name"], payload["repository"], "auto"),
+  ("local", payload["codebase_name"], payload.get("default_cwd", payload["repository"]), "auto"),
 )
+for codebase in payload.get("extra_codebases", []):
+  connection.execute(
+    "INSERT INTO remote_agent_codebases (id, name, default_cwd, default_branch) VALUES (?, ?, ?, ?)",
+    (codebase["id"], codebase["name"], codebase["default_cwd"], "auto"),
+  )
 connection.execute(
   """INSERT INTO remote_agent_workflow_runs
   (id, conversation_id, codebase_id, workflow_name, user_message, status, outcome,
@@ -150,6 +164,16 @@ for order, event in enumerate(payload["events"], 1):
     VALUES (?, ?, ?, ?, ?, ?, ?)""",
     (f"event-{order}", payload["run_id"], order, event["event_type"],
      event.get("step_name"), json.dumps(event.get("data", {})), event.get("created_at", payload["started_at"])),
+  )
+for run in payload.get("extra_runs", []):
+  connection.execute(
+    """INSERT INTO remote_agent_workflow_runs
+    (id, conversation_id, codebase_id, workflow_name, user_message, status, outcome,
+     metadata, started_at, completed_at, last_activity_at, working_path, output_root)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+    (run["id"], "conversation", run["codebase_id"], "fix-bug", run["id"], "completed", "succeeded",
+     json.dumps({"terminal_graph": {"node_ids": []}}), run["started_at"], run["started_at"],
+     run["started_at"], run["working_path"], run["output_root"]),
   )
 connection.commit()
 connection.close()
@@ -277,6 +301,61 @@ local function make_fixture(opts)
 		terminal_nodes = { "live-node", "waiting-node" }
 	end
 
+	local invocation_cwd
+	local default_cwd = repository
+	local extra_codebases = {}
+	local extra_runs = {}
+	local foreign_report_path
+	if opts.multiple_codebases or opts.stale_registration then
+		invocation_cwd = vim.fs.joinpath(H.tempdir(child), "linked")
+		git({ "worktree", "add", "-q", "-b", "report-linked", invocation_cwd, "auto" }, repository)
+		symlink(vim.fs.joinpath(H.root, "Makefile"), vim.fs.joinpath(invocation_cwd, "Makefile"))
+		symlink(
+			vim.fs.joinpath(H.root, ".archon/scripts/loop_report.py"),
+			vim.fs.joinpath(invocation_cwd, ".archon/scripts/loop_report.py")
+		)
+	end
+	if opts.multiple_codebases then
+		local foreign = H.tempdir(child)
+		git({ "init", "-q", "-b", "auto" }, foreign)
+		git({ "commit", "-q", "--allow-empty", "-m", "foreign" }, foreign)
+		extra_codebases = { { id = "foreign", name = "foreign", default_cwd = foreign } }
+		extra_runs = {
+			{
+				id = "local-old",
+				codebase_id = "local",
+				started_at = "2026-10-13T09:00:00Z",
+				working_path = repository,
+				output_root = output_root,
+			},
+			{
+				id = "local-a",
+				codebase_id = "local",
+				started_at = "2026-10-13T11:00:00Z",
+				working_path = repository,
+				output_root = output_root,
+			},
+			{
+				id = "local-b",
+				codebase_id = "local",
+				started_at = "2026-10-13T11:00:00Z",
+				working_path = repository,
+				output_root = output_root,
+			},
+			{
+				id = "foreign-new",
+				codebase_id = "foreign",
+				started_at = "2026-10-13T12:00:00Z",
+				working_path = foreign,
+				output_root = output_root,
+			},
+		}
+		foreign_report_path = vim.fs.joinpath(output_root, "artifacts/runs/foreign-new/report.html")
+	elseif opts.stale_registration then
+		default_cwd = vim.fs.joinpath(H.tempdir(child), "removed-registration")
+		child.fn.delete(default_cwd, "rf")
+	end
+
 	seed_database(vim.fs.joinpath(home, ".archon/archon.db"), {
 		run_id = run_id,
 		codebase_name = "project " .. hostile_values[1],
@@ -293,15 +372,21 @@ local function make_fixture(opts)
 		completed_at = opts.running and nil or "2026-10-13T10:10:00Z",
 		last_activity_at = opts.running and "2026-10-13T10:00:00Z" or "2026-10-13T10:10:00Z",
 		repository = repository,
+		default_cwd = default_cwd,
 		output_root = output_root,
 		events = events,
+		extra_codebases = extra_codebases,
+		extra_runs = extra_runs,
 	})
 
 	return {
 		home = home,
 		output_root = output_root,
 		repository = repository,
+		invocation_cwd = invocation_cwd,
 		report_path = vim.fs.joinpath(artifact_root, "report.html"),
+		latest_report_path = vim.fs.joinpath(output_root, "artifacts/runs/local-b/report.html"),
+		foreign_report_path = foreign_report_path,
 		merge_commit = merge_commit,
 		hostile_values = hostile_values,
 	}
@@ -315,12 +400,18 @@ local function run_report(fixture, run_id)
 	if run_id then
 		table.insert(command, "RUN=" .. run_id)
 	end
-	return H.system(child, command, H.root, {
+	return H.system(child, command, fixture.invocation_cwd or H.root, {
 		HOME = fixture.home,
 		PATH = child.lua_get("vim.env.PATH"),
 		MAKEFLAGS = "",
 		MAKELEVEL = "",
 	})
+end
+
+---@param path string
+---@return boolean
+local function file_exists(path)
+	return child.lua_get("vim.uv.fs_stat(...) ~= nil", { path })
 end
 
 ---@param fixture test.ReportFixture
@@ -386,6 +477,23 @@ T["loop: Running run report tolerates incomplete evidence"] = function()
 	eq(count(report, "Pending") >= 2, true)
 	eq(report:find("completed", 1, true), nil)
 	eq(report:find("Unavailable", 1, true), nil)
+end
+
+T["loop: Report without a run selects the latest run for this codebase"] = function()
+	local fixture = make_fixture({ multiple_codebases = true, equal_local_times = true })
+	local result = run_report(fixture)
+
+	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
+	expect_contains(result.stdout, "local-b")
+	expect_contains(result.stdout, vim.uri_from_fname(fixture.latest_report_path))
+	eq(file_exists(fixture.latest_report_path), true)
+	eq(file_exists(fixture.foreign_report_path), false)
+
+	local stale = make_fixture({ stale_registration = true })
+	local missing = run_report(stale)
+	eq(missing.code, 2)
+	expect_contains(missing.stderr, "No Archon codebase matches")
+	eq(missing.stderr:find("Traceback", 1, true), nil)
 end
 
 return T

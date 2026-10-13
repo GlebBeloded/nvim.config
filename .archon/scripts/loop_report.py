@@ -144,6 +144,49 @@ def load_named_run(connection: sqlite3.Connection, run_id: str) -> RunRecord:
     return _run_from_row(row)
 
 
+def git_common_dir(path: Path) -> Path:
+    try:
+        result = _git(["rev-parse", "--path-format=absolute", "--git-common-dir"], path)
+    except OSError as error:
+        raise ReportError(f"Cannot inspect Git checkout {path}: {error}") from error
+    if result.returncode != 0:
+        raise ReportError(f"Not a Git checkout: {path}")
+    return Path(result.stdout.strip()).resolve()
+
+
+def resolve_codebase(connection: sqlite3.Connection, cwd: Path) -> str:
+    try:
+        current_common = git_common_dir(cwd)
+    except ReportError:
+        raise ReportError(f"No Archon codebase matches this checkout: {cwd}") from None
+    rows = connection.execute("SELECT id, default_cwd FROM remote_agent_codebases ORDER BY id").fetchall()
+    for row in rows:
+        registered = Path(row["default_cwd"])
+        if not registered.is_dir():
+            continue
+        try:
+            registered_common = git_common_dir(registered)
+        except ReportError:
+            continue
+        if registered_common == current_common:
+            return row["id"]
+    raise ReportError(f"No Archon codebase matches this checkout: {cwd}")
+
+
+def load_latest_run(connection: sqlite3.Connection, codebase_id: str) -> RunRecord:
+    row = connection.execute(
+        """SELECT id, codebase_id, workflow_name, user_message, status, outcome,
+                  metadata, started_at, completed_at, last_activity_at,
+                  working_path, output_root
+           FROM remote_agent_workflow_runs WHERE codebase_id = ?
+           ORDER BY started_at DESC, id DESC LIMIT 1""",
+        (codebase_id,),
+    ).fetchone()
+    if row is None:
+        raise ReportError(f"No Archon run found for codebase: {codebase_id}")
+    return _run_from_row(row)
+
+
 def load_events(connection: sqlite3.Connection, run_id: str) -> list[EventRecord]:
     rows = connection.execute(
         """SELECT event_order, event_type, step_name, data, created_at
@@ -455,7 +498,7 @@ def summary_lines(report: Report, report_path: Path) -> tuple[str, str]:
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--run", required=True, help="Archon workflow run id")
+    parser.add_argument("--run", help="Archon workflow run id")
     return parser
 
 
@@ -463,7 +506,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     try:
         with open_database(database_path(Path.home())) as connection:
-            run = load_named_run(connection, args.run)
+            run = (
+                load_named_run(connection, args.run)
+                if args.run
+                else load_latest_run(connection, resolve_codebase(connection, Path.cwd()))
+            )
             events = load_events(connection, run.id)
         now = datetime.now(timezone.utc)
         report = build_report(run, events, now)

@@ -188,7 +188,7 @@ Scenarios: "loop: Report without a run selects the latest run for this codebase"
 - Consumes: Task 1's `RunRecord`, report pipeline and fixture helpers; Git `rev-parse --path-format=absolute --git-common-dir`.
 - Produces: `git_common_dir(path: Path) -> Path`, `resolve_codebase(connection, cwd: Path) -> str`, and `load_latest_run(connection, codebase_id: str) -> RunRecord`.
 
-- [ ] **Step 1: Write the failing mini.test case `loop: Report without a run selects the latest run for this codebase`**
+- [x] **Step 1: Write the failing mini.test case `loop: Report without a run selects the latest run for this codebase`**
 
   Register the fixture's main checkout and a linked worktree through the same absolute common Git directory. Seed older `local-old`, equal-time `local-a`/`local-b`, and later `foreign-new` runs; make `local-b` the deterministic local winner by id. Use a second fixture whose registered `default_cwd` was removed to exercise the diagnostic path.
 
@@ -215,13 +215,13 @@ Scenarios: "loop: Report without a run selects the latest run for this codebase"
 
   Expected: FAIL because the Make target always passes an empty `--run` and the script has no implicit selector.
 
-- [ ] **Step 2: Resolve the registered codebase and select its latest run**
+- [x] **Step 2: Resolve the registered codebase and select its latest run**
 
   For the invocation cwd and every registered `default_cwd`, call Git with argument arrays and normalize the absolute common directory; do not require the worktree path itself to match. Select only that `codebase_id`, ordered `started_at DESC, id DESC`. Add concise exit-2 diagnostics for no matching registration and no run. Update `loop-report` so it omits `--run` when `RUN` is empty.
 
   Run the focused case. Expected: PASS.
 
-- [ ] **Step 3: Verify all report-selection cases and commit**
+- [x] **Step 3: Verify all report-selection cases and commit**
 
   Run: `make test FILE=tests/unit/loop/test_report.lua JOBS=1`
 
