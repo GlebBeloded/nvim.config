@@ -81,14 +81,15 @@ Kind: bug
 - The Copilot scenarios "copilot glyph shown when disabled" and "copilot glyph shown on warning" assert `""` today because the glyph is empty; test them as written, `fix-empty-nerd-font-glyphs` changes them.
 - Diff-preview scenarios that need a working codediff view (e.g. "Diff tab is reused across files") are marked `H.xfail` like the existing ones until `fix-diff-preview-codediff-crash` lands; they are never deleted or weakened.
 - Git scenarios that spawn external tools (`git push`, ollama) stub `vim.system` / `vim.fn.jobstart` in the child and assert the spawned command and the notification.
-- When every scenario is tested, make `missing` fatal in `tests/trace.lua` (it is "reported, not fatal yet").
 
 ## Capabilities
 ### Modified Capabilities
 - None (`skip_specs: true`: tests for existing scenarios; no spec text changes).
 
 ## Impact
-- Code: new test files under `tests/unit/<cap>/`, `tests/integration/<cap>/`, `tests/screen/<cap>/`; `tests/trace.lua` (make missing fatal at the end); helpers in `tests/helpers.lua` if needed. No change to `lua/`.
+- Code: new test files under `tests/unit/<cap>/`, `tests/integration/<cap>/`, `tests/screen/<cap>/`; helpers in `tests/helpers.lua` if needed. No change to `lua/`.
 - Plugins: none added, removed or upgraded
 - Core keymaps: unchanged
 - Out of scope: fixing bugs the new tests expose (each becomes its own change or uses `H.xfail` naming its queued change), new scenarios, and the `shortcuts` and `nvim-debug-log` capabilities (fully traced).
+- Out of scope: making `missing` fatal in `tests/trace.lua`. Trace counts the scenarios of active changes, which are untested until their run implements them, so a fatal `missing` would fail every other change's gate.
+- Decision (loop owner, 2026-10-13): refresh the scenario list with `make trace VERBOSE=1`; tasks of at most 5 scenarios each.

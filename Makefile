@@ -156,6 +156,7 @@ loop-validate:
 
 fix: loop-setup # make fix BUG="what is wrong"  (or BUG=<openspec change id>)
 	@test -n "$$BUG" || { echo 'usage: make fix BUG="..."'; exit 2; }
+	@if [ -d "openspec/changes/$$BUG" ]; then exec $(MAKE) -s queue CHANGE="$$BUG"; fi; \
 	$(ARCHON) workflow run fix-bug --base auto --branch loop/fix-$(STAMP) "$$BUG"; status=$$?; $(CLEANUP); exit $$status
 
 feature: loop-setup # make feature IDEA="what to build"
@@ -165,8 +166,9 @@ feature: loop-setup # make feature IDEA="what to build"
 queue: loop-setup # make queue [CHANGE=<id>]: work the next (or the given) change in openspec/changes/
 	@id=$$(INPUTS_CHANGE="$$CHANGE" python3 .archon/scripts/queue_pick.py | python3 -c 'import json,sys; print(json.load(sys.stdin)["change"])'); \
 	test -n "$$id" || { echo "Queue is empty: no untaken change in openspec/changes/"; exit 0; }; \
-	echo "Working on $$id"; \
-	$(ARCHON) workflow run work-queue --base auto --branch loop/$$id --input change=$$id "Work queued change $$id"; status=$$?; $(CLEANUP); exit $$status
+	echo "Working on $$id"; branch=loop/$$id; adopt=; \
+	if git show-ref -q --verify "refs/heads/loop/$$id"; then adopt=loop/$$id; branch=loop/$$id-$(STAMP); echo "Adopting $$adopt"; fi; \
+	$(ARCHON) workflow run work-queue --base auto --branch $$branch --input change=$$id --input adopt=$$adopt "Work queued change $$id"; status=$$?; $(CLEANUP); exit $$status
 
 update: loop-setup # make update PLUGIN=<name>: update one plugin, test it, ship or adapt the config
 	@test -n "$$PLUGIN" || { echo 'usage: make update PLUGIN=<name>  (make outdated lists them)'; exit 2; }

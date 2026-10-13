@@ -15,9 +15,21 @@ import subprocess
 CHANGES = pathlib.Path("openspec/changes")
 
 
+def live_run(name: str) -> bool:
+    """A running or paused Archon run works this change (an abandoned run's branch does not count)."""
+    db = pathlib.Path(os.environ.get("ARCHON_DB") or pathlib.Path.home() / ".archon" / "archon.db")
+    if not db.exists():
+        return False
+    import sqlite3
+
+    query = "select count(*) from remote_agent_workflow_runs where status in ('running','paused') and user_message = ?"
+    return sqlite3.connect(db).execute(query, (f"Work queued change {name}",)).fetchone()[0] > 0
+
+
 def taken(name: str) -> bool:
     ref = f"refs/heads/loop/{name}"
-    return subprocess.run(["git", "rev-parse", "--verify", "--quiet", ref], stdout=subprocess.DEVNULL).returncode == 0
+    exists = subprocess.run(["git", "rev-parse", "--verify", "--quiet", ref], stdout=subprocess.DEVNULL).returncode == 0
+    return exists and live_run(name)
 
 
 def created(path: pathlib.Path) -> str:

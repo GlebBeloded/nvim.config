@@ -29,3 +29,15 @@ Get the artifact instructions in one batch and skip design unless there is visib
 Stop after the artifacts exist; do not implement. Set `change` to the change id, `visible_ui` to
 true when the change alters what is drawn on screen, `architecture` to true when it changes module
 layout, load order or plugin wiring (docs/architecture.md).
+
+tasks.md format (each task one section of at most 5 scenarios, split by requirement; the gate reads the `Scenarios:` line):
+
+```
+## 1. <task title>
+Scenarios: `<capability>: <scenario title>`
+- [ ] 1.1 Write the test `<capability>: <scenario title>` in tests/<layer>/<capability>/test_<x>.lua (or run it, if it exists) and see it fail
+- [ ] 1.2 <the smallest code change>
+- [ ] 1.3 Run `make test FILE=tests/<layer>/<capability>/test_<x>.lua CASE="<scenario title>"` and see it pass
+```
+No design.md unless the change alters what is drawn on screen or the module layout. Run `openspec status`
+once, at the end. Do not re-read files you just wrote; read files with `nl -ba` once.

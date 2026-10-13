@@ -50,7 +50,7 @@ The repo root SHALL expose the agent rules as both `CLAUDE.md` and `AGENTS.md`, 
 `.archon/scripts/queue_pick.py` SHALL write exactly one JSON document to stdout in every case (with or without `INPUTS_CHANGE`, whether or not any `loop/<change>` branch exists, found or not found), so `make queue` without `CHANGE` can always read the picked change.
 
 #### Scenario: Queue skips a taken change
-- **WHEN** `make queue` is run without `CHANGE` (via `vim.system`) in a repo on `auto` whose stub `openspec list --json` lists two changes, the older of which already has a `loop/<change>` branch, with `ARCHON` set to a stub that logs its `workflow run` arguments
+- **WHEN** `make queue` is run without `CHANGE` (via `vim.system`) in a repo on `auto` whose stub `openspec list --json` lists two changes, the older of which already has a `loop/<change>` branch and a running Archon run working it (an `ARCHON_DB` with that row), with `ARCHON` set to a stub that logs its `workflow run` arguments
 - **THEN** make exits 0, its output contains `Working on <newer change>` and no `JSONDecodeError`, and the stub was called with `--branch loop/<newer change>`, while `python3 .archon/scripts/queue_pick.py` run in the same repo prints a stdout that `vim.json.decode` parses as one object with `change` equal to the newer change
 
 ### Requirement: Ship merges into auto one at a time and never leaves it mid-merge
@@ -222,6 +222,10 @@ The build verdict/escalation path SHALL append a supplied one-line lesson only f
 
 ### Requirement: Small steps with a script judge
 The delivery loop SHALL implement one task per fresh agent session from a script-built context pack, count only real checkbox list items as tasks, send only a failing pass's findings to the next fix step, and decide shipping by script: reject partial or rule-breaking work, ask the user only for breaking changes, and ship everything else.
+
+#### Scenario: An abandoned run's branch does not take its change
+- **WHEN** `.archon/scripts/queue_pick.py` runs where change `c` has a `loop/c` branch but no running or paused Archon run works it
+- **THEN** it picks `c` (`make queue` then adopts that branch on a new one)
 
 #### Scenario: Plan header prose is not an unchecked task
 - **WHEN** `.archon/scripts/tasks.py` runs on a tasks.md whose only `- [ ]` text is inside a plan header sentence and every list item is checked

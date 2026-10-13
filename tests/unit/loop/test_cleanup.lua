@@ -177,12 +177,24 @@ local function expect_picks(repo, env, name)
 	eq(picked.change, name)
 end
 
+--- Archon DB with one live run working `name` (queue_pick.py reads it through ARCHON_DB).
+---@param name string
+---@return string path
+local function live_run_db(name)
+	local db = vim.fs.joinpath(H.tempdir(child), "archon.db")
+	local sql = "create table remote_agent_workflow_runs (status text, user_message text);"
+		.. ("insert into remote_agent_workflow_runs values ('running', 'Work queued change %s');"):format(name)
+	eq(H.system(child, { "sqlite3", db, sql }, H.root).code, 0)
+	return db
+end
+
 T["loop: Queue skips a taken change"] = function()
 	local repo = make_repo()
 	write_change(repo, "t-change", "2026-01-01")
 	write_change(repo, "t-next", "2026-01-02")
 	eq(H.system(child, { "git", "branch", "loop/t-change" }, repo, H.GIT_ENV).code, 0)
-	local list = { OPENSPEC_LIST = '{"changes":[{"name":"t-change"},{"name":"t-next"}]}' }
+	local list =
+		{ OPENSPEC_LIST = '{"changes":[{"name":"t-change"},{"name":"t-next"}]}', ARCHON_DB = live_run_db("t-change") }
 	-- Pick directly first: the archon stub creates loop/t-next when make queue runs it.
 	expect_picks(repo, stub_env(list), "t-next")
 	expect_queue_works(run_target(repo, { "queue" }, list), "t-next")
