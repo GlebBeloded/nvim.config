@@ -51,10 +51,20 @@ T["session: resolve falls back to any session for this cwd"] = function()
 	local stale = "blossom-9-" .. cwd_slug()
 
 	eq(resolve("blossom-5-" .. cwd_slug(), { stale }), stale)
+	-- Dashes inside the zellij session name still parse.
+	local dashed = "my-proj-9-" .. cwd_slug()
+	eq(resolve("blossom-5-" .. cwd_slug(), { dashed }), dashed)
 end
 
 T["session: resolve returns nil when no session matches the cwd"] = function()
 	eq(resolve("blossom-5-" .. cwd_slug(), { "blossom-5-%some%other%dir" }), vim.NIL)
+end
+
+T["session: resolve ignores a session for a deeper path with the same tail"] = function()
+	-- Sessions for /baz<cwd> and /baz-1-<cwd>: their names end with the cwd slug.
+	local deeper = { "blossom-9-%baz" .. cwd_slug(), "x-9-%baz-1-" .. cwd_slug() }
+
+	eq(resolve("blossom-5-" .. cwd_slug(), deeper), vim.NIL)
 end
 
 return T

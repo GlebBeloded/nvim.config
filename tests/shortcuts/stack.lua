@@ -14,6 +14,9 @@ local C = require("tests.shortcuts.chain")
 local M = {}
 
 local NAVIGATOR_PERMISSIONS = { "WriteToStdin", "ReadApplicationState", "ChangeApplicationState" }
+-- zellij 0.45 CLI calls fail now and then under load (a CLI client id is freed twice)
+local CLI_TIMEOUT_MS = 5000
+local NO_SESSION = "There is no active session!"
 local EXTRA_OPTIONS = {
 	"session_serialization false",
 	"show_release_notes false",
@@ -23,12 +26,13 @@ local EXTRA_OPTIONS = {
 ---@class shortcuts.Stack
 ---@field dir string
 ---@field session string
----@field env table<string, string?>
+---@field env table<string, string>
 ---@field channel integer? RPC channel to Neovim
 ---@field nvim_pid integer?
 ---@field frontend shortcuts.Frontend
 ---@field t0 integer hrtime of start()
 ---@field timeline string[] "+<ms> <event>" lines, shown in start failures
+---@field cli_timeout integer? ms to retry a transient zellij CLI failure (default CLI_TIMEOUT_MS)
 local Stack = {}
 Stack.__index = Stack
 
@@ -44,6 +48,13 @@ end
 local function write(path, lines)
 	vim.fn.mkdir(vim.fs.dirname(path), "p")
 	assert(vim.fn.writefile(lines, path) == 0, "cannot write " .. path)
+end
+
+--- zellij exits on this before sending the action, so a retry never runs it twice.
+---@param result vim.SystemCompleted
+---@return boolean
+local function no_session(result)
+	return result.code ~= 0 and (result.stderr or ""):find(NO_SESSION, 1, true) ~= nil
 end
 
 --- Plugin files referenced by MessagePlugin binds (to pre-grant permissions).
@@ -124,31 +135,93 @@ function Stack:zellij_command()
 	return table.concat(env, " ") .. " " .. table.concat(vim.tbl_map(vim.fn.shellescape, zellij), " ")
 end
 
+-- hrtime (ms) at which the innermost running M.wait_for gives up; zellij CLI retries end there too
+local wait_deadline ---@type number?
+
+---@return number
+local function now_ms()
+	return vim.uv.hrtime() / 1e6
+end
+
+--- Poll `predicate` until it returns true; a nested zellij CLI retry ends at the same deadline.
 ---@param predicate fun(): boolean
 ---@param what string
 ---@param timeout? integer
 function M.wait_for(predicate, what, timeout)
-	local ok = vim.wait(timeout or 10000, function()
+	timeout = timeout or 10000
+	local outer = wait_deadline
+	wait_deadline = math.min(outer or math.huge, now_ms() + timeout)
+	local last ---@type string?
+	local function check()
 		local done, value = pcall(predicate)
+		last = not done and tostring(value) or last
 		return done and value
-	end, 50)
-	assert(ok, "stack: timed out waiting for " .. what)
+	end
+	local ok = vim.wait(timeout, check, 50)
+	wait_deadline = outer
+	assert(ok, "stack: timed out waiting for " .. what .. (last and " (last error: " .. last .. ")" or ""))
 end
 
---- Run `zellij action ...` against this session.
+--- One `zellij action ...` call against this session.
+---@param args string[]
+---@return vim.SystemCompleted
+function Stack:action(args)
+	return run(vim.list_extend({ "zellij", "--session", self.session, "action" }, args), self.env)
+end
+
+--- Call `attempt` every 50 ms until it reports done, within the CLI deadline (and any outer M.wait_for's).
+---@param attempt fun(): boolean, string done, then the value or the last error text
+---@return string value
+function Stack:retry_cli(attempt)
+	local value = ""
+	local function try()
+		local done
+		done, value = attempt()
+		return done
+	end
+	local timeout = self.cli_timeout or CLI_TIMEOUT_MS
+	if wait_deadline then
+		timeout = math.max(1, math.min(timeout, wait_deadline - now_ms()))
+	end
+	assert(vim.wait(timeout, try, 50), "stack: zellij CLI kept failing: " .. value)
+	return value
+end
+
+--- Run `zellij action ...` against this session, retrying a transient "no session".
 ---@param ... string
 ---@return string stdout
 function Stack:zellij(...)
-	local result = run(vim.list_extend({ "zellij", "--session", self.session, "action" }, { ... }), self.env)
+	local args = { ... }
+	local result ---@type vim.SystemCompleted
+	local function attempt()
+		result = self:action(args)
+		return not no_session(result), result.stderr or ""
+	end
+	self:retry_cli(attempt)
 	assert(result.code == 0, "zellij action failed: " .. (result.stderr or ""))
 	return result.stdout
+end
+
+--- One `list-clients` query: done with the focused pane id, or not done with why.
+---@return boolean done
+---@return string pane pane id, or the error text
+function Stack:query_focused_pane()
+	local result = self:action({ "list-clients" })
+	if no_session(result) then
+		return false, result.stderr
+	end
+	assert(result.code == 0, "zellij action failed: " .. (result.stderr or ""))
+	local lines = vim.split(vim.trim(result.stdout), "\n")
+	local pane = lines[2] and lines[2]:match("^%S+%s+(%S+)")
+	return pane ~= nil, pane or "no client in list-clients"
 end
 
 --- Pane id the (only) client focuses, e.g. "terminal_0".
 ---@return string
 function Stack:focused_pane()
-	local lines = vim.split(vim.trim(self:zellij("list-clients")), "\n")
-	return assert(lines[2] and lines[2]:match("^%S+%s+(%S+)"), "no client in list-clients")
+	return self:retry_cli(function()
+		return self:query_focused_pane()
+	end)
 end
 
 --- Write raw bytes into the tmux pane (zellij's stdin), unchanged.
@@ -254,7 +327,7 @@ function M.start(frontend)
 		XDG_CACHE_HOME = vim.env.XDG_CACHE_HOME,
 		PATH = vim.env.PATH,
 		TERM = self.frontend.term,
-	}
+	} --[[@as table<string, string>]] -- unset vim.env values are absent keys, never nil values
 	vim.api.nvim_create_autocmd("VimLeavePre", {
 		callback = function()
 			self:stop()
@@ -340,5 +413,6 @@ end
 
 -- for frontends (tests/e2e/alacritty.lua)
 M.run, M.write = run, write
+M.Stack = Stack
 
 return M

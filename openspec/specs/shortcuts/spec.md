@@ -14,6 +14,10 @@ The chain SHALL route every shortcut in the shortcut table (section "Shortcut ta
 - **WHEN** the effective Alacritty bindings (imports followed) are parsed
 - **THEN** every `chars` binding outside Vi mode has a `chars` row with the same bytes, every `chars` row has such a binding, and every `kitty` row's bytes equal Alacritty's kitty flag-1 encoding of the shortcut
 
+#### Scenario: Every Alacritty chars binding can match a key press
+- **WHEN** the effective Alacritty bindings (imports followed) are parsed
+- **THEN** no `chars` binding outside Vi mode has `Shift` in its mods together with a non-letter character key (`Minus`, `Equals`, `Slash`, `LBracket`, `RBracket`, `Key0`–`Key9` and other punctuation keys), because Alacritty 0.17 matches the shifted character (`_`, `+`, ...) and such a binding never fires; each offending binding is reported with its key, mods and bytes
+
 #### Scenario: zellij routes every shortcut as in the table
 - **WHEN** the zellij keybinds are resolved for `normal` mode and each row's bytes are decoded the way zellij parses them
 - **THEN** the route is the row's *zellij* column
@@ -68,11 +72,26 @@ The stack SHALL behave as the shortcut table when real zellij 0.45 runs the user
 - **WHEN** the `cat` pane is focused and `\x08` is sent
 - **THEN** zellij focus moves to the Neovim pane on the left
 
+### Requirement: The stack harness retries transient zellij CLI failures
+The stack harness SHALL read zellij state through `zellij action` calls that retry zellij's transient CLI failures (`There is no active session!`, or `list-clients` with no client row) until a valid answer or a bounded deadline, so a case fails only when the session or its client is really gone.
+
+#### Scenario: The stack harness retries a transient zellij CLI failure
+- **WHEN** `focused_pane()` of a `tests.shortcuts.stack` Stack is called with `zellij` stubbed on `PATH` so that `action list-clients` first exits 1 printing `There is no active session!`, then exits 0 with only the header line, then prints a client row on `terminal_0`
+- **THEN** it returns `terminal_0` and the stub was called 3 times
+
+#### Scenario: The stack harness fails when the zellij session stays gone
+- **WHEN** `focused_pane()` is called with `zellij` stubbed on `PATH` so that every `action list-clients` exits 1 printing `There is no active session!`
+- **THEN** it raises an error containing `There is no active session!` within the harness deadline
+
+#### Scenario: The stack harness keeps a zellij CLI retry within the outer wait
+- **WHEN** `M.wait_for` polls `focused_pane()` with a 300 ms timeout, the Stack has the default CLI deadline, and every stubbed `action list-clients` exits 1 printing `There is no active session!`
+- **THEN** it raises an error containing `There is no active session!` in under 2 s
+
 ### Requirement: Real key presses in the sandbox VM deliver shortcuts
-The e2e layer SHALL deliver physical key presses to Neovim as the shortcut table says, in a dedicated Alacritty instance (repo config) running real zellij (user keybinds, the stack layer's layout), with key events posted to that process inside the sandbox macOS VM, never on the host. Exceptions: the app menu takes Cmd+Q and Cmd+H, Cmd+Shift+-/= arrive in Alacritty's kitty encoding, and the key helper never presses Cmd+Shift+Q (system Log Out).
+The e2e layer SHALL deliver physical key presses to Neovim as the shortcut table says, in a dedicated Alacritty instance (repo config) running real zellij (user keybinds, the stack layer's layout), with key events posted to that process inside the sandbox macOS VM, never on the host. Exceptions: the app menu takes Cmd+Q and Cmd+H, and the key helper never presses Cmd+Shift+Q (system Log Out).
 
 #### Scenario: Every passed shortcut reaches its Neovim key from a real key press
-- **WHEN** a recorder mapping is set in Neovim normal mode for each row's *Neovim receives* key and each row's shortcut except Cmd+Q, Cmd+Shift+Q, Cmd+H, Cmd+Shift+- and Cmd+Shift+= is pressed in the Alacritty window
+- **WHEN** a recorder mapping is set in Neovim normal mode for each row's *Neovim receives* key and each row's shortcut except Cmd+Q, Cmd+Shift+Q and Cmd+H is pressed in the Alacritty window
 - **THEN** the recorder for exactly that key fires
 
 #### Scenario: Consumed shortcuts never reach Neovim from a real key press
@@ -90,6 +109,10 @@ The e2e layer SHALL deliver physical key presses to Neovim as the shortcut table
 #### Scenario: Cmd+Shift+- and Cmd+Shift+= reach Neovim as <S-D--> and <S-D-=> from a real key press
 - **WHEN** recorders are set for `<S-D-->`, `<S-D-=>`, `<M-_>` and `<M-+>` and Cmd+Shift+- then Cmd+Shift+= are pressed
 - **THEN** exactly `<S-D-->` then `<S-D-=>` are recorded
+
+#### Scenario: Cmd+Shift+- and Cmd+Shift+= close and open all folds from a real key press
+- **WHEN** a buffer with at least two top-level folds is open with all folds open, Cmd+Shift+- is pressed, then Cmd+Shift+= is pressed
+- **THEN** after Cmd+Shift+- every top-level fold is closed (`foldclosed()` of each fold's first line is not -1), and after Cmd+Shift+= none is
 
 #### Scenario: Ctrl+Up grows the current Neovim split from a real key press
 - **WHEN** two Neovim windows exist stacked, the cursor is in the top one, and Ctrl+Up is pressed
@@ -161,8 +184,8 @@ Columns of the table the "Shortcut table" requirement refers to:
 | Cmd+Shift+L | chars | `\eL` | navigator resize right | `<M-l>` | none |
 | Cmd+- | chars | `\e-` | pass | `<M-->` | `zc` |
 | Cmd+= | chars | `\e=` | pass | `<M-=>` | `zo` |
-| Cmd+Shift+- | chars | `\e_` | pass | `<M-_>` | none |
-| Cmd+Shift+= | chars | `\e+` | pass | `<M-+>` | none |
+| Cmd+Shift+- | kitty | `\e[45;10u` | pass | `<S-D-->` | fn `require("ufo").closeAllFolds` |
+| Cmd+Shift+= | kitty | `\e[61;10u` | pass | `<S-D-=>` | fn `require("ufo").openAllFolds` |
 | Cmd+[ | chars | `\e[` | GoToPreviousTab | — | — |
 | Cmd+] | chars | `\e]` | GoToNextTab | — | — |
 | Cmd+9 | chars | `\e9` | pass | `<M-9>` | desc `99: Menu` |
@@ -192,7 +215,7 @@ Columns of the table the "Shortcut table" requirement refers to:
 | Ctrl+Left | kitty | `\e[1;5D` | pass | `<C-Left>` | `:vertical resize -2<CR>` |
 | Ctrl+Right | kitty | `\e[1;5C` | pass | `<C-Right>` | `:vertical resize +2<CR>` |
 
-Known gaps this table pins down: Cmd+J/Cmd+K never reach Neovim (the later `shared_except "locked" "scroll"` block rebinds `Alt j`/`Alt k` to zellij `MoveFocus`); Cmd+Shift+H/J/K/L reach Neovim as lowercase `<M-h/j/k/l>` (the navigator's resize writes `ESC <dir>`), so the `<A-H/J/K/L>` resize maps are unreachable and Cmd+Shift+J/K move the cursor between splits; Cmd+Shift+-/= send `<M-_>`/`<M-+>` while folding maps `<S-D-->`/`<S-D-=>`; Ctrl+Q quits zellij.
+Known gaps this table pins down: Cmd+J/Cmd+K never reach Neovim (the later `shared_except "locked" "scroll"` block rebinds `Alt j`/`Alt k` to zellij `MoveFocus`); Cmd+Shift+H/J/K/L reach Neovim as lowercase `<M-h/j/k/l>` (the navigator's resize writes `ESC <dir>`), so the `<A-H/J/K/L>` resize maps are unreachable and Cmd+Shift+J/K move the cursor between splits; Ctrl+Q quits zellij.
 
 ## Collision table
 | zellij key | zellij action | Shadowed Neovim key | Neovim modes |

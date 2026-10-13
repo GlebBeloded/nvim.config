@@ -14,9 +14,8 @@ local NEOVIM_PANE, CAT_PANE = "terminal_0", "terminal_1"
 local CONSUMED = { "Cmd+J", "Cmd+K", "Cmd+[", "Cmd+]" }
 local SETTLE_MS = 300
 -- rows that behave unlike the shortcut table from a real key press, each in its own case:
--- the app menu takes Cmd+Q (Quit) and Cmd+H (Hide); Alacritty's chars bindings for
--- Cmd+Shift+-/= never match, so its kitty encoding arrives (spec: "Real key presses ...")
-local OWN_CASE = { ["Cmd+Q"] = true, ["Cmd+H"] = true, ["Cmd+Shift+-"] = true, ["Cmd+Shift+="] = true }
+-- the app menu takes Cmd+Q (Quit) and Cmd+H (Hide) (spec: "Real key presses ...")
+local OWN_CASE = { ["Cmd+Q"] = true, ["Cmd+H"] = true }
 
 ---@type e2e.Stack?
 local stack
@@ -216,6 +215,60 @@ T["shortcuts: Cmd+Shift+- and Cmd+Shift+= reach Neovim as <S-D--> and <S-D-=> fr
 		end
 	end)
 	eq(hits, { "<S-D-->", "<S-D-=>" })
+end
+
+-- two top-level Lua functions: one fold each, starting at these lines
+local FOLD_LINES = { 1, 6 }
+local FOLD_FIXTURE = {
+	"local function first()",
+	"\tlocal a = 1",
+	"\treturn a",
+	"end",
+	"",
+	"local function second()",
+	"\tlocal b = 2",
+	"\treturn b",
+	"end",
+}
+
+--- Open the fold fixture in a scratch buffer, wait for ufo's folds, open them all.
+---@param s e2e.Stack
+local function open_fold_fixture(s)
+	s:lua(
+		[[vim.cmd.enew()
+		vim.bo.buftype, vim.bo.bufhidden = "nofile", "wipe"
+		vim.api.nvim_buf_set_lines(0, 0, -1, false, ...)
+		vim.bo.filetype = "lua"]],
+		{ FOLD_FIXTURE }
+	)
+	for _, lnum in ipairs(FOLD_LINES) do
+		wait_nvim(string.format("vim.fn.foldlevel(%d) > 0", lnum), "a fold at line " .. lnum)
+	end
+	s:lua([[vim.cmd("normal! zR")]])
+end
+
+--- Wait until every fixture fold is closed (or, with `closed` false, open).
+---@param closed boolean
+local function wait_folds_closed(closed)
+	local op = closed and "~=" or "=="
+	for _, lnum in ipairs(FOLD_LINES) do
+		wait_nvim(
+			string.format("vim.fn.foldclosed(%d) %s -1", lnum, op),
+			string.format("fold at line %d %s", lnum, closed and "closed" or "open")
+		)
+	end
+end
+
+T["shortcuts: Cmd+Shift+- and Cmd+Shift+= close and open all folds from a real key press"] = function()
+	local s = get()
+	open_fold_fixture(s)
+	wait_folds_closed(false)
+	burst(function()
+		E.press(s, E.chord("Cmd+Shift+-"))
+		wait_folds_closed(true)
+		E.press(s, E.chord("Cmd+Shift+="))
+		wait_folds_closed(false)
+	end)
 end
 
 T["shortcuts: Ctrl+Up grows the current Neovim split from a real key press"] = function()

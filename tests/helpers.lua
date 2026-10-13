@@ -234,58 +234,268 @@ function M.screen_rows(child, from, to)
 	return full
 end
 
----@class test.Colors
----@field fg? string "#rrggbb"
----@field bg? string "#rrggbb"
+---@type string Highlight group of unmasked cells in design-render masks.
+M.DEFAULT_GROUP = "Normal"
+
+---@type table<string, true> Mask letters that mean `M.DEFAULT_GROUP`.
+M.UNMASKED = { ["."] = true, [" "] = true }
+
+---@class test.CellAttrs
+---@field fg? integer
+---@field bg? integer
+---@field sp? integer
 ---@field bold? boolean
 ---@field italic? boolean
+---@field underline? boolean
+---@field undercurl? boolean
+---@field strikethrough? boolean
+---@field reverse? boolean
 
---- Child-side: the combined highlight of the statusline segment that holds
---- the first occurrence of the text given as first argument (vim.NIL when the
---- text is not in the statusline). Groups stack like Neovim draws them
---- (StatusLine, then the segment's group), resolved through links.
-local STATUSLINE_HL_LUA = [[
-local status = vim.api.nvim_eval_statusline(vim.o.statusline, { highlights = true })
-local start = status.str:find(..., 1, true)
-if not start then return vim.NIL end
-local groups = {}
-for _, segment in ipairs(status.highlights) do
-	if segment.start < start then groups = segment.groups end
-end
-local combined = {}
-for _, group in ipairs(groups) do
-	combined = vim.tbl_extend("force", combined, vim.api.nvim_get_hl(0, { name = group, link = false }))
-end
-return combined]]
+---@class test.ScreenCell
+---@field text string
+---@field attrs test.CellAttrs
 
----@param color? integer
----@return string?
-local function hex(color)
-	return color and ("#%06x"):format(color)
+---@class test.ScreenCells
+---@field cells test.ScreenCell[][]
+---@field hls table<string, test.CellAttrs|vim.NIL>
+
+local CELL_FLAGS = { "bold", "italic", "underline", "undercurl", "strikethrough", "reverse" }
+local CELL_COLORS = { "fg", "bg", "sp" }
+
+--- Child-side: the drawn cells of `count` rows from screen row `row` (as in
+--- `M.screen_rows`) and the resolved highlights of `groups` (vim.NIL when
+--- undefined). Without a UI the first `nvim__inspect_cell` call remaps the
+--- attr table, so it is primed once and the screen redrawn before reading.
+local SCREEN_CELLS_LUA = [[
+local row, count, groups = ...
+local first = row < 0 and vim.o.lines + row or row - 1
+vim.api.nvim__inspect_cell(1, 0, 0)
+vim.cmd("redraw!")
+local cells = {}
+for r = first, first + count - 1 do
+	local line = {}
+	for col = 0, vim.o.columns - 1 do
+		local cell = vim.api.nvim__inspect_cell(1, r, col)
+		local attrs = cell[2]
+		attrs.fg, attrs.bg, attrs.sp = attrs.foreground, attrs.background, attrs.special
+		attrs.foreground, attrs.background, attrs.special = nil, nil, nil
+		table.insert(line, { text = cell[1], attrs = attrs })
+	end
+	table.insert(cells, line)
+end
+local hls = {}
+for _, name in ipairs(groups) do
+	hls[name] = vim.fn.hlexists(name) == 1 and vim.api.nvim_get_hl(0, { name = name, link = false }) or vim.NIL
+end
+return { cells = cells, hls = hls }]]
+
+---@param mask string[]
+---@param columns integer
+local function check_width(mask, columns)
+	for index, row in ipairs(mask) do
+		local width = vim.fn.strchars(row)
+		if width ~= columns then
+			error(("mask row %d is %d cells wide, screen has %d columns"):format(index, width, columns), 0)
+		end
+	end
 end
 
---- Colors of the statusline segment that shows `text`, so screen tests catch
---- color regressions that the attribute-identity screenshots cannot.
+---@param mask string[]
+---@param legend table<string, string>
+local function check_letters(mask, legend)
+	for index, row in ipairs(mask) do
+		for _, letter in ipairs(vim.fn.split(row, [[\zs]])) do
+			if not M.UNMASKED[letter] and not legend[letter] then
+				error(("mask row %d: letter %s is not in the legend"):format(index, letter), 0)
+			end
+		end
+	end
+end
+
+---@param hls table<string, test.CellAttrs|vim.NIL>
+---@param legend table<string, string>
+local function check_groups(hls, legend)
+	for _, letter in ipairs(vim.tbl_keys(legend)) do
+		if hls[legend[letter]] == vim.NIL then
+			error(("legend %s: unknown highlight group [%s]"):format(letter, legend[letter]), 0)
+		end
+	end
+end
+
+--- Whether a drawn cell shows `hl`: colors only where `hl` sets them (missing
+--- drawn colors are Normal's), flags always (absent = false).
+---@param attrs test.CellAttrs
+---@param hl test.CellAttrs
+---@param normal test.CellAttrs
+---@return boolean
+local function cell_matches(attrs, hl, normal)
+	for _, key in ipairs(CELL_COLORS) do
+		if hl[key] and hl[key] ~= (attrs[key] or normal[key]) then
+			return false
+		end
+	end
+	for _, flag in ipairs(CELL_FLAGS) do
+		if (hl[flag] or false) ~= (attrs[flag] or false) then
+			return false
+		end
+	end
+	return true
+end
+
+---@param cells test.ScreenCell[][]
+---@param legend table<string, string>
+---@param hls table<string, test.CellAttrs>
+---@param normal test.CellAttrs
+---@return string[] mask of the first matching letter per cell, `.` for Normal, else `?`
+local function actual_mask(cells, legend, hls, normal)
+	local letters = vim.tbl_keys(legend)
+	table.sort(letters)
+	local mask = {}
+	for _, line in ipairs(cells) do
+		local row = {}
+		for _, cell in ipairs(line) do
+			local found = vim.iter(letters):find(function(letter)
+				return cell_matches(cell.attrs, hls[legend[letter]], normal)
+			end)
+			table.insert(row, found or (cell_matches(cell.attrs, normal, normal) and ".") or "?")
+		end
+		table.insert(mask, table.concat(row))
+	end
+	return mask
+end
+
+---@param attrs test.CellAttrs
+---@return string
+local function format_attrs(attrs)
+	local parts = {}
+	for _, key in ipairs(CELL_COLORS) do
+		if attrs[key] then
+			table.insert(parts, ("%s=#%06x"):format(key, attrs[key]))
+		end
+	end
+	for _, flag in ipairs(CELL_FLAGS) do
+		if attrs[flag] then
+			table.insert(parts, flag)
+		end
+	end
+	return "{ " .. table.concat(parts, " ") .. " }"
+end
+
+---@class test.CellMismatch
+---@field row integer 1-based index into the mask
+---@field col integer 1-based column
+---@field letter string
+---@field group string
+
+---@param cells test.ScreenCell[][]
+---@param mask string[]
+---@param groups table<string, string> mask letter (and unmasked) -> group
+---@param hls table<string, test.CellAttrs>
+---@return test.CellMismatch?
+local function first_mismatch(cells, mask, groups, hls)
+	local normal = hls[M.DEFAULT_GROUP]
+	for row, line in ipairs(cells) do
+		local letters = vim.fn.split(mask[row], [[\zs]])
+		for col, cell in ipairs(line) do
+			local group = groups[letters[col]]
+			if not cell_matches(cell.attrs, hls[group], normal) then
+				return { row = row, col = col, letter = letters[col], group = group }
+			end
+		end
+	end
+end
+
+---@param mask string[]
+---@param actual string[]
+---@param cells test.ScreenCell[][]
+---@param hls table<string, test.CellAttrs>
+---@param bad test.CellMismatch
+---@return string
+local function mismatch_message(mask, actual, cells, hls, bad)
+	local lines = { "screen colors differ from the mask:" }
+	for row in ipairs(mask) do
+		table.insert(lines, "expected: " .. mask[row])
+		table.insert(lines, "actual:   " .. actual[row])
+	end
+	local cell = cells[bad.row][bad.col]
+	table.insert(
+		lines,
+		('mask row %d, column %d "%s": expected %s [%s] %s, drawn %s'):format(
+			bad.row,
+			bad.col,
+			cell.text,
+			bad.letter,
+			bad.group,
+			format_attrs(hls[bad.group]),
+			format_attrs(cell.attrs)
+		)
+	)
+	return table.concat(lines, "\n")
+end
+
+---@param legend table<string, string>
+---@return string[] legend groups plus `M.DEFAULT_GROUP`, once each
+local function legend_groups(legend)
+	local groups = { [M.DEFAULT_GROUP] = true }
+	for _, group in pairs(legend) do
+		groups[group] = true
+	end
+	return vim.tbl_keys(groups)
+end
+
+--- Assert the drawn colors of screen rows `row ..` against a design-render
+--- mask (one string per row, `columns` cells) and legend (letter -> group).
+--- `.` and space are `M.DEFAULT_GROUP`.
 ---@param child MiniTest.child
----@param text string
----@return test.Colors?
-function M.statusline_colors(child, text)
-	local hl = child.lua(STATUSLINE_HL_LUA, { text })
-	if hl == vim.NIL then
-		return nil
+---@param row integer as in `M.screen_rows` (negative counts from the bottom)
+---@param mask string[]
+---@param legend table<string, string>
+function M.expect_screen_colors(child, row, mask, legend)
+	check_width(mask, child.o.columns)
+	check_letters(mask, legend)
+	local screen = child.lua(SCREEN_CELLS_LUA, { row, #mask, legend_groups(legend) }) --[[@as test.ScreenCells]]
+	check_groups(screen.hls, legend)
+	local hls = screen.hls --[[@as table<string, test.CellAttrs>]]
+	if hls[M.DEFAULT_GROUP] == vim.NIL then
+		hls[M.DEFAULT_GROUP] = {}
 	end
-	return { fg = hex(hl.fg), bg = hex(hl.bg), bold = hl.bold or false, italic = hl.italic or false }
+	local letter_groups = vim.tbl_extend("force", { ["."] = M.DEFAULT_GROUP, [" "] = M.DEFAULT_GROUP }, legend)
+	local bad = first_mismatch(screen.cells, mask, letter_groups, hls)
+	if bad then
+		local actual = actual_mask(screen.cells, legend, hls, hls[M.DEFAULT_GROUP])
+		error(mismatch_message(mask, actual, screen.cells, hls, bad), 0)
+	end
 end
 
---- Assert the given fields of `expected` (others are ignored).
----@param actual? test.Colors
----@param expected test.Colors
-function M.expect_colors(actual, expected)
-	local subset = {}
-	for key in pairs(expected) do
-		subset[key] = (actual or {})[key]
+---@class test.HlColors
+---@field fg? string `#rrggbb`
+---@field bg? string `#rrggbb`
+---@field bold? boolean
+
+---@param hl test.CellAttrs
+---@return test.HlColors
+local function hl_colors(hl)
+	---@param color integer?
+	local function hex(color)
+		return color and ("#%06x"):format(color)
 	end
-	MiniTest.expect.equality(subset, expected)
+	return { fg = hex(hl.fg), bg = hex(hl.bg), bold = hl.bold or false }
+end
+
+--- Pin the resolved colors of highlight `group`: only the keys `expected` sets.
+--- Masks compare cells with their own group, so this is what catches a wrong
+--- palette color.
+---@param child MiniTest.child
+---@param group string
+---@param expected test.HlColors
+function M.expect_hl_colors(child, group, expected)
+	local hl = child.lua_get("vim.api.nvim_get_hl(0, { name = ..., link = false })", { group }) --[[@as test.CellAttrs]]
+	local actual = hl_colors(hl)
+	for key, value in pairs(expected) do
+		if actual[key] ~= value then
+			error(("[%s] %s: expected %s, got %s"):format(group, key, tostring(value), tostring(actual[key])), 0)
+		end
+	end
 end
 
 --- `expect.reference_screenshot` that honours UPDATE_SCREENSHOTS=1.

@@ -102,6 +102,10 @@ T["shortcuts: Alacritty bindings match the shortcut table"] = function()
 	expect_none(problems)
 end
 
+T["shortcuts: Every Alacritty chars binding can match a key press"] = function()
+	expect_none(C.unreachable_chars())
+end
+
 T["shortcuts: zellij routes every shortcut as in the table"] = function()
 	local problems = {}
 	for _, row in ipairs(C.shortcut_rows()) do
