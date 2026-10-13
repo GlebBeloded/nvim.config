@@ -124,13 +124,13 @@ Scenario: "Every declared skill is named and loaded by its command".
 - Modify: `tests/unit/loop/test_skills.lua` (`command_violations`)
 - Modify: all 10 skill-declaring `.archon/commands/*.md` (first step only; `grep -l "Skill tool" .archon/commands/*.md`)
 
-- [ ] **Step 1: Make the test fail.** In `command_violations`, for each declared skill also require the plain-text `"$" .. skill`. Add `violation "does not name $<skill>"`. Keep `LOAD_FIRST_NEEDLES` as they are.
+- [x] **Step 1: Make the test fail.** In `command_violations`, for each declared skill also require the plain-text `"$" .. skill`. Add `violation "does not name $<skill>"`. Keep `LOAD_FIRST_NEEDLES` as they are.
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
   Run: `make test FILE=tests/unit/loop/test_skills.lua CASE="Every declared skill"`
   Expected: FAIL listing every command with `does not name $…`.
 
-- [ ] **Step 3: Rewrite the first step of each command** in this form (exact copy; skills listed in the node's `skills:` order):
+- [x] **Step 3: Rewrite the first step of each command** in this form (exact copy; skills listed in the node's `skills:` order):
 
   ```
   First, load each of these skills before any other step: `superpowers:writing-plans`.
@@ -138,11 +138,11 @@ Scenario: "Every declared skill is named and loaded by its command".
   Report each skill as it loads. If one does not load, stop and report the error naming it.
   ```
 
-- [ ] **Step 4: Verify**
+- [x] **Step 4: Verify**
   Run: `make test FILE=tests/unit/loop/test_skills.lua`
   Expected: all PASS.
 
-- [ ] **Step 5: Commit**: `git commit -m "fix(loop): commands load skills via Skill tool or \$skill"`
+- [x] **Step 5: Commit**: `git commit -m "fix(loop): commands load skills via Skill tool or \$skill"`
 
 ### Task 4: Install the Codex plugin and probe a Codex run (no commit)
 

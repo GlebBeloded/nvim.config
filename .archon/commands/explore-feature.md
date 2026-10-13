@@ -4,8 +4,9 @@ argument-hint: <feature idea>
 ---
 # Explore the idea
 
-First, load each of these skills with the Skill tool, before any other step: `openspec-explore`,
-`superpowers:brainstorming`. If one does not load, stop and report the error naming it.
+First, load each of these skills before any other step: `openspec-explore`, `superpowers:brainstorming`.
+On Claude, load each with the Skill tool. On Codex, invoke each by name: $openspec-explore, $superpowers:brainstorming.
+Report each skill as it loads. If one does not load, stop and report the error naming it.
 
 Idea: $ARGUMENTS
 

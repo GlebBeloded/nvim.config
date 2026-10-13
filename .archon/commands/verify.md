@@ -3,8 +3,9 @@ description: Verify implementation against the change artifacts (/opsx:verify)
 ---
 # Verify
 
-First, load each of these skills with the Skill tool, before any other step:
-`openspec-verify-change`. If one does not load, stop and report the error naming it.
+First, load each of these skills before any other step: `openspec-verify-change`.
+On Claude, load each with the Skill tool. On Codex, invoke each by name: $openspec-verify-change.
+Report each skill as it loads. If one does not load, stop and report the error naming it.
 
 Change id: $INPUTS.change
 

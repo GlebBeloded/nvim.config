@@ -3,8 +3,9 @@ description: Turn an OpenSpec change into a TDD task plan
 ---
 # Plan
 
-First, load each of these skills with the Skill tool, before any other step:
-`superpowers:writing-plans`. If one does not load, stop and report the error naming it.
+First, load each of these skills before any other step: `superpowers:writing-plans`.
+On Claude, load each with the Skill tool. On Codex, invoke each by name: $superpowers:writing-plans.
+Report each skill as it loads. If one does not load, stop and report the error naming it.
 
 Change: openspec/changes/$INPUTS.change/
 User feedback from the approval gate (may be empty, it overrides the proposal): $INPUTS.feedback

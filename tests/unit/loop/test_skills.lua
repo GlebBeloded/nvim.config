@@ -342,6 +342,9 @@ local function command_violations(node)
 		if not text:find("`" .. skill .. "`", 1, true) then
 			add("does not name `" .. skill .. "`")
 		end
+		if not text:find("$" .. skill, 1, true) then
+			add("does not name $" .. skill)
+		end
 	end
 	for _, needle in ipairs(LOAD_FIRST_NEEDLES) do
 		if not text:find(needle, 1, true) then
