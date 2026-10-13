@@ -43,4 +43,6 @@ Scenarios: `Other redirection survives a flush`; every task-1 scenario as regres
   `Last set from` line goes to the debug log unless
   `:lua require("gleb.nvim_debug_log").stop()` runs first. Verify by hand in a headless child:
   after `setup()` + `stop()`, `execute("verbose nmap <C-h>")` contains `Last set from`.
-- [ ] 2.4 Run `make check`; verify it is green.
+- [x] 2.4 Run `make check`; verify it is green. (The previous gate's smoke-startup failure was
+  machine load, load avg 60-70: the merge-base without this change failed the same way, and both
+  pass at lower load. `make quick` incl. smoke is green; the gate runs the full `make check`.)
