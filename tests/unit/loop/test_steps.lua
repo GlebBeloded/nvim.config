@@ -96,6 +96,16 @@ T["loop: Judge rejects an xfail without a queued change"] = function()
 	eq(vim.json.decode(result.stdout).decision, "reject")
 end
 
+T["loop: Judge resolves an xfail reason held in a local"] = function()
+	local test = 'local WHY = "queued-x: reason"\nT["a: two"] = H.xfail(\n\tWHY,\n\tfunction() end\n)'
+	local queued = { ["tests/unit/a/test_b.lua"] = test, ["openspec/changes/queued-x/proposal.md"] = "## Why\nx" }
+	local ok = run("escalation.py", branch_repo(queued))
+	eq(ok.code, 0, { fail_reason = ok.stderr })
+	eq(vim.json.decode(ok.stdout).decision ~= "reject", true)
+	local missing = run("escalation.py", branch_repo({ ["tests/unit/a/test_b.lua"] = test }))
+	eq(vim.json.decode(missing.stdout).decision, "reject")
+end
+
 T["loop: Judge asks only for a breaking change"] = function()
 	local repo = branch_repo({ ["lua/gleb/keymaps.lua"] = 'vim.keymap.set("n", "x", "y")' })
 	local result = run("escalation.py", repo)
