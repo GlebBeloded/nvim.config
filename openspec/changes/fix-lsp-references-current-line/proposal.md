@@ -6,6 +6,7 @@ Kind: bug
 ## What Changes
 - `gr`: `lsp_references({ include_current_line = true })` (a small named function in `keymaps.lua`).
 - Remove the `H.xfail` around the case in `tests/e2e/lsp/test_go_references.lua`.
+- Out of scope: changing the `gr` key, Telescope layout or sorting, gopls settings, or reference selection behavior.
 
 ## Capabilities
 ### Modified Capabilities

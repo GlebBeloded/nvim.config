@@ -5,7 +5,6 @@
 local MiniTest = require("mini.test")
 local E = require("tests.e2e.alacritty")
 local F = require("tests.fixtures")
-local H = require("tests.helpers")
 local S = require("tests.shortcuts.stack")
 
 local eq = MiniTest.expect.equality
@@ -150,9 +149,7 @@ local CURRENT_FILE = [[local name = vim.api.nvim_buf_get_name(0)
 	local cursor = vim.api.nvim_win_get_cursor(0)
 	return { path = vim.uv.fs_realpath(name) or name, line = cursor[1], col = cursor[2] + 1 }]]
 
-local CURRENT_LINE = "gr drops the declaration under the cursor"
-
-local references_across_packages = H.xfail("fix-lsp-references-current-line: " .. CURRENT_LINE, function()
+T["lsp: References of a Go function list call sites across packages"] = function()
 	local s = get()
 	open_references(s)
 	wait_picker(s, #manifest.references.Format)
@@ -164,8 +161,7 @@ local references_across_packages = H.xfail("fix-lsp-references-current-line: " .
 		"internal/money/money_test.go",
 		"report/summary.go",
 	})
-end)
-T["lsp: References of a Go function list call sites across packages"] = references_across_packages
+end
 
 T["lsp: Selecting a reference opens its file at the call site"] = function()
 	local s = get()
