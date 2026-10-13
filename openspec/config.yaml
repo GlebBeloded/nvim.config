@@ -11,6 +11,7 @@ context: |
 rules:
   specs:
     - One capability per feature area, named after the lua/gleb/<feature> module (kebab-case).
+    - Exception: capabilities for repo tooling or behaviour outside Neovim (loop, shortcuts) are named after the area, not a lua/gleb/ module.
     - Every scenario must be verifiable by an automated layer (headless child Neovim by default; stack/e2e for terminal shortcuts). WHEN is a key sequence (exact lhs and mode), an Ex command, an autocmd event, or a function call. THEN is observable state (buffers, windows, options, registers, notifications, spawned commands, or screen content).
     - 'Scenario titles are unique within a capability and stable; tests reference them by name as "<capability>: <scenario title>".'
     - Visual-only behaviour (colors, layout) is specified as a reference screenshot scenario.
