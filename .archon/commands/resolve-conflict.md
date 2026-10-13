@@ -8,15 +8,21 @@ Your step: **resolve**. Input: the conflict hunks. Output: 1 merge commit with n
 
 Change id: $INPUTS.change
 Files ship reported as conflicting with `auto`: $ship.output.files
+Static gates failed on the clean merge: $ship.output.gate_failed
+Gate output: $ship.output.log
 
 `ship` could not merge this run's branch into `auto`: `auto` changed the same lines since the branch
-was cut. Work only in this run worktree; never touch the `auto` checkout (`~/.config/nvim`).
+was cut, or (gate failed true) the merge is clean but `make lint trace specs` fails on it, e.g. a
+test case name both sides added. Work only in this run worktree; never touch the `auto` checkout
+(`~/.config/nvim`).
 
 1. `git merge auto`. Resolve every conflict keeping the intent of both sides: the run's change and
    what landed on `auto`. Keep every test and every scenario from both; never delete, skip or weaken
    one to make the merge fit.
-2. `make fmt`; run only the test files that conflicted (`make test FILE=… 2>&1 | tail -40`); the gate runs `make check`.
-3. Commit the merge (`git commit --no-edit`).
+2. On a gate failure, fix what the gate output names (rename a duplicated case, keep both tests) and
+   rerun `make lint trace specs`.
+3. `make fmt`; run only the test files that conflicted (`make test FILE=… 2>&1 | tail -40`); the gate runs `make check`.
+4. Commit the merge (`git commit --no-edit`).
 
 If the two intents cannot both hold, keep the branch as is and say why; the run fails with the
 branch kept.

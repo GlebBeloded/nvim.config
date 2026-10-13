@@ -87,7 +87,9 @@ end
 ---@param extra? table<string, string>
 ---@return table<string, string>
 local function ship_env(extra)
-	return vim.tbl_extend("force", H.GIT_ENV, { BASE_BRANCH = "auto", INPUTS_CHANGE = "" }, extra or {})
+	-- no Archon DB: ship's detached cleanup waits for this child to exit, not for a real run
+	local env = { BASE_BRANCH = "auto", INPUTS_CHANGE = "", ARCHON_DB = "/nonexistent/archon.db" }
+	return vim.tbl_extend("force", H.GIT_ENV, env, extra or {})
 end
 
 --- Runs ship.py in `worktree`.
@@ -233,6 +235,82 @@ T["loop: Conflicting ship is reported for reconcile"] = function()
 	eq(vim.list_contains(report.files, "f.txt"), true)
 	eq(rev(repo, "auto"), before)
 	expect_auto_clean(repo)
+end
+
+--- Makefile whose `trace` fails on a case line in two files under tests/.
+local GATE_MAKEFILE =
+	"lint specs:\n\t@true\ntrace:\n\t@! cat tests/*.txt | sort | uniq -d | sed 's/^/duplicate case: /' | grep ."
+
+T["loop: Ship does not merge a result that fails the static gates"] = function()
+	local repo = make_repo()
+	write_files(repo, { Makefile = GATE_MAKEFILE, ["tests/base.txt"] = "base" })
+	git_ok({ "add", "-A" }, repo)
+	git_ok({ "commit", "-q", "-m", "gates" }, repo)
+	local dup = add_run(repo, "dup", { ["tests/b.txt"] = "dup" })
+	local fresh = add_run(repo, "fresh", { ["tests/c.txt"] = "fresh" })
+	write_files(repo, { ["tests/a.txt"] = "dup" })
+	git_ok({ "add", "-A" }, repo)
+	git_ok({ "commit", "-q", "-m", "auto adds dup" }, repo)
+	local before = rev(repo, "auto")
+	local result = ship(dup, { INPUTS_ON_CONFLICT = "report" })
+	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
+	local report = vim.json.decode(result.stdout)
+	eq({ report.merged, report.conflict, report.gate_failed }, { false, true, true })
+	eq(report.log:find("duplicate case: dup", 1, true) ~= nil, true, { fail_reason = report.log })
+	eq(rev(repo, "auto"), before)
+	expect_auto_clean(repo)
+	expect_shipped(ship(fresh, { INPUTS_ON_CONFLICT = "report" }))
+end
+
+--- Archon DB with a running run whose working path is `worktree`.
+---@param worktree string
+---@return string path
+local function live_run_db(worktree)
+	local db = vim.fs.joinpath(H.tempdir(child), "archon.db")
+	local sql = (
+		"create table remote_agent_workflow_runs (status text, working_path text);"
+		.. "insert into remote_agent_workflow_runs values ('running', '%s');"
+	):format(worktree)
+	eq(H.system(child, { "sqlite3", db, sql }, worktree).code, 0)
+	return db
+end
+
+--- Runs ship.py under a shell that outlives it only briefly (the cleanup's parent pid).
+---@param worktree string
+---@param env? table<string, string>
+---@return test.SystemResult
+local function ship_in_shell(worktree, env)
+	return H.system(child, { "sh", "-c", 'python3 "$0"; status=$?; exit $status', SHIP }, worktree, ship_env(env))
+end
+
+T["loop: Ship cleans up its run after the run ends"] = function()
+	local repo = make_repo()
+	local done = add_run(repo, "done", { ["done.txt"] = "d" })
+	expect_shipped(ship_in_shell(done))
+	local timeout = math.ceil(20000 * H.load_factor())
+	local gone = child.lua_get(
+		[[(function(dir, timeout)
+			return vim.wait(timeout, function() return vim.uv.fs_stat(dir) == nil end, 100)
+		end)(...)]],
+		{ done, timeout }
+	)
+	eq(gone, true, { fail_reason = "worktree not removed" })
+	eq(H.system(child, { "git", "rev-parse", "--verify", "--quiet", "refs/heads/loop/done" }, repo).code ~= 0, true)
+
+	local live = add_run(repo, "live", { ["live.txt"] = "l" })
+	expect_shipped(ship_in_shell(live, { ARCHON_DB = live_run_db(live), LOOP_CLEAN_WAIT = "2" }))
+	local log = vim.fs.joinpath(repo, ".git/nvim-loop-clean.log")
+	local reported = child.lua_get(
+		[[(function(log, timeout)
+			return vim.wait(timeout, function()
+				return vim.fn.filereadable(log) == 1 and table.concat(vim.fn.readfile(log), "\n"):find("loop/live  run still live") ~= nil
+			end, 100)
+		end)(...)]],
+		{ log, timeout }
+	)
+	eq(reported, true, { fail_reason = "no still-live report" })
+	eq(exists(live, "live.txt"), true)
+	git_ok({ "rev-parse", "--verify", "loop/live" }, repo)
 end
 
 return T

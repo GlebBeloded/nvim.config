@@ -2,6 +2,9 @@
 INPUTS_CHANGE when given, otherwise the oldest change (by `created` in .openspec.yaml, then name)
 that has no `loop/<change>` branch yet (a branch means a run already took it). `update-<plugin>`
 changes are skipped: they need the new plugin commit, so `make update PLUGIN=<plugin>` works them.
+A change whose proposal.md has a `Depends: <change>[, <change>...]` line waits (even when named)
+until each of those changes is archived. QUEUE_SKIP (space- or comma-separated) excludes changes
+from an automatic pick (`drain.py` passes the ones it already ran or found blocked).
 Kind: a `Kind: feature` line in proposal.md, or an add-/feat-/new- prefix, makes it a feature;
 everything else is a bug fix.
 """
@@ -11,6 +14,7 @@ import os
 import pathlib
 import re
 import subprocess
+import sys
 
 CHANGES = pathlib.Path("openspec/changes")
 
@@ -38,6 +42,24 @@ def created(path: pathlib.Path) -> str:
     return match.group(1) if match else "9999"
 
 
+def depends(path: pathlib.Path) -> list[str]:
+    proposal = path / "proposal.md"
+    text = proposal.read_text() if proposal.exists() else ""
+    lines = re.findall(r"^Depends:\s*(.+)$", text, re.M)
+    return [name for line in lines for name in re.split(r"[\s,]+", line.strip()) if name]
+
+
+def archived(name: str) -> bool:
+    archive = CHANGES / "archive"
+    pattern = re.compile(rf"(\d{{4}}-\d{{2}}-\d{{2}}-)?{re.escape(name)}")
+    return archive.is_dir() and any(entry.is_dir() and pattern.fullmatch(entry.name) for entry in archive.iterdir())
+
+
+def waits_for(name: str) -> list[str]:
+    """Dependencies of `name` that are not archived yet."""
+    return [dep for dep in depends(CHANGES / name) if not archived(dep)]
+
+
 def kind(path: pathlib.Path) -> str:
     proposal = path / "proposal.md"
     text = proposal.read_text() if proposal.exists() else ""
@@ -50,10 +72,14 @@ def kind(path: pathlib.Path) -> str:
 wanted = os.environ.get("INPUTS_CHANGE", "").strip()
 listing = json.loads(subprocess.run(["openspec", "list", "--json"], capture_output=True, text=True, check=True).stdout)
 names = [c["name"] for c in listing.get("changes", [])]
+skip = set(re.split(r"[\s,]+", os.environ.get("QUEUE_SKIP", "").strip())) - {""}
 if wanted:
     candidates = [n for n in names if n == wanted]
+    if candidates and waits_for(wanted):
+        print(f"queue_pick: {wanted} waits for: {', '.join(waits_for(wanted))}", file=sys.stderr)
+        candidates = []
 else:
-    pending = (n for n in names if not n.startswith("update-") and not taken(n))
+    pending = (n for n in names if not n.startswith("update-") and n not in skip and not taken(n) and not waits_for(n))
     candidates = sorted(pending, key=lambda n: (created(CHANGES / n), n))
 
 if not candidates:

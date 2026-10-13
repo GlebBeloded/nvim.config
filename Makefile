@@ -137,7 +137,7 @@ STAMP := $(shell date +%Y%m%d-%H%M%S)
 # Archon judges "merged" against local/auto without fetching it, so refresh it with the run's merge first.
 CLEANUP = { git fetch -q local; $(ARCHON) isolation cleanup --merged; } >/dev/null 2>&1 || true
 
-.PHONY: loop-setup loop-register loop-validate loop-test fix feature queue update outdated console loop-report loop-status preview
+.PHONY: loop-setup loop-register loop-validate loop-test loop-clean fix feature queue drain update outdated console loop-report loop-status preview
 
 loop-setup: # self-remote: Archon cuts worktrees from <remote>/auto, and auto stays local
 	@git remote get-url local >/dev/null 2>&1 || git remote add local "$$(git rev-parse --path-format=absolute --git-common-dir | sed 's|/.git$$||')"
@@ -172,7 +172,7 @@ feature: loop-setup # make feature IDEA="what to build"
 	@test -n "$$IDEA" || { echo 'usage: make feature IDEA="..."'; exit 2; }
 	$(ARCHON) workflow run new-feature --base auto --branch loop/feat-$(STAMP) "$$IDEA"; status=$$?; $(CLEANUP); exit $$status
 
-queue: loop-setup # make queue [CHANGE=<id>]: work the next (or the given) change in openspec/changes/
+queue: loop-setup # make queue [CHANGE=<id>] [DETACH=1]: work the next (or the given) change in openspec/changes/
 	@id=$$(INPUTS_CHANGE="$$CHANGE" python3 .archon/scripts/queue_pick.py | python3 -c 'import json,sys; print(json.load(sys.stdin)["change"])'); \
 	test -n "$$id" || { echo "Queue is empty: no untaken change in openspec/changes/"; exit 0; }; \
 	echo "Working on $$id"; branch=loop/$$id; adopt=; \
@@ -180,7 +180,13 @@ queue: loop-setup # make queue [CHANGE=<id>]: work the next (or the given) chang
 	from=$$(sed -n 's/^Adopt: *//p' "openspec/changes/$$id/proposal.md" 2>/dev/null | head -n 1); \
 	if [ -n "$$from" ] && git show-ref -q --verify "refs/heads/$$from"; then adopt=$$from; fi; \
 	[ -z "$$adopt" ] || echo "Adopting $$adopt"; \
-	$(ARCHON) workflow run work-queue --base auto --branch $$branch --input change=$$id --input adopt=$$adopt "Work queued change $$id"; status=$$?; $(CLEANUP); exit $$status
+	$(ARCHON) workflow run work-queue $(if $(filter 1,$(DETACH)),--detach --json) --base auto --branch $$branch --input change=$$id --input adopt=$$adopt "Work queued change $$id"; status=$$?; $(CLEANUP); exit $$status
+
+drain: loop-setup # make drain [N=<max runs>]: work queued changes one by one until empty, N runs or a pause
+	@python3 .archon/scripts/drain.py $(if $(N),--max $(N))
+
+loop-clean: # remove worktree + branch of shipped/superseded loop/* runs; dry run unless APPLY=1
+	@python3 .archon/scripts/loop_clean.py $(if $(filter 1,$(APPLY)),--apply)
 
 update: loop-setup # make update PLUGIN=<name>: update one plugin, test it, ship or adapt the config
 	@test -n "$$PLUGIN" || { echo 'usage: make update PLUGIN=<name>  (make outdated lists them)'; exit 2; }

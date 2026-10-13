@@ -23,13 +23,16 @@ Agents fix bugs, build features and update plugins on this machine only. Nothing
 opened. [Archon](https://archon.diy/docs/) runs the workflows in `.archon/workflows/` on Codex by default,
 with review on Claude Code (Setup facts).
 Each run works in its own git worktree cut from `auto` and, when every gate is green, merges back into
-`auto` with `--no-ff`. `main` is never touched.
+`auto` with `--no-ff`. `main` is never touched. When `auto` moved past the branch, ship first runs
+`make lint trace specs` on the merge in a temporary worktree; red goes to `reconcile` like a conflict.
 
 | Command | What it does |
 |---|---|
 | `make fix BUG="…"` | `fix-bug`: root cause, spec delta, TDD fix. `BUG` can also be a change id |
 | `make feature IDEA="…"` | `new-feature`: brainstorm, proposal with renders; always stops for your approval |
 | `make queue [CHANGE=<id>]` | `work-queue`: the oldest change in `openspec/changes/` that no run has taken (no `loop/<id>` branch) |
+| `make drain [N=<runs>]` | `drain.py`: `make queue` one change at a time until the queue is empty, N runs, or a run waits for you; skips `## Blocked` changes |
+| `make loop-clean [APPLY=1]` | `loop_clean.py`: remove worktree and branch of shipped or superseded `loop/*` runs; dry run unless `APPLY=1` |
 | `make outdated` | plugins with commits past `lazy-lock.json` (read-only) |
 | `make update PLUGIN=<name>` | `plugin-update`: update that one plugin, test it, ship it or adapt the config |
 | `make preview CHANGE=<id> [OPEN=1]` | regenerate `openspec/changes/<id>/preview.html` and print its absolute path (`OPEN=1` is for you; the loop passes `OPEN=`) |
@@ -99,7 +102,8 @@ Known issues and planned work are queued changes in `openspec/changes/`; there i
 - Queue an issue: `openspec new change fix-<topic>`, then write `proposal.md` (Why, `Kind: bug|feature`,
   What Changes, Impact). A proposal alone is enough: `work-queue` completes the spec delta, design and
   tasks before building. Add a spec delta yourself when the correct behaviour is already clear.
-- Work it: `make queue` (oldest first) or `make queue CHANGE=<id>`.
+- Work it: `make queue` (oldest first) or `make queue CHANGE=<id>`; `make drain` works them all.
+- Order: a `Depends: <change>[, <change>]` line in proposal.md holds the change until those are archived.
 - A test that pins a known bug wraps the case in `H.xfail("<change id>", fn)` ([testing](testing.md)).
 
 ### Where to look
@@ -111,7 +115,10 @@ Known issues and planned work are queued changes in `openspec/changes/`; there i
   `<output_root>/artifacts/runs/<id>/report.html` and prints its local URI. `make loop-status` prints the
   latest report URI after the active and recent runs.
 - **git**: `git log --first-parent auto` lists one merge per shipped run; run branches are `loop/*`.
-  `archon isolation cleanup --merged` removes merged run worktrees (the make targets run it).
+  After a merge, ship starts `loop_clean.py` for its run: once no running or paused run holds it, the
+  run's worktree and branch go (log: `.git/nvim-loop-clean.log`). `make loop-clean` lists every
+  `loop/*` branch: shipped or superseded ones (tip on `auto`) to remove, the rest kept with the reason
+  (unmerged commits, uncommitted changes, a live run).
 - **Resume or stop**: `archon workflow runs`, `archon workflow resume <run-id>`,
   `archon workflow abandon <run-id>`, `archon complete <branch>`.
 
