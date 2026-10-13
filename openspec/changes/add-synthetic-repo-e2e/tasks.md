@@ -98,3 +98,7 @@ Scenarios: `git: ]f steps to the next changed file in differ`, `git: ]c steps to
   - `GOPLS_VERSION=0.23.0`, not 0.21.1: the host's gopls is v0.23.0 (`gopls version`), and the rule is "pinned to the host's versions".
   - Harness fixes found on the way: null-ls's `golangci_lint` source is disabled over RPC in the test (golangci-lint is not in the sandbox; its "not executable" message hit a hit-enter prompt under `cmdheight=0` and blocked Neovim); `E.alive` now probes RPC with `nvim_get_mode`, so Neovim waiting on `timeoutlen` (`gr` vs the built-in `grr`/`gra`) is not reported as a dead stack.
   - The shared VM: parallel worktrees rsync into the same guest path (`/Users/lume/nvim`, with `--delete`) and reset `~/.nvim-e2e-provisioned` to their own `PROVISION_REV`; the runs above used a private guest dir. The queued VM lock fix covers the first; the rev ping-pong stays until every branch has rev 4.
+- Gate of attempt 1 (red, not caused by this branch):
+  - `e2e`: `Error: in prepare, database is locked (5)` is SQLite in Lume's own store, hit when parallel worktrees drive the shared VM at once; the queued VM lock fix covers it.
+  - `smoke-startup`: 481 ms vs the 400 ms budget at load average 51.1 (parallel loop runs); no change under `lua/` on this branch.
+  - Unchecked tasks: still waiting on the decision above (no `## Decision` in proposal.md yet).
