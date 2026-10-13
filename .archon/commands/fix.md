@@ -26,7 +26,7 @@ search it with `rg -n 'FAIL in' <log>` and `rg -n -C 3 '<pattern>' <log>` (at mo
 whole log. Search code with one specific term per `rg` and a path, never a broad multi-word `rg` over
 `lua tests`. Rerun every test file named in a `FAIL in …` line of that log, plus
 `tests/screen/<area>` for each area you touched (`make test FILE=… 2>&1 | tail -40`); never
-`make quick` or `make check` (the next gate runs it). Tick any task you finish in tasks.md. Commit
+`make quick` or `make check` (the next gate runs it). Tick any task you finish in tasks.md. Run `make fmt`, then commit
 (conventional message).
 
 Regenerate a reference screenshot (`tests/screenshots/`) only when its cell diff is limited to UI that
@@ -46,3 +46,4 @@ tasks.md under "## Blocked" and stop.
 If a failure comes from loop tooling (`.archon/`, `tests/trace.lua`, `tests/sandbox/`, the `make check` targets) and not from this change, do not fix it here: write `## Blocked` with `loop: <failure>` in tasks.md and stop.
 
 Ad-hoc headless runs: write the probe to a scratch file and run `timeout 30 nvim -n --headless -u NONE -l $ARTIFACTS_DIR/probe.lua` (body in `pcall`, `vim.cmd('qa!')` last); never inline `+lua` with shell quoting. Visual marks need `exe "normal! V2j\<Esc>"` or `nvim_buf_set_mark`.
+Never load the host to reproduce a flake (no `yes`/stress loops, no SIGSTOP tricks): other runs share this machine. A gate log's `FAIL in` line is the RED evidence for a timing flake.
