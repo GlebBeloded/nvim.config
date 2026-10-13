@@ -12,4 +12,4 @@ Layer: screen (`tests/screen/statusline/test_statusline_screen.lua`). Tests only
 
 ## 2. Verify
 
-- [ ] 2.1 `make trace` lists both scenarios as tested; `make check` green.
+- [x] 2.1 `make trace` lists both scenarios as tested; `make check` green.
