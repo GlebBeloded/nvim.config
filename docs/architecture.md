@@ -32,7 +32,7 @@ Feature code lives in `lua/gleb/<feature>/`; the capability name is the kebab-ca
 | `nvim_debug_log/` | Every message of a session to `/tmp/nvim/`, readable while hidden by `cmdheight=0` | [nvim-debug-log](../openspec/specs/nvim-debug-log/spec.md) |
 | `plugins/` | lazy.nvim bootstrap and the one plugin list | |
 | `options.lua`, `autocommands.lua`, `colors/` | Editor options, general autocmds, gruvbox-material and its palette | |
-| `keymaps.lua` | Global keymaps and leader | [keymaps](../openspec/specs/keymaps/spec.md), [shortcuts](../openspec/specs/shortcuts/spec.md) |
+| `keymaps.lua` | Global keymaps | [keymaps](../openspec/specs/keymaps/spec.md), [shortcuts](../openspec/specs/shortcuts/spec.md) |
 | `lsp/`, `cmp.lua`, `select/`, editing modules | LSP, completion, treesitter, folding, comments | |
 | `git/` | Signs, diff viewers, permalinks, AI commit popup | [git](../openspec/specs/git/spec.md) |
 | `file_tree/` | neo-tree, git status tree with live diff preview | [file-tree](../openspec/specs/file-tree/spec.md) |
@@ -87,10 +87,10 @@ sequenceDiagram
 
 Order in `init.lua` is load order, and the code relies on it:
 
-- `nvim_debug_log` is first, so it captures messages and errors from everything after it.
+- `nvim_debug_log` is the first module, so it captures messages and errors from everything after it.
 - `session` comes before `alpha-nvim`, so its `VimEnter` restore runs first and the dashboard skips itself.
 - `folding`, `autopairs` and `comments` come after `treesitter`.
-- The leader must be set before `lazy.setup()` so plugin `<leader>` maps bind to it.
+- The leader (Space, only a fallback for plugin defaults) is set at the top of `init.lua`, before `lazy.setup()`, so plugin `<leader>` maps bind to it.
 
 ## AI maintenance loop
 
@@ -207,8 +207,8 @@ relative to `lua/gleb/`.
 - 3.4 Options are `{ silent = true, desc = … }`; `noremap` is already the default; `remap = true` only when the rhs is a mapping.
 - 3.5 The rhs is a function reference, a named local function or `<Cmd>…<CR>`; no `:…<CR>` strings, no long anonymous functions.
 - 3.6 One mode per behaviour: `x` for visual maps, not both `v` and `x`.
-- 3.7 Cmd shortcuts arrive as `<A-…>` from Alacritty, and window moves use smart-splits so they cross into zellij ([terminal stack](#terminal-stack)).
-- 3.8 No `<leader>` maps while the leader is not a real key. Core keymap changes need user approval.
+- 3.7 Cmd shortcuts arrive as `<A-…>` from Alacritty; a Cmd chord with no binding anywhere arrives as `<D-…>` (kitty keyboard protocol). Window moves use smart-splits so they cross into zellij ([terminal stack](#terminal-stack)).
+- 3.8 No `<leader>` maps in the config; Cmd shortcuts instead. Core keymap changes need user approval.
 - 3.9 No deprecated APIs.
 
 ### 4. Naming
