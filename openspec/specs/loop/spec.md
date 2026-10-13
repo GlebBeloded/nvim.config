@@ -295,6 +295,10 @@ The delivery loop SHALL implement one task per fresh agent session from a script
 - **WHEN** `.archon/scripts/escalation.py` runs on a branch whose change delta only mentions `## REMOVED Requirements` inside a scenario sentence
 - **THEN** its JSON `decision` is `ship`
 
+#### Scenario: Judge ignores a plugin spec moved into dependencies
+- **WHEN** `.archon/scripts/escalation.py` runs on a branch that moves plugin `a/dap-ui` from its own spec into `a/dap`'s `dependencies`
+- **THEN** its JSON `decision` is `ship` (plugin names compared, not lines)
+
 #### Scenario: Judge ships an internal change without asking
 - **WHEN** `.archon/scripts/escalation.py` runs on a branch that only adds an internal Lua module
 - **THEN** its JSON is `{decision = "ship", escalate = false, reasons = "- none"}`

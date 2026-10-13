@@ -274,4 +274,16 @@ T["loop: Spec gate rejects a task naming an unknown scenario"] = function()
 	eq({ result.code, vim.trim(result.stdout):match("[^\n]*$") }, { 1, "- x: invented" })
 end
 
+T["loop: Judge ignores a plugin spec moved into dependencies"] = function()
+	local repo = H.tempdir(child)
+	write(repo, { ["lua/gleb/plugins/plugins.lua"] = '{ "a/dap" },\n{ "a/dap-ui" },' })
+	git_ok({ "init", "-q", "-b", "auto" }, repo)
+	git_ok({ "add", "-A" }, repo)
+	git_ok({ "commit", "-q", "-m", "init" }, repo)
+	git_ok({ "checkout", "-q", "-b", "run" }, repo)
+	write(repo, { ["lua/gleb/plugins/plugins.lua"] = '{ "a/dap", dependencies = { "a/dap-ui" } },' })
+	local result = run("escalation.py", repo)
+	eq(vim.json.decode(result.stdout).decision, "ship")
+end
+
 return T

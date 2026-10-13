@@ -8,7 +8,7 @@ import re
 import subprocess
 
 BASE = os.environ.get("BASE_BRANCH") or "auto"
-PLUGIN_RE = re.compile(r'^\s*\{?\s*"[\w.-]+/[\w.-]+"')
+PLUGIN_NAME = re.compile(r'"([\w.-]+/[\w.-]+)"')
 CASE_RE = re.compile(r'^\s*T\["')
 XFAIL_RE = re.compile(r'H\.xfail\(\s*"([\w.-]+)')
 
@@ -51,15 +51,17 @@ def hard_rule_violations() -> list[str]:
 
 def breaking_changes() -> list[str]:
     plugins = diff("lua/gleb/plugins")
-    added = [l.strip() for l in lines(plugins, "+") if PLUGIN_RE.match(l)]
-    removed = [l.strip() for l in lines(plugins, "-") if PLUGIN_RE.match(l)]
+    # compare plugin names, not lines: moving a spec into another's dependencies changes lines only
+    plus = {n for l in lines(plugins, "+") for n in PLUGIN_NAME.findall(l)}
+    minus = {n for l in lines(plugins, "-") for n in PLUGIN_NAME.findall(l)}
+    added, removed = sorted(plus - minus), sorted(minus - plus)
     lock = diff("lazy-lock.json")
     lock_old = {l.split(":")[0].strip() for l in lines(lock, "-")}
     lock_new = {l.split(":")[0].strip() for l in lines(lock, "+") if l.strip().startswith('"')}
     reasons = []
-    if [p for p in added if p not in removed] or lock_new - lock_old:
+    if added or lock_new - lock_old:
         reasons.append("adds a plugin: " + ", ".join(sorted(lock_new - lock_old) or added))
-    if [p for p in removed if p not in added] or lock_old - lock_new:
+    if removed or lock_old - lock_new:
         reasons.append("removes a plugin: " + ", ".join(sorted(lock_old - lock_new) or removed))
     keymaps = diff("lua/gleb/keymaps.lua")
     if any(re.search(r"keymap\.set|mapleader|nvim_set_keymap", l) for l in lines(keymaps, "+") + lines(keymaps, "-")):
