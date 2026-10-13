@@ -87,5 +87,5 @@ Scenario: "Smart-splits resize keys are not remapped".
 
 ## 6. Verify
 
-- [ ] 6.1 `make check` green (types, lint, trace with no orphans, every layer). `make trace VERBOSE=1`
+- [x] 6.1 `make check` green (types, lint, trace with no orphans, every layer). `make trace VERBOSE=1`
   shows every scenario of `specs/keymaps/spec.md` in this change as tested.
