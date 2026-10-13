@@ -8,11 +8,11 @@ and `make quick`. Code changes only touch `lua/gleb/statusline/lsp_progress.lua`
 
 Scenarios: "detached client tasks are removed", "detach keeps tasks of a client still attached elsewhere".
 
-- [ ] 1.1 Add a `detach(buf)` test helper that runs `nvim_exec_autocmds("LspDetach", { buffer = buf, data = { client_id = 1 } })` in the child (create buffer 2 with `nvim_create_buf` when needed)
-- [ ] 1.2 Add failing case "statusline: detached client tasks are removed": `fire` begin, `detach(1)` (no stub, `get_client_by_id(1)` is `nil` in the bare child), `eq(progress_after_delay(), "")`; verify it fails (task still shown)
-- [ ] 1.3 Add case "statusline: detach keeps tasks of a client still attached elsewhere": stub `vim.lsp.get_client_by_id` in the child to return `{ name = "fake", attached_buffers = { [1] = true, [2] = true }, is_stopped = function() return false end }`, `fire` begin, `detach(1)`, `expect_entry(progress_after_delay(), …)`; it passes today and guards decision 1 against "drop on every detach"
-- [ ] 1.4 Add a named `on_detach(args)` and a `drop_client(client_id)` (removes keys prefixed `<client_id>:`), plus a `client_leaving(client, buf)` predicate: client `nil`, `client:is_stopped()`, or `buf` is the only key in `client.attached_buffers` (design decision 1); register `LspDetach` in the existing `gleb_lsp_progress` augroup (store the augroup id in a local, rule 7.1)
-- [ ] 1.5 Verify both cases and all existing `statusline:` progress cases pass
+- [x] 1.1 Add a `detach(buf)` test helper that runs `nvim_exec_autocmds("LspDetach", { buffer = buf, data = { client_id = 1 } })` in the child (create buffer 2 with `nvim_create_buf` when needed)
+- [x] 1.2 Add failing case "statusline: detached client tasks are removed": `fire` begin, `detach(1)` (no stub, `get_client_by_id(1)` is `nil` in the bare child), `eq(progress_after_delay(), "")`; verify it fails (task still shown)
+- [x] 1.3 Add case "statusline: detach keeps tasks of a client still attached elsewhere": stub `vim.lsp.get_client_by_id` in the child to return `{ name = "fake", attached_buffers = { [1] = true, [2] = true }, is_stopped = function() return false end }`, `fire` begin, `detach(1)`, `expect_entry(progress_after_delay(), …)`; it passes today and guards decision 1 against "drop on every detach"
+- [x] 1.4 Add a named `on_detach(args)` and a `drop_client(client_id)` (removes keys prefixed `<client_id>:`), plus a `client_leaving(client, buf)` predicate: client `nil`, `client:is_stopped()`, or `buf` is the only key in `client.attached_buffers` (design decision 1); register `LspDetach` in the existing `gleb_lsp_progress` augroup (store the augroup id in a local, rule 7.1)
+- [x] 1.5 Verify both cases and all existing `statusline:` progress cases pass
 
 ## 2. Stale task timeout
 

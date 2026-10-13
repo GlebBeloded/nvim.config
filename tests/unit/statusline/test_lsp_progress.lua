@@ -26,6 +26,20 @@ local function fire(value, token)
 	)
 end
 
+---@param buf integer
+local function detach(buf)
+	child.lua(
+		[[
+        local buf = ...
+        while not vim.api.nvim_buf_is_valid(buf) do
+            vim.api.nvim_create_buf(true, false)
+        end
+        vim.api.nvim_exec_autocmds("LspDetach", { buffer = buf, data = { client_id = 1 } })
+    ]],
+		{ buf }
+	)
+end
+
 ---@return string
 local function progress_after_delay()
 	vim.uv.sleep(SHOW_AFTER_MS + 50)
@@ -109,6 +123,31 @@ T["statusline: unmatched message shown verbatim"] = function()
 	fire({ kind = "begin", message = "Resolving" })
 
 	expect_entry(progress_after_delay(), "Resolving")
+end
+
+T["statusline: detached client tasks are removed"] = function()
+	fire({ kind = "begin", title = "Building" })
+	detach(1)
+
+	eq(progress_after_delay(), "")
+end
+
+T["statusline: detach keeps tasks of a client still attached elsewhere"] = function()
+	child.lua([[
+        vim.lsp.get_client_by_id = function()
+            return {
+                name = "fake",
+                attached_buffers = { [1] = true, [2] = true },
+                is_stopped = function()
+                    return false
+                end,
+            }
+        end
+    ]])
+	fire({ kind = "begin", title = "Building" })
+	detach(1)
+
+	expect_entry(progress_after_delay(), "building")
 end
 
 return T

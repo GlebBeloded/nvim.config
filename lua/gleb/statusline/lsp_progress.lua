@@ -104,6 +104,35 @@ local function on_progress(args)
 	end
 end
 
+---@param client_id integer
+local function drop_client(client_id)
+	local prefix = client_id .. ":"
+	for key in pairs(active) do
+		if vim.startswith(key, prefix) then
+			active[key] = nil
+		end
+	end
+end
+
+-- `LspDetach` also fires per buffer on unload; a client still attached elsewhere keeps its tasks
+---@param client? vim.lsp.Client
+---@param buf integer
+---@return boolean
+local function client_leaving(client, buf)
+	if client == nil or client:is_stopped() then
+		return true
+	end
+	local first = next(client.attached_buffers)
+	return first == buf and next(client.attached_buffers, first) == nil
+end
+
+local function on_detach(args)
+	local client_id = args.data.client_id
+	if client_leaving(vim.lsp.get_client_by_id(client_id), args.buf) then
+		drop_client(client_id)
+	end
+end
+
 -- statusline component: spinner + readable label, only for tasks past the threshold
 function M.progress()
 	local parts = {}
@@ -124,9 +153,8 @@ function M.progress()
 	return table.concat(parts, "  ")
 end
 
-vim.api.nvim_create_autocmd("LspProgress", {
-	group = vim.api.nvim_create_augroup("gleb_lsp_progress", { clear = true }),
-	callback = on_progress,
-})
+local group = vim.api.nvim_create_augroup("gleb_lsp_progress", { clear = true })
+vim.api.nvim_create_autocmd("LspProgress", { group = group, callback = on_progress })
+vim.api.nvim_create_autocmd("LspDetach", { group = group, callback = on_detach })
 
 return M
