@@ -29,10 +29,94 @@ local function edit_file(name, lines)
 	return path
 end
 
+--- Save a session for this cwd under the zellij pane `zellij`/`pane` holding
+--- only `file`; returns the session file path.
+---@param zellij string
+---@param pane string
+---@param file string
+---@return string
+local function save_pane_session(zellij, pane, file)
+	child.cmd("%bwipeout!")
+	child.lua("vim.env.ZELLIJ_SESSION_NAME, vim.env.ZELLIJ_PANE_ID = ...", { zellij, pane })
+	edit_file(file)
+	local name = child.lua_get([[require("gleb.session.key").session_name()]])
+	child.lua([[require("resession").save(..., { notify = false })]], { name })
+	return vim.fs.joinpath(child.fn.stdpath("data"), "session", name .. ".json")
+end
+
+---@param path string
+---@param mtime integer seconds since the epoch
+local function set_mtime(path, mtime)
+	assert(vim.uv.fs_utime(path, mtime, mtime))
+end
+
+--- Restart the full config in `dir` under zellij pane `zellij`/`pane` with
+--- `files` as arguments (bare by default), keeping the child's state
+--- (start_config would reset it).
+---@param zellij string
+---@param pane string
+---@param files? string[]
+local function restart_in_pane(zellij, pane, files)
+	vim.env.ZELLIJ_SESSION_NAME, vim.env.ZELLIJ_PANE_ID = zellij, pane
+	MiniTest.finally(function()
+		vim.env.ZELLIJ_SESSION_NAME, vim.env.ZELLIJ_PANE_ID = nil, nil
+	end)
+	local args = vim.list_extend({ "--cmd", "cd " .. dir }, H.config_args())
+	child.restart(vim.list_extend(args, files or {}))
+	vim.iter(H.DISABLED_PLUGINS):each(child.disable_plugin)
+end
+
 local T = H.child_set(child, start)
 
 T["session: no matching session leaves startup untouched"] = function()
 	eq(child.bo.filetype, "alpha")
+end
+
+T["session: bare nvim restores the pane session"] = function()
+	save_pane_session("z", "5", "a.txt")
+	child.stop()
+
+	restart_in_pane("z", "5")
+
+	eq({ child.fn.expand("%:t"), child.bo.filetype ~= "" }, { "a.txt", true })
+end
+
+T["session: bare nvim restores a cwd session after pane id change"] = function()
+	save_pane_session("z", "9", "a.txt")
+	child.stop()
+
+	restart_in_pane("z", "5")
+
+	eq(child.fn.expand("%:t"), "a.txt")
+end
+
+T["session: nvim with a file argument does not restore"] = function()
+	save_pane_session("z", "5", "a.txt")
+	child.stop()
+	-- Absolute: file arguments resolve against the process cwd, not `--cmd cd`.
+	local b = vim.fs.joinpath(dir, "b.txt")
+	vim.fn.writefile({ "b" }, b)
+
+	restart_in_pane("z", "5", { b })
+
+	local listed = child.lua_get(
+		[[vim.tbl_map(function(b) return vim.fn.fnamemodify(b.name, ":t") end, vim.fn.getbufinfo({ buflisted = 1 }))]]
+	)
+	eq(listed, { "b.txt" })
+end
+
+T["session: bare nvim restores the newest cwd session"] = function()
+	-- `a-8-…` wins a filename sort, so only modification time picks `b-7-…`.
+	local new = save_pane_session("b", "7", "new.txt")
+	local old = save_pane_session("a", "8", "old.txt")
+	child.stop() -- VimLeavePre saves again; stop first so the mtimes below stick
+	local now = os.time()
+	set_mtime(new, now)
+	set_mtime(old, now - 60)
+
+	restart_in_pane("c", "9")
+
+	eq(child.fn.expand("%:t"), "new.txt")
 end
 
 T["session: writing a buffer saves the session"] = function()
