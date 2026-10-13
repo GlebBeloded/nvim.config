@@ -18,12 +18,15 @@ Kind: bug
 - Dropped as already fine: `lua/gleb/debugging/gutter.lua:5-8` DAP sign texts are not empty (each is a 3-byte PUA glyph). `lsp/config/handlers.lua:7,26-27` (`prefix`, float `header`) and the lualine separators are intentionally empty.
 
 ## Capabilities
+### New Capabilities
+- `lsp`: diagnostic sign glyphs (`lua/gleb/lsp/config/handlers.lua`); the sign column had no spec.
+
 ### Modified Capabilities
 - `statusline`: "Copilot failure indicator" and "Statusline visual style" (Copilot glyph, rounded chip caps), plus the glyphs named in "Global statusline layout".
-- `file-tree`: neo-tree icon configuration (expanders, folders, git unmerged, diagnostics); queue-spec decides whether this is specified as a reference screenshot.
+- `file-tree`: new requirement "Tree icons" (expanders, folders, git conflict, diagnostics) with a reference screenshot of the tree.
 
 ## Impact
-- Code: `lua/gleb/statusline/language.lua`, `lua/gleb/statusline/copilot.lua`, `lua/gleb/file_tree/init.lua`, `lua/gleb/lsp/config/handlers.lua`; tests in `tests/unit/statusline/test_copilot.lua`; reference screenshots in `tests/screenshots/` are regenerated (`make screenshots`) once the renders are approved.
+- Code: `lua/gleb/statusline/language.lua`, `lua/gleb/statusline/copilot.lua`, `lua/gleb/file_tree/init.lua`, `lua/gleb/lsp/config/handlers.lua`; tests in `tests/unit/statusline/`, `tests/integration/{statusline,file-tree,lsp}/`, `tests/screen/{statusline,file-tree}/`; reference screenshots in `tests/screenshots/` are regenerated (`make screenshots`) once the renders are approved.
 - Plugins: none added, removed or upgraded
 - Core keymaps: unchanged
 - Out of scope: changing colors or layout beyond restoring the glyphs; the chip `STYLE`; icons that already render (lualine branch/diff/diagnostics, bufferline, DAP signs).
