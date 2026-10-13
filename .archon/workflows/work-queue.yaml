@@ -11,6 +11,9 @@ inputs:
   change:
     default: ""
     description: Change id to work on; empty picks the oldest untaken one
+  adopt:
+    default: ""
+    description: Earlier branch of this change (an abandoned run); merged in before anything else
 nodes:
   - id: skills-check # declared skills resolve here (docs/workflow.md, Setup facts)
     bash: python3 .archon/scripts/skills_check.py .archon/workflows/work-queue.yaml
@@ -34,14 +37,23 @@ nodes:
     depends_on: [pick]
     when: "$pick.output.found == false"
 
+  - id: adopt # an abandoned run's branch: take its commits instead of redoing them (no AI)
+    bash: |
+      b="$INPUTS_ADOPT"; [ -n "$b" ] || { echo "nothing to adopt"; exit 0; }
+      if git merge --no-edit "$b" >/dev/null 2>&1; then echo "adopted $b: $(git log --oneline auto..HEAD | wc -l | tr -d ' ') commits"
+      else git merge --abort; echo "not adopted: $b conflicts with auto; its log: $(git log --oneline -8 auto.."$b" | tr '\n' ';')"; fi
+    depends_on: [pick]
+    when: "$pick.output.found == true"
+
   # --- Specify: complete a queued proposal ------------------------------------------------------------
   - id: complete
     command: queue-spec
     context: fresh # reads its input artifact; no carried-over session
-    depends_on: [pick, skills-check]
+    depends_on: [pick, skills-check, adopt]
     when: "$pick.output.found == true"
     with:
       change: $pick.output.change
+      adopted: $adopt.output
     skills: [openspec-continue-change]
     output_format:
       type: object

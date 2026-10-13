@@ -233,4 +233,19 @@ T["loop: Gate checks scenarios named by tasks when the spec has no delta"] = fun
 	eq({ result.code, vim.trim(result.stdout) }, { 1, "x: lonely" })
 end
 
+T["loop: An abandoned run's branch does not take its change"] = function()
+	local repo = H.tempdir(child)
+	write(repo, {
+		["openspec/changes/c/proposal.md"] = "## Why\nx\n\nKind: bug",
+		["openspec/changes/c/.openspec.yaml"] = "schema: spec-driven",
+	})
+	git_ok({ "init", "-q", "-b", "auto" }, repo)
+	git_ok({ "add", "-A" }, repo)
+	git_ok({ "commit", "-q", "-m", "init" }, repo)
+	git_ok({ "branch", "loop/c" }, repo)
+	local env = vim.tbl_extend("force", H.GIT_ENV, { HOME = H.tempdir(child), INPUTS_CHANGE = "" })
+	local result = H.system(child, { "python3", vim.fs.joinpath(SCRIPTS, "queue_pick.py") }, repo, env)
+	eq(vim.json.decode(vim.trim(result.stdout):match("[^\n]*$")).change, "c")
+end
+
 return T

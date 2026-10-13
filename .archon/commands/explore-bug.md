@@ -22,8 +22,8 @@ Context: docs/CLAUDE.md, docs/architecture.md, docs/testing.md, the capability s
 openspec/specs/<capability>/spec.md and the queued changes in openspec/changes/. If the input is a change id, read
 openspec/changes/<id>/ first.
 
-Start from the files and functions the bug names (`rg -n` and line ranges, not whole files); plugin source is under `~/.local/share/nvim/lazy/<plugin>`. Reproduce in a headless child Neovim where possible (`make test CASE=…`, or a throwaway mini.test
-case you delete afterwards). Do not change code, specs or tests. Ad-hoc headless runs: write the probe to a scratch file and run `timeout 30 nvim -n --headless -u NONE -l /tmp/probe.lua` (body in `pcall`, `vim.cmd('qa!')` last); never inline `+lua` with shell quoting. Visual marks need `exe "normal! V2j\<Esc>"` or `nvim_buf_set_mark`.
+Start from the files and functions the bug names (`rg -n` and line ranges read once with `nl -ba`, not whole files; narrow `rg` patterns); plugin source is under `~/.local/share/nvim/lazy/<plugin>`. Reproduce in a headless child Neovim where possible (`make test CASE=…`, or a throwaway mini.test
+case you delete afterwards). Do not change code, specs or tests. Ad-hoc headless runs: write the probe to a scratch file and run `timeout 30 nvim -n --headless -u NONE -l $ARTIFACTS_DIR/probe.lua` (body in `pcall`, `vim.cmd('qa!')` last); never inline `+lua` with shell quoting. Visual marks need `exe "normal! V2j\<Esc>"` or `nvim_buf_set_mark`.
 
 Write `$ARTIFACTS_DIR/root-cause.md`: symptom, reproduction, root cause with file:line evidence,
 affected capability, and the correct behaviour as a WHEN/THEN sentence. Drop anything you could not

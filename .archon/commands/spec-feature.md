@@ -21,3 +21,15 @@ docs/workflow.md (Design renders). design.md must contain a "Current render" and
 mermaid diagram when the flow or module wiring changes. State the recommended option.
 
 Stop after the artifacts exist; do not implement. Set `change` to the change id.
+
+tasks.md format (each task one section of at most 5 scenarios, split by requirement; the gate reads the `Scenarios:` line):
+
+```
+## 1. <task title>
+Scenarios: `<capability>: <scenario title>`
+- [ ] 1.1 Write the test `<capability>: <scenario title>` in tests/<layer>/<capability>/test_<x>.lua (or run it, if it exists) and see it fail
+- [ ] 1.2 <the smallest code change>
+- [ ] 1.3 Run `make test FILE=tests/<layer>/<capability>/test_<x>.lua CASE="<scenario title>"` and see it pass
+```
+Run `openspec status`
+once, at the end. Do not re-read files you just wrote; read files with `nl -ba` once.
