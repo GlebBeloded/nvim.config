@@ -51,4 +51,4 @@ Scenarios: none (Smoke layer tooling)
 ## 4. Gate
 
 - [x] 4.1 `make smoke-health` green with `HEALTH_EXCLUDE` = external-tool checks + `neotest-golang` only, `HEALTH_IGNORE` gone.
-- [ ] 4.2 `make check` green.
+- [x] 4.2 `make check` green.
