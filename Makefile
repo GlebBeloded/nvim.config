@@ -87,7 +87,7 @@ colorize: deps
 
 # --- shortcut layers: Alacritty -> zellij -> Neovim (docs/testing.md) ----------
 # (CAPS narrows only the mini.test layers above)
-.PHONY: deps-shortcuts chain stack e2e e2e-local sandbox-up sandbox-down sandbox-status sandbox-provision
+.PHONY: deps-shortcuts chain stack e2e e2e-local sandbox-up sandbox-down sandbox-status sandbox-provision menu-keys
 
 deps-shortcuts:
 	@tests/shortcuts/bootstrap.sh
@@ -118,6 +118,10 @@ sandbox-status:
 
 sandbox-provision:
 	@tests/sandbox/sandbox.sh provision
+
+# host: move Alacritty's app-menu Quit/Hide off Cmd+Q/Cmd+H (org.alacritty defaults), then relaunch Alacritty
+menu-keys:
+	@terminal/macos_menu_keys.sh
 
 clean:
 	rm -rf .tests

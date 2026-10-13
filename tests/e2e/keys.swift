@@ -4,6 +4,7 @@
 //   keys launch <app.app> <args>   start a new instance without activating it, print its pid
 //   keys frontmost                 pid of the frontmost app
 //   keys focus <pid>               make <pid> frontmost (AX), print the previous frontmost pid
+//   keys hidden <pid>              print true/false: is <pid> hidden (app menu Hide)
 //   keys denied <chord>...         exit 0 if any chord is on the denylist (the harness skips those rows)
 //   keys press [--hid] <pid> <chord>...  post key events to <pid> (CGEventPostToPid), e.g. cmd+shift+h ctrl+return;
 //                                  --hid: focus <pid>, post at the HID tap (CGEventPostToPid drops some keyDowns)
@@ -153,7 +154,7 @@ func focus(_ pid: pid_t) -> Bool {
 }
 
 var args = Array(CommandLine.arguments.dropFirst())
-guard !args.isEmpty else { fail("usage: keys trusted|launch|frontmost|focus|press ...") }
+guard !args.isEmpty else { fail("usage: keys trusted|launch|frontmost|focus|hidden|press|denied ...") }
 let command = args.removeFirst()
 switch command {
 case "trusted":
@@ -190,6 +191,11 @@ case "focus":
 	let previous = frontmost()
 	if !focus(pid) { fail("could not make pid \(pid) frontmost (previous \(previous))") }
 	print(previous)
+case "hidden":
+	guard let pid = args.first.flatMap({ pid_t($0) }),
+		let app = NSRunningApplication(processIdentifier: pid)
+	else { fail("usage: keys hidden <pid> (a running app)") }
+	print(app.isHidden ? "true" : "false")
 case "press":
 	if args.first == "--hid" {
 		HID = true
