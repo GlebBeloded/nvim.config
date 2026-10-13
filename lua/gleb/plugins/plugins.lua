@@ -332,7 +332,7 @@ local plugins = {
 
 			local function normal_menu()
 				vim.api.nvim_echo({ { "99> [s]earch [v]ibe: ", "Question" } }, false, {})
-				local key = vim.fn.nr2char(vim.fn.getchar())
+				local key = vim.fn.getcharstr()
 				vim.cmd("redraw")
 				local actions = { s = nn.search, v = nn.vibe }
 				if actions[key] then

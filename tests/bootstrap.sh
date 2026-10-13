@@ -1,19 +1,31 @@
 #!/usr/bin/env sh
 # Fetch pinned test dependencies into .tests/deps (gitignored).
-# Not part of the user's plugin list; only the test runner loads them.
+# Not part of the user's plugin list; only the test runner and LuaLS load them.
 set -eu
 
 MINI_COMMIT="1345d191bb3da9c7b0e977f4387c5761f9bff68d" # mini.nvim v0.18.0
 DEPS_DIR="${TEST_DEPS_DIR:-.tests/deps}"
-MINI_DIR="$DEPS_DIR/mini.nvim"
 
-if [ "$(git -C "$MINI_DIR" rev-parse HEAD 2>/dev/null || true)" = "$MINI_COMMIT" ]; then
-	exit 0
-fi
+# Print the commit pinned for plugin $1 in lazy-lock.json.
+lock_commit() {
+	sed -n "s/.*\"$1\": {.*\"commit\": \"\([0-9a-f]*\)\".*/\1/p" lazy-lock.json
+}
 
-rm -rf "$MINI_DIR"
-mkdir -p "$DEPS_DIR"
-git init --quiet "$MINI_DIR"
-git -C "$MINI_DIR" fetch --quiet --depth 1 https://github.com/nvim-mini/mini.nvim "$MINI_COMMIT"
-git -C "$MINI_DIR" checkout --quiet FETCH_HEAD
-echo "mini.nvim pinned at $MINI_COMMIT"
+# Shallow-fetch $2 at commit $3 into $DEPS_DIR/$1; no-op when already there.
+fetch_pinned() {
+	dir="$DEPS_DIR/$1"
+	if [ "$(git -C "$dir" rev-parse HEAD 2>/dev/null || true)" = "$3" ]; then
+		return 0
+	fi
+	rm -rf "$dir"
+	mkdir -p "$DEPS_DIR"
+	git init --quiet "$dir"
+	git -C "$dir" fetch --quiet --depth 1 "$2" "$3"
+	git -C "$dir" checkout --quiet FETCH_HEAD
+	echo "$1 pinned at $3"
+}
+
+fetch_pinned mini.nvim https://github.com/nvim-mini/mini.nvim "$MINI_COMMIT"
+# Type libraries for LuaLS (`make types`), at the commits of lazy-lock.json.
+fetch_pinned lazy.nvim https://github.com/folke/lazy.nvim "$(lock_commit lazy.nvim)"
+fetch_pinned vscode-diff.nvim https://github.com/esmuellert/vscode-diff.nvim "$(lock_commit vscode-diff.nvim)"

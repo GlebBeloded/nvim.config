@@ -112,7 +112,8 @@ end
 function M.decode(bytes)
 	local code, bits = bytes:match("^\27%[(%d+);(%d+)u$")
 	if code then
-		code, bits = tonumber(code), tonumber(bits) - 1
+		code = tonumber(code) --[[@as integer]]
+		bits = tonumber(bits) - 1
 		return make_key(kitty_mods(bits), KITTY_NAMED[code] or vim.fn.nr2char(code))
 	end
 	local arrow_bits, arrow = bytes:match("^\27%[1;(%d+)([ABCD])$")
@@ -252,6 +253,53 @@ function M.alacritty_chars()
 		end
 	end
 	return shortcuts
+end
+
+-- Non-letter character keys (US layout): with Shift held the logical key is the
+-- shifted character ("_", "+", ...), so Alacritty never matches these names.
+local SHIFTED_KEYS = {
+	Minus = true,
+	Equals = true,
+	Slash = true,
+	Backslash = true,
+	LBracket = true,
+	RBracket = true,
+	Semicolon = true,
+	Apostrophe = true,
+	Comma = true,
+	Period = true,
+	Grave = true,
+}
+for digit = 0, 9 do
+	SHIFTED_KEYS["Key" .. digit] = true
+end
+
+--- Can a binding never match a key press (Shift + a non-letter character key)?
+---@param binding table
+---@return boolean
+local function never_fires(binding)
+	return SHIFTED_KEYS[binding.key] == true and vim.list_contains(binding.mods, "Shift")
+end
+
+--- Every `chars` binding outside Vi mode that can never fire, one line each.
+---@return string[]
+function M.unreachable_chars()
+	local problems = {}
+	for _, binding in ipairs(M.configs().alacritty.bindings) do
+		if binding.chars and binding.mode == "" and never_fires(binding) then
+			table.insert(
+				problems,
+				string.format(
+					"%s key %s mods %s %s: never fires, Shift changes the key",
+					M.physical(binding.key, binding.mods),
+					binding.key,
+					table.concat(binding.mods, "|"),
+					M.escape(binding.chars)
+				)
+			)
+		end
+	end
+	return problems
 end
 
 --- Bytes for a physical shortcut: its `chars` binding, else Alacritty's kitty

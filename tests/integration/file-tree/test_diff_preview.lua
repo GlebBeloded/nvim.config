@@ -63,24 +63,22 @@ T["file-tree: Original tab is saved"] = function()
 	eq(child.lua_get("DiffPreview.state.original_tab"), original)
 end
 
-local CODEDIFF_CRASH = "fix-diff-preview-codediff-crash: open_diff crashes in codediff view.create"
-
-T["file-tree: Diff tab is created"] = H.xfail(CODEDIFF_CRASH, function()
+T["file-tree: Diff tab is created"] = function()
 	local before = tab_count()
 	open_diff(TRACKED)
 
 	eq(wait_diff_tab(), true)
 	eq(tab_count(), before + 1)
 	eq(child.lua_get("DiffPreview.state.diff_tab == vim.api.nvim_get_current_tabpage()"), true)
-end)
+end
 
-T["file-tree: Neo-tree is opened and focused in diff tab"] = H.xfail(CODEDIFF_CRASH, function()
+T["file-tree: Neo-tree is opened and focused in diff tab"] = function()
 	open_diff(TRACKED)
 	eq(wait_diff_tab(), true)
 
 	eq(child.wait([[vim.bo.filetype == "neo-tree"]], ASYNC_MS), true)
 	eq(current_is_neo_tree(), true)
-end)
+end
 
 T["file-tree: Return clears tab state and focus guard"] = function()
 	stub_codediff_view()

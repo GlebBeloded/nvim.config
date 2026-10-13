@@ -124,16 +124,6 @@ key = "Key0"
 mods = "Control"
 
 [[keyboard.bindings]]
-chars = "\u001B_"
-key = "Minus"
-mods = "Command|Shift"
-
-[[keyboard.bindings]]
-chars = "\u001B+"
-key = "Equals"
-mods = "Command|Shift"
-
-[[keyboard.bindings]]
 chars = "\u001B["
 key = "LBracket"
 mods = "Command"
