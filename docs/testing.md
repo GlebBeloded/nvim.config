@@ -16,7 +16,7 @@ Pyramid, bottom to top. Times are wall times of one layer on its own (in `make c
 | Layer | Command | What it checks | Time |
 |---|---|---|---|
 | Static | `make lint` | `stylua --check` and `selene` on `lua/ init.lua tests/` | <1 s |
-| Static | `make types` | `lua-language-server --check` with `.luarc.jsonc` (LuaJIT, `vim` global, `$VIMRUNTIME` as library), gate at Warning | ~6 s, 0 s cached |
+| Static | `make types` | `lua-language-server --check` with `tests/luarc.types.jsonc` (the editor settings plus its full static library), gate at Warning | ~6 s, 0 s cached |
 | Static | `make trace` | scenario ↔ test matrix, fails on orphan tests | <1 s |
 | Static | `make chain` | real Alacritty + zellij configs parsed and routed, mappings checked in a child Neovim; prints the shortcut table ([shortcut layers](#shortcut-layers)) | ~2 s |
 | Unit | `make test-unit` | one module in a *bare* child Neovim (`tests/minimal_init.lua`, no user config, plugins added one by one) | `make test` (all three): ~10 s |
@@ -30,7 +30,9 @@ Pyramid, bottom to top. Times are wall times of one layer on its own (in `make c
 
 To narrow a run, use `FILE=tests/unit/session/test_key.lua make test`, `CAPS=session,keymaps make test` (only `tests/<layer>/<cap>/`) or `CASE="Move to left" make test-integration`.
 
-`make types` caches a green result in `.tests/types.ok`, keyed by the content of every Lua file, `.luarc.jsonc`, the LuaLS version and the libraries; it skips LuaLS while that key is unchanged.
+`make types` uses `tests/luarc.types.jsonc`, so the editor `.luarc.jsonc` stays lean while the static check retains its full library. It caches a green result in `.tests/types.ok`, keyed by every Lua file, `tests/luarc.types.jsonc`, the LuaLS version and the libraries; it skips LuaLS while that key is unchanged.
+
+The LSP readiness cases run serially (`JOBS=1`): `lua_ls` has a fixed 2500 ms bound for this config, while gopls, basedpyright, and vtsls each have a fixed 1000 ms bound. These limits never scale with host load.
 
 Run make from inside Neovim's `:terminal` as usual: the binary is `NVIM_BIN` (not `NVIM`, which Neovim sets to its server address).
 

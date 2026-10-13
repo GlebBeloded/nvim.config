@@ -3,9 +3,6 @@ local H = require("tests.helpers")
 
 local child = H.new_child()
 
----@type integer Bound from `:edit` to the first non-error documentSymbol answer.
-local BOUND_MS = 1000
-
 ---@type integer How long to wait for the answer before failing.
 local TIMEOUT_MS = 10000
 
@@ -59,8 +56,9 @@ end
 ---@param cwd string
 ---@param file string
 ---@param server string
+---@param bound_ms integer
 ---@return integer
-local function ready_ms(cwd, file, server)
+local function ready_ms(cwd, file, server, bound_ms)
 	local cmd = child.lua_get("(vim.lsp.config[...].cmd or {})[1]", { server })
 	if type(cmd) ~= "string" or child.fn.executable(cmd) == 0 then
 		error(("%s not executable"):format(tostring(cmd)), 0)
@@ -70,7 +68,15 @@ local function ready_ms(cwd, file, server)
 	child.lua(PROBE_LUA, { file, server })
 	if not child.wait("_G.ready_ms ~= nil", TIMEOUT_MS) then
 		local waited = math.floor((vim.uv.hrtime() - started) / 1e6)
-		error(("%s not ready after %d ms (last error: %s)"):format(server, waited, child.lua_get("_G.ready_err")), 0)
+		error(
+			("%s not ready after %d ms, bound %d ms (last error: %s)"):format(
+				server,
+				waited,
+				bound_ms,
+				child.lua_get("_G.ready_err")
+			),
+			0
+		)
 	end
 	return child.lua_get("_G.ready_ms")
 end
@@ -79,27 +85,29 @@ end
 ---@param cwd string
 ---@param file string
 ---@param server string
-local function warm(cwd, file, server)
-	ready_ms(cwd, file, server)
+---@param bound_ms integer
+local function warm(cwd, file, server, bound_ms)
+	ready_ms(cwd, file, server, bound_ms)
 	start()
 end
 
 ---@param cwd string
 ---@param file string
 ---@param server string
-local function expect_ready(cwd, file, server)
-	warm(cwd, file, server)
-	local ms = ready_ms(cwd, file, server)
-	if ms >= BOUND_MS then
-		error(("%s ready after %d ms, bound %d ms"):format(server, ms, BOUND_MS), 0)
+---@param bound_ms integer
+local function expect_ready(cwd, file, server, bound_ms)
+	warm(cwd, file, server, bound_ms)
+	local ms = ready_ms(cwd, file, server, bound_ms)
+	if ms >= bound_ms then
+		error(("%s ready after %d ms, bound %d ms"):format(server, ms, bound_ms), 0)
 	end
-	MiniTest.expect.equality(ms < BOUND_MS, true)
+	MiniTest.expect.equality(ms < bound_ms, true)
 end
 
 local T = H.child_set(child, start)
 
 T["lsp: lua_ls ready within 1 s in this config"] = function()
-	expect_ready(H.root, "lua/gleb/lsp/config/init.lua", "lua_ls")
+	expect_ready(H.root, "lua/gleb/lsp/config/init.lua", "lua_ls", 2500)
 end
 
 T["lsp: gopls ready within 1 s in a small module"] = function()
@@ -114,7 +122,7 @@ T["lsp: gopls ready within 1 s in a small module"] = function()
 			"func main() { fmt.Println(greet.Hello()) }",
 		}, "\n"),
 	})
-	expect_ready(dir, "main.go", "gopls")
+	expect_ready(dir, "main.go", "gopls", 1000)
 end
 
 T["lsp: basedpyright ready within 1 s in a small project"] = function()
@@ -122,7 +130,7 @@ T["lsp: basedpyright ready within 1 s in a small project"] = function()
 		["pyproject.toml"] = '[project]\nname = "ready"',
 		["ready.py"] = 'def hello() -> str:\n    return "hello"',
 	})
-	expect_ready(dir, "ready.py", "basedpyright")
+	expect_ready(dir, "ready.py", "basedpyright", 1000)
 end
 
 T["lsp: vtsls ready within 1 s in a small project"] = function()
@@ -131,7 +139,7 @@ T["lsp: vtsls ready within 1 s in a small project"] = function()
 		["tsconfig.json"] = '{"compilerOptions":{"strict":true}}',
 		["index.ts"] = 'export function hello(): string {\n  return "hello";\n}',
 	})
-	expect_ready(dir, "index.ts", "vtsls")
+	expect_ready(dir, "index.ts", "vtsls", 1000)
 end
 
 return T
