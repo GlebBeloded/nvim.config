@@ -37,7 +37,7 @@ def unmerged() -> list[str]:
 
 def adopt(branch: str) -> tuple[bool, str]:
     before = git("rev-parse", "HEAD").stdout.strip()
-    merged = git("merge", "--no-edit", branch, check=False).returncode == 0
+    merged = git("-c", "merge.conflictStyle=zdiff3", "merge", "--no-edit", branch, check=False).returncode == 0
     reverted = restore_specs(before)
     if not merged and not unmerged():  # every conflict was in a main spec: finish the merge
         merged = git("commit", "-q", "--no-edit", check=False).returncode == 0
