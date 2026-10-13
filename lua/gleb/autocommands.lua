@@ -115,12 +115,10 @@ vim.api.nvim_create_autocmd("User", {
 	end,
 })
 
--- TODO: move to separate files
 vim.cmd([[ command! Format execute 'lua vim.lsp.buf.format{async=true}' ]])
 
 vim.cmd([[ command! Pwd execute ':cd %:p:h' ]])
 
--- TODO: move to separate search file
 local search_hlsearch = vim.api.nvim_create_augroup("gleb_search_hlsearch", { clear = true })
 vim.api.nvim_create_autocmd("CmdlineEnter", {
 	group = search_hlsearch,

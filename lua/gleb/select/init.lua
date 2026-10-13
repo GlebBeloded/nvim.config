@@ -1,12 +1,3 @@
--- TODO-list
--- first simple drop-down under cursor
--- then add diff rendering
--- then add resizing
-
--- do one for references
--- do generic one
--- do one for the input
-
 local default_select = vim.ui.select
 local code_action = require("gleb.select.code_action")
 

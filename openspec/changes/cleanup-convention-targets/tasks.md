@@ -156,12 +156,12 @@ Scenarios: none (Static layer: `rg`). Regression guards: `make check`.
 
 **Files:** `options.lua`, `autocommands.lua`, `select/init.lua`, `indentline.lua`, `bufferline.lua`
 
-- [ ] 6.1 **Failing test.** `rg -n 'TODO' lua/gleb/{autocommands,options}.lua lua/gleb/select/init.lua`
+- [x] 6.1 **Failing test.** `rg -n 'TODO' lua/gleb/{autocommands,options}.lua lua/gleb/select/init.lua`
   and `rg -n '^\s*--\s*[a-z_.]+\s*[=(]' lua/gleb/{indentline,bufferline}.lua` → hits.
-- [ ] 6.2 **Implement.** Delete `options.lua:50` (the `BufWinEnter` autocmd in `gleb_general` does the job),
+- [x] 6.2 **Implement.** Delete `options.lua:50` (the `BufWinEnter` autocmd in `gleb_general` does the job),
   the `autocommands.lua` TODO comments, `select/init.lua:1-8`, the commented-out code in
   `indentline.lua:6-45,52-55` and `bufferline.lua:30,33`.
-- [ ] 6.3 **Green.** 6.1 checks list nothing; `make check` passes. **Commit** `chore: drop commented-out code
+- [x] 6.3 **Green.** 6.1 checks list nothing; `make check` passes. **Commit** `chore: drop commented-out code
   and stale TODOs`.
 
 ## 7. LuaCATS (5.1)
