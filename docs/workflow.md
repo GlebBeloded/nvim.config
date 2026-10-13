@@ -9,6 +9,10 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - Under host load, scale startup and test budgets before diagnosing a regression.
 - Wait for asynchronous git commit outcomes before asserting repository state.
 - Serialize access to the shared sandbox VM and reset guest state between runs.
+- Load active change scenarios in trace so new tests are not orphaned before archive.
+- Clear inherited workflow inputs in isolated tests so ambient gate state cannot override fixtures.
+- Keep requirement prose within OpenSpec's 500-character limit before trial archive validation.
+- Declare incidental loop behavior in the proposal and an active change delta instead of editing the baseline spec.
 
 ## The loop
 
