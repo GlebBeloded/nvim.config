@@ -26,6 +26,51 @@ local function fire(value, token)
 	)
 end
 
+---@param buf integer
+local function detach(buf)
+	child.lua(
+		[[
+        local buf = ...
+        while not vim.api.nvim_buf_is_valid(buf) do
+            vim.api.nvim_create_buf(true, false)
+        end
+        vim.api.nvim_exec_autocmds("LspDetach", { buffer = buf, data = { client_id = 1 } })
+    ]],
+		{ buf }
+	)
+end
+
+--- Shifts the child's `vim.uv.hrtime` forward; offsets add up across calls.
+---@param ms number
+local function advance_clock(ms)
+	child.lua(
+		[[
+        if not RealHrtime then
+            RealHrtime, ClockOffset = vim.uv.hrtime, 0
+            vim.uv.hrtime = function()
+                return RealHrtime() + ClockOffset
+            end
+        end
+        ClockOffset = ClockOffset + ... * 1e6
+    ]],
+		{ ms }
+	)
+end
+
+local function count_refreshes()
+	child.lua([[
+        Refreshes = 0
+        package.loaded.lualine.refresh = function()
+            Refreshes = Refreshes + 1
+        end
+    ]])
+end
+
+---@return integer
+local function refreshes()
+	return child.lua_get("Refreshes")
+end
+
 ---@return string
 local function progress_after_delay()
 	vim.uv.sleep(SHOW_AFTER_MS + 50)
@@ -109,6 +154,69 @@ T["statusline: unmatched message shown verbatim"] = function()
 	fire({ kind = "begin", message = "Resolving" })
 
 	expect_entry(progress_after_delay(), "Resolving")
+end
+
+T["statusline: detached client tasks are removed"] = function()
+	fire({ kind = "begin", title = "Building" })
+	detach(1)
+
+	eq(progress_after_delay(), "")
+end
+
+T["statusline: detach keeps tasks of a client still attached elsewhere"] = function()
+	child.lua([[
+        vim.lsp.get_client_by_id = function()
+            return {
+                name = "fake",
+                attached_buffers = { [1] = true, [2] = true },
+                is_stopped = function()
+                    return false
+                end,
+            }
+        end
+    ]])
+	fire({ kind = "begin", title = "Building" })
+	detach(1)
+
+	expect_entry(progress_after_delay(), "building")
+end
+
+T["statusline: stale task is removed"] = function()
+	fire({ kind = "begin", title = "Building" })
+	advance_clock(61000)
+
+	eq(child.lua_get("Progress.progress()"), "")
+end
+
+T["statusline: report keeps a task fresh"] = function()
+	fire({ kind = "begin", title = "Building" })
+	advance_clock(40000)
+	fire({ kind = "report", message = "Building" })
+	advance_clock(40000)
+
+	expect_entry(child.lua_get("Progress.progress()"), "building")
+end
+
+T["statusline: refresh timer stops when idle"] = function()
+	count_refreshes()
+	fire({ kind = "begin", title = "Building" })
+	fire({ kind = "end" })
+	vim.uv.sleep(150)
+	local count = refreshes()
+	vim.uv.sleep(300)
+
+	eq(refreshes(), count)
+end
+
+T["statusline: refresh timer stops on exit"] = function()
+	count_refreshes()
+	fire({ kind = "begin", title = "Building" })
+	vim.uv.sleep(150)
+	child.lua([[vim.api.nvim_exec_autocmds("VimLeavePre", {})]])
+	local count = refreshes()
+	vim.uv.sleep(300)
+
+	eq(refreshes(), count)
 end
 
 return T
