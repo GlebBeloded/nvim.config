@@ -51,7 +51,7 @@ Scenario: "Loop setup installs a missing enabled plugin".
 
 - [x] 4.1 Failing test first: write "loop: Loop setup installs a missing enabled plugin". Build a throwaway git repo on `auto` with the checkout's `Makefile` symlinked (as in `test_cleanup.lua`) and `.claude/settings.json` enabling `superpowers@superpowers-marketplace`. Use a `claude` stub that appends its arguments to a log and answers `plugin list --json` with that plugin carrying a non-empty `errors`. Set `ARCHON` to a no-op stub and use a temp `HOME`. Run `make loop-setup` and assert the log contains `plugin install superpowers@superpowers-marketplace --scope user`. Watch it fail.
 - [x] 4.2 Add an `install` mode to `skills_check.py` (`skills_check.py --install-plugins`) that reuses `loaded_plugins()`. It reads `enabledPlugins` from `.claude/settings.json` and, for each enabled id that is not loaded without errors, runs `claude plugin install <id> --scope user`. Call it from `loop-setup` before `loop-register`. Make the case pass. Commit.
-- [ ] 4.3 Host check (manual, once): run `make loop-setup`, then in a fresh worktree run `claude plugin list --json` and `python3 .archon/scripts/skills_check.py .archon/workflows/*.yaml`. Both must show superpowers loaded and the check must exit 0. Record the result in the commit message.
+- [x] 4.3 Host check (manual, once): run `make loop-setup`, then in a fresh worktree run `claude plugin list --json` and `python3 .archon/scripts/skills_check.py .archon/workflows/*.yaml`. Both must show superpowers loaded and the check must exit 0. Record the result in the commit message.
 
 ## 5. Docs
 

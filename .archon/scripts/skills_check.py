@@ -70,7 +70,7 @@ def install_plugins() -> int:
     loaded = loaded_plugins() if enabled else {}
     for plugin_id in enabled:
         if plugin_id.split("@")[0] not in loaded:
-            print(f"skills_check: installing {plugin_id} at user scope")
+            print(f"skills_check: installing {plugin_id} at user scope", flush=True)
             if subprocess.run(["claude", "plugin", "install", plugin_id, "--scope", "user"]).returncode != 0:
                 return 1
     return 0
