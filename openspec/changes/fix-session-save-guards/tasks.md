@@ -46,4 +46,4 @@ Scenarios: "session: unnamed buffer is not auto-written", "session: modified fil
 
 ## 3. Gate
 
-- [ ] 3.1 `make check` green; `make trace` reports no orphans for the new scenario titles.
+- [x] 3.1 `make check` green; `make trace` reports no orphans for the new scenario titles.
