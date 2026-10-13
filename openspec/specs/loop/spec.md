@@ -76,6 +76,43 @@ After a judge reject, `.archon/scripts/followup.py` SHALL re-queue the work on `
 - **WHEN** followup.py runs with `INPUTS_CHANGE=x` where `auto` has no `openspec/changes/x/proposal.md`
 - **THEN** it prints `queued` true and `change` `followup-x`, and `openspec/changes/followup-x/proposal.md` on `auto` has the line `Adopt: <branch>` and the reasons
 
+### Requirement: Queue waits for a change's dependencies
+`.archon/scripts/queue_pick.py` SHALL not pick a change whose proposal.md has a `Depends: <change>[, <change>]` line until every named change is archived under `openspec/changes/archive/`, whether it is picked automatically or named by `INPUTS_CHANGE`.
+
+#### Scenario: Queue waits for archived dependencies
+- **WHEN** `python3 .archon/scripts/queue_pick.py` runs in a throwaway repo where the older change `t-a` has `Depends: t-b` and the newer `t-b` is active, without and with `INPUTS_CHANGE=t-a`, then again without it after `t-b` moved to `openspec/changes/archive/2026-01-03-t-b/`
+- **THEN** the first run picks `t-b`, the named run finds nothing and its stderr names `t-b`, and the last run picks `t-a`
+
+### Requirement: Drain works the queue one run at a time
+`make drain [N=<max runs>]` SHALL work queued changes one at a time through `make queue CHANGE=<id> DETACH=1` and `archon workflow wait`, skip a change with a `## Blocked` section, go on after a failed run, run no change twice, and stop when the queue is empty, after N runs, or at the first run that waits for the user.
+
+#### Scenario: Drain works queued changes until the queue is empty
+- **WHEN** `make drain` runs via `vim.system` in a throwaway repo with `ARCHON` stubbed and changes `t-a`, `t-b` (with a `## Blocked` section) and `t-c`, oldest first, where the run of `t-a` fails and the run of `t-c` completes
+- **THEN** it exits 0, Archon is asked for detached work-queue runs of `t-a` then `t-c` only, each once, and the output reports `t-b` skipped and the queue empty
+
+#### Scenario: Drain stops after N runs
+- **WHEN** `make drain N=1` runs with the same stubs and two runnable changes
+- **THEN** it exits 0 after exactly one work-queue run, of the older change
+
+#### Scenario: Drain stops at a run that waits for the user
+- **WHEN** `make drain` runs where `archon workflow wait` reports the first run `awaiting_response` and a second change is queued
+- **THEN** it exits 0, starts no second run and its output names the paused change
+
+### Requirement: Done loop runs are cleaned up
+`.archon/scripts/loop_clean.py` SHALL remove the worktree and branch of each `loop/*` branch whose tip is on `auto` (shipped or superseded), and keep and list `auto`/`main`, branches with commits not on `auto` or at its tip, branches a running or paused Archon run holds, and dirty worktrees. `make loop-clean` is a dry run unless `APPLY=1`; ship starts the cleanup of its own run.
+
+#### Scenario: Loop clean dry run lists and removes nothing
+- **WHEN** `make loop-clean` runs via `vim.system` in a throwaway repo with a shipped `loop/t-a` with a worktree, a superseded `loop/t-b`, an unmerged `loop/t-c`, a shipped `loop/t-d` whose worktree has uncommitted changes and a shipped `loop/t-e` a running Archon run holds (`ARCHON_DB`)
+- **THEN** it exits 0, lists `t-a` and `t-b` to remove and `t-c`, `t-d` and `t-e` kept with their reasons, and every branch and worktree still exists
+
+#### Scenario: Loop clean apply removes only done runs
+- **WHEN** `make loop-clean APPLY=1` runs in that repo, and `loop_clean.py --branch auto --apply` runs after it
+- **THEN** `loop/t-a` with its worktree and `loop/t-b` are gone, `loop/t-c`, `loop/t-d` with its edit and `loop/t-e` remain, and `auto` is kept
+
+#### Scenario: Ship cleans up its run after the run ends
+- **WHEN** `ship.py` merges a run from its worktree, once with no Archon DB and a parent shell that exits, and once with `ARCHON_DB` holding a running run in that worktree and `LOOP_CLEAN_WAIT=2`
+- **THEN** the first run's worktree and branch are removed; the second's remain and `nvim-loop-clean.log` reports the run still live
+
 ### Requirement: Ship merges into auto one at a time and never leaves it mid-merge
 `.archon/scripts/ship.py` SHALL merge into the `auto` checkout only while it holds a host-side lock: a pid file in the repo's common git dir. A lock whose pid is no longer alive SHALL be taken over, and the lock SHALL be released on every exit. After any failed merge, ship SHALL leave `auto` at its pre-merge commit with no `MERGE_HEAD` and no staged or modified tracked files.
 
@@ -105,6 +142,13 @@ When the merge into `auto` conflicts and the input `on_conflict` is `report`, `s
 #### Scenario: Conflicting ship is reported for reconcile
 - **WHEN** `ship.py` is run via `vim.system` with `INPUTS_ON_CONFLICT=report` in a worktree whose `loop/*` branch changes the same line of a file that `auto` has also changed since the branch was cut
 - **THEN** ship exits 0 and prints one JSON object with `merged` false, `conflict` true and `files` listing that file; `auto` is unchanged, the `auto` checkout has no `MERGE_HEAD` and no staged or modified tracked files, and no ship lock file remains
+
+### Requirement: Ship gates a merge onto a moved auto
+When `auto` has commits the run's branch lacks, `.archon/scripts/ship.py` SHALL make the merge in a temporary worktree and run `make -s lint trace specs` on it before updating `auto`; when they fail it SHALL leave `auto` unchanged and report `merged` false, `conflict` true, `gate_failed` true and the gate output in `log`, so the deliver flow reconciles the branch.
+
+#### Scenario: Ship does not merge a result that fails the static gates
+- **WHEN** `ship.py` runs with `INPUTS_ON_CONFLICT=report` in a throwaway repo whose Makefile's `trace` fails on a duplicated case name, for a branch adding case `dup` after `auto` added the same case in another file, and then for a second branch with a distinct case
+- **THEN** the first exits 0 with `merged` false, `conflict` true, `gate_failed` true and a `log` naming `dup`, and `auto` is unchanged and clean; the second merges
 
 ### Requirement: Loop commands load the skills their node declares
 Every AI node in `.archon/workflows/*/*.yaml` with `skills:` SHALL use a command that names each declared skill. As its first step, the command SHALL load them all on either provider: with the Skill tool on Claude, and as `$<skill>` on Codex. It SHALL stop when one does not load.

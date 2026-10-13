@@ -241,12 +241,14 @@ nodes:
       properties:
         merged: { type: boolean }
         conflict: { type: boolean }
+        gate_failed: { type: boolean }
         branch: { type: string }
         commit: { type: string }
         files: { type: array, items: { type: string } }
+        log: { type: string }
       required: [merged, conflict, branch, commit]
 
-  # --- Reconcile: auto conflicts with the branch -> merge auto in, resolve, re-gate, ship again ----
+  # --- Reconcile: auto conflicts with the branch, or the merge fails the static gates -> merge auto in, resolve, re-gate, ship again
   - id: reconcile
     depends_on: [ship]
     when: "$ship.output.conflict == true"

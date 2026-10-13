@@ -5,9 +5,13 @@ without one it merges in a temporary worktree. Merges into `auto` run one at a t
 file in the common git dir (`nvim-ship.lock`; a lock whose pid is gone is taken over), and a failed
 merge is aborted back to the pre-merge commit. A content conflict fails the run, or with
 `INPUTS_ON_CONFLICT=report` prints `{"merged": false, "conflict": true, "files": [...]}` and exits 0
-so the workflow can reconcile the branch. The run's own worktree is removed afterwards by
-`archon isolation cleanup --merged` (the make wrappers run it), because a run cannot delete the
-directory it is executing in.
+so the workflow can reconcile the branch. When `auto` has commits the branch lacks (the run's gate
+never saw them), the merge is first made in a temporary worktree and the fast static gates
+(`SHIP_MERGE_GATE`, default `make -s lint trace specs`) run on it; red, `auto` is not updated and
+ship reports it like a conflict (`gate_failed` true, `log` the gate's output tail).
+A run cannot delete the directory it is executing in, so after a merge ship starts a detached
+`loop_clean.py` that removes the run's worktree and branch once no running or paused Archon run
+holds them (log: `nvim-loop-clean.log` in the common git dir).
 """
 
 import json
@@ -24,6 +28,8 @@ change = os.environ.get("INPUTS_CHANGE", "")
 message = os.environ.get("INPUTS_MESSAGE", "") or (f"loop: {change}" if change else "loop: update")
 on_conflict = os.environ.get("INPUTS_ON_CONFLICT", "") or "fail"
 LOCK_TIMEOUT = float(os.environ.get("SHIP_LOCK_TIMEOUT") or 600)
+MERGE_GATE = os.environ.get("SHIP_MERGE_GATE") or "make -s lint trace specs"
+GATE_LOG_CHARS = 4000
 DIRTY_WAIT = float(os.environ.get("SHIP_DIRTY_WAIT") or 300)  # s to wait for tracked edits in the auto checkout
 
 
@@ -68,6 +74,20 @@ def conflicting_files(branch: str) -> list[str]:
     return tree.stdout.split("\n\n", 1)[0].splitlines()[1:]  # the tree, then the conflicting names
 
 
+def clean_after_run(branch: str) -> None:
+    """Detached single-run cleanup; it outlives this run and waits for it to end."""
+    script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "loop_clean.py")
+    log = os.path.join(os.path.dirname(lock_path()), "nvim-loop-clean.log")
+    with open(log, "a") as out:
+        subprocess.Popen(
+            [sys.executable, script, "--branch", branch, "--apply", "--wait-pid", str(os.getppid())],
+            stdin=subprocess.DEVNULL,
+            stdout=out,
+            stderr=out,
+            start_new_session=True,
+        )
+
+
 def merge_into_base(branch: str) -> str | None:
     """Merges `branch` into BASE under the ship lock; returns the merge commit, None on a conflict
     that is reported."""
@@ -89,10 +109,41 @@ def wait_clean(target: str, branch: str) -> None:
         time.sleep(2)
 
 
+def merge_gate(branch: str) -> str | None:
+    """When BASE moved past the branch, gates the merge result in a temporary worktree; returns the
+    failing gate's output tail, None when green or not needed (a conflict is merge_in's to report)."""
+    if git("rev-list", "--count", f"{branch}..{BASE}") == "0":
+        return None
+    temp = tempfile.mkdtemp(prefix="nvim-ship-gate-")
+    git("worktree", "add", "--detach", temp, BASE)
+    try:
+        merge = subprocess.run(["git", "merge", "--no-ff", "--no-edit", branch], cwd=temp, capture_output=True)
+        if merge.returncode != 0 or not os.path.isfile(os.path.join(temp, "Makefile")):
+            return None
+        if os.path.isdir(".tests"):  # the run's test deps: no fetch for the gate
+            os.symlink(os.path.abspath(".tests"), os.path.join(temp, ".tests"))
+        gate = subprocess.run(MERGE_GATE, shell=True, cwd=temp, capture_output=True, text=True)
+        return None if gate.returncode == 0 else (gate.stdout + gate.stderr)[-GATE_LOG_CHARS:]
+    finally:
+        git("worktree", "remove", "--force", temp)
+
+
+def report_gate_failure(branch: str, log: str) -> None:
+    if on_conflict != "report":
+        fail(f"the merge of {branch} into {BASE} fails the static gates, branch kept:\n{log}")
+    result = {"merged": False, "conflict": True, "gate_failed": True, "branch": branch, "commit": ""}
+    print(json.dumps({**result, "files": [], "log": log}))
+
+
 def merge_locked(branch: str) -> str | None:
     target = base_checkout()
     if target is not None:
         wait_clean(target, branch)
+    log = merge_gate(branch)
+    if log is not None:
+        report_gate_failure(branch, log)
+        return None
+    if target is not None:
         return merge_in(target, branch)
     temp = tempfile.mkdtemp(prefix="nvim-ship-")
     git("worktree", "add", temp, BASE)
@@ -117,7 +168,8 @@ def merge_in(target: str, branch: str) -> str | None:
     abort_merge(target, before)
     files = conflicting_files(branch)
     if files and on_conflict == "report":
-        print(json.dumps({"merged": False, "conflict": True, "branch": branch, "commit": "", "files": files}))
+        result = {"merged": False, "conflict": True, "gate_failed": False, "branch": branch, "commit": ""}
+        print(json.dumps({**result, "files": files, "log": ""}))
         return None
     fail(f"merge into {BASE} failed, branch {branch} kept:\n{merge.stdout}{merge.stderr}")
 
@@ -134,4 +186,5 @@ if git("rev-list", "--count", f"{BASE}..{branch}") == "0":
 
 commit = merge_into_base(branch)
 if commit is not None:
-    print(json.dumps({"merged": True, "conflict": False, "branch": branch, "commit": commit}))
+    print(json.dumps({"merged": True, "conflict": False, "gate_failed": False, "branch": branch, "commit": commit}))
+    clean_after_run(branch)
