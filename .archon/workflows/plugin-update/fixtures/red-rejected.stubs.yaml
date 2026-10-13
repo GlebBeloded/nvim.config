@@ -1,0 +1,29 @@
+# p3. update is red: spec (with the plugin and pins in its prompt), deliver with
+# cancel_on_reject=false; the judge rejects, so deliver ends without cancelling, nothing ships,
+# pin-back keeps the old pin and queue ships that.
+fixture:
+  expect: completed
+  inputs: { plugin: snacks.nvim }
+  reached: [update, changelog, spec, spec-gate, deliver__escalation, deliver__ship-decide, deliver__followup, pin-back, queue]
+  resolved-text-contains:
+    spec: "snacks.nvim"
+exec-code: true
+skills-check: "skills ok"
+update: { changed: true, plugin: snacks.nvim, change: update-snacks-nvim, old: aaa111, new: bbb222, green: false, changelog: "feat: x", message: "chore(deps): update snacks.nvim" }
+changelog: "feat: x"
+ship: "MUST-NOT-RUN"
+spec: "change update-snacks-nvim specified"
+spec-gate: "valid"
+# nvim-deliver (include `deliver`): top-level ids get the deliver__ prefix, loop bodies keep theirs
+deliver__skills-check: "skills ok"
+deliver__plan-check: { needed: false }
+deliver__plan-gate: "valid"
+pack: "context.md written"
+implement: "task 1 done"
+gate: { green: true, spec_ok: true, tasks_done: true, untested: 0, attempt: 1, failures: "" }
+review: { approve: true, findings: "", weakened_scenario: false, weakened_test: false }
+deliver__escalation: { decision: reject, escalate: false, reasons: "- fix loop exhausted" }
+deliver__ship: "MUST-NOT-RUN"
+deliver__followup: "{\"queued\": true}"
+pin-back: { pinned: true, attempt: "1", message: "chore(deps): keep snacks.nvim at aaa111" }
+queue: { merged: true, conflict: false, branch: auto, commit: def456 }

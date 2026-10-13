@@ -1,0 +1,16 @@
+# g4. a feature always gets the preview and the design gate, whose message names the change.
+# Archon 0.11.1 dry-run limit (see nvim-deliver d): the auto-approved gate outputs "approved", not
+# {"decision": ...}, so design-decide fails here; flip to expect: completed once Archon fixes it.
+fixture:
+  expect: failed
+  fail-node: design-decide
+  inputs: { change: demo-change }
+  reached: [pick, complete, preview, design-gate]
+  resolved-text-contains:
+    design-gate: "Queued change demo-change (feature) is ready to build."
+exec-code: true
+skills-check: "skills ok"
+pick: { found: true, change: demo-change, kind: feature, has_tasks: true }
+complete: { visible_ui: false, architecture: false }
+spec-gate: "valid"
+preview: "http://localhost:8000/preview/demo-change"

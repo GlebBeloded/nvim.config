@@ -1,0 +1,15 @@
+# h2. visible_ui true: preview runs and the design gate is reached with the change and preview in
+# its message (a live run pauses here). Dry-run limit as in nvim-deliver d: design-decide fails on
+# the auto-approval's bare "approved" output; flip to completed once Archon fixes it.
+fixture:
+  expect: failed
+  fail-node: design-decide
+  reached: [spec, preview, design-gate]
+  resolved-text-contains:
+    design-gate: "Change demo-change changes visible UI."
+exec-code: true
+skills-check: "skills ok"
+explore: "root cause: x"
+spec: { change: demo-change, visible_ui: true, architecture: false }
+spec-gate: "valid"
+preview: "http://localhost:8000/preview/demo-change"

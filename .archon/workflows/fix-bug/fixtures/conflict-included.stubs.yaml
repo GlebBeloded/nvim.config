@@ -1,0 +1,27 @@
+# h3. (included deliver) ship conflict: resolve's prompt must name ship's conflicting files.
+# Rest as h1: visible_ui false, so preview and design gate are skipped.
+fixture:
+  expect: completed
+  reached: [deliver__ship, resolve, regate, reship, deliver__shipped]
+  resolved-text-contains:
+    resolve: "lua/gleb/keymaps.lua"
+exec-code: true
+skills-check: "skills ok"
+explore: "root cause: x"
+spec: { change: demo-change, visible_ui: false, architecture: false }
+spec-gate: "valid"
+preview: "MUST-NOT-RUN"
+# nvim-deliver (include `deliver`): top-level ids get the deliver__ prefix, loop bodies keep theirs
+deliver__skills-check: "skills ok"
+deliver__plan-check: { needed: false }
+deliver__plan-gate: "valid"
+pack: "context.md written"
+implement: "task 1 done"
+gate: { green: true, spec_ok: true, tasks_done: true, untested: 0, attempt: 1, failures: "" }
+review: { approve: true, findings: "", weakened_scenario: false, weakened_test: false }
+deliver__escalation: { decision: ship, escalate: false, reasons: "- none" }
+deliver__ship: { merged: false, conflict: true, branch: loop/demo-change, commit: "", files: [lua/gleb/keymaps.lua] }
+resolve: "conflict resolved"
+regate: { green: true, spec_ok: true, tasks_done: true, attempt: 1, failures: "" }
+reship: { merged: true, conflict: false, branch: loop/demo-change, commit: def456 }
+deliver__followup: "MUST-NOT-RUN"

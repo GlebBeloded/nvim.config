@@ -16,7 +16,7 @@ inputs:
     description: Earlier branch of this change (an abandoned run); merged in before anything else
 nodes:
   - id: skills-check # declared skills resolve here (docs/workflow.md, Setup facts)
-    bash: python3 .archon/scripts/skills_check.py .archon/workflows/work-queue.yaml
+    bash: python3 .archon/scripts/skills_check.py .archon/workflows/work-queue/work-queue.yaml
 
   - id: pick
     script: queue_pick

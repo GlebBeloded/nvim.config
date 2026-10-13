@@ -1,0 +1,13 @@
+# p1. update is green: changelog, then ship the lock line; the fix loop never runs (spec has no
+# stub, pin-back/queue stubs break their schema).
+fixture:
+  expect: completed
+  inputs: { plugin: snacks.nvim }
+  reached: [update, changelog, ship]
+exec-code: true
+skills-check: "skills ok"
+update: { changed: true, plugin: snacks.nvim, change: update-snacks-nvim, old: aaa111, new: bbb222, green: true, changelog: "feat: x", message: "chore(deps): update snacks.nvim" }
+changelog: "feat: x"
+ship: { merged: true, conflict: false, branch: auto, commit: abc123 }
+pin-back: "MUST-NOT-RUN"
+queue: "MUST-NOT-RUN"

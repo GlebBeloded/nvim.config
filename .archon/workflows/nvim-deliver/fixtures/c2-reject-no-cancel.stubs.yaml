@@ -1,0 +1,17 @@
+# c2. judge reject with cancel_on_reject=false (how an including workflow ends the block without
+# cancelling): followup runs, stop is skipped, ship never runs; shipped has no ship to report.
+fixture:
+  expect: completed
+  inputs: { change: demo-change, cancel_on_reject: "false" }
+  reached: [escalation, ship-decide, followup]
+exec-code: true
+skills-check: "skills ok"
+plan-check: { needed: false }
+plan-gate: "change demo-change is valid"
+pack: "context.md written"
+implement: "task 1 done"
+gate: { green: true, spec_ok: true, tasks_done: true, untested: 0, attempt: 1, failures: "" }
+review: { approve: true, findings: "", weakened_scenario: false, weakened_test: true }
+escalation: { decision: reject, escalate: false, reasons: "- review: test weakened" }
+followup: '{"queued": true, "change": "demo-change-followup"}'
+ship: "MUST-NOT-RUN"

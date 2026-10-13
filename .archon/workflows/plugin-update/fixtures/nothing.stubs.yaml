@@ -1,0 +1,9 @@
+# p2. already at the upstream target: nothing cancels; no changelog, ship or fix loop.
+fixture:
+  expect: cancelled
+  inputs: { plugin: snacks.nvim }
+  reached: [update, nothing]
+exec-code: false
+skills-check: "skills ok"
+update: { changed: false, plugin: snacks.nvim, change: "", old: aaa111, new: aaa111, green: true, changelog: "", message: "" }
+ship: "MUST-NOT-RUN"

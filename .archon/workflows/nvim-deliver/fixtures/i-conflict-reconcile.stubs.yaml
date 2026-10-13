@@ -1,0 +1,22 @@
+# i. ship reports a conflict with auto: reconcile runs resolve (with ship's conflicting files in
+# its prompt), regate green, reship merges; shipped (real) reports the reship result.
+fixture:
+  expect: completed
+  inputs: { change: demo-change }
+  reached: [ship, resolve, regate, reship, reconcile, shipped]
+  resolved-text-contains:
+    resolve: "lua/gleb/keymaps.lua"
+exec-code: true
+skills-check: "skills ok"
+plan-check: { needed: false }
+plan-gate: "change demo-change is valid"
+pack: "context.md written"
+implement: "task 1 done"
+gate: { green: true, spec_ok: true, tasks_done: true, untested: 0, attempt: 1, failures: "" }
+review: { approve: true, findings: "", weakened_scenario: false, weakened_test: false }
+escalation: { decision: ship, escalate: false, reasons: "- none" }
+ship: { merged: false, conflict: true, branch: loop/demo-change, commit: "", files: [lua/gleb/keymaps.lua] }
+resolve: "conflict resolved"
+regate: { green: true, spec_ok: true, tasks_done: true, attempt: 1, failures: "" }
+reship: { merged: true, conflict: false, branch: loop/demo-change, commit: def456 }
+followup: "MUST-NOT-RUN"
