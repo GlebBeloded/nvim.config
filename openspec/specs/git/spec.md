@@ -23,6 +23,10 @@ The config SHALL show git hunk signs in the sign column using `┃` for added, u
 - **WHEN** a tracked file is edited to add a new line and gitsigns has refreshed the buffer
 - **THEN** the sign column on that line shows `┃`
 
+#### Scenario: Added line has no competing hunk sign
+- **WHEN** a tracked file is edited to add a new line and gitsigns has refreshed the buffer
+- **THEN** no other plugin contributes a hunk sign to that line
+
 #### Scenario: Blame is off by default
 - **WHEN** a tracked file is opened and the cursor rests on a line for more than 300 ms
 - **THEN** no blame virtual text is shown at end of line
