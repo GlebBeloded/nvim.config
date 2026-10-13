@@ -1,12 +1,16 @@
 -- if ever lost, user :help lua-guide
 
--- debug pluggin which writes to /tmp before anything else
+-- before lazy.nvim: plugins bind their leader maps while loading
+vim.g.mapleader = " "
+vim.g.maplocalleader = "\\"
+
+-- debug plugin which writes to /tmp before any plugin loads
 require("gleb.nvim_debug_log").setup()
 
 require("gleb.plugins")
 require("gleb.options")
-require("gleb.colors") -- must be loaded before lazy.nvim
-require("gleb.keymaps") -- mapleader keymap must be before lazy.nivm
+require("gleb.colors")
+require("gleb.keymaps") -- after plugins: needs smart-splits and telescope
 require("gleb.cmp")
 require("gleb.lsp")
 require("gleb.telescope")

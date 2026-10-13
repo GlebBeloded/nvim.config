@@ -55,6 +55,43 @@ local function set_diagnostics_on_lines_2_and_4()
 	]])
 end
 
+--- Lua run via `--cmd` before init.lua: wraps `require("lazy").setup` so it
+--- records `vim.g.mapleader` at call time in `_G.leader_at_lazy_setup`.
+local RECORD_LEADER_AT_LAZY_SETUP = [[lua package.preload.lazy = function()
+	package.preload.lazy = nil
+	package.loaded.lazy = nil
+	local lazy = require("lazy")
+	local setup = lazy.setup
+	lazy.setup = function(...)
+		_G.leader_at_lazy_setup = vim.g.mapleader
+		return setup(...)
+	end
+	return lazy
+end]]
+
+--- Lua run via `--cmd` before init.lua: wraps `require("gleb.nvim_debug_log").setup`
+--- so each call appends `vim.g.mapleader` to `_G.leaders_at_debug_log_setup`.
+local RECORD_LEADER_AT_DEBUG_LOG_SETUP = [[lua package.preload["gleb.nvim_debug_log"] = function()
+	package.preload["gleb.nvim_debug_log"] = nil
+	package.loaded["gleb.nvim_debug_log"] = nil
+	local debug_log = require("gleb.nvim_debug_log")
+	local setup = debug_log.setup
+	debug_log.setup = function(...)
+		_G.leaders_at_debug_log_setup = _G.leaders_at_debug_log_setup or {}
+		table.insert(_G.leaders_at_debug_log_setup, vim.g.mapleader)
+		return setup(...)
+	end
+	return debug_log
+end]]
+
+--- Restart the child like `child.start_config`, running `hook` via `--cmd` before init.lua.
+---@param hook string
+local function start_with_cmd_hook(hook)
+	H.isolate()
+	child.restart(vim.list_extend({ "--cmd", hook }, H.config_args()))
+	vim.iter(H.DISABLED_PLUGINS):each(child.disable_plugin)
+end
+
 local T = H.child_set(child, start)
 
 -- Mapping options and leaders -------------------------------------------------
@@ -66,7 +103,19 @@ T["keymaps: Core mappings are noremap and silent"] = function()
 end
 
 T["keymaps: Leader values after startup"] = function()
-	eq({ child.g.mapleader, child.g.maplocalleader }, { "<D->", "\\" })
+	eq({ child.g.mapleader, child.g.maplocalleader }, { " ", "\\" })
+end
+
+T["keymaps: Leader is set before lazy.nvim loads plugins"] = function()
+	start_with_cmd_hook(RECORD_LEADER_AT_LAZY_SETUP)
+
+	eq(child.lua_get("_G.leader_at_lazy_setup"), " ")
+end
+
+T["keymaps: Leader is set before the debug log starts"] = function()
+	start_with_cmd_hook(RECORD_LEADER_AT_DEBUG_LOG_SETUP)
+
+	eq(child.lua_get("_G.leaders_at_debug_log_setup"), { " " })
 end
 
 -- Window navigation ----------------------------------------------------------
