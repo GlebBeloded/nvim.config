@@ -182,20 +182,20 @@ Scenarios: "Skill preflight resolves a remote Codex plugin from the plugin cache
 Scenarios: none (a gate before Task 5; the design's Decision 6).
 
 - [x] **Step 1:** Install with `codex plugin add superpowers@openai-curated-remote` (not `make loop-setup` from a worktree), then `codex plugin list --json`. Expected: `superpowers` with `installed: true, enabled: true`.
-- [ ] **Step 2:** With `assistant: claude` still set, write the uncommitted `.archon/workflows/probe-codex.yaml`. It has one node with `provider: codex`, `model: gpt-5.6-sol`, and a prompt that:
+- [x] **Step 2:** With `assistant: claude` still set, write the uncommitted `.archon/workflows/probe-codex.yaml`. It has one node with `provider: codex`, `model: gpt-5.6-sol`, and a prompt that:
   - invokes `$superpowers:systematic-debugging` and `$openspec-explore`;
   - reports which loaded;
   - runs `make quick` and `tests/sandbox/sandbox.sh status` (shows `make check E2E=1` can reach the sandbox VM).
 
   Run it with `$(ARCHON) workflow run probe-codex --base auto --branch loop/probe-codex "probe"`.
-- [ ] **Step 3:** Read the transcript.
+- [x] **Step 3:** Read the transcript.
   Expected:
   - both skills report loaded;
   - the literal `$superpowers:systematic-debugging` reached the prompt unsubstituted (Review Focus 1);
   - `make quick` and `sandbox.sh status` both ran.
 
   Save a short result for the merge message. If a check fails, stop and escalate: do not flip the default.
-- [ ] **Step 4:** Delete `probe-codex.yaml` and the probe branch/worktree.
+- [x] **Step 4:** Delete `probe-codex.yaml` and the probe branch/worktree.
 
 ### Task 5: Default to Codex, review on Claude
 
@@ -208,24 +208,24 @@ Scenarios: "Default provider is codex with the chosen model", "Review runs on cl
 **Interfaces:**
 - Consumes: the YAML-to-JSON pattern of `test_skills.lua` (`YAML_TO_JSON` via `H.system`). Copy the 3-line helper and do not export it.
 
-- [ ] **Step 1: Write the failing tests** in `test_provider.lua`:
+- [x] **Step 1: Write the failing tests** in `test_provider.lua`:
   - `T["loop: Default provider is codex with the chosen model"]`: parse `.archon/config.yaml`. `eq(cfg.assistant, "codex")`, `eq(cfg.assistants.codex.model, "gpt-5.6-sol")`, `eq(cfg.assistants.codex.modelReasoningEffort, "medium")`, `eq(cfg.assistants.claude ~= nil, true)`.
   - `T["loop: Review runs on claude"]`: parse `nvim-deliver.yaml`, find node `id == "review"` across top-level and `loop_group.nodes`, then `eq(review.provider, "claude")`.
   - `T["loop: Configured provider resolves every declared skill here"]`: if `vim.fn.executable("codex") == 0 or vim.fn.executable("claude") == 0` (checked in the child), `MiniTest.skip("codex or claude not on PATH")`. Otherwise run `python3 .archon/scripts/skills_check.py <all workflow paths>` in `H.root` with real HOME, and `eq(code, 0, { fail_reason = stderr })`.
 
-- [ ] **Step 2: Run to verify they fail**
+- [x] **Step 2: Run to verify they fail**
   Run: `make test FILE=tests/unit/loop/test_provider.lua`
   Expected: the first two FAIL. The third PASSES or skips (Task 4 installed the plugin).
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
   - `.archon/config.yaml`: `assistant: codex`, plus `assistants.codex: { model: gpt-5.6-sol, modelReasoningEffort: medium }` next to the kept `claude` block. Add a comment that `assistant: claude` switches back.
   - `nvim-deliver.yaml`: `provider: claude # cross-model review` on the `review` node.
 
-- [ ] **Step 4: Verify**
+- [x] **Step 4: Verify**
   Run: `make test FILE=tests/unit/loop/test_provider.lua && make loop-validate`
   Expected: 3 PASS, and validate reports no errors.
 
-- [ ] **Step 5: Commit**: `git commit -m "fix(loop): default to codex gpt-5.6-sol, review on claude"`. Put the Task 4 probe result in the body.
+- [x] **Step 5: Commit**: `git commit -m "fix(loop): default to codex gpt-5.6-sol, review on claude"`. Put the Task 4 probe result in the body.
 
 ### Task 6: Document the provider switch
 

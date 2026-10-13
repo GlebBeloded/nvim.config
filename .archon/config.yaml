@@ -1,8 +1,11 @@
 # Archon project config for the local AI loop (docs/workflow.md). Everything stays on this machine:
 # no pushes, no PRs. Each run gets a worktree under ~/.archon/workspaces/…/worktrees/<branch>,
 # cut from `auto`, and the ship step merges it back into `auto` with --no-ff.
-assistant: claude
+assistant: codex # `assistant: claude` switches the loop back to Claude Code
 assistants:
+  codex:
+    model: gpt-5.6-sol
+    modelReasoningEffort: medium
   claude:
     settingSources: [project, user] # project: superpowers plugin in .claude/settings.json
 worktree:
