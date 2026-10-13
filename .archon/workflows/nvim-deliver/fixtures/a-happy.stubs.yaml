@@ -13,7 +13,7 @@ fixture:
 exec-code: true
 skills-check: "skills ok"
 plan-gate: "change demo-change is valid"
-pack: "context.md written"
+pack: { has_task: true, context: context.md }
 implement: "task 1 done"
 followup: "MUST-NOT-RUN"
 regate: "MUST-NOT-RUN"

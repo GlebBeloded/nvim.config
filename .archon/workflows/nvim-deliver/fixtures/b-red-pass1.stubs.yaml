@@ -10,7 +10,7 @@ exec-code: true
 skills-check: "skills ok"
 plan-check: { needed: false, has_change: true }
 plan-gate: "change demo-change is valid"
-pack: "context.md written"
+pack: { has_task: true, context: context.md }
 implement: "task 1 done"
 gate: { green: false, spec_ok: true, tasks_done: true, untested: 0, attempt: 1, failures: "FAIL tests/unit/x_spec.lua: expected 1, got 2" }
 review: "MUST-NOT-RUN"

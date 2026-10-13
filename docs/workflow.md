@@ -15,7 +15,7 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - e2e "Neovim is blocked in mode r" is a startup error message: reproduce on the host with `XDG_CONFIG_HOME=$(mktemp -d)`, a symlink `$XDG_CONFIG_HOME/nvim` to the worktree, and `timeout 30 nvim --headless +"lua print(vim.fn.execute('messages'))" +qa`; if the host starts clean, the guest has stale files (a loop bug).
 - For an implementation-free follow-up, replace ignored adoption metadata with `skip_specs: true` so strict validation accepts zero deltas.
 - When merging a keymap-helper rewrite, convert retained mappings to the new helper so removed option tables cannot break startup.
-- After merging statusline appearance changes, regenerate affected screen references so their cells match the integrated UI.
+- Regenerate a screen reference only when the cell diff is limited to UI a merged commit changed; name that commit.
 
 ## The loop
 
@@ -49,7 +49,7 @@ input, output and limits). Scripts do everything that needs no judgment:
 | diagnose (fix) / brainstorm (feature) | agent | `superpowers:systematic-debugging` / `superpowers:brainstorming` | `root-cause.md` / `idea.md`, a few lines |
 | spec | agent | `openspec-propose` (queued change: `openspec-continue-change`) | change folder + JSON |
 | plan (only when spec wrote no tasks) | agent, low effort | `superpowers:writing-plans` | `tasks.md` |
-| pack | script `context_pack.py` | none | `context.md`: next task, change, named files, lessons, last failures |
+| pack | script `context_pack.py` | none | `context.md`: next task, change, named files, lessons, last failures; `has_task` (false skips implement) |
 | implement, once per task (one session for ≤ 4 tasks) | agent, fresh | `superpowers:test-driven-development` | 1 commit per task, ticked |
 | check | script `gate.py` | none | `make check E2E=1` once per pass, strict validate, untested change scenarios (`scenarios.py`, replaces a verify agent), JSON |
 | fix (pass 2-3 only) | agent, fresh | `superpowers:systematic-debugging` | 1 commit for the listed findings |

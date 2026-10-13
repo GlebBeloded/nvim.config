@@ -206,7 +206,7 @@ The fix workflow's exploration prompt and every implementation pass SHALL read t
 - **THEN** both direct the agent to read the `Loop lessons` section of `docs/workflow.md` before starting their task
 
 ### Requirement: Corrected attempt failures become bounded lessons
-The build verdict/escalation path SHALL append a supplied one-line lesson only for a failure from an earlier attempt that a later attempt reports fixed. It SHALL normalize whitespace, compare lessons case-insensitively, retain only one copy, and keep at most the 10 newest lesson lines without changing other workflow documentation.
+The judge (escalation) after the build loop SHALL append a supplied one-line lesson only for a failure from an earlier attempt that a later attempt reports fixed; a build pass's verdict SHALL never edit docs/workflow.md. It SHALL normalize whitespace, compare lessons case-insensitively, retain only one copy, keep at most the 10 newest lesson lines without changing other workflow documentation, and clear the persisted candidates.
 
 #### Scenario: Passing retry records its corrected failure
 - **WHEN** a later build attempt passes after an earlier failed attempt and supplies the one-line lesson `Under host load, scale startup budgets before diagnosing a regression`
@@ -223,6 +223,14 @@ The build verdict/escalation path SHALL append a supplied one-line lesson only f
 #### Scenario: Unfixed failures do not become lessons
 - **WHEN** an attempt fails and no later attempt supplies a lesson saying that failure was fixed
 - **THEN** the verdict/escalation path does not add a lesson for that failure
+
+#### Scenario: Build passes leave workflow docs unchanged
+- **WHEN** `.archon/scripts/verdict.py` runs in a throwaway checkout while `lesson-candidates.txt` holds a lesson
+- **THEN** `docs/workflow.md` is unchanged and the checkout has no uncommitted change
+
+#### Scenario: Persisted lesson candidates are cleared
+- **WHEN** the judge persists a lesson candidate and runs again on a workflow doc without that lesson
+- **THEN** `lesson-candidates.txt` is empty after the first run and the second run adds no lesson
 
 ### Requirement: Small steps with a script judge
 The delivery loop SHALL implement one task per fresh agent session from a script-built context pack, count only real checkbox list items as tasks, send only a failing pass's findings to the next fix step, and decide shipping by script: reject partial or rule-breaking work, ask the user only for breaking changes, and ship everything else.
@@ -318,3 +326,35 @@ scenarios under `## REMOVED Requirements`.
 #### Scenario: Trace counts scenarios an active change adds
 - **WHEN** `make trace` runs where an active change (`openspec/changes/<id>/specs/<capability>/spec.md`) adds a scenario that a test names, and an archived change and a `## REMOVED Requirements` section list other scenarios
 - **THEN** the added scenario is tested, the archived and removed ones are not scenarios, and nothing is orphan
+
+### Requirement: Red gates send every failed section to fix
+The build gate SHALL save the check log without ANSI codes and send the next fix pass the exact log path, the status lines, the head of every failed target section in log order (lint first) and the failing test cases (`FAIL in …`), within the feedback budget. LuaLS progress lines SHALL not appear in the types output.
+
+#### Scenario: Gate failures keep an early lint section
+- **WHEN** `.archon/scripts/gate.py` runs where `make check` prints a red log whose lint section comes first and whose test section ends in many lines of output
+- **THEN** its `failures` name `check-1.log`, the status lines, the lint error, every failing test case and no ANSI codes
+
+#### Scenario: Types output drops LuaLS progress lines
+- **WHEN** `tests/types.sh` runs where lua-language-server prints `>>>>=== 12/369 [Found 5 problems in 1 files]` progress lines and a diagnostic
+- **THEN** the output holds the diagnostic and no progress line
+
+### Requirement: Fix pass reruns failed files and guards references
+The fix command SHALL rerun every test file named in a `FAIL in …` line of the latest check log plus `tests/screen/<area>` of the touched area (never make check), read only the latest check log with bounded context, and regenerate a reference screenshot only when the cell diff is limited to UI a named merged or base commit changed.
+
+#### Scenario: Fix prompt reruns failed files and names reference commits
+- **WHEN** `.archon/commands/fix.md` is read
+- **THEN** it reruns every file named by `FAIL in` plus `tests/screen/<area>`, forbids `check-*.log` globs and broad `rg` over `lua tests`, and allows a reference regeneration only for UI a named commit changed
+
+### Requirement: Task loop skips implement when no task is left
+The context pack SHALL report whether a task is left (`has_task`), and the task loop SHALL run the implement session only when one is.
+
+#### Scenario: Context pack reports when no task is left
+- **WHEN** `.archon/scripts/context_pack.py` runs on a change whose tasks are all ticked, and on one with an unchecked task
+- **THEN** it prints `has_task` false for the first and true for the second, and the nvim-deliver implement node runs only when `has_task` is true
+
+### Requirement: Smoke startup fails on a startup error
+The smoke startup timing SHALL fail when a timed start exits non-zero or writes an error to stderr, instead of reporting only its time.
+
+#### Scenario: Startup timing fails on a startup error
+- **WHEN** `make smoke-startup` runs with a config whose init.lua raises an error
+- **THEN** it exits non-zero and prints the error

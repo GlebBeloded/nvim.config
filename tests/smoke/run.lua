@@ -2,7 +2,8 @@
 -- tests/helpers.lua) and check that
 --   1. startup leaves nothing in :messages / stderr,
 --   2. the selected :checkhealth sections report no ERROR,
---   3. the median startup time (--startuptime) is within budget.
+--   3. the timed starts exit cleanly with empty stderr, and their median
+--      startup time (--startuptime) is within budget.
 -- Run: nvim -u tests/minimal_init.lua -l tests/smoke/run.lua [health|startup]
 -- Without an argument both parts run, the probe concurrently with the timing.
 
@@ -106,12 +107,23 @@ local function started_at(file)
 	error("NVIM STARTED not found in " .. file)
 end
 
+---@type string? exit code and stderr of the first timed start that failed
+local startup_error
+
+---@param result vim.SystemCompleted
+local function record_startup_error(result)
+	local stderr = vim.trim(result.stderr or "")
+	if startup_error == nil and (result.code ~= 0 or stderr ~= "") then
+		startup_error = string.format("exit code %d\n%s", result.code, stderr)
+	end
+end
+
 ---@return number ms
 local function measure_startup()
 	-- the previous run saved a session on exit; a bare `nvim` would restore it
 	vim.fn.delete(vim.fs.joinpath(vim.env.XDG_DATA_HOME, "nvim/session"), "rf")
 	local file = vim.fn.tempname()
-	nvim({ "--startuptime", file, "+qa!" })
+	record_startup_error(nvim({ "--startuptime", file, "+qa!" }))
 	return started_at(file)
 end
 
@@ -145,6 +157,9 @@ end
 local function check_startup_time()
 	H.isolate()
 	local samples = startup_samples(STARTUP_RUNS)
+	if startup_error then
+		return check(false, "startup exited cleanly without stderr", startup_error)
+	end
 	local median = samples[math.ceil(#samples / 2)]
 	local budget_ms, label = startup_budget()
 	if median <= budget_ms then

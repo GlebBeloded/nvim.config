@@ -147,14 +147,23 @@ T["loop: Ship waits for a dirty auto checkout"] = function()
 	local repo = make_repo()
 	local run = add_run(repo, "w", { ["w.txt"] = "w" })
 	write_files(repo, { ["f.txt"] = "edited" })
-	child.lua("_G.ship_run = vim.system(..., { cwd = select(2, ...), env = select(3, ...), text = true })", {
-		{ "python3", SHIP },
-		run,
-		ship_env(),
-	})
-	vim.uv.sleep(1500)
+	child.lua(
+		[[local cmd, cwd, env = ...
+		_G.ship_err = ""
+		local function collect(_, data)
+			_G.ship_err = _G.ship_err .. (data or "")
+		end
+		_G.ship_run = vim.system(cmd, { cwd = cwd, env = env, text = true, stderr = collect })]],
+		{ { "python3", SHIP }, run, ship_env() }
+	)
+	-- clean the checkout only once ship has seen it dirty, however late ship starts under load
+	local saw_dirty = [[vim.wait(..., function()
+		return _G.ship_err:find("uncommitted changes, waiting", 1, true) ~= nil
+	end, 20)]]
+	eq(child.lua_get(saw_dirty, { math.ceil(30000 * H.load_factor()) }), true, { fail_reason = "ship never waited" })
 	git_ok({ "checkout", "--", "f.txt" }, repo)
 	local result = child.lua_get("_G.ship_run:wait(30000)")
+	result.stderr = child.lua_get("_G.ship_err")
 	expect_shipped(result)
 	eq(result.stderr:find("uncommitted changes, waiting", 1, true) ~= nil, true)
 end

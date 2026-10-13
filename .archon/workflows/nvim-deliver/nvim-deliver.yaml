@@ -63,10 +63,17 @@ nodes:
           runtime: uv
           with:
             change: $INPUTS.change
+          output_format:
+            type: object
+            properties:
+              has_task: { type: boolean }
+              context: { type: string }
+            required: [has_task, context]
 
         - id: implement
           command: implement
           depends_on: [pack]
+          when: "$pack.output.has_task == true" # no task left: no wasted session, until_bash ends the loop
           idle_timeout: 900000
           skills: [superpowers:test-driven-development]
 

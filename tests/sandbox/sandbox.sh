@@ -121,8 +121,21 @@ boot() {
 	log "booting $VM headless"
 	mkdir -p "$STATE"
 	mkdir -p "$SHARE"
-	lume run "$VM" --no-display --detach --shared-dir "$SHARE" --log-file "$STATE/vm.log" >/dev/null
+	local try
+	for try in 1 2 3 4 5; do
+		lume run "$VM" --no-display --detach --shared-dir "$SHARE" --log-file "$STATE/vm.log" >/dev/null
+		storage_locked || break
+		log "$VM still holds its storage after a stop; retrying boot ($try/5)"
+		sleep 5
+	done
 	boot_wait
+}
+
+# true when the boot just failed because a killed VM process has not released its disk yet
+storage_locked() {
+	sleep 3
+	pgrep -qf "libexec/lume run $VM( |\$)" && return 1
+	tail -n 20 "$STATE/vm.log" 2>/dev/null | grep -q "Failed to lock auxiliary storage"
 }
 
 # `lume ssh` exit status for "test -d <shared folder>": 0 shared, 1 not shared, else the guest did not answer
@@ -139,7 +152,13 @@ share_probe() {
 
 # Lume can lose track of a detached VM (`lume get` says stopped while its `lume run` is alive); then
 # `lume ssh` refuses every command. Stop that orphaned run (SIGTERM, SIGKILL after 60 s) and boot again.
+# no caller stops or restarts the shared VM while another holds the lock
+require_lock() {
+	lock_held_by_me "$LOCK" || die "refusing to $1 $VM without holding $LOCK"
+}
+
 restart_vm() {
+	require_lock restart
 	log "$1; restarting $VM"
 	lume ssh "$VM" -t 10 sync >/dev/null 2>&1 || true # lume stop is a power-off
 	lume stop "$VM" >/dev/null 2>&1 || true
@@ -319,6 +338,7 @@ sync_plugins() {
 restore_guest() { gssh "$GUEST_REPO/tests/sandbox/guest_restore.sh"; }
 
 provision() {
+	require_lock provision # it stops and reboots the VM
 	bootstrap_guest
 	local t0=$SECONDS
 	# as a file: brew and the Homebrew installer would eat a script piped into bash's stdin
@@ -447,6 +467,7 @@ provision)
 down)
 	sandbox_lock "$LOCK"
 	if command -v lume >/dev/null && running; then
+		require_lock stop
 		{ bootstrap_guest && gssh "sync"; } || true # lume stop is a power-off
 		lume stop "$VM" >/dev/null 2>&1 || true
 		# the owning `lume run` stops the VM on SIGTERM (when lume get lost track of it)
