@@ -17,3 +17,4 @@ None. `skip_specs: true`.
 ## Impact
 - Code: `tests/integration/keymaps/test_keymaps.lua`.
 - Plugins: none. Core keymaps: unchanged.
+- Out of scope: keymap behaviour, plugin configuration, and production wait logic.
