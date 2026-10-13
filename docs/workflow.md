@@ -6,7 +6,6 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 
 ## Loop lessons
 
-- Clear inherited workflow inputs in isolated tests so ambient gate state cannot override fixtures.
 - Keep requirement prose within OpenSpec's 500-character limit before trial archive validation.
 - Declare incidental loop behavior in the proposal and an active change delta instead of editing the baseline spec.
 - When an adapter creates a temporary Visual selection, exit Visual mode and restore the cursor after the delegated action.
@@ -16,6 +15,7 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - For an implementation-free follow-up, replace ignored adoption metadata with `skip_specs: true` so strict validation accepts zero deltas.
 - When merging a keymap-helper rewrite, convert retained mappings to the new helper so removed option tables cannot break startup.
 - Regenerate a screen reference only when the cell diff is limited to UI a merged commit changed; name that commit.
+- When review evidence contradicts a queued task or proposal, preserve the declared scope and remove unverified bug claims before shipping.
 
 ## The loop
 

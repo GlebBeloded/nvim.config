@@ -50,6 +50,34 @@ local function expect_statusline_contains(needle)
 	end
 end
 
+--- Replace nvim-navic in the child with a stub that reports `location`.
+---@param location string
+local function stub_navic(location)
+	child.lua(
+		[[
+		local location = ...
+		package.loaded["nvim-navic"] = {
+			is_available = function() return true end,
+			get_location = function() return location end,
+		}
+	]],
+		{ location }
+	)
+end
+
+--- 1-based screen column where `text` starts in a row of cells (nil if absent).
+---@param cells string[]
+---@param text string
+---@return integer?
+local function location_column(cells, text)
+	local first = vim.fn.strcharpart(text, 0, 1)
+	for col = 1, #cells do
+		if cells[col] == first and table.concat(cells, "", col):sub(1, #text) == text then
+			return col
+		end
+	end
+end
+
 local T = H.child_set(child, start)
 
 T["statusline: statusline is global"] = function()
@@ -107,6 +135,16 @@ T["statusline: statusline disabled on dashboard"] = function()
 	vim.uv.sleep(200)
 
 	eq(statusline_text():find("NORMAL", 1, true), nil)
+end
+
+T["statusline: navic breadcrumb shown when available"] = function()
+	child.o.columns = 100
+	edit_scratch("sample.txt")
+	stub_navic("Server ▸ Handle")
+	expect_statusline_contains("Server ▸ Handle")
+
+	local cells = H.screen_rows(child, -1).text[1]
+	eq(location_column(cells, "Server ▸ Handle") <= #cells / 2, true)
 end
 
 T["statusline: chip highlights survive colorscheme change"] = function()

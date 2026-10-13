@@ -11,11 +11,17 @@ local AUTOSAVE_WAIT_MS = 1500
 ---@type string
 local dir
 
+--- RPC can be served while init.lua still runs; restore happens on VimEnter.
+local function wait_vim_enter()
+	assert(child.wait("vim.v.vim_did_enter == 1", 5000), "VimEnter did not fire")
+end
+
 --- Full config started bare in a fresh temp cwd (child state is sandboxed).
 local function start()
 	dir = vim.fn.tempname()
 	vim.fn.mkdir(dir, "p")
 	child.start_config()
+	wait_vim_enter()
 	child.cmd("cd " .. dir)
 end
 
@@ -51,8 +57,7 @@ local function set_mtime(path, mtime)
 end
 
 --- Restart the full config in `dir` under zellij pane `zellij`/`pane` with
---- `files` as arguments (bare by default), keeping the child's state
---- (start_config would reset it).
+--- `files` as arguments (bare by default), keeping the child's state.
 ---@param zellij string
 ---@param pane string
 ---@param files? string[]
