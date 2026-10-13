@@ -264,7 +264,7 @@ Columns of the table the "Shortcut table" requirement refers to:
 | Shortcut | Source | Alacritty sends | zellij | Neovim receives | Mapping |
 |---|---|---|---|---|---|
 | Cmd+E | chars | `\ee` | pass | `<M-e>` | fn |
-| Cmd+G | chars | `\eg` | pass | `<M-g>` | `:Differ<cr>` |
+| Cmd+G | chars | `\eg` | pass | `<M-g>` | `<Cmd>Differ<CR>` |
 | Cmd+B | chars | `\eb` | pass | `<M-b>` | none |
 | Cmd+Q | chars | `\eq` | pass | `<M-q>` | none |
 | Cmd+Shift+Q | chars | `\eQ` | pass | `<M-Q>` | none |
@@ -272,7 +272,7 @@ Columns of the table the "Shortcut table" requirement refers to:
 | Cmd+C | chars | `\ec` | pass | `<M-c>` | none |
 | Cmd+/ | chars | `\e/` | pass | `<M-/>` | `gcc` |
 | Cmd+F | chars | `\ef` | ToggleFloatingPanes | — | — |
-| Cmd+Shift+F | chars | `\eF` | pass | `<M-F>` | `:Telescope live_grep<cr>` |
+| Cmd+Shift+F | chars | `\eF` | pass | `<M-F>` | `<Cmd>Telescope live_grep<CR>` |
 | Cmd+W | chars | `\ew` | pass | `<M-w>` | desc `Diagnostics: Next` |
 | Cmd+Shift+W | chars | `\eW` | pass | `<M-W>` | none |
 | Cmd+H | chars | `\x08` | navigator move_focus_or_tab left | `<C-H>` | fn `require("smart-splits").move_cursor_left` |
@@ -311,10 +311,10 @@ Columns of the table the "Shortcut table" requirement refers to:
 | Ctrl+L | kitty | `\e[108;5u` | navigator move_focus_or_tab right | `<C-L>` | fn `require("smart-splits").move_cursor_right` |
 | Ctrl+Q | kitty | `\e[113;5u` | Quit | — | — |
 | Ctrl+Return | kitty | `\e[13;5u` | pass | `<C-CR>` | fn `vim.lsp.buf.code_action` |
-| Ctrl+Up | kitty | `\e[1;5A` | pass | `<C-Up>` | `:resize +2<CR>` |
-| Ctrl+Down | kitty | `\e[1;5B` | pass | `<C-Down>` | `:resize -2<CR>` |
-| Ctrl+Left | kitty | `\e[1;5D` | pass | `<C-Left>` | `:vertical resize -2<CR>` |
-| Ctrl+Right | kitty | `\e[1;5C` | pass | `<C-Right>` | `:vertical resize +2<CR>` |
+| Ctrl+Up | kitty | `\e[1;5A` | pass | `<C-Up>` | `<Cmd>resize +2<CR>` |
+| Ctrl+Down | kitty | `\e[1;5B` | pass | `<C-Down>` | `<Cmd>resize -2<CR>` |
+| Ctrl+Left | kitty | `\e[1;5D` | pass | `<C-Left>` | `<Cmd>vertical resize -2<CR>` |
+| Ctrl+Right | kitty | `\e[1;5C` | pass | `<C-Right>` | `<Cmd>vertical resize +2<CR>` |
 | Cmd+O | kitty | `\e[111;9u` | pass | `<D-o>` | none |
 | Cmd+I | kitty | `\e[105;9u` | pass | `<D-i>` | none |
 | Cmd+D | kitty | `\e[100;9u` | pass | `<D-d>` | none |

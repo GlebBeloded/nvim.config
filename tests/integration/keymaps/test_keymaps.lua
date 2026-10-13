@@ -102,6 +102,60 @@ T["keymaps: Core mappings are noremap and silent"] = function()
 	eq({ map.noremap, map.silent }, { 1, 1 })
 end
 
+--- Every `{ mode, lhs }` defined in lua/gleb/keymaps.lua.
+local core_maps = {
+	{ "n", "<C-h>" },
+	{ "n", "<A-j>" },
+	{ "n", "<A-k>" },
+	{ "n", "<C-l>" },
+	{ "n", "gb" },
+	{ "n", "gB" },
+	{ "n", "<C-Up>" },
+	{ "n", "<C-Down>" },
+	{ "n", "<C-Left>" },
+	{ "n", "<C-Right>" },
+	{ "n", "<A-H>" },
+	{ "n", "<A-J>" },
+	{ "n", "<A-K>" },
+	{ "n", "<A-L>" },
+	{ "n", "<C-q>" },
+	{ "n", "<A-e>" },
+	{ "n", "<A-g>" },
+	{ "n", "<A-G>" },
+	{ "n", "<A-F>" },
+	{ "n", "<C-CR>" },
+	{ "n", "gD" },
+	{ "n", "gd" },
+	{ "n", "K" },
+	{ "n", "gi" },
+	{ "n", "gr" },
+	{ "n", "<A-r>" },
+	{ "n", "<A-w>" },
+	{ "n", "[d" },
+	{ "n", "ge" },
+	{ "i", "jk" },
+	{ "x", "<" },
+	{ "x", ">" },
+	{ "x", "p" },
+	{ "x", "J" },
+	{ "x", "K" },
+	{ "x", "<A-j>" },
+	{ "x", "<A-k>" },
+	{ "x", "<C-CR>" },
+}
+
+T["keymaps: Every core mapping has an area-action desc"] = function()
+	local offenders = child.lua_get(
+		[[vim.iter(...):filter(function(m)
+            local desc = vim.fn.maparg(m[2], m[1], false, true).desc
+            return desc == nil or not desc:match("^%u[%w ]*: %S.*$")
+        end):totable()]],
+		{ core_maps }
+	)
+
+	eq(offenders, {})
+end
+
 T["keymaps: Leader values after startup"] = function()
 	eq({ child.g.mapleader, child.g.maplocalleader }, { " ", "\\" })
 end
@@ -197,6 +251,19 @@ T["keymaps: Increase width"] = function()
 	eq(child.api.nvim_win_get_width(left), before + 2)
 end
 
+T["keymaps: Command maps do not enter the command line"] = function()
+	two_windows("split")
+	child.g.cmdline_enters = 0
+	child.lua([[vim.api.nvim_create_autocmd("CmdlineEnter", {
+        callback = function()
+            vim.g.cmdline_enters = vim.g.cmdline_enters + 1
+        end,
+    })]])
+	child.type_keys("<C-Up>", "<C-Down>", "<C-Left>", "<C-Right>")
+
+	eq(child.g.cmdline_enters, 0)
+end
+
 T["keymaps: Smart-splits resize changes window size"] = function()
 	local left = two_windows("vsplit")
 	child.api.nvim_set_current_win(left)
@@ -204,6 +271,14 @@ T["keymaps: Smart-splits resize changes window size"] = function()
 	child.type_keys("<A-L>")
 
 	eq(child.api.nvim_win_get_width(left) ~= before, true)
+end
+
+T["keymaps: Smart-splits resize keys are not remapped"] = function()
+	child.wait_very_lazy() -- after every startup and VeryLazy mapping
+	local resize = { ["<A-H>"] = "left", ["<A-J>"] = "down", ["<A-K>"] = "up", ["<A-L>"] = "right" }
+	for lhs, direction in pairs(resize) do
+		eq({ lhs, callback_is(lhs, "n", ('require("smart-splits").resize_%s'):format(direction)) }, { lhs, true })
+	end
 end
 
 -- Jump list and buffers ------------------------------------------------------
@@ -229,6 +304,33 @@ T["keymaps: Close current buffer"] = function()
 	child.type_keys("<C-q>")
 
 	eq(child.fn.buflisted(current), 0)
+end
+
+T["keymaps: Close buffer keeps split layout"] = function()
+	local dir = vim.fn.tempname()
+	child.cmd("edit " .. dir .. "/a | edit " .. dir .. "/b | vsplit")
+	local b = child.api.nvim_get_current_buf()
+	child.type_keys("<C-q>")
+	local wins = child.api.nvim_tabpage_list_wins(0)
+	local shown = vim.tbl_map(child.api.nvim_win_get_buf, wins)
+
+	eq({ #wins, vim.tbl_contains(shown, b), child.fn.buflisted(b) }, { 2, false, 0 })
+end
+
+T["keymaps: Close modified buffer is refused"] = function()
+	local dir = vim.fn.tempname()
+	-- gitcommit: the auto-save condition skips it, so it stays modified
+	child.cmd("edit " .. dir .. "/a | edit " .. dir .. "/b | setlocal filetype=gitcommit")
+	local b = child.api.nvim_get_current_buf()
+	set_lines({ "changed" })
+	-- the refusal is reported as an error (E89), which type_keys rethrows
+	pcall(child.type_keys, "<C-q>")
+
+	eq({
+		child.api.nvim_get_current_buf(),
+		child.fn.buflisted(b),
+		child.api.nvim_get_option_value("modified", { buf = b }),
+	}, { b, 1, true })
 end
 
 -- Insert and visual helpers --------------------------------------------------
