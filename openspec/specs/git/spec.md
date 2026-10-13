@@ -4,6 +4,7 @@
 Git integration loaded from `lua/gleb/git/`: gutter signs, unified/split diff viewers (differ.nvim, diffview.nvim, vscode-diff), permalink copying via `:Gitlink`, and an AI-generated commit message popup.
 
 ## Requirements
+
 ### Requirement: Module loading
 `require("gleb.git")` SHALL load, in order, the gitsigns, differ, diffview and gitlink configurations. The vscode-diff configuration SHALL be loaded by lazy.nvim when that plugin loads. The gitsigns, differ, diffview and vscode-diff configurations SHALL return without error when their plugin cannot be required.
 
@@ -86,7 +87,7 @@ When vscode-diff loads, the config SHALL call its setup with the explorer positi
 - **THEN** `require("gleb.git.vscode_diff")` has been executed without error
 
 ### Requirement: Gitlink permalink command
-The config SHALL configure gitlinker with no default mappings, without printing the URL, and with host `pgw.dev` producing GitHub-style URLs. It SHALL define the `:Gitlink` command accepting a range: without a range it copies the URL for the current line, with a range it copies the URL for the selected lines; the URL SHALL be copied to the `+` register.
+The config SHALL configure gitlinker with no default mappings, without printing the URL, and with host `pgw.dev` producing GitHub-style URLs. It SHALL define the `:Gitlink` command accepting a range: without a range it copies the URL for the current line, with a range it copies the URL for the inclusive line endpoints supplied to the command; the URL SHALL be copied to the `+` register.
 
 #### Scenario: Gitlink copies current line URL
 - **WHEN** `:Gitlink` is executed in a tracked file of a repository with a GitHub remote, cursor on line 10
