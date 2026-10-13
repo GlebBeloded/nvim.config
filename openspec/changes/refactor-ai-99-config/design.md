@@ -61,8 +61,10 @@ it would silently freeze a `nil` base if the provider were required early.
 ## Risks / Trade-offs
 
 - [Menu test blocks on `getchar()`] → feed the menu key in the same `type_keys` call (`"<A-9>", "s"`), so
-  typeahead satisfies `getchar()`; for "Menu shows prompt", read the command line from
-  `child.get_screenshot()` while `getchar()` waits, then send `<Esc>`.
+  typeahead satisfies `getchar()`. `child.get_screenshot()` and `child.lua` refuse to run while the
+  child is blocked in `getchar()` (mini.test `prevent_hanging`), so "Menu shows prompt" wraps
+  `vim.api.nvim_echo` in the child to record its chunks, sends `<A-9>` alone, checks
+  `child.is_blocked()`, then sends `<Esc>` and asserts the recorded `{ "99> [s]earch [v]ibe: ", "Question" }`.
 - [`param-type-mismatch` on `nvim_echo` moves with the code] → `make types` decides; annotate the chunk
   list only if the move surfaces it in the new file, else leave out of scope.
 - [99 calls a base method by `rawget`] → not the case for `BaseProvider` lookups via `__index`; the
