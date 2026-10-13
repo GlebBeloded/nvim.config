@@ -20,6 +20,7 @@ nodes:
 
   - id: spec
     command: spec-bug
+    context: fresh # reads its input artifact; no carried-over session
     depends_on: [explore]
     skills: [openspec-propose]
     output_format:

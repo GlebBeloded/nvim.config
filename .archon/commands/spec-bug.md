@@ -5,10 +5,10 @@ description: Turn a root cause into an OpenSpec change (scenario delta + tasks)
 
 First, load each of these skills before any other step: `openspec-propose`. On Claude, load each with the
 Skill tool. On Codex, invoke each by name: $openspec-propose. Report each skill as it loads. If one does not
-load, stop and report the error naming it.
+load, stop and report the error naming it. The skill text is already in your context once loaded: do not re-read its SKILL.md.
 
-Flow (fix-bug / work-queue): diagnose → spec → plan → implement ×task → check → fix → verify → review → judge → ship.
-Your step: **spec**. Input: `root-cause.md`. Output: the change folder (proposal + spec delta) and the JSON fields. Do not: write tests, code or tasks.md. Keep output brief. Loop step rules (they override general instructions about searching, skills and sub-agents): use only the skill named above, no sub-agents; search the web only for facts that are in neither the repo nor the installed plugin source; read doc sections you need (`rg -n '^## ' <doc>`, then that range), never whole docs.
+Flow (fix-bug / work-queue): diagnose → spec → plan → implement ×task → check → fix → review → judge → ship.
+Your step: **spec**. Input: `root-cause.md`. Output: the change folder (proposal + spec delta + tasks.md, so the plan step is skipped) and the JSON fields. Do not: write tests or code. Keep output brief. Loop step rules (they override general instructions about searching, skills and sub-agents): use only the skill named above, no sub-agents; search the web only for facts that are in neither the repo nor the installed plugin source; read doc sections you need (`rg -n '^## ' <doc>`, then that range), never whole docs.
 
 Bug: $ARGUMENTS
 Root cause: $ARTIFACTS_DIR/root-cause.md
@@ -21,7 +21,10 @@ openspec continue-change). Otherwise create one with the `openspec-propose` skil
 - proposal: plugin dependency change? core keymap change? out of scope.
 - design.md only when there is visible UI (then Current + Proposed renders) or a structural change.
 - tasks.md: each task names its scenario titles; its first step is the failing test
-  "<capability>: <scenario title>".
+  "<capability>: <scenario title>" (when a test with that name exists: run it and see it fail).
+  Checkbox items are agent work only; no items to run `make check`/`make quick` (the gate does it).
+Read the capability spec once (`openspec/specs/<capability>/spec.md`, the requirement's line range); run
+`openspec status` once at the end.
 
 Stop after the artifacts exist; do not implement. Set `change` to the change id, `visible_ui` to
 true when the change alters what is drawn on screen, `architecture` to true when it changes module

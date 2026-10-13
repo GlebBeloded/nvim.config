@@ -4,6 +4,7 @@ Steps). Holds the change artifacts, the Loop lessons, the files tasks.md names (
 failures of the last gate. Prints the pack path.
 """
 
+import json
 import os
 import pathlib
 import re
@@ -54,6 +55,17 @@ def referenced_files(change_dir: pathlib.Path) -> list[str]:
     return parts
 
 
+def plugin_sources(change_dir: pathlib.Path) -> str:
+    """Install paths of the lazy.nvim plugins the change mentions, so agents read plugin source there."""
+    lock = pathlib.Path("lazy-lock.json")
+    if not lock.exists():
+        return ""
+    text = "\n".join(p.read_text(errors="replace") for p in change_dir.rglob("*.md"))
+    data = pathlib.Path(os.environ.get("NVIM_TEST_DATA_DIR") or pathlib.Path.home() / ".local/share/nvim")
+    names = [n for n in json.loads(lock.read_text()) if n in text or n.removesuffix(".nvim") in text]
+    return "\n".join(f"- {n}: {data / 'lazy' / n}" for n in names)
+
+
 def last_failures() -> str:
     logs = sorted(ARTIFACTS.glob("check-*.log"), key=lambda p: int(p.stem.split("-")[1]))
     if not logs:
@@ -68,6 +80,9 @@ def main() -> None:
     parts = [f"# Context pack: {CHANGE}\n", section("Next task", task or "(none: every task is ticked)")]
     parts.append(section("Loop lessons", lessons()))
     parts += change_artifacts(change_dir)
+    plugins = plugin_sources(change_dir)
+    if plugins:
+        parts.append(section("Installed plugin sources", plugins))
     failures = last_failures()
     if failures:
         parts.append(section("Last gate failures", failures))

@@ -1,20 +1,20 @@
 ---
-description: Fix only the findings of the last gate, verify and review (one short session)
+description: Fix only the findings of the last check and review (one short session)
 ---
 # Fix
 
 First, load each of these skills before any other step: `superpowers:systematic-debugging`. On
 Claude, load each with the Skill tool. On Codex, invoke each by name:
 $systematic-debugging. Report each skill as it loads. If one does not load, stop and
-report the error naming it.
+report the error naming it. The skill text is already in your context once loaded: do not re-read its SKILL.md.
 
-Flow (fix-bug / work-queue): diagnose → spec → plan → implement ×task → check → fix → verify → review → judge → ship.
+Flow (fix-bug / work-queue): diagnose → spec → plan → implement ×task → check → fix → review → judge → ship.
 Your step: **fix**. Input: only the listed findings. Output: 1 commit fixing them. Do not: fix anything unlisted, refactor, run make quick/check. Keep output brief. Loop step rules (they override general instructions about searching, skills and sub-agents): use only the skill named above, no sub-agents; search the web only for facts that are in neither the repo nor the installed plugin source; read doc sections you need (`rg -n '^## ' <doc>`, then that range), never whole docs.
 
 Read the `## Loop lessons` section in `docs/workflow.md` (also in `$ARTIFACTS_DIR/context.md`) first.
 
 Change: openspec/changes/$INPUTS.change/
-Findings of the previous pass (check failures, hard rules, verify, review):
+Findings of the previous pass (check failures, untested scenarios, hard rules, review):
 $LOOP_PREV.verdict.output.feedback
 
 Fix exactly these findings and nothing else, smallest change first. Find the cause before editing;

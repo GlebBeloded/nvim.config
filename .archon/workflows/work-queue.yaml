@@ -37,6 +37,7 @@ nodes:
   # --- Specify: complete a queued proposal ------------------------------------------------------------
   - id: complete
     command: queue-spec
+    context: fresh # reads its input artifact; no carried-over session
     depends_on: [pick, skills-check]
     when: "$pick.output.found == true"
     with:
