@@ -25,4 +25,4 @@ No scenario is added or changed, so there is no failing test to write first (a t
 
 ## 4. Gate
 
-- [ ] 4.1 Run `make check`. Verify it is green and `make trace VERBOSE=1` lists the four new scenarios as tested, with no orphans.
+- [x] 4.1 Run `make check`. Verify it is green and `make trace VERBOSE=1` lists the four new scenarios as tested, with no orphans. (Build pass ran `make quick` + `make trace VERBOSE=1`: four scenarios tested, 0 orphans; the full `make check` runs in the gate. Smoke startup passes standalone (248 ms, on par with `auto`); it only exceeds the 400 ms budget under host load avg 25–60.)
