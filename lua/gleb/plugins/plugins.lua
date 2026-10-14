@@ -222,10 +222,8 @@ local plugins = {
 	-- snippets
 	"L3MON4D3/LuaSnip", -- Snippet engine
 
-	-- telescope (finder UI)
+	-- picker UI
 	"nvim-mini/mini.nvim", -- Shared picker UI and list sources
-	"nvim-telescope/telescope.nvim",
-	"ahmedkhalf/project.nvim",
 
 	-- file explorer
 	"nvim-tree/nvim-web-devicons",
@@ -331,9 +329,6 @@ local plugins = {
 	{
 		"ThePrimeagen/99",
 		event = "VeryLazy",
-		dependencies = {
-			"nvim-telescope/telescope.nvim",
-		},
 		config = function()
 			require("gleb.ai").setup()
 		end,

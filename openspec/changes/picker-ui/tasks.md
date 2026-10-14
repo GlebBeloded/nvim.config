@@ -66,9 +66,9 @@ Scenarios: `file-tree: gr keeps its global meaning in git status tree`
 
 ## 12. Move dashboard lists and remove Telescope
 Scenarios: `picker: Dashboard opens shared list pickers`
-- [ ] 12.1 Write the scenario in tests/integration/picker/test_dashboard.lua and see it fail
-- [ ] 12.2 Wire dashboard file, recent-file and grep actions to shared sources; remove its project action, project.nvim integration, Telescope modules and tests, plugin declarations and lock entries
-- [ ] 12.3 Run `make test FILE=tests/integration/picker/test_dashboard.lua CASE="Dashboard opens shared list pickers"` and see it pass
+- [x] 12.1 Write the scenario in tests/integration/picker/test_dashboard.lua and see it fail
+- [x] 12.2 Wire dashboard file, recent-file and grep actions to shared sources; remove its project action, project.nvim integration, Telescope modules and tests, plugin declarations and lock entries
+- [x] 12.3 Run `make test FILE=tests/integration/picker/test_dashboard.lua CASE="Dashboard opens shared list pickers"` and see it pass
 
 ## 13. Preserve startup session names after cwd changes
 Scenarios: `session: project cwd change preserves the startup session name`
@@ -92,3 +92,4 @@ Scenarios: `ai: Keymaps exist after VeryLazy`, `ai: Missing 99 is tolerated`, `a
 - Picker aliases use MiniPick custom actions for Tab, Shift-Tab, Control-C and Space because each built-in action accepts only one configurable key.
 - After project.nvim is removed, the session scenario uses Neovim's built-in cwd change to preserve its original startup-name guarantee.
 - The Go references E2E driver uses mini.pick's public item and match APIs; task 9's mini.extra source already passed both scenarios, so no duplicate source was added.
+- Dashboard files use MiniPick's built-in files source and recent files use MiniExtra's oldfiles source because they directly replace Telescope's corresponding list actions.
