@@ -96,6 +96,24 @@ ip() {
 	echo "$addr"
 }
 
+# the guest's SSH port accepts TCP, checked without ssh: lume 0.6.1 falls back to the host's
+# /usr/bin/ssh (which endpoint security flags) when its own SSH fails, e.g. while the guest boots
+port_open() {
+	local addr
+	addr=$(ip)
+	[ -n "$addr" ] && nc -z -G 2 "$addr" 22 >/dev/null 2>&1
+}
+
+# until port_open, at most 180 s (load-scaled)
+port_wait() {
+	local deadline
+	deadline=$((SECONDS + $(load_scaled 180)))
+	until port_open; do
+		[ $SECONDS -lt $deadline ] || return 1
+		sleep 2
+	done
+}
+
 # run "$*" as a bash script in the guest (via a file in the shared folder), output streamed back
 gssh() {
 	mkdir -p "$SHARE/cmd"
@@ -184,7 +202,7 @@ require_lock() {
 restart_vm() {
 	require_lock restart
 	log "$1; restarting $VM"
-	lume ssh "$VM" -t 10 sync >/dev/null 2>&1 || true # lume stop is a power-off
+	{ port_open && lume ssh "$VM" -t 10 sync >/dev/null 2>&1; } || true # lume stop is a power-off
 	lume stop "$VM" >/dev/null 2>&1 || true
 	kill_run
 	boot
@@ -201,6 +219,7 @@ kill_run() {
 # the guest answers and mounts the shared folder (a VM booted by an older sandbox.sh has none)
 ensure_share() {
 	local tries=0 rc
+	port_wait || die "$VM's SSH port did not open within 180 s ($STATE/vm.log)"
 	while :; do
 		rc=0; share_probe || rc=$?
 		case $rc in
@@ -213,12 +232,12 @@ ensure_share() {
 	done
 }
 
-# until the guest answers `lume ssh`. A `lume run` that Lume reports as not running for over
+# until the guest answers `lume ssh`, tried only once its SSH port is open (see port_open). A `lume run` that Lume reports as not running for over
 # SANDBOX_MISMATCH_S s (default 20, load-scaled) never answers: kill it and boot once more ($1 = 1)
 boot_wait() {
 	local retry=${1:-1} deadline=$((SECONDS + 180)) grace since=
 	grace=$(load_scaled "${SANDBOX_MISMATCH_S:-20}")
-	until [ -n "$(ip)" ] && lume ssh "$VM" -t 10 true >/dev/null 2>&1; do
+	until port_open && lume ssh "$VM" -t 10 true >/dev/null 2>&1; do
 		run_alive || die "$VM stopped while booting ($STATE/vm.log)"
 		if running; then
 			since=

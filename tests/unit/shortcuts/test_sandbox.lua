@@ -82,6 +82,18 @@ echo "pkill $*" >>"$GUEST_LOG"
 rm -f "$SANDBOX_STATE/run-alive"
 ]]
 
+--- `nc` stub (the SSH port check): logs `nc closed|open <args>`; its first $NC_CLOSED calls
+--- report the port closed, later ones open.
+local NC_STUB = [[#!/bin/sh
+n=$(($(cat "$SANDBOX_STATE/nc-calls" 2>/dev/null || echo 0) + 1))
+echo "$n" >"$SANDBOX_STATE/nc-calls"
+if [ "$n" -le "${NC_CLOSED:-0}" ]; then
+	echo "nc closed $*" >>"$GUEST_LOG"
+	exit 1
+fi
+echo "nc open $*" >>"$GUEST_LOG"
+]]
+
 --- `sysctl` stub: not inside a VM.
 local SYSCTL_STUB = [[#!/bin/sh
 echo 0
@@ -140,7 +152,7 @@ local function provision_rev()
 	return assert(source:match("\nPROVISION_REV=(%d+)"))
 end
 
---- Env with the `lume`, `ssh`, `rsync` and `sysctl` stubs first on PATH, a temp SANDBOX_STATE,
+--- Env with the `lume`, `ssh`, `rsync`, `nc`, `sysctl`, `pgrep` and `pkill` stubs first on PATH, a temp SANDBOX_STATE,
 --- a temp HOME and plugin dir, and no e2e selection from the caller.
 ---@return table<string, string>
 local function sandbox_env()
@@ -149,6 +161,7 @@ local function sandbox_env()
 	write_executable(vim.fs.joinpath(bin, "ssh"), SSH_STUB)
 	write_executable(vim.fs.joinpath(bin, "rsync"), RSYNC_STUB)
 	write_executable(vim.fs.joinpath(bin, "sysctl"), SYSCTL_STUB)
+	write_executable(vim.fs.joinpath(bin, "nc"), NC_STUB)
 	write_executable(vim.fs.joinpath(bin, "pgrep"), PGREP_STUB)
 	write_executable(vim.fs.joinpath(bin, "pkill"), PKILL_STUB)
 	child.fn.mkdir(vim.fs.joinpath(data, "lazy"), "p")
@@ -573,6 +586,28 @@ T["shortcuts: sandbox.sh gives up when Lume loses track of the VM again after on
 	}, { true, true, true })
 	local log = read_lines(env.GUEST_LOG)
 	eq(first_index(log, is_e2e_layer), nil)
+end
+
+T["shortcuts: sandbox.sh calls lume ssh after a boot only once the guest's SSH port is open"] = function()
+	local env = vim.tbl_extend("force", sandbox_env(), { NC_CLOSED = "2" })
+	child.fn.writefile({}, vim.fs.joinpath(env.SANDBOX_STATE, "stopped"))
+
+	local run = system({ "tests/sandbox/sandbox.sh", "e2e" }, H.root, env)
+
+	eq(run.code, 0, { fail_reason = run.stderr })
+	local log = read_lines(env.GUEST_LOG)
+	local function starts(prefix)
+		return function(line)
+			return vim.startswith(line, prefix)
+		end
+	end
+	local closed = vim.tbl_filter(starts("nc closed"), log)
+	eq(closed, { "nc closed -z -G 2 192.0.2.1 22", "nc closed -z -G 2 192.0.2.1 22" })
+	local boot, open, ssh =
+		first_index(log, starts("lume run ")), first_index(log, starts("nc open")), first_index(log, starts("lume ssh"))
+	eq({ boot = boot ~= nil, open = open ~= nil, ssh = ssh ~= nil }, { boot = true, open = true, ssh = true })
+	eq({ booted_first = boot < open, port_before_ssh = open < ssh }, { booted_first = true, port_before_ssh = true })
+	eq(first_index(log, is_e2e_layer) ~= nil, true)
 end
 
 --- `make` stub for tests/check.sh: `deps` passes; every other target appends "<target> start

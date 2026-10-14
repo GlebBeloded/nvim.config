@@ -260,6 +260,13 @@ Every `tests/sandbox/sandbox.sh` command that changes the guest (`up`, `provisio
 - **WHEN** `tests/sandbox/sandbox.sh e2e` runs with the VM stopped and stubs where every `lume run` stays alive while Lume reports the VM stopped
 - **THEN** it runs `lume run`, kills it, runs `lume run` once more, then exits non-zero with `after one restart; giving up` and no e2e layer
 
+### Requirement: The sandbox calls lume ssh only once the guest's SSH port is open
+After booting the VM, `tests/sandbox/sandbox.sh` SHALL poll the guest's port 22 with `nc -z` (no ssh) until it accepts TCP, within the boot deadline, before any `lume ssh` (boot wait, shared-folder probe), because Lume falls back to the host's `/usr/bin/ssh` when its own SSH fails.
+
+#### Scenario: sandbox.sh calls lume ssh after a boot only once the guest's SSH port is open
+- **WHEN** `tests/sandbox/sandbox.sh e2e` runs with the VM stopped and stubs where `nc` reports the port closed twice, then open
+- **THEN** `lume run` comes first, the two closed `nc -z -G 2 <ip> 22` checks precede the first open one, no `lume ssh` comes before that open check, and the e2e layer runs
+
 ### Requirement: Test harness deadlines scale with host load
 The stack harness deadlines (`M.wait_for` default, zellij CLI retry) and the smoke startup budget SHALL be multiplied by the host load factor `max(1, 1-min load average / CPU count)` from `tests/helpers.lua`. An idle host (load ≤ CPU count) keeps the unscaled values exactly.
 
