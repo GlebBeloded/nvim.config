@@ -1,6 +1,6 @@
 local M = {}
 
----Set up 99 with the Pi provider, then the prompt and entry keymaps.
+---Set up 99 with the Pi provider, then provide it to entry actions.
 ---@return nil
 function M.setup()
 	local ok, nn = pcall(require, "99")
@@ -13,7 +13,6 @@ function M.setup()
 		model = provider.MODEL,
 		completion = { source = "native" },
 	})
-	require("gleb.ai.prompt_keymaps").setup()
 	require("gleb.ai.entry_keymaps").setup(nn)
 end
 
