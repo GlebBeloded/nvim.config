@@ -231,11 +231,11 @@ Every workflow SHALL run `.archon/scripts/skills_check.py` before its first skil
 - **THEN** it contains `assistant: codex`, `assistant: claude` and `provider: claude`
 
 ### Requirement: Codex wrapper trims the fixed context of every call
-`.archon/scripts/codex-loop.sh` SHALL pass its `-c` overrides after the subcommand, turning off sub-agents, hooks, apps, tool suggestions, the skills catalog, the collaboration-mode and multi-agent hints, and the GUI and MCP tools. It SHALL run Codex with a `CODEX_HOME` that links every entry of the user's Codex home except `AGENTS.md` and `AGENTS.override.md`, so global instructions are not loaded while sessions still land in `~/.codex/sessions`.
+`.archon/scripts/codex-loop.sh` SHALL pass its `-c` overrides after the subcommand, turning off sub-agents, hooks, apps, tool suggestions, the skills catalog, the collaboration-mode and multi-agent hints, and the GUI and MCP tools, and cap each tool output at 6000 tokens. It SHALL run Codex with a `CODEX_HOME` that links every entry of the user's Codex home except `AGENTS.md` and `AGENTS.override.md`, so global instructions are not loaded while sessions still land in `~/.codex/sessions`.
 
 #### Scenario: Codex wrapper passes its overrides after the subcommand
 - **WHEN** the wrapper is run as `codex-loop.sh exec --experimental-json` with `CODEX_LOOP_BIN` set to a stub that logs its arguments
-- **THEN** the stub's first argument is `exec`, `--experimental-json` follows the overrides, and the overrides include `skills.include_instructions=false`, `features.apps=false`, `features.tool_suggest=false`, `include_collaboration_mode_instructions=false`, `agents.enabled=false` and `features.hooks=false`
+- **THEN** the stub's first argument is `exec`, `--experimental-json` follows the overrides, and the overrides include `skills.include_instructions=false`, `features.apps=false`, `features.tool_suggest=false`, `include_collaboration_mode_instructions=false`, `agents.enabled=false`, `features.hooks=false` and `tool_output_token_limit=6000`
 
 #### Scenario: Codex wrapper home mirrors the user's Codex home without global instructions
 - **WHEN** the wrapper runs the stub with `CODEX_LOOP_USER_HOME` set to a directory holding `AGENTS.md`, `auth.json`, `config.toml` and `sessions/`, and `CODEX_LOOP_HOME` set to an empty directory
@@ -520,6 +520,36 @@ work-queue SHALL skip the queue-spec step when the adopted change's tasks.md has
 #### Scenario: Queue spec prompt never empties a test file
 - **WHEN** `.archon/commands/queue-spec.md` is read
 - **THEN** it says a task never empties a test file and keeps the copy in the file that would be emptied
+
+### Requirement: Skip-specs change needs no design
+For a change whose `.openspec.yaml` has `skip_specs: true`, the work-queue `meta` node (`no_design.py`) SHALL set `schema: spec-driven-no-design`, a repo-local schema without design, and print `visible_ui` and `architecture` false; the spec step then runs as `complete-skip` with no JSON answer and no preview runs. A change without skip_specs keeps its schema and the JSON spec step.
+
+#### Scenario: Skip-specs change gets the no-design schema
+- **WHEN** `no_design.py` runs for a change with proposal.md, tasks.md and a `.openspec.yaml` holding `schema: spec-driven` and `skip_specs: true`, in a repo carrying `openspec/schemas/spec-driven-no-design`
+- **THEN** it prints skip_specs true and visible_ui and architecture false, the file names `schema: spec-driven-no-design`, and `openspec status --json` lists no `design` artifact and reports the change complete
+
+#### Scenario: Change without skip_specs keeps its schema
+- **WHEN** `no_design.py` runs for a change whose `.openspec.yaml` holds only `schema: spec-driven`
+- **THEN** it prints skip_specs false and the file is unchanged
+
+#### Scenario: Work queue asks the spec step for JSON only without skip_specs
+- **WHEN** `.archon/workflows/work-queue/work-queue.yaml` is read
+- **THEN** `complete` runs only when `$meta.output.skip_specs == false`, `complete-skip` runs queue-spec without `output_format` when it is true, and a fix reaches `preview` only with `$meta.output.skip_specs == false`
+
+#### Scenario: Queue spec prompt opens with a skip_specs fast path
+- **WHEN** `.archon/commands/queue-spec.md` is read
+- **THEN** a skip_specs fast path precedes the full path, names the expected `openspec status` lines and forbids `.archon/`, `openspec/config.yaml`, `openspec/changes/archive/` and `openspec instructions`, and the prompt reads only the `rules:` block of openspec/config.yaml and never cites context.md
+
+#### Scenario: Queue spec prompt sees a tightened assertion fail
+- **WHEN** `.archon/commands/queue-spec.md` is read
+- **THEN** the refactor template is limited to changes that leave every assertion as is, and a change adding or tightening an assertion gets a task 1.1 that makes it fail once by a temporary fault, records the failure and removes the fault
+
+### Requirement: OpenSpec config rules are plain strings
+Every entry under `rules` in `openspec/config.yaml` SHALL load as a plain string, so an unquoted `- Key: text` line cannot become a mapping that openspec silently drops with the rest of its section.
+
+#### Scenario: OpenSpec config rules are plain strings
+- **WHEN** `openspec/config.yaml` is loaded with Ruby's YAML parser
+- **THEN** `rules` has at least one section and every entry of every section is a string
 
 ### Requirement: Judge tells a tested rename from a removal
 The judge SHALL count a removed main-spec scenario as renamed when, one for one, an added scenario of the same capability (or the capability Git sees its spec renamed to) gains its `<capability>: <title>` test and the old test name is removed; a renamed capability's renamed tests are kept too. `## RENAMED Requirements` is no removal. Test cases SHALL be compared by name, so an added case never offsets a lost one.

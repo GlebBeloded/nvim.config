@@ -149,6 +149,7 @@ T["loop: Codex wrapper passes its overrides after the subcommand"] = function()
 		"include_collaboration_mode_instructions=false",
 		"agents.enabled=false",
 		"features.hooks=false",
+		"tool_output_token_limit=6000",
 	}) do
 		eq(vim.tbl_contains(run.args, override), true, { fail_reason = "missing -c " .. override })
 	end

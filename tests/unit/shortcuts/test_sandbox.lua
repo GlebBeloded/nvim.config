@@ -101,11 +101,17 @@ end
 ---@param env? table<string, string>
 ---@return { code: integer, stdout: string, stderr: string }
 local function system(cmd, cwd, env)
-	return child.lua_get("vim.system(..., { cwd = select(2, ...), env = select(3, ...), text = true }):wait(30000)", {
-		cmd,
-		cwd,
-		env or vim.empty_dict(),
-	})
+	-- the restart paths take ~12 s on an idle host; scale the budget so a loaded gate does not cut them off
+	local timeout = math.ceil(60000 * H.load_factor())
+	return child.lua_get(
+		"vim.system(..., { cwd = select(2, ...), env = select(3, ...), text = true }):wait(select(4, ...))",
+		{
+			cmd,
+			cwd,
+			env or vim.empty_dict(),
+			timeout,
+		}
+	)
 end
 
 ---@return string

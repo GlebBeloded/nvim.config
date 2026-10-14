@@ -8,16 +8,29 @@ Skill tool. On Codex, invoke each by name: $openspec-continue-change. If one doe
 load, stop and report the error naming it. The skill text is already in your context once loaded: do not re-read its SKILL.md.
 
 Flow (fix-bug / work-queue): diagnose → spec → plan → implement ×task → check → fix → review → judge → ship.
-Your step: **spec** (queued change). Input: the queued proposal. Output: the completed change folder including tasks.md (so the plan step is skipped) and the JSON fields. Do not: write tests or code. Keep output brief. Loop step rules (they override general instructions about searching, skills and sub-agents): use only the skill named above, no sub-agents; search the web only for facts that are in neither the repo nor the installed plugin source; read doc sections you need (`rg -n '^## ' <doc>`, then that range), never whole docs.
+Your step: **spec** (queued change). Input: the queued proposal. Output: the completed change folder including tasks.md (so the plan step is skipped) and, unless the change has `skip_specs: true`, the JSON fields. Do not: write tests or code. Keep output brief. Loop step rules (they override general instructions about searching, skills and sub-agents): use only the skill named above, no sub-agents; search the web only for facts that are in neither the repo nor the installed plugin source; read doc sections you need (`rg -n '^## ' <doc>`, then that range), never whole docs.
 
 Change: openspec/changes/$INPUTS.change/
 Earlier work: $INPUTS.adopted. Only if that is not "nothing to adopt" (it says "adopted" or "conflicts merging"; the adopt-resolve step finished that merge; read `$ARTIFACTS_DIR/adopt-notes.md`, the hunks it gave up, only if it exists; never search for it): `git log --oneline auto..HEAD` and `git diff auto...HEAD --stat` show what is already done; specify and plan only the rest.
 
+**Fast path, `skip_specs: true`** (check `.openspec.yaml` first; a test-only, refactor or follow-up change). The
+work-queue meta step already set `schema: spec-driven-no-design` (no design artifact) and answered
+visible_ui/architecture (false for test-only changes): there is no JSON to return and no design.md to write.
+Write only tasks.md from the matching template under "Refactor or cleanup" below (plus the `## Impact` line for each pinned
+scenario, as below), then run `openspec status --change
+$INPUTS.change` once; expected: `[x] proposal`, `[~] specs (skipped: change declares skip_specs)`, `[x] tasks`,
+"All planning artifacts complete!". Forbidden on this path: reading `.archon/`, `openspec/config.yaml` or
+`openspec/changes/archive/`, running `openspec instructions` (any artifact) or `openspec list`, writing design.md
+or spec deltas. If the change needs a spec delta after all, delete `skip_specs` and set `schema: spec-driven` in
+`.openspec.yaml`, then follow the full path below (no design.md: it never changes the look).
+
+**Full path** (no `skip_specs`):
+
 The change is a queue item (for example a finding from a review) and may
 only have proposal.md. Read it, find the root cause if it is a bug (systematic-debugging,
 no code changes), then complete the missing artifacts with the `openspec-continue-change` skill
-until specs, design.md (only for visible UI: Current + Proposed renders) and tasks exist; refresh any counts or lists the queued proposal quotes (e.g. `make trace VERBOSE=1`) instead of trusting them,
-following openspec/config.yaml rules. Locate cited code with `rg -n <symbol>`, not by the proposal's line numbers (they may be stale).
+until specs, design.md (only for visible UI: Current + Proposed renders) and tasks exist; refresh any counts or lists the queued proposal quotes (e.g. one capability's trace: `make -s trace VERBOSE=1 | sed -n '/^<capability> /,/^[^ ]/p'`, never the whole listing) instead of trusting them,
+following the `rules:` block of openspec/config.yaml (read only that block: `sed -n '/^rules:/,/^operations:/p' openspec/config.yaml`). Locate cited code with `rg -n <symbol>`, not by the proposal's line numbers (they may be stale).
 Read the requirement the proposal names and each pinned scenario below, only those ranges (`rg -n 'Requirement:' <spec>`, then that range).
 Pinned scenarios (`pinned.py`: main-spec scenarios naming a symbol this change touches): $INPUTS.pinned. Each gets a MODIFIED delta restated to the new behaviour, or one line in proposal.md `## Impact` naming `<capability>: <scenario>` and saying why it still holds; the spec gate reruns `pinned.py --check`.
 Drop main spec paths from the proposal's Impact; the delta covers them. Do not implement. Set `visible_ui` to true when the change alters what is drawn on screen,
@@ -51,6 +64,18 @@ Scenarios: `<capability>: <scenario title>`
 - [ ] 1.1 Run `make test FILE=<test file> CASE="<scenario title>"` and see it pass, make the change, run it again and see it pass
 ```
 
+The refactor template is only for changes that leave every assertion as is. A change that adds or tightens an
+assertion (a `Kind: bug` test fix, even with `skip_specs: true`) uses the bug template instead: task 1.1 makes the new
+assertion fail once by a temporary fault (inject the bad state in the test, or revert the guarded code locally),
+records that failure, then removes the fault:
+
+```
+## 1. <task title>
+Scenarios: `<capability>: <scenario title>`
+- [ ] 1.1 Add or tighten the assertion in `<test file>`; with a temporary fault (<the bad state or reverted code>) run `make test FILE=<test file> CASE="<scenario title>"`, see it fail and record the failure, then remove the fault
+- [ ] 1.2 Run `make test FILE=<test file> CASE="<scenario title>"` and see it pass
+```
+
 Before finishing, when the change has a spec delta: keep each requirement's text (between `### Requirement:` and its first scenario, MODIFIED ones restated in full) under 500 characters, and run `python3 .archon/scripts/spec_trial.py <change>`; fix the delta until it exits 0.
 For a timing flake, task 1.1 cites the gate log's `FAIL in` line as the failing evidence: copy the `FAIL in` lines from the proposal; never search `artifacts/runs` or old gate logs. It never asks to reproduce under artificial load.
-Never read `openspec/config.yaml` or a doc whole (context.md already holds the rules). When the proposal already lists the bugs, do not search old branches for them.
+Never read `openspec/config.yaml` beyond its `rules:` block, or a doc whole. When the proposal already lists the bugs, do not search old branches for them.

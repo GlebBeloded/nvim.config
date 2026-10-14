@@ -63,7 +63,7 @@ input, output and limits). Scripts do everything that needs no judgment:
 | review | agent, Claude | `superpowers:requesting-code-review` | JSON |
 | verdict, judge, ship, follow-up | scripts | none | JSON, `escalation.md`, merge commit |
 
-Agents run only their own test case and never `make quick` or `make check`; general instructions about web searches, extra skills and sub-agents do not apply in a step (`codex-loop.sh` also turns off Codex sub-agents, hooks, apps, the skills catalog, GUI and MCP tools, and the global `~/.codex/AGENTS.md`, and `codex_preflight.py` refuses the call when `codex --version` is outside its tested range or an MCP server or GUI plugin is still enabled; widen the range only after checking the overrides against the new Codex). A failure in loop tooling is never fixed inside a change: the step appends a `loop: …` line to `$ARTIFACTS_DIR/loop-notes.md`, which the judge lists as a note; a `## Blocked` section holding only `loop:` items blocks nothing and is listed the same way. The check/review
+Agents run only their own test case and never `make quick` or `make check`; general instructions about web searches, extra skills and sub-agents do not apply in a step (`codex-loop.sh` also turns off Codex sub-agents, hooks, apps, the skills catalog, GUI and MCP tools, and the global `~/.codex/AGENTS.md`, and caps each tool output at 6000 tokens (`tool_output_token_limit`), and `codex_preflight.py` refuses the call when `codex --version` is outside its tested range or an MCP server or GUI plugin is still enabled; widen the range only after checking the overrides against the new Codex). A failure in loop tooling is never fixed inside a change: the step appends a `loop: …` line to `$ARTIFACTS_DIR/loop-notes.md`, which the judge lists as a note; a `## Blocked` section holding only `loop:` items blocks nothing and is listed the same way. The check/review
 group runs at most 3 times; a red pass sends only its findings (`verdict.py` `feedback`, which also
 lists hard-rule violations from `integrity.py`) to the next pass's fix step. A fix pass stays on those
 findings: verdict snapshots the change's proposal.md, `.openspec.yaml` and spec deltas, and the next gate
@@ -116,6 +116,10 @@ Known issues and planned work are queued changes in `openspec/changes/`; there i
   What Changes, Impact). A proposal alone is enough: `work-queue` completes the spec delta, design and
   tasks before building. Add a spec delta yourself when the correct behaviour is already clear.
 - Work it: `make queue` (oldest first) or `make queue CHANGE=<id>`; `make drain` works them all.
+- A change with no behaviour or look change (test-only, refactor, follow-up) sets `skip_specs: true` in
+  `.openspec.yaml`. `work-queue`'s `meta` script (`no_design.py`) then switches it to the repo-local schema
+  `spec-driven-no-design` (`openspec/schemas/`, no design artifact, so `openspec status` is complete with
+  proposal and tasks), answers visible UI as false, and the spec step writes only tasks.md with no JSON answer.
 - Order: a `Depends: <change>[, <change>]` line in proposal.md holds the change until those are archived.
 - A test that pins a known bug wraps the case in `H.xfail("<change id>", fn)` ([testing](testing.md)).
 
