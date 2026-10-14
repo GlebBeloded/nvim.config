@@ -27,6 +27,8 @@
 ---@field toggle? gleb.ActionToggle
 ---@field aliases? string[]
 ---@field hidden? boolean
+---@field plugin? string Plugin adapter owns this action's mappings
+---@field neo_tree_scope? "common"|"filesystem"|"git_status"
 
 ---@class gleb.ActionCatalog
 ---@field actions gleb.Action[]

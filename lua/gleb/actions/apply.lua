@@ -112,7 +112,7 @@ function Applicator:apply(shortcuts)
 	clear(self)
 	for id, lhs_list in pairs(shortcuts) do
 		local action = self.catalog:get(id)
-		if action then
+		if action and not action.plugin then
 			for _, mode in ipairs(modes(action)) do
 				for _, lhs in ipairs(lhs_list) do
 					if action.ft then

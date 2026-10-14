@@ -8,10 +8,11 @@ Scenarios: `actions: Feature actions contain no shortcut keys`, `actions: Every 
 
 - A filetype action accepts a filetype list so the one special-buffer close behavior remains one action across all four filetypes.
 - Direct function mappings use the action `mapping` field to preserve callback identity for LSP, picker, and smart-splits behavior.
+- Neo-tree actions carry plugin and source-scope metadata so the global applicator skips them and the adapter composes only the relevant source table.
 
 ## 2. Remove unowned built-in and surround defaults
 Scenarios: `actions: Every configured mapping is action-owned`, `keymaps: Unadopted built-in mappings are removed`, `keymaps: Adopted built-in mappings are registry actions`, `keymaps: Surround mappings use registered actions`, `keymaps: [d jumps to previous diagnostic`
-- [ ] 2.1 Write the scenarios in `tests/integration/actions/test_ownership.lua` and `tests/integration/keymaps/test_keymaps.lua`; load the full config, fire `VeryLazy`, query the real default and surround lhs values, and press `[d`; run `make test FILE=tests/integration/keymaps/test_keymaps.lua CASE="keymaps: Unadopted built-in mappings are removed"` and see it fail
+- [x] 2.1 Write the scenarios in `tests/integration/actions/test_ownership.lua` and `tests/integration/keymaps/test_keymaps.lua`; load the full config, fire `VeryLazy`, query the real default and surround lhs values, and press `[d`; run `make test FILE=tests/integration/keymaps/test_keymaps.lua CASE="keymaps: Unadopted built-in mappings are removed"` and see it fail
 - [ ] 2.2 Delete unadopted Neovim defaults during startup, register retained defaults as actions, disable nvim-surround defaults with `vim.g.nvim_surround_no_mappings = true`, and bind its `<Plug>` targets through actions
 - [ ] 2.3 Run `make test FILE=tests/integration/actions/test_ownership.lua CASE="actions: Every configured mapping is action-owned"` and `make test FILE=tests/integration/keymaps/test_keymaps.lua` and see them pass
 
@@ -23,7 +24,7 @@ Scenarios: `actions: Every configured mapping is action-owned`, `keymaps: Unadop
 
 ## 3. Make plugin adapters the sole owner of plugin-window keys
 Scenarios: `actions: Plugin-window mappings are action-owned`, `actions: Unconfigured defaults are absent`, `actions: Lazy specs define no shortcut keys`
-- [ ] 3.1 Write the scenarios in `tests/integration/actions/test_plugin_ownership.lua`; open the real neo-tree, dap-ui, diffview, differ, codediff, neotest, mason, lazy, blink, and copilot surfaces with populated data, run `make test FILE=tests/integration/actions/test_plugin_ownership.lua CASE="actions: Plugin-window mappings are action-owned"`, and see it fail
+- [x] 3.1 Write the scenarios in `tests/integration/actions/test_plugin_ownership.lua`; open the real neo-tree, dap-ui, diffview, differ, codediff, neotest, mason, lazy, blink, and copilot surfaces with populated data, run `make test FILE=tests/integration/actions/test_plugin_ownership.lua CASE="actions: Plugin-window mappings are action-owned"`, and see it fail
 - [ ] 3.2 Feed current shortcuts through each existing adapter, disable each plugin's defaults, remove every lazy.nvim `keys` field, and use `cmd`, `event`, or action-time `require` for loading
 - [ ] 3.3 Run `make test FILE=tests/integration/actions/test_plugin_ownership.lua` and see it pass
 
@@ -35,9 +36,9 @@ Scenarios: `actions: Plugin-window mappings are action-owned`, `actions: Unconfi
 
 ## 4. Migrate neo-tree mappings without changing behavior
 Scenarios: `file-tree: Tree mappings come from the shortcut file`, `file-tree: Neo-tree defaults stay disabled`, `file-tree: q closes preview and tree`
-- [ ] 4.1 Write the ownership scenarios in `tests/integration/file-tree/test_tree.lua`, retain the existing real populated-tree `q` case in `tests/integration/file-tree/test_diff_preview.lua`, run `make test FILE=tests/integration/file-tree/test_tree.lua CASE="file-tree: Tree mappings come from the shortcut file"`, and see it fail
-- [ ] 4.2 Set `use_default_mappings = false` and build common, filesystem, and git-status neo-tree tables from file-tree actions and `settings/keymap.json`
-- [ ] 4.3 Run `make test FILE=tests/integration/file-tree/test_tree.lua` and `make test FILE=tests/integration/file-tree/test_diff_preview.lua CASE="file-tree: q closes preview and tree"` and see them pass
+- [x] 4.1 Write the ownership scenarios in `tests/integration/file-tree/test_tree.lua`, retain the existing real populated-tree `q` case in `tests/integration/file-tree/test_diff_preview.lua`, run `make test FILE=tests/integration/file-tree/test_tree.lua CASE="file-tree: Tree mappings come from the shortcut file"`, and see it fail
+- [x] 4.2 Set `use_default_mappings = false` and build common, filesystem, and git-status neo-tree tables from file-tree actions and `settings/keymap.json`
+- [x] 4.3 Run `make test FILE=tests/integration/file-tree/test_tree.lua` and `make test FILE=tests/integration/file-tree/test_diff_preview.lua CASE="file-tree: q closes preview and tree"` and see them pass
 
 ## 5. Migrate diff viewer mappings without changing behavior
 Scenarios: `git: Diffview mappings come from git actions`, `git: Differ mappings come from git actions`, `git: Codediff mappings come from git actions`, `git: q closes diffview from file panel`
