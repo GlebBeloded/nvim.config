@@ -117,25 +117,27 @@ end
 local function draw_capture(window, lhs)
 	local box, highlights = key_box(lhs)
 	offset_key_box(highlights)
+	local lines = {
+		" Press keys, Enter to save, Esc to cancel",
+		"",
+		box[1],
+		box[2],
+		box[3],
+		"",
+		" No conflicts",
+		"",
+		" [ Save ]  [ Cancel ]",
+	}
 	draw(
 		window,
-		{
-			" Press keys, Enter to save, Esc to cancel",
-			"",
-			box[1],
-			box[2],
-			box[3],
-			"",
-			" No conflicts",
-			"",
-			" [ Save ]  [ Cancel ]",
-		},
+		lines,
 		vim.list_extend(highlights, {
 			{ line = 6, col = 1, end_col = -1, group = "DiffAdd" },
 			{ line = 8, col = 1, end_col = 9, group = "PmenuSel" },
 			{ line = 8, col = 11, end_col = -1, group = "TabLine" },
 		})
 	)
+	vim.api.nvim_win_set_config(window.win, { height = #lines })
 end
 
 ---@param catalog gleb.ActionCatalog
@@ -155,13 +157,18 @@ end
 local function draw_conflict(window, lhs, catalog, conflicts, selected)
 	local labels = { "Remove other", "Keep both", "Cancel" }
 	local buttons = {}
+	local button_cols = {}
+	local next_col = 1
 	for _, label in ipairs(labels) do
-		table.insert(buttons, "[ " .. label .. " ]")
+		local button = "[ " .. label .. " ]"
+		table.insert(buttons, button)
+		table.insert(button_cols, next_col)
+		next_col = next_col + #button + 2
 	end
 	local box, highlights = key_box(lhs)
 	offset_key_box(highlights)
 	local button_line = " " .. table.concat(buttons, "  ")
-	local button_col = ({ 1, 19, 35 })[selected]
+	local button_col = button_cols[selected]
 	local lines = {
 		" Press keys, Enter to save, Esc to cancel",
 		"",
@@ -186,6 +193,20 @@ local function draw_conflict(window, lhs, catalog, conflicts, selected)
 	})
 	draw(window, lines, highlights)
 	vim.api.nvim_win_set_config(window.win, { height = #lines })
+end
+
+---@param window gleb.FindActionAssignWindow
+---@param lhs string
+---@param catalog gleb.ActionCatalog
+---@param shortcuts gleb.ShortcutMap
+---@param action_id string
+local function draw_capture_state(window, lhs, catalog, shortcuts, action_id)
+	local conflicts = lhs == "" and {} or Capture.conflicts(catalog, shortcuts, action_id, lhs)
+	if #conflicts > 0 then
+		draw_conflict(window, lhs, catalog, conflicts, 1)
+	else
+		draw_capture(window, lhs)
+	end
 end
 
 ---@param window gleb.FindActionAssignWindow
@@ -263,9 +284,9 @@ function M.open(action)
 	local store = assert(actions.state.store, "actions are not set up")
 	local catalog = assert(actions.state.applicator, "actions are not set up").catalog
 	local window = open_window(action.title)
-	draw_capture(window, "")
+	draw_capture_state(window, "", catalog, store.last_good, action.id)
 	local lhs = Capture.capture(nil, function(value)
-		draw_capture(window, value)
+		draw_capture_state(window, value, catalog, store.last_good, action.id)
 	end)
 	if not lhs or lhs == "" then
 		close_window(window)

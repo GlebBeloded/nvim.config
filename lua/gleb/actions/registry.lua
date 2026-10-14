@@ -54,7 +54,7 @@ end
 ---@param ctx gleb.ActionContext
 ---@return boolean
 local function is_available(action, mode, filetype, ctx)
-	if action.modes and not vim.tbl_contains(action.modes, mode) then
+	if not vim.tbl_contains(action.modes or { "n" }, mode) then
 		return false
 	end
 	if action.ft and action.ft ~= filetype then

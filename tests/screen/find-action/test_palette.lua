@@ -178,7 +178,7 @@ T["find-action: Conflict assignment matches reference screenshot"] = function()
 		child.wait([[require("mini.pick").get_picker_matches().current.action.id == "git.open_diffview"]]),
 		"Open Diffview did not match"
 	)
-	child.type_keys("<M-}><M-g><CR>")
+	child.type_keys("<M-}><M-g>")
 	assert(
 		child.wait([[vim.api.nvim_get_current_win() ~= require("mini.pick").get_picker_state().windows.main]]),
 		"conflict float did not open"
@@ -194,6 +194,24 @@ T["find-action: Conflict assignment matches reference screenshot"] = function()
 	eq(text:find("Open Differ", 1, true) ~= nil, true)
 	eq(text:find("[ Remove other ]", 1, true) ~= nil, true)
 	H.expect_screenshot(child.get_screenshot())
+
+	child.type_keys("<CR><Tab><Tab>")
+	eq(
+		child.lua_get([[
+			(function()
+				local namespace = vim.api.nvim_get_namespaces().gleb_find_action_assign
+				local mark = vim.iter(vim.api.nvim_buf_get_extmarks(0, namespace, 0, -1, { details = true }))
+					:find(function(item) return item[4].hl_group == "PmenuSel" end)
+				return { mark[2], mark[3], mark[4].end_col }
+			end)()
+		]]),
+		{ 9, 34, 44 }
+	)
+	child.type_keys("<CR>")
+	assert(
+		child.wait([[vim.api.nvim_get_current_win() == require("mini.pick").get_picker_state().windows.main]]),
+		"Cancel did not return to the palette"
+	)
 end
 
 T["find-action: Free assignment matches reference screenshot"] = function()

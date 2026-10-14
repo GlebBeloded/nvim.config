@@ -17,7 +17,6 @@ local function start()
 				id = "test.regular",
 				title = "Regular Action",
 				category = "Test",
-				modes = { "n" },
 				run = function(ctx)
 					RegularRun = {
 						win = vim.api.nvim_get_current_win(),
