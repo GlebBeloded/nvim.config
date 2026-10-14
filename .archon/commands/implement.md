@@ -23,7 +23,7 @@ test together with tasks.md (a stuck change goes to the fix passes, never to the
 
 Change: openspec/changes/$INPUTS.change/ (the pack quotes proposal, specs, design and tasks.md)
 
-Do the task(s) under "Next task" in the pack (a small change lists all of its tasks there), then stop. Per task: write the failing test "<capability>:
+A `## Stuck` section an earlier task left is the fix passes' (the pack skips its task): do not retry it. Do the task(s) under "Next task" in the pack (a small change lists all of its tasks there), then stop. Per task: write the failing test "<capability>:
 <scenario title>", see it fail, make it pass with the smallest change, tick that task's checkboxes (including an item that only runs that task's test, once it passes) in
 tasks.md, run `make fmt` and `make self-check CHANGE=$INPUTS.change` (the gate's lint, types and strict validation of the change and of the trial archive; a green `make specs` or `openspec validate --specs` does not count) and fix what it reports (red only from base or loop tooling, not this change: commit anyway and append a `loop: …` line to `$ARTIFACTS_DIR/loop-notes.md`), commit with `git add -A <touched files> openspec/changes/$INPUTS.change` (conventional message), once. Mode-dependent behaviour (Visual, Insert, operator-pending): the test drives the invocation path through the real mapping with the mode still active (e.g. `vjj` then the mapped keys), never after `<Esc>` or with marks set first. Run only that test:
 `make test FILE=tests/<layer>/<capability>/test_x.lua CASE="…" 2>&1 | tail -40`. Never run

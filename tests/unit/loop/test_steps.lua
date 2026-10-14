@@ -186,14 +186,16 @@ end
 T["loop: Context pack keeps only what the next task needs"] = function()
 	local repo = H.tempdir(child)
 	local artifacts = H.tempdir(child)
+	local preamble = "# Guide\n" .. string.rep("intro line\n", 8)
 	write(repo, {
 		["docs/workflow.md"] = "## Loop lessons\n\n## The loop\n",
-		["docs/guide.md"] = "# Guide\n\n## Module map\n\nmap body\n\n## Startup\n\nstartup body\n",
+		["docs/guide.md"] = preamble .. "\n## Module map\n\nmap body\n\n## Startup\n\nstartup body\n",
 		["lua/big.lua"] = "return 'big body'",
 		["tests/unit/x/test_x.lua"] = 'local H = "header"\nT["x: one"] = function()\n\tone_body()\nend\n\nT["x: two"] = function()\n\ttwo_body()\nend\n\nreturn T',
-		["openspec/changes/c/proposal.md"] = "## Why\nw\n\n## Unblocked\nstale guidance\n\n## Impact\n- i",
+		["openspec/changes/c/proposal.md"] = "## Why\nw\n\n## Unblocked\nthe answer\n\n## Rejected run\n- blocked: tasks.md: ## Blocked\n- old attempt\n\n## Impact\n- i",
 		["openspec/changes/c/design.md"] = "## Context\nsee `lua/big.lua`",
-		["openspec/changes/c/tasks.md"] = "## 1. A\nScenarios: `x: one`\n- [ ] 1.1 test in `tests/unit/x/test_x.lua`, update the `docs/guide.md` module map",
+		["openspec/changes/c/specs/x/spec.md"] = "## ADDED Requirements\n### Requirement: R1\nr1 text\n#### Scenario: one\n### Requirement: R2\nr2 text\n#### Scenario: other",
+		["openspec/changes/c/tasks.md"] = "## 1. A\nScenarios: `x: one`\n- [ ] 1.1 test in tests/unit/x/test_x.lua, update the `docs/guide.md` module map",
 	})
 	eq(run("context_pack.py", repo, { INPUTS_CHANGE = "c", ARTIFACTS_DIR = artifacts }).code, 0)
 	local pack = table.concat(vim.fn.readfile(vim.fs.joinpath(artifacts, "context.md")), "\n")
@@ -202,8 +204,32 @@ T["loop: Context pack keeps only what the next task needs"] = function()
 	end
 	eq({ found('local H = "header"'), found("one_body()"), found("two_body()") }, { true, true, false })
 	eq({ found("map body"), found("startup body"), found("## Startup  (line ") }, { true, false, true })
+	eq(found("more lines: docs/guide.md)"), true, { fail_reason = pack })
 	eq({ found("- `lua/big.lua`"), found("big body") }, { true, false })
-	eq({ found("## Unblocked"), found("stale guidance"), found("## Impact") }, { false, false, true })
+	eq({ found("r1 text"), found("r2 text"), found("- Requirement: R2") }, { true, false, true })
+	eq({ found("## Unblocked\nthe answer"), found("## Rejected run"), found("## Impact") }, { true, false, true })
+end
+
+T["loop: Implement continues past a stuck task"] = function()
+	local repo = H.tempdir(child)
+	local artifacts = H.tempdir(child)
+	local tasks = { "## 1. A\n- [x] 1.1 a" }
+	for i, name in ipairs({ "B", "C", "D", "E" }) do
+		table.insert(tasks, ("## %d. %s\n- [ ] %d.1 %s"):format(i + 1, name, i + 1, name:lower()))
+	end
+	local stuck = "\n\n## Stuck\n- Probe: red\n- Attempt 2: still red"
+	write(repo, {
+		["docs/workflow.md"] = "## Loop lessons\n\n## The loop\n",
+		["openspec/changes/c/tasks.md"] = table.concat(tasks, "\n\n") .. stuck,
+	})
+	local env = { INPUTS_CHANGE = "c", ARTIFACTS_DIR = artifacts }
+	eq(run("tasks.py", repo, env).code, 1)
+	eq(run("context_pack.py", repo, env).code, 0)
+	local pack = table.concat(vim.fn.readfile(vim.fs.joinpath(artifacts, "context.md")), "\n")
+	eq(pack:find("## Next task\n\n## 3. C\n- [ ] 3.1 c\n", 1, true) ~= nil, true, { fail_reason = pack })
+	local rest = table.concat(tasks, "\n\n"):gsub("%[ %] ([345])", "[x] %1")
+	write(repo, { ["openspec/changes/c/tasks.md"] = rest .. stuck })
+	eq(run("tasks.py", repo, env).code, 0)
 end
 
 T["loop: Trace fails on a case name in two test files"] = function()

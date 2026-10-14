@@ -110,7 +110,8 @@ every case it held still exists by name in another test file. On ship, review fi
   agent's: one line each under `## Agent decisions` in tasks.md, checked by the review. `## Blocked` is only for a
   choice beyond the spec or design, a contradiction or a breaking change (question, options, recommendation).
   A behaviour red after both attempts is `## Stuck`, not Blocked: it never asks and never holds a queued change;
-  the build loop stays red on it (gate `stuck`), and an exhausted loop is rejected and re-queued with its text.
+  implement skips its task and goes on with the later ones, the build loop stays red on it (gate `stuck`), and an
+  exhausted loop is rejected and re-queued with it (tasks.md keeps its text).
 
 Partial or untested work never ships and never asks: a red check, unfinished tasks, an untested
 scenario, a CRITICAL verify finding, a deleted or weakened test, an xfail without a queued change, or

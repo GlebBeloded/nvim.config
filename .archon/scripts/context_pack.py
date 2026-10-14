@@ -4,8 +4,8 @@ Steps). Holds the root cause's `## Evidence` (proposal.md: file:line refs or pro
 do not re-read what it covers), the change artifacts, the Loop lessons, the files the next task names and the
 failures of the last gate. Only what the next task needs: a test file keeps only the cases the task names (its
 `<capability>: <scenario>` names), a doc only the `## ` sections the task names (an outline of the rest), other
-files the change names are listed, not inlined, a spec delta keeps the requirements of the task's scenarios, and a proposal's `## Unblocked` (or a blocked `## Rejected run`)
-is dropped once no `## Blocked` section is left. Prints {"has_task", "context"}: has_task is false when no task is left
+files the change names are listed, not inlined, a spec delta keeps the requirements of the task's scenarios, and a proposal's `## Rejected run` that only
+reported a block is dropped once no `## Blocked` section is left (`## Unblocked` stays: it is the answer). Prints {"has_task", "context"}: has_task is false when no task is left
 (or tasks.md is blocked), so the task loop skips its implement session.
 """
 
@@ -23,7 +23,8 @@ FILE_LINES = 300  # per referenced file
 TOTAL_LINES = 2500  # all referenced files together
 CASE_NAME = re.compile(r"`([\w-]+: [^`]+)`")
 CASE_LINE = re.compile(r'^T\["([^"]+)"\]')
-PATH_RE = re.compile(r"`((?:lua|tests|plugins|terminal|ops|\.archon|docs)/[\w./-]+\.(?:lua|py|sh|md|yaml|json))(?::\d+)?")
+# repo paths, backticked or bare ("in tests/unit/x/test_x.lua"), and the root init.lua
+PATH_RE = re.compile(r"(?<![\w./-])((?:lua|tests|plugins|terminal|ops|settings|\.archon|docs)/[\w./-]*\w\.(?:lua|py|sh|md|yaml|json)|init\.lua)\b")
 
 
 PROBING = (
@@ -56,15 +57,13 @@ def drop_section(text: str, title: str) -> str:
 
 
 def current_proposal(text: str, blocked: bool) -> str:
-    """proposal.md without what no longer applies once nothing is blocked: the `## Unblocked` guidance, and a
-    `## Rejected run` whose every reason was the block."""
-    if blocked:
-        return text
+    """proposal.md without a `## Rejected run` whose reasons were only a block that is gone now. `## Unblocked`
+    and `## Decision` stay: they are the answer (the spec step moves it under `## Agent decisions`)."""
     rejected = re.search(r"^## Rejected run\n(.*?)(?=^## |\Z)", text, re.MULTILINE | re.DOTALL)
     reasons = [line for line in rejected.group(1).splitlines() if line.startswith("- ")] if rejected else []
-    if reasons and reasons[0].startswith("- blocked:"):  # the judge lists reject reasons first: only the block
-        text = drop_section(text, "Rejected run")
-    return drop_section(text, "Unblocked")
+    if not blocked and reasons and reasons[0].startswith("- blocked:"):  # the judge lists reject reasons first
+        return drop_section(text, "Rejected run")
+    return text
 
 
 def delta_requirements(text: str, task: str) -> str:
@@ -103,10 +102,15 @@ def test_cases(lines: list[str], wanted: set[str]) -> list[str]:
     return kept + ([f"-- … {omitted} other cases not shown (not this task's)"] if omitted else [])
 
 
-def doc_sections(lines: list[str], task: str) -> list[str]:
-    """The `## ` sections of a doc whose title the task names, and an outline of the others."""
-    starts = [i for i, line in enumerate(lines) if line.startswith("## ")] + [len(lines)]
-    kept, outline = lines[: starts[0]][:5], []
+def doc_sections(lines: list[str], task: str, path: str) -> list[str]:
+    """The `## ` sections of a doc whose title the task names, and an outline of the others; a doc with no
+    `## ` heading whole (the file cap notes the rest)."""
+    starts = [i for i, line in enumerate(lines) if line.startswith("## ")]
+    if not starts:
+        return lines
+    starts.append(len(lines))
+    kept, outline = lines[: min(starts[0], 5)], []
+    kept += [f"(… {starts[0] - 5} more lines: {path})"] if starts[0] > 5 else []
     for a, b in zip(starts, starts[1:]):
         title = lines[a][3:].strip().lower()
         if title in task or title.rstrip("s") in task:
@@ -134,10 +138,10 @@ def referenced_files(change_dir: pathlib.Path, task: str, evidence: str) -> list
         if path.startswith("tests/") and path.endswith(".lua"):
             lines = test_cases(lines, wanted)
         elif path.endswith(".md"):
-            lines = doc_sections(lines, task.lower())
+            lines = doc_sections(lines, task.lower(), path)
         shown = lines[: min(FILE_LINES, budget)]
         budget -= len(shown)
-        more = f"\n… {len(lines) - len(shown)} more lines" if len(shown) < len(lines) else ""
+        more = f"\n… {len(lines) - len(shown)} more lines: {path}" if len(shown) < len(lines) else ""
         parts.append(section(f"file: {path}", "```\n" + "\n".join(shown) + more + "\n```"))
     if others:
         parts.append(section("Other files the change names (not inlined: read a range when needed)", "\n".join(others)))
@@ -169,7 +173,7 @@ def has_task(tasks: pathlib.Path, task: str) -> bool:
 
 def main() -> None:
     change_dir = pathlib.Path("openspec/changes") / CHANGE
-    task = next_task(change_dir / "tasks.md")
+    task = next_task(change_dir / "tasks.md", ARTIFACTS)
     parts = [f"# Context pack: {CHANGE}\n", section("Next task", task or "(none: every task is ticked)")]
     found = evidence(change_dir)
     if found:

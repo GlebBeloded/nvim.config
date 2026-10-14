@@ -168,6 +168,7 @@ nodes:
               attempt: { type: integer }
               failed_gates: { type: string }
               feedback: { type: string }
+              failures: { type: string } # gate failures and hard rules, without stuck or review text
               weakened_scenario: { type: boolean }
               weakened_test: { type: boolean }
               notes: { type: string }
@@ -183,7 +184,7 @@ nodes:
       change: $INPUTS.change # a `## Blocked` section is quoted and asked about
       exhausted: $build.output.exhausted
       failed_gates: $build.output.failed_gates
-      feedback: $build.output.feedback # an exhausted loop's reasons quote its first lines
+      failures: $build.output.failures # an exhausted loop's reasons quote its first lines
       weakened_scenario: $build.output.weakened_scenario
       weakened_test: $build.output.weakened_test
       notes: $build.output.notes # flaky cases: listed in reasons, never a reason

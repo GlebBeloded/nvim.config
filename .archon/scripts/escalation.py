@@ -4,10 +4,10 @@ or a hard rule is broken (never shipped; followup.py queues the work), `infra` w
 on the sandbox failing twice (gate.py's `infra`: the change did not fail, so it is neither rejected nor
 re-queued; the run stops until the host is fixed), `ask` for breaking changes (the user decides), otherwise
 `ship`. A `## Stuck` section (a behaviour still red after both attempts, no decision needed) never asks:
-an exhausted loop with it is rejected as any other, its text quoted for the re-queued run. `notes` (flaky cases, `loop:` notes) are listed, never decide; the
+an exhausted loop with it is rejected as any other, pointing at it (the branch's tasks.md keeps its text). `notes` (flaky cases, `loop:` notes) are listed, never decide; the
 last review's findings follow a non-ship decision, so a re-queued change says what to fix; on ship its
 minor (non-blocking) findings are listed as notes for the auditor. An exhausted loop's reasons quote the first
-lines of the last pass's failures (`feedback`), so the re-queued `## Rejected run` is actionable. A test case the build added and then
+lines of the last pass's failures (verdict.py `failures`), so the re-queued `## Rejected run` is actionable. A test case the build added and then
 removed (gate.py's record) and still missing is asked about. Writes a
 short escalation.md and prints {decision, escalate, reasons}.
 """
@@ -47,13 +47,11 @@ decision = "ask" if blocked else "reject" if reject else "infra" if infra else "
 ask = [f"infra: e2e did not run (the sandbox failed twice, not the change): {infra}"] if decision == "infra" else ask
 
 summary = "\n".join("- " + r for r in reject + ask) or "- none"
-stuck = stuck_text(os.environ.get("INPUTS_CHANGE", ""))
-if stuck and decision != "ship":  # the re-queued run's fix pass starts from these attempts
-    summary += "\n- stuck:\n" + "\n".join("  " + line for line in stuck.splitlines())
-# the last pass's failures (gate, hard rules) as the fix pass got them; stuck and review text are quoted apart
-failures = [p for p in os.environ.get("INPUTS_FEEDBACK", "").split("\n\n") if not p.startswith(("stuck (", "review: "))]
-failed = [line for line in "\n".join(failures).splitlines() if line.strip()][:FAILURE_LINES]
-if failed and flag("exhausted"):  # the re-queued run's `## Rejected run` says what was still red
+if stuck_text(os.environ.get("INPUTS_CHANGE", "")) and decision != "ship":  # the branch's tasks.md holds its text
+    summary += "\n- stuck: tasks.md `## Stuck` (earlier attempts, kept on the branch: not quoted here)"
+# the last pass's gate failures and hard rules (verdict.py `failures`), so `## Rejected run` says what was red
+failed = [line for line in os.environ.get("INPUTS_FAILURES", "").splitlines() if line.strip()][:FAILURE_LINES]
+if failed and flag("exhausted"):
     summary += "\n- last failures:\n" + "\n".join("  " + line for line in failed)
 findings = os.environ.get("INPUTS_REVIEW_FINDINGS", "").strip()[:FINDINGS_CHARS]
 if findings and decision != "ship":  # followup.py writes the reasons under `## Rejected run`: say what to fix

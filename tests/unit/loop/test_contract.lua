@@ -260,7 +260,8 @@ T["loop: A Stuck change never asks and is never held before spec"] = function()
 	eq(run("blocked.py", repo, env), { blocked = false, text = "" })
 	local judge = run("escalation.py", repo, vim.tbl_extend("force", env, { INPUTS_EXHAUSTED = "true" }))
 	eq({ judge.decision, judge.escalate }, { "reject", false })
-	has(judge.reasons, "- stuck:\n  ## Stuck\n  - Probe:")
+	has(judge.reasons, "- stuck: tasks.md `## Stuck`")
+	eq(judge.reasons:find("- Probe:", 1, true), nil, { fail_reason = judge.reasons })
 	local tasks = H.system(child, { "python3", vim.fs.joinpath(SCRIPTS, "tasks.py") }, repo, {
 		ARTIFACTS_DIR = H.tempdir(child),
 		INPUTS_CHANGE = "c",

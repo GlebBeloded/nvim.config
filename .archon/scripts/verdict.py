@@ -57,8 +57,8 @@ attempt = int(value("attempt", 0))
 blocked = "" if passed else blocked_text(os.environ.get("INPUTS_CHANGE", ""))
 infra = "" if passed else str(value("infra", "") or "")
 exhausted = not passed and not blocked and not infra and attempt >= MAX_ATTEMPTS
-feedback = [f"stuck (tasks.md, earlier attempts; fix it, then delete the section): {stuck}" if stuck else "", failures]
-feedback += [f"hard rule: {v}" for v in violations if f"hard rule: {v}" not in failures]  # gate.py may list them
+red = [failures] + [f"hard rule: {v}" for v in violations if f"hard rule: {v}" not in failures]  # gate.py may list them
+feedback = [f"stuck (tasks.md, earlier attempts; fix it, then delete the section): {stuck}" if stuck else "", *red]
 artifacts = pathlib.Path(os.environ.get("ARTIFACTS_DIR", "."))
 scope = artifacts / "fix-scope.md"
 if "review" not in gates and scope.exists():  # the review did not see it: send it to the next pass
@@ -85,6 +85,7 @@ print(
             "attempt": attempt,
             "failed_gates": ",".join(k for k, ok in gates.items() if not ok),
             "feedback": "\n\n".join(f for f in feedback if f.strip())[:FEEDBACK_CHARS],
+            "failures": "\n\n".join(f for f in red if f.strip())[:FEEDBACK_CHARS],  # gate and hard rules only: quoted by the judge
             "weakened_scenario": value("weakened_scenario", False) is True,
             "weakened_test": value("weakened_test", False) is True,
             "notes": notes,

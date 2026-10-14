@@ -749,7 +749,7 @@ The loop SHALL leave the user's contract to the user: no step changes a requirem
 - **THEN** each says to append a `loop: <failure>` line to `$ARTIFACTS_DIR/loop-notes.md`, not tasks.md, and neither says to write `## Blocked` with `loop:`
 
 ### Requirement: Stuck work goes to the fix passes
-A `## Stuck` section in tasks.md (a behaviour red after both attempts, no decision needed) SHALL never ask the user nor hold a queued change before spec: the build loop stays red on it and sends it to a higher-effort fix pass, and an exhausted loop is rejected and re-queued with it. Agents SHALL decide small design choices themselves and record them under `## Agent decisions`.
+A `## Stuck` section in tasks.md (a behaviour red after both attempts, no decision needed) SHALL never ask the user nor hold a queued change before spec nor stop later tasks: the build loop stays red on it and sends it to a higher-effort fix pass, and an exhausted loop is rejected and re-queued with it. Agents SHALL decide small design choices themselves and record them under `## Agent decisions`.
 
 #### Scenario: Verdict sends a Stuck section to the fix pass
 - **WHEN** `.archon/scripts/verdict.py` runs on an otherwise green pass for a change whose tasks.md has a `## Stuck` section
@@ -757,7 +757,11 @@ A `## Stuck` section in tasks.md (a behaviour red after both attempts, no decisi
 
 #### Scenario: A Stuck change never asks and is never held before spec
 - **WHEN** blocked.py, escalation.py (`exhausted` true) and tasks.py run for a change whose tasks.md has a `## Stuck` section
-- **THEN** blocked.py reports `blocked` false, the judge's `decision` is `reject` (no ask) with reasons quoting the section under `- stuck:`, and tasks.py ends the task loop
+- **THEN** blocked.py reports `blocked` false, the judge's `decision` is `reject` (no ask) with a `- stuck:` reason pointing at tasks.md's `## Stuck` without quoting it, and tasks.py ends the task loop (the stuck task is the only one)
+
+#### Scenario: Implement continues past a stuck task
+- **WHEN** tasks.py and context_pack.py run for a change of five tasks whose tasks.md gained a `## Stuck` section while its second task was unchecked
+- **THEN** tasks.py exits 1 (tasks are left), the pack's next task is the third, and once every other task is ticked tasks.py exits 0 with the stuck one still unchecked
 
 #### Scenario: Agents decide small choices and record them
 - **WHEN** `.archon/commands/implement.md`, `fix.md` and `review.md` are read
@@ -902,30 +906,30 @@ The work-queue spec gate (`spec_gate.py`) SHALL print `{ok, log}` and exit 0. A 
 - **THEN** each names `make probe` and says LSP restart and neo-tree renders are async: wait for the end state, not for attachment
 
 ### Requirement: Rejections say what to fix
-A red pass SHALL tell the next fix pass, and a rejection the re-queued run, what to fix: verdict.py sends only blocking review findings to fix and never lists a skipped review as a failed gate; an exhausted judge quotes the first lines of the last failures; gate.py names dropped cases with their remedy while the judge still never ships them; followup.py drops a stale `## Unblocked` section.
+A red pass SHALL tell the next fix pass, and a rejection the re-queued run, what to fix: verdict.py sends only blocking review findings to fix and never lists a skipped review as a failed gate; an exhausted judge quotes the first lines of the last gate failures; gate.py names dropped cases with their remedy while the judge still never ships them; an `## Unblocked` answer is kept until the spec step records it.
 
 #### Scenario: Verdict sends only blocking review findings to fix
-- **WHEN** verdict.py runs on a pass the review rejected with one `[must-fix]` finding and `[minor]` ones, and on a red pass the review skipped
-- **THEN** the first feedback holds the must-fix finding and no minor one (review_findings keeps them all), and the second `failed_gates` has no `review_skipped`
+- **WHEN** verdict.py runs on a pass the review rejected with `[must-fix]` findings (one numbered under a `Minor (non-blocking):` heading) and `[minor]` ones (one continued on a second line), and on a red pass the review skipped
+- **THEN** the first feedback holds both must-fix findings and no minor line (review_findings keeps them all), and the second `failed_gates` has no `review_skipped`
 
 #### Scenario: Exhausted judge quotes the last failures
-- **WHEN** escalation.py runs with `exhausted` true and a feedback holding a make check failure
-- **THEN** its reasons have a `- last failures:` item quoting the first lines of that failure, indented
+- **WHEN** verdict.py runs on a red pass with a make check failure, a `## Stuck` section and review findings, then escalation.py with `exhausted` true and that verdict's `failures`
+- **THEN** the judge's reasons have a `- last failures:` item quoting the first lines of the make check failure, indented, and neither the Stuck text nor the review findings in it
 
 #### Scenario: Gate returns dropped cases to fix with the remedy
 - **WHEN** gate.py runs on attempt 1 after the fix pass dropped a case the previous pass added, then verdict.py on that result, then escalation.py with the case still gone
 - **THEN** failures name the case with "restore these cases under their names, or add a same-titled scenario", the verdict is not done and its `failed_gates` has `rules`, and the judge does not ship
 
-#### Scenario: Rejected run drops a stale Unblocked section
-- **WHEN** followup.py re-queues an active change whose proposal has an `## Unblocked` section and no `## Blocked` section is left, and one whose tasks.md still has a `## Blocked` section
-- **THEN** the first proposal has no `## Unblocked` section and the second keeps it
+#### Scenario: Rejected run keeps the Unblocked answer
+- **WHEN** followup.py re-queues an active change whose proposal has an `## Unblocked` section and no `## Blocked` one, and queue-spec.md is read
+- **THEN** the proposal keeps the `## Unblocked` section, and queue-spec moves an Unblocked answer it acts on under `## Agent decisions` in tasks.md before deleting it
 
 ### Requirement: Agents get narrow context and test rules
 The context pack SHALL hold only what the next task needs, and the prompts and trace SHALL say how a regression test is named: after a scenario of the change, never invented, folded or deleted; a test of mode-dependent behaviour SHALL drive the real mapping with the mode still active.
 
 #### Scenario: Context pack keeps only what the next task needs
-- **WHEN** context_pack.py runs for a change whose next task names one scenario of a test file with two cases and a doc section, whose design names another file, and whose proposal has an `## Unblocked` section and no Blocked one
-- **THEN** the pack holds the test file's header and named case only, the doc's named section and an outline of the rest, lists the other file by path without its content, and has no `## Unblocked` section
+- **WHEN** context_pack.py runs for a change whose next task names one scenario of a test file (unbackticked) with two cases and a section of a doc with a long preamble, whose design names another file, and whose proposal has an `## Unblocked` section and a `## Rejected run` that only reported a block, with no Blocked section left
+- **THEN** the pack holds the test file's header and named case only, the doc's named section, a `more lines` note for the preamble and an outline of the rest, lists the other file by path without its content, keeps only the spec delta requirement of that scenario (the other one named), keeps the `## Unblocked` section and drops the Rejected run
 
 #### Scenario: Trace orphan message names the remedy
 - **WHEN** `tests/trace.lua` runs on a test case named after no scenario

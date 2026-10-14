@@ -782,28 +782,50 @@ T["loop: Verdict sends only blocking review findings to fix"] = function()
 	local artifacts = H.tempdir(child)
 	local findings = table.concat({
 		"1. [must-fix] lua/gleb/a.lua:3 drops the selection.",
-		"2. [minor] lua/gleb/a.lua:9 magic number.",
+		"2. [minor] lua/gleb/a.lua:9 magic number,",
+		"   also at line 12.",
 		"Minor (non-blocking):",
 		"3. naming nit in tests/unit/a/test_a.lua.",
+		"4. [must-fix] lua/gleb/a.lua:20 leaks the autocmd.",
 	}, "\n")
 	local env = verdict_env(artifacts, { INPUTS_APPROVE = "false", INPUTS_REVIEW_FINDINGS = findings })
 	local rejected = loop_script("verdict.py", repo, env)
 	has(rejected.feedback, "review: 1. [must-fix] lua/gleb/a.lua:3 drops the selection.")
-	eq({ rejected.feedback:find("magic number", 1, true), rejected.feedback:find("naming nit", 1, true) }, { nil, nil })
+	has(rejected.feedback, "4. [must-fix] lua/gleb/a.lua:20 leaks the autocmd.")
+	local leaked = vim.tbl_map(function(minor)
+		return rejected.feedback:find(minor, 1, true) ~= nil
+	end, { "magic number", "also at line 12", "naming nit" })
+	eq(leaked, { false, false, false }, { fail_reason = rejected.feedback })
 	eq(rejected.review_findings, findings)
 	local skipped = loop_script("verdict.py", repo, verdict_env(artifacts, { INPUTS_GREEN = "false" }))
 	eq(skipped.failed_gates, "tests")
 end
 
 T["loop: Exhausted judge quotes the last failures"] = function()
-	local repo = branch_repo({ ["README.md"] = "x" })
-	local feedback = "make check is red:\nFAIL trace\n  actions: Invented name  (tests/unit/a/test_a.lua)"
-	local env = { ARTIFACTS_DIR = H.tempdir(child), INPUTS_EXHAUSTED = "true", INPUTS_FAILED_GATES = "tests" }
-	local judge = loop_script("escalation.py", repo, vim.tbl_extend("force", env, { INPUTS_FEEDBACK = feedback }))
+	local repo = branch_repo({
+		["README.md"] = "x",
+		["openspec/changes/c/tasks.md"] = "## 1. T\n- [ ] 1.1 x\n\n## Stuck\n- Probe: stuck probe text",
+	})
+	local failures = "make check is red:\nFAIL trace\n  actions: Invented name  (tests/unit/a/test_a.lua)"
+	local red = verdict_env(H.tempdir(child), {
+		INPUTS_CHANGE = "c",
+		INPUTS_GREEN = "false",
+		INPUTS_ATTEMPT = "3",
+		INPUTS_FAILURES = failures,
+		INPUTS_APPROVE = "false",
+		INPUTS_REVIEW_FINDINGS = "1. [must-fix] review text",
+	})
+	local verdict = loop_script("verdict.py", repo, red)
+	eq(verdict.exhausted, true)
+	local env = { ARTIFACTS_DIR = H.tempdir(child), INPUTS_CHANGE = "c", INPUTS_EXHAUSTED = "true" }
+	env =
+		vim.tbl_extend("force", env, { INPUTS_FAILED_GATES = verdict.failed_gates, INPUTS_FAILURES = verdict.failures })
+	local judge = loop_script("escalation.py", repo, env)
 	eq(judge.decision, "reject")
 	has(judge.reasons, "- last failures:\n  make check is red:\n  FAIL trace\n    actions: Invented name")
+	eq({ judge.reasons:find("stuck probe text", 1, true), judge.reasons:find("review text", 1, true) }, { nil, nil })
 	local workflow = read(vim.fs.joinpath(H.root, ".archon/workflows/nvim-deliver/nvim-deliver.yaml"))
-	has(workflow, "feedback: $build.output.feedback")
+	has(workflow, "failures: $build.output.failures")
 end
 
 T["loop: Gate returns dropped cases to fix with the remedy"] = function()
