@@ -20,6 +20,7 @@ Scenarios: `find-action: Find Action opens from its shortcut`, `find-action: Fin
 - Keep the task-9 mapping cell generic (`fn`) because exact Find Action callback identity belongs to task 10.
 - Give self-context-capturing actions an explicit mapping callback so Find Action keeps registry assignment while exposing its exact entry point.
 - Observe stack pickers by their active source name over RPC so real-byte tests assert the opened UI without replacing mappings.
+- Let an e2e recorder optionally call the saved mapping callback so one physical press proves both key arrival and its action.
 
 ## 2. Render action rows
 Scenarios: `find-action: Rows show action metadata`, `find-action: Rows fall back to Vim notation`, `find-action: Toggle rows show state glyphs`
@@ -83,9 +84,9 @@ Scenarios: `shortcuts: Cmd+Shift+A opens Find Action through real zellij`
 
 ## 12. Deliver Find Action from a physical shortcut
 Scenarios: `shortcuts: Cmd+Shift+A opens Find Action from a real key press`
-- [ ] 12.1 Write the sandbox test in `tests/e2e/shortcuts/test_e2e.lua` and run `make e2e FILE=tests/e2e/shortcuts/test_e2e.lua CASE="Cmd+Shift+A opens Find Action from a real key press"`, seeing it fail
-- [ ] 12.2 Extend the e2e recorder to observe the palette after the real Cmd+Shift+A key event
-- [ ] 12.3 Run `make e2e FILE=tests/e2e/shortcuts/test_e2e.lua CASE="Cmd+Shift+A opens Find Action from a real key press"` in the sandbox VM and see it pass
+- [x] 12.1 Write the sandbox test in `tests/e2e/shortcuts/test_e2e.lua` and run `make e2e FILE=tests/e2e/shortcuts/test_e2e.lua CASE="Cmd+Shift+A opens Find Action from a real key press"`, seeing it fail
+- [x] 12.2 Extend the e2e recorder to observe the palette after the real Cmd+Shift+A key event
+- [x] 12.3 Run `make e2e FILE=tests/e2e/shortcuts/test_e2e.lua CASE="Cmd+Shift+A opens Find Action from a real key press"` in the sandbox VM and see it pass
 
 ## 13. Replace the normal 99 menu with actions
 Scenarios: `ai: Menu shows prompt`, `ai: Menu s opens search prompt`, `ai: Menu v opens vibe prompt`, `ai: Menu ignores other keys`
