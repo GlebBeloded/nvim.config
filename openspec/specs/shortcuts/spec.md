@@ -8,7 +8,7 @@ Unlike other capabilities, these scenarios are not verified in a headless child 
 ## Requirements
 
 ### Requirement: Shortcut table
-The chain SHALL route every shortcut in the shortcut table (section "Shortcut table" below) as listed, with zellij in `normal` mode and the focused zellij pane running Neovim in normal mode.
+The chain SHALL route every shortcut in the shortcut table (section "Shortcut table" below) as listed, with zellij in `normal` mode and the focused zellij pane running Neovim in normal mode. Cmd+Shift+F SHALL invoke `require("gleb.picker").grep_live`.
 
 #### Scenario: Alacritty bindings match the shortcut table
 - **WHEN** the effective Alacritty bindings (imports followed) are parsed
@@ -32,7 +32,7 @@ The chain SHALL route every shortcut in the shortcut table (section "Shortcut ta
 
 #### Scenario: Neovim mappings match the table
 - **WHEN** the full config is loaded, VeryLazy has fired, and `vim.fn.maparg(<received key>, "n", false, true)` is read for each row
-- **THEN** it matches the row's *Mapping* column
+- **THEN** it matches the row's *Mapping* column, including Cmd+Shift+F invoking `require("gleb.picker").grep_live`
 
 ### Requirement: Collisions
 The chain SHALL have exactly the zellij `normal`-mode bindings in the collision table (section "Collision table" below) shadowing a global Neovim mapping (any mode): keys zellij consumes, and navigator keys whose written bytes differ from the key that was sent.

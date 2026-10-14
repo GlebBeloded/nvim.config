@@ -10,11 +10,11 @@ require("gleb.nvim_debug_log").setup()
 require("gleb.plugins")
 require("gleb.options")
 require("gleb.colors")
-require("gleb.keymaps") -- after plugins: needs smart-splits and telescope
+require("gleb.picker")
+require("gleb.keymaps") -- after plugins: needs smart-splits
 require("gleb.actions").setup({})
 require("gleb.cmp")
 require("gleb.lsp")
-require("gleb.telescope")
 require("gleb.select")
 require("gleb.treesitter")
 require("gleb.folding") -- must be after treesitter
@@ -23,7 +23,6 @@ require("gleb.comments") -- must be after treesitter
 require("gleb.git")
 require("gleb.run")
 require("gleb.bufferline")
-require("gleb.project")
 require("gleb.indentline")
 require("gleb.session") -- before alpha: restored buffers make alpha self-skip
 require("gleb.alpha")

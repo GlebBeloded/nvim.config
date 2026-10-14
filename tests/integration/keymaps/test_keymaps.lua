@@ -44,20 +44,24 @@ local function callback_is(lhs, mode, expr)
 	return child.lua_get(string.format("vim.fn.maparg(%q, %q, false, true).callback == %s", lhs, mode, expr))
 end
 
---- Does `gr` call Telescope references with the current line included?
+--- Does `gr` open the shared LSP references picker?
 ---@return boolean
-local function gr_includes_current_line()
+local function gr_opens_shared_references()
 	child.lua([[
-local telescope = require("telescope.builtin")
-local original = telescope.lsp_references
-local included
-telescope.lsp_references = function(opts) included = opts.include_current_line end
+local mini_extra = require("mini.extra")
+local original = mini_extra.pickers.lsp
+local call
+mini_extra.pickers.lsp = function(local_opts, opts)
+	call = { local_opts = local_opts, opts = opts }
+end
 local ok, err = pcall(vim.fn.maparg("gr", "n", false, true).callback)
-telescope.lsp_references = original
+mini_extra.pickers.lsp = original
 if not ok then error(err) end
-GrIncludesCurrentLine = included
+GrOpensSharedReferences = call ~= nil
+	and call.local_opts.scope == "references"
+	and call.opts.source.name == "References"
 ]])
-	return child.lua_get("GrIncludesCurrentLine")
+	return child.lua_get("GrOpensSharedReferences")
 end
 
 --- Wait budget for async plugins (neo-tree, telescope, differ).
@@ -529,7 +533,7 @@ T["keymaps: Code action in visual mode"] = function()
 end
 
 T["keymaps: gr bound to Telescope references"] = function()
-	eq(gr_includes_current_line(), true)
+	eq(gr_opens_shared_references(), true)
 
 	local gr_maps = child.lua_get([[
 vim.tbl_map(function(mapping)
@@ -671,13 +675,25 @@ T["keymaps: Alt-F opens live grep"] = function()
 	edit_repo_file()
 	child.type_keys("<M-F>")
 
-	eq(child.wait([[vim.bo.filetype == "TelescopePrompt"]], async_ms()), true)
-	eq(
-		child.lua_get(
-			[[require("telescope.actions.state").get_current_picker(vim.api.nvim_get_current_buf()).prompt_title]]
-		),
-		"Live Grep"
-	)
+	eq(child.wait([[require("mini.pick").is_picker_active()]], async_ms()), true)
+	eq(child.lua_get([[require("mini.pick").get_picker_opts().source.name]]), "Live Grep")
+end
+
+T["keymaps: Live grep renders matching rows"] = function()
+	local repo = H.git_repo({ ["matched.lua"] = "local pickerneedle = true\n" })
+	child.cmd("cd " .. repo .. " | edit matched.lua")
+	child.type_keys("<M-F>", "pickerneedle")
+
+	local rendered_match = [[(function()
+		local MiniPick = require("mini.pick")
+		if not MiniPick.is_picker_active() then return false end
+		local buf = MiniPick.get_picker_state().buffers.main
+		local text = table.concat(vim.api.nvim_buf_get_lines(buf, 0, -1, false), "\n")
+		return text:find("matched.lua", 1, true) ~= nil
+			and text:find("1", 1, true) ~= nil
+			and text:find("local pickerneedle = true", 1, true) ~= nil
+	end)()]]
+	eq(child.wait(rendered_match, async_ms()), true)
 end
 
 return T
