@@ -36,6 +36,6 @@ Scenarios: `actions: Enter finishes a normalized key sequence`, `actions: Esc ca
 
 ## 7. Discover hidden Ex-command actions
 Scenarios: `actions: Ex commands become humanized hidden actions`, `actions: Registered commands are not duplicated`, `actions: Hidden command discovery is cached`
-- [ ] 7.1 Write the tests for these scenarios in `tests/unit/actions/test_commands.lua` and run each with `make test FILE=tests/unit/actions/test_commands.lua CASE="<scenario title>"` to see it fail
-- [ ] 7.2 Add lazy, session-cached Ex-command discovery, title humanization, registered-command deduplication, and hidden-action enforcement
-- [ ] 7.3 Run each scenario with `make test FILE=tests/unit/actions/test_commands.lua CASE="<scenario title>"` and see it pass
+- [x] 7.1 Write the tests for these scenarios in `tests/unit/actions/test_commands.lua` and run each with `make test FILE=tests/unit/actions/test_commands.lua CASE="<scenario title>"` to see it fail
+- [x] 7.2 Add lazy, session-cached Ex-command discovery, title humanization, registered-command deduplication, and hidden-action enforcement
+- [x] 7.3 Run each scenario with `make test FILE=tests/unit/actions/test_commands.lua CASE="<scenario title>"` and see it pass

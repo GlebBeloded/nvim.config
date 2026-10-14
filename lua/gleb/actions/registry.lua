@@ -30,8 +30,13 @@
 ---@class gleb.ActionCatalog
 ---@field actions gleb.Action[]
 ---@field by_id table<string, gleb.Action>
+---@field hidden_actions? gleb.Action[]
+---@field complete_commands fun(): string[]
 local Catalog = {}
 Catalog.__index = Catalog
+
+---@class gleb.ActionRegistryOptions
+---@field complete_commands? fun(): string[]
 
 local M = {}
 
@@ -57,6 +62,37 @@ local function is_available(action, mode, filetype, ctx)
 	return not action.when or action.when(ctx)
 end
 
+---@param command string
+---@return string
+local function humanize_command(command)
+	return (command:gsub("(%u)(%u%l)", "%1 %2"):gsub("(%l)(%u)", "%1 %2"))
+end
+
+---@param command string
+---@return string
+local function command_id(command)
+	local name = humanize_command(command):lower():gsub("[^a-z0-9]+", "_"):gsub("^_", ""):gsub("_$", "")
+	if not name:match("^[a-z]") then
+		name = "command_" .. name
+	end
+	return "ex." .. name
+end
+
+---@param command string
+---@param id string
+---@return gleb.Action
+local function hidden_command(command, id)
+	return {
+		id = id,
+		title = humanize_command(command),
+		category = "Command",
+		hidden = true,
+		run = function()
+			vim.cmd(command)
+		end,
+	}
+end
+
 ---@param id string
 ---@return gleb.Action?
 function Catalog:get(id)
@@ -77,11 +113,37 @@ function Catalog:filter(mode, filetype, ctx)
 	return available
 end
 
+---@return gleb.Action[]
+function Catalog:hidden()
+	if self.hidden_actions then
+		return self.hidden_actions
+	end
+
+	self.hidden_actions = {}
+	for _, command in ipairs(self.complete_commands()) do
+		local id = command_id(command)
+		if not self.by_id[id] then
+			local action = hidden_command(command, id)
+			table.insert(self.hidden_actions, action)
+			self.by_id[id] = action
+		end
+	end
+	return self.hidden_actions
+end
+
 ---@param action_lists gleb.Action[][]
+---@param opts? gleb.ActionRegistryOptions
 ---@return gleb.ActionCatalog
-function M.new(action_lists)
+function M.new(action_lists, opts)
+	opts = opts or {}
 	---@type gleb.ActionCatalog
-	local catalog = setmetatable({ actions = {}, by_id = {} }, Catalog)
+	local catalog = setmetatable({
+		actions = {},
+		by_id = {},
+		complete_commands = opts.complete_commands or function()
+			return vim.fn.getcompletion("", "command")
+		end,
+	}, Catalog)
 	for _, actions in ipairs(action_lists) do
 		for _, action in ipairs(actions) do
 			validate_id(action.id)
