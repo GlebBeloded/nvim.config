@@ -533,7 +533,14 @@ end
 
 T["file-tree: gr keeps its global meaning in git status tree"] = function()
 	open_git_status(modified_repo())
+	child.lua([[
+vim.keymap.set("n", "grz", "<Nop>")
+package.loaded["gleb.keymaps"] = nil
+KeymapsReloaded = pcall(require, "gleb.keymaps")
+]])
 
+	eq(child.lua_get("KeymapsReloaded"), true)
+	eq(child.lua_get([[vim.fn.maparg("grz", "n")]]), "")
 	eq(child.lua_get([[vim.fn.maparg("gr", "n", false, true).buffer]]), 0)
 	eq(gr_includes_current_line(), true)
 end
