@@ -54,9 +54,9 @@ Scenarios: `keymaps: LSP mappings bound to vim.lsp.buf`, `keymaps: Code action i
 
 ## 10. Preserve the Go references workflow
 Scenarios: `lsp: References of a Go function list call sites across packages`, `lsp: Selecting a reference opens its file at the call site`
-- [ ] 10.1 Update the picker driver in tests/e2e/lsp/test_go_references.lua for the two scenarios and see them fail
-- [ ] 10.2 Implement the shared LSP-references source with current-line inclusion, matching and selection
-- [ ] 10.3 Run `make e2e` for the two Go references scenarios in the sandbox VM and see them pass
+- [x] 10.1 Update the picker driver in tests/e2e/lsp/test_go_references.lua for the two scenarios and see them fail
+- [x] 10.2 Implement the shared LSP-references source with current-line inclusion, matching and selection
+- [x] 10.3 Run `make e2e` for the two Go references scenarios in the sandbox VM and see them pass
 
 ## 11. Preserve gr inside the git status tree
 Scenarios: `file-tree: gr keeps its global meaning in git status tree`
@@ -91,3 +91,4 @@ Scenarios: `ai: Keymaps exist after VeryLazy`, `ai: Missing 99 is tolerated`, `a
 - Selection items retain their original value and index beside formatted row text so matching uses what users see while callbacks receive the original item.
 - Picker aliases use MiniPick custom actions for Tab, Shift-Tab, Control-C and Space because each built-in action accepts only one configurable key.
 - After project.nvim is removed, the session scenario uses Neovim's built-in cwd change to preserve its original startup-name guarantee.
+- The Go references E2E driver uses mini.pick's public item and match APIs; task 9's mini.extra source already passed both scenarios, so no duplicate source was added.

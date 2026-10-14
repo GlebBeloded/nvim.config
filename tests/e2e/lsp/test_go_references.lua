@@ -1,5 +1,5 @@
 -- E2E workflow: `gr` on a Go function in a fresh copy of the gomod fixture
--- (tests/fixtures/build.sh) lists its references through gopls in Telescope,
+-- (tests/fixtures/build.sh) lists its references through gopls in the shared picker,
 -- and Return on one opens it. Real key presses, state read over RPC; expected
 -- locations come from the fixture's manifest.
 local MiniTest = require("mini.test")
@@ -78,15 +78,15 @@ local GOPLS_READY = [[local client = vim.lsp.get_clients({ bufnr = 0, name = "go
 	local reply = client:request_sync("textDocument/references", params, 2000, 0)
 	return reply ~= nil and reply.result ~= nil and #reply.result > 0]]
 
-local PICKER_COUNT = [[if vim.bo.filetype ~= "TelescopePrompt" then return -1 end
-	local picker = require("telescope.actions.state").get_current_picker(vim.api.nvim_get_current_buf())
-	return picker.manager:num_results()]]
+local PICKER_COUNT = [[local pick = require("mini.pick")
+	if not pick.is_picker_active() then return -1 end
+	local matches = pick.get_picker_matches()
+	return matches and #(matches.all or {}) or 0]]
 
 local PICKER_ENTRIES = [[local root = vim.uv.fs_realpath(...) .. "/"
-	local picker = require("telescope.actions.state").get_current_picker(vim.api.nvim_get_current_buf())
 	local entries = {}
-	for entry in picker.manager:iter() do
-		local path = vim.uv.fs_realpath(entry.filename) or entry.filename
+	for _, entry in ipairs(require("mini.pick").get_picker_items() or {}) do
+		local path = vim.uv.fs_realpath(entry.path) or entry.path
 		table.insert(entries, { path = path:sub(#root + 1), line = entry.lnum, col = entry.col })
 	end
 	return entries]]
@@ -98,7 +98,7 @@ local function wait_picker(s, n)
 	local ok, err = pcall(S.wait_for, function()
 		count = s:lua(PICKER_COUNT)
 		return count == n
-	end, string.format("Telescope picker with %d entries", n))
+	end, string.format("shared picker with %d entries", n))
 	if not ok then
 		error(string.format("%s (last count %s), screen:\n%s", err, count, s:zellij("dump-screen")), 0)
 	end
@@ -124,14 +124,14 @@ local function open_references(s)
 		E.press(s, { "g", "r" })
 		S.wait_for(function()
 			return s:lua(PICKER_COUNT) > 0
-		end, "Telescope references picker with entries")
+		end, "shared references picker with entries")
 	end)
 end
 
 --- The references picker of `Format`, opened unless the previous case left it open.
 ---@param s e2e.Stack
 local function ensure_references(s)
-	if s:lua("return vim.bo.filetype") ~= "TelescopePrompt" then
+	if not s:lua([[return require("mini.pick").is_picker_active()]]) then
 		open_references(s)
 	end
 end
@@ -172,8 +172,8 @@ T["lsp: Selecting a reference opens its file at the call site"] = function()
 		wait_picker(s, 1)
 		E.press(s, "return")
 		S.wait_for(function()
-			return s:lua("return vim.bo.filetype") ~= "TelescopePrompt"
-		end, "Telescope picker closed")
+			return not s:lua([[return require("mini.pick").is_picker_active()]])
+		end, "shared picker closed")
 	end)
 	eq(s:lua(CURRENT_FILE), {
 		path = vim.uv.fs_realpath(root .. "/" .. call.path),
