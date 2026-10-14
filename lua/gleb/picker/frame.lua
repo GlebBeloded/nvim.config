@@ -20,6 +20,7 @@ local chrome_windows = {}
 ---@field hints? string
 ---@field choose? fun(item: gleb.picker.Row)
 ---@field match? fun(stritems: string[], inds: integer[], query: string[]): integer[]
+---@field mappings? table<string, table>
 
 local function setup_highlights()
 	local bg = palette.background
@@ -182,6 +183,7 @@ function M.start(opts)
 		match = opts.match,
 		choose = opts.choose,
 	})
+	picker_opts.mappings = opts.mappings
 	return MiniPick.start(picker_opts)
 end
 

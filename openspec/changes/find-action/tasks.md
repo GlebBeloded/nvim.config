@@ -10,6 +10,7 @@ Scenarios: `find-action: Find Action opens from its shortcut`, `find-action: Fin
 - Pass resolved toggle state into row formatting so the formatter stays pure and does not call action callbacks.
 - Store history in most-recent-first order, moving a repeated action to the front so use order stays stable across sessions.
 - Fuzzy-match case-insensitive subsequences within each field independently so characters cannot match across unrelated metadata.
+- Keep the backing action on each picker row so reveal and assignment decisions use registry metadata rather than rendered text.
 
 ## 2. Render action rows
 Scenarios: `find-action: Rows show action metadata`, `find-action: Rows fall back to Vim notation`, `find-action: Toggle rows show state glyphs`
@@ -25,9 +26,9 @@ Scenarios: `find-action: Empty query puts recent actions first`, `find-action: R
 
 ## 4. Reveal hidden actions
 Scenarios: `find-action: Hidden and unavailable actions start absent`, `find-action: Show hidden reveals a separate tier`, `find-action: Hidden commands cannot be assigned`
-- [ ] 4.1 Write the tests in `tests/integration/find-action/test_hidden.lua` and run `make test FILE=tests/integration/find-action/test_hidden.lua`, seeing all three scenarios fail
-- [ ] 4.2 Filter against the captured context, add the query-preserving `<M-A>` hidden tier and separator, and reject assignment for hidden Ex commands
-- [ ] 4.3 Run `make test FILE=tests/integration/find-action/test_hidden.lua` and see all three scenarios pass
+- [x] 4.1 Write the tests in `tests/integration/find-action/test_hidden.lua` and run `make test FILE=tests/integration/find-action/test_hidden.lua`, seeing all three scenarios fail
+- [x] 4.2 Filter against the captured context, add the query-preserving `<M-A>` hidden tier and separator, and reject assignment for hidden Ex commands
+- [x] 4.3 Run `make test FILE=tests/integration/find-action/test_hidden.lua` and see all three scenarios pass
 
 ## 5. Run actions in their opening context
 Scenarios: `find-action: Regular action runs like its shortcut`, `find-action: Toggle changes without closing the palette`, `find-action: Visual palette preserves the selection`
