@@ -25,11 +25,11 @@ The config SHALL provide a 99 provider that runs the `pi` CLI ephemerally with l
 - **THEN** the value is looked up on `require("99").Providers.BaseProvider`
 
 ### Requirement: 99 plugin setup
-The config SHALL load 99 on `VeryLazy`, configure it with the Pi provider, model `openai-codex/gpt-5.6-sol` and native completion source, then register prompt and entry keymaps. 99 SHALL not depend on Telescope. If 99 is unavailable, setup SHALL return without an error.
+The config SHALL load 99 on `VeryLazy`, configure it with the Pi provider, model `openai-codex/gpt-5.6-sol` and native completion source, then register prompt mappings, entry mappings, and actions. 99 SHALL not depend on Telescope. If 99 is unavailable, setup SHALL return without an error.
 
 #### Scenario: Keymaps exist after VeryLazy
 - **WHEN** the full config is loaded and the `VeryLazy` user event has fired
-- **THEN** `vim.fn.maparg("<A-9>", "n", false, true).desc == "99: Menu"` and `vim.fn.maparg("<S-CR>", "n", false, true).desc == "99: Vibe"`
+- **THEN** normal `<A-9>` is unmapped, normal `<S-CR>` is described as `99: Vibe`, and visual `<A-9>` and `<S-CR>` are described as `99: Visual`
 
 #### Scenario: Missing 99 is tolerated
 - **WHEN** `require("gleb.ai").setup()` is called while the 99 plugin is unavailable
@@ -40,23 +40,23 @@ The config SHALL load 99 on `VeryLazy`, configure it with the Pi provider, model
 - **THEN** its completion source is `native`
 
 ### Requirement: 99 entry keymaps
-The config SHALL map `<A-9>` in normal mode to a one-key menu whose `Question`-highlighted prompt remains visible while it waits, including when `cmdheight` starts at zero. It SHALL dispatch `s` to search and `v` to vibe, ignore other keys, restore the prior `cmdheight`, keep the normal and visual `<S-CR>`/`<A-9>` prompt mappings silent, and enter insert mode after opening a prompt.
+The config SHALL register 99 Search and 99 Vibe as actions and leave `<A-9>` unmapped in normal mode. It SHALL keep normal `<S-CR>` and visual `<S-CR>`/`<A-9>` prompt mappings silent, enter insert mode after opening a prompt, and leave select mode unchanged.
 
 #### Scenario: Menu shows prompt
-- **WHEN** `<A-9>` is pressed in normal mode with `cmdheight = 0`
-- **THEN** the message area shows `99> [s]earch [v]ibe: ` while the menu waits for a key
+- **WHEN** the normal-mode `<A-9>` mapping is queried after 99 entry setup
+- **THEN** no mapping or one-key menu prompt exists
 
 #### Scenario: Menu s opens search prompt
-- **WHEN** `<A-9>` then `s` is pressed in normal mode
+- **WHEN** the registered 99 Search action is run
 - **THEN** a 99 prompt buffer for search is focused and the mode is insert
 
 #### Scenario: Menu v opens vibe prompt
-- **WHEN** `<A-9>` then `v` is pressed in normal mode
+- **WHEN** the registered 99 Vibe action is run
 - **THEN** a 99 prompt buffer for vibe is focused and the mode is insert
 
 #### Scenario: Menu ignores other keys
-- **WHEN** `<A-9>` then `x` is pressed in normal mode
-- **THEN** no 99 prompt buffer is opened and the mode is normal
+- **WHEN** `<A-9>` then `x` is pressed in normal mode after 99 entry setup
+- **THEN** no 99 prompt buffer or one-key menu is opened
 
 #### Scenario: Shift-Enter opens vibe prompt
 - **WHEN** `<S-CR>` is pressed in normal mode in a non-99 buffer
@@ -72,7 +72,7 @@ The config SHALL map `<A-9>` in normal mode to a one-key menu whose `Question`-h
 
 #### Scenario: Entry mappings are silent
 - **WHEN** the 99 entry mappings are registered
-- **THEN** `<A-9>` and `<S-CR>` have silent mappings in normal and visual modes
+- **THEN** `<S-CR>` has a silent normal mapping, `<A-9>` and `<S-CR>` have silent visual mappings, and `<A-9>` has no normal mapping
 
 #### Scenario: Select mode keeps its default behavior
 - **WHEN** the 99 entry mappings are registered and `<A-9>` or `<S-CR>` is queried in select mode
