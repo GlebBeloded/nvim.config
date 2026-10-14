@@ -202,7 +202,10 @@ local T = H.child_set(child, start)
 -- Mapping options and leaders -------------------------------------------------
 
 T["keymaps: Core mappings are noremap and silent"] = function()
-	local map = child.fn.maparg("gb", "n", false, true)
+	local map = child.lua_get([[(function()
+		local value = vim.fn.maparg("gb", "n", false, true)
+		return { noremap = value.noremap, silent = value.silent }
+	end)()]])
 
 	eq({ map.noremap, map.silent }, { 1, 1 })
 end
@@ -345,10 +348,13 @@ T["keymaps: Unadopted built-in mappings are removed"] = function()
 end
 
 T["keymaps: Adopted built-in mappings are registry actions"] = function()
-	local map = child.fn.maparg("[d", "n", false, true)
-	local action = child.lua_get([[require("gleb.actions").state.applicator.catalog:get("diag.previous")]])
+	local map = child.lua_get([[(function()
+		local value = vim.fn.maparg("[d", "n", false, true)
+		return { desc = value.desc, callback_type = type(value.callback) }
+	end)()]])
+	local action_id = child.lua_get([[require("gleb.actions").state.applicator.catalog:get("diag.previous").id]])
 
-	eq({ map.desc, type(map.callback), action.id }, { "Diagnostics: Previous", "function", "diag.previous" })
+	eq({ map.desc, map.callback_type, action_id }, { "Diagnostics: Previous", "function", "diag.previous" })
 end
 
 T["keymaps: Surround mappings use registered actions"] = function()

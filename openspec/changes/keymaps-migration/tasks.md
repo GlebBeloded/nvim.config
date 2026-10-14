@@ -23,9 +23,9 @@ Scenarios: `actions: Every configured mapping is action-owned`, `keymaps: Unadop
 
 ## Stuck
 
-- Probe: with `Vj` active, mode was `V`, visual anchor was `{ 0, 1, 1, 0 }`, both `'<` and `'>` were `{ 0, 0, 0, 0 }`, and `J` resolved to `Edit: Move selection down`.
-- Attempt 1 removed all unadopted Lua defaults and registered surround `<Plug>` mappings; the new built-in and surround scenarios passed, but the existing real `VjJ`/`VjK` paths failed with `E20: Mark not set`.
-- Attempt 2 retained Neovim grammar defaults while removing only LSP, diagnostic, unimpaired, and selection defaults; `keymaps: Move selected lines down` still failed with `E20: Mark not set`.
+- Probe: the real visual `J` callback failed with unset `'<`/`'>` marks, then moved `{ "a", "b", "c" }` to `{ "b", "a", "c" }` and stayed in mode `V` after those marks were seeded from the captured selection.
+- Attempt 1 seeded visual marks in the action context, registered surround and retained defaults, and fixed the callback API errors; all 53 keymap cases passed, but the ownership audit reported alpha-buffer and Neovim grammar mappings.
+- Attempt 2 added a runtime allowlist and plugin-surface filtering; the audit still reported alpha-buffer and grammar mappings, and neo-tree's full help screenshot still differed after its three required labels were restored, so all production edits were reverted while the red regression coverage was retained.
 
 ## 3. Make plugin adapters the sole owner of plugin-window keys
 Scenarios: `actions: Plugin-window mappings are action-owned`, `actions: Unconfigured defaults are absent`, `actions: Lazy specs define no shortcut keys`
@@ -35,9 +35,9 @@ Scenarios: `actions: Plugin-window mappings are action-owned`, `actions: Unconfi
 
 ### Stuck
 
-- Probe: repository inspection found all ten adapter modules present, while the live catalog and `settings/keymap.json` contained none of `file_tree.open`, `dap_ui.expand`, `diffview.select_next_entry`, `differ.next_hunk`, `codediff.next_hunk`, `neotest.run`, `mason.install_package`, `lazy.close`, `blink.accept`, or `copilot.next`; the ownership scenario failed with exactly those ten ids.
-- Attempt 1 registered plugin-scoped actions, fed adapter output into plugin setup, and disabled defaults in the available setup tables. The ownership scenario passed, but the real-surface default audit still found dap-ui `o` and lazy.nvim `K`.
-- Attempt 2 explicitly set every dap-ui mapping action false before overlaying the adapter and cleared lazy.nvim's view/command keys before adding its adapter callback. The real dap-ui and lazy surfaces still installed `o` and `K`, so the production edits were reverted and the red regression retained.
+- Probe: dap-ui's live config contained only `expand = { "e" }`, but opening its layout left the current filetype as `alpha`; Mason's isolated `mason` buffer contained `i` and disabled `<Plug>` mappings with no `<CR>`. The existing sequential check was reading whichever window stayed current, not necessarily the plugin surface it had just opened.
+- Attempt 1 registered the missing plugin actions and applied each adapter through its installed native config; ownership passed, while the current-buffer default check still reported dap-ui, lazy, Mason, neo-tree, and neotest.
+- Attempt 2 targeted buffers by plugin filetype and made blink's early setup independent of the global registry; the sequence did not leave a Mason buffer open and the ownership audit remained red, so all production edits were reverted and the real-surface regression remains red.
 
 ## 4. Migrate neo-tree mappings without changing behavior
 Scenarios: `file-tree: Tree mappings come from the shortcut file`, `file-tree: Neo-tree defaults stay disabled`, `file-tree: q closes preview and tree`
