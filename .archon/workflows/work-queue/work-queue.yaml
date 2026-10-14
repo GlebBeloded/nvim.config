@@ -103,10 +103,11 @@ nodes:
     when: "$blocked.output.blocked == true"
 
   # --- Specify: complete a queued proposal ------------------------------------------------------------
-  - id: pinned # main-spec scenarios naming a symbol the change touches, with no delta or Impact line (no AI)
+  - id: pinned # main-spec scenarios naming a symbol the change touches, with no delta or Impact line (no AI);
+    # runs whenever spec-gate does (also all tasks ticked): spec-retry needs the list the gate checks
     bash: python3 .archon/scripts/pinned.py $pick.output.change # LOOP_CHANGES_DIR: fixtures' own changes
     depends_on: [pick, adopted-state, blocked]
-    when: "$pick.output.found == true && $adopted-state.output.archived == false && $adopted-state.output.tasks_done == false && $blocked.output.blocked == false"
+    when: "$pick.output.found == true && $adopted-state.output.archived == false && $blocked.output.blocked == false"
 
   - id: meta # picks the change's schema before the spec step (no AI): no-design unless a feature or a render-holding proposal/design.md
     script: no_design
