@@ -17,6 +17,8 @@ T["folding: Split buffers use their own fold text"] = function()
 		})
 		vim.bo[lua_buf].filetype = "lua"
 		local lua_win = vim.api.nvim_get_current_win()
+		vim.wo[lua_win].foldmethod = "manual"
+		vim.api.nvim_win_call(lua_win, function() vim.cmd("1,3fold") end)
 
 		vim.cmd("vnew")
 		local go_buf = vim.api.nvim_get_current_buf()
@@ -27,20 +29,33 @@ T["folding: Split buffers use their own fold text"] = function()
 		})
 		vim.bo[go_buf].filetype = "go"
 		local go_win = vim.api.nvim_get_current_win()
-		local handler = require("ufo.config").fold_virt_text_handler
-		local truncate = function(text) return text end
+		vim.wo[go_win].foldmethod = "manual"
+		vim.api.nvim_win_call(go_win, function() vim.cmd("1,3fold") end)
 
+		vim.wo[lua_win].foldlevel = 0
+		vim.wo[go_win].foldlevel = 0
 		vim.api.nvim_set_current_win(go_win)
-		local lua_text = handler({ { "local function lua_fold() " }, { "{" } }, 1, 3, 80, truncate, {
-			bufnr = lua_buf,
-		})
-		vim.api.nvim_set_current_win(lua_win)
-		local go_text = handler({ { "func" } }, 1, 3, 80, truncate, { bufnr = go_buf })
 
-		return { lua_text[#lua_text][1], go_text[#go_text][1] }
+		local function fold_row(win)
+			local pos = vim.fn.win_screenpos(win)
+			local cells = {}
+			for col = pos[2], pos[2] + vim.api.nvim_win_get_width(win) - 1 do
+				table.insert(cells, vim.fn.screenstring(pos[1], col))
+			end
+			return table.concat(cells)
+		end
+
+		vim.wait(1000, function()
+			vim.cmd("redraw")
+			return fold_row(lua_win):find(" ... }", 1, true) ~= nil
+				and fold_row(go_win):find("  goValue", 1, true) ~= nil
+		end)
+
+		return { fold_row(lua_win), fold_row(go_win) }
 	end)()]])
 
-	eq(summaries, { "}", " goValue" })
+	eq(summaries[1]:find(" ... }", 1, true) ~= nil, true)
+	eq(summaries[2]:find("  goValue", 1, true) ~= nil, true)
 end
 
 return T
