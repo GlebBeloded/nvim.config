@@ -25,7 +25,7 @@ The config SHALL provide a 99 provider that runs the `pi` CLI ephemerally with l
 - **THEN** the value is looked up on `require("99").Providers.BaseProvider`
 
 ### Requirement: 99 plugin setup
-The config SHALL load the 99 plugin on the `VeryLazy` event, configure it with the Pi provider and model `openai-codex/gpt-5.6-sol`, and then register the prompt keymaps and the entry keymaps. If 99 is unavailable, setup SHALL return without an error.
+The config SHALL load 99 on `VeryLazy`, configure it with the Pi provider, model `openai-codex/gpt-5.6-sol` and native completion source, then register prompt and entry keymaps. 99 SHALL not depend on Telescope. If 99 is unavailable, setup SHALL return without an error.
 
 #### Scenario: Keymaps exist after VeryLazy
 - **WHEN** the full config is loaded and the `VeryLazy` user event has fired
@@ -34,6 +34,10 @@ The config SHALL load the 99 plugin on the `VeryLazy` event, configure it with t
 #### Scenario: Missing 99 is tolerated
 - **WHEN** `require("gleb.ai").setup()` is called while the 99 plugin is unavailable
 - **THEN** the call returns without an error
+
+#### Scenario: 99 uses native completion
+- **WHEN** `require("gleb.ai").setup()` configures the available 99 plugin
+- **THEN** its completion source is `native`
 
 ### Requirement: 99 entry keymaps
 The config SHALL map `<A-9>` in normal mode to a one-key menu whose `Question`-highlighted prompt remains visible while it waits, including when `cmdheight` starts at zero. It SHALL dispatch `s` to search and `v` to vibe, ignore other keys, restore the prior `cmdheight`, keep the normal and visual `<S-CR>`/`<A-9>` prompt mappings silent, and enter insert mode after opening a prompt.

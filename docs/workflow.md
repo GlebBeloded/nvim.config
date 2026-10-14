@@ -29,7 +29,6 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 
 ## Loop lessons
 
-- For an implementation-free follow-up, replace ignored adoption metadata with `skip_specs: true` so strict validation accepts zero deltas.
 - When merging a keymap-helper rewrite, convert retained mappings to the new helper so removed option tables cannot break startup.
 - Regenerate a screen reference only when the cell diff is limited to UI a merged commit changed; name that commit.
 - When review evidence contradicts a queued task or proposal, preserve the declared scope and remove unverified bug claims before shipping.
@@ -44,6 +43,7 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - Sort enabled LSP config names before asserting exact membership because `vim.lsp.get_configs()` ordering is not stable.
 - Use boolean true for vim.fn.shellescape's special flag so LuaLS accepts the call while preserving special-character escaping.
 - LuaCATS annotations for string.find-backed predicates must include nil alongside any explicit false return.
+- When a picker source can render into alternate buffers, update window-owned chrome before checking whether the source buffer is visible.
 
 ## The loop
 
