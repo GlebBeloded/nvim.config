@@ -3,6 +3,7 @@
 Found by the second audit of auto (2026-10-14).
 
 Kind: bug
+Adopt: loop/fix-session-name-drift
 
 ## Evidence
 - Confirmed in a headless full-config child by the audit; locate code with `rg -n` (line numbers may drift).
@@ -18,3 +19,7 @@ Kind: bug
 ## Impact
 - Code: the files named above and their tests.
 - Plugins: none added or upgraded. Core keymaps: unchanged.
+
+## Rejected run
+Run on `loop/fix-session-name-drift` was rejected by the judge:
+- fix loop exhausted (3 attempts) with gates still red: spec,review_skipped
