@@ -93,3 +93,4 @@ Scenarios: `ai: Keymaps exist after VeryLazy`, `ai: Missing 99 is tolerated`, `a
 - After project.nvim is removed, the session scenario uses Neovim's built-in cwd change to preserve its original startup-name guarantee.
 - The Go references E2E driver uses mini.pick's public item and match APIs; task 9's mini.extra source already passed both scenarios, so no duplicate source was added.
 - Dashboard files use MiniPick's built-in files source and recent files use MiniExtra's oldfiles source because they directly replace Telescope's corresponding list actions.
+- Existing unit scenario identities remain authoritative; runtime integration coverage uses distinct scenarios so traceability stays one-to-one.

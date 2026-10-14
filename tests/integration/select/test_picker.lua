@@ -30,7 +30,7 @@ local function open_select(items, opts, callback)
 	)
 end
 
-T["select: Code action menu receives picker mappings"] = function()
+T["select: Shared code action uses picker mappings"] = function()
 	local result = child.lua_get([[(function()
 		local ok, select = pcall(require, "gleb.picker.select")
 		return { ok = ok, keymap = ok and select.default_keymap() or nil }
@@ -56,7 +56,7 @@ T["select: Code action menu receives picker mappings"] = function()
 	child.type_keys("<Esc>")
 end
 
-T["select: Selection accepts omitted options"] = function()
+T["select: Omitted options open shared selection"] = function()
 	child.lua_notify([[
 		SelectOk, SelectError = pcall(vim.ui.select, { "x" }, nil, function() end)
 	]])
@@ -68,7 +68,7 @@ T["select: Selection accepts omitted options"] = function()
 	eq(child.lua_get("SelectError"), vim.NIL)
 end
 
-T["select: Cancelling a code action completes selection"] = function()
+T["select: Shared code action cancellation preserves callback arity"] = function()
 	open_select(
 		{ "fix" },
 		{ kind = "codeaction" },
@@ -84,7 +84,7 @@ T["select: Cancelling a code action completes selection"] = function()
 	eq(child.lua_get("CancelArgs"), { count = 2, item_is_nil = true, index_is_nil = true })
 end
 
-T["select: Code action popup fits editor width"] = function()
+T["select: Formatted code action width configures shared picker"] = function()
 	local result = child.lua_get([[(function()
 		vim.o.columns = 80
 		local ok, select = pcall(require, "gleb.picker.select")

@@ -5,14 +5,18 @@ local eq = MiniTest.expect.equality
 local child = H.new_child()
 
 local function start()
-	child.start_bare({ "nui.nvim" })
-	child.lua([[CodeAction = require("gleb.select.code_action")]])
+	child.start_bare()
+	child.lua([[
+		MiniPick = require("mini.pick")
+		MiniPick.setup()
+		Select = require("gleb.picker.select")
+	]])
 end
 
 local T = H.child_set(child, start)
 
 T["select: Code action menu receives picker mappings"] = function()
-	local keymap = child.lua_get([[CodeAction:new({}, { prompt = "Actions" }, function() end):menu().keymap]])
+	local keymap = child.lua_get([[Select.default_keymap()]])
 
 	eq(keymap, {
 		focus_next = { "j", "<Down>", "<Tab>" },
@@ -27,10 +31,10 @@ T["select: Code action popup fits editor width"] = function()
 		(function()
 			vim.o.columns = 80
 			local function width(items, prompt)
-				return CodeAction:new(items, {
+				return Select.window_config(items, {
 					prompt = prompt,
 					format_item = function(item) return item.label end,
-				}, function() end):popup_under_cursor_options().size.width
+				}).width
 			end
 			return {
 				short = width({ { label = "Fix" } }, "Actions"),
@@ -43,15 +47,17 @@ T["select: Code action popup fits editor width"] = function()
 end
 
 T["select: Cancelling a code action completes selection"] = function()
-	child.lua([[
+	child.lua_notify([[
 		cancel_result = { calls = 0, item_is_nil = false, index_is_nil = false }
-		CodeAction:new({}, { prompt = "Actions" }, function(item, index)
+		Select.select({ "Fix" }, { kind = "codeaction", prompt = "Actions" }, function(item, index)
 			cancel_result.calls = cancel_result.calls + 1
 			cancel_result.item_is_nil = item == nil
 			cancel_result.index_is_nil = index == nil
-		end):select()
+		end)
 	]])
+	assert(child.wait("MiniPick.is_picker_active()"), "shared picker did not open")
 	child.type_keys("<Esc>")
+	assert(child.wait("cancel_result.calls == 1"), "selection callback did not complete")
 	local result = child.lua_get([[cancel_result]])
 
 	eq(result, { calls = 1, item_is_nil = true, index_is_nil = true })
