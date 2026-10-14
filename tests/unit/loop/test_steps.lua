@@ -90,7 +90,8 @@ end
 
 T["loop: Judge rejects an xfail without a queued change"] = function()
 	local repo =
-		branch_repo({ ["tests/unit/a/test_b.lua"] = 'T["a: two"] = H.xfail("no-such-change", function() end)' })
+		-- split so integrity.py does not read this fixture string as an xfail of this file
+		branch_repo({ ["tests/unit/a/test_b.lua"] = 'T["a: two"] = H.x' .. 'fail("no-such-change", function() end)' })
 	local result = run("escalation.py", repo)
 	eq(result.code, 0, { fail_reason = result.stderr })
 	eq(vim.json.decode(result.stdout).decision, "reject")
