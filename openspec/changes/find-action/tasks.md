@@ -32,9 +32,9 @@ Scenarios: `find-action: Hidden and unavailable actions start absent`, `find-act
 
 ## 5. Run actions in their opening context
 Scenarios: `find-action: Regular action runs like its shortcut`, `find-action: Toggle changes without closing the palette`, `find-action: Visual palette preserves the selection`
-- [ ] 5.1 Write the tests in `tests/integration/find-action/test_run.lua` and run `make test FILE=tests/integration/find-action/test_run.lua`, seeing all three scenarios fail
-- [ ] 5.2 Connect palette selection and toggle handling to the captured action context while preserving the selected row and visual selection
-- [ ] 5.3 Run `make test FILE=tests/integration/find-action/test_run.lua` and see all three scenarios pass
+- [x] 5.1 Write the tests in `tests/integration/find-action/test_run.lua` and run `make test FILE=tests/integration/find-action/test_run.lua`, seeing all three scenarios fail
+- [x] 5.2 Connect palette selection and toggle handling to the captured action context while preserving the selected row and visual selection
+- [x] 5.3 Run `make test FILE=tests/integration/find-action/test_run.lua` and see all three scenarios pass
 
 ## 6. Assign shortcuts from the palette
 Scenarios: `find-action: Assign float captures a free shortcut`, `find-action: Assignment can be cancelled`, `find-action: Conflict choices have distinct outcomes`, `find-action: Saved shortcut applies immediately`, `find-action: Adapter assignment reports deferred application`

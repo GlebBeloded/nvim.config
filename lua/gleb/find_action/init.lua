@@ -20,6 +20,12 @@ local M = {
 	state = {},
 }
 
+---@param ctx gleb.ActionContext
+---@return string
+local function action_mode(ctx)
+	return ctx.selection and "x" or ctx.mode
+end
+
 ---@param action gleb.Action
 ---@param hidden? boolean
 ---@return gleb.FindActionRow
@@ -45,7 +51,7 @@ local function make_rows()
 	local catalog = assert(actions.state.applicator, "actions are not set up").catalog
 	local ctx = assert(M.state.context, "Find Action context is missing")
 	local filetype = vim.bo[ctx.buf].filetype
-	local available = catalog:filter(ctx.mode, filetype, ctx)
+	local available = catalog:filter(action_mode(ctx), filetype, ctx)
 	local visible = vim.tbl_filter(function(action)
 		return not action.hidden
 	end, available)
@@ -113,6 +119,37 @@ local function request_assignment()
 	return false
 end
 
+---@param row gleb.FindActionRow
+---@return boolean
+local function choose_action(row)
+	local action = row.action
+	if not action then
+		return true
+	end
+	local ctx = assert(M.state.context, "Find Action context is missing")
+	if action.toggle then
+		local selected = MiniPick.get_picker_matches().current_ind
+		local rows = assert(M.state.rows, "Find Action rows are missing")
+		vim.api.nvim_win_call(ctx.win, function()
+			local value = not Context.get_toggle(action, ctx)
+			Context.set_toggle(action, ctx, value)
+		end)
+		if selected then
+			rows[selected].glyph = Context.get_toggle(action, ctx)
+		end
+		MiniPick.set_picker_items(rows)
+		if selected then
+			MiniPick.set_picker_match_inds({ selected }, "current")
+		end
+		return true
+	end
+
+	vim.schedule(function()
+		Context.run(action, ctx)
+	end)
+	return false
+end
+
 ---@param ctx? gleb.ActionContext
 ---@return any
 function M.open(ctx)
@@ -123,6 +160,7 @@ function M.open(ctx)
 		title = "Find Action",
 		items = M.state.rows,
 		match = match_rows,
+		choose = choose_action,
 		mappings = {
 			show_hidden = { char = "<M-A>", func = show_hidden },
 			assign_shortcut = { char = "<M-}>", func = request_assignment },
