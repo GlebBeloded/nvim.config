@@ -18,6 +18,7 @@ local layout = require("gleb.picker.layout")
 ---@field show_secondary? boolean
 ---@field show_category? boolean
 ---@field show_glyph? boolean
+---@field padding? integer
 
 ---@class gleb.picker.RowHighlight
 ---@field col integer
@@ -123,15 +124,19 @@ function M.render(buf, items, width, opts)
 		show_secondary = true,
 		show_category = true,
 		show_glyph = true,
+		padding = 0,
 	})
+	local padding = opts.padding or 0
+	local content_width = math.max(width - 2 * padding, 1)
 
 	local rendered = {}
 	local lines = {}
 	for index, item in ipairs(items) do
-		local row = item.section and render_section(item, width) or render_item(item, width, opts)
-		row.text = truncate(row.text, width)
+		local row = item.section and render_section(item, content_width) or render_item(item, content_width, opts)
+		row.text = string.rep(" ", padding) .. truncate(row.text, content_width)
 		row.highlights = vim.tbl_filter(function(highlight)
-			highlight.end_col = math.min(highlight.end_col, #row.text)
+			highlight.col = highlight.col + padding
+			highlight.end_col = math.min(highlight.end_col + padding, #row.text)
 			return highlight.col < highlight.end_col
 		end, row.highlights)
 		rendered[index] = row

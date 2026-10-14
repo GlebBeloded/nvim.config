@@ -24,6 +24,7 @@ local NORMAL_HEIGHT = 6
 ---@field col integer
 ---@field width integer
 ---@field height integer
+---@field border "rounded"
 
 ---@param columns integer
 ---@return gleb.picker.Layout
@@ -92,6 +93,7 @@ function M.window_config()
 		col = math.max(math.floor((columns - width - 2) / 2), 0),
 		width = width,
 		height = height,
+		border = "rounded",
 	}
 end
 

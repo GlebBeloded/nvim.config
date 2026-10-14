@@ -10,6 +10,7 @@ require("gleb.nvim_debug_log").setup()
 require("gleb.plugins")
 require("gleb.options")
 require("gleb.colors")
+require("gleb.picker")
 require("gleb.keymaps") -- after plugins: needs smart-splits and telescope
 require("gleb.actions").setup({})
 require("gleb.cmp")

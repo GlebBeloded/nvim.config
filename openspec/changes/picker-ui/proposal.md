@@ -37,6 +37,8 @@ Kind: feature
 - `telescope`: removed (requirements retired).
 - `select`: the code-action picker becomes a `picker` consumer. Its keymap, completion-contract and fit-width requirements change.
 - `keymaps`: `<A-F>` live grep and `gr` references run through `picker` sources instead of Telescope.
+- `lsp`: the Go references workflow uses the shared references picker instead of Telescope.
+- `session`: the startup-session-name guarantee survives generic cwd changes after project.nvim is removed.
 - `ai`: 99 search uses its native picker extension.
 
 ## Impact

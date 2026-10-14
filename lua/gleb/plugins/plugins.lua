@@ -223,6 +223,7 @@ local plugins = {
 	"L3MON4D3/LuaSnip", -- Snippet engine
 
 	-- telescope (finder UI)
+	"nvim-mini/mini.nvim", -- Shared picker UI and list sources
 	"nvim-telescope/telescope.nvim",
 	"ahmedkhalf/project.nvim",
 
