@@ -674,6 +674,10 @@ The loop SHALL leave the user's contract to the user: no step changes a requirem
 - **WHEN** `.archon/scripts/blocked.py` runs for a change whose tasks.md `## Blocked` section was committed before a user `## Decision` in its proposal.md, and again after tasks.md gets an uncommitted new Blocked section
 - **THEN** the first run reports `blocked` false and the second reports `blocked` true
 
+#### Scenario: An Unblocked section resolves an earlier Blocked section
+- **WHEN** `.archon/scripts/blocked.py` runs for a change whose tasks.md `## Blocked` section was committed before a `## Unblocked` section in its proposal.md
+- **THEN** it reports `blocked` false
+
 #### Scenario: Verdict ends the build loop on a Blocked section
 - **WHEN** `.archon/scripts/verdict.py` runs on the first red pass for a change whose tasks.md has a `## Blocked` section
 - **THEN** it reports `done` true, `blocked` true and `exhausted` false

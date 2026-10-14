@@ -36,9 +36,11 @@ def git_time(path: pathlib.Path, *args: str) -> float | None:
 
 
 def decided_after(folder: pathlib.Path, path: pathlib.Path) -> bool:
-    """A user `## Decision` committed to proposal.md after `path` was last changed resolves its Blocked section."""
+    """A user `## Decision` (or an auditor `## Unblocked` section) committed to proposal.md after `path` was last
+    changed resolves its Blocked section."""
     proposal = folder / "proposal.md"
-    decided = git_time(proposal, "-G", "^## Decision .user") if proposal.is_file() else None
+    # a user Decision, or the auditor's `## Unblocked` guidance for a blocker that needs no user choice
+    decided = git_time(proposal, "-G", "^## (Decision .user|Unblocked)") if proposal.is_file() else None
     blocked = git_time(path)
     return decided is not None and blocked is not None and decided > blocked
 
