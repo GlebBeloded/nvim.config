@@ -121,7 +121,7 @@ T["find-action: Visual palette preserves the selection"] = function()
 		child.lua_get([[
 		vim.tbl_map(function(item) return item.text end, MiniPick.get_picker_items())
 	]]),
-		{ "Visual Action" }
+		{ "other actions", "Visual Action" }
 	)
 	child.type_keys("<CR>")
 	assert(child.wait("VisualRun ~= nil", 5000), "Visual action did not run")

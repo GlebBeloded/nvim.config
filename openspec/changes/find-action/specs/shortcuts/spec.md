@@ -3,7 +3,7 @@
 ## MODIFIED Requirements
 
 ### Requirement: Shortcut table
-The chain SHALL route every shortcut in the shortcut table (section "Shortcut table" below) as listed, with zellij in `normal` mode and the focused zellij pane running Neovim in normal mode. Cmd+Shift+F SHALL invoke `require("gleb.picker").grep_live`. Cmd+Shift+A SHALL send `\eA`, pass through zellij, arrive as `<M-A>`, and invoke `require("gleb.find_action").open`.
+The chain SHALL route every shortcut in the shortcut table (section "Shortcut table" below) as listed, with zellij in `normal` mode and the focused zellij pane running Neovim in normal mode. Cmd+9 SHALL have no normal-mode mapping. Cmd+Shift+F SHALL invoke `require("gleb.picker").grep_live`. Cmd+Shift+A SHALL send `\eA`, pass through zellij, arrive as `<M-A>`, and invoke `require("gleb.find_action").open`.
 
 #### Scenario: Alacritty bindings match the shortcut table
 - **WHEN** the effective Alacritty bindings (imports followed) are parsed
@@ -27,7 +27,7 @@ The chain SHALL route every shortcut in the shortcut table (section "Shortcut ta
 
 #### Scenario: Neovim mappings match the table
 - **WHEN** the full config is loaded, VeryLazy has fired, and `vim.fn.maparg(<received key>, "n", false, true)` is read for each row
-- **THEN** it matches the row's *Mapping* column, including Cmd+Shift+F invoking `require("gleb.picker").grep_live` and Cmd+Shift+A invoking `require("gleb.find_action").open`
+- **THEN** it matches the row's *Mapping* column except that Cmd+9 has no mapping, including Cmd+Shift+F invoking `require("gleb.picker").grep_live` and Cmd+Shift+A invoking `require("gleb.find_action").open`
 
 ## ADDED Requirements
 

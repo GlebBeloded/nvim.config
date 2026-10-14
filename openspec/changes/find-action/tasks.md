@@ -108,3 +108,21 @@ Scenarios: `ai: Entry mappings are silent`, `ai: Select mode keeps its default b
 - [x] 15.1 Update the cases in `tests/unit/ai/test_entry_keymaps.lua` and run `make test FILE=tests/unit/ai/test_entry_keymaps.lua`, seeing both changed scenarios fail
 - [x] 15.2 Register only the specified silent normal and visual mappings and leave select mode untouched
 - [x] 15.3 Run `make test FILE=tests/unit/ai/test_entry_keymaps.lua` and see both scenarios pass
+
+## Stuck
+
+`find-action: Visual palette preserves the selection` remains red because the approved section header is the initial MiniPick match, so one Enter does not run the following visual action.
+
+Probe output:
+
+```text
+current_has_action = false
+current_ind = 1
+current_is_state_row = false
+current_text = "other actions"
+next_has_action = true
+next_text = "Find Action..."
+```
+
+- Attempt 1 selected the first action from a `MiniPickStart` autocmd. The behavior case passed, but the narrow reference screen changed its highlighted row, so the production edit was reverted.
+- Attempt 2 made a section choose the following action by finding the chosen row in `M.state.rows`. Reference screens passed, but the behavior stayed red because MiniPick returns a copied row (`current_is_state_row = false`), so the production edit was reverted.

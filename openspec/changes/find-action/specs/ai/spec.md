@@ -2,6 +2,21 @@
 
 ## MODIFIED Requirements
 
+### Requirement: 99 plugin setup
+The config SHALL load 99 on `VeryLazy`, configure it with the Pi provider, model `openai-codex/gpt-5.6-sol` and native completion source, then register prompt mappings, entry mappings, and actions. 99 SHALL not depend on Telescope. If 99 is unavailable, setup SHALL return without an error.
+
+#### Scenario: Keymaps exist after VeryLazy
+- **WHEN** the full config is loaded and the `VeryLazy` user event has fired
+- **THEN** normal `<A-9>` is unmapped, normal `<S-CR>` is described as `99: Vibe`, and visual `<A-9>` and `<S-CR>` are described as `99: Visual`
+
+#### Scenario: Missing 99 is tolerated
+- **WHEN** `require("gleb.ai").setup()` is called while the 99 plugin is unavailable
+- **THEN** the call returns without an error
+
+#### Scenario: 99 uses native completion
+- **WHEN** `require("gleb.ai").setup()` configures the available 99 plugin
+- **THEN** its completion source is `native`
+
 ### Requirement: 99 entry keymaps
 The config SHALL register 99 Search and 99 Vibe as actions and leave `<A-9>` unmapped in normal mode. It SHALL keep normal `<S-CR>` and visual `<S-CR>`/`<A-9>` prompt mappings silent, enter insert mode after opening a prompt, and leave select mode unchanged.
 

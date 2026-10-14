@@ -58,7 +58,7 @@ end
 T["find-action: Hidden and unavailable actions start absent"] = function()
 	open_palette()
 
-	eq(item_texts(), { "Visible Action" })
+	eq(item_texts(), { "other actions", "Visible Action" })
 end
 
 T["find-action: Show hidden reveals a separate tier"] = function()

@@ -149,6 +149,7 @@ T["shortcuts: Neovim mappings match the table"] = function()
 	for _, row in ipairs(C.shortcut_rows()) do
 		if row.receives then
 			local callback_mappings = {
+				["Cmd+9"] = "none",
 				["Cmd+Shift+F"] = 'fn `require("gleb.picker").grep_live`',
 				["Cmd+Shift+A"] = 'fn `require("gleb.find_action").open`',
 			}
