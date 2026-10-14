@@ -230,6 +230,17 @@ Every `tests/sandbox/sandbox.sh` command that changes the guest (`up`, `provisio
 - **WHEN** a live process holds `$SANDBOX_STATE/lock` and `tests/sandbox/sandbox.sh e2e` starts with the same stubs, and the holder exits 2 s later
 - **THEN** no `rsync` is logged while the holder lives, stderr says `sandbox: waiting for`, and after the holder exits the run syncs, restores and runs `make -s e2e-local`, then exits 0
 
+### Requirement: The sandbox recovers a VM Lume lost track of
+`tests/sandbox/sandbox.sh` SHALL start the VM as a long-lived `lume run` (no `--detach`) and treat it as running only when `lume get` says so. When its `lume run` process lives but Lume reports it not running for over `SANDBOX_MISMATCH_S` s (default 20, load-scaled), it SHALL kill that process, boot once more, and then give up with an error naming the mismatch.
+
+#### Scenario: sandbox.sh restarts a VM Lume reports stopped while its lume run lives
+- **WHEN** `tests/sandbox/sandbox.sh e2e` runs with stubs where Lume reports the VM stopped while its `lume run` process is alive, and a new `lume run` boots normally
+- **THEN** it kills that process (`pkill -TERM`) before its only `lume run`, which has no `--detach`, and runs the e2e layer
+
+#### Scenario: sandbox.sh gives up when Lume loses track of the VM again after one restart
+- **WHEN** `tests/sandbox/sandbox.sh e2e` runs with the VM stopped and stubs where every `lume run` stays alive while Lume reports the VM stopped
+- **THEN** it runs `lume run`, kills it, runs `lume run` once more, then exits non-zero with `after one restart; giving up` and no e2e layer
+
 ### Requirement: Test harness deadlines scale with host load
 The stack harness deadlines (`M.wait_for` default, zellij CLI retry) and the smoke startup budget SHALL be multiplied by the host load factor `max(1, 1-min load average / CPU count)` from `tests/helpers.lua`. An idle host (load ≤ CPU count) keeps the unscaled values exactly.
 
