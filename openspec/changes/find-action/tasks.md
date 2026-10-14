@@ -16,6 +16,7 @@ Scenarios: `find-action: Find Action opens from its shortcut`, `find-action: Fin
 - Keep a fourteen-row Find Action result area at every width so responsive layouts change fields without changing the approved H1 capacity.
 - Reduce the compact Find Action hint to its two physical keys so it preserves both operations without labels.
 - Style assignment keys and choices with existing semantic highlight groups so the float follows the active colorscheme.
+- Use Cmd+D as the workflow's free assignment because its kitty-protocol key is unbound and remains observable across restart.
 
 ## 2. Render action rows
 Scenarios: `find-action: Rows show action metadata`, `find-action: Rows fall back to Vim notation`, `find-action: Toggle rows show state glyphs`
@@ -55,9 +56,9 @@ Scenarios: `find-action: Wide palette matches reference screenshots`, `find-acti
 
 ## 8. Persist the real-key workflow
 Scenarios: `find-action: Physical Find Action workflow persists an assignment`
-- [ ] 8.1 Write the sandbox test in `tests/e2e/find-action/test_e2e.lua` and run `make e2e FILE=tests/e2e/find-action/test_e2e.lua CASE="Physical Find Action workflow persists an assignment"`, seeing it fail
-- [ ] 8.2 Drive open, search, run, physical-key assignment, reuse, restart, and screenshot comparison through the existing Alacritty/zellij harness
-- [ ] 8.3 Run `make e2e FILE=tests/e2e/find-action/test_e2e.lua CASE="Physical Find Action workflow persists an assignment"` in the sandbox VM and see it pass
+- [x] 8.1 Write the sandbox test in `tests/e2e/find-action/test_e2e.lua` and run `make e2e FILE=tests/e2e/find-action/test_e2e.lua CASE="Physical Find Action workflow persists an assignment"`, seeing it fail
+- [x] 8.2 Drive open, search, run, physical-key assignment, reuse, restart, and screenshot comparison through the existing Alacritty/zellij harness
+- [x] 8.3 Run `make e2e FILE=tests/e2e/find-action/test_e2e.lua CASE="Physical Find Action workflow persists an assignment"` in the sandbox VM and see it pass
 
 ## 9. Extend the shortcut-table route
 Scenarios: `shortcuts: Alacritty bindings match the shortcut table`, `shortcuts: Every Alacritty chars binding can match a key press`, `shortcuts: zellij routes every shortcut as in the table`, `shortcuts: Locked mode passes every shortcut through`, `shortcuts: Neovim receives the key in the table`
