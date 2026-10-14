@@ -164,6 +164,9 @@ local function sandbox_env()
 		CASE = "",
 		E2E_FOCUS = "",
 		E2E = "",
+		-- `make check` exports these for the real sandbox; the stubbed one must not inherit them
+		SANDBOX_START = "1",
+		CHECK_LOCK_HOLDER = "",
 	}
 end
 
