@@ -67,24 +67,41 @@ end
 ---@param callback function
 local function after_pending_filesystem_render(callback)
 	local state = require("neo-tree.sources.manager").get_state("filesystem")
-	if state._ready ~= false then
+	local events = require("neo-tree.events")
+	local render_generation = 0
+	local finished = false
+	local subscription
+	local function finish()
+		if finished then
+			return
+		end
+		finished = true
+		events.unsubscribe(subscription)
 		callback()
-		return
 	end
 
-	local events = require("neo-tree.events")
-	local subscription
+	local function finish_after_debounce()
+		render_generation = render_generation + 1
+		local expected_generation = render_generation
+		vim.defer_fn(function()
+			if expected_generation == render_generation and state._ready ~= false then
+				finish()
+			end
+		end, 120)
+	end
+
 	subscription = {
 		event = events.AFTER_RENDER,
 		handler = function(rendered_state)
 			if rendered_state ~= state then
 				return
 			end
-			events.unsubscribe(subscription)
-			callback()
+			finish_after_debounce()
 		end,
 	}
 	events.subscribe(subscription)
+	finish_after_debounce()
+	vim.defer_fn(finish, 5000)
 end
 
 local function smart_toggle_neotree(source)
