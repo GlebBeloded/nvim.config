@@ -11,6 +11,7 @@ Scenarios: `actions: Feature actions contain no shortcut keys`, `actions: Every 
 - Neo-tree actions carry plugin and source-scope metadata so the global applicator skips them and the adapter composes only the relevant source table.
 - Differ and Codediff retain the explicitly specified next-hunk action while their other plugin defaults are disabled, matching the ownership scenarios without inventing shortcuts.
 - Commit-popup actions resolve a buffer-keyed session so registry callbacks retain each popup's validation, close, and commit context.
+- The prompt-submit action covers both `99` and native completion's final `99prompt` filetype so the second FileType event retains the buffer mapping.
 
 ## 2. Remove unowned built-in and surround defaults
 Scenarios: `actions: Every configured mapping is action-owned`, `keymaps: Unadopted built-in mappings are removed`, `keymaps: Adopted built-in mappings are registry actions`, `keymaps: Surround mappings use registered actions`, `keymaps: [d jumps to previous diagnostic`
@@ -62,9 +63,9 @@ Scenarios: `git: Enter drops comment lines`, `git: q discards popup`
 
 ## 8. Migrate 99 entry and prompt mappings
 Scenarios: `ai: 99 entry mappings come from AI actions`, `ai: Prompt submit comes from a filetype action`, `ai: 99 hardcoded mappings are the only exceptions`, `ai: Keymaps exist after VeryLazy`
-- [ ] 8.1 Write the ownership scenarios in `tests/integration/ai/test_prompt_keys.lua`; fire `VeryLazy`, open the real 99 prompt/window, and query its buffer mappings, run `make test FILE=tests/integration/ai/test_prompt_keys.lua CASE="ai: 99 entry mappings come from AI actions"`, and see it fail
-- [ ] 8.2 Register entry and filetype-scoped submit actions, remove direct AI mapping setup, and keep only 99's hardcoded `q` and `<CR>` mappings on the allowlist
-- [ ] 8.3 Run `make test FILE=tests/integration/ai/test_prompt_keys.lua` and `make test FILE=tests/unit/ai/test_prompt_keymaps.lua` and see them pass
+- [x] 8.1 Write the ownership scenarios in `tests/integration/ai/test_prompt_keys.lua`; fire `VeryLazy`, open the real 99 prompt/window, and query its buffer mappings, run `make test FILE=tests/integration/ai/test_prompt_keys.lua CASE="ai: 99 entry mappings come from AI actions"`, and see it fail
+- [x] 8.2 Register entry and filetype-scoped submit actions, remove direct AI mapping setup, and keep only 99's hardcoded `q` and `<CR>` mappings on the allowlist
+- [x] 8.3 Run `make test FILE=tests/integration/ai/test_prompt_keys.lua` and `make test FILE=tests/unit/ai/test_prompt_keymaps.lua` and see them pass
 
 ## 9. Preserve fold and special-buffer shortcuts through actions
 Scenarios: `folding: Fold keys invoke registered actions`, `autocommands: q closes special buffers through an action`
