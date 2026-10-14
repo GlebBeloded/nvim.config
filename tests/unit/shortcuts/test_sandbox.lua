@@ -23,9 +23,15 @@ local LUME_STUB = [[#!/bin/sh
 echo "lume $*" >>"$GUEST_LOG"
 case "$1" in
 get)
+	empty=$(cat "$SANDBOX_STATE/get-empty" 2>/dev/null || echo 0)
+	[ "$empty" -gt 0 ] && { echo $((empty - 1)) >"$SANDBOX_STATE/get-empty"; exit 1; }
 	status=running
 	[ -f "$SANDBOX_STATE/stopped" ] && status=stopped
 	echo '{"name":"nvim-e2e","status":"'$status'","ipAddress":"192.0.2.1"}'
+	;;
+ls)
+	echo "name status"
+	echo "nvim-e2e running"
 	;;
 stop)
 	left=no
@@ -547,6 +553,22 @@ local function run_and_kill_lines(log)
 	return vim.tbl_filter(function(line)
 		return vim.startswith(line, "lume run ") or vim.startswith(line, "pkill -TERM")
 	end, log)
+end
+
+T["shortcuts: sandbox.sh never pulls an image when lume get blips"] = function()
+	local env = sandbox_env()
+	child.fn.writefile({ "2" }, vim.fs.joinpath(env.SANDBOX_STATE, "get-empty"))
+
+	local run = system({ "tests/sandbox/sandbox.sh", "e2e" }, H.root, env)
+
+	eq(run.code, 0, { fail_reason = run.stderr })
+	eq(run.stderr:find("pulling", 1, true), nil)
+	eq(
+		first_index(read_lines(env.GUEST_LOG), function(line)
+			return vim.startswith(line, "lume pull")
+		end),
+		nil
+	)
 end
 
 T["shortcuts: sandbox.sh restarts a VM Lume reports stopped while its lume run lives"] = function()

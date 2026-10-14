@@ -134,8 +134,20 @@ put() {
 # host dirs/files into the shared folder: plain local copies, then the guest copies from the mount
 stage() { rsync -a --delete "$@"; }
 
+# the VM exists: `lume get` names it, retried, or `lume ls` lists it (a busy Lume can answer `lume get`
+# with nothing for a moment, which must never trigger a ~21 GB pull)
+vm_exists() {
+	local try
+	for try in 1 2 3; do
+		[ -n "$(vm_field name)" ] && return 0
+		lume ls 2>/dev/null | awk -v vm="$VM" '$1 == vm { found = 1 } END { exit !found }' && return 0
+		sleep 2
+	done
+	return 1
+}
+
 create() {
-	[ -n "$(vm_field name)" ] && return
+	vm_exists && return
 	local free
 	free=$(df -g "$HOME" | awk 'NR==2 {print $4}')
 	if [ $((free - IMAGE_GB * 2)) -lt "$MIN_FREE_GB" ]; then
