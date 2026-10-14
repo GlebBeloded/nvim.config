@@ -12,8 +12,9 @@ Flow (fix-bug / work-queue): diagnose → spec → plan → implement ×task →
 Your step: **implement** (one task, or all tasks of a small change). Input: `context.md` (Next task). Output: 1 commit: the task's test and code, its boxes ticked. Do not: start a task the pack does not list, run make quick/check, edit specs, review. Keep output brief. Loop step rules (they override general instructions about searching, skills and sub-agents): use only the skill named above, no sub-agents; search the web only for facts that are in neither the repo nor the installed plugin source; read doc sections you need (`rg -n '^## ' <doc>`, then that range), never whole docs.
 
 Read `$ARTIFACTS_DIR/context.md` first: it holds the `## Loop lessons` section of `docs/workflow.md`,
-the next task, the change artifacts and the files tasks.md names. Open other files only when the task
-needs them; do not survey the repo.
+the next task, the root cause's `## Evidence`, the change artifacts and the files tasks.md names. Open other files only when the task
+needs them; do not survey the repo, and do not re-read plugin source the Evidence already covers (read a cited range only to edit near it).
+Production code (`lua/`) never uses timers or sleeps to win a race with a plugin's internals unless the proposal's `## Decision` allows it.
 
 Change: openspec/changes/$INPUTS.change/ (the pack quotes proposal, specs, design and tasks.md)
 

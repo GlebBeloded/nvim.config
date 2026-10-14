@@ -23,7 +23,12 @@ never edit the change's proposal.md, .openspec.yaml or spec deltas unless a find
 gate lists such edits for the review), or a failing test pins a main-spec scenario this change intentionally
 contradicts: then add a MODIFIED delta restating that scenario to the new behaviour and update the test to the new THEN.
 An edited assertion must still prove its scenario's THEN; replacing a behaviour/callback check with metadata (desc, buffer) is weakening.
-Find the cause before editing.
+Find the cause before editing. When the cause is not obvious from the log line (a race, state you cannot see), run one
+headless probe first (the scratch-file probe rule below) that logs the relevant state, and base the edit on its output.
+At most 2 implementation attempts per pass (an edit plus rerunning the failing test): if the second still fails, revert
+the uncommitted edits, write `## Blocked` in tasks.md with the probe output and both attempts, and stop.
+Production code (`lua/`) never uses timers or sleeps (`vim.defer_fn`, `vim.uv` timers, `vim.wait`) to win a race with a
+plugin's internals unless the proposal's `## Decision` allows it. Do not re-read plugin source the context pack's `## Evidence` covers.
 Read only the latest check log, the `full log:` path in the findings (never a `check-*.log` glob):
 search it with `rg -n 'FAIL in' <log>` and `rg -n -C 3 '<pattern>' <log>` (at most `-C 3`), not the
 whole log. Search code with one specific term per `rg` and a path, never a broad multi-word `rg` over

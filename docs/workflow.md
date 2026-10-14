@@ -57,10 +57,10 @@ input, output and limits). Scripts do everything that needs no judgment:
 | spec | agent | `openspec-propose` (queued change: `openspec-continue-change`) | change folder + JSON |
 | pinned (queued change; fix-bug: spec runs it) | script `pinned.py` | none | main-spec scenarios that name a symbol the change touches (proposal What Changes/Impact, branch diff) with no delta and no `## Impact` line; spec gives each a MODIFIED delta or an Impact line, the spec gate and `gate.py` (a hard rule) run `--check` |
 | plan (only when spec wrote no tasks) | agent, low effort | `superpowers:writing-plans` | `tasks.md` |
-| pack | script `context_pack.py` | none | `context.md`: next task, change, named files, lessons, last failures; `has_task` (false skips implement) |
+| pack | script `context_pack.py` | none | `context.md`: next task, a bug's `## Evidence`, change, named files, lessons, last failures; `has_task` (false skips implement) |
 | implement, once per task (one session for ≤ 4 tasks) | agent, fresh | `superpowers:test-driven-development` | 1 commit per task, ticked |
 | check | script `gate.py` | none | hard rules first (a violation is red at once: no `make check`, no review), then `make check E2E=1` once per pass, strict validate, untested change scenarios (`scenarios.py`, replaces a verify agent), JSON |
-| fix (pass 2-3 only) | agent, fresh | `superpowers:systematic-debugging` (none when every finding is a hard rule) | 1 commit for the listed findings |
+| fix (pass 2-3 only) | agent, fresh | `superpowers:systematic-debugging` (none when every finding is a hard rule) | 1 commit for the listed findings: one headless probe first for a non-obvious failure, at most 2 attempts, then `## Blocked` with the probe output |
 | review | agent, Claude | `superpowers:requesting-code-review` | JSON |
 | verdict, judge, ship, follow-up | scripts | none | JSON, `escalation.md`, merge commit |
 
@@ -68,7 +68,9 @@ Agents run only their own test case and never `make quick` or `make check`; gene
 group runs at most 3 times; a red pass sends only its findings (`verdict.py` `feedback`, which also
 lists hard-rule violations from `integrity.py`) to the next pass's fix step. A fix pass stays on those
 findings: verdict snapshots the change's proposal.md, `.openspec.yaml` and spec deltas, and the next gate
-lists any of them the fix edited in `fix-scope.md`, a finding for the review. The judge keeps the 15 newest
+lists any of them the fix edited in `fix-scope.md`, a finding for the review. Verdict also snapshots the test
+case names: a case the previous pass had that is now in neither the branch nor the base is a hard rule
+(`test added then removed during build`), and the judge asks while it stays gone. The judge keeps the 15 newest
 lessons in `## Loop lessons` (`lessons.py`), a new one replacing a near duplicate; a lesson about loop
 tooling starts with `loop:` and is never kept.
 
@@ -89,12 +91,14 @@ editor.
 
 - The design gate: always for a feature, and for a fix that changes visible UI. The gate message prints
   the absolute path of `preview.html`; nothing opens on the host (no `open`, `osascript` or browser).
-- The judge (`.archon/scripts/escalation.py`) asks only for breaking changes: a plugin added or removed,
+- The judge (`.archon/scripts/escalation.py`) asks only for breaking changes: a test case the build added and then removed,
+  a plugin added or removed,
   a core keymap or the leader changed, behaviour (a spec scenario) removed, a requirement removed and
   re-added, or your `## Decision` text reworded. A scenario or capability renamed together with its
   `<capability>: <title>` tests, or a `## RENAMED Requirements` delta, is no removal; test cases count
   by name, so a lost one is rejected even when others are added. A deleted test file is no loss when
-every case it held still exists by name in another test file.
+every case it held still exists by name in another test file. On ship, review findings marked `[minor]` (or
+  under a `Minor (non-blocking):` heading) are `- note:` lines in `escalation.md`.
 - A `## Blocked` section (one not only of `loop:` items) in a change's proposal.md or tasks.md: `work-queue` stops before spec, and a
   build loop stops at once; you get its text, the change never ships and is re-queued. Answer in
   `## Decision` and delete the `## Blocked` section.
@@ -114,7 +118,8 @@ Known issues and planned work are queued changes in `openspec/changes/`; there i
 `openspec list` shows them, `openspec/changes/archive/` holds the shipped ones.
 
 - Queue an issue: `openspec new change fix-<topic>`, then write `proposal.md` (Why, `Kind: bug|feature`,
-  What Changes, Impact). A proposal alone is enough: `work-queue` completes the spec delta, design and
+  What Changes, Impact; a bug adds `## Evidence`: `file:line` refs or probe output for its root cause, which the
+  context pack hands to implement and fix). A proposal alone is enough: `work-queue` completes the spec delta, design and
   tasks before building. Add a spec delta yourself when the correct behaviour is already clear.
 - Work it: `make queue` (oldest first) or `make queue CHANGE=<id>`; `make drain` works them all.
 - A change with no behaviour or look change (test-only, refactor, follow-up) sets `skip_specs: true` in
