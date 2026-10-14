@@ -378,8 +378,8 @@ end
 ---@param log string[]
 ---@param rerun_code integer
 ---@return table verdict, string reruns, string check_log
-local function rerun_gate(log, rerun_code)
-	local repo = branch_repo({ ["README.md"] = "x" })
+local function rerun_gate(log, rerun_code, files)
+	local repo = branch_repo(vim.tbl_extend("force", { ["README.md"] = "x" }, files or {}))
 	local scratch, artifacts = H.tempdir(child), H.tempdir(child)
 	local env = { ARTIFACTS_DIR = artifacts, PATH = rerun_make(scratch, log, rerun_code) .. ":" .. vim.env.PATH }
 	local out = loop_script("gate.py", repo, env)
@@ -400,6 +400,19 @@ T["loop: Gate reruns a failed readiness case once"] = function()
 	has(check_log, "flaky (failed, then passed on rerun): " .. case)
 	local failed = rerun_gate(log, 1)
 	eq({ failed.green, failed.flaky }, { false, {} })
+end
+
+T["loop: Gate reruns a readiness case whose label carries its error"] = function()
+	local file = "tests/integration/lsp/test_readiness.lua"
+	local label = file .. " | lsp: slow case: ready after 3157 ms, bound 2500 ms"
+	local log = {
+		"FAIL test-readiness 9.0 s",
+		"===== test-readiness =====",
+		"FAIL in " .. label,
+		"check: FAILED: test-readiness (9.0 s)",
+	}
+	local _, reruns = rerun_gate(log, 0, { [file] = 'T["lsp: slow case"] = function() end' })
+	eq(reruns, "test-readiness CASE=lsp: slow case")
 end
 
 T["loop: Gate reruns e2e once after a sandbox failure"] = function()
