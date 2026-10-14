@@ -1,8 +1,11 @@
 """Context pack for one change: everything an agent step needs, gathered once into
 $ARTIFACTS_DIR/context.md so steps read one file instead of exploring the repo (docs/workflow.md,
 Steps). Holds the root cause's `## Evidence` (proposal.md: file:line refs or probe output, so agents
-do not re-read what it covers), the change artifacts, the Loop lessons, the files tasks.md names (capped) and the
-failures of the last gate. Prints {"has_task", "context"}: has_task is false when no task is left
+do not re-read what it covers), the change artifacts, the Loop lessons, the files the next task names and the
+failures of the last gate. Only what the next task needs: a test file keeps only the cases the task names (its
+`<capability>: <scenario>` names), a doc only the `## ` sections the task names (an outline of the rest), other
+files the change names are listed, not inlined, a spec delta keeps the requirements of the task's scenarios, and a proposal's `## Rejected run` that only
+reported a block is dropped once no `## Blocked` section is left (`## Unblocked` stays: it is the answer). Prints {"has_task", "context"}: has_task is false when no task is left
 (or tasks.md is blocked), so the task loop skips its implement session.
 """
 
@@ -11,14 +14,17 @@ import os
 import pathlib
 import re
 
-from blocked import blocks
+from blocked import SECTION as BLOCKED, blocks
 from tasks import next_task
 
 CHANGE = os.environ.get("INPUTS_CHANGE", "")
 ARTIFACTS = pathlib.Path(os.environ.get("ARTIFACTS_DIR", ".")).resolve()
 FILE_LINES = 300  # per referenced file
 TOTAL_LINES = 2500  # all referenced files together
-PATH_RE = re.compile(r"`((?:lua|tests|plugins|terminal|ops|\.archon|docs)/[\w./-]+\.(?:lua|py|sh|md|yaml|json))(?::\d+)?")
+CASE_NAME = re.compile(r"`([\w-]+: [^`]+)`")
+CASE_LINE = re.compile(r'^T\["([^"]+)"\]')
+# repo paths, backticked or bare ("in tests/unit/x/test_x.lua"), and the root init.lua
+PATH_RE = re.compile(r"(?<![\w./-])((?:lua|tests|plugins|terminal|ops|settings|\.archon|docs)/[\w./-]*\w\.(?:lua|py|sh|md|yaml|json)|init\.lua)\b")
 
 
 PROBING = (
@@ -46,30 +52,99 @@ def evidence(change_dir: pathlib.Path) -> str:
     return match.group(1).strip() if match else ""
 
 
-def change_artifacts(change_dir: pathlib.Path) -> list[str]:
+def drop_section(text: str, title: str) -> str:
+    return re.sub(rf"^## {title}\n(?:(?!## ).*\n?)*", "", text, flags=re.MULTILINE)
+
+
+def current_proposal(text: str, blocked: bool) -> str:
+    """proposal.md without a `## Rejected run` whose reasons were only a block that is gone now. `## Unblocked`
+    and `## Decision` stay: they are the answer (the spec step moves it under `## Agent decisions`)."""
+    rejected = re.search(r"^## Rejected run\n(.*?)(?=^## |\Z)", text, re.MULTILINE | re.DOTALL)
+    reasons = [line for line in rejected.group(1).splitlines() if line.startswith("- ")] if rejected else []
+    if not blocked and reasons and reasons[0].startswith("- blocked:"):  # the judge lists reject reasons first
+        return drop_section(text, "Rejected run")
+    return text
+
+
+def delta_requirements(text: str, task: str) -> str:
+    """A spec delta with only the requirements holding a scenario the task names (all when it names none)."""
+    titles = {name.split(": ", 1)[1] for name in CASE_NAME.findall(task)}
+    blocks = re.split(r"(?m)^(?=### Requirement:)", text)
+    named = [b for b in blocks[1:] if set(re.findall(r"(?m)^#### Scenario:\s*(.+?)\s*$", b)) & titles]
+    if not named:
+        return text
+    others = ["- " + b.splitlines()[0].removeprefix("### ") for b in blocks[1:] if b not in named]
+    return "".join([blocks[0], *named]) + ("\nOther requirements (not this task's):\n" + "\n".join(others) if others else "")
+
+
+def change_artifacts(change_dir: pathlib.Path, task: str) -> list[str]:
     parts = []
-    for name in ("proposal.md", "design.md", "tasks.md"):
-        path = change_dir / name
-        if path.exists():
-            parts.append(section(f"{change_dir.name}/{name}", path.read_text()))
+    texts = {name: (change_dir / name).read_text() for name in ("proposal.md", "design.md", "tasks.md") if (change_dir / name).exists()}
+    blocked = any(BLOCKED.search(text) and blocks(text) for text in texts.values())
+    for name, text in texts.items():
+        parts.append(section(f"{change_dir.name}/{name}", current_proposal(text, blocked) if name == "proposal.md" else text))
     for spec in sorted((change_dir / "specs").glob("*/spec.md")):
-        parts.append(section(f"spec delta: {spec.parent.name}", spec.read_text()))
+        parts.append(section(f"spec delta: {spec.parent.name}", delta_requirements(spec.read_text(), task)))
     return parts
 
 
-def referenced_files(change_dir: pathlib.Path) -> list[str]:
+def test_cases(lines: list[str], wanted: set[str]) -> list[str]:
+    """A test file's header (up to its first case) and the top-level cases named in `wanted`."""
+    starts = [i for i, line in enumerate(lines) if CASE_LINE.match(line) or line.startswith("return ")]
+    if not starts:
+        return lines
+    kept = lines[: starts[0]]
+    for a, b in zip(starts, starts[1:] + [len(lines)]):
+        case = CASE_LINE.match(lines[a])
+        if case and case.group(1) in wanted:
+            kept += lines[a:b]
+    omitted = sum(1 for i in starts if (m := CASE_LINE.match(lines[i])) and m.group(1) not in wanted)
+    return kept + ([f"-- … {omitted} other cases not shown (not this task's)"] if omitted else [])
+
+
+def doc_sections(lines: list[str], task: str, path: str) -> list[str]:
+    """The `## ` sections of a doc whose title the task names, and an outline of the others; a doc with no
+    `## ` heading whole (the file cap notes the rest)."""
+    starts = [i for i, line in enumerate(lines) if line.startswith("## ")]
+    if not starts:
+        return lines
+    starts.append(len(lines))
+    kept, outline = lines[: min(starts[0], 5)], []
+    kept += [f"(… {starts[0] - 5} more lines: {path})"] if starts[0] > 5 else []
+    for a, b in zip(starts, starts[1:]):
+        title = lines[a][3:].strip().lower()
+        if title in task or title.rstrip("s") in task:
+            kept += lines[a:b]
+        else:
+            outline.append(f"{lines[a]}  (line {a + 1})")
+    return kept + (["", "Other sections (read a range when needed):", *outline] if outline else [])
+
+
+def referenced_files(change_dir: pathlib.Path, task: str, evidence: str) -> list[str]:
+    """Files the next task (or the Evidence) names, narrowed to what it needs; the other files the change names
+    are listed by path."""
     text = "\n".join(p.read_text() for p in change_dir.glob("*.md"))
-    seen, parts, budget = set(), [], TOTAL_LINES
-    for path in PATH_RE.findall(text):
+    named, wanted = set(PATH_RE.findall(task + "\n" + evidence)), set(CASE_NAME.findall(task))
+    seen, parts, others, budget = set(), [], [], TOTAL_LINES
+    for path in PATH_RE.findall(text) + sorted(named):
         file = pathlib.Path(path)
-        if path in seen or not file.is_file() or budget <= 0:
+        if path in seen or not file.is_file():
             continue
         seen.add(path)
+        if path not in named or budget <= 0:
+            others.append(f"- `{path}`")
+            continue
         lines = file.read_text(errors="replace").splitlines()
+        if path.startswith("tests/") and path.endswith(".lua"):
+            lines = test_cases(lines, wanted)
+        elif path.endswith(".md"):
+            lines = doc_sections(lines, task.lower(), path)
         shown = lines[: min(FILE_LINES, budget)]
         budget -= len(shown)
-        more = f"\n… {len(lines) - len(shown)} more lines" if len(shown) < len(lines) else ""
+        more = f"\n… {len(lines) - len(shown)} more lines: {path}" if len(shown) < len(lines) else ""
         parts.append(section(f"file: {path}", "```\n" + "\n".join(shown) + more + "\n```"))
+    if others:
+        parts.append(section("Other files the change names (not inlined: read a range when needed)", "\n".join(others)))
     return parts
 
 
@@ -98,21 +173,21 @@ def has_task(tasks: pathlib.Path, task: str) -> bool:
 
 def main() -> None:
     change_dir = pathlib.Path("openspec/changes") / CHANGE
-    task = next_task(change_dir / "tasks.md")
+    task = next_task(change_dir / "tasks.md", ARTIFACTS)
     parts = [f"# Context pack: {CHANGE}\n", section("Next task", task or "(none: every task is ticked)")]
     found = evidence(change_dir)
     if found:
         parts.append(section("Evidence", found + "\n\n(root cause, proposal.md: do not re-read plugin source these refs cover)"))
     parts.append(section("Loop lessons", lessons()))
     parts.append(section("Probing", PROBING))
-    parts += change_artifacts(change_dir)
+    parts += change_artifacts(change_dir, task)
     plugins = plugin_sources(change_dir)
     if plugins:
         parts.append(section("Installed plugin sources", plugins))
     failures = last_failures()
     if failures:
         parts.append(section("Last gate failures", failures))
-    parts += referenced_files(change_dir)
+    parts += referenced_files(change_dir, task, found)
     (ARTIFACTS / "change").write_text(CHANGE)  # until_bash gets no INPUTS_* env; tasks.py reads this
     out = ARTIFACTS / "context.md"
     out.write_text("\n".join(parts))

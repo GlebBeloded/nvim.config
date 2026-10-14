@@ -26,6 +26,7 @@ the diff against the conventions in docs/architecture.md and openspec/specs plus
   names match scenario titles; new case names must not already exist under tests/;
 - spec integrity: no scenario removed or weakened;
 - reuse over custom code (an existing plugin or built-in would do);
+- agent decisions: each line under tasks.md `## Agent decisions` is consistent with the spec, design.md and any `## Decision`; one that changes user-visible behaviour beyond them or contradicts them is `[must-fix]`;
 - docs (rule 10): no doc restating code logic, no markdown outside the allowed locations, every
   docs/ file linked from README.md, no dangling relative links, no stale references.
 

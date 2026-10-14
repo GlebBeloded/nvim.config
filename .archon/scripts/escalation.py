@@ -3,44 +3,30 @@ escalation.md; ship-decide never ships it, verdict.py's `blocked`), `reject` whe
 or a hard rule is broken (never shipped; followup.py queues the work), `infra` when the build loop stopped
 on the sandbox failing twice (gate.py's `infra`: the change did not fail, so it is neither rejected nor
 re-queued; the run stops until the host is fixed), `ask` for breaking changes (the user decides), otherwise
-`ship`. `notes` (flaky cases, `loop:` notes) are listed, never decide; the
+`ship`. A `## Stuck` section (a behaviour still red after both attempts, no decision needed) never asks:
+an exhausted loop with it is rejected as any other, pointing at it (the branch's tasks.md keeps its text). `notes` (flaky cases, `loop:` notes) are listed, never decide; the
 last review's findings follow a non-ship decision, so a re-queued change says what to fix; on ship its
-minor (non-blocking) findings are listed as notes for the auditor. A test case the build added and then
+minor (non-blocking) findings are listed as notes for the auditor. An exhausted loop's reasons quote the first
+lines of the last pass's failures (verdict.py `failures`), so the re-queued `## Rejected run` is actionable. A test case the build added and then
 removed (gate.py's record) and still missing is asked about. Writes a
 short escalation.md and prints {decision, escalate, reasons}.
 """
 
 import json
 import os
-import re
 from pathlib import Path
 
-from blocked import blocked_text, loop_notes
+from blocked import blocked_text, loop_notes, stuck_text
+from findings import minor_findings
 from integrity import breaking_changes, hard_rule_violations, still_dropped
 from lessons import persist_lessons
 
 FINDINGS_CHARS = 1500  # indented: no finding line reads as a markdown heading of the proposal
-MINOR_CHARS = 300  # per minor finding listed as a note
-MINOR_MARK = re.compile(r"\[(minor|nit|non-blocking)\]|\b(minor|nit|non-blocking)\b\s*[:)]", re.IGNORECASE)
-MINOR_HEAD = re.compile(r"^\W*(minor|nits?|non-blocking)\b[^:]*:$", re.IGNORECASE)  # "Minor (non-blocking):"
-BLOCKING_HEAD = re.compile(r"^\W*(\[?must[- ]fix|\[?blocking)\b", re.IGNORECASE)
+FAILURE_LINES = 12  # of the last pass's failures, quoted under an exhausted loop's reason
 
 
 def flag(name: str) -> bool:
     return os.environ.get("INPUTS_" + name.upper(), "").strip().lower() == "true"
-
-
-def minor_findings(text: str) -> list[str]:
-    """Review finding lines marked minor or non-blocking (`[minor]`, `minor:`), or under a `Minor …:` heading."""
-    found, under = [], False
-    for line in (raw.strip() for raw in text.splitlines()):
-        if MINOR_HEAD.match(line):
-            under = True
-        elif BLOCKING_HEAD.match(line):
-            under = False
-        elif line and (under or MINOR_MARK.search(line)):
-            found.append(line[:MINOR_CHARS])
-    return found
 
 
 artifacts = Path(os.environ.get("ARTIFACTS_DIR", "."))
@@ -61,6 +47,12 @@ decision = "ask" if blocked else "reject" if reject else "infra" if infra else "
 ask = [f"infra: e2e did not run (the sandbox failed twice, not the change): {infra}"] if decision == "infra" else ask
 
 summary = "\n".join("- " + r for r in reject + ask) or "- none"
+if stuck_text(os.environ.get("INPUTS_CHANGE", "")) and decision != "ship":  # the branch's tasks.md holds its text
+    summary += "\n- stuck: tasks.md `## Stuck` (earlier attempts, kept on the branch: not quoted here)"
+# the last pass's gate failures and hard rules (verdict.py `failures`), so `## Rejected run` says what was red
+failed = [line for line in os.environ.get("INPUTS_FAILURES", "").splitlines() if line.strip()][:FAILURE_LINES]
+if failed and flag("exhausted"):
+    summary += "\n- last failures:\n" + "\n".join("  " + line for line in failed)
 findings = os.environ.get("INPUTS_REVIEW_FINDINGS", "").strip()[:FINDINGS_CHARS]
 if findings and decision != "ship":  # followup.py writes the reasons under `## Rejected run`: say what to fix
     summary += "\n- review findings:\n" + "\n".join("  " + line for line in findings.splitlines())

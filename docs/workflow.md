@@ -63,7 +63,7 @@ input, output and limits). Scripts do everything that needs no judgment:
 | pack | script `context_pack.py` | none | `context.md`: next task, a bug's `## Evidence`, change, named files, lessons, last failures; `has_task` (false skips implement) |
 | implement, once per task (one session for ≤ 4 tasks) | agent, fresh | `superpowers:test-driven-development` | 1 commit per task, ticked |
 | check | script `gate.py` | none | a `## Blocked` change first (red with `blocked`, at once: no `make check`, no review), then hard rules (a violation is red at once: no `make check`, no review), then `make check E2E=1` once per pass (a failed case reruns once unless the change owns it; e2e failing on sandbox infra twice is `infra`: the run stops with no fix pass, no attempt, no reject), strict validate, untested change scenarios (`scenarios.py`, replaces a verify agent), JSON |
-| fix (pass 2-3 only) | agent, fresh | `superpowers:systematic-debugging` (none when every finding is a hard rule) | 1 commit for the listed findings: one headless probe first for a non-obvious failure, at most 2 attempts, then `## Blocked` with the probe output, reverting only non-test edits and committing the red test with it (implement follows the same rule) |
+| fix (pass 2-3 only) | agent, fresh | `superpowers:systematic-debugging` (none when every finding is a hard rule) | 1 commit for the listed findings: one headless probe first for a non-obvious failure, at most 2 attempts, then `## Stuck` with the probe output, reverting only non-test edits and committing the red test with it (implement follows the same rule); after a Stuck pass the `fix-stuck` node runs it at high effort with the Stuck text as its first finding, and deletes the section once green |
 | review | agent, Claude | `superpowers:requesting-code-review` | JSON |
 | verdict, judge, ship, follow-up | scripts | none | JSON, `escalation.md`, merge commit |
 
@@ -106,6 +106,12 @@ every case it held still exists by name in another test file. On ship, review fi
 - A `## Blocked` section (one not only of `loop:` items) in a change's proposal.md or tasks.md: `work-queue` stops before spec, and a
   build loop stops at once; you get its text, the change never ships and is re-queued. Answer in
   `## Decision` and delete the `## Blocked` section.
+- Small design choices the spec leaves open (format details, names, internal APIs, defaults, ordering) are the
+  agent's: one line each under `## Agent decisions` in tasks.md, checked by the review. `## Blocked` is only for a
+  choice beyond the spec or design, a contradiction or a breaking change (question, options, recommendation).
+  A behaviour red after both attempts is `## Stuck`, not Blocked: it never asks and never holds a queued change;
+  implement skips its task and goes on with the later ones, the build loop stays red on it (gate `stuck`), and an
+  exhausted loop is rejected and re-queued with it (tasks.md keeps its text).
 
 Partial or untested work never ships and never asks: a red check, unfinished tasks, an untested
 scenario, a CRITICAL verify finding, a deleted or weakened test, an xfail without a queued change, or

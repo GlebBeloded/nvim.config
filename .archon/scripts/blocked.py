@@ -3,6 +3,10 @@ proposal.md or tasks.md. Then no agent works the change any more: work-queue goe
 blocked gate (before spec), verdict.py ends the build loop and escalation.py asks, quoting it.
 A section whose every item starts with `loop:` is about loop tooling, not the change: it blocks
 nothing and escalation.py lists its items, with $ARTIFACTS_DIR/loop-notes.md lines, as notes.
+`## Stuck` (tasks.md): a behaviour still red after both attempts, no decision needed. It never asks the
+user and never stops a queued change: tasks.py ends the task loop on it, verdict.py keeps the build loop
+red and sends its text to the next fix pass (which deletes it once green), and an exhausted loop is rejected and
+re-queued as any other.
 
 As a script (work-queue `blocked` node): prints {blocked, text} for INPUTS_CHANGE under
 LOOP_CHANGES_DIR (fixtures) or openspec/changes, and writes escalation.md when blocked.
@@ -16,6 +20,7 @@ import subprocess
 import time
 
 SECTION = re.compile(r"^## Blocked\b.*?(?=^## |\Z)", re.MULTILINE | re.DOTALL)
+STUCK = re.compile(r"^## Stuck\b.*?(?=^## |\Z)", re.MULTILINE | re.DOTALL)
 LOOP_ITEM = re.compile(r"^(?:[-*]\s+)?(loop:.*)$", re.IGNORECASE)
 QUOTE_CHARS = 2000
 
@@ -77,6 +82,13 @@ def blocked_text(change: str) -> str:
     """Every blocking section (not only `loop:` items), each prefixed with its file."""
     found = [f"{name}: {section}" for name, section in sections(change) if not loop_items(section)]
     return "\n\n".join(found)[:QUOTE_CHARS]
+
+
+def stuck_text(change: str) -> str:
+    """The change's tasks.md `## Stuck` sections (probe output, attempts), for the next fix pass."""
+    path = changes_dir() / change / "tasks.md"
+    text = path.read_text() if change and path.is_file() else ""
+    return "\n\n".join(m.group(0).strip() for m in STUCK.finditer(text))[:QUOTE_CHARS]
 
 
 def loop_notes(change: str, artifacts: pathlib.Path) -> list[str]:

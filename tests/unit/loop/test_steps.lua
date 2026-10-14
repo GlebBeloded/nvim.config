@@ -166,6 +166,72 @@ T["loop: Trace counts scenarios an active change adds"] = function()
 	)
 end
 
+T["loop: Trace orphan message names the remedy"] = function()
+	local repo = H.tempdir(child)
+	write(repo, {
+		["openspec/specs/x/spec.md"] = "#### Scenario: base",
+		["tests/unit/x/test_x.lua"] = 'local T = MiniTest.new_set()\nT["x: base"] = function() end\nT["x: invented"] = function() end\nreturn T',
+	})
+	local nvim = { vim.v.progpath, "--clean", "--headless", "-u", vim.fs.joinpath(H.root, "tests/minimal_init.lua") }
+	local result = H.system(child, vim.list_extend(nvim, { "-l", vim.fs.joinpath(H.root, "tests/trace.lua") }), repo)
+	local output = result.stdout .. result.stderr
+	eq(result.code, 1, { fail_reason = output })
+	local remedy = "name it after a scenario, or add that scenario to openspec/changes/<change>/specs; never delete it"
+	eq(
+		{ output:find(remedy, 1, true) ~= nil, output:find("x: invented  (tests/unit/x/test_x.lua)", 1, true) ~= nil },
+		{ true, true }
+	)
+end
+
+T["loop: Context pack keeps only what the next task needs"] = function()
+	local repo = H.tempdir(child)
+	local artifacts = H.tempdir(child)
+	local preamble = "# Guide\n" .. string.rep("intro line\n", 8)
+	write(repo, {
+		["docs/workflow.md"] = "## Loop lessons\n\n## The loop\n",
+		["docs/guide.md"] = preamble .. "\n## Module map\n\nmap body\n\n## Startup\n\nstartup body\n",
+		["lua/big.lua"] = "return 'big body'",
+		["tests/unit/x/test_x.lua"] = 'local H = "header"\nT["x: one"] = function()\n\tone_body()\nend\n\nT["x: two"] = function()\n\ttwo_body()\nend\n\nreturn T',
+		["openspec/changes/c/proposal.md"] = "## Why\nw\n\n## Unblocked\nthe answer\n\n## Rejected run\n- blocked: tasks.md: ## Blocked\n- old attempt\n\n## Impact\n- i",
+		["openspec/changes/c/design.md"] = "## Context\nsee `lua/big.lua`",
+		["openspec/changes/c/specs/x/spec.md"] = "## ADDED Requirements\n### Requirement: R1\nr1 text\n#### Scenario: one\n### Requirement: R2\nr2 text\n#### Scenario: other",
+		["openspec/changes/c/tasks.md"] = "## 1. A\nScenarios: `x: one`\n- [ ] 1.1 test in tests/unit/x/test_x.lua, update the `docs/guide.md` module map",
+	})
+	eq(run("context_pack.py", repo, { INPUTS_CHANGE = "c", ARTIFACTS_DIR = artifacts }).code, 0)
+	local pack = table.concat(vim.fn.readfile(vim.fs.joinpath(artifacts, "context.md")), "\n")
+	local found = function(text)
+		return pack:find(text, 1, true) ~= nil
+	end
+	eq({ found('local H = "header"'), found("one_body()"), found("two_body()") }, { true, true, false })
+	eq({ found("map body"), found("startup body"), found("## Startup  (line ") }, { true, false, true })
+	eq(found("more lines: docs/guide.md)"), true, { fail_reason = pack })
+	eq({ found("- `lua/big.lua`"), found("big body") }, { true, false })
+	eq({ found("r1 text"), found("r2 text"), found("- Requirement: R2") }, { true, false, true })
+	eq({ found("## Unblocked\nthe answer"), found("## Rejected run"), found("## Impact") }, { true, false, true })
+end
+
+T["loop: Implement continues past a stuck task"] = function()
+	local repo = H.tempdir(child)
+	local artifacts = H.tempdir(child)
+	local tasks = { "## 1. A\n- [x] 1.1 a" }
+	for i, name in ipairs({ "B", "C", "D", "E" }) do
+		table.insert(tasks, ("## %d. %s\n- [ ] %d.1 %s"):format(i + 1, name, i + 1, name:lower()))
+	end
+	local stuck = "\n\n## Stuck\n- Probe: red\n- Attempt 2: still red"
+	write(repo, {
+		["docs/workflow.md"] = "## Loop lessons\n\n## The loop\n",
+		["openspec/changes/c/tasks.md"] = table.concat(tasks, "\n\n") .. stuck,
+	})
+	local env = { INPUTS_CHANGE = "c", ARTIFACTS_DIR = artifacts }
+	eq(run("tasks.py", repo, env).code, 1)
+	eq(run("context_pack.py", repo, env).code, 0)
+	local pack = table.concat(vim.fn.readfile(vim.fs.joinpath(artifacts, "context.md")), "\n")
+	eq(pack:find("## Next task\n\n## 3. C\n- [ ] 3.1 c\n", 1, true) ~= nil, true, { fail_reason = pack })
+	local rest = table.concat(tasks, "\n\n"):gsub("%[ %] ([345])", "[x] %1")
+	write(repo, { ["openspec/changes/c/tasks.md"] = rest .. stuck })
+	eq(run("tasks.py", repo, env).code, 0)
+end
+
 T["loop: Trace fails on a case name in two test files"] = function()
 	local repo = H.tempdir(child)
 	local case = 'local T = MiniTest.new_set()\nT["x: base"] = function() end\nreturn T'
@@ -365,11 +431,11 @@ T["loop: Implement and fix self-check like the gate before handing back"] = func
 		prompt = prompt:gsub("%s+", " ")
 		eq(prompt:find("`make self-check CHANGE=$INPUTS.change`", 1, true) ~= nil, true, { fail_reason = name })
 		eq(
-			prompt:find("an ordinary bug", 1, true) ~= nil and prompt:find("is fixed, never blocked", 1, true) ~= nil,
+			prompt:find("an ordinary bug", 1, true) ~= nil and prompt:find("is fixed, never stuck", 1, true) ~= nil,
 			true
 		)
 		for _, needle in ipairs({
-			"is fixed, never blocked while an attempt is left (still red after both, block it with that evidence)",
+			"is fixed, never stuck while an attempt is left",
 			"red only from base or loop tooling, not this change: commit anyway and append a `loop: …` line",
 		}) do
 			eq(prompt:find(needle, 1, true) ~= nil, true, { fail_reason = name .. ": " .. needle })

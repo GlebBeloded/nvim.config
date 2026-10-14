@@ -89,14 +89,21 @@ nodes:
         - id: fix # skipped on the first pass; later passes get only the previous verdict's feedback
           command: fix
           idle_timeout: 900000
-          when: "$LOOP_PREV.verdict.output.done == false"
+          when: "$LOOP_PREV.verdict.output.done == false && $LOOP_PREV.verdict.output.stuck == false"
+          skills: [superpowers:systematic-debugging]
+
+        - id: fix-stuck # the same fix pass at high effort when tasks.md has `## Stuck` (both attempts red)
+          command: fix
+          effort: high
+          idle_timeout: 900000
+          when: "$LOOP_PREV.verdict.output.done == false && $LOOP_PREV.verdict.output.stuck == true"
           skills: [superpowers:systematic-debugging]
 
         - id: gate # make check (incl. make trace) + openspec validate --strict + tasks ticked
           script: gate
           runtime: uv
           timeout: 1200000
-          depends_on: [fix]
+          depends_on: [fix, fix-stuck]
           trigger_rule: all_done
           with:
             change: $INPUTS.change
@@ -156,15 +163,17 @@ nodes:
               passed: { type: boolean }
               exhausted: { type: boolean }
               blocked: { type: boolean }
+              stuck: { type: boolean } # tasks.md `## Stuck`: the next pass is fix-stuck (high effort)
               infra: { type: string }
               attempt: { type: integer }
               failed_gates: { type: string }
               feedback: { type: string }
+              failures: { type: string } # gate failures and hard rules, without stuck or review text
               weakened_scenario: { type: boolean }
               weakened_test: { type: boolean }
               notes: { type: string }
               review_findings: { type: string }
-            required: [done, passed, exhausted, blocked, attempt, failed_gates, feedback, weakened_scenario, weakened_test]
+            required: [done, passed, exhausted, blocked, stuck, attempt, failed_gates, feedback, weakened_scenario, weakened_test]
 
   # --- Judge (no AI): ship, ask the user (breaking changes only), or reject ---------------------------
   - id: escalation
@@ -175,6 +184,7 @@ nodes:
       change: $INPUTS.change # a `## Blocked` section is quoted and asked about
       exhausted: $build.output.exhausted
       failed_gates: $build.output.failed_gates
+      failures: $build.output.failures # an exhausted loop's reasons quote its first lines
       weakened_scenario: $build.output.weakened_scenario
       weakened_test: $build.output.weakened_test
       notes: $build.output.notes # flaky cases: listed in reasons, never a reason

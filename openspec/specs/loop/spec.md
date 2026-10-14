@@ -521,19 +521,19 @@ gate.py SHALL check for a blocking `## Blocked` section (blocked.py) before anyt
 - **WHEN** gate.py runs for a change whose tasks.md has a `## Blocked` section, with a `make` stub that records being called
 - **THEN** `green` is false, `blocked` is true, failures quote the Blocked section, make never ran, and the review node's `when:` requires `$gate.output.blocked == false`
 
-### Requirement: Blocked attempts keep the red test
-The fix and implement commands SHALL run one headless probe before editing for a non-obvious failure and cap attempts at 2; when the second fails they SHALL revert only non-test edits, write `## Blocked` with the probe output and both attempts, and commit the failing test with it.
+### Requirement: Stuck attempts keep the red test
+The fix and implement commands SHALL run one headless probe before editing for a non-obvious failure and cap attempts at 2; when the second fails they SHALL revert only non-test edits, write `## Stuck` with the probe output and both attempts, and commit the failing test with it.
 
-#### Scenario: Blocked attempts keep the red test
+#### Scenario: Stuck attempts keep the red test
 - **WHEN** `.archon/commands/fix.md` and `implement.md` are read
-- **THEN** each asks for the probe first, caps attempts at 2, reverts only non-test edits, commits the failing test with tasks.md, and no longer says to revert the uncommitted edits
+- **THEN** each asks for the probe first, caps attempts at 2, reverts only non-test edits, writes `## Stuck` with the probe output and both attempts, commits the failing test with tasks.md, and no longer says to revert the uncommitted edits
 
 ### Requirement: Fix pass probes before it edits
-The fix command SHALL run one headless scratch-file probe logging the relevant state before editing code for a non-obvious failure, allow at most 2 implementation attempts per pass and then write `## Blocked` with the probe evidence, and forbid production timers or sleeps that race a plugin's internals unless the proposal's `## Decision` allows them.
+The fix command SHALL run one headless scratch-file probe logging the relevant state before editing code for a non-obvious failure, allow at most 2 implementation attempts per pass and then write `## Stuck` with the probe evidence, and forbid production timers or sleeps that race a plugin's internals unless the proposal's `## Decision` allows them.
 
 #### Scenario: Fix prompt probes first and caps attempts
 - **WHEN** `.archon/commands/fix.md` is read
-- **THEN** it asks for one headless probe before editing a non-obvious failure, caps attempts at 2 per pass then `## Blocked` with the probe output, and forbids timers or sleeps against plugin internals without a `## Decision`
+- **THEN** it asks for one headless probe before editing a non-obvious failure, caps attempts at 2 per pass then `## Stuck` with the probe output, and forbids timers or sleeps against plugin internals without a `## Decision`
 
 ### Requirement: Bug root cause carries evidence
 The spec prompts SHALL give a bug proposal an `## Evidence` section of `file:line` refs or probe output for its root cause; context_pack.py SHALL carry that section into context.md, and the implement prompt SHALL not re-read plugin source the Evidence covers.
@@ -618,7 +618,7 @@ work-queue SHALL skip the queue-spec step when the adopted change's tasks.md has
 
 #### Scenario: Implement and fix self-check like the gate before handing back
 - **WHEN** the Makefile and `.archon/commands/fix.md` and `implement.md` are read
-- **THEN** `make self-check CHANGE=<id>` runs the hard rules (`integrity.py`, `pinned.py --check`), lint, types, strict validation of the change and `spec_trial.py` (no tests, no e2e), both prompts run it before they commit (committing anyway with a `loop:` note when only base or loop tooling is red), and both fix an ordinary bug instead of writing `## Blocked` while an attempt is left
+- **THEN** `make self-check CHANGE=<id>` runs the hard rules (`integrity.py`, `pinned.py --check`), lint, types, strict validation of the change and `spec_trial.py` (no tests, no e2e), both prompts run it before they commit (committing anyway with a `loop:` note when only base or loop tooling is red), and both fix an ordinary bug instead of writing `## Stuck` while an attempt is left
 
 #### Scenario: Fix keeps the red regression test and review blocks scope creep
 - **WHEN** `.archon/commands/fix.md` and `review.md` are read
@@ -747,6 +747,25 @@ The loop SHALL leave the user's contract to the user: no step changes a requirem
 #### Scenario: Fix and implement prompts send loop tooling failures to loop notes
 - **WHEN** `.archon/commands/fix.md` and `implement.md` are read
 - **THEN** each says to append a `loop: <failure>` line to `$ARTIFACTS_DIR/loop-notes.md`, not tasks.md, and neither says to write `## Blocked` with `loop:`
+
+### Requirement: Stuck work goes to the fix passes
+A `## Stuck` section in tasks.md (a behaviour red after both attempts, no decision needed) SHALL never ask the user nor hold a queued change before spec nor stop later tasks: the build loop stays red on it and sends it to a higher-effort fix pass, and an exhausted loop is rejected and re-queued with it. Agents SHALL decide small design choices themselves and record them under `## Agent decisions`.
+
+#### Scenario: Verdict sends a Stuck section to the fix pass
+- **WHEN** `.archon/scripts/verdict.py` runs on an otherwise green pass for a change whose tasks.md has a `## Stuck` section
+- **THEN** it reports `done`, `passed` and `blocked` false, `stuck` true, `failed_gates` `stuck` and feedback quoting the section, and nvim-deliver's `fix-stuck` node (the fix command at `effort: high`) runs the next pass when `stuck` is true
+
+#### Scenario: A Stuck change never asks and is never held before spec
+- **WHEN** blocked.py, escalation.py (`exhausted` true) and tasks.py run for a change whose tasks.md has a `## Stuck` section
+- **THEN** blocked.py reports `blocked` false, the judge's `decision` is `reject` (no ask) with a `- stuck:` reason pointing at tasks.md's `## Stuck` without quoting it, and tasks.py ends the task loop (the stuck task is the only one)
+
+#### Scenario: Implement continues past a stuck task
+- **WHEN** tasks.py and context_pack.py run for a change of five tasks whose tasks.md gained a `## Stuck` section while its second task was unchecked
+- **THEN** tasks.py exits 1 (tasks are left), the pack's next task is the third, and once every other task is ticked tasks.py exits 0 with the stuck one still unchecked
+
+#### Scenario: Agents decide small choices and record them
+- **WHEN** `.archon/commands/implement.md`, `fix.md` and `review.md` are read
+- **THEN** implement and fix decide small design choices themselves, record each under `## Agent decisions` in tasks.md, and write `## Blocked` only for a choice beyond the spec or design, a contradiction or a breaking change, with the question, options and a recommendation; fix deletes `## Stuck` once green; review checks the Agent decisions against the spec and design
 
 #### Scenario: Judge hands the review findings to the follow-up
 - **WHEN** `.archon/scripts/escalation.py` runs with `weakened_test` true and 3000+ chars of review findings starting with a `## ` line, and again with the findings alone
@@ -885,3 +904,41 @@ The work-queue spec gate (`spec_gate.py`) SHALL print `{ok, log}` and exit 0. A 
 #### Scenario: Agent prompts and context pack point probes at make probe
 - **WHEN** implement.md, fix.md, explore-bug.md and a built context pack are read
 - **THEN** each names `make probe` and says LSP restart and neo-tree renders are async: wait for the end state, not for attachment
+
+### Requirement: Rejections say what to fix
+A red pass SHALL tell the next fix pass, and a rejection the re-queued run, what to fix: verdict.py sends only blocking review findings to fix and never lists a skipped review as a failed gate; an exhausted judge quotes the first lines of the last gate failures; gate.py names dropped cases with their remedy while the judge still never ships them; an `## Unblocked` answer is kept until the spec step records it.
+
+#### Scenario: Verdict sends only blocking review findings to fix
+- **WHEN** verdict.py runs on a pass the review rejected with `[must-fix]` findings (one numbered under a `Minor (non-blocking):` heading) and `[minor]` ones (one continued on a second line), and on a red pass the review skipped
+- **THEN** the first feedback holds both must-fix findings and no minor line (review_findings keeps them all), and the second `failed_gates` has no `review_skipped`
+
+#### Scenario: Exhausted judge quotes the last failures
+- **WHEN** verdict.py runs on a red pass with a make check failure, a `## Stuck` section and review findings, then escalation.py with `exhausted` true and that verdict's `failures`
+- **THEN** the judge's reasons have a `- last failures:` item quoting the first lines of the make check failure, indented, and neither the Stuck text nor the review findings in it
+
+#### Scenario: Gate returns dropped cases to fix with the remedy
+- **WHEN** gate.py runs on attempt 1 after the fix pass dropped a case the previous pass added, then verdict.py on that result, then escalation.py with the case still gone
+- **THEN** failures name the case with "restore these cases under their names, or add a same-titled scenario", the verdict is not done and its `failed_gates` has `rules`, and the judge does not ship
+
+#### Scenario: Rejected run keeps the Unblocked answer
+- **WHEN** followup.py re-queues an active change whose proposal has an `## Unblocked` section and no `## Blocked` one, and queue-spec.md is read
+- **THEN** the proposal keeps the `## Unblocked` section, and queue-spec moves an Unblocked answer it acts on under `## Agent decisions` in tasks.md before deleting it
+
+### Requirement: Agents get narrow context and test rules
+The context pack SHALL hold only what the next task needs, and the prompts and trace SHALL say how a regression test is named: after a scenario of the change, never invented, folded or deleted; a test of mode-dependent behaviour SHALL drive the real mapping with the mode still active.
+
+#### Scenario: Context pack keeps only what the next task needs
+- **WHEN** context_pack.py runs for a change whose next task names one scenario of a test file (unbackticked) with two cases and a section of a doc with a long preamble, whose design names another file, and whose proposal has an `## Unblocked` section and a `## Rejected run` that only reported a block, with no Blocked section left
+- **THEN** the pack holds the test file's header and named case only, the doc's named section, a `more lines` note for the preamble and an outline of the rest, lists the other file by path without its content, keeps only the spec delta requirement of that scenario (the other one named), keeps the `## Unblocked` section and drops the Rejected run
+
+#### Scenario: Trace orphan message names the remedy
+- **WHEN** `tests/trace.lua` runs on a test case named after no scenario
+- **THEN** it exits 1 and the ORPHAN heading says to name it after a scenario or add that scenario to `openspec/changes/<change>/specs`, never delete it
+
+#### Scenario: Fix prompt names regression tests after scenarios
+- **WHEN** `.archon/commands/fix.md` is read
+- **THEN** it names each new regression test `<capability>: <scenario title>`, reusing a scenario's case or adding a same-titled scenario to the change's spec delta, and forbids inventing a case name or folding or renaming a case an earlier pass added
+
+#### Scenario: Implement tests mode-dependent behaviour in the mode
+- **WHEN** `.archon/commands/implement.md` is read
+- **THEN** it says a Visual, Insert or operator-pending behaviour is tested through the real mapping with the mode still active, never after `<Esc>`

@@ -6,16 +6,19 @@ means an adopted branch archived it; every task ticked means the spec step has n
 UI is then read from design.md: true only when it holds a render section, as visible-UI designs do). LOOP_CHANGES_DIR overrides
 openspec/changes (fixtures).
 
-As a script: exits 0 when the per-task loop is done (no unchecked task, a blocking `## Blocked` section, or
-MAX_PASSES implement passes counted in $ARTIFACTS_DIR/task-passes), 1 while a task is left.
+As a script: exits 0 when the per-task loop is done (no unchecked task but stuck ones, a blocking `## Blocked` section, or
+MAX_PASSES implement passes counted in $ARTIFACTS_DIR/task-passes), 1 while a task is left. A `## Stuck` section holds only
+its task: when its text is new, the first unchecked task (the one the last session worked) is recorded in
+$ARTIFACTS_DIR/stuck-tasks.json and skipped, so later tasks still get implemented; the fix passes take the stuck one.
 """
 
+import json
 import os
 import pathlib
 import re
 import sys
 
-from blocked import blocks
+from blocked import STUCK, blocks
 
 UNCHECKED = re.compile(r"^\s*[-*] \[ \] ", re.MULTILINE)
 TASK_HEADING = re.compile(r"^#{2,4} .*$", re.MULTILINE)
@@ -48,15 +51,38 @@ def tick_gate_items(text: str) -> str:
     return GATE_ITEM.sub(lambda m: m.group(0).replace("[ ]", "[x]", 1), text)
 
 
-def next_task(tasks: pathlib.Path) -> str:
-    """The first task section with an unchecked item; for a small change (<= SMALL tasks) every such
-    section, so one implement session does them all."""
+STUCK_TASKS = "stuck-tasks.json"  # {"stuck": tasks.md's Stuck text when recorded, "tasks": headings it holds}
+
+
+def stuck_tasks(text: str, artifacts: pathlib.Path) -> list[str]:
+    """Headings of the tasks a `## Stuck` section holds; a new Stuck text adds the first unchecked task not held yet."""
+    path = artifacts / STUCK_TASKS
+    record = json.loads(path.read_text()) if path.exists() else {"stuck": "", "tasks": []}
+    stuck = "\n\n".join(m.group(0).strip() for m in STUCK.finditer(text))
+    if stuck and stuck != record["stuck"]:
+        left = [sec for sec in task_sections(text) if unchecked(sec) and sec.splitlines()[0] not in record["tasks"]]
+        record = {"stuck": stuck, "tasks": record["tasks"] + [left[0].splitlines()[0]] if left else record["tasks"]}
+        path.write_text(json.dumps(record))
+    return record["tasks"] if stuck else []
+
+
+def without(text: str, headings: list[str]) -> str:
+    """tasks.md text without the task sections under `headings`."""
+    starts = [m.start() for m in TASK_HEADING.finditer(text)] + [len(text)]
+    parts = [text[: starts[0]]] + [text[a:b] for a, b in zip(starts, starts[1:])]
+    return "".join(part for part in parts if part.splitlines()[:1] and part.splitlines()[0] not in headings or part is parts[0])
+
+
+def next_task(tasks: pathlib.Path, artifacts: pathlib.Path | None = None) -> str:
+    """The first task section with an unchecked item, skipping stuck ones; for a small change (<= SMALL tasks)
+    every such section, so one implement session does them all."""
     if not tasks.exists():
         return ""
     text = tasks.read_text()
-    sections = task_sections(text)
-    if 0 < len(sections) <= SMALL:
-        return "\n\n".join(sec for sec in sections if unchecked(sec))
+    small = 0 < len(task_sections(text)) <= SMALL
+    text = without(text, stuck_tasks(text, artifacts)) if artifacts else text
+    if small:
+        return "\n\n".join(sec for sec in task_sections(text) if unchecked(sec))
     starts = [m.start() for m in TASK_HEADING.finditer(text)] + [len(text)]
     for start, end in zip(starts, starts[1:]):
         section = text[start:end]
@@ -71,7 +97,8 @@ def loop_done(tasks: pathlib.Path, artifacts: pathlib.Path) -> bool:
     passes = int(counter.read_text()) + 1 if counter.exists() else 1
     counter.write_text(str(passes))
     text = tasks.read_text() if tasks.exists() else ""
-    return unchecked(text) == 0 or blocks(text) or passes >= MAX_PASSES
+    left = without(text, stuck_tasks(text, artifacts))
+    return unchecked(left) == 0 or blocks(text) or passes >= MAX_PASSES
 
 
 def plan_needed(tasks: pathlib.Path) -> bool:

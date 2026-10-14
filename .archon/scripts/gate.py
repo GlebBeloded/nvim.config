@@ -76,7 +76,10 @@ def hard_rules() -> list[str]:
         dropped = record_dropped(artifacts)
     except subprocess.CalledProcessError:  # not a git repo, or no base branch: nothing to compare
         reasons, dropped = [], []
-    reasons += ["test added then removed during build: " + ", ".join(dropped)] if dropped else []
+    # instructable for the next fix pass; the judge still never ships while one stays gone (still_dropped)
+    delta = f"openspec/changes/{change}/specs" if change else "the change's spec delta"
+    remedy = f" (restore these cases under their names, or add a same-titled scenario to {delta}; never fold or rename them)"
+    reasons += ["test added then removed during build: " + ", ".join(dropped) + remedy] if dropped else []
     # main-spec scenarios the proposal or the branch diff touches with no delta and no Impact line
     pins = pinned(change) if change else []
     return reasons + [f"pinned scenario with no MODIFIED delta or Impact line: {p}" for p in pins]

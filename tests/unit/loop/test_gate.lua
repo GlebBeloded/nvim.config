@@ -636,18 +636,19 @@ T["loop: Fix prompt probes first and caps attempts"] = function()
 	local fix = read(vim.fs.joinpath(H.root, ".archon/commands/fix.md")):gsub("%s+", " ")
 	has(fix, "run one headless probe first (the scratch-file probe rule below) that logs the relevant state")
 	has(fix, "At most 2 implementation attempts per pass")
-	has(fix, "write `## Blocked` in tasks.md with the probe output and both attempts")
+	has(fix, "write (or replace) `## Stuck` in tasks.md with the probe output and both attempts")
 	has(fix, "never uses timers or sleeps (`vim.defer_fn`, `vim.uv` timers, `vim.wait`) to win a race")
 	has(fix, "unless the proposal's `## Decision` allows it")
 end
 
-T["loop: Blocked attempts keep the red test"] = function()
+T["loop: Stuck attempts keep the red test"] = function()
 	for _, name in ipairs({ "fix.md", "implement.md" }) do
 		local prompt = read(vim.fs.joinpath(H.root, ".archon/commands", name)):gsub("%s+", " ")
 		has(prompt, "run one headless probe first (the scratch-file probe rule below) that logs the relevant state")
 		has(prompt, "At most 2 implementation attempts per")
 		has(prompt, "revert only the non-test edits (`lua/` and other code; keep the new red")
-		has(prompt, "commit the failing test together with tasks.md (a blocked change never ships)")
+		has(prompt, "commit the failing test together with tasks.md")
+		has(prompt, "`## Stuck` in tasks.md with the probe output and both attempts")
 		eq(prompt:find("revert the uncommitted edits", 1, true), nil)
 	end
 end
@@ -774,6 +775,92 @@ T["loop: Judge notes minor review findings on ship"] = function()
 	has(escalation, "- note: review (minor): 1. [minor] lua/gleb/keymaps.lua:90 reads a private neo-tree field.")
 	has(escalation, "- note: review (minor): 2. Rule 4.3: magic number at lua/gleb/keymaps.lua:91.")
 	eq(escalation:find("No blocking findings", 1, true), nil)
+end
+
+T["loop: Verdict sends only blocking review findings to fix"] = function()
+	local repo = branch_repo({ ["README.md"] = "x" })
+	local artifacts = H.tempdir(child)
+	local findings = table.concat({
+		"1. [must-fix] lua/gleb/a.lua:3 drops the selection.",
+		"2. [minor] lua/gleb/a.lua:9 magic number,",
+		"   also at line 12.",
+		"Minor (non-blocking):",
+		"3. naming nit in tests/unit/a/test_a.lua.",
+		"4. [must-fix] lua/gleb/a.lua:20 leaks the autocmd.",
+	}, "\n")
+	local env = verdict_env(artifacts, { INPUTS_APPROVE = "false", INPUTS_REVIEW_FINDINGS = findings })
+	local rejected = loop_script("verdict.py", repo, env)
+	has(rejected.feedback, "review: 1. [must-fix] lua/gleb/a.lua:3 drops the selection.")
+	has(rejected.feedback, "4. [must-fix] lua/gleb/a.lua:20 leaks the autocmd.")
+	local leaked = vim.tbl_map(function(minor)
+		return rejected.feedback:find(minor, 1, true) ~= nil
+	end, { "magic number", "also at line 12", "naming nit" })
+	eq(leaked, { false, false, false }, { fail_reason = rejected.feedback })
+	eq(rejected.review_findings, findings)
+	local skipped = loop_script("verdict.py", repo, verdict_env(artifacts, { INPUTS_GREEN = "false" }))
+	eq(skipped.failed_gates, "tests")
+end
+
+T["loop: Exhausted judge quotes the last failures"] = function()
+	local repo = branch_repo({
+		["README.md"] = "x",
+		["openspec/changes/c/tasks.md"] = "## 1. T\n- [ ] 1.1 x\n\n## Stuck\n- Probe: stuck probe text",
+	})
+	local failures = "make check is red:\nFAIL trace\n  actions: Invented name  (tests/unit/a/test_a.lua)"
+	local red = verdict_env(H.tempdir(child), {
+		INPUTS_CHANGE = "c",
+		INPUTS_GREEN = "false",
+		INPUTS_ATTEMPT = "3",
+		INPUTS_FAILURES = failures,
+		INPUTS_APPROVE = "false",
+		INPUTS_REVIEW_FINDINGS = "1. [must-fix] review text",
+	})
+	local verdict = loop_script("verdict.py", repo, red)
+	eq(verdict.exhausted, true)
+	local env = { ARTIFACTS_DIR = H.tempdir(child), INPUTS_CHANGE = "c", INPUTS_EXHAUSTED = "true" }
+	env =
+		vim.tbl_extend("force", env, { INPUTS_FAILED_GATES = verdict.failed_gates, INPUTS_FAILURES = verdict.failures })
+	local judge = loop_script("escalation.py", repo, env)
+	eq(judge.decision, "reject")
+	has(judge.reasons, "- last failures:\n  make check is red:\n  FAIL trace\n    actions: Invented name")
+	eq({ judge.reasons:find("stuck probe text", 1, true), judge.reasons:find("review text", 1, true) }, { nil, nil })
+	local workflow = read(vim.fs.joinpath(H.root, ".archon/workflows/nvim-deliver/nvim-deliver.yaml"))
+	has(workflow, "failures: $build.output.failures")
+end
+
+T["loop: Gate returns dropped cases to fix with the remedy"] = function()
+	local repo = branch_repo({ ["tests/unit/a/test_a.lua"] = 'T["a: old"] = function() end' })
+	write(repo, { ["tests/unit/a/test_a.lua"] = 'T["a: old"] = function() end\nT["a: new"] = function() end' })
+	local artifacts = H.tempdir(child)
+	local bin = fake_tool(H.tempdir(child), "make", "exit 0")
+	local env = { ARTIFACTS_DIR = artifacts, PATH = bin .. ":" .. vim.env.PATH }
+	loop_script("verdict.py", repo, verdict_env(artifacts))
+	write(repo, { ["tests/unit/a/test_a.lua"] = 'T["a: old"] = function() end' })
+	local gate = loop_script("gate.py", repo, env)
+	has(gate.failures, "during build: a: new (restore these cases under their names, or add a same-titled scenario")
+	local red = verdict_env(artifacts, { INPUTS_GREEN = "false", INPUTS_FAILURES = gate.failures })
+	local verdict = loop_script("verdict.py", repo, red)
+	eq({ verdict.done, verdict.failed_gates }, { false, "tests,rules" }, { fail_reason = verdict.feedback })
+	has(verdict.feedback, "restore these cases under their names")
+	local judge = loop_script("escalation.py", repo, { ARTIFACTS_DIR = artifacts })
+	eq(judge.decision ~= "ship", true, { fail_reason = judge.reasons })
+end
+
+T["loop: Fix prompt names regression tests after scenarios"] = function()
+	local fix = read(vim.fs.joinpath(H.root, ".archon/commands/fix.md")):gsub("%s+", " ")
+	has(fix, "Name each new regression test `<capability>: <scenario title>`")
+	has(
+		fix,
+		"add a same-titled scenario (ADDED, or MODIFIED restating a main-spec one) to openspec/changes/$INPUTS.change/specs"
+	)
+	has(fix, "never invent a case name the specs lack, and never fold or rename a case an earlier pass added")
+end
+
+T["loop: Implement tests mode-dependent behaviour in the mode"] = function()
+	local implement = read(vim.fs.joinpath(H.root, ".archon/commands/implement.md")):gsub("%s+", " ")
+	has(implement, "Mode-dependent behaviour (Visual, Insert, operator-pending)")
+	has(implement, "through the real mapping with the mode still active")
+	has(implement, "never after `<Esc>`")
 end
 
 return T
