@@ -72,9 +72,9 @@ Scenarios: `picker: Dashboard opens shared list pickers`
 
 ## 13. Preserve startup session names after cwd changes
 Scenarios: `session: project cwd change preserves the startup session name`
-- [ ] 13.1 After removing project.nvim, run `make test FILE=tests/integration/session/test_session.lua CASE="project cwd change preserves the startup session name"` and see the plugin-specific setup fail
-- [ ] 13.2 Drive the same cwd change with Neovim's built-in directory command, keeping the session assertion unchanged
-- [ ] 13.3 Run `make test FILE=tests/integration/session/test_session.lua CASE="project cwd change preserves the startup session name"` and see it pass
+- [x] 13.1 After removing project.nvim, run `make test FILE=tests/integration/session/test_session.lua CASE="project cwd change preserves the startup session name"` and see the plugin-specific setup fail
+- [x] 13.2 Drive the same cwd change with Neovim's built-in directory command, keeping the session assertion unchanged
+- [x] 13.3 Run `make test FILE=tests/integration/session/test_session.lua CASE="project cwd change preserves the startup session name"` and see it pass
 
 ## 14. Use 99 native completion
 Scenarios: `ai: Keymaps exist after VeryLazy`, `ai: Missing 99 is tolerated`, `ai: 99 uses native completion`
