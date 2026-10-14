@@ -28,3 +28,6 @@ Probe output: `literal_leader_hit=false`, `actual_leader_hit=false` (the second 
 
 - Attempt 1 removed the four `<D-*>` overrides; all four scenarios still failed because `nvim_input()` sent literal `<leader>` notation instead of the configured leader key.
 - Attempt 2 expanded `<leader>` before input; all four scenarios errored with `Wrong number of arguments: expecting 1 but got 2` because `string.gsub()` returned both the expanded string and replacement count to the RPC call.
+
+## Unblocked
+The Blocked section is a test-harness slip, not a user decision: attempt 2's expansion was right, but `string.gsub()` returns two values, so pass `(s:gsub(...))` (parenthesized) or `vim.keycode`/`nvim_replace_termcodes` output to `nvim_input`. Remove the `## Blocked` section from tasks.md, keep the `<D-*>` removal, and make the four default-key scenarios pass.
