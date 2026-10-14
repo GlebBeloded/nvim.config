@@ -26,9 +26,13 @@ end
 
 T["run: Run executes cargo run when Cargo.lock is readable"] = function()
 	child.lua([[
-		local cargo_dir = vim.fn.tempname()
-		vim.fn.mkdir(cargo_dir, "p")
-		vim.fn.chdir(cargo_dir)
+		GitRoot = vim.fn.tempname()
+		vim.fn.mkdir(GitRoot .. "/crate", "p")
+		GitRoot = vim.fn.resolve(GitRoot)
+		CargoDir = GitRoot .. "/crate"
+		vim.fn.system({ "git", "init", GitRoot })
+		assert(vim.v.shell_error == 0)
+		vim.fn.chdir(CargoDir)
 		require("gleb.run")
 		RunCommands = {}
 		vim.cmd = function(command) table.insert(RunCommands, command) end
@@ -36,7 +40,7 @@ T["run: Run executes cargo run when Cargo.lock is readable"] = function()
 		vim.api.nvim_cmd({ cmd = "Run" }, {})
 	]])
 
-	eq(child.lua_get("RunCommands"), { "!cd .;cargo run" })
+	eq(child.lua_get("RunCommands"), { "!cd " .. child.lua_get("GitRoot") .. ";cargo run" })
 end
 
 T["run: Run opens the browser when index.html is readable"] = function()

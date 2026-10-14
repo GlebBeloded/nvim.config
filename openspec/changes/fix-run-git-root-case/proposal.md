@@ -13,3 +13,6 @@ None. `skip_specs: true`.
 ## Impact
 - Code: `tests/unit/run/test_run.lua`.
 - Plugins: none. Core keymaps: unchanged.
+- `run: Run ignores a directory without a supported project marker` still holds because this change only strengthens the Cargo test fixture.
+- `run: Run executes cargo run when Cargo.lock is readable` still holds because the expected behavior is unchanged; the test will now prove that execution starts at the git root.
+- `run: Run opens the browser when index.html is readable` still holds because browser dispatch and its test fixture are unchanged.
