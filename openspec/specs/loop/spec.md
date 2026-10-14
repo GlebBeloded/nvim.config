@@ -582,6 +582,10 @@ work-queue SHALL skip the queue-spec step when the adopted change's tasks.md has
 - **WHEN** `.archon/commands/fix.md` and `.archon/commands/implement.md` are read
 - **THEN** both say fixing a mechanical error in the agent's own test or harness code and rerunning is not an attempt
 
+#### Scenario: Fix prompt shortens an overlong delta requirement
+- **WHEN** `.archon/commands/fix.md` is read
+- **THEN** it treats a "Requirement text is very long" validate finding as a fix to this change's spec delta and reruns `spec_trial.py`
+
 #### Scenario: Adopted change with every task ticked skips the spec step
 - **WHEN** `tasks.py --adopted-state` runs for change `c` with all tasks ticked (with a design.md holding a render section, with a technical design.md, without one, and with a proposal holding a `## Rejected run` section), with one unticked, with no tasks.md and with no change folder
 - **THEN** it prints `tasks_done` true only for the ticked ones without a rejected run, `visible_ui` true only with the render-holding design.md and `archived` true only without the folder; work-queue's `complete` requires `tasks_done == false` and queue-spec reads adopt-notes.md only if it exists
