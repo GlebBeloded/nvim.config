@@ -65,7 +65,7 @@ return signs]]
 local COMPETING_LINE_2_SIGNS_LUA = [[
 local gitsigns_namespaces = {}
 for name, ns in pairs(vim.api.nvim_get_namespaces()) do
-	if name:find("^gitsigns_") then gitsigns_namespaces[ns] = true end
+	if name:find("^gitsigns") then gitsigns_namespaces[ns] = true end
 end
 local signs = {}
 for _, mark in ipairs(vim.api.nvim_buf_get_extmarks(0, -1, { 1, 0 }, { 1, -1 }, { details = true, type = "sign" })) do
