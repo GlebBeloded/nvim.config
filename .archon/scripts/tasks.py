@@ -54,16 +54,32 @@ def tick_gate_items(text: str) -> str:
 STUCK_TASKS = "stuck-tasks.json"  # {"stuck": tasks.md's Stuck text when recorded, "tasks": headings it holds}
 
 
+STUCK_HEADING = re.compile(r"^#{2,4} Stuck\b[^\n]*\n\s*(?!#)\S", re.MULTILINE)  # a Stuck section with a body
+NUMBERED = re.compile(r"^#{2,4} \d+\..*$", re.MULTILINE)
+
+
 def stuck_tasks(text: str, artifacts: pathlib.Path) -> list[str]:
-    """Headings of the tasks a `## Stuck` section holds; a new Stuck text adds the first unchecked task not held yet."""
+    """Headings of the tasks Stuck sections hold. A Stuck section nested under a task (`###`), or a `## Stuck`
+    right after the first unchecked task, holds that task; any other holds the first unchecked task not held yet. Recorded in $ARTIFACTS_DIR/stuck-tasks.json (run 69db7bfa: task 3's
+    `### Stuck` went unseen and every later pass was handed the stuck task again)."""
     path = artifacts / STUCK_TASKS
     record = json.loads(path.read_text()) if path.exists() else {"stuck": "", "tasks": []}
+    sections = {sec.splitlines()[0]: sec for sec in task_sections(text)}
+    open_tasks = [h for h, sec in sections.items() if unchecked(sec) and NUMBERED.match(h)]
+    held: list[str] = []  # attributed afresh on every call (stable), then joined with the record
+    for mark in STUCK_HEADING.finditer(text):
+        left = [h for h in open_tasks if h not in held]
+        above = [m.group(0) for m in NUMBERED.finditer(text, 0, mark.start())]
+        nested = not mark.group(0).startswith("## ")  # `### Stuck` inside a task's own section
+        heading = above[-1] if above and above[-1] in left and (nested or above[-1] == left[0]) else ""
+        heading = heading or (left[0] if left else "")
+        if heading:
+            held.append(heading)
+    held += [h for h in record["tasks"] if h not in held and h in open_tasks]
     stuck = "\n\n".join(m.group(0).strip() for m in STUCK.finditer(text))
-    if stuck and stuck != record["stuck"]:
-        left = [sec for sec in task_sections(text) if unchecked(sec) and sec.splitlines()[0] not in record["tasks"]]
-        record = {"stuck": stuck, "tasks": record["tasks"] + [left[0].splitlines()[0]] if left else record["tasks"]}
-        path.write_text(json.dumps(record))
-    return record["tasks"] if stuck else []
+    if held != record["tasks"] or stuck != record["stuck"]:
+        path.write_text(json.dumps({"stuck": stuck, "tasks": held}))
+    return held if STUCK_HEADING.search(text) else []
 
 
 def without(text: str, headings: list[str]) -> str:
