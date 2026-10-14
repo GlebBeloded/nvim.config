@@ -506,4 +506,119 @@ T["shortcuts: sandbox.sh down never stops the VM while another checkout holds th
 	eq(child.fn.isdirectory(dir), 0)
 end
 
+--- `make` stub for tests/check.sh: `deps` passes; every other target appends "<target> start
+--- <held>" and "<target> end" to $MAKE_LOG, held = whether $CHECK_LOCK_DIR exists. Target `slow`
+--- lasts 2 s; `nested` runs tests/check.sh `inner` with CHECK_LOCK_TIMEOUT=1 and returns its code.
+local MAKE_STUB = [[#!/bin/sh
+target=$2
+[ "$target" = deps ] && exit 0
+held=no
+[ -d "$CHECK_LOCK_DIR" ] && held=yes
+echo "$target start $held" >>"$MAKE_LOG"
+rc=0
+case "$target" in
+slow) sleep 2 ;;
+nested) CHECK_LOCK_TIMEOUT=1 "$CHECK_SH" inner >>"$MAKE_LOG.nested" 2>&1 || rc=$? ;;
+esac
+echo "$target end" >>"$MAKE_LOG"
+exit $rc
+]]
+
+--- Env for tests/check.sh with the `make` stub, a temp check lock and no inherited lock holder
+--- (the suite itself may run under `make check`).
+---@return table<string, string>
+local function check_env()
+	local bin = tempdir()
+	write_executable(vim.fs.joinpath(bin, "make"), MAKE_STUB)
+	return {
+		MAKE = vim.fs.joinpath(bin, "make"),
+		MAKE_LOG = vim.fs.joinpath(bin, "make.log"),
+		CHECK_SH = vim.fs.joinpath(H.root, "tests/check.sh"),
+		CHECK_LOCK_DIR = vim.fs.joinpath(tempdir(), "check-lock"),
+		CHECK_LOCK = "1",
+		CHECK_LOCK_HOLDER = "",
+		CHECK_LOCK_POLL = "0.2",
+	}
+end
+
+--- Starts tests/check.sh `targets` in the background; `name` keys it for wait_locker.
+---@param name string
+---@param targets string[]
+---@param env table<string, string>
+---@return integer pid
+local function start_check(name, targets, env)
+	local cmd = vim.list_extend({ "tests/check.sh" }, targets)
+	return child.lua_get(
+		[[(function(name, cmd, cwd, env)
+			_G.lockers = _G.lockers or {}
+			_G.lockers[name] = vim.system(cmd, { cwd = cwd, env = env, text = true })
+			return _G.lockers[name].pid
+		end)(...)]],
+		{ name, cmd, H.root, env }
+	)
+end
+
+T["shortcuts: make check holds the check lock for its whole run"] = function()
+	local env = check_env()
+
+	local run = system({ "tests/check.sh", "a", "b", "+c" }, H.root, env)
+
+	eq(run.code, 0, { fail_reason = run.stdout .. run.stderr })
+	local starts = vim.tbl_filter(function(line)
+		return line:find(" start ", 1, true) ~= nil
+	end, read_lines(env.MAKE_LOG))
+	table.sort(starts)
+	eq(starts, { "a start yes", "b start yes", "c start yes" })
+	eq(child.fn.isdirectory(env.CHECK_LOCK_DIR), 0)
+end
+
+T["shortcuts: A second make check waits for the check lock and says so"] = function()
+	local env = check_env()
+	local holder = start_check("holder", { "slow" }, env)
+	wait_owner(env.CHECK_LOCK_DIR, holder)
+
+	local run = system({ "tests/check.sh", "a" }, H.root, env)
+
+	eq(run.code, 0, { fail_reason = run.stdout .. run.stderr })
+	local wait_line = ("check: waiting for the check lock held by pid %d ("):format(holder)
+	eq(run.stderr:find(wait_line, 1, true) ~= nil, true, { fail_reason = run.stderr })
+	eq(wait_locker("holder").code, 0)
+	local log = read_lines(env.MAKE_LOG)
+	local slow_end = first_index(log, function(line)
+		return line == "slow end"
+	end)
+	local a_start = first_index(log, function(line)
+		return vim.startswith(line, "a start")
+	end)
+	eq({ slow_end ~= nil, a_start ~= nil }, { true, true })
+	eq(slow_end < a_start, true, { fail_reason = table.concat(log, "\n") })
+end
+
+T["shortcuts: A make check run inside a make check does not wait for its own lock"] = function()
+	local env = check_env()
+
+	local run = system({ "tests/check.sh", "nested" }, H.root, env)
+
+	local nested = table.concat(read_lines(env.MAKE_LOG .. ".nested"), "\n")
+	eq(run.code, 0, { fail_reason = run.stdout .. run.stderr .. nested })
+	eq(nested:find("waiting for", 1, true), nil, { fail_reason = nested })
+	eq(vim.list_contains(read_lines(env.MAKE_LOG), "inner start yes"), true)
+	eq(child.fn.isdirectory(env.CHECK_LOCK_DIR), 0)
+end
+
+T["shortcuts: CHECK_LOCK=0 runs make check without the check lock"] = function()
+	local env = check_env()
+	local holder = start_locker("holder", env.CHECK_LOCK_DIR, 4)
+	wait_owner(env.CHECK_LOCK_DIR, holder.pid)
+	env.CHECK_LOCK = "0"
+
+	local run = system({ "tests/check.sh", "a" }, H.root, env)
+
+	eq(run.code, 0, { fail_reason = run.stdout .. run.stderr })
+	eq(run.stderr:find("waiting for", 1, true), nil, { fail_reason = run.stderr })
+	eq(locker_time(holder.log, "left"), nil)
+	eq(lock_owner(env.CHECK_LOCK_DIR), holder.pid)
+	eq(wait_locker("holder").code, 0)
+end
+
 return T

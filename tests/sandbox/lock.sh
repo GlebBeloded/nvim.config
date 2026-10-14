@@ -1,15 +1,18 @@
 # shellcheck shell=bash
 # Host-side mkdir lock that serializes sandbox.sh commands changing the guest
-# across checkouts (docs/testing.md "Sandbox VM"). Sourced; call `sandbox_lock <dir>`:
-# it returns once this process owns <dir> and releases it when the process exits.
+# across checkouts (docs/testing.md "Sandbox VM"); tests/check.sh takes the check lock with it.
+# Sourced; call `sandbox_lock <dir>` (or `lock_wait <dir> <poll> <timeout>` with LOCK_PREFIX and
+# LOCK_NAME set): it returns once this process owns <dir> and releases it when the process exits.
 #   <dir>/owner   "<pid> <start time>" and the owner's checkout ($ROOT)
 #   SANDBOX_LOCK_POLL     s between attempts while another process holds it (default 1)
 #   SANDBOX_LOCK_TIMEOUT  s to wait before giving up (default 3600)
 # A lock whose owner is gone (pid not running, or reused by a process started later) is reclaimed.
 
 LOCK_HELD= # the dir this process owns, released on exit
+LOCK_PREFIX=sandbox      # the stderr prefix; a caller may set both after sourcing
+LOCK_NAME="sandbox lock" # what the waiting line calls the lock
 
-lock_log() { printf 'sandbox: %s\n' "$*" >&2; }
+lock_log() { printf '%s: %s\n' "$LOCK_PREFIX" "$*" >&2; }
 
 # start time of pid $1 (empty if it does not run); with the pid it identifies the process
 lock_started() { ps -o lstart= -p "$1" 2>/dev/null; }
@@ -46,8 +49,9 @@ lock_reclaim() {
 	rm -rf "$stale"
 }
 
+# $1 dir, $2 s between attempts, $3 s to wait before giving up
 lock_wait() {
-	local dir=$1 poll=${SANDBOX_LOCK_POLL:-1} timeout=${SANDBOX_LOCK_TIMEOUT:-3600}
+	local dir=$1 poll=$2 timeout=$3
 	local deadline=$((SECONDS + timeout)) said=
 	until lock_try "$dir"; do
 		if ! lock_owner_alive "$dir"; then
@@ -55,7 +59,7 @@ lock_wait() {
 			continue
 		fi
 		if [ -z "$said" ]; then
-			lock_log "waiting for sandbox lock held by $(lock_holder "$dir") at $dir"
+			lock_log "waiting for $LOCK_NAME held by $(lock_holder "$dir") at $dir"
 			said=1
 		fi
 		if [ $SECONDS -gt $deadline ]; then
@@ -89,5 +93,5 @@ lock_held_by_me() {
 
 sandbox_lock() {
 	mkdir -p "$(dirname "$1")"
-	lock_wait "$1"
+	lock_wait "$1" "${SANDBOX_LOCK_POLL:-1}" "${SANDBOX_LOCK_TIMEOUT:-3600}"
 }

@@ -1,13 +1,43 @@
-#!/usr/bin/env sh
+#!/usr/bin/env bash
 # Run make targets concurrently: one status line per target as it finishes,
 # then the full log of every failed target. Exit 1 if any failed.
 #   tests/check.sh lint types test +smoke-startup
 # A target prefixed with "+" runs alone after all the others (timing-sensitive).
+# The whole run holds the host-wide check lock (tests/sandbox/lock.sh), so checks of other
+# checkouts on this host wait instead of skewing each other's timing layers:
+#   CHECK_LOCK=0        run without it
+#   CHECK_LOCK_DIR      the lock (default ~/.cache/nvim-check-lock)
+#   CHECK_LOCK_POLL     s between attempts while another check holds it (default 2)
+#   CHECK_LOCK_TIMEOUT  s to wait before giving up (default 3600)
+# Lock order: the check lock is outer, the sandbox lock (taken by e2e) inner.
 set -u
 
 MAKE=${MAKE:-make}
+ROOT=$(cd "$(dirname "$0")/.." && pwd)
+# shellcheck source=tests/sandbox/lock.sh
+source "$ROOT/tests/sandbox/lock.sh"
+LOCK_PREFIX=check LOCK_NAME="the check lock"
+
+# a check started from inside a check (CHECK_LOCK_HOLDER names the live owner) already holds it
+check_lock_reentrant() {
+	[ -n "${CHECK_LOCK_HOLDER:-}" ] && [ "$(lock_owner "$1")" = "$CHECK_LOCK_HOLDER" ] && lock_owner_alive "$1"
+}
+
+check_lock() {
+	local dir=${CHECK_LOCK_DIR:-$HOME/.cache/nvim-check-lock}
+	[ "${CHECK_LOCK:-1}" = 0 ] && return 0
+	check_lock_reentrant "$dir" && return 0
+	mkdir -p "$(dirname "$dir")"
+	lock_wait "$dir" "${CHECK_LOCK_POLL:-2}" "${CHECK_LOCK_TIMEOUT:-3600}"
+	CHECK_LOCK_HOLDER=$(lock_owner "$dir")
+	export CHECK_LOCK_HOLDER
+}
+
+check_lock
 logs=$(mktemp -d "${TMPDIR:-/tmp}/check.XXXXXX")
-trap 'rm -rf "$logs"' EXIT INT TERM
+trap 'lock_release; rm -rf "$logs"' EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 now() { perl -MTime::HiRes=time -e 'printf "%.1f", time'; }
 started=$(now)
