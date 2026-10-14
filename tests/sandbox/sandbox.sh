@@ -165,7 +165,7 @@ start_run() {
 	log "booting $VM headless"
 	local try
 	for try in 1 2 3 4 5; do
-		nohup lume run "$VM" --no-display --shared-dir "$SHARE" >>"$STATE/vm.log" 2>&1 </dev/null &
+		nohup lume run "$VM" --no-display --vnc disabled --shared-dir "$SHARE" >>"$STATE/vm.log" 2>&1 </dev/null &
 		disown
 		storage_locked || break
 		log "$VM still holds its storage after a stop; retrying boot ($try/5)"
