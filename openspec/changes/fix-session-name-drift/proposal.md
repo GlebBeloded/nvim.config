@@ -1,11 +1,13 @@
 ## Why
-`lua/gleb/session/init.lua` (~40, 48) recomputes the session name from the cwd at every save, but project.nvim (`manual_mode=false`) changes the cwd to the project root, so a bare `nvim` started in `repo/sub` saves under `…%repo` and the next bare `nvim` in `repo/sub` restores nothing (confirmed with `:cd repo/sub` + opening `repo/sub/f.txt`).
+The session module recomputes its key from the current working directory at every save. Because project.nvim automatically changes that directory to the project root, a bare `nvim` started in `repo/sub` can save under `…%repo`; the next bare `nvim` in `repo/sub` then restores nothing.
 Found by the second audit of auto (2026-10-14).
 
 Kind: bug
 
 ## Evidence
-- Confirmed in a headless full-config child by the audit; locate code with `rg -n` (line numbers may drift).
+- `lua/gleb/session/init.lua:40` and `lua/gleb/session/init.lua:48` call `key.session_name()` separately when saving and restoring.
+- `lua/gleb/session/key.lua:19` derives each call from the live `vim.fn.getcwd()` value.
+- `lua/gleb/project.lua:16` enables automatic project-directory changes, and installed project.nvim source at `~/.local/share/nvim/lazy/project.nvim/lua/project_nvim/project.lua:180` changes the global cwd.
 
 ## What Changes
 - Record the session name once at startup (before any chdir, e.g. at module load or VimEnter) and use it for both restore and save.
@@ -16,5 +18,7 @@ Kind: bug
 - `session`: scenarios for the fixed behaviour.
 
 ## Impact
-- Code: the files named above and their tests.
+- Code: `lua/gleb/session/init.lua`.
+- Tests: `tests/integration/session/test_session.lua`.
 - Plugins: none added or upgraded. Core keymaps: unchanged.
+- Out of scope: changing project.nvim configuration, changing the session-key format, or migrating existing session files.

@@ -20,9 +20,12 @@ end
 local function start()
 	dir = vim.fn.tempname()
 	vim.fn.mkdir(dir, "p")
-	child.start_config()
+	H.isolate()
+	local args = vim.list_extend({ "--cmd", "cd " .. dir }, H.config_args())
+	child.restart(args)
+	vim.iter(H.DISABLED_PLUGINS):each(child.disable_plugin)
 	wait_vim_enter()
-	child.cmd("cd " .. dir)
+	dir = child.fn.getcwd()
 end
 
 ---@param name string
@@ -131,6 +134,26 @@ T["session: writing a buffer saves the session"] = function()
 	local saved =
 		child.lua_get([[vim.list_contains(require("resession").list(), require("gleb.session.key").session_name())]])
 	eq(saved, true)
+end
+
+T["session: project cwd change preserves the startup session name"] = function()
+	local root = dir
+	local subdir = vim.fs.joinpath(root, "sub")
+	vim.fn.mkdir(vim.fs.joinpath(root, ".git"), "p")
+	vim.fn.mkdir(subdir, "p")
+	child.stop()
+	dir = subdir
+
+	restart_in_pane("z", "5")
+	edit_file("a.txt")
+	child.lua([[require("project_nvim.project").set_pwd(..., "pattern")]], { root })
+	assert(child.wait(("vim.fn.getcwd() == %q"):format(root)), "project.nvim did not change cwd")
+	child.cmd("write")
+
+	local startup_name = "z-5-" .. subdir:gsub("[/\\:]", "%%")
+	local root_name = "z-5-" .. root:gsub("[/\\:]", "%%")
+	local saved = child.lua_get([[require("resession").list()]])
+	eq({ vim.list_contains(saved, startup_name), vim.list_contains(saved, root_name) }, { true, false })
 end
 
 T["session: quitting saves the session"] = function()
