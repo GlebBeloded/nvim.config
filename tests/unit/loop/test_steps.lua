@@ -349,6 +349,12 @@ T["loop: Harness slips are not implementation attempts"] = function()
 	end
 end
 
+T["loop: Fix prompt shortens an overlong delta requirement"] = function()
+	local fix = table.concat(vim.fn.readfile(vim.fs.joinpath(H.root, ".archon/commands/fix.md")), "\n")
+	eq(fix:gsub("%s+", " "):find("Requirement text is very long", 1, true) ~= nil, true)
+	eq(fix:find("spec_trial.py", 1, true) ~= nil, true)
+end
+
 T["loop: Adopted change with every task ticked skips the spec step"] = function()
 	local done, todo = "## 1. Task\n- [x] 1.1 a", "## 1. Task\n- [x] 1.1 a\n- [ ] 1.2 b"
 	local ui = {
