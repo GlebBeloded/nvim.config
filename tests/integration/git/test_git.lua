@@ -61,6 +61,18 @@ for name, ns in pairs(vim.api.nvim_get_namespaces()) do
 end
 return signs]]
 
+--- Child-side: sign extmarks on line 2 outside gitsigns namespaces.
+local COMPETING_LINE_2_SIGNS_LUA = [[
+local signs = {}
+for name, ns in pairs(vim.api.nvim_get_namespaces()) do
+	if not name:find("^gitsigns_") then
+		for _, mark in ipairs(vim.api.nvim_buf_get_extmarks(0, ns, { 1, 0 }, { 1, -1 }, { details = true, type = "sign" })) do
+			table.insert(signs, { name, vim.trim(mark[4].sign_text or "") })
+		end
+	end
+end
+return signs]]
+
 --- Child-side: end-of-line virtual texts in the current buffer, all namespaces.
 local EOL_VIRT_TEXT_LUA = [[
 local texts = {}
@@ -242,6 +254,7 @@ T["git: Added line has no competing hunk sign"] = function()
 	eq(child.lua_get('package.loaded["mini.diff"]'), vim.NIL)
 	eq(child.lua_get('require("lazy.core.config").plugins["mini.diff"]'), vim.NIL)
 	eq(child.lua(MINIDIFF_SIGNS_LUA), {})
+	eq(child.lua(COMPETING_LINE_2_SIGNS_LUA), {})
 end
 
 T["git: Blame is off by default"] = function()
