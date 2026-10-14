@@ -519,10 +519,7 @@ T["file-tree: gr keeps its global meaning in git status tree"] = function()
 	open_git_status(modified_repo())
 
 	eq(child.lua_get([[vim.fn.maparg("gr", "n", false, true).buffer]]), 0)
-	eq(
-		child.lua_get([[vim.fn.maparg("gr", "n", false, true).callback == require("telescope.builtin").lsp_references]]),
-		true
-	)
+	eq(child.lua_get([[vim.fn.maparg("gr", "n", false, true).desc]]), "LSP: References")
 end
 
 T["file-tree: c is copy in git status tree"] = function()
