@@ -6,7 +6,6 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 
 ## Loop lessons
 
-- `setpos("v", …)` cannot set the visual start (E474); enter Visual mode with `normal! V` at the start line instead, and restore cursor and mode afterwards.
 - Keep modified requirement prose below 500 characters so the archived main spec passes strict validation.
 - e2e "Neovim is blocked in mode r" is a startup error message: reproduce on the host with `XDG_CONFIG_HOME=$(mktemp -d)`, a symlink `$XDG_CONFIG_HOME/nvim` to the worktree, and `timeout 30 nvim --headless +"lua print(vim.fn.execute('messages'))" +qa`; if the host starts clean, the guest has stale files (a loop bug).
 - For an implementation-free follow-up, replace ignored adoption metadata with `skip_specs: true` so strict validation accepts zero deltas.
@@ -20,6 +19,8 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - When a global keymap callback is wrapped, stub its external boundary and invoke the active mapping instead of weakening the test to metadata.
 - When a fixed readiness bound overruns once but passes the mandated isolated rerun, treat host contention as the cause and preserve the bound without retries or load scaling.
 - Neo-tree's shared `_ready` flag can be true while another filesystem navigation remains queued; subscribe before a debounce-length quiet wait and recheck readiness before applying an authoritative toggle.
+- When passing `string.gsub()` directly to a one-argument RPC method, parenthesize it so Lua drops the replacement-count return value.
+- Sort enabled LSP config names before asserting exact membership because `vim.lsp.get_configs()` ordering is not stable.
 
 ## The loop
 
