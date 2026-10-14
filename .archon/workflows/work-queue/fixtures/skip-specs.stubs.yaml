@@ -1,0 +1,26 @@
+# g7. a skip_specs change (fixtures/changes/skip-change, LOOP_CHANGES_DIR): meta (real, no_design.py) reports
+# skip_specs, so the spec step runs as complete-skip (no JSON answer) instead of complete, no preview or
+# design gate runs, and the change delivers.
+fixture:
+  expect: completed
+  inputs: { change: skip-change }
+  reached: [pick, meta, complete-skip, spec-gate, design-decide, deliver__ship, deliver__shipped]
+exec-code: true
+skills-check: "skills ok"
+pick: { found: true, change: skip-change, kind: fix, has_tasks: false }
+complete: "MUST-NOT-RUN"
+complete-skip: "tasks written"
+spec-gate: "valid"
+preview: "MUST-NOT-RUN"
+# nvim-deliver (include `deliver`): top-level ids get the deliver__ prefix, loop bodies keep theirs
+deliver__skills-check: "skills ok"
+deliver__plan-check: { needed: false, has_change: true }
+deliver__plan-gate: "valid"
+pack: { has_task: true, context: context.md }
+implement: "task 1 done"
+gate: { green: true, spec_ok: true, tasks_done: true, untested: 0, attempt: 1, failures: "" }
+review: { approve: true, findings: "", weakened_scenario: false, weakened_test: false }
+deliver__escalation: { decision: ship, escalate: false, reasons: "- none" }
+deliver__ship: { merged: true, conflict: false, branch: loop/queued-change, commit: abc123 }
+deliver__followup: "MUST-NOT-RUN"
+
