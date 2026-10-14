@@ -87,13 +87,21 @@ vim.api.nvim_create_autocmd("User", {
 })
 
 local lsp_format = vim.api.nvim_create_augroup("gleb_lsp_format", { clear = true })
+
+---@param event vim.api.keyset.create_autocmd.callback_args
+local function format_on_save(event)
+	if vim.g.format_on_save_disabled then
+		return
+	end
+	local clients = vim.lsp.get_clients({ bufnr = event.buf, method = "textDocument/formatting" })
+	if #clients > 0 then
+		vim.lsp.buf.format({ bufnr = event.buf })
+	end
+end
+
 vim.api.nvim_create_autocmd("BufWritePre", {
 	group = lsp_format,
-	callback = function()
-		if not vim.g.format_on_save_disabled then
-			vim.lsp.buf.format({})
-		end
-	end,
+	callback = format_on_save,
 })
 
 -- Format only on a manual :w, never on auto-save.nvim writes. auto-save runs
