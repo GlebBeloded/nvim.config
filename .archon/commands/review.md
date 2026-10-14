@@ -13,6 +13,11 @@ Your step: **review**. Input: the branch diff. Output: the JSON fields only. Do 
 
 Change id: $INPUTS.change. Diff: `git diff $(git merge-base HEAD $BASE_BRANCH)` plus untracked files.
 
+One pass, exhaustive: for each requirement and scenario of the change's delta, check every unit that
+implements it (every adapter, caller or plugin integration, not a sample; for a plugin, its native API
+in the installed plugin source), and list all `[must-fix]` findings at once: each later pass costs a full
+gate. A `[must-fix]` in code an earlier pass already reviewed unchanged also says why that pass missed it.
+
 Use `superpowers:requesting-code-review` as the checklist, acting as the reviewer yourself. Judge
 the diff against the conventions in docs/architecture.md and openspec/specs plus the change's spec delta:
 - consistency with the conventions (cite the rule number);

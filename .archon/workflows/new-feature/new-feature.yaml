@@ -63,6 +63,7 @@ nodes:
     runtime: uv
     depends_on: [design]
     with:
+      earlier: "" # no earlier approval to reuse (work-queue design-decide only)
       cancel_on_reject: "true"
       verdict: ""
       blocked: "false"
