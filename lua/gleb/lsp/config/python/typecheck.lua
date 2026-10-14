@@ -3,10 +3,8 @@
 local M = {}
 
 local function restart_basedpyright()
-	for _, client in ipairs(vim.lsp.get_clients({ name = "basedpyright" })) do
-		client:stop()
-	end
-	vim.cmd("edit") -- reattach the LSP to the current buffer
+	vim.lsp.enable("basedpyright", false)
+	vim.lsp.enable("basedpyright", true)
 end
 
 local function set_type_checking(mode)
