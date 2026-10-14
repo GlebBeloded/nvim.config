@@ -23,6 +23,7 @@ Scenarios: `find-action: Find Action opens from its shortcut`, `find-action: Fin
 - Let an e2e recorder optionally call the saved mapping callback so one physical press proves both key arrival and its action.
 - Use `ai.search` and `ai.vibe` in the AI category so the stable IDs follow the feature-action convention while the titles retain the 99 product name.
 - Expose stable named prompt callbacks from the entry-keymap module so direct mappings and registry actions share one invocation path.
+- Keep task 15 as a regression-test correction because task 14 already registered the required `n`/`x` mappings and left select mode untouched.
 
 ## 2. Render action rows
 Scenarios: `find-action: Rows show action metadata`, `find-action: Rows fall back to Vim notation`, `find-action: Toggle rows show state glyphs`
@@ -104,6 +105,6 @@ Scenarios: `ai: Shift-Enter opens vibe prompt`, `ai: Visual Alt-9 opens visual p
 
 ## 15. Keep 99 mapping scope and silence
 Scenarios: `ai: Entry mappings are silent`, `ai: Select mode keeps its default behavior`
-- [ ] 15.1 Update the cases in `tests/unit/ai/test_entry_keymaps.lua` and run `make test FILE=tests/unit/ai/test_entry_keymaps.lua`, seeing both changed scenarios fail
-- [ ] 15.2 Register only the specified silent normal and visual mappings and leave select mode untouched
-- [ ] 15.3 Run `make test FILE=tests/unit/ai/test_entry_keymaps.lua` and see both scenarios pass
+- [x] 15.1 Update the cases in `tests/unit/ai/test_entry_keymaps.lua` and run `make test FILE=tests/unit/ai/test_entry_keymaps.lua`, seeing both changed scenarios fail
+- [x] 15.2 Register only the specified silent normal and visual mappings and leave select mode untouched
+- [x] 15.3 Run `make test FILE=tests/unit/ai/test_entry_keymaps.lua` and see both scenarios pass
