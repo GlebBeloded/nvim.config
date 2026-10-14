@@ -22,6 +22,7 @@ Scenarios: `find-action: Find Action opens from its shortcut`, `find-action: Fin
 - Observe stack pickers by their active source name over RPC so real-byte tests assert the opened UI without replacing mappings.
 - Let an e2e recorder optionally call the saved mapping callback so one physical press proves both key arrival and its action.
 - Use `ai.search` and `ai.vibe` in the AI category so the stable IDs follow the feature-action convention while the titles retain the 99 product name.
+- Expose stable named prompt callbacks from the entry-keymap module so direct mappings and registry actions share one invocation path.
 
 ## 2. Render action rows
 Scenarios: `find-action: Rows show action metadata`, `find-action: Rows fall back to Vim notation`, `find-action: Toggle rows show state glyphs`
@@ -97,9 +98,9 @@ Scenarios: `ai: Menu shows prompt`, `ai: Menu s opens search prompt`, `ai: Menu 
 
 ## 14. Preserve direct 99 prompt mappings
 Scenarios: `ai: Shift-Enter opens vibe prompt`, `ai: Visual Alt-9 opens visual prompt`, `ai: Visual Shift-Enter opens visual prompt`
-- [ ] 14.1 Update the preserved mapping cases in `tests/integration/ai/test_prompt_keys.lua` and run `make test FILE=tests/integration/ai/test_prompt_keys.lua`, seeing the changed expectations fail before the entry-keymap rewrite
-- [ ] 14.2 Keep the normal Shift-Enter and visual Alt-9 and Shift-Enter paths while separating their callbacks for action reuse
-- [ ] 14.3 Run `make test FILE=tests/integration/ai/test_prompt_keys.lua` and see all three scenarios pass
+- [x] 14.1 Update the preserved mapping cases in `tests/integration/ai/test_prompt_keys.lua` and run `make test FILE=tests/integration/ai/test_prompt_keys.lua`, seeing the changed expectations fail before the entry-keymap rewrite
+- [x] 14.2 Keep the normal Shift-Enter and visual Alt-9 and Shift-Enter paths while separating their callbacks for action reuse
+- [x] 14.3 Run `make test FILE=tests/integration/ai/test_prompt_keys.lua` and see all three scenarios pass
 
 ## 15. Keep 99 mapping scope and silence
 Scenarios: `ai: Entry mappings are silent`, `ai: Select mode keeps its default behavior`
