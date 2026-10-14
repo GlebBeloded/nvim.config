@@ -144,6 +144,15 @@ T["shortcuts: Cmd chords reach Neovim through real zellij"] = function()
 	eq(s:hits(), { "<D-o>", "<D-i>", "<D-d>", "<D-a>" })
 end
 
+T["shortcuts: Cmd+Shift+A opens Find Action through real zellij"] = function()
+	local s = get()
+	s:send(row("Cmd+Shift+A").bytes)
+	S.wait_for(function()
+		return s:active_picker_name() == "Find Action"
+	end, "Find Action palette", 3000)
+	eq(s:active_picker_name(), "Find Action")
+end
+
 T["shortcuts: Cmd+H moves to the left Neovim split"] = function()
 	local s = get()
 	s:lua([[vim.cmd("vsplit | wincmd l")]])

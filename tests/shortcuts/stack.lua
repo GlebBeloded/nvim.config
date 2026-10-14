@@ -282,6 +282,15 @@ function Stack:lua(code, args)
 	return vim.rpcrequest(self.channel, "nvim_exec_lua", code, args or {})
 end
 
+--- Active mini.pick source name, or nil when no picker is open.
+---@return string?
+function Stack:active_picker_name()
+	return self:lua([[local ok, pick = pcall(require, "mini.pick")
+		if not ok or not pick.is_picker_active() then return nil end
+		local source = pick.get_picker_opts().source
+		return source and source.name or nil]])
+end
+
 --- Note a startup event with its time since start().
 ---@param event string
 function Stack:mark(event)

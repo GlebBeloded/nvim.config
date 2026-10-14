@@ -19,6 +19,7 @@ Scenarios: `find-action: Find Action opens from its shortcut`, `find-action: Fin
 - Use Cmd+D as the workflow's free assignment because its kitty-protocol key is unbound and remains observable across restart.
 - Keep the task-9 mapping cell generic (`fn`) because exact Find Action callback identity belongs to task 10.
 - Give self-context-capturing actions an explicit mapping callback so Find Action keeps registry assignment while exposing its exact entry point.
+- Observe stack pickers by their active source name over RPC so real-byte tests assert the opened UI without replacing mappings.
 
 ## 2. Render action rows
 Scenarios: `find-action: Rows show action metadata`, `find-action: Rows fall back to Vim notation`, `find-action: Toggle rows show state glyphs`
@@ -76,9 +77,9 @@ Scenarios: `shortcuts: Neovim mappings match the table`
 
 ## 11. Deliver Find Action through real zellij
 Scenarios: `shortcuts: Cmd+Shift+A opens Find Action through real zellij`
-- [ ] 11.1 Write the test in `tests/stack/shortcuts/test_stack.lua` and run `make test FILE=tests/stack/shortcuts/test_stack.lua CASE="Cmd+Shift+A opens Find Action through real zellij"`, seeing it fail
-- [ ] 11.2 Make the stack harness observe the palette opened by the delivered Cmd+Shift+A bytes
-- [ ] 11.3 Run `make test FILE=tests/stack/shortcuts/test_stack.lua CASE="Cmd+Shift+A opens Find Action through real zellij"` and see it pass
+- [x] 11.1 Write the test in `tests/stack/shortcuts/test_stack.lua` and run `make test FILE=tests/stack/shortcuts/test_stack.lua CASE="Cmd+Shift+A opens Find Action through real zellij"`, seeing it fail
+- [x] 11.2 Make the stack harness observe the palette opened by the delivered Cmd+Shift+A bytes
+- [x] 11.3 Run `make test FILE=tests/stack/shortcuts/test_stack.lua CASE="Cmd+Shift+A opens Find Action through real zellij"` and see it pass
 
 ## 12. Deliver Find Action from a physical shortcut
 Scenarios: `shortcuts: Cmd+Shift+A opens Find Action from a real key press`
