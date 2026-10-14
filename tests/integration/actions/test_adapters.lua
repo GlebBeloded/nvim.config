@@ -29,27 +29,16 @@ local function start()
 			action("file_tree.open"),
 		} })
 		Shortcuts = {
-			["differ.next_hunk"] = { "]c" },
+			["differ.next_hunk"] = { "]c", "[c" },
 			["codediff.next_hunk"] = { "]d" },
 			["dap_ui.expand"] = { "<CR>" },
-			["neotest.run"] = { "r" },
+			["neotest.run"] = { "r", "R" },
 			["mason.install_package"] = { "i" },
 			["lazy.close"] = { "q" },
 			["blink.accept"] = { "<CR>" },
 			["copilot.accept"] = { "<M-l>" },
 			["file_tree.open"] = { "o" },
 		}
-		function InvokeNamedMapping(mappings, area, lhs)
-			local callbacks = {}
-			for name, native_lhs in pairs(mappings) do
-				local lhs_list = type(native_lhs) == "table" and native_lhs or { native_lhs }
-				for _, mapped_lhs in ipairs(lhs_list) do
-					local action = assert(Catalog:get(area .. "." .. name))
-					callbacks[mapped_lhs] = require("gleb.actions.context").invoke(action)
-				end
-			end
-			assert(callbacks[lhs], "missing native mapping for " .. lhs)()
-		end
 		function OpenPluginWindow(adapter)
 			local buf = vim.api.nvim_create_buf(false, true)
 			for lhs, callback in pairs(adapter.mappings(Catalog, Shortcuts)) do
@@ -78,13 +67,6 @@ T["actions: Adapter output follows current shortcuts"] = function()
 			local copilot = require("gleb.actions.adapters.copilot").mappings(Catalog, Shortcuts)
 			local neo_tree = require("gleb.actions.adapters.neo_tree").mappings(Catalog, Shortcuts)
 
-			InvokeNamedMapping(differ, "differ", "]c")
-			InvokeNamedMapping(codediff.keymaps.view, "codediff", "]d")
-			InvokeNamedMapping(dap_ui, "dap_ui", "<CR>")
-			InvokeNamedMapping(dap_ui, "dap_ui", "o")
-			InvokeNamedMapping(neotest, "neotest", "r")
-			InvokeNamedMapping(mason, "mason", "i")
-			InvokeNamedMapping(copilot.suggestion.keymap, "copilot", "<M-l>")
 			lazy.q()
 			blink["<CR>"][1]()
 			neo_tree.o()
@@ -107,22 +89,15 @@ T["actions: Adapter output follows current shortcuts"] = function()
 			}
 		end)()]]),
 		{
-			"]c",
+			{ "]c", "[c" },
 			"]d",
 			{ "<CR>", "o" },
-			"r",
+			{ "r", "R" },
 			"i",
 			"<M-l>",
 			false,
 			false,
 			{
-				"differ.next_hunk",
-				"codediff.next_hunk",
-				"dap_ui.expand",
-				"dap_ui.expand",
-				"neotest.run",
-				"mason.install_package",
-				"copilot.accept",
 				"lazy.close",
 				"blink.accept",
 				"file_tree.open",

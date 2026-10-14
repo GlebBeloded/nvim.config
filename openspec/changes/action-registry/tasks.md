@@ -44,3 +44,10 @@ Scenarios: `actions: Ex commands become humanized hidden actions`, `actions: Reg
 
 - Reject multiple shortcuts in string-only adapters so invalid lhs lists never reach plugin keymap APIs.
 - Nest codediff actions under `keymaps.view` and copilot actions under `suggestion.keymap`, matching the registered actions' native plugin sections.
+- Encode an empty shortcut map with `vim.empty_dict()` so `{}` round-trips as a JSON object.
+
+## 8. Preserve multiple shortcuts in capable named adapters
+Scenarios: `actions: Adapter output follows current shortcuts`
+- [x] 8.1 Extend `tests/integration/actions/test_adapters.lua` with two lhs values for differ and neotest, assert the name-keyed adapters' native output shapes directly, and run `make test FILE=tests/integration/actions/test_adapters.lua CASE="Adapter output follows current shortcuts"` to see it fail
+- [x] 8.2 Mark the differ and neotest adapters as supporting multiple shortcuts
+- [x] 8.3 Run `make test FILE=tests/integration/actions/test_adapters.lua CASE="Adapter output follows current shortcuts"` and see it pass
