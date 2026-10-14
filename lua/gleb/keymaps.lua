@@ -145,8 +145,8 @@ map("n", "<A-G>", function()
 	smart_toggle_neotree("git_status")
 end, "Tree: Toggle git status")
 
--- Telescope
-map("n", "<A-F>", "<Cmd>Telescope live_grep<CR>", "Search: Live grep")
+-- Search
+map("n", "<A-F>", require("gleb.picker").grep_live, "Search: Live grep")
 
 -- Code actions
 map("n", "<C-CR>", vim.lsp.buf.code_action, "LSP: Code action")

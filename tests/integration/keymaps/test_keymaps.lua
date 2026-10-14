@@ -671,13 +671,8 @@ T["keymaps: Alt-F opens live grep"] = function()
 	edit_repo_file()
 	child.type_keys("<M-F>")
 
-	eq(child.wait([[vim.bo.filetype == "TelescopePrompt"]], async_ms()), true)
-	eq(
-		child.lua_get(
-			[[require("telescope.actions.state").get_current_picker(vim.api.nvim_get_current_buf()).prompt_title]]
-		),
-		"Live Grep"
-	)
+	eq(child.wait([[require("mini.pick").is_picker_active()]], async_ms()), true)
+	eq(child.lua_get([[require("mini.pick").get_picker_opts().source.name]]), "Live Grep")
 end
 
 return T

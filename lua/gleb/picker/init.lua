@@ -4,4 +4,4 @@ if frame.setup then
 	frame.setup()
 end
 
-return frame
+return require("gleb.picker.actions")

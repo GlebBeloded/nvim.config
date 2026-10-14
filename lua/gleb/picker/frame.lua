@@ -91,7 +91,9 @@ local function create_show(hints)
 		local width = vim.api.nvim_win_get_width(win)
 		local height = vim.api.nvim_win_get_height(win)
 		local item_count = math.max(height - 2, 0)
-		local shown = vim.list_slice(items, 1, item_count)
+		local shown = vim.tbl_map(function(item)
+			return type(item) == "table" and item or { text = tostring(item) }
+		end, vim.list_slice(items, 1, item_count))
 		rows.render(buf, shown, width, vim.tbl_extend("force", layout.row_options(), { padding = 1 }))
 
 		local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
@@ -114,6 +116,17 @@ local function create_show(hints)
 	end
 end
 
+---@param title string
+---@param hints? string
+---@return table
+function M.options(title, hints)
+	hints = hints or layout.hint()
+	return {
+		source = { name = title, show = hints and create_show(hints) or rows.show },
+		window = { prompt_prefix = " " .. title .. " › " },
+	}
+end
+
 ---@return nil
 function M.setup()
 	MiniPick.setup({
@@ -132,17 +145,14 @@ end
 ---@param opts gleb.picker.FrameOpts
 ---@return any
 function M.start(opts)
-	local hints = opts.hints or layout.hint()
-	return MiniPick.start({
-		source = {
-			name = opts.title,
-			items = opts.items,
-			match = opts.match,
-			show = hints and create_show(hints) or rows.show,
-			choose = opts.choose,
-		},
-		window = { prompt_prefix = " " .. opts.title .. " › " },
+	local picker_opts = M.options(opts.title, opts.hints)
+	picker_opts.source = vim.tbl_extend("force", picker_opts.source, {
+		name = opts.title,
+		items = opts.items,
+		match = opts.match,
+		choose = opts.choose,
 	})
+	return MiniPick.start(picker_opts)
 end
 
 return M

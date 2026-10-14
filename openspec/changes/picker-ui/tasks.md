@@ -42,9 +42,9 @@ Scenarios: `select: Selection previews the current item`
 
 ## 8. Move live grep to the shared picker
 Scenarios: `keymaps: Alt-F opens live grep`
-- [ ] 8.1 Update the scenario in tests/integration/keymaps/test_keymaps.lua and see it fail
-- [ ] 8.2 Change `<A-F>` to open the framed mini.extra live-grep source
-- [ ] 8.3 Run `make test FILE=tests/integration/keymaps/test_keymaps.lua CASE="Alt-F opens live grep"` and see it pass
+- [x] 8.1 Update the scenario in tests/integration/keymaps/test_keymaps.lua and see it fail
+- [x] 8.2 Change `<A-F>` to open the framed mini.extra live-grep source
+- [x] 8.3 Run `make test FILE=tests/integration/keymaps/test_keymaps.lua CASE="Alt-F opens live grep"` and see it pass
 
 ## 9. Move the references keymap to the shared picker
 Scenarios: `keymaps: LSP mappings bound to vim.lsp.buf`, `keymaps: Code action in visual mode`, `keymaps: gr bound to Telescope references`
@@ -84,6 +84,7 @@ Scenarios: `ai: Keymaps exist after VeryLazy`, `ai: Missing 99 is tolerated`, `a
 
 ## Agent decisions
 
+- Live grep uses mini.pick's built-in `grep_live`, because the installed mini.extra has no live-grep source; frame options preserve the specified shared UI.
 - The joined hint rule uses two non-focusable one-cell overlays above mini.pick's float so its side glyphs are true `├` and `┤` border joins.
 - Row visibility uses named `show_*` options and built-in `Comment`/`PmenuExtra`/`PmenuKind` groups so responsive callers can hide fields while the frame task remains responsible for palette-backed links.
 - Normal picker geometry is a centered 72-by-8-cell frame, while editors below 15 lines use every row, matching the approved wide render and preserving results on short screens.
