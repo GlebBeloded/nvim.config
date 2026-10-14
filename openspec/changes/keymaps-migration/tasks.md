@@ -27,6 +27,12 @@ Scenarios: `actions: Plugin-window mappings are action-owned`, `actions: Unconfi
 - [ ] 3.2 Feed current shortcuts through each existing adapter, disable each plugin's defaults, remove every lazy.nvim `keys` field, and use `cmd`, `event`, or action-time `require` for loading
 - [ ] 3.3 Run `make test FILE=tests/integration/actions/test_plugin_ownership.lua` and see it pass
 
+### Stuck
+
+- Probe: repository inspection found all ten adapter modules present, while the live catalog and `settings/keymap.json` contained none of `file_tree.open`, `dap_ui.expand`, `diffview.select_next_entry`, `differ.next_hunk`, `codediff.next_hunk`, `neotest.run`, `mason.install_package`, `lazy.close`, `blink.accept`, or `copilot.next`; the ownership scenario failed with exactly those ten ids.
+- Attempt 1 registered plugin-scoped actions, fed adapter output into plugin setup, and disabled defaults in the available setup tables. The ownership scenario passed, but the real-surface default audit still found dap-ui `o` and lazy.nvim `K`.
+- Attempt 2 explicitly set every dap-ui mapping action false before overlaying the adapter and cleared lazy.nvim's view/command keys before adding its adapter callback. The real dap-ui and lazy surfaces still installed `o` and `K`, so the production edits were reverted and the red regression retained.
+
 ## 4. Migrate neo-tree mappings without changing behavior
 Scenarios: `file-tree: Tree mappings come from the shortcut file`, `file-tree: Neo-tree defaults stay disabled`, `file-tree: q closes preview and tree`
 - [ ] 4.1 Write the ownership scenarios in `tests/integration/file-tree/test_tree.lua`, retain the existing real populated-tree `q` case in `tests/integration/file-tree/test_diff_preview.lua`, run `make test FILE=tests/integration/file-tree/test_tree.lua CASE="file-tree: Tree mappings come from the shortcut file"`, and see it fail
