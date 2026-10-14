@@ -17,6 +17,7 @@ Scenarios: `find-action: Find Action opens from its shortcut`, `find-action: Fin
 - Reduce the compact Find Action hint to its two physical keys so it preserves both operations without labels.
 - Style assignment keys and choices with existing semantic highlight groups so the float follows the active colorscheme.
 - Use Cmd+D as the workflow's free assignment because its kitty-protocol key is unbound and remains observable across restart.
+- Keep the task-9 mapping cell generic (`fn`) because exact Find Action callback identity belongs to task 10.
 
 ## 2. Render action rows
 Scenarios: `find-action: Rows show action metadata`, `find-action: Rows fall back to Vim notation`, `find-action: Toggle rows show state glyphs`
@@ -62,9 +63,9 @@ Scenarios: `find-action: Physical Find Action workflow persists an assignment`
 
 ## 9. Extend the shortcut-table route
 Scenarios: `shortcuts: Alacritty bindings match the shortcut table`, `shortcuts: Every Alacritty chars binding can match a key press`, `shortcuts: zellij routes every shortcut as in the table`, `shortcuts: Locked mode passes every shortcut through`, `shortcuts: Neovim receives the key in the table`
-- [ ] 9.1 Add the Cmd+Shift+A row to the shortcut-table fixture and run `make test FILE=tests/chain/shortcuts/test_chain.lua`, seeing the affected scenarios fail
-- [ ] 9.2 Add the `Cmd+Shift+A` `\eA` Alacritty binding and route it unchanged through zellij
-- [ ] 9.3 Run `make test FILE=tests/chain/shortcuts/test_chain.lua` and see all five scenarios pass
+- [x] 9.1 Add the Cmd+Shift+A row to the shortcut-table fixture and run `make test FILE=tests/chain/shortcuts/test_chain.lua`, seeing the affected scenarios fail
+- [x] 9.2 Add the `Cmd+Shift+A` `\eA` Alacritty binding and route it unchanged through zellij
+- [x] 9.3 Run `make test FILE=tests/chain/shortcuts/test_chain.lua` and see all five scenarios pass
 
 ## 10. Match the Find Action mapping
 Scenarios: `shortcuts: Neovim mappings match the table`
