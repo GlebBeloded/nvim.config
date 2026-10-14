@@ -13,6 +13,7 @@ Scenarios: `actions: Feature actions contain no shortcut keys`, `actions: Every 
 - Commit-popup actions resolve a buffer-keyed session so registry callbacks retain each popup's validation, close, and commit context.
 - The prompt-submit action covers both `99` and native completion's final `99prompt` filetype so the second FileType event retains the buffer mapping.
 - Task 9 adds regression coverage only because task 1 already moved fold and special-buffer behavior into actions.
+- Cmd+9 remains `none` in the normal-mode shortcut table because its configured `ai.visual` action is visual-only.
 
 ## 2. Remove unowned built-in and surround defaults
 Scenarios: `actions: Every configured mapping is action-owned`, `keymaps: Unadopted built-in mappings are removed`, `keymaps: Adopted built-in mappings are registry actions`, `keymaps: Surround mappings use registered actions`, `keymaps: [d jumps to previous diagnostic`
@@ -76,6 +77,6 @@ Scenarios: `folding: Fold keys invoke registered actions`, `autocommands: q clos
 
 ## 10. Make the shortcut table identify actions
 Scenarios: `shortcuts: Shortcut table names action ids`, `shortcuts: Shortcut meanings survive registry migration`, `shortcuts: Neovim mappings match the table`, `shortcuts: Ctrl+Return reaches Neovim as <C-CR> from a real key press`
-- [ ] 10.1 Add the action-id table assertion and full-config keypress coverage to `tests/chain/shortcuts/test_chain.lua`, update the existing e2e case only to resolve the action-backed mapping, run `make test FILE=tests/chain/shortcuts/test_chain.lua CASE="shortcuts: Shortcut table names action ids"`, and see it fail
-- [ ] 10.2 Replace each mapped row's implementation label with its action id while preserving every physical shortcut, byte sequence, zellij route, received key, and behavior
-- [ ] 10.3 Run `make test FILE=tests/chain/shortcuts/test_chain.lua`, then run `make e2e FILE=tests/e2e/shortcuts/test_e2e.lua CASE="shortcuts: Ctrl+Return reaches Neovim as <C-CR> from a real key press"` in the sandbox VM and see them pass
+- [x] 10.1 Add the action-id table assertion and full-config keypress coverage to `tests/chain/shortcuts/test_chain.lua`, update the existing e2e case only to resolve the action-backed mapping, run `make test FILE=tests/chain/shortcuts/test_chain.lua CASE="shortcuts: Shortcut table names action ids"`, and see it fail
+- [x] 10.2 Replace each mapped row's implementation label with its action id while preserving every physical shortcut, byte sequence, zellij route, received key, and behavior
+- [x] 10.3 Run `make test FILE=tests/chain/shortcuts/test_chain.lua`, then run `make e2e FILE=tests/e2e/shortcuts/test_e2e.lua CASE="shortcuts: Ctrl+Return reaches Neovim as <C-CR> from a real key press"` in the sandbox VM and see them pass
