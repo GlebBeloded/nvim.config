@@ -1,7 +1,8 @@
 """End of one build pass: passed when every gate holds (check, spec, tasks, hard rules, /opsx:verify
 without CRITICAL, AI review approves). `feedback` carries only the failures and findings, so the next
 pass's fix step reads nothing else; `notes` (flaky cases gate.py passed on rerun) is no finding. The loop stops when passed, after MAX_ATTEMPTS, or as soon as the
-change has a `## Blocked` section (blocked.py: no fix pass can resolve it), so an exhausted or blocked
+change has a `## Blocked` section (blocked.py: no fix pass can resolve it) or the gate reports `infra`
+(the sandbox failed twice: no fix pass can resolve that either), so an exhausted or blocked
 loop reaches the judge instead of failing the run. Lessons are persisted by the judge
 (escalation.py) after the loop, never here: docs/workflow.md stays clean between passes.
 """
@@ -49,7 +50,8 @@ if value("green", False) is not True or value("spec_ok", False) is not True or i
 passed = all(gates.values())
 attempt = int(value("attempt", 0))
 blocked = "" if passed else blocked_text(os.environ.get("INPUTS_CHANGE", ""))
-exhausted = not passed and not blocked and attempt >= MAX_ATTEMPTS
+infra = "" if passed else str(value("infra", "") or "")
+exhausted = not passed and not blocked and not infra and attempt >= MAX_ATTEMPTS
 failures = str(value("failures", "") or "")
 feedback = [failures]
 feedback += [f"hard rule: {v}" for v in violations if f"hard rule: {v}" not in failures]  # gate.py may list them
@@ -69,10 +71,11 @@ notes = "flaky test cases (failed, then passed on rerun): " + ", ".join(map(str,
 print(
     json.dumps(
         {
-            "done": passed or exhausted or bool(blocked),
+            "done": passed or exhausted or bool(blocked) or bool(infra),
             "passed": passed,
             "exhausted": exhausted,
             "blocked": bool(blocked),
+            "infra": infra,
             "attempt": attempt,
             "failed_gates": ",".join(k for k, ok in gates.items() if not ok),
             "feedback": "\n\n".join(f for f in feedback if f.strip())[:FEEDBACK_CHARS],

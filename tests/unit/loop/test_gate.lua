@@ -326,8 +326,10 @@ local function flaky_make(scratch, targets, rerun_code)
 		"check: FAILED: " .. targets .. " (1.0 s)",
 	}, "\n")
 	write(scratch, { ["check.log"] = log })
-	local body = 'if [ "$1" = test ]; then echo "$2 $3" >>"%s/reruns"; exit %d; fi\ncat "%s/check.log"\nexit 1'
-	return fake_tool(scratch, "make", body:format(scratch, rerun_code, scratch))
+	local pass = "tests/unit/a/test_a.lua | a: flaky case: o"
+	local body =
+		'if [ "$1" = test ]; then echo "$2 $3" >>"%s/reruns"; echo "%s"; exit %d; fi\ncat "%s/check.log"\nexit 1'
+	return fake_tool(scratch, "make", body:format(scratch, pass, rerun_code, scratch))
 end
 
 T["loop: Gate names the overlong delta requirement and its repro"] = function()
@@ -382,29 +384,52 @@ T["loop: Gate passes a test case that passes on rerun"] = function()
 	has(judge.reasons, "- note: flaky test cases (failed, then passed on rerun): " .. case)
 end
 
---- make stub: `make check` prints `log`; any other target appends its arguments to `<scratch>/reruns`
---- and exits `rerun_code`.
+local READINESS_PASS = "tests/integration/lsp/test_readiness.lua | lsp: slow case: o"
+
+--- make stub: `make check` prints `log`; any other target appends its arguments to `<scratch>/reruns`,
+--- prints `<scratch>/<target>.out` (`outputs`; a readiness rerun prints its case as passed) and exits
+--- `<scratch>/<target>.code` when given, else `rerun_code`.
 ---@param scratch string
 ---@param log string[]
 ---@param rerun_code integer
+---@param outputs? table<string, string>
 ---@return string bin
-local function rerun_make(scratch, log, rerun_code)
-	write(scratch, { ["check.log"] = table.concat(log, "\n") })
-	local body = 'if [ "$1" != check ]; then echo "$*" >>"%s/reruns"; exit %d; fi\ncat "%s/check.log"\nexit 1'
-	return fake_tool(scratch, "make", body:format(scratch, rerun_code, scratch))
+local function rerun_make(scratch, log, rerun_code, outputs)
+	local files = vim.tbl_extend("force", { ["check.log"] = table.concat(log, "\n") }, outputs or {})
+	write(scratch, vim.tbl_extend("keep", files, { ["test-readiness.out"] = READINESS_PASS }))
+	local body = table.concat({
+		'if [ "$1" != check ]; then echo "$*" >>"%s/reruns"',
+		'[ -f "%s/$1.out" ] && cat "%s/$1.out"',
+		'[ -f "%s/$1.code" ] && exit "$(cat "%s/$1.code")"',
+		"exit %d; fi",
+		'cat "%s/check.log"',
+		"exit 1",
+	}, "\n")
+	local s = scratch
+	return fake_tool(scratch, "make", body:format(s, s, s, s, s, rerun_code, s))
 end
 
---- gate.py on a check printing `log`, its reruns exiting `rerun_code`.
+--- gate.py on a check printing `log`, its reruns exiting `rerun_code` (rerun_make).
 ---@param log string[]
 ---@param rerun_code integer
----@return table verdict, string reruns, string check_log
-local function rerun_gate(log, rerun_code, files)
+---@param files? table<string, string> on the base branch
+---@param opts? { outputs?: table<string, string>, branch?: table<string, string>, env?: table<string, string>, tools?: table<string, string> }
+---@return table verdict, string reruns, string check_log, string artifacts, string repo
+local function rerun_gate(log, rerun_code, files, opts)
+	opts = opts or {}
 	local repo = branch_repo(vim.tbl_extend("force", { ["README.md"] = "x" }, files or {}))
+	write(repo, opts.branch or {})
 	local scratch, artifacts = H.tempdir(child), H.tempdir(child)
-	local env = { ARTIFACTS_DIR = artifacts, PATH = rerun_make(scratch, log, rerun_code) .. ":" .. vim.env.PATH }
+	local bin = rerun_make(scratch, log, rerun_code, opts.outputs)
+	for name, body in pairs(opts.tools or {}) do
+		fake_tool(scratch, name, body)
+	end
+	local env =
+		vim.tbl_extend("force", { ARTIFACTS_DIR = artifacts, PATH = bin .. ":" .. vim.env.PATH }, opts.env or {})
 	local out = loop_script("gate.py", repo, env)
 	local reruns = vim.fs.joinpath(scratch, "reruns")
-	return out, vim.fn.filereadable(reruns) == 1 and read(reruns) or "", read(vim.fs.joinpath(artifacts, "check-1.log"))
+	local rerun_list = vim.fn.filereadable(reruns) == 1 and read(reruns) or ""
+	return out, rerun_list, read(vim.fs.joinpath(artifacts, "check-1.log")), artifacts, repo
 end
 
 T["loop: Gate reruns a failed readiness case once"] = function()
@@ -452,6 +477,115 @@ T["loop: Gate reruns e2e once after a sandbox failure"] = function()
 	eq({ broken.green, broken_reruns }, { false, "" })
 	local other, other_reruns = rerun_gate(e2e_log({ "keys: Accessibility not granted" }), 0)
 	eq({ other.green, other_reruns }, { false, "" })
+end
+
+--- check log of a pass failing in `test-readiness` on `lsp: slow case` and in e2e on `e2e_body`.
+---@param e2e_body string[]
+---@return string[]
+local function readiness_e2e_log(e2e_body)
+	local log = { "FAIL e2e 5.0 s", "FAIL test-readiness 9.0 s", "===== e2e =====" }
+	vim.list_extend(log, e2e_body)
+	return vim.list_extend(log, {
+		"make[2]: *** [e2e] Error 1",
+		"===== test-readiness =====",
+		"FAIL in tests/integration/lsp/test_readiness.lua | lsp: slow case: ready after 2694 ms, bound 2500 ms",
+		"check: FAILED: e2e test-readiness (110.2 s)",
+	})
+end
+
+T["loop: Gate stops on sandbox infra that fails again on rerun"] = function()
+	local abort = "sandbox: pulling macos-tahoe-vanilla:latest needs ~42 GB while it unpacks: 60 GB free would leave"
+		.. " 18 GB, under the 25 GB reserve. Aborted."
+	local outputs = { ["e2e.out"] = abort .. "\nmake: *** [e2e] Error 1", ["e2e.code"] = "1" }
+	local files = { ["tests/integration/lsp/test_readiness.lua"] = 'T["lsp: slow case"] = function() end' }
+	local out, reruns, _, artifacts, repo = rerun_gate(readiness_e2e_log({ abort }), 0, files, { outputs = outputs })
+	eq({ out.green, out.flaky, out.infra }, { false, {}, abort })
+	eq(reruns, "e2e E2E=1\ntest-readiness CASE=lsp: slow case")
+	has(out.failures, "infra: e2e did not run (sandbox failed twice): " .. abort)
+	eq(read(vim.fs.joinpath(artifacts, "attempts")), "0")
+
+	local env =
+		verdict_env(H.tempdir(child), { INPUTS_GREEN = "false", INPUTS_ATTEMPT = "3", INPUTS_INFRA = out.infra })
+	local verdict = loop_script("verdict.py", repo, env)
+	eq({ verdict.done, verdict.passed, verdict.exhausted, verdict.infra }, { true, false, false, abort })
+	local judge = loop_script("escalation.py", repo, { ARTIFACTS_DIR = H.tempdir(child), INPUTS_INFRA = verdict.infra })
+	eq({ judge.decision, judge.escalate }, { "infra", false })
+	has(judge.reasons, "- infra: e2e did not run (the sandbox failed twice, not the change): " .. abort)
+	local decide = loop_script("decide.py", repo, { INPUTS_VERDICT = judge.decision, INPUTS_DECISION = "auto" })
+	eq({ decide.go, decide.cancel, decide.decision }, { false, true, "infra" })
+
+	local timing = { ["test-readiness.out"] = "x", ["test-readiness.code"] = "1" }
+	local real =
+		rerun_gate(readiness_e2e_log({ abort }), 0, files, { outputs = vim.tbl_extend("force", outputs, timing) })
+	eq({ real.green, real.infra }, { false, "" })
+	local lost = "sandbox: Lume lost track of nvim-e2e (lume ssh refuses it); restarting nvim-e2e"
+	local back = rerun_gate(readiness_e2e_log({ lost }), 0, files)
+	eq({ back.green, back.infra, #back.flaky }, { true, "", 2 })
+end
+
+T["loop: Gate never passes a case the change owns as flaky"] = function()
+	local log = {
+		"FAIL test 1.0 s",
+		"===== test =====",
+		"FAIL in tests/unit/a/test_a.lua | a: flaky case:",
+		"check: FAILED: test (1.0 s)",
+	}
+	local outputs = { ["test.out"] = "tests/unit/a/test_a.lua | a: flaky case: o" }
+	local base = { ["tests/unit/a/test_a.lua"] = 'T["a: flaky case"] = function() end' }
+	local edited = { ["tests/unit/a/test_a.lua"] = 'T["a: flaky case"] = function() end\n-- edited' }
+	local touched, touched_reruns = rerun_gate(log, 0, base, { outputs = outputs, branch = edited })
+	eq({ touched.green, touched.flaky, touched_reruns }, { false, {}, "" })
+
+	local change = {
+		["openspec/changes/c/proposal.md"] = "# c",
+		["openspec/changes/c/tasks.md"] = "## 1. Task\n- [x] 1.1 a\n  Scenarios: `a: flaky case`",
+	}
+	local opts = { outputs = outputs, env = { INPUTS_CHANGE = "c" }, tools = { openspec = "exit 0" } }
+	local owned, owned_reruns = rerun_gate(log, 0, vim.tbl_extend("force", base, change), opts)
+	eq({ owned.green, owned.flaky, owned_reruns }, { false, {}, "" })
+
+	local unmatched = rerun_gate(log, 0, base, { outputs = { ["test.out"] = "No test cases matched" } })
+	eq({ unmatched.green, unmatched.flaky }, { false, {} })
+	local other = rerun_gate(log, 0, base, { outputs = outputs })
+	eq({ other.green, other.flaky }, { true, { "tests/unit/a/test_a.lua | a: flaky case" } })
+end
+
+T["loop: Gate reruns an old case in a test file the change edits"] = function()
+	local file = "tests/unit/a/test_a.lua"
+	local log = {
+		"FAIL test 1.0 s",
+		"===== test =====",
+		"FAIL in " .. file .. " | a: old case:",
+		"check: FAILED: test (1.0 s)",
+	}
+	local base = { [file] = 'T["a: old case"] = function() end\n\nT["a: new case"] = function()\nend' }
+	local edited = { [file] = 'T["a: old case"] = function() end\n\nT["a: new case"] = function()\n\tlocal x = 1\nend' }
+	local outputs = { ["test.out"] = file .. " | a: old case: o\n" .. file .. " | a: new case: o" }
+	local old, old_reruns = rerun_gate(log, 0, base, { outputs = outputs, branch = edited })
+	eq(
+		{ old.green, old.flaky, old_reruns },
+		{ true, { file .. " | a: old case" }, "test FILE=" .. file .. " CASE=a: old case" }
+	)
+
+	local both = vim.list_extend(vim.list_slice(log, 1, 3), { "FAIL in " .. file .. " | a: new case:", log[4] })
+	local mixed, mixed_reruns = rerun_gate(both, 0, base, { outputs = outputs, branch = edited })
+	eq({ mixed.green, mixed.flaky, mixed_reruns }, { false, {}, "test FILE=" .. file .. " CASE=a: old case" })
+	has(mixed.failures, "passed on rerun (flaky, not this change's): " .. file .. " | a: old case")
+end
+
+T["loop: Gate reruns a failed case of a nested set"] = function()
+	local file = "tests/unit/a/test_a.lua"
+	local log = {
+		"FAIL test 1.0 s",
+		"===== test =====",
+		"FAIL in " .. file .. " | load | a: nested case: Failed expectation",
+		"check: FAILED: test (1.0 s)",
+	}
+	local base = { [file] = 'T["load"] = MiniTest.new_set()\nT["load"]["a: nested case"] = function() end' }
+	local passed, reruns = rerun_gate(log, 0, base, { outputs = { ["test.out"] = file .. " | load: o" } })
+	eq({ passed.green, reruns }, { true, "test FILE=" .. file .. " CASE=load | a: nested case" })
+	local failed = rerun_gate(log, 0, base, { outputs = { ["test.out"] = file .. " | load: x" } })
+	eq(failed.green, false)
 end
 
 T["loop: Fix prompt never makes an empty commit"] = function()

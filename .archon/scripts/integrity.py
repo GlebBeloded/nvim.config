@@ -303,3 +303,11 @@ def breaking_changes() -> list[str]:
     if gone or removed_req:
         reasons.append("removes behaviour: " + ("; ".join(sorted(gone)) if gone else "REMOVED Requirements"))
     return reasons + readded_requirements() + rewritten_decisions()
+
+
+if __name__ == "__main__":  # `make self-check`: the gate's hard rules, one line each; exit 1 when any
+    import sys
+
+    found = hard_rule_violations()
+    print("\n".join(f"hard rule: {v}" for v in found), end="\n" if found else "")
+    sys.exit(1 if found else 0)

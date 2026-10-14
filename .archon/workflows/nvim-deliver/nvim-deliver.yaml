@@ -110,6 +110,7 @@ nodes:
               attempt: { type: integer }
               failures: { type: string }
               flaky: { type: array, items: { type: string } } # failed, then passed on a serial rerun
+              infra: { type: string } # e2e failed on sandbox infra twice: the loop stops, no fix pass, no attempt
               blocked: { type: boolean } # a `## Blocked` change: red at once, never checked or reviewed
             required: [green, spec_ok, tasks_done, untested, attempt, failures, blocked]
 
@@ -142,6 +143,7 @@ nodes:
             attempt: $gate.output.attempt
             failures: $gate.output.failures
             flaky: $gate.output.flaky
+            infra: $gate.output.infra
             critical: $gate.output.untested # a script check replaces the verify agent: untested scenarios
             approve: { from: $review.output.approve, if_skipped: false }
             review_findings: { from: $review.output.findings, if_skipped: "" }
@@ -154,6 +156,7 @@ nodes:
               passed: { type: boolean }
               exhausted: { type: boolean }
               blocked: { type: boolean }
+              infra: { type: string }
               attempt: { type: integer }
               failed_gates: { type: string }
               feedback: { type: string }
@@ -175,6 +178,7 @@ nodes:
       weakened_scenario: $build.output.weakened_scenario
       weakened_test: $build.output.weakened_test
       notes: $build.output.notes # flaky cases: listed in reasons, never a reason
+      infra: $build.output.infra # the sandbox failed twice: decision `infra`, neither ship nor reject
       review_findings: $build.output.review_findings # quoted under a rejected or asked review reason
     output_format:
       type: object
@@ -230,7 +234,12 @@ nodes:
     cancel: "Not shipped: rejected. The branch and worktree are kept; a follow-up change is queued."
     depends_on: [ship-decide, followup]
     trigger_rule: all_done
-    when: "$ship-decide.output.cancel == true"
+    when: "$ship-decide.output.cancel == true && $ship-decide.output.decision == 'reject'"
+
+  - id: stop-infra # the sandbox failed twice: not the change's failure, so no reject and no follow-up
+    cancel: "Not shipped: e2e infra (sandbox) failed twice; the change did not fail (escalation.md). Fix the host, then rerun the change."
+    depends_on: [ship-decide]
+    when: "$ship-decide.output.cancel == true && $ship-decide.output.decision == 'infra'"
 
   # --- Ship: /opsx:archive, commit, merge --no-ff into auto (one at a time, under a lock) -----------
   - id: ship

@@ -1,7 +1,9 @@
 """Judge after the build loop, no AI: `ask` when the change has a `## Blocked` section (quoted in
 escalation.md; ship-decide never ships it, verdict.py's `blocked`), `reject` when the loop is exhausted
-or a hard rule is broken (never shipped; followup.py queues the work), `ask` for breaking changes (the
-user decides), otherwise `ship`. `notes` (flaky cases, `loop:` notes) are listed, never decide; the
+or a hard rule is broken (never shipped; followup.py queues the work), `infra` when the build loop stopped
+on the sandbox failing twice (gate.py's `infra`: the change did not fail, so it is neither rejected nor
+re-queued; the run stops until the host is fixed), `ask` for breaking changes (the user decides), otherwise
+`ship`. `notes` (flaky cases, `loop:` notes) are listed, never decide; the
 last review's findings follow a non-ship decision, so a re-queued change says what to fix; on ship its
 minor (non-blocking) findings are listed as notes for the auditor. A test case the build added and then
 removed (gate.py's record) and still missing is asked about. Writes a
@@ -54,7 +56,9 @@ blocked = blocked_text(os.environ.get("INPUTS_CHANGE", ""))
 dropped = still_dropped(artifacts)
 dropped_reason = ["test added then removed during build: " + ", ".join(dropped)] if dropped else []
 ask = ["blocked: " + blocked] if blocked else [] if reject else breaking_changes() + dropped_reason
-decision = "ask" if blocked else "reject" if reject else "ask" if ask else "ship"
+infra = os.environ.get("INPUTS_INFRA", "").strip()
+decision = "ask" if blocked else "reject" if reject else "infra" if infra else "ask" if ask else "ship"
+ask = [f"infra: e2e did not run (the sandbox failed twice, not the change): {infra}"] if decision == "infra" else ask
 
 summary = "\n".join("- " + r for r in reject + ask) or "- none"
 findings = os.environ.get("INPUTS_REVIEW_FINDINGS", "").strip()[:FINDINGS_CHARS]

@@ -7,7 +7,8 @@ local child = H.new_child()
 local T = H.child_set(child, child.start_bare)
 
 --- `archon` stub: a foreground `workflow run` logs its arguments, prints a line and records a run
---- of its change in the sqlite $ARCHON_DB with the status in $OUTCOMES/<change> (default completed).
+--- of its change in the sqlite $ARCHON_DB with the status in $OUTCOMES/<change> (default completed;
+--- `infra`: cancelled by the stop-infra node, as its workflow_cancelled event records).
 local ARCHON_STUB = [[#!/bin/sh
 [ "$1 $2" = "workflow run" ] || exit 0
 echo "$*" >>"$ARCHON_RUNS"
@@ -18,7 +19,11 @@ python3 - "$ARCHON_DB" "$change" "$status" <<'PY'
 import sqlite3, sys
 db = sqlite3.connect(sys.argv[1])
 db.execute("create table if not exists remote_agent_workflow_runs (id text primary key default (lower(hex(randomblob(16)))), user_message text, status text, started_at text default (datetime('now')))")
-db.execute("insert into remote_agent_workflow_runs (user_message, status) values (?, ?)", (f"Work queued change {sys.argv[2]}", sys.argv[3]))
+status = "cancelled" if sys.argv[3] == "infra" else sys.argv[3]
+run = db.execute("insert into remote_agent_workflow_runs (user_message, status) values (?, ?) returning id", (f"Work queued change {sys.argv[2]}", status)).fetchone()[0]
+if sys.argv[3] == "infra":
+    db.execute("create table if not exists remote_agent_workflow_events (workflow_run_id text, event_type text, step_name text)")
+    db.execute("insert into remote_agent_workflow_events values (?, 'workflow_cancelled', 'deliver__stop-infra')", (run,))
 db.commit()
 PY
 exit 0
@@ -174,6 +179,21 @@ T["loop: Drain stops at a run that waits for the user"] = function()
 	local out = output(drain(repo, stubs))
 	eq(ran(stubs), { "t-a" })
 	eq(out:find("t-a waits for you", 1, true) ~= nil, true, { fail_reason = out })
+end
+
+T["loop: Drain stops when the sandbox infra fails"] = function()
+	local repo, stubs = make_repo(), stub_env()
+	write_change(repo, "t-a", "2026-01-01")
+	write_change(repo, "t-b", "2026-01-02")
+	write_change(repo, "t-c", "2026-01-03")
+	set_outcome(stubs, "t-a", "cancelled")
+	set_outcome(stubs, "t-b", "infra")
+	local result = drain(repo, stubs)
+	local out = result.stdout .. result.stderr
+	eq(ran(stubs), { "t-a", "t-b" })
+	eq(result.code ~= 0, true, { fail_reason = out })
+	eq(out:find("t-a cancelled", 1, true) ~= nil, true, { fail_reason = out })
+	eq(out:find("drain: stopped, e2e sandbox infra failed twice on t-b", 1, true) ~= nil, true, { fail_reason = out })
 end
 
 T["loop: Drain runs each change in the foreground"] = function()

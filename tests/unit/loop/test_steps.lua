@@ -349,6 +349,45 @@ T["loop: Harness slips are not implementation attempts"] = function()
 	end
 end
 
+T["loop: Implement and fix self-check like the gate before handing back"] = function()
+	local makefile = table.concat(vim.fn.readfile(vim.fs.joinpath(H.root, "Makefile")), "\n")
+	local target = makefile:match("\nself%-check:\n(.-)\n\n")
+	eq(target ~= nil, true, { fail_reason = "no self-check target" })
+	local needles = { "integrity.py", 'pinned.py --check "$(CHANGE)"', "lint types", "spec_trial.py" }
+	for _, needle in ipairs(vim.list_extend(needles, { 'openspec validate "$(CHANGE)" --strict' })) do
+		eq(target:find(needle, 1, true) ~= nil, true, { fail_reason = needle })
+	end
+	eq(target:find("check E2E", 1, true), nil)
+	for _, name in ipairs({ "fix", "implement" }) do
+		local prompt =
+			table.concat(vim.fn.readfile(vim.fs.joinpath(H.root, ".archon/commands/" .. name .. ".md")), "\n")
+		prompt = prompt:gsub("%s+", " ")
+		eq(prompt:find("`make self-check CHANGE=$INPUTS.change`", 1, true) ~= nil, true, { fail_reason = name })
+		eq(
+			prompt:find("an ordinary bug", 1, true) ~= nil and prompt:find("is fixed, never blocked", 1, true) ~= nil,
+			true
+		)
+		for _, needle in ipairs({
+			"is fixed, never blocked while an attempt is left (still red after both, block it with that evidence)",
+			"red only from base or loop tooling, not this change: commit anyway and append a `loop: …` line",
+		}) do
+			eq(prompt:find(needle, 1, true) ~= nil, true, { fail_reason = name .. ": " .. needle })
+		end
+	end
+end
+
+T["loop: Fix keeps the red regression test and review blocks scope creep"] = function()
+	local fix = table.concat(vim.fn.readfile(vim.fs.joinpath(H.root, ".archon/commands/fix.md")), "\n")
+	eq(fix:gsub("%s+", " "):find("least of all the red regression test an earlier pass added", 1, true) ~= nil, true)
+	local review = table.concat(vim.fn.readfile(vim.fs.joinpath(H.root, ".archon/commands/review.md")), "\n")
+	review = review:gsub("%s+", " ")
+	eq(review:find("do not cover is `[must-fix]`", 1, true) ~= nil, true)
+	eq(review:find("unless the gate needed it to go green (then say so", 1, true) ~= nil, true)
+	local in_scope = "in scope, no finding: new test files for the change's scenarios, files `make fmt` changed"
+		.. " only in whitespace, and `openspec/changes/<change>/`"
+	eq(review:find(in_scope, 1, true) ~= nil, true, { fail_reason = review })
+end
+
 T["loop: Fix prompt shortens an overlong delta requirement"] = function()
 	local fix = table.concat(vim.fn.readfile(vim.fs.joinpath(H.root, ".archon/commands/fix.md")), "\n")
 	eq(fix:gsub("%s+", " "):find("Requirement text is very long", 1, true) ~= nil, true)

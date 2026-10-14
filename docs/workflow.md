@@ -36,13 +36,14 @@ Each run works in its own git worktree cut from `auto` and, when every gate is g
 | `make fix BUG="…"` | `fix-bug`: root cause, spec delta, TDD fix. `BUG` can also be a change id |
 | `make feature IDEA="…"` | `new-feature`: brainstorm, proposal with renders; always stops for your approval |
 | `make queue [CHANGE=<id>]` | `work-queue`: the oldest change in `openspec/changes/` that no run has taken (no `loop/<id>` branch) |
-| `make drain [N=<runs>]` | `drain.py`: foreground `make queue CHANGE=<id>` one change at a time (status read from the Archon DB) until the queue is empty, N runs, or a run waits for you; skips `## Blocked` changes |
+| `make drain [N=<runs>]` | `drain.py`: foreground `make queue CHANGE=<id>` one change at a time (status read from the Archon DB) until the queue is empty, N runs, a run waits for you, or stop-infra cancels a run (broken host, exit 1); skips `## Blocked` changes |
 | `make loop-clean [APPLY=1]` | `loop_clean.py`: remove worktree and branch of shipped or superseded `loop/*` runs; dry run unless `APPLY=1` |
 | `make outdated` | plugins with commits past `lazy-lock.json` (read-only) |
 | `make update PLUGIN=<name>` | `plugin-update`: update that one plugin, test it, ship it or adapt the config |
 | `make preview CHANGE=<id> [OPEN=1]` | regenerate `openspec/changes/<id>/preview.html` and print its absolute path (`OPEN=1` is for you; the loop passes `OPEN=`) |
 | `make console` | `archon serve`, the web console at http://localhost:3090 |
 | `make loop-report [RUN=<id>]` | generate a local HTML report for the named run, or the latest run for this codebase |
+| `make self-check CHANGE=<id>` | the gate's cheap checks (hard rules: `integrity.py`, `pinned.py --check`; lint, types, strict validation of the change and of its trial archive), run by implement and fix before they commit |
 | `make loop-status` / `make loop-validate` | active and last runs plus the latest report URI / `archon validate workflows` |
 
 Run the targets from `~/.config/nvim` (the `auto` checkout). `fix`, `feature`, `queue` and `update` can
@@ -56,12 +57,12 @@ input, output and limits). Scripts do everything that needs no judgment:
 |---|---|---|---|
 | diagnose (fix) / brainstorm (feature) | agent | `superpowers:systematic-debugging` / `superpowers:brainstorming` | `root-cause.md` / `idea.md`, a few lines |
 | spec | agent | `openspec-propose` (queued change: `openspec-continue-change`) | change folder + JSON |
-| pinned (queued change; fix-bug: spec runs it) | script `pinned.py` | none | main-spec scenarios that name a symbol the change touches (proposal What Changes/Impact, branch diff) with no delta and no `## Impact` line; spec gives each a MODIFIED delta or an Impact line, the spec gate and `gate.py` (a hard rule) run `--check` |
+| pinned (queued change, also with every adopted task ticked; fix-bug: spec runs it) | script `pinned.py` | none | main-spec scenarios that name a symbol the change touches (proposal What Changes/Impact minus Impact lines naming a main-spec title, branch diff) with no delta and no `## Impact` line; spec gives each a MODIFIED delta or an Impact line, the spec gate and `gate.py` (a hard rule) run `--check` |
 | spec gate (queued change) | script `spec_gate.py` | none | `{ok, log}`: strict validate, trial archive, task scenario names, `pinned.py --check`; a red pass reruns spec once with the log (`spec-retry`, `spec-gate-2`), a second red gate fails the run with it |
 | plan (only when spec wrote no tasks) | agent, low effort | `superpowers:writing-plans` | `tasks.md` |
 | pack | script `context_pack.py` | none | `context.md`: next task, a bug's `## Evidence`, change, named files, lessons, last failures; `has_task` (false skips implement) |
 | implement, once per task (one session for ≤ 4 tasks) | agent, fresh | `superpowers:test-driven-development` | 1 commit per task, ticked |
-| check | script `gate.py` | none | a `## Blocked` change first (red with `blocked`, at once: no `make check`, no review), then hard rules (a violation is red at once: no `make check`, no review), then `make check E2E=1` once per pass, strict validate, untested change scenarios (`scenarios.py`, replaces a verify agent), JSON |
+| check | script `gate.py` | none | a `## Blocked` change first (red with `blocked`, at once: no `make check`, no review), then hard rules (a violation is red at once: no `make check`, no review), then `make check E2E=1` once per pass (a failed case reruns once unless the change owns it; e2e failing on sandbox infra twice is `infra`: the run stops with no fix pass, no attempt, no reject), strict validate, untested change scenarios (`scenarios.py`, replaces a verify agent), JSON |
 | fix (pass 2-3 only) | agent, fresh | `superpowers:systematic-debugging` (none when every finding is a hard rule) | 1 commit for the listed findings: one headless probe first for a non-obvious failure, at most 2 attempts, then `## Blocked` with the probe output, reverting only non-test edits and committing the red test with it (implement follows the same rule) |
 | review | agent, Claude | `superpowers:requesting-code-review` | JSON |
 | verdict, judge, ship, follow-up | scripts | none | JSON, `escalation.md`, merge commit |

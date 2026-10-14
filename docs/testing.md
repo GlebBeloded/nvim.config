@@ -22,7 +22,7 @@ Pyramid, bottom to top. Times are wall times of one layer on its own (in `make c
 | Static | `make types` | `lua-language-server --check` with `tests/luarc.types.jsonc` (LuaJIT, `vim` global, and `$VIMRUNTIME` as a library), gate at Warning | ~6 s, 0 s cached |
 | Static | `make trace` | scenario ↔ test matrix, fails on orphan or duplicate tests | <1 s |
 | Static | `make specs` | main specs pass `openspec validate --strict` | ~1 s |
-| Static | `make loop-test` | Archon dry-run fixtures (`.archon/workflows/<workflow>/fixtures/*.stubs.yaml`): routing, loop exits, `when:` conditions and output plumbing of the loop workflows, agents and git/VM scripts stubbed, no AI | ~13 s |
+| Static | `make loop-test` | Archon dry-run fixtures (`.archon/workflows/<workflow>/fixtures/*.stubs.yaml`): routing, loop exits, `when:` conditions and output plumbing of the loop workflows, agents and git/VM scripts stubbed, no AI; `make check` skips it when nothing it reads changed vs auto (`.archon/scripts/loop_changed.sh`) | ~13 s |
 | Static | `make chain` | real Alacritty + zellij configs parsed and routed, mappings checked in a child Neovim; prints the shortcut table ([shortcut layers](#shortcut-layers)) | ~2 s |
 | Unit | `make test-unit` | one module in a *bare* child Neovim (`tests/minimal_init.lua`, no user config, plugins added one by one) | `make test` (all three): ~10 s |
 | Integration | `make test-integration` | behaviour of the *real* config in a child Neovim (keys, autocmds, plugins) | |

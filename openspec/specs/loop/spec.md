@@ -92,7 +92,7 @@ After a judge reject, `.archon/scripts/followup.py` SHALL re-queue the work on `
 - **THEN** the first run picks `t-b`, the named run finds nothing and its stderr names `t-b`, and the last run picks `t-a`
 
 ### Requirement: Drain works the queue one run at a time
-`make drain [N=<max runs>]` SHALL work queued changes one at a time through a foreground `make queue CHANGE=<id>` (never `--detach`), read each run's status from the newest row of its run in the Archon DB, skip a change with a `## Blocked` section, go on after a failed run, run no change twice, and stop when the queue is empty, after N runs, or at the first run that waits for the user.
+`make drain [N=<max runs>]` SHALL work queued changes one at a time through a foreground `make queue CHANGE=<id>` (never `--detach`), read each run's status from the newest row of its run in the Archon DB, skip a change with a `## Blocked` section, go on after a failed run, run no change twice, and stop when the queue is empty, after N runs, at the first run that waits for the user, or (exit 1) at a run the stop-infra node cancelled.
 
 #### Scenario: Drain works queued changes until the queue is empty
 - **WHEN** `make drain` runs via `vim.system` in a throwaway repo with `ARCHON` stubbed to record runs in a throwaway `ARCHON_DB` and changes `t-a`, `t-b` (with a `## Blocked` section) and `t-c`, oldest first, where the run of `t-a` fails and the run of `t-c` completes
@@ -105,6 +105,10 @@ After a judge reject, `.archon/scripts/followup.py` SHALL re-queue the work on `
 #### Scenario: Drain stops at a run that waits for the user
 - **WHEN** `make drain` runs where the first run is recorded `paused` and a second change is queued
 - **THEN** it exits 0, starts no second run and its output names the paused change
+
+#### Scenario: Drain stops when the sandbox infra fails
+- **WHEN** `make drain` runs where the first run is cancelled, the second is cancelled by the stop-infra node (its `workflow_cancelled` event) and a third change is queued
+- **THEN** it goes on after the first, starts no third run, exits non-zero and prints one line naming the second change and the sandbox infra
 
 #### Scenario: Drain runs each change in the foreground
 - **WHEN** `make drain` runs with the same stubs and one runnable change
@@ -568,6 +572,28 @@ When `make check` fails only in `test`, `test-readiness` or `e2e`, gate.py SHALL
 - **WHEN** gate.py runs with a `make` stub whose check fails in `e2e` with only sandbox lines (`did not answer SSH`, `is not running`) and whose rerun passes, then fails; then with a `FAIL in` case; then with another non-sandbox line
 - **THEN** the first reruns `make e2e E2E=1` and is green with `e2e: <last sandbox line>` in `flaky`; the second is red; the last two are red with no rerun
 
+### Requirement: Gate stops on sandbox infra
+When the e2e rerun fails on sandbox infra again (incl. the image pull disk guard) and every other rerun passes, gate.py SHALL print `infra` (the sandbox line) and not count the pass as an attempt; verdict SHALL end the loop with no fix pass and not exhausted; the judge SHALL decide `infra` (neither reject nor re-queue) and ship-decide SHALL stop the run.
+
+#### Scenario: Gate stops on sandbox infra that fails again on rerun
+- **WHEN** gate.py runs on a check failing in e2e on the image pull disk guard and in test-readiness on a timing bound, the e2e rerun failing on it again and the readiness rerun passing; then with the readiness rerun failing; then with an e2e rerun that passes
+- **THEN** the first is red with `infra` set and the attempt counter at 0, verdict is done and not exhausted, the judge decides `infra` and ship-decide stops without go; the second is red with no `infra`; the third is green with both in `flaky`
+
+### Requirement: Gate never passes a case the change owns as flaky
+gate.py SHALL never rerun a failed case whose `T[...]` line or body the branch adds or edits or that is named after a scenario of the change, SHALL still rerun the other failed cases (in the same file too; an owned failure keeps the check red), and SHALL count a test rerun as passed only when it exits 0 and prints its reporter group (`<file> | <case>`, or `<file> | <set>` for a nested set) with only passes.
+
+#### Scenario: Gate never passes a case the change owns as flaky
+- **WHEN** gate.py runs on a check failing in `test` on one case whose file the branch edits; then on one named after a scenario of the change; then with a rerun that exits 0 printing `No test cases matched`; then with a rerun printing the case as passed
+- **THEN** the first two are red with no rerun, the third is red, the last is green with the case in `flaky`
+
+#### Scenario: Gate reruns an old case in a test file the change edits
+- **WHEN** gate.py runs on a check failing on a case the branch leaves unchanged in a test file whose other case it edits; then failing on both cases
+- **THEN** the first reruns only the old case and is green with it in `flaky`; the second reruns only the old case and is red, its failures noting the old case passed on rerun
+
+#### Scenario: Gate reruns a failed case of a nested set
+- **WHEN** gate.py runs on a check failing on `<file> | load | <case>: <message>` whose rerun prints `<file> | load: o`; then `<file> | load: x`
+- **THEN** the rerun is `make test FILE=<file> CASE=load | <case>` and the first is green; the second is red
+
 ### Requirement: Fix pass never makes an empty commit
 The fix command SHALL commit nothing when no listed finding needs a change and say so (the gate reruns), never an empty commit, and SHALL prefix with `loop:` (dropped) a lesson candidate that restates one of its own rules.
 
@@ -589,6 +615,14 @@ work-queue SHALL skip the queue-spec step when the adopted change's tasks.md has
 #### Scenario: Fix prompt shortens an overlong delta requirement
 - **WHEN** `.archon/commands/fix.md` is read
 - **THEN** it treats a "Requirement text is very long" validate finding as a fix to this change's spec delta and reruns `spec_trial.py`
+
+#### Scenario: Implement and fix self-check like the gate before handing back
+- **WHEN** the Makefile and `.archon/commands/fix.md` and `implement.md` are read
+- **THEN** `make self-check CHANGE=<id>` runs the hard rules (`integrity.py`, `pinned.py --check`), lint, types, strict validation of the change and `spec_trial.py` (no tests, no e2e), both prompts run it before they commit (committing anyway with a `loop:` note when only base or loop tooling is red), and both fix an ordinary bug instead of writing `## Blocked` while an attempt is left
+
+#### Scenario: Fix keeps the red regression test and review blocks scope creep
+- **WHEN** `.archon/commands/fix.md` and `review.md` are read
+- **THEN** fix forbids deleting or weakening the red regression test an earlier pass added, and review marks an edit outside the proposal and tasks `[must-fix]` unless the gate needed it, which the finding says, and keeps new scenario test files, whitespace-only `make fmt` edits and the change's folder in scope
 
 #### Scenario: Adopted change with every task ticked skips the spec step
 - **WHEN** `tasks.py --adopted-state` runs for change `c` with all tasks ticked (with a design.md holding a render section, with a technical design.md, without one, and with a proposal holding a `## Rejected run` section), with one unticked, with no tasks.md and with no change folder
@@ -788,7 +822,7 @@ Every literal `lua/gleb` file path routed by `tests/quick.sh` SHALL exist in the
 - **THEN** every routed file exists
 
 ### Requirement: Spec step plans the main-spec scenarios a change pins
-`.archon/scripts/pinned.py <change>` SHALL list each main-spec scenario naming a symbol the change touches (config identifiers and keymap lhs backticked in the proposal's What Changes and Impact; lhs and callables of mappings and local functions the branch diff changes) whose capability has no delta and whose title `## Impact` does not name; `--check` SHALL exit 1 when any. The spec steps SHALL plan each; the spec gates and gate.py SHALL run the check.
+`.archon/scripts/pinned.py <change>` SHALL list each main-spec scenario naming a symbol the change touches (config identifiers and keymap lhs backticked in the proposal's What Changes and Impact; lhs and callables of mappings and local functions the branch diff changes) whose capability has no delta and whose title no `## Impact` line cites (backticked or quoted); `--check` SHALL exit 1 when any. The spec steps SHALL plan each; the spec gates and gate.py SHALL run the check.
 
 #### Scenario: Pinned lists a scenario a proposal symbol names
 - **WHEN** pinned.py runs for a proposal naming `gr` and `lsp_references(…)` and `H.xfail`, against a spec with a scenario reading `maparg("gr")` whose callback is `lsp_references`, a desc enumeration naming `gr`, a screenshot scenario with no `gr` row and an `H.xfail` scenario

@@ -19,13 +19,13 @@ Find the cause before editing code. When it is not obvious (a race, state you ca
 (the scratch-file probe rule below) that logs the relevant state, and base the edit on its output. At most 2 implementation
 attempts per task (an edit plus rerunning its test): if the second still fails, revert only the non-test edits (`lua/` and
 other code; keep the new red test), write `## Blocked` in tasks.md with the probe output and both attempts, commit the failing
-test together with tasks.md (a blocked change never ships), and stop. An attempt is a change to production code (`lua/`) or to your hypothesis about the cause; fixing a mechanical error in your own test or harness code (syntax, arity or multiple returns such as `gsub`, a wrong API or key notation) and rerunning is not an attempt, as long as the test's scenario and assertions stay the same. Block only when the second production attempt fails on an assertion that tests the behaviour.
+test together with tasks.md (a blocked change never ships), and stop. An attempt is a change to production code (`lua/`) or to your hypothesis about the cause; fixing a mechanical error in your own test or harness code (syntax, arity or multiple returns such as `gsub`, a wrong API or key notation) and rerunning is not an attempt, as long as the test's scenario and assertions stay the same. Block only when the second production attempt fails on an assertion that tests the behaviour. `## Blocked` is for a decision only the user can make (design, a spec that contradicts itself or the code) or a behaviour still red after both attempts; an ordinary bug (a wrong return count, a typo, a misused API) is fixed, never blocked while an attempt is left (still red after both, block it with that evidence).
 
 Change: openspec/changes/$INPUTS.change/ (the pack quotes proposal, specs, design and tasks.md)
 
 Do the task(s) under "Next task" in the pack (a small change lists all of its tasks there), then stop. Per task: write the failing test "<capability>:
 <scenario title>", see it fail, make it pass with the smallest change, tick that task's checkboxes (including an item that only runs that task's test, once it passes) in
-tasks.md, run `make fmt`, commit with `git add -A <touched files> openspec/changes/$INPUTS.change` (conventional message), once. Run only that test:
+tasks.md, run `make fmt` and `make self-check CHANGE=$INPUTS.change` (the gate's lint, types and strict validation of the change and of the trial archive; a green `make specs` or `openspec validate --specs` does not count) and fix what it reports (red only from base or loop tooling, not this change: commit anyway and append a `loop: …` line to `$ARTIFACTS_DIR/loop-notes.md`), commit with `git add -A <touched files> openspec/changes/$INPUTS.change` (conventional message), once. Run only that test:
 `make test FILE=tests/<layer>/<capability>/test_x.lua CASE="…" 2>&1 | tail -40`. Never run
 `make quick` or `make check` (the gate after the task loop runs it once). Keep tool output short: read
 file ranges, not whole files; no full logs. Follow the conventions in docs/architecture.md.
@@ -37,7 +37,7 @@ correction is directly verified, append one concise cause-to-action line to
 Never delete, skip or weaken a test or scenario to get green; if the spec is wrong, write it in
 tasks.md under "## Blocked" and stop.
 
-If a failure comes from loop tooling (`.archon/`, `tests/trace.lua`, `tests/sandbox/`, the `make check` targets) and not from this change, do not fix it here: append one line `loop: <failure>` to `$ARTIFACTS_DIR/loop-notes.md` (not tasks.md: the judge lists it for the auditor, and it never stops the change) and go on with the change.
+If a failure comes from loop tooling (`.archon/`, `tests/trace.lua`, `tests/sandbox/`, the `make check` targets) and not from this change, do not fix it here: append one line `loop: <failure>` to `$ARTIFACTS_DIR/loop-notes.md` (not tasks.md: the judge lists it for the auditor, and it never stops the change; `<failure>` quotes the failing log line verbatim, never restating its numbers) and go on with the change.
 
 Ad-hoc headless runs: write the probe to a scratch file and run `make probe SCRIPT=$ARTIFACTS_DIR/probe.lua` (the tests' full-config child and sandbox, prints its output and return values, non-zero on error, `PROBE_TIMEOUT` ms); do not hand-build rtp or XDG dirs. LSP restart and neo-tree renders are async: wait for the end state, not for attachment. Visual marks need `exe "normal! V2j\<Esc>"` or `nvim_buf_set_mark`.
 Timing flakes: the gate log's `FAIL in` line counts as "see it fail"; try to reproduce at most once with a normal run, and never load the host (no `yes`/stress loops, no SIGSTOP): other runs share this machine.

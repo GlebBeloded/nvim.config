@@ -1,0 +1,20 @@
+# l. gate.py reports `infra` (the e2e rerun failed on sandbox infra again, e.g. the image pull disk
+# guard): verdict (real) ends the loop with no fix pass and not exhausted, the judge's `infra` goes to
+# ship-decide (real: go=false, decision=infra), so followup never queues the work and stop-infra (not
+# stop) cancels the run. Unit test "Gate stops on sandbox infra that fails again on rerun".
+fixture:
+  expect: cancelled
+  inputs: { change: demo-change }
+  reached: [gate, verdict, escalation, ship-decide, stop-infra]
+exec-code: true
+skills-check: "skills ok"
+plan-check: { needed: false, has_change: true }
+plan-gate: "change demo-change is valid"
+pack: { has_task: true, context: context.md }
+implement: "task 1 done"
+fix: "MUST-NOT-RUN"
+gate: { green: false, spec_ok: true, tasks_done: true, untested: 0, attempt: 1, failures: "infra: e2e did not run (sandbox failed twice): sandbox: pulling x needs ~42 GB while it unpacks", flaky: [], infra: "sandbox: pulling x needs ~42 GB while it unpacks", blocked: false }
+review: "MUST-NOT-RUN"
+escalation: { decision: infra, escalate: false, reasons: "- infra: e2e did not run (the sandbox failed twice, not the change): sandbox: pulling x" }
+followup: "MUST-NOT-RUN"
+ship: "MUST-NOT-RUN"

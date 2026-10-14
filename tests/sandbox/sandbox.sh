@@ -151,7 +151,7 @@ create() {
 	local free
 	free=$(df -g "$HOME" | awk 'NR==2 {print $4}')
 	if [ $((free - IMAGE_GB * 2)) -lt "$MIN_FREE_GB" ]; then
-		die "pulling $IMAGE needs ~$((IMAGE_GB * 2)) GB while it unpacks; ${free} GB free would leave < ${MIN_FREE_GB} GB. Aborted."
+		die "pulling $IMAGE needs ~$((IMAGE_GB * 2)) GB while it unpacks: ${free} GB free would leave $((free - IMAGE_GB * 2)) GB, under the ${MIN_FREE_GB} GB reserve. Aborted."
 	fi
 	log "pulling $IMAGE as $VM (~$IMAGE_GB GB, once)"
 	lume pull "$IMAGE" "$VM" >&2
