@@ -135,8 +135,8 @@ nodes:
   - id: preview
     bash: make -s preview CHANGE=$pick.output.change OPEN= # OPEN= beats an exported OPEN: nothing opens on the host
     depends_on: [spec-gate]
-    # left to right, && before ||: complete's output is read only when complete ran (tasks not all ticked)
-    when: "$pick.output.kind == 'feature' || $adopted-state.output.visible_ui == true || $adopted-state.output.tasks_done == false && $complete.output.visible_ui == true"
+    # left to right, && before ||: the adopted design.md decides only when complete was skipped (tasks all ticked); otherwise complete's answer decides
+    when: "$pick.output.kind == 'feature' || $adopted-state.output.tasks_done == true && $adopted-state.output.visible_ui == true || $adopted-state.output.tasks_done == false && $complete.output.visible_ui == true"
 
   - id: design-gate
     depends_on: [preview]
