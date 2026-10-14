@@ -118,6 +118,15 @@ T["loop: Pinned lists a scenario a proposal symbol names"] = function()
 	has(check.stdout, "- " .. PIN)
 end
 
+T["loop: Pinned ignores the loop spec's examples"] = function()
+	local repo = repo_with({
+		["openspec/changes/c/proposal.md"] = PROPOSAL,
+		["openspec/specs/loop/spec.md"] = SPEC,
+	})
+	local result = pinned(repo)
+	eq({ result.code, result.stdout }, { 0, PIN .. "\n" }, { fail_reason = result.stderr })
+end
+
 T["loop: Pinned skips a planned or explained scenario"] = function()
 	local delta = repo_with({
 		["openspec/changes/c/proposal.md"] = PROPOSAL,
