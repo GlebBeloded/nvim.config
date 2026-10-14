@@ -6,7 +6,8 @@ branch, the lhs and callables of changed `vim.keymap.set(`/`map(` lines and `loc
 `git diff <merge-base> -U0 -- lua/ init.lua`. Each `openspec/specs/*/spec.md` scenario (or requirement
 prose, when none of its scenarios hits) naming one is pinned, unless its capability has a delta in the
 change or `## Impact` names its title. A bare lhs pins only a line that presses or reads the mapping
-and is no enumeration (a desc list).
+and is no enumeration (a desc list). An Impact line naming a main-spec title is a pin's justification:
+its symbols pin nothing, so the set the spec step is given is the set the gate checks once it is planned.
 
 Usage: pinned.py [--check] <change>. Prints `<capability>: <scenario> (<spec>:<line>)` per pin, or
 `none`; `--check` exits 1 when any. LOOP_CHANGES_DIR overrides openspec/changes (fixtures),
@@ -59,10 +60,17 @@ def strong(name: str) -> bool:
     return name.lower() not in STOP and not GENERIC.match(name) and bool(re.search(r"[._:]|[a-z][A-Z]", name))
 
 
-def proposal_symbols(proposal: str, config: str) -> tuple[set[str], set[str]]:
-    """(lhs, identifiers) named in What Changes / Impact that the config holds."""
+def titles(spec: pathlib.Path) -> list[str]:
+    return [line.split(":", 1)[1].strip() for line in spec.read_text().splitlines()
+            if line.startswith(("### Requirement:", "#### Scenario:"))]
+
+
+def proposal_symbols(proposal: str, config: str, justified: tuple[str, ...] = ()) -> tuple[set[str], set[str]]:
+    """(lhs, identifiers) named in What Changes / Impact that the config holds; Impact lines naming one
+    of `justified` (main-spec titles) are skipped."""
+    impact = "\n".join(l for l in section(proposal, "Impact").splitlines() if not any(t in l for t in justified))
     lhs, idents = set(), set()
-    for span in SPAN.findall(section(proposal, "What Changes") + section(proposal, "Impact")):
+    for span in SPAN.findall(section(proposal, "What Changes") + impact):
         span = span.strip()
         if "/" in span or re.search(r"\.(lua|md|sh|py|ya?ml|json|toml|kdl)$", span):
             continue  # a path
@@ -169,24 +177,38 @@ def spec_pins(spec: pathlib.Path, lhs: set[str], idents: set[str]) -> list[tuple
 
 
 def pinned(change: str) -> list[str]:
+    """The one pinned set: the pinned node, spec_gate.py and gate.py all call this."""
     folder = pathlib.Path(os.environ.get("LOOP_CHANGES_DIR") or "openspec/changes") / change
     proposal_path = folder / "proposal.md"
     proposal = proposal_path.read_text() if change and proposal_path.is_file() else ""
     if not proposal:
         return []
-    lhs, idents = proposal_symbols(proposal, config_text(pathlib.Path(".")))
+    specs = [s for s in sorted(pathlib.Path("openspec/specs").glob("*/spec.md")) if s.parent.name not in TOOLING]
+    justified = tuple(t for s in specs for t in titles(s))
+    lhs, idents = proposal_symbols(proposal, config_text(pathlib.Path(".")), justified)
     more_lhs, more_idents = diff_symbols(branch_diff())
     lhs, idents = lhs | more_lhs, idents | more_idents
     impact = section(proposal, "Impact")
     out = []
-    for spec in sorted(pathlib.Path("openspec/specs").glob("*/spec.md")):
+    for spec in specs:
         capability = spec.parent.name
-        if capability in TOOLING or (folder / "specs" / capability / "spec.md").is_file():
+        if (folder / "specs" / capability / "spec.md").is_file():
             continue
         for title, line in spec_pins(spec, lhs, idents):
             if title.removeprefix("Requirement: ") not in impact:
                 out.append(f"{capability}: {title} ({spec}:{line})")
     return out
+
+
+def check_report(found: list[str]) -> str:
+    """The `--check` failure text (spec_gate.py's log), empty when nothing is pinned."""
+    if not found:
+        return ""
+    return (
+        "pinned scenarios with no delta and no Impact line (each needs a MODIFIED delta restated to the new"
+        " behaviour, or one line in proposal.md `## Impact` naming it and why it still holds):\n"
+        + "\n".join("- " + p for p in found)
+    )
 
 
 if __name__ == "__main__":
@@ -195,11 +217,7 @@ if __name__ == "__main__":
     names = [a for a in args if a != "--check"]
     found = pinned(names[0] if names else "")
     if check and found:
-        print(
-            "pinned scenarios with no delta and no Impact line (each needs a MODIFIED delta restated to the new"
-            " behaviour, or one line in proposal.md `## Impact` naming it and why it still holds):"
-        )
-        print("\n".join("- " + p for p in found))
+        print(check_report(found))
     elif not check:
         print("\n".join(found) or "none")
     sys.exit(1 if check and found else 0)

@@ -56,7 +56,7 @@ input, output and limits). Scripts do everything that needs no judgment:
 |---|---|---|---|
 | diagnose (fix) / brainstorm (feature) | agent | `superpowers:systematic-debugging` / `superpowers:brainstorming` | `root-cause.md` / `idea.md`, a few lines |
 | spec | agent | `openspec-propose` (queued change: `openspec-continue-change`) | change folder + JSON |
-| pinned (queued change; fix-bug: spec runs it) | script `pinned.py` | none | main-spec scenarios that name a symbol the change touches (proposal What Changes/Impact, branch diff) with no delta and no `## Impact` line; spec gives each a MODIFIED delta or an Impact line, the spec gate and `gate.py` (a hard rule) run `--check` |
+| pinned (queued change, also with every adopted task ticked; fix-bug: spec runs it) | script `pinned.py` | none | main-spec scenarios that name a symbol the change touches (proposal What Changes/Impact minus Impact lines naming a main-spec title, branch diff) with no delta and no `## Impact` line; spec gives each a MODIFIED delta or an Impact line, the spec gate and `gate.py` (a hard rule) run `--check` |
 | spec gate (queued change) | script `spec_gate.py` | none | `{ok, log}`: strict validate, trial archive, task scenario names, `pinned.py --check`; a red pass reruns spec once with the log (`spec-retry`, `spec-gate-2`), a second red gate fails the run with it |
 | plan (only when spec wrote no tasks) | agent, low effort | `superpowers:writing-plans` | `tasks.md` |
 | pack | script `context_pack.py` | none | `context.md`: next task, a bug's `## Evidence`, change, named files, lessons, last failures; `has_task` (false skips implement) |

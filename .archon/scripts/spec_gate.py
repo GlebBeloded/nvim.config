@@ -1,6 +1,6 @@
 """The work-queue spec gate: strict validate, a trial archive (spec_trial.py), task scenario names
-(scenarios.py --unknown) and planned pins (pinned.py --check) for INPUTS_CHANGE, stopping at the first
-failing check. Prints {ok, log} and exits 0, so a red first pass routes back to the spec step
+(scenarios.py --unknown) and planned pins (pinned.pinned, the function the pinned node prints) for
+INPUTS_CHANGE, stopping at the first failing check. Prints {ok, log} and exits 0, so a red first pass routes back to the spec step
 (`spec-retry`, which gets the log) instead of failing the run.
 
 With INPUTS_FAILED_LOG set (the `spec-failed` node, after a red second pass) it prints that log to
@@ -12,6 +12,8 @@ import os
 import subprocess
 import sys
 
+from pinned import check_report, pinned
+
 LOG_CHARS = 4000
 
 
@@ -21,7 +23,6 @@ def checks(change: str) -> list[list[str]]:
         ["openspec", "validate", change, "--strict", "--no-interactive"],
         [sys.executable, os.path.join(scripts, "spec_trial.py"), change],
         [sys.executable, os.path.join(scripts, "scenarios.py"), "--unknown", change],
-        [sys.executable, os.path.join(scripts, "pinned.py"), "--check", change],
     ]
 
 
@@ -32,7 +33,8 @@ def gate(change: str) -> dict:
             name = os.path.basename(cmd[1]) if cmd[0] == sys.executable else " ".join(cmd[:2])
             out = (proc.stdout + proc.stderr).strip()
             return {"ok": False, "log": f"{name} failed (exit {proc.returncode}):\n{out}"[-LOG_CHARS:]}
-    return {"ok": True, "log": ""}
+    report = check_report(pinned(change))
+    return {"ok": not report, "log": f"pinned.py failed (exit 1):\n{report}"[-LOG_CHARS:] if report else ""}
 
 
 if __name__ == "__main__":
