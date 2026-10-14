@@ -12,6 +12,11 @@ end
 local T = H.child_set(child, start)
 
 T["picker: Dashboard opens shared list pickers"] = function()
+	child.type_keys("<CR>")
+	assert(child.wait("MiniPick.is_picker_active()", 5000), "Files picker did not open on Enter")
+	eq(child.lua_get("MiniPick.get_picker_opts().source.name"), "Files")
+	child.lua("MiniPick.stop()")
+
 	local actions = {
 		{ key = "f", title = "Files" },
 		{ key = "r", title = "Recent Files" },
