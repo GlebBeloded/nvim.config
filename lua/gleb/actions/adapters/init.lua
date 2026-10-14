@@ -19,9 +19,12 @@ local function belongs_to(areas, id)
 end
 
 ---@param lhs_list string[]
----@return string?
+---@return string|string[]
 local function native_lhs(lhs_list)
-	return lhs_list[1]
+	if #lhs_list == 1 then
+		return lhs_list[1]
+	end
+	return lhs_list
 end
 
 ---@param areas string[]
