@@ -81,22 +81,22 @@ end
 
 local T = MiniTest.new_set({ hooks = { post_once = child.stop } })
 
-T["git: Cmd+O chooses ours"] = function()
+T["git: <leader>co chooses ours"] = function()
 	eq(choose("<leader>co"), { "ours" })
 	eq(conflict_resolved(), true)
 end
 
-T["git: Cmd+I chooses theirs"] = function()
+T["git: <leader>ct chooses theirs"] = function()
 	eq(choose("<leader>ct"), { "theirs" })
 	eq(conflict_resolved(), true)
 end
 
-T["git: Cmd+D chooses base"] = function()
+T["git: <leader>cb chooses base"] = function()
 	eq(choose("<leader>cb"), { "base" })
 	eq(conflict_resolved(), true)
 end
 
-T["git: Cmd+A chooses all"] = function()
+T["git: <leader>ca chooses all"] = function()
 	eq(choose("<leader>ca"), { "ours", "base", "theirs" })
 	eq(conflict_resolved(), true)
 end
