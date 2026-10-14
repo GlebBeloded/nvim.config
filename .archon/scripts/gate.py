@@ -62,7 +62,8 @@ def hard_rules() -> list[str]:
 def record_fix_scope() -> None:
     """fix-scope.md lists the planning files edited since verdict's snapshot; absent when none were."""
     snapshot, scope = artifacts / "plan-snapshot.json", artifacts / "fix-scope.md"
-    edits = plan_edits(json.loads(snapshot.read_text()), change) if snapshot.exists() and change else []
+    live = change and pathlib.Path("openspec/changes", change).is_dir()  # archived after the pass: nothing to compare
+    edits = plan_edits(json.loads(snapshot.read_text()), change) if snapshot.exists() and live else []
     scope.unlink(missing_ok=True)
     if edits:
         scope.write_text("fix pass edited planning files (allowed only when a listed finding needs it): " + ", ".join(edits) + "\n")

@@ -287,6 +287,25 @@ T["loop: Gate lists planning files a fix pass edited"] = function()
 	has(read(vim.fs.joinpath(H.root, ".archon/commands/review.md")), "`$ARTIFACTS_DIR/fix-scope.md`")
 end
 
+T["loop: Gate skips the fix-scope check once the change is archived"] = function()
+	local repo = branch_repo({
+		["openspec/changes/c/proposal.md"] = "# c",
+		["openspec/changes/c/tasks.md"] = "## 1. Task\n- [x] 1.1 a",
+	})
+	local artifacts = H.tempdir(child)
+	local scratch = H.tempdir(child)
+	fake_tool(scratch, "openspec", "exit 0")
+	local bin = fake_tool(scratch, "make", "exit 0")
+	local env = { ARTIFACTS_DIR = artifacts, INPUTS_CHANGE = "c", PATH = bin .. ":" .. vim.env.PATH }
+	loop_script("verdict.py", repo, verdict_env(artifacts, { INPUTS_CHANGE = "c", INPUTS_APPROVE = "false" }))
+	child.lua(
+		"vim.fn.rename(...)",
+		{ vim.fs.joinpath(repo, "openspec/changes/c"), vim.fs.joinpath(repo, "openspec/changes/archive-c") }
+	)
+	loop_script("gate.py", repo, env)
+	eq(vim.fn.filereadable(vim.fs.joinpath(artifacts, "fix-scope.md")), 0)
+end
+
 T["loop: Fix prompt stays on the listed findings"] = function()
 	local fix = read(vim.fs.joinpath(H.root, ".archon/commands/fix.md")):gsub("%s+", " ")
 	has(fix, "when every finding below starts with `hard rule:`, load none")

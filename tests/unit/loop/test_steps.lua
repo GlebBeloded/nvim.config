@@ -351,6 +351,11 @@ T["loop: Adopted change with every task ticked skips the spec step"] = function(
 	local technical =
 		{ ["openspec/changes/c/tasks.md"] = done, ["openspec/changes/c/design.md"] = "# Design\n\n## Decisions\nx" }
 	eq(adopted_state(technical), { archived = false, tasks_done = true, visible_ui = false })
+	local rejected = {
+		["openspec/changes/c/tasks.md"] = done,
+		["openspec/changes/c/proposal.md"] = "## Why\nx\n\n## Rejected run\n- review: test weakened",
+	}
+	eq(adopted_state(rejected), { archived = false, tasks_done = false, visible_ui = false })
 	eq(
 		adopted_state({ ["openspec/changes/c/tasks.md"] = done }),
 		{ archived = false, tasks_done = true, visible_ui = false }
