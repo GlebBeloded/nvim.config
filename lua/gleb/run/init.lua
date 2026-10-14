@@ -1,6 +1,5 @@
-local function git_root()
-	local dot_git_path = vim.fn.finddir(".git", ".;") --[[@as string]]
-	return vim.fn.fnamemodify(dot_git_path, ":h")
+local function cargo_root()
+	return vim.fs.root(0, "Cargo.toml")
 end
 
 vim.api.nvim_create_user_command("Run", function()
@@ -8,6 +7,6 @@ vim.api.nvim_create_user_command("Run", function()
 	if vim.fn.filereadable("index.html") == 1 then
 		vim.cmd("silent !open -a Safari index.html")
 	elseif vim.fn.filereadable("Cargo.lock") == 1 then
-		vim.cmd("!cd " .. git_root() .. ";cargo run")
+		vim.cmd("!cd " .. vim.fn.shellescape(cargo_root()) .. ";cargo run")
 	end
 end, { range = false })
