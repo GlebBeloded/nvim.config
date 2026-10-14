@@ -18,7 +18,7 @@ local function palette(query, rows)
 		{
 			INDENT .. "╭ Find Action › " .. query .. string.rep(
 				"─",
-				assert(QUERY_DASHES[query], "unknown approved query")
+				(assert(QUERY_DASHES[query], "unknown approved query"))
 			) .. "╮",
 		},
 		vim.list_extend(body, {
@@ -48,7 +48,7 @@ local function assignment(key)
 		INDENT
 			.. "│       │  │ "
 			.. key
-			.. string.rep(" ", assert(KEY_PADDING[key], "unknown approved key"))
+			.. string.rep(" ", (assert(KEY_PADDING[key], "unknown approved key")))
 			.. " │    │     │",
 		INDENT
 			.. "│       │  ╰────────────────────────────────────────────────╯    │     │",
