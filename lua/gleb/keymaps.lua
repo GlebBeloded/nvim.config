@@ -162,6 +162,9 @@ map("n", "gd", vim.lsp.buf.definition, "LSP: Go to definition")
 map("n", "K", vim.lsp.buf.hover, "LSP: Hover")
 map("n", "gi", vim.lsp.buf.implementation, "LSP: Go to implementation")
 map("n", "gr", lsp_references, "LSP: References")
+for _, lhs in ipairs({ "grn", "gra", "grx", "grr", "gri", "grt" }) do
+	vim.keymap.del("n", lhs)
+end
 map("n", "<A-r>", vim.lsp.buf.rename, "LSP: Rename")
 
 -- Diagnostics

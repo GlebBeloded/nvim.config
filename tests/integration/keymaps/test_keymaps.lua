@@ -530,6 +530,16 @@ end
 
 T["keymaps: gr bound to Telescope references"] = function()
 	eq(gr_includes_current_line(), true)
+
+	local gr_maps = child.lua_get([[
+vim.tbl_map(function(mapping)
+	return mapping.lhs
+end, vim.tbl_filter(function(mapping)
+	return mapping.lhs:match("^gr") ~= nil
+end, vim.api.nvim_get_keymap("n")))
+]])
+	table.sort(gr_maps)
+	eq(gr_maps, { "gr" })
 end
 
 T["keymaps: ge jumps to next diagnostic"] = function()
