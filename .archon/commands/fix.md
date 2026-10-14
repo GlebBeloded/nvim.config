@@ -20,7 +20,10 @@ $LOOP_PREV.verdict.output.feedback
 
 Fix exactly these findings and nothing else, smallest change first. Stay on the listed findings:
 never edit the change's proposal.md, .openspec.yaml or spec deltas unless a finding is about them (the
-gate lists such edits for the review). Find the cause before editing.
+gate lists such edits for the review), or a failing test pins a main-spec scenario this change intentionally
+contradicts: then add a MODIFIED delta restating that scenario to the new behaviour and update the test to the new THEN.
+An edited assertion must still prove its scenario's THEN; replacing a behaviour/callback check with metadata (desc, buffer) is weakening.
+Find the cause before editing.
 Read only the latest check log, the `full log:` path in the findings (never a `check-*.log` glob):
 search it with `rg -n 'FAIL in' <log>` and `rg -n -C 3 '<pattern>' <log>` (at most `-C 3`), not the
 whole log. Search code with one specific term per `rg` and a path, never a broad multi-word `rg` over
@@ -43,7 +46,7 @@ When a fix is directly verified, append one concise cause-to-action line to
 Never delete, skip or weaken a test or scenario to get green; if the spec is wrong, write it in
 tasks.md under "## Blocked" and stop.
 
-If a failure comes from loop tooling (`.archon/`, `tests/trace.lua`, `tests/sandbox/`, the `make check` targets) and not from this change, do not fix it here: write `## Blocked` with `loop: <failure>` in tasks.md and stop.
+If a failure comes from loop tooling (`.archon/`, `tests/trace.lua`, `tests/sandbox/`, the `make check` targets) and not from this change, do not fix it here: append one line `loop: <failure>` to `$ARTIFACTS_DIR/loop-notes.md` (not tasks.md: the judge lists it for the auditor, and it never stops the change) and go on with the change.
 
 Ad-hoc headless runs: write the probe to a scratch file and run `timeout 30 nvim -n --headless -u NONE -l $ARTIFACTS_DIR/probe.lua` (body in `pcall`, `vim.cmd('qa!')` last); never inline `+lua` with shell quoting. Visual marks need `exe "normal! V2j\<Esc>"` or `nvim_buf_set_mark`.
 Never load the host to reproduce a flake (no `yes`/stress loops, no SIGSTOP tricks): other runs share this machine. A gate log's `FAIL in` line is the RED evidence for a timing flake.

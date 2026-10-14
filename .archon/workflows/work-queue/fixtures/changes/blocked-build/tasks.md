@@ -3,3 +3,4 @@
 
 ## Blocked
 loop: fixture tooling failure the fix step cannot repair
+fixture bound conflict the fix step cannot resolve: pick (A) or (B)

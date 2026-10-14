@@ -23,6 +23,7 @@ openspec continue-change). Otherwise create one with the `openspec-propose` skil
 - tasks.md: each task names its scenario titles on a `Scenarios:` line as `<capability>: <scenario title>` (the gate checks those have tests, also when the spec delta is empty); its first step is the failing test
   "<capability>: <scenario title>" (when a test with that name exists: run it and see it fail).
   Checkbox items are agent work only; no items to run `make check`/`make quick` (the gate does it).
+After proposal.md exists, run `python3 .archon/scripts/pinned.py <change>` once. Pinned scenarios (main-spec scenarios naming a symbol this change touches): each gets a MODIFIED delta restated to the new behaviour, or one line in proposal.md `## Impact` naming `<capability>: <scenario>` and saying why it still holds; the spec gate reruns `pinned.py --check`. Read only their ranges.
 Get the artifact instructions in one batch and skip design unless there is visible UI or a structural change; do not re-read files you just wrote. Read the capability spec once (`openspec/specs/<capability>/spec.md`, the requirement's line range); run
 `openspec status` once at the end.
 

@@ -77,6 +77,8 @@ print(
             "weakened_scenario": value("weakened_scenario", False) is True,
             "weakened_test": value("weakened_test", False) is True,
             "notes": notes,
+            # the last review's findings when it did not approve: the judge hands them to followup.py
+            "review_findings": "" if value("approve", False) is True else str(value("review_findings", "") or ""),
         }
     )
 )

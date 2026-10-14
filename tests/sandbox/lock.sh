@@ -17,7 +17,9 @@ lock_started() { ps -o lstart= -p "$1" 2>/dev/null; }
 # take $1 if free; mkdir is atomic, so only one caller wins
 lock_try() {
 	mkdir "$1" 2>/dev/null || return 1
-	printf '%s %s\n%s\n' "$$" "$(lock_started $$)" "${ROOT:-$PWD}" >"$1/owner"
+	# written aside and renamed: a reader sees no owner record or a whole one, never a partial one
+	printf '%s %s\n%s\n' "$$" "$(lock_started $$)" "${ROOT:-$PWD}" >"$1/owner.$$"
+	mv -f "$1/owner.$$" "$1/owner"
 	LOCK_HELD=$1
 	trap lock_release EXIT
 	trap 'exit 130' INT
