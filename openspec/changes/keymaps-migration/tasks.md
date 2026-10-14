@@ -10,6 +10,7 @@ Scenarios: `actions: Feature actions contain no shortcut keys`, `actions: Every 
 - Direct function mappings use the action `mapping` field to preserve callback identity for LSP, picker, and smart-splits behavior.
 - Neo-tree actions carry plugin and source-scope metadata so the global applicator skips them and the adapter composes only the relevant source table.
 - Differ and Codediff retain the explicitly specified next-hunk action while their other plugin defaults are disabled, matching the ownership scenarios without inventing shortcuts.
+- Commit-popup actions resolve a buffer-keyed session so registry callbacks retain each popup's validation, close, and commit context.
 
 ## 2. Remove unowned built-in and surround defaults
 Scenarios: `actions: Every configured mapping is action-owned`, `keymaps: Unadopted built-in mappings are removed`, `keymaps: Adopted built-in mappings are registry actions`, `keymaps: Surround mappings use registered actions`, `keymaps: [d jumps to previous diagnostic`
@@ -49,9 +50,9 @@ Scenarios: `git: Diffview mappings come from git actions`, `git: Differ mappings
 
 ## 6. Preserve commit-popup confirmation guards through actions
 Scenarios: `git: Commit popup mappings come from git actions`, `git: Enter confirms message`, `git: Enter on empty buffer does nothing`, `git: Enter on placeholder does nothing`
-- [ ] 6.1 Add the ownership assertion to `tests/unit/git/test_ai_commit.lua`; use the real popup and `<CR>` presses in all listed cases, run `make test FILE=tests/unit/git/test_ai_commit.lua CASE="git: Commit popup mappings come from git actions"`, and see it fail
-- [ ] 6.2 Install popup-local confirm and discard mappings from registered git actions while retaining the existing validation callbacks
-- [ ] 6.3 Run `make test FILE=tests/unit/git/test_ai_commit.lua` and see it pass
+- [x] 6.1 Add the ownership assertion to `tests/unit/git/test_ai_commit.lua`; use the real popup and `<CR>` presses in all listed cases, run `make test FILE=tests/unit/git/test_ai_commit.lua CASE="git: Commit popup mappings come from git actions"`, and see it fail
+- [x] 6.2 Install popup-local confirm and discard mappings from registered git actions while retaining the existing validation callbacks
+- [x] 6.3 Run `make test FILE=tests/unit/git/test_ai_commit.lua` and see it pass
 
 ## 7. Preserve commit-popup cleanup and discard behavior
 Scenarios: `git: Enter drops comment lines`, `git: q discards popup`

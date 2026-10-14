@@ -51,6 +51,24 @@ end
 ---@type gleb.Action[]
 local actions = {
 	{
+		id = "git.confirm_commit_popup",
+		title = "Confirm commit message",
+		category = "Git",
+		plugin = "git-commit-popup",
+		run = function(ctx)
+			require("gleb.git.ai_commit").confirm(ctx.buf)
+		end,
+	},
+	{
+		id = "git.discard_commit_popup",
+		title = "Discard commit message",
+		category = "Git",
+		plugin = "git-commit-popup",
+		run = function(ctx)
+			require("gleb.git.ai_commit").discard(ctx.buf)
+		end,
+	},
+	{
 		id = "git.open_differ",
 		title = "Open Differ",
 		category = "Git",

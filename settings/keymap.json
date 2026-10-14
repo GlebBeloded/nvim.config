@@ -32,6 +32,8 @@
   "fold.close_one": ["<M-->"],
   "fold.open_all": ["<S-D-=>"],
   "fold.open_one": ["<M-=>"],
+  "git.confirm_commit_popup": ["<CR>"],
+  "git.discard_commit_popup": ["q"],
   "git.open_differ": ["<A-g>"],
   "jump.back": ["gb"],
   "jump.forward": ["gB"],
