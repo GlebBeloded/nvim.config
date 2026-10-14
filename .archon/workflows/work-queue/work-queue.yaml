@@ -108,7 +108,7 @@ nodes:
     depends_on: [pick, adopted-state, blocked]
     when: "$pick.output.found == true && $adopted-state.output.archived == false && $adopted-state.output.tasks_done == false && $blocked.output.blocked == false"
 
-  - id: meta # skip_specs (test-only, refactor): switch to the no-design schema before the spec step (no AI)
+  - id: meta # picks the change's schema before the spec step (no AI): no-design unless a feature or a render-holding proposal/design.md
     script: no_design
     runtime: uv
     depends_on: [pick, adopted-state, blocked]
@@ -119,7 +119,8 @@ nodes:
       type: object
       properties:
         skip_specs: { type: boolean }
-      required: [skip_specs]
+        design: { type: boolean }
+      required: [skip_specs, design]
 
   - id: complete # no output_format for any change: a forced schema made the agent print the JSON every turn
     command: queue-spec

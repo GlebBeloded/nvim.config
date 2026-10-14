@@ -60,7 +60,7 @@ end
 
 T["loop: Skip-specs change gets the no-design schema"] = function()
 	local repo = change_repo("schema: spec-driven\nskip_specs: true")
-	eq(no_design(repo), { skip_specs = true })
+	eq(no_design(repo), { skip_specs = true, design = false })
 	has(read(vim.fs.joinpath(repo, "openspec/changes/c/.openspec.yaml")), "schema: spec-driven-no-design")
 	local result = H.system(child, { "openspec", "status", "--change", "c", "--json" }, repo)
 	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
@@ -87,10 +87,40 @@ T["loop: No-design switch is committed on its own"] = function()
 	eq(vim.trim(git({ "log", "-1", "--format=%s" })), "chore(openspec): c uses the no-design schema")
 end
 
-T["loop: Change without skip_specs keeps its schema"] = function()
+---@param repo string
+---@return table status `openspec status --json` of change `c`
+local function status(repo)
+	local result = H.system(child, { "openspec", "status", "--change", "c", "--json" }, repo)
+	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
+	return vim.json.decode(result.stdout)
+end
+
+local DELTA = "## MODIFIED Requirements\n\n### Requirement: X\nThe loop SHALL x.\n\n#### Scenario: x\n- **WHEN** x\n- **THEN** y"
+
+T["loop: Change without a new look gets the no-design schema"] = function()
 	local repo = change_repo("schema: spec-driven")
-	eq(no_design(repo).skip_specs, false)
-	eq(read(vim.fs.joinpath(repo, "openspec/changes/c/.openspec.yaml")), "schema: spec-driven")
+	write(repo, { ["openspec/changes/c/specs/loop/spec.md"] = DELTA })
+	eq(no_design(repo), { skip_specs = false, design = false })
+	eq(read(vim.fs.joinpath(repo, "openspec/changes/c/.openspec.yaml")), "schema: spec-driven-no-design")
+	local state = status(repo)
+	eq(vim.tbl_map(function(artifact)
+		return artifact.id
+	end, state.artifacts), { "proposal", "specs", "tasks" })
+	eq(state.isComplete, true)
+end
+
+T["loop: Change with a new look keeps the design schema"] = function()
+	local feature = change_repo("schema: spec-driven-no-design")
+	write(feature, { ["openspec/changes/c/proposal.md"] = "## Why\nx\n\nKind: feature\n\n## Impact\n- x" })
+	eq(no_design(feature), { skip_specs = false, design = true })
+	eq(read(vim.fs.joinpath(feature, "openspec/changes/c/.openspec.yaml")), "schema: spec-driven")
+	local rendered = change_repo("schema: spec-driven")
+	write(rendered, { ["openspec/changes/c/proposal.md"] = PROPOSAL .. "\n\n## Proposed render\nx" })
+	eq(no_design(rendered), { skip_specs = false, design = true })
+	eq(read(vim.fs.joinpath(rendered, "openspec/changes/c/.openspec.yaml")), "schema: spec-driven")
+	local skip = change_repo("schema: spec-driven\nskip_specs: true")
+	write(skip, { ["openspec/changes/c/proposal.md"] = "## Why\nx\n\nKind: feature\n\n## Impact\n- x" })
+	eq(no_design(skip), { skip_specs = true, design = false })
 end
 
 ---@param queue string
@@ -169,6 +199,16 @@ T["loop: Queue spec prompt opens with a skip_specs fast path"] = function()
 	)
 	has(prompt, "sed -n '/^rules:/,/^operations:/p' openspec/config.yaml")
 	eq(prompt:find("context.md", 1, true), nil)
+end
+
+T["loop: Queue spec prompt keeps the schema and greps one capability"] = function()
+	local prompt = read(vim.fs.joinpath(H.root, ".archon/commands/queue-spec.md")):gsub("%s+", " ")
+	has(prompt, "the work-queue meta step already set the change's `schema:` in `.openspec.yaml`")
+	has(prompt, "Never change the `schema:` line, never read `openspec/schemas/` or run `openspec instructions design`.")
+	has(prompt, "delete only the `skip_specs` line from `.openspec.yaml` (keep its `schema:` line)")
+	eq(prompt:find("set `schema: spec-driven` in", 1, true), nil)
+	has(prompt, "never list every Requirement or Scenario of all specs (no `rg` over `openspec/specs/` as a whole)")
+	has(prompt, "rg -n '^### Requirement:|^#### Scenario:' openspec/specs/<capability>/spec.md")
 end
 
 T["loop: Queue spec prompt sees a tightened assertion fail"] = function()

@@ -1,6 +1,6 @@
 name: spec-driven-no-design
 version: 1
-description: spec-driven without design.md, for changes with skip_specs (no behaviour or look change)
+description: spec-driven without design.md, for changes with no new look (skip_specs, or a proposal without renders); work-queue meta sets it
 artifacts:
   - id: proposal
     generates: proposal.md

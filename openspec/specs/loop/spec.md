@@ -583,19 +583,27 @@ work-queue SHALL skip the queue-spec step when the adopted change's tasks.md has
 - **THEN** it says a task never empties a test file and keeps the copy in the file that would be emptied
 
 ### Requirement: Skip-specs change needs no design
-For a change whose `.openspec.yaml` has `skip_specs: true`, the work-queue `meta` node (`no_design.py`) SHALL set `schema: spec-driven-no-design`, a repo-local schema without design, and print `skip_specs` true. A change without skip_specs keeps its schema. The spec step (`complete`) SHALL run queue-spec without `output_format` for every change; the `classify` node (`classify.py`) SHALL answer `visible_ui` and `architecture` from the written change, false for a skip_specs change.
+Before the spec step, the work-queue `meta` node (`no_design.py`) SHALL set `schema: spec-driven` for a change needing design (a feature, or a proposal.md or design.md with a render section, without skip_specs) and `schema: spec-driven-no-design` for every other change; agents never change it. The spec step (`complete`) SHALL run queue-spec without `output_format`; `classify` (`classify.py`) SHALL answer `visible_ui` and `architecture` from the written change, false for skip_specs.
 
 #### Scenario: Skip-specs change gets the no-design schema
 - **WHEN** `no_design.py` runs for a change with proposal.md, tasks.md and a `.openspec.yaml` holding `schema: spec-driven` and `skip_specs: true`, in a repo carrying `openspec/schemas/spec-driven-no-design`
-- **THEN** it prints skip_specs true, the file names `schema: spec-driven-no-design`, and `openspec status --json` lists no `design` artifact and reports the change complete
+- **THEN** it prints skip_specs true and design false, the file names `schema: spec-driven-no-design`, and `openspec status --json` lists no `design` artifact and reports the change complete
 
 #### Scenario: No-design switch is committed on its own
 - **WHEN** `no_design.py` switches change `c` to the no-design schema in a git checkout with a clean tree
 - **THEN** the tree is clean afterwards and the latest commit is `chore(openspec): c uses the no-design schema`
 
-#### Scenario: Change without skip_specs keeps its schema
-- **WHEN** `no_design.py` runs for a change whose `.openspec.yaml` holds only `schema: spec-driven`
-- **THEN** it prints skip_specs false and the file is unchanged
+#### Scenario: Change without a new look gets the no-design schema
+- **WHEN** `no_design.py` runs for a `Kind: bug` change without renders whose `.openspec.yaml` holds only `schema: spec-driven`, with a spec delta
+- **THEN** it prints skip_specs and design false, the file names `schema: spec-driven-no-design`, and `openspec status --json` lists proposal, specs and tasks and reports the change complete
+
+#### Scenario: Change with a new look keeps the design schema
+- **WHEN** `no_design.py` runs for a `Kind: feature` change set to `spec-driven-no-design`, for a change whose proposal.md has a `## Proposed render` section, and for a feature with `skip_specs: true`
+- **THEN** the first two print design true and their file names `schema: spec-driven`; the skip_specs one prints design false
+
+#### Scenario: Queue spec prompt keeps the schema and greps one capability
+- **WHEN** `.archon/commands/queue-spec.md` is read
+- **THEN** it says the meta step already set the schema, forbids changing the `schema:` line, reading `openspec/schemas/` and `openspec instructions design`, keeps the `schema:` line when a skip_specs change drops skip_specs, and forbids listing every Requirement or Scenario of all specs, grepping one capability's spec instead
 
 #### Scenario: Work queue spec step returns no JSON
 - **WHEN** `.archon/workflows/work-queue/work-queue.yaml` is read
