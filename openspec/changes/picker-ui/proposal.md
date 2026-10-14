@@ -53,9 +53,10 @@ Kind: feature
     | fzf-lua | 4.5k | 2026-10-14 | Fastest, but fzf-rendered rows cannot draw right-aligned extmark labels |
     | nui.nvim | 2.1k | 2026-08-18 | Primitives only: no matcher, no async |
     | telescope.nvim (current) | 19.8k | 2026-08-17 | 464 open issues; replaced |
-- Code: new `lua/gleb/picker/`; `lua/gleb/select/`, `lua/gleb/keymaps.lua` (`gr`, `<A-F>`), `lua/gleb/ai/`, `lua/gleb/project.lua`, `lua/gleb/plugins/plugins.lua` and `init.lua` change; `lua/gleb/telescope.lua` is deleted.
+- Code: new `lua/gleb/picker/`; `lua/gleb/select/`, `lua/gleb/keymaps.lua` (`gr`, `<A-F>`), `lua/gleb/ai/`, `lua/gleb/alpha.lua`, `lua/gleb/project.lua`, `lua/gleb/plugins/plugins.lua`, `init.lua` and `lazy-lock.json` change; `lua/gleb/telescope.lua` is deleted.
 - Tests: screen tests (reference screenshots) for the frame, the hint row and the three widths; integration tests for grep, references and `ui.select`; unit tests for the breakpoint logic. The old telescope tests are retired together with their spec.
 - Core keymaps: `<A-F>` and `gr` keep their keys but open the new picker.
+- Pinned behavior: `file-tree: gr keeps its global meaning in git status tree` still holds because the tree continues to leave `gr` unmapped and inherits the replacement global references picker.
 - Out of scope: the Find Action palette (`find-action`), new code-search menus (separate shortcut, later), and moving keys onto the registry.
 
 ## Decision (user, 2026-10-14)
