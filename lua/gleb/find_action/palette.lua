@@ -10,6 +10,7 @@ local MiniPick = require("mini.pick")
 
 ---@class gleb.FindActionState
 ---@field context? gleb.ActionContext
+---@field query? string
 ---@field show_hidden? boolean
 ---@field rows? gleb.FindActionRow[]
 
@@ -134,6 +135,43 @@ local function move_to_previous_action()
 	move_to_actionable_match(-1)
 end
 
+---@param direction integer
+local function scroll_to_actionable_match(direction)
+	local matches = MiniPick.get_picker_matches()
+	local state = MiniPick.get_picker_state()
+	if not matches or not matches.current_ind or #matches.all_inds == 0 or not state then
+		return
+	end
+	local position = vim.fn.index(matches.all_inds, matches.current_ind) + 1
+	local offset = direction * vim.api.nvim_win_get_height(state.windows.main)
+	local target
+	if position == 1 and offset < 0 then
+		target = #matches.all_inds
+	elseif position == #matches.all_inds and offset > 0 then
+		target = 1
+	else
+		target = math.min(math.max(position + offset, 1), #matches.all_inds)
+	end
+	local rows = assert(M.state.rows, "Find Action rows are missing")
+	for distance = 0, #matches.all_inds - 1 do
+		for _, candidate in ipairs({ target + direction * distance, target - direction * distance }) do
+			local index = matches.all_inds[candidate]
+			if index and rows[index].action then
+				MiniPick.set_picker_match_inds({ index }, "current")
+				return
+			end
+		end
+	end
+end
+
+local function scroll_down()
+	scroll_to_actionable_match(1)
+end
+
+local function scroll_up()
+	scroll_to_actionable_match(-1)
+end
+
 ---@param _ string[]
 ---@param inds integer[]
 ---@param query string[]
@@ -141,8 +179,11 @@ end
 local function match_rows(_, inds, query)
 	local rows = assert(M.state.rows, "Find Action rows are missing")
 	local text = table.concat(query)
-	if text == "" then
+	if text ~= M.state.query then
+		M.state.query = text
 		schedule_first_actionable_match()
+	end
+	if text == "" then
 		return inds
 	end
 	local visible_matches = {}
@@ -160,7 +201,6 @@ local function match_rows(_, inds, query)
 		table.insert(visible_matches, separator)
 		vim.list_extend(visible_matches, hidden_matches)
 	end
-	schedule_first_actionable_match()
 	return visible_matches
 end
 
@@ -169,6 +209,7 @@ local function show_hidden()
 	M.state.show_hidden = true
 	M.state.rows = make_rows()
 	MiniPick.set_picker_items(M.state.rows)
+	schedule_first_actionable_match()
 	return false
 end
 
@@ -257,6 +298,7 @@ end
 ---@return any
 function M.open(ctx)
 	M.state.context = ctx or Context.capture()
+	M.state.query = nil
 	M.state.show_hidden = false
 	M.state.rows = make_rows()
 	return picker.start({
@@ -278,6 +320,10 @@ function M.open(ctx)
 			move_start = "",
 			move_action_start = { char = "<C-g>", func = select_first_actionable_match },
 			move_start_home = { char = "<Home>", func = select_first_actionable_match },
+			scroll_down = "",
+			scroll_action_down = { char = "<C-f>", func = scroll_down },
+			scroll_up = "",
+			scroll_action_up = { char = "<C-b>", func = scroll_up },
 		},
 	})
 end

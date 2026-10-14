@@ -28,6 +28,17 @@ local function start()
 				end,
 			},
 			{
+				id = "test.toggle_first",
+				title = "Toggle First",
+				category = "Test",
+				modes = { "n" },
+				run = function() end,
+				toggle = {
+					get = function() return ToggleFirst or false end,
+					set = function(_, value) ToggleFirst = value end,
+				},
+			},
+			{
 				id = "test.toggle",
 				title = "Toggle Wrap",
 				category = "Test",
@@ -63,6 +74,7 @@ local function start()
 		actions.state.store.catalog = catalog
 		actions.state.store.last_good = {
 			["test.regular"] = { "gR" },
+			["test.toggle_first"] = {},
 			["test.toggle"] = {},
 			["test.visual"] = { "gV" },
 		}
@@ -208,7 +220,9 @@ T["find-action: Toggle changes without closing the palette"] = function()
 	local editor_win = child.api.nvim_get_current_win()
 	open_palette()
 	child.type_keys("toggle")
+	child.type_keys("<Down>")
 	local selected = child.lua_get([[MiniPick.get_picker_matches().current_ind]])
+	eq(child.lua_get([[MiniPick.get_picker_matches().current.action.id]]), "test.toggle")
 	child.type_keys("<CR>")
 	assert(child.wait("ToggleWin ~= nil", 5000), "Toggle action did not run")
 
