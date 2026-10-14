@@ -48,9 +48,9 @@ Scenarios: `keymaps: Alt-F opens live grep`
 
 ## 9. Move the references keymap to the shared picker
 Scenarios: `keymaps: LSP mappings bound to vim.lsp.buf`, `keymaps: Code action in visual mode`, `keymaps: gr bound to Telescope references`
-- [ ] 9.1 Update the three LSP mapping scenarios in tests/integration/keymaps/test_keymaps.lua and see the references scenario fail
-- [ ] 9.2 Change `gr` to open the shared LSP-references source while preserving the other mappings and sole `gr` ownership
-- [ ] 9.3 Run the three named scenarios in tests/integration/keymaps/test_keymaps.lua and see them pass
+- [x] 9.1 Update the three LSP mapping scenarios in tests/integration/keymaps/test_keymaps.lua and see the references scenario fail
+- [x] 9.2 Change `gr` to open the shared LSP-references source while preserving the other mappings and sole `gr` ownership
+- [x] 9.3 Run the three named scenarios in tests/integration/keymaps/test_keymaps.lua and see them pass
 
 ## 10. Preserve the Go references workflow
 Scenarios: `lsp: References of a Go function list call sites across packages`, `lsp: Selecting a reference opens its file at the call site`
