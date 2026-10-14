@@ -139,7 +139,7 @@ In the `git_status` tree, normal-mode `X` SHALL ask `Are you sure you want to re
 
 #### Scenario: gr keeps its global meaning in git status tree
 - **WHEN** the `git_status` tree buffer is current and `vim.fn.maparg("gr", "n", false, true)` is read
-- **THEN** the result is the global mapping (`buffer` is 0) whose callback is Telescope `lsp_references`
+- **THEN** the result is the global mapping (`buffer` is 0) whose callback invokes Telescope `lsp_references` with `include_current_line = true`
 
 #### Scenario: c is copy in git status tree
 - **WHEN** the `git_status` tree buffer is current and the buffer-local normal-mode mapping for `c` is read with `nvim_buf_get_keymap(0, "n")`

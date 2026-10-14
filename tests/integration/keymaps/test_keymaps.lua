@@ -44,6 +44,22 @@ local function callback_is(lhs, mode, expr)
 	return child.lua_get(string.format("vim.fn.maparg(%q, %q, false, true).callback == %s", lhs, mode, expr))
 end
 
+--- Does `gr` call Telescope references with the current line included?
+---@return boolean
+local function gr_includes_current_line()
+	child.lua([[
+local telescope = require("telescope.builtin")
+local original = telescope.lsp_references
+local included
+telescope.lsp_references = function(opts) included = opts.include_current_line end
+local ok, err = pcall(vim.fn.maparg("gr", "n", false, true).callback)
+telescope.lsp_references = original
+if not ok then error(err) end
+GrIncludesCurrentLine = included
+]])
+	return child.lua_get("GrIncludesCurrentLine")
+end
+
 --- Wait budget for async plugins (neo-tree, telescope, differ).
 ---@return integer
 local function async_ms()
@@ -483,7 +499,7 @@ T["keymaps: Code action in visual mode"] = function()
 end
 
 T["keymaps: gr bound to Telescope references"] = function()
-	eq(callback_is("gr", "n", [[require("telescope.builtin").lsp_references]]), true)
+	eq(gr_includes_current_line(), true)
 end
 
 T["keymaps: ge jumps to next diagnostic"] = function()

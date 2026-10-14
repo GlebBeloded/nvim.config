@@ -38,6 +38,22 @@ local function open_git_status(dir)
 	child.lua([[vim.fn.search("a.txt")]])
 end
 
+--- Does the current `gr` mapping call Telescope references with the current line included?
+---@return boolean
+local function gr_includes_current_line()
+	child.lua([[
+local telescope = require("telescope.builtin")
+local original = telescope.lsp_references
+local included
+telescope.lsp_references = function(opts) included = opts.include_current_line end
+local ok, err = pcall(vim.fn.maparg("gr", "n", false, true).callback)
+telescope.lsp_references = original
+if not ok then error(err) end
+GrIncludesCurrentLine = included
+]])
+	return child.lua_get("GrIncludesCurrentLine")
+end
+
 --- Press X on the cursor node and answer the neo-tree confirm popup.
 ---@param answer "y"|"n"
 local function revert_with_answer(answer)
@@ -519,10 +535,7 @@ T["file-tree: gr keeps its global meaning in git status tree"] = function()
 	open_git_status(modified_repo())
 
 	eq(child.lua_get([[vim.fn.maparg("gr", "n", false, true).buffer]]), 0)
-	eq(
-		child.lua_get([[vim.fn.maparg("gr", "n", false, true).callback == require("telescope.builtin").lsp_references]]),
-		true
-	)
+	eq(gr_includes_current_line(), true)
 end
 
 T["file-tree: c is copy in git status tree"] = function()
