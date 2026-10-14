@@ -47,3 +47,7 @@ Run on `loop/action-registry` was rejected by the judge:
 - Probe: not needed because the deterministic test exposed the value directly: `Left: "[]"`, `Right: "{}"`.
 - Attempt 1: the shortcut store passed the four listed scenarios, but review of the repository's initial `{}` file exposed that empty Lua tables were rejected as lists.
 - Attempt 2: empty tables were accepted, but `vim.json.encode` serialized the empty shortcut map as `[]`; `actions: Shortcut file round-trips deterministically` remained red.
+
+## Unblocked
+Technical, not a user decision: encode an empty shortcut map with `vim.empty_dict()` (or a JSON object
+writer) so `{}` round-trips; empty Lua tables stay valid maps. Continue the adopted branch.
