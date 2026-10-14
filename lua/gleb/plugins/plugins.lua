@@ -273,6 +273,7 @@ local plugins = {
 	},
 	{
 		"esmuellert/vscode-diff.nvim",
+		cmd = { "CodeDiff", "VscodeDiff" },
 		dependencies = { "MunifTanjim/nui.nvim" },
 		config = function()
 			require("gleb.git.vscode_diff")

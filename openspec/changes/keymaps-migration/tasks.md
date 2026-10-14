@@ -9,6 +9,7 @@ Scenarios: `actions: Feature actions contain no shortcut keys`, `actions: Every 
 - A filetype action accepts a filetype list so the one special-buffer close behavior remains one action across all four filetypes.
 - Direct function mappings use the action `mapping` field to preserve callback identity for LSP, picker, and smart-splits behavior.
 - Neo-tree actions carry plugin and source-scope metadata so the global applicator skips them and the adapter composes only the relevant source table.
+- Differ and Codediff retain the explicitly specified next-hunk action while their other plugin defaults are disabled, matching the ownership scenarios without inventing shortcuts.
 
 ## 2. Remove unowned built-in and surround defaults
 Scenarios: `actions: Every configured mapping is action-owned`, `keymaps: Unadopted built-in mappings are removed`, `keymaps: Adopted built-in mappings are registry actions`, `keymaps: Surround mappings use registered actions`, `keymaps: [d jumps to previous diagnostic`
@@ -42,9 +43,9 @@ Scenarios: `file-tree: Tree mappings come from the shortcut file`, `file-tree: N
 
 ## 5. Migrate diff viewer mappings without changing behavior
 Scenarios: `git: Diffview mappings come from git actions`, `git: Differ mappings come from git actions`, `git: Codediff mappings come from git actions`, `git: q closes diffview from file panel`
-- [ ] 5.1 Write the adapter scenarios in `tests/integration/git/test_git.lua`, drive real populated diffview, differ, and codediff views, retain the existing real file-panel `q` press, run `make test FILE=tests/integration/git/test_git.lua CASE="git: Diffview mappings come from git actions"`, and see it fail
-- [ ] 5.2 Disable viewer defaults and derive each viewer's mapping table from git actions and current shortcuts
-- [ ] 5.3 Run `make test FILE=tests/integration/git/test_git.lua` and see it pass
+- [x] 5.1 Write the adapter scenarios in `tests/integration/git/test_git.lua`, drive real populated diffview, differ, and codediff views, retain the existing real file-panel `q` press, run `make test FILE=tests/integration/git/test_git.lua CASE="git: Diffview mappings come from git actions"`, and see it fail
+- [x] 5.2 Disable viewer defaults and derive each viewer's mapping table from git actions and current shortcuts
+- [x] 5.3 Run `make test FILE=tests/integration/git/test_git.lua` and see it pass
 
 ## 6. Preserve commit-popup confirmation guards through actions
 Scenarios: `git: Commit popup mappings come from git actions`, `git: Enter confirms message`, `git: Enter on empty buffer does nothing`, `git: Enter on placeholder does nothing`

@@ -3,7 +3,11 @@ if not status_ok then
 	return
 end
 
-local actions = require("diffview.actions")
+local registry = require("gleb.actions")
+local adapter = require("gleb.actions.adapters.diffview")
+local store = assert(registry.state.store, "actions are not set up")
+local catalog = assert(registry.state.applicator, "actions are not set up").catalog
+local shortcuts = store:load()
 
 diffview.setup({
 	enhanced_diff_hl = true,
@@ -27,26 +31,8 @@ diffview.setup({
 		},
 	},
 	keymaps = {
-		view = {
-			["<tab>"] = actions.select_next_entry,
-			["<s-tab>"] = actions.select_prev_entry,
-			["gf"] = actions.goto_file_edit,
-			["dx"] = actions.conflict_choose("none"),
-		},
-		file_panel = {
-			["j"] = actions.select_next_entry,
-			["k"] = actions.select_prev_entry,
-			["<cr>"] = actions.select_entry,
-			["o"] = actions.select_entry,
-			["l"] = actions.select_entry,
-			["h"] = actions.close_fold,
-			["<tab>"] = actions.select_next_entry,
-			["<s-tab>"] = actions.select_prev_entry,
-			["s"] = actions.toggle_stage_entry,
-			["S"] = actions.stage_all,
-			["U"] = actions.unstage_all,
-			["R"] = actions.refresh_files,
-			["q"] = "<cmd>DiffviewClose<cr>",
-		},
+		disable_defaults = true,
+		view = adapter.mappings(catalog, shortcuts, "view"),
+		file_panel = adapter.mappings(catalog, shortcuts, "file_panel"),
 	},
 })

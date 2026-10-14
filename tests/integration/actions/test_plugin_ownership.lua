@@ -8,7 +8,7 @@ local repo
 local function start()
 	repo = H.git_repo({
 		["sample.go"] = "package sample\n\nfunc Value() int { return 1 }\n",
-		["sample_test.go"] = "package sample\n\nimport \"testing\"\n\nfunc TestValue(t *testing.T) { if Value() != 1 { t.Fail() } }\n",
+		["sample_test.go"] = 'package sample\n\nimport "testing"\n\nfunc TestValue(t *testing.T) { if Value() != 1 { t.Fail() } }\n',
 	})
 	H.write_files(repo, { ["sample.go"] = "package sample\n\nfunc Value() int { return 2 }\n" })
 	child.start_config()

@@ -29,6 +29,7 @@
 ---@field hidden? boolean
 ---@field plugin? string Plugin adapter owns this action's mappings
 ---@field neo_tree_scope? "common"|"filesystem"|"git_status"
+---@field diffview_scopes? string[]
 
 ---@class gleb.ActionCatalog
 ---@field actions gleb.Action[]
