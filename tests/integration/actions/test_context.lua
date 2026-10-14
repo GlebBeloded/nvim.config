@@ -71,9 +71,6 @@ T["actions: Visual actions restore the selection"] = function()
 	eq(child.lua_get([[RunState.start]]), { 1, 0 })
 	eq(child.lua_get([[RunState.finish]]), { 3, child.lua_get([[vim.v.maxcol]]) })
 	eq(child.lua_get([[RunState.ctx == Captured]]), true)
-end
-
-T["actions: Visual shortcuts preserve the active selection"] = function()
 	child.lua([[
 		vim.api.nvim_win_set_cursor(0, { 4, 0 })
 		vim.cmd('execute "normal! v\\<Esc>"')

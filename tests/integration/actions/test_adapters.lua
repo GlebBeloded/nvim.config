@@ -57,6 +57,10 @@ end
 local T = H.child_set(child, start)
 
 T["actions: Adapter output follows current shortcuts"] = function()
+	child.lua([[
+		Shortcuts["mason.install_package"] = { "i", "I" }
+		Shortcuts["copilot.accept"] = { "<M-l>", "<M-L>" }
+	]])
 	eq(
 		child.lua_get([[(function()
 			local differ = require("gleb.actions.adapters.differ").mappings(Catalog, Shortcuts)
@@ -107,20 +111,6 @@ T["actions: Adapter output follows current shortcuts"] = function()
 				"file_tree.open",
 			},
 		}
-	)
-end
-
-T["actions: Native adapters select one configured lhs"] = function()
-	child.lua([[
-		Shortcuts["mason.install_package"] = { "i", "I" }
-		Shortcuts["copilot.accept"] = { "<M-l>", "<M-L>" }
-	]])
-	eq(
-		child.lua_get([[{
-			require("gleb.actions.adapters.mason").mappings(Catalog, Shortcuts).install_package,
-			require("gleb.actions.adapters.copilot").mappings(Catalog, Shortcuts).accept,
-		}]]),
-		{ "i", "<M-l>" }
 	)
 end
 

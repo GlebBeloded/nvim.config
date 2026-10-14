@@ -66,10 +66,7 @@ T["actions: Duplicate action ids are rejected"] = function()
 	end)()]])
 
 	eq(error_message:match("duplicate action id: git.open_differ"), "duplicate action id: git.open_differ")
-end
-
-T["actions: Aliases cannot replace registered ids"] = function()
-	local error_message = child.lua_get([[(function()
+	local alias_error_message = child.lua_get([[(function()
 		local ok, err = pcall(Registry.new, { {
 			{ id = "edit.open", title = "Open", category = "Edit", run = function() end },
 			{
@@ -83,7 +80,7 @@ T["actions: Aliases cannot replace registered ids"] = function()
 		return ok and "" or tostring(err)
 	end)()]])
 
-	eq(error_message:match("duplicate action id: edit.open"), "duplicate action id: edit.open")
+	eq(alias_error_message:match("duplicate action id: edit.open"), "duplicate action id: edit.open")
 end
 
 T["actions: Scoped actions are filtered by context"] = function()

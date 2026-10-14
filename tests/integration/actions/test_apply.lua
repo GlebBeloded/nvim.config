@@ -88,19 +88,10 @@ T["actions: Filetype bindings are buffer-local"] = function()
 	eq(local_desc(matching, "gx"), "Git | Diff: File Action")
 	eq(local_desc(other, "gx"), false)
 	eq(global_desc("gx"), false)
-end
-
-T["actions: Filetype changes remove stale buffer bindings"] = function()
-	write_shortcuts({ ["git.file_action"] = { "gx" } })
-	child.wait_very_lazy()
 	child.lua([[
-		MatchingBuffer = vim.api.nvim_create_buf(true, false)
 		vim.api.nvim_set_current_buf(MatchingBuffer)
-		vim.cmd("setfiletype action_fixture")
 		vim.cmd("set filetype=other")
 	]])
-
-	local matching = child.lua_get([[MatchingBuffer]])
 	eq(local_desc(matching, "gx"), false)
 end
 

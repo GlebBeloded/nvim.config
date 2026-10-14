@@ -89,9 +89,6 @@ T["actions: Hidden actions cannot receive shortcuts"] = function()
 	eq(child.lua_get([[vim.uv.fs_stat(Path) == nil]]), true)
 	eq(child.lua_get([[Notifications[1].level]]), vim.log.levels.ERROR)
 	eq(child.lua_get([[Notifications[1].msg:match("command.hidden")]]), "command.hidden")
-end
-
-T["actions: Undiscovered Ex actions are rejected consistently"] = function()
 	child.lua([[
 		Notifications = {}
 		vim.notify = function(msg, level) table.insert(Notifications, { msg = msg, level = level }) end

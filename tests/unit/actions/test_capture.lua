@@ -58,9 +58,6 @@ T["actions: Exact and prefix overlaps conflict in one scope"] = function()
 		{ action_id = "edit.open", lhs = "g", proposed_lhs = "g" },
 		{ action_id = "edit.open_all", lhs = "gg", proposed_lhs = "g" },
 	})
-end
-
-T["actions: Alias shortcuts participate in conflict detection"] = function()
 	child.lua([[
 		Catalog = Registry.new({ {
 			{ id = "edit.target", title = "Target", category = "Edit", run = function() end },
