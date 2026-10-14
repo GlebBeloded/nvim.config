@@ -71,6 +71,20 @@ local function commits()
 	return child.lua_get("Commits")
 end
 
+---@param description string
+local function press_popup_mapping(description)
+	local lhs = child.lua_get(
+		[[
+		(function(description)
+			return vim.iter(vim.api.nvim_buf_get_keymap(0, "n"))
+				:find(function(mapping) return mapping.desc == description end).lhs
+		end)(...)
+	]],
+		{ description }
+	)
+	child.type_keys(lhs)
+end
+
 --- Replay the job's stdout `text` and exit `code`.
 ---@param text string
 ---@param code integer
@@ -201,7 +215,7 @@ end
 
 T["git: q discards popup"] = function()
 	show_generating()
-	child.type_keys("q")
+	press_popup_mapping("Git: Discard commit message")
 
 	eq(popup_open(), false)
 	eq(jobs()[1].stopped, true)

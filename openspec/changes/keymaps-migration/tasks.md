@@ -56,9 +56,9 @@ Scenarios: `git: Commit popup mappings come from git actions`, `git: Enter confi
 
 ## 7. Preserve commit-popup cleanup and discard behavior
 Scenarios: `git: Enter drops comment lines`, `git: q discards popup`
-- [ ] 7.1 Tighten the existing cases in `tests/integration/git/test_ai_commit.lua` and `tests/unit/git/test_ai_commit.lua` to invoke the active popup mappings; temporarily replace the registered `<CR>` and `q` callbacks with no-ops, run `make test FILE=tests/integration/git/test_ai_commit.lua CASE="git: Enter drops comment lines"` and `make test FILE=tests/unit/git/test_ai_commit.lua CASE="git: q discards popup"`, see them fail and record the failures, then remove the fault
-- [ ] 7.2 Keep comment-line cleanup and running-job cancellation in the action callbacks
-- [ ] 7.3 Run `make test FILE=tests/integration/git/test_ai_commit.lua CASE="git: Enter drops comment lines"` and `make test FILE=tests/unit/git/test_ai_commit.lua CASE="git: q discards popup"` and see them pass
+- [x] 7.1 Tighten the existing cases in `tests/integration/git/test_ai_commit.lua` and `tests/unit/git/test_ai_commit.lua` to invoke the active popup mappings; temporarily replace the registered `<CR>` and `q` callbacks with no-ops, run `make test FILE=tests/integration/git/test_ai_commit.lua CASE="git: Enter drops comment lines"` and `make test FILE=tests/unit/git/test_ai_commit.lua CASE="git: q discards popup"`, see them fail and record the failures, then remove the fault
+- [x] 7.2 Keep comment-line cleanup and running-job cancellation in the action callbacks
+- [x] 7.3 Run `make test FILE=tests/integration/git/test_ai_commit.lua CASE="git: Enter drops comment lines"` and `make test FILE=tests/unit/git/test_ai_commit.lua CASE="git: q discards popup"` and see them pass
 
 ## 8. Migrate 99 entry and prompt mappings
 Scenarios: `ai: 99 entry mappings come from AI actions`, `ai: Prompt submit comes from a filetype action`, `ai: 99 hardcoded mappings are the only exceptions`, `ai: Keymaps exist after VeryLazy`
