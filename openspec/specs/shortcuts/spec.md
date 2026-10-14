@@ -324,7 +324,7 @@ Columns of the table the "Shortcut table" requirement refers to:
 | Cmd+C | chars | `\ec` | pass | `<M-c>` | none |
 | Cmd+/ | chars | `\e/` | pass | `<M-/>` | `gcc` |
 | Cmd+F | chars | `\ef` | ToggleFloatingPanes | — | — |
-| Cmd+Shift+F | chars | `\eF` | pass | `<M-F>` | fn `require("gleb.picker").grep_live` |
+| Cmd+Shift+F | chars | `\eF` | pass | `<M-F>` | `<Cmd>Telescope live_grep<CR>` |
 | Cmd+W | chars | `\ew` | pass | `<M-w>` | desc `Diagnostics: Next` |
 | Cmd+Shift+W | chars | `\eW` | pass | `<M-W>` | none |
 | Cmd+H | chars | `\x08` | navigator move_focus_or_tab left | `<C-H>` | fn `require("smart-splits").move_cursor_left` |
