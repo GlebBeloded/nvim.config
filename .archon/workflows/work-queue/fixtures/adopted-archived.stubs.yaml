@@ -10,6 +10,7 @@ pick: { found: true, change: demo-change, kind: fix, has_tasks: false }
 adopt: { conflict: false, summary: "adopted loop/demo-change: 11 commits" }
 adopted-state: { archived: true, tasks_done: false, visible_ui: false }
 complete: "MUST-NOT-RUN"
+classify: "MUST-NOT-RUN"
 spec-gate: "MUST-NOT-RUN"
 preview: "MUST-NOT-RUN"
 deliver__skills-check: "skills ok"

@@ -108,7 +108,7 @@ nodes:
     depends_on: [pick, adopted-state, blocked]
     when: "$pick.output.found == true && $adopted-state.output.archived == false && $adopted-state.output.tasks_done == false && $blocked.output.blocked == false"
 
-  - id: meta # skip_specs (test-only, refactor): no-design schema, visible_ui/architecture false without asking the agent (no AI)
+  - id: meta # skip_specs (test-only, refactor): switch to the no-design schema before the spec step (no AI)
     script: no_design
     runtime: uv
     depends_on: [pick, adopted-state, blocked]
@@ -119,20 +119,25 @@ nodes:
       type: object
       properties:
         skip_specs: { type: boolean }
-        visible_ui: { type: boolean }
-        architecture: { type: boolean }
-      required: [skip_specs, visible_ui, architecture]
+      required: [skip_specs]
 
-  - id: complete
+  - id: complete # no output_format for any change: a forced schema made the agent print the JSON every turn
     command: queue-spec
     context: fresh # reads its input artifact; no carried-over session
     depends_on: [pick, skills-check, adopted-state, blocked, pinned, meta]
-    when: "$pick.output.found == true && $adopted-state.output.archived == false && $adopted-state.output.tasks_done == false && $blocked.output.blocked == false && $meta.output.skip_specs == false"
+    when: "$pick.output.found == true && $adopted-state.output.archived == false && $adopted-state.output.tasks_done == false && $blocked.output.blocked == false"
     with:
       change: $pick.output.change
       adopted: $adopt.output.summary
       pinned: $pinned.output
     skills: [openspec-continue-change]
+
+  - id: classify # visible_ui (design.md has a render) and architecture (Impact/tasks name wiring files) from the written change (no AI)
+    script: classify
+    runtime: uv
+    depends_on: [complete]
+    with:
+      change: $pick.output.change
     output_format:
       type: object
       properties:
@@ -140,29 +145,18 @@ nodes:
         architecture: { type: boolean }
       required: [visible_ui, architecture]
 
-  - id: complete-skip # same step for a skip_specs change: no JSON answer (meta gave it), so no forced JSON per turn
-    command: queue-spec
-    context: fresh
-    depends_on: [pick, skills-check, adopted-state, blocked, pinned, meta]
-    when: "$pick.output.found == true && $adopted-state.output.archived == false && $adopted-state.output.tasks_done == false && $blocked.output.blocked == false && $meta.output.skip_specs == true"
-    with:
-      change: $pick.output.change
-      adopted: $adopt.output.summary
-      pinned: $pinned.output
-    skills: [openspec-continue-change]
-
   - id: spec-gate
     bash: openspec validate $pick.output.change --strict --no-interactive && python3 .archon/scripts/spec_trial.py $pick.output.change && python3 .archon/scripts/scenarios.py --unknown $pick.output.change && python3 .archon/scripts/pinned.py --check $pick.output.change # main specs after a trial archive; pins planned
-    depends_on: [complete, complete-skip, adopted-state, blocked]
-    trigger_rule: none_failed_min_one_success # complete and complete-skip are skipped when the adopted tasks are all ticked
+    depends_on: [complete, classify, adopted-state, blocked]
+    trigger_rule: none_failed_min_one_success # complete and classify are skipped when the adopted tasks are all ticked
     when: "$adopted-state.output.archived == false && $blocked.output.blocked == false"
 
   # --- Preview + approval: always for features, else only for visible UI ----------------
   - id: preview
     bash: make -s preview CHANGE=$pick.output.change OPEN= # OPEN= beats an exported OPEN: nothing opens on the host
     depends_on: [spec-gate]
-    # left to right, && before ||: the adopted design.md decides only when complete was skipped (tasks all ticked); a skip_specs change never has visible UI; otherwise complete's answer decides
-    when: "$pick.output.kind == 'feature' || $adopted-state.output.tasks_done == true && $adopted-state.output.visible_ui == true || $adopted-state.output.tasks_done == false && $meta.output.skip_specs == false && $complete.output.visible_ui == true"
+    # left to right, && before ||: the adopted design.md decides only when complete was skipped (tasks all ticked); otherwise classify (the written design.md; false for skip_specs) decides
+    when: "$pick.output.kind == 'feature' || $adopted-state.output.tasks_done == true && $adopted-state.output.visible_ui == true || $adopted-state.output.tasks_done == false && $classify.output.visible_ui == true"
 
   - id: design-gate
     depends_on: [preview]

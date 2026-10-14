@@ -583,11 +583,11 @@ work-queue SHALL skip the queue-spec step when the adopted change's tasks.md has
 - **THEN** it says a task never empties a test file and keeps the copy in the file that would be emptied
 
 ### Requirement: Skip-specs change needs no design
-For a change whose `.openspec.yaml` has `skip_specs: true`, the work-queue `meta` node (`no_design.py`) SHALL set `schema: spec-driven-no-design`, a repo-local schema without design, and print `visible_ui` and `architecture` false; the spec step then runs as `complete-skip` with no JSON answer and no preview runs. A change without skip_specs keeps its schema and the JSON spec step.
+For a change whose `.openspec.yaml` has `skip_specs: true`, the work-queue `meta` node (`no_design.py`) SHALL set `schema: spec-driven-no-design`, a repo-local schema without design, and print `skip_specs` true. A change without skip_specs keeps its schema. The spec step (`complete`) SHALL run queue-spec without `output_format` for every change; the `classify` node (`classify.py`) SHALL answer `visible_ui` and `architecture` from the written change, false for a skip_specs change.
 
 #### Scenario: Skip-specs change gets the no-design schema
 - **WHEN** `no_design.py` runs for a change with proposal.md, tasks.md and a `.openspec.yaml` holding `schema: spec-driven` and `skip_specs: true`, in a repo carrying `openspec/schemas/spec-driven-no-design`
-- **THEN** it prints skip_specs true and visible_ui and architecture false, the file names `schema: spec-driven-no-design`, and `openspec status --json` lists no `design` artifact and reports the change complete
+- **THEN** it prints skip_specs true, the file names `schema: spec-driven-no-design`, and `openspec status --json` lists no `design` artifact and reports the change complete
 
 #### Scenario: No-design switch is committed on its own
 - **WHEN** `no_design.py` switches change `c` to the no-design schema in a git checkout with a clean tree
@@ -597,9 +597,13 @@ For a change whose `.openspec.yaml` has `skip_specs: true`, the work-queue `meta
 - **WHEN** `no_design.py` runs for a change whose `.openspec.yaml` holds only `schema: spec-driven`
 - **THEN** it prints skip_specs false and the file is unchanged
 
-#### Scenario: Work queue asks the spec step for JSON only without skip_specs
+#### Scenario: Work queue spec step returns no JSON
 - **WHEN** `.archon/workflows/work-queue/work-queue.yaml` is read
-- **THEN** `complete` runs only when `$meta.output.skip_specs == false`, `complete-skip` runs queue-spec without `output_format` when it is true, and a fix reaches `preview` only with `$meta.output.skip_specs == false`
+- **THEN** `complete` runs queue-spec without `output_format` and no `complete-skip` node exists, `classify` runs `classify.py` after `complete` with a `visible_ui`/`architecture` schema, spec-gate waits for it, and a fix reaches `preview` only with `$classify.output.visible_ui == true` (or an adopted render)
+
+#### Scenario: Classify reads visible UI and architecture from the change
+- **WHEN** `classify.py` runs for change `c` with a design.md holding a render section, with a technical design.md, with proposal.md `## Impact` naming `lua/gleb/plugins/plugins.lua`, `init.lua` or `lazy-lock.json`, with an Impact naming only `lua/gleb/lsp/config/terraform/init.lua`, with a tasks.md naming `lua/gleb/plugins/`, and with `skip_specs: true` plus a render design.md and a wiring Impact
+- **THEN** `visible_ui` is true only with the render section and without skip_specs, and `architecture` is true only for the wiring files named in Impact or tasks.md without skip_specs
 
 #### Scenario: Queue spec prompt opens with a skip_specs fast path
 - **WHEN** `.archon/commands/queue-spec.md` is read

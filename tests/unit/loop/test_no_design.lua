@@ -60,7 +60,7 @@ end
 
 T["loop: Skip-specs change gets the no-design schema"] = function()
 	local repo = change_repo("schema: spec-driven\nskip_specs: true")
-	eq(no_design(repo), { skip_specs = true, visible_ui = false, architecture = false })
+	eq(no_design(repo), { skip_specs = true })
 	has(read(vim.fs.joinpath(repo, "openspec/changes/c/.openspec.yaml")), "schema: spec-driven-no-design")
 	local result = H.system(child, { "openspec", "status", "--change", "c", "--json" }, repo)
 	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
@@ -93,18 +93,68 @@ T["loop: Change without skip_specs keeps its schema"] = function()
 	eq(read(vim.fs.joinpath(repo, "openspec/changes/c/.openspec.yaml")), "schema: spec-driven")
 end
 
-T["loop: Work queue asks the spec step for JSON only without skip_specs"] = function()
+---@param queue string
+---@param id string
+---@return string body of node `id`, up to the next node
+local function node(queue, id)
+	local body = queue:match("%- id: " .. vim.pesc(id) .. "[^\n]*\n(.-)\n  %- id:")
+	eq(body ~= nil, true, { fail_reason = "no node " .. id })
+	return body
+end
+
+T["loop: Work queue spec step returns no JSON"] = function()
 	local queue = read(vim.fs.joinpath(H.root, ".archon/workflows/work-queue/work-queue.yaml"))
-	has(queue, "- id: meta")
-	has(queue, "script: no_design")
-	local complete = queue:match("%- id: complete\n(.-)\n  %- id:")
-	has(complete, '&& $meta.output.skip_specs == false"')
-	has(complete, "output_format:")
-	local skip = queue:match("%- id: complete%-skip[^\n]*\n(.-)\n  %- id:")
-	has(skip, "command: queue-spec")
-	has(skip, '&& $meta.output.skip_specs == true"')
-	eq(skip:find("output_format", 1, true), nil)
-	has(queue, "$meta.output.skip_specs == false && $complete.output.visible_ui == true")
+	has(node(queue, "meta"), "script: no_design")
+	local complete = node(queue, "complete")
+	has(complete, "command: queue-spec")
+	eq(complete:find("output_format", 1, true), nil)
+	eq(queue:find("complete-skip", 1, true), nil)
+	local classify = node(queue, "classify")
+	has(classify, "script: classify")
+	has(classify, "depends_on: [complete]")
+	has(classify, "required: [visible_ui, architecture]")
+	has(node(queue, "spec-gate"), "depends_on: [complete, classify,")
+	has(node(queue, "preview"), "$adopted-state.output.tasks_done == false && $classify.output.visible_ui == true")
+end
+
+local CLASSIFY = vim.fs.joinpath(H.root, ".archon/scripts/classify.py")
+local RENDER = "# Design\n\n## Proposed render\nx"
+
+---@param files table<string, string> change `c`'s files by name
+---@return table classify.py's JSON for `c`
+local function classify(files)
+	local repo = H.tempdir(child)
+	local change = {}
+	for name, content in pairs(files) do
+		change["openspec/changes/c/" .. name] = content
+	end
+	write(repo, vim.tbl_extend("force", { ["openspec/changes/c/.openspec.yaml"] = "schema: spec-driven" }, change))
+	local result = H.system(child, { "python3", CLASSIFY }, repo, { INPUTS_CHANGE = "c", LOOP_CHANGES_DIR = "" })
+	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
+	return vim.json.decode(result.stdout)
+end
+
+---@param impact string
+---@return string proposal whose Impact section is `impact` (wiring files named outside it do not count)
+local function proposal(impact)
+	return "## Why\nSee init.lua and lazy-lock.json.\n\n## Impact\n- " .. impact .. "\n"
+end
+
+T["loop: Classify reads visible UI and architecture from the change"] = function()
+	local none = { visible_ui = false, architecture = false }
+	eq(classify({ ["design.md"] = RENDER }), { visible_ui = true, architecture = false })
+	eq(classify({ ["design.md"] = "# Design\n\n## Decisions\nx", ["proposal.md"] = proposal("tests only") }), none)
+	for _, path in ipairs({ "`lua/gleb/plugins/plugins.lua`", "`init.lua`", "lazy-lock.json" }) do
+		eq(classify({ ["proposal.md"] = proposal(path) }), { visible_ui = false, architecture = true })
+	end
+	eq(classify({ ["proposal.md"] = proposal("`lua/gleb/lsp/config/terraform/init.lua`") }), none)
+	eq(classify({ ["tasks.md"] = "## 1. x\n- [ ] 1.1 edit lua/gleb/plugins/plugins.lua" }).architecture, true)
+	local skip = {
+		[".openspec.yaml"] = "schema: spec-driven-no-design\nskip_specs: true",
+		["design.md"] = RENDER,
+		["proposal.md"] = proposal("init.lua"),
+	}
+	eq(classify(skip), none)
 end
 
 T["loop: Queue spec prompt opens with a skip_specs fast path"] = function()

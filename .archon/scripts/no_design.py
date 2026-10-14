@@ -5,9 +5,8 @@ points such a change at the repo-local schema `spec-driven-no-design` (proposal 
 openspec/schemas/), so status reads complete once tasks.md exists. Changes without skip_specs keep
 their schema, and with it design.md and the design gate for visible UI.
 
-As a script (work-queue `meta` node): prints {skip_specs, visible_ui, architecture} for INPUTS_CHANGE
-under LOOP_CHANGES_DIR (fixtures) or openspec/changes. visible_ui and architecture are false for a
-skip_specs change (no look, no wiring); otherwise they are false here and the spec step answers them.
+As a script (work-queue `meta` node): prints {skip_specs} for INPUTS_CHANGE under LOOP_CHANGES_DIR
+(fixtures) or openspec/changes; the `classify` node answers visible_ui and architecture after the spec step.
 """
 
 import json
@@ -51,7 +50,7 @@ def commit(meta: pathlib.Path) -> None:
 def main() -> None:
     change = os.environ.get("INPUTS_CHANGE", "")
     skip = bool(change) and no_design(changes_dir() / change / ".openspec.yaml")
-    print(json.dumps({"skip_specs": skip, "visible_ui": False, "architecture": False}))
+    print(json.dumps({"skip_specs": skip}))
 
 
 if __name__ == "__main__":
