@@ -3,8 +3,8 @@ with `blocked` true: no make check and no review, since it never ships. Hard rul
 no make check and no review. When only the `test`, `test-readiness` and e2e layers fail, each failing
 case is rerun once, serially (e2e only when it failed on sandbox infra alone, with no `FAIL in` case: one
 `make e2e E2E=1`): all passing (a test rerun must print its case as passed) makes the check green with them
-listed as `flaky` (a note, not a finding). A case in a file the branch changes, or named after a scenario of
-the change, never reruns: it stays red. An e2e rerun failing on sandbox infra again, with every other rerun
+listed as `flaky` (a note, not a finding). A case the branch adds or edits, or named after a scenario of the
+change, never reruns: it stays red (other failing cases still rerun). An e2e rerun failing on sandbox infra again, with every other rerun
 passing, prints `infra` (the sandbox line): the loop stops on it with no fix pass, and the pass is no attempt. A test case the previous pass had and that is now gone (on base neither:
 verdict.py's case snapshot) is a hard rule, recorded for the judge. Planning files the fix pass edited (vs. the snapshot verdict.py took
 at the pass's start) go to $ARTIFACTS_DIR/fix-scope.md for the review. Then make check (lint, types, tests, smoke, trace), strict OpenSpec
@@ -21,7 +21,7 @@ import sys
 
 from blocked import blocked_text
 from check_log import failed_targets, failing_cases, sections, strip_ansi, summarize
-from integrity import BASE, case_names, git, hard_rule_violations, plan_edits, record_dropped
+from integrity import BASE, CASE_CHAIN, CASE_KEY, case_names, git, hard_rule_violations, plan_edits, record_dropped
 from pinned import pinned
 from scenarios import covered, untested
 from spec_trial import archived_specs_ok as trial_archive
@@ -121,89 +121,110 @@ def e2e_infra(body: list[str]) -> str:
 
 
 def case_name(file: str, label: str) -> str:
-    """The case name in a `FAIL in` label, which may carry the error message after it (`<name>: <message>`,
-    e.g. a readiness bound): the longest case of `file` the label starts with, else the label itself."""
+    """The case of a `FAIL in` label as `CASE=` takes it: its set chain (`<set> | <case>` in a nested set),
+    with no ` + args …` (a parametrized set) and no error message after it (`<name>: <message>`, e.g. a
+    readiness bound): the longest case of `file` the last part starts with, else the label itself."""
+    label = re.sub(r" \+ args .*", "", label)
+    *sets, last = label.split(" | ")
     try:
         names = case_names(pathlib.Path(file).read_text())
     except OSError:
         return label
-    matches = [n for n in names if label == n or label.startswith(n + ":")]
-    return max(matches, key=len) if matches else label
+    matches = [n for n in names if last == n or last.startswith(n + ":")]
+    return " | ".join([*sets, max(matches, key=len)]) if matches else label
 
 
-def branch_files() -> set[str]:
-    """Files the branch changes against its base, committed or not."""
+def branch_cases() -> dict[str, set[str]]:
+    """Per test file the branch changes against its base (committed or not), the cases whose `T[...]` line
+    or body it adds or edits: the case each changed line of the file falls under."""
     try:
         git("add", "-A")
-        return set(git("diff", "--cached", "--name-only", git("merge-base", "HEAD", BASE).strip()).split())
+        out = git("diff", "--cached", "-U0", git("merge-base", "HEAD", BASE).strip(), "--", "tests/")
     except subprocess.CalledProcessError:  # not a git repo, or no base branch
-        return set()
+        return {}
+    owned: dict[str, set[str]] = {}
+    for chunk in re.split(r"(?m)^diff --git ", out)[1:]:
+        path = re.search(r"(?m)^\+\+\+ b/(.+)$", chunk)
+        if not path or not os.path.isfile(path.group(1)):
+            continue
+        text = pathlib.Path(path.group(1)).read_text(errors="replace").splitlines()
+        starts = [(n, CASE_KEY.findall(m.group(1))[-1]) for n, l in enumerate(text, 1) if (m := CASE_CHAIN.match(l))]
+        names = owned.setdefault(path.group(1), set())
+        for start, count in re.findall(r"(?m)^@@ -\S+ \+(\d+)(?:,(\d+))? @@", chunk):
+            for n in range(int(start), int(start) + max(int(count or 1), 1)):  # `+c,0`: lines removed after c
+                names.update([name for line, name in starts if line <= n][-1:])
+    return owned
 
 
-def rerun_plan(out: str) -> list[tuple[str, list[str]]]:
-    """(case, rerun command) for every failure of a check whose failed targets all rerun; else none. A case the
-    change owns (its test file is in the branch diff, or it is named after a scenario of the change) never
-    reruns: its failure is the change's, not a flake."""
+def rerun_plan(out: str) -> tuple[list[tuple[str, list[str]]], list[str]]:
+    """(case, rerun command) for every failure of a check whose failed targets all rerun, else none, and the
+    failures the change owns: a case it adds or edits (branch_cases) or one named after a scenario of the
+    change never reruns (its failure is the change's, not a flake); other cases, in its files too, still do."""
     targets, bodies = failed_targets(out), dict(sections(out.splitlines()))
     changed, scenarios = None, set(covered(change_dir)) if change and change_dir.is_dir() else set()
     plan: list[tuple[str, list[str]]] = []
+    owned: list[str] = []
     for target in targets:
         body = bodies.get(target, [])
         if target == "e2e":
             reason = e2e_infra(body)
             if not reason:
-                return []
+                return [], []
             plan.append((f"e2e: {reason}", ["make", "e2e", "E2E=1"]))
             continue
         cases = failing_cases(body)
         if target not in ("test", "test-readiness") or not cases or any(" | " not in c for c in cases):
-            return []
+            return [], []
         for case in cases:
             file, name = case.split(" | ", 1)
             name = case_name(file, name)
-            changed = branch_files() if changed is None else changed
-            if file in changed or name in scenarios:
-                return []
+            changed = branch_cases() if changed is None else changed
+            last = name.split(" | ")[-1]
+            if last in changed.get(file, set()) or last in scenarios:
+                owned.append(case)
+                continue
             narrow = [f"CASE={name}"] if target == "test-readiness" else [f"FILE={file}", f"CASE={name}"]
             plan.append((case, ["make", target, *narrow]))
-    return plan
+    return plan, owned
 
 
 def rerun_passed(case: str, cmd: list[str], ok: bool, out: str) -> bool:
-    """A rerun exited 0 and, for a test case, printed that case as passed (`<file> | … <name>: o`)."""
+    """A rerun exited 0 and, for a test case, printed its group as all passed: the reporter groups by file
+    and top-level set (group_depth 2), `<file> | <case>: o`, or `<file> | <set>: oo` for a nested set."""
     if not ok or case.startswith("e2e: "):
         return ok
-    file, name = case.split(" | ", 1)[0], cmd[-1].removeprefix("CASE=")
-    return any(line.startswith(file + " | ") and line.endswith(name + ": o") for line in out.splitlines())
+    file, group = case.split(" | ", 1)[0], cmd[-1].removeprefix("CASE=").split(" | ")[0]
+    prefix = f"{file} | {group}: "
+    return any(line.startswith(prefix) and re.fullmatch("o+", line[len(prefix) :]) for line in out.splitlines())
 
 
-def rerun_flaky(out: str, log: str) -> tuple[list[str], str]:
-    """(flaky cases, infra reason) of a check whose failed targets all rerun (rerun_plan): the cases when each
-    passes on one serial rerun; the sandbox line when e2e fails on infra again and every other rerun passes;
-    otherwise neither. Reruns are appended to `log`."""
-    plan, infra = rerun_plan(out), ""
+def rerun_flaky(out: str, log: str) -> tuple[list[str], str, list[str]]:
+    """(flaky cases, infra reason, owned failures) of a check whose failed targets all rerun (rerun_plan):
+    the cases when each passes on one serial rerun; the sandbox line when e2e fails on infra again and every
+    other rerun passes; otherwise neither. Reruns are appended to `log`."""
+    (plan, owned), infra = rerun_plan(out), ""
     for index, (case, cmd) in enumerate(plan):
         ok, rerun_out = run(cmd, f"rerun-{attempt}-{index + 1}.log")
         ok = rerun_passed(case, cmd, ok, rerun_out)
         with (artifacts / log).open("a") as f:
             f.write(f"\n===== rerun {case}: {'ok' if ok else 'FAIL'} =====\n{tail(rerun_out)}\n")
         if not ok and not (case.startswith("e2e: ") and (infra := e2e_infra(rerun_out.splitlines()))):
-            return [], ""
-    if infra:
-        return [], infra
+            return [], "", owned
+    if infra:  # with an owned failure the pass is the change's to fix, not the host's
+        return [], "" if owned else infra, owned
     cases = [case for case, _ in plan]
     if cases:
         with (artifacts / log).open("a") as f:
             f.write("\nflaky (failed, then passed on rerun): " + ", ".join(cases) + "\n")
-    return cases, ""
+    return cases, "", owned
 
 
 # E2E=1: e2e runs in the sandbox VM and boots it when it is down (docs/testing.md, Sandbox VM)
 check_log = f"check-{attempt}.log"
 green, check_out = run(["make", "check", "E2E=1"], check_log)
 change_dir = pathlib.Path("openspec/changes") / change
-flaky, infra = ([], "") if green else rerun_flaky(check_out, check_log)
-green = green or bool(flaky)
+flaky, infra, owned = ([], "", []) if green else rerun_flaky(check_out, check_log)
+green = green or (bool(flaky) and not owned)
 if infra:  # the host failed twice, not the change: the loop stops with no fix pass, and this pass is no attempt
     counter.write_text(str(attempt - 1))
     red(f"infra: e2e did not run (sandbox failed twice): {infra}\nfull log: {artifacts / check_log}", infra=infra)
@@ -226,6 +247,9 @@ if missing:
     failures.append("scenarios of this change with no test named after them:\n" + "\n".join("- " + m for m in missing))
 if not green:
     failures.append("make check is red:\n" + summarize(check_out, str(artifacts / check_log)))
+    if owned and flaky:
+        failures.append("passed on rerun (flaky, not this change's): " + ", ".join(flaky))
+        flaky = []
 if not spec_ok:
     failures.append(
         "openspec validate --strict (change, or main specs after a trial archive) failed; reproduce with "

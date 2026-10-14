@@ -2,8 +2,9 @@
 `make queue CHANGE=<id>` in the foreground (so the Adopt rules of `make queue` apply; work-queue is
 interactive-class, so Archon refuses `--detach`). The foreground CLI returns when the run completes,
 fails, is cancelled or pauses at a gate; the run's status is then read from the Archon DB. It stops when the queue is empty, after N runs, or at the first run that
-pauses for the user (a gate, a Blocked section). A change with a `## Blocked` section is skipped, not
-run; a failed or cancelled run is recorded and the drain goes on. No change runs twice in one drain.
+pauses for the user (a gate, a Blocked section), or at a run the stop-infra node cancelled (the sandbox
+failed twice: the host is broken, so the next change would fail the same way; exit 1). A change with a
+`## Blocked` section is skipped, not run; any other failed or cancelled run is recorded and the drain goes on. No change runs twice in one drain.
 """
 
 import argparse
@@ -54,9 +55,21 @@ def newest_run(change: str, before: set[str]) -> tuple[str, str] | None:
     return next(((run_id, status) for run_id, status in rows if run_id not in before), None)
 
 
+def stopped_on_infra(run_id: str) -> bool:
+    """The run was cancelled by nvim-deliver's stop-infra node (`deliver__stop-infra` inside work-queue)."""
+    query = "select 1 from remote_agent_workflow_events where workflow_run_id = ? and event_type = 'workflow_cancelled'"
+    query += " and step_name like '%stop-infra'"
+    try:
+        with sqlite3.connect(f"file:{db_path()}?mode=ro", uri=True) as conn:
+            return conn.execute(query, (run_id,)).fetchone() is not None
+    except sqlite3.OperationalError:  # no events table: no node cancelled it
+        return False
+
+
 def run(change: str) -> tuple[str, str]:
     """Works the change in the foreground (output streams through); returns its run id and
-    `completed`, `failed`, `cancelled` or `paused` (any other status still needs the user)."""
+    `completed`, `failed`, `cancelled`, `infra` (stop-infra cancelled it) or `paused` (any other status
+    still needs the user)."""
     env = {**os.environ, "MAKEFLAGS": "", "MAKELEVEL": ""}
     before = run_ids(change)
     out = subprocess.run([MAKE, "-s", "queue", f"CHANGE={change}"], env=env)
@@ -64,6 +77,8 @@ def run(change: str) -> tuple[str, str]:
     if not found:
         raise RuntimeError(f"make queue CHANGE={change} exited {out.returncode} and recorded no run in {db_path()}")
     run_id, status = found
+    if status == "cancelled" and stopped_on_infra(run_id):
+        return run_id, "infra"
     return run_id, status if status in ("completed", "failed", "cancelled") else "paused"
 
 
@@ -86,6 +101,9 @@ def drain(limit: int | None) -> int:
         if status == "paused":
             print(f"drain: stopped, {change} waits for you: archon workflow status (run {run_id})")
             return 0
+        if status == "infra":
+            print(f"drain: stopped, e2e sandbox infra failed twice on {change} (run {run_id}): fix the host, then rerun")
+            return 1
     print(f"drain: stopped after {runs} run(s) (N={limit})")
     return 0
 

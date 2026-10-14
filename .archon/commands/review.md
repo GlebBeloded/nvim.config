@@ -17,7 +17,9 @@ Use `superpowers:requesting-code-review` as the checklist, acting as the reviewe
 the diff against the conventions in docs/architecture.md and openspec/specs plus the change's spec delta:
 - consistency with the conventions (cite the rule number);
 - scope creep beyond proposal.md: an edit to a file the proposal and tasks.md do not cover is `[must-fix]`,
-  unless the gate needed it to go green (then say so in the finding and mark it `[minor]`); if `$ARTIFACTS_DIR/fix-scope.md` exists, the last fix pass edited
+  unless the gate needed it to go green (then say so in the finding and mark it `[minor]`); in scope, no
+  finding: new test files for the change's scenarios, files `make fmt` changed only in whitespace, and
+  `openspec/changes/<change>/`; if `$ARTIFACTS_DIR/fix-scope.md` exists, the last fix pass edited
   the planning files it lists (proposal.md, .openspec.yaml, spec deltas): a finding unless the edit only
   repairs a failed `openspec validate` or trial archive;
 - test integrity: no deleted, skipped, xfailed or weakened tests, no loosened assertions, test

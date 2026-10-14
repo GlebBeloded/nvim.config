@@ -550,6 +550,44 @@ T["loop: Gate never passes a case the change owns as flaky"] = function()
 	eq({ other.green, other.flaky }, { true, { "tests/unit/a/test_a.lua | a: flaky case" } })
 end
 
+T["loop: Gate reruns an old case in a test file the change edits"] = function()
+	local file = "tests/unit/a/test_a.lua"
+	local log = {
+		"FAIL test 1.0 s",
+		"===== test =====",
+		"FAIL in " .. file .. " | a: old case:",
+		"check: FAILED: test (1.0 s)",
+	}
+	local base = { [file] = 'T["a: old case"] = function() end\n\nT["a: new case"] = function()\nend' }
+	local edited = { [file] = 'T["a: old case"] = function() end\n\nT["a: new case"] = function()\n\tlocal x = 1\nend' }
+	local outputs = { ["test.out"] = file .. " | a: old case: o\n" .. file .. " | a: new case: o" }
+	local old, old_reruns = rerun_gate(log, 0, base, { outputs = outputs, branch = edited })
+	eq(
+		{ old.green, old.flaky, old_reruns },
+		{ true, { file .. " | a: old case" }, "test FILE=" .. file .. " CASE=a: old case" }
+	)
+
+	local both = vim.list_extend(vim.list_slice(log, 1, 3), { "FAIL in " .. file .. " | a: new case:", log[4] })
+	local mixed, mixed_reruns = rerun_gate(both, 0, base, { outputs = outputs, branch = edited })
+	eq({ mixed.green, mixed.flaky, mixed_reruns }, { false, {}, "test FILE=" .. file .. " CASE=a: old case" })
+	has(mixed.failures, "passed on rerun (flaky, not this change's): " .. file .. " | a: old case")
+end
+
+T["loop: Gate reruns a failed case of a nested set"] = function()
+	local file = "tests/unit/a/test_a.lua"
+	local log = {
+		"FAIL test 1.0 s",
+		"===== test =====",
+		"FAIL in " .. file .. " | load | a: nested case: Failed expectation",
+		"check: FAILED: test (1.0 s)",
+	}
+	local base = { [file] = 'T["load"] = MiniTest.new_set()\nT["load"]["a: nested case"] = function() end' }
+	local passed, reruns = rerun_gate(log, 0, base, { outputs = { ["test.out"] = file .. " | load: o" } })
+	eq({ passed.green, reruns }, { true, "test FILE=" .. file .. " CASE=load | a: nested case" })
+	local failed = rerun_gate(log, 0, base, { outputs = { ["test.out"] = file .. " | load: x" } })
+	eq(failed.green, false)
+end
+
 T["loop: Fix prompt never makes an empty commit"] = function()
 	local fix = read(vim.fs.joinpath(H.root, ".archon/commands/fix.md")):gsub("%s+", " ")
 	has(fix, "or none when nothing needs changing (say so: the gate reruns); never an empty commit")

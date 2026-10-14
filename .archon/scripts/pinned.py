@@ -6,7 +6,8 @@ branch, the lhs and callables of changed `vim.keymap.set(`/`map(` lines and `loc
 `git diff <merge-base> -U0 -- lua/ init.lua`. Each `openspec/specs/*/spec.md` scenario (or requirement
 prose, when none of its scenarios hits) naming one is pinned, unless its capability has a delta in the
 change or `## Impact` names its title. A bare lhs pins only a line that presses or reads the mapping
-and is no enumeration (a desc list). An Impact line naming a main-spec title is a pin's justification:
+and is no enumeration (a desc list). An Impact line naming a main-spec title (backticked, quoted or with
+its spec path: names_title) is a pin's justification:
 its symbols pin nothing, so the set the spec step is given is the set the gate checks once it is planned.
 
 Usage: pinned.py [--check] <change>. Prints `<capability>: <scenario> (<spec>:<line>)` per pin, or
@@ -65,10 +66,19 @@ def titles(spec: pathlib.Path) -> list[str]:
             if line.startswith(("### Requirement:", "#### Scenario:"))]
 
 
+def names_title(line: str, title: str) -> bool:
+    """`line` names the main-spec `title` as a reference, the way queue-spec.md has Impact lines do it:
+    backticked (`<title>` or `<capability>: <title>`), double-quoted, or followed by its spec path
+    (`<title> (openspec/specs/…`). A title in running prose (e.g. a short one, `Shutdown`) is no reference."""
+    t = re.escape(title)
+    return bool(re.search(rf"`(?:[\w-]+: )?(?:Requirement: )?{t}`|\"{t}\"|{t} \(openspec/specs/", line))
+
+
 def proposal_symbols(proposal: str, config: str, justified: tuple[str, ...] = ()) -> tuple[set[str], set[str]]:
     """(lhs, identifiers) named in What Changes / Impact that the config holds; Impact lines naming one
-    of `justified` (main-spec titles) are skipped."""
-    impact = "\n".join(l for l in section(proposal, "Impact").splitlines() if not any(t in l for t in justified))
+    of `justified` (main-spec titles, names_title) are skipped."""
+    lines = section(proposal, "Impact").splitlines()
+    impact = "\n".join(l for l in lines if not any(names_title(l, t) for t in justified))
     lhs, idents = set(), set()
     for span in SPAN.findall(section(proposal, "What Changes") + impact):
         span = span.strip()
@@ -188,14 +198,14 @@ def pinned(change: str) -> list[str]:
     lhs, idents = proposal_symbols(proposal, config_text(pathlib.Path(".")), justified)
     more_lhs, more_idents = diff_symbols(branch_diff())
     lhs, idents = lhs | more_lhs, idents | more_idents
-    impact = section(proposal, "Impact")
+    impact = section(proposal, "Impact").splitlines()
     out = []
     for spec in specs:
         capability = spec.parent.name
         if (folder / "specs" / capability / "spec.md").is_file():
             continue
         for title, line in spec_pins(spec, lhs, idents):
-            if title.removeprefix("Requirement: ") not in impact:
+            if not any(names_title(l, title.removeprefix("Requirement: ")) for l in impact):
                 out.append(f"{capability}: {title} ({spec}:{line})")
     return out
 
@@ -206,7 +216,7 @@ def check_report(found: list[str]) -> str:
         return ""
     return (
         "pinned scenarios with no delta and no Impact line (each needs a MODIFIED delta restated to the new"
-        " behaviour, or one line in proposal.md `## Impact` naming it and why it still holds):\n"
+        " behaviour, or one line in proposal.md `## Impact` naming it in backticks and why it still holds):\n"
         + "\n".join("- " + p for p in found)
     )
 

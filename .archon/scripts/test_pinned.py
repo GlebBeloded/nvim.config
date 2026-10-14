@@ -209,6 +209,23 @@ class PinnedSetTest(unittest.TestCase):
         self.assertEqual(pinned.pinned(repo.change), [])
         self.assertEqual(self.gate(repo.change), {"ok": True, "log": ""})
 
+    def test_a_short_title_in_prose_justifies_nothing(self):
+        """A main-spec title such as `Shutdown` in an ordinary Impact line is no reference: its symbols
+        still pin; the backticked `<capability>: <title>` is one."""
+        shutdown = "# shutdown Specification\n\n## Requirements\n\n### Requirement: Shutdown\n\n#### Scenario: Shutdown\n- **THEN** quits\n"
+        repo = Repo({"run": RUN_SPEC, "shutdown": shutdown}, {"gleb/run/init.lua": RUN_LUA}, "c", RUN_PROPOSAL)
+        self.enter(repo)
+        told = pinned.pinned(repo.change)
+        prose = "- Shutdown is unaffected; `vim.fs.root` keeps `Cargo.lock` lookup.\n"
+        repo.proposal(RUN_PROPOSAL + prose)
+        self.assertEqual(pinned.pinned(repo.change), [
+            "run: Run ignores a directory without a supported project marker (openspec/specs/run/spec.md:8)",
+            *told,
+        ])  # its `Cargo.lock` pins :8 too
+        self.assertFalse(pinned.names_title(prose, "Shutdown"))
+        self.assertTrue(pinned.names_title("- `shutdown: Shutdown` still holds", "Shutdown"))
+        self.assertTrue(pinned.names_title("- `keymaps: Requirement: LSP keymaps` still holds", "LSP keymaps"))
+
 
 if __name__ == "__main__":
     unittest.main()

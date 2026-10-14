@@ -36,14 +36,14 @@ Each run works in its own git worktree cut from `auto` and, when every gate is g
 | `make fix BUG="…"` | `fix-bug`: root cause, spec delta, TDD fix. `BUG` can also be a change id |
 | `make feature IDEA="…"` | `new-feature`: brainstorm, proposal with renders; always stops for your approval |
 | `make queue [CHANGE=<id>]` | `work-queue`: the oldest change in `openspec/changes/` that no run has taken (no `loop/<id>` branch) |
-| `make drain [N=<runs>]` | `drain.py`: foreground `make queue CHANGE=<id>` one change at a time (status read from the Archon DB) until the queue is empty, N runs, or a run waits for you; skips `## Blocked` changes |
+| `make drain [N=<runs>]` | `drain.py`: foreground `make queue CHANGE=<id>` one change at a time (status read from the Archon DB) until the queue is empty, N runs, a run waits for you, or stop-infra cancels a run (broken host, exit 1); skips `## Blocked` changes |
 | `make loop-clean [APPLY=1]` | `loop_clean.py`: remove worktree and branch of shipped or superseded `loop/*` runs; dry run unless `APPLY=1` |
 | `make outdated` | plugins with commits past `lazy-lock.json` (read-only) |
 | `make update PLUGIN=<name>` | `plugin-update`: update that one plugin, test it, ship it or adapt the config |
 | `make preview CHANGE=<id> [OPEN=1]` | regenerate `openspec/changes/<id>/preview.html` and print its absolute path (`OPEN=1` is for you; the loop passes `OPEN=`) |
 | `make console` | `archon serve`, the web console at http://localhost:3090 |
 | `make loop-report [RUN=<id>]` | generate a local HTML report for the named run, or the latest run for this codebase |
-| `make self-check CHANGE=<id>` | the gate's cheap checks (lint, types, strict validation of the change and of its trial archive), run by implement and fix before they commit |
+| `make self-check CHANGE=<id>` | the gate's cheap checks (hard rules: `integrity.py`, `pinned.py --check`; lint, types, strict validation of the change and of its trial archive), run by implement and fix before they commit |
 | `make loop-status` / `make loop-validate` | active and last runs plus the latest report URI / `archon validate workflows` |
 
 Run the targets from `~/.config/nvim` (the `auto` checkout). `fix`, `feature`, `queue` and `update` can
