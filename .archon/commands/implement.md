@@ -18,8 +18,8 @@ Production code (`lua/`) never uses timers or sleeps to win a race with a plugin
 Find the cause before editing code. When it is not obvious (a race, state you cannot see), run one headless probe first
 (the scratch-file probe rule below) that logs the relevant state, and base the edit on its output. At most 2 implementation
 attempts per task (an edit plus rerunning its test): if the second still fails, revert only the non-test edits (`lua/` and
-other code; keep the new red test), write `## Blocked` in tasks.md with the probe output and both attempts, commit the failing
-test together with tasks.md (a blocked change never ships), and stop. An attempt is a change to production code (`lua/`) or to your hypothesis about the cause; fixing a mechanical error in your own test or harness code (syntax, arity or multiple returns such as `gsub`, a wrong API or key notation) and rerunning is not an attempt, as long as the test's scenario and assertions stay the same. Block only when the second production attempt fails on an assertion that tests the behaviour. `## Blocked` is for a decision only the user can make (design, a spec that contradicts itself or the code) or a behaviour still red after both attempts; an ordinary bug (a wrong return count, a typo, a misused API) is fixed, never blocked while an attempt is left (still red after both, block it with that evidence).
+other code; keep the new red test), write `## Stuck` in tasks.md with the probe output and both attempts, commit the failing
+test together with tasks.md (a stuck change goes to the fix passes, never to the user), and stop. An attempt is a change to production code (`lua/`) or to your hypothesis about the cause; fixing a mechanical error in your own test or harness code (syntax, arity or multiple returns such as `gsub`, a wrong API or key notation) and rerunning is not an attempt, as long as the test's scenario and assertions stay the same. Write `## Stuck` only when the second production attempt fails on an assertion that tests the behaviour; an ordinary bug (a wrong return count, a typo, a misused API, an encoding detail such as `vim.empty_dict()` for an empty JSON object) is fixed, never stuck while an attempt is left. Small design and implementation choices the spec and design leave open (a data format detail, a name, which internal API, a default, an ordering) are yours: decide, and record each in one line under `## Agent decisions` in tasks.md (choice and why). Write `## Blocked` only for a choice that changes user-visible behaviour beyond the spec or design, contradicts the spec or a `## Decision`, or is breaking; it states the question, the options and your recommendation.
 
 Change: openspec/changes/$INPUTS.change/ (the pack quotes proposal, specs, design and tasks.md)
 
@@ -34,8 +34,8 @@ When this task corrects a failure from the previous pass (pack section "Last gat
 correction is directly verified, append one concise cause-to-action line to
 `$ARTIFACTS_DIR/lesson-candidates.txt` (start it with `loop:` when it is about loop tooling: such lessons are dropped); otherwise do not write a candidate.
 
-Never delete, skip or weaken a test or scenario to get green; if the spec is wrong, write it in
-tasks.md under "## Blocked" and stop.
+Never delete, skip or weaken a test or scenario to get green; if the spec is wrong (it contradicts itself, the code or a `## Decision`), write it in
+tasks.md under "## Blocked" with the options and your recommendation, and stop.
 
 If a failure comes from loop tooling (`.archon/`, `tests/trace.lua`, `tests/sandbox/`, the `make check` targets) and not from this change, do not fix it here: append one line `loop: <failure>` to `$ARTIFACTS_DIR/loop-notes.md` (not tasks.md: the judge lists it for the auditor, and it never stops the change; `<failure>` quotes the failing log line verbatim, never restating its numbers) and go on with the change.
 

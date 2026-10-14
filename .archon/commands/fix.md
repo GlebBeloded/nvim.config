@@ -26,8 +26,8 @@ An edited assertion must still prove its scenario's THEN; replacing a behaviour/
 Find the cause before editing. When the cause is not obvious from the log line (a race, state you cannot see), run one
 headless probe first (the scratch-file probe rule below) that logs the relevant state, and base the edit on its output.
 At most 2 implementation attempts per pass (an edit plus rerunning the failing test): if the second still fails, revert
-only the non-test edits (`lua/` and other code; keep the new red regression test), write `## Blocked` in tasks.md with the probe output and both attempts,
-commit the failing test together with tasks.md (a blocked change never ships), and stop. An attempt is a change to production code (`lua/`) or to your hypothesis about the cause; fixing a mechanical error in your own test or harness code (syntax, arity or multiple returns such as `gsub`, a wrong API or key notation) and rerunning is not an attempt, as long as the test's scenario and assertions stay the same. Block only when the second production attempt fails on an assertion that tests the behaviour. `## Blocked` is for a decision only the user can make or a behaviour still red after both attempts; an ordinary bug is fixed, never blocked while an attempt is left (still red after both, block it with that evidence).
+only the non-test edits (`lua/` and other code; keep the new red regression test), write (or replace) `## Stuck` in tasks.md with the probe output and both attempts,
+commit the failing test together with tasks.md (the next fix pass or a re-queued run takes it, never the user), and stop. An attempt is a change to production code (`lua/`) or to your hypothesis about the cause; fixing a mechanical error in your own test or harness code (syntax, arity or multiple returns such as `gsub`, a wrong API or key notation) and rerunning is not an attempt, as long as the test's scenario and assertions stay the same. Write `## Stuck` only when the second production attempt fails on an assertion that tests the behaviour; an ordinary bug is fixed, never stuck while an attempt is left. A finding starting `stuck` quotes tasks.md's `## Stuck` section (earlier attempts): it is your first finding; try a cause they did not, and once its behaviour is green delete the `## Stuck` section in the same commit. Small design and implementation choices the spec and design leave open (a data format detail, a name, which internal API, a default, an ordering) are yours: decide, and record each in one line under `## Agent decisions` in tasks.md (choice and why). Write `## Blocked` only for a choice that changes user-visible behaviour beyond the spec or design, contradicts the spec or a `## Decision`, or is breaking; it states the question, the options and your recommendation.
 Production code (`lua/`) never uses timers or sleeps (`vim.defer_fn`, `vim.uv` timers, `vim.wait`) to win a race with a
 plugin's internals unless the proposal's `## Decision` allows it. Do not re-read plugin source the context pack's `## Evidence` covers.
 Read only the latest check log, the `full log:` path in the findings (never a `check-*.log` glob):
@@ -43,14 +43,14 @@ a merged or base commit changed; name that commit (short hash and subject) in th
 Any other screenshot diff is a bug to fix, not a reference to update.
 
 Tests whose assertion is a time bound (readiness, startup budgets): one sample, no retry, no load factor; if over the bound on a loaded host,
-rerun the case once and escalate (`## Blocked`) if still over. Waits for a condition are different: they may scale with `H.load_factor()`.
+rerun the case once and write `## Stuck` if still over. Waits for a condition are different: they may scale with `H.load_factor()`.
 
 When a fix is directly verified, append one concise cause-to-action line to
 `$ARTIFACTS_DIR/lesson-candidates.txt`; start it with `loop:` when it is about loop tooling
 (for example a false positive of a loop check) or restates a rule of this command: such lessons are dropped.
 
-Never delete, skip or weaken a test or scenario to get green, least of all the red regression test an earlier pass added: fix the code until it passes; if the spec is wrong, write it in
-tasks.md under "## Blocked" and stop.
+Never delete, skip or weaken a test or scenario to get green, least of all the red regression test an earlier pass added: fix the code until it passes; if the spec is wrong (it contradicts itself, the code or a `## Decision`), write it in
+tasks.md under "## Blocked" with the options and your recommendation, and stop.
 
 If a failure comes from loop tooling (`.archon/`, `tests/trace.lua`, `tests/sandbox/`, the `make check` targets) and not from this change, do not fix it here: append one line `loop: <failure>` to `$ARTIFACTS_DIR/loop-notes.md` (not tasks.md: the judge lists it for the auditor, and it never stops the change; `<failure>` quotes the failing log line verbatim, never restating its numbers) and go on with the change.
 

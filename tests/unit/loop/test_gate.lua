@@ -636,18 +636,19 @@ T["loop: Fix prompt probes first and caps attempts"] = function()
 	local fix = read(vim.fs.joinpath(H.root, ".archon/commands/fix.md")):gsub("%s+", " ")
 	has(fix, "run one headless probe first (the scratch-file probe rule below) that logs the relevant state")
 	has(fix, "At most 2 implementation attempts per pass")
-	has(fix, "write `## Blocked` in tasks.md with the probe output and both attempts")
+	has(fix, "write (or replace) `## Stuck` in tasks.md with the probe output and both attempts")
 	has(fix, "never uses timers or sleeps (`vim.defer_fn`, `vim.uv` timers, `vim.wait`) to win a race")
 	has(fix, "unless the proposal's `## Decision` allows it")
 end
 
-T["loop: Blocked attempts keep the red test"] = function()
+T["loop: Stuck attempts keep the red test"] = function()
 	for _, name in ipairs({ "fix.md", "implement.md" }) do
 		local prompt = read(vim.fs.joinpath(H.root, ".archon/commands", name)):gsub("%s+", " ")
 		has(prompt, "run one headless probe first (the scratch-file probe rule below) that logs the relevant state")
 		has(prompt, "At most 2 implementation attempts per")
 		has(prompt, "revert only the non-test edits (`lua/` and other code; keep the new red")
-		has(prompt, "commit the failing test together with tasks.md (a blocked change never ships)")
+		has(prompt, "commit the failing test together with tasks.md")
+		has(prompt, "`## Stuck` in tasks.md with the probe output and both attempts")
 		eq(prompt:find("revert the uncommitted edits", 1, true), nil)
 	end
 end

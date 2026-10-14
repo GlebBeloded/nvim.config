@@ -3,7 +3,8 @@ escalation.md; ship-decide never ships it, verdict.py's `blocked`), `reject` whe
 or a hard rule is broken (never shipped; followup.py queues the work), `infra` when the build loop stopped
 on the sandbox failing twice (gate.py's `infra`: the change did not fail, so it is neither rejected nor
 re-queued; the run stops until the host is fixed), `ask` for breaking changes (the user decides), otherwise
-`ship`. `notes` (flaky cases, `loop:` notes) are listed, never decide; the
+`ship`. A `## Stuck` section (a behaviour still red after both attempts, no decision needed) never asks:
+an exhausted loop with it is rejected as any other, its text quoted for the re-queued run. `notes` (flaky cases, `loop:` notes) are listed, never decide; the
 last review's findings follow a non-ship decision, so a re-queued change says what to fix; on ship its
 minor (non-blocking) findings are listed as notes for the auditor. A test case the build added and then
 removed (gate.py's record) and still missing is asked about. Writes a
@@ -15,7 +16,7 @@ import os
 import re
 from pathlib import Path
 
-from blocked import blocked_text, loop_notes
+from blocked import blocked_text, loop_notes, stuck_text
 from integrity import breaking_changes, hard_rule_violations, still_dropped
 from lessons import persist_lessons
 
@@ -61,6 +62,9 @@ decision = "ask" if blocked else "reject" if reject else "infra" if infra else "
 ask = [f"infra: e2e did not run (the sandbox failed twice, not the change): {infra}"] if decision == "infra" else ask
 
 summary = "\n".join("- " + r for r in reject + ask) or "- none"
+stuck = stuck_text(os.environ.get("INPUTS_CHANGE", ""))
+if stuck and decision != "ship":  # the re-queued run's fix pass starts from these attempts
+    summary += "\n- stuck:\n" + "\n".join("  " + line for line in stuck.splitlines())
 findings = os.environ.get("INPUTS_REVIEW_FINDINGS", "").strip()[:FINDINGS_CHARS]
 if findings and decision != "ship":  # followup.py writes the reasons under `## Rejected run`: say what to fix
     summary += "\n- review findings:\n" + "\n".join("  " + line for line in findings.splitlines())

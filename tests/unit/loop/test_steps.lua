@@ -365,11 +365,11 @@ T["loop: Implement and fix self-check like the gate before handing back"] = func
 		prompt = prompt:gsub("%s+", " ")
 		eq(prompt:find("`make self-check CHANGE=$INPUTS.change`", 1, true) ~= nil, true, { fail_reason = name })
 		eq(
-			prompt:find("an ordinary bug", 1, true) ~= nil and prompt:find("is fixed, never blocked", 1, true) ~= nil,
+			prompt:find("an ordinary bug", 1, true) ~= nil and prompt:find("is fixed, never stuck", 1, true) ~= nil,
 			true
 		)
 		for _, needle in ipairs({
-			"is fixed, never blocked while an attempt is left (still red after both, block it with that evidence)",
+			"is fixed, never stuck while an attempt is left",
 			"red only from base or loop tooling, not this change: commit anyway and append a `loop: …` line",
 		}) do
 			eq(prompt:find(needle, 1, true) ~= nil, true, { fail_reason = name .. ": " .. needle })

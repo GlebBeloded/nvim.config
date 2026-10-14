@@ -6,7 +6,7 @@ means an adopted branch archived it; every task ticked means the spec step has n
 UI is then read from design.md: true only when it holds a render section, as visible-UI designs do). LOOP_CHANGES_DIR overrides
 openspec/changes (fixtures).
 
-As a script: exits 0 when the per-task loop is done (no unchecked task, a blocking `## Blocked` section, or
+As a script: exits 0 when the per-task loop is done (no unchecked task, a blocking `## Blocked` section, a `## Stuck` section (the fix passes take it), or
 MAX_PASSES implement passes counted in $ARTIFACTS_DIR/task-passes), 1 while a task is left.
 """
 
@@ -15,7 +15,7 @@ import pathlib
 import re
 import sys
 
-from blocked import blocks
+from blocked import STUCK, blocks
 
 UNCHECKED = re.compile(r"^\s*[-*] \[ \] ", re.MULTILINE)
 TASK_HEADING = re.compile(r"^#{2,4} .*$", re.MULTILINE)
@@ -71,7 +71,7 @@ def loop_done(tasks: pathlib.Path, artifacts: pathlib.Path) -> bool:
     passes = int(counter.read_text()) + 1 if counter.exists() else 1
     counter.write_text(str(passes))
     text = tasks.read_text() if tasks.exists() else ""
-    return unchecked(text) == 0 or blocks(text) or passes >= MAX_PASSES
+    return unchecked(text) == 0 or blocks(text) or bool(STUCK.search(text)) or passes >= MAX_PASSES
 
 
 def plan_needed(tasks: pathlib.Path) -> bool:

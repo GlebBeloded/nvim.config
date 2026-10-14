@@ -1,0 +1,26 @@
+# g8. a re-queued change whose tasks.md has `## Stuck` (fixtures/changes/stuck-change, LOOP_CHANGES_DIR):
+# blocked (real) does not stop it (only `## Blocked` does), so the spec step and the build run;
+# verdict (real) keeps the loop red on the Stuck section; the judge rejects, never asks.
+fixture:
+  expect: cancelled
+  inputs: { change: stuck-change }
+  reached: [pick, adopt, blocked, complete, spec-gate, deliver__escalation, deliver__followup]
+exec-code: true
+skills-check: "skills ok"
+pick: { found: true, change: stuck-change, kind: fix, has_tasks: true }
+complete: "spec kept the Stuck notes"
+spec-gate: { ok: true, log: "" }
+preview: "MUST-NOT-RUN"
+blocked-gate: "MUST-NOT-RUN"
+deliver__skills-check: "skills ok"
+deliver__plan-check: { needed: false, has_change: true }
+deliver__plan-gate: "valid"
+pack: { has_task: false, context: context.md }
+implement: "MUST-NOT-RUN"
+fix: "MUST-NOT-RUN"
+fix-stuck: "MUST-NOT-RUN"
+gate: { green: false, spec_ok: true, tasks_done: false, untested: 0, attempt: 3, failures: "FAIL in x", blocked: false }
+review: "MUST-NOT-RUN"
+deliver__escalation: { decision: reject, escalate: false, reasons: "- fix loop exhausted (3 attempts) with gates still red: tests,tasks,stuck" }
+deliver__followup: '{"queued": true, "change": "stuck-change"}'
+deliver__ship: "MUST-NOT-RUN"

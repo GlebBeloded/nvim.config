@@ -3,7 +3,9 @@ without CRITICAL, AI review approves). `feedback` carries only the failures and 
 pass's fix step reads nothing else; `notes` (flaky cases gate.py passed on rerun) is no finding. The loop stops when passed, after MAX_ATTEMPTS, or as soon as the
 change has a `## Blocked` section (blocked.py: no fix pass can resolve it) or the gate reports `infra`
 (the sandbox failed twice: no fix pass can resolve that either), so an exhausted or blocked
-loop reaches the judge instead of failing the run. Lessons are persisted by the judge
+loop reaches the judge instead of failing the run. A `## Stuck` section (a behaviour still red after
+both attempts) is a failed gate `stuck`, never an end: its text leads the feedback and `stuck` lets the
+fix pass run at higher effort; the fix pass deletes it once green. Lessons are persisted by the judge
 (escalation.py) after the loop, never here: docs/workflow.md stays clean between passes.
 """
 
@@ -12,7 +14,7 @@ import os
 import pathlib
 import subprocess
 
-from blocked import blocked_text
+from blocked import blocked_text, stuck_text
 from integrity import CASE_SEEN, CASE_SNAPSHOT, hard_rule_violations, plan_files, tree_case_names
 from lessons import drop_overturned
 
@@ -36,6 +38,7 @@ def hard_rules() -> list[str]:
 
 
 violations = hard_rules()
+stuck = stuck_text(os.environ.get("INPUTS_CHANGE", ""))
 gates = {
     "tests": value("green", False) is True,
     "spec": value("spec_ok", False) is True,
@@ -43,6 +46,7 @@ gates = {
     "rules": not violations,
     "verify": int(value("critical", -1)) == 0,
     "review": value("approve", False) is True,
+    "stuck": not stuck,
 }
 if value("green", False) is not True or value("spec_ok", False) is not True or int(value("critical", -1)) != 0:
     gates.pop("review")  # review did not run this pass: not a failed gate
@@ -53,7 +57,7 @@ blocked = "" if passed else blocked_text(os.environ.get("INPUTS_CHANGE", ""))
 infra = "" if passed else str(value("infra", "") or "")
 exhausted = not passed and not blocked and not infra and attempt >= MAX_ATTEMPTS
 failures = str(value("failures", "") or "")
-feedback = [failures]
+feedback = [f"stuck (tasks.md, earlier attempts; fix it, then delete the section): {stuck}" if stuck else "", failures]
 feedback += [f"hard rule: {v}" for v in violations if f"hard rule: {v}" not in failures]  # gate.py may list them
 artifacts = pathlib.Path(os.environ.get("ARTIFACTS_DIR", "."))
 scope = artifacts / "fix-scope.md"
@@ -75,6 +79,7 @@ print(
             "passed": passed,
             "exhausted": exhausted,
             "blocked": bool(blocked),
+            "stuck": bool(stuck),
             "infra": infra,
             "attempt": attempt,
             "failed_gates": ",".join(k for k, ok in gates.items() if not ok),

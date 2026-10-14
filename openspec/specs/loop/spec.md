@@ -521,19 +521,19 @@ gate.py SHALL check for a blocking `## Blocked` section (blocked.py) before anyt
 - **WHEN** gate.py runs for a change whose tasks.md has a `## Blocked` section, with a `make` stub that records being called
 - **THEN** `green` is false, `blocked` is true, failures quote the Blocked section, make never ran, and the review node's `when:` requires `$gate.output.blocked == false`
 
-### Requirement: Blocked attempts keep the red test
-The fix and implement commands SHALL run one headless probe before editing for a non-obvious failure and cap attempts at 2; when the second fails they SHALL revert only non-test edits, write `## Blocked` with the probe output and both attempts, and commit the failing test with it.
+### Requirement: Stuck attempts keep the red test
+The fix and implement commands SHALL run one headless probe before editing for a non-obvious failure and cap attempts at 2; when the second fails they SHALL revert only non-test edits, write `## Stuck` with the probe output and both attempts, and commit the failing test with it.
 
-#### Scenario: Blocked attempts keep the red test
+#### Scenario: Stuck attempts keep the red test
 - **WHEN** `.archon/commands/fix.md` and `implement.md` are read
-- **THEN** each asks for the probe first, caps attempts at 2, reverts only non-test edits, commits the failing test with tasks.md, and no longer says to revert the uncommitted edits
+- **THEN** each asks for the probe first, caps attempts at 2, reverts only non-test edits, writes `## Stuck` with the probe output and both attempts, commits the failing test with tasks.md, and no longer says to revert the uncommitted edits
 
 ### Requirement: Fix pass probes before it edits
-The fix command SHALL run one headless scratch-file probe logging the relevant state before editing code for a non-obvious failure, allow at most 2 implementation attempts per pass and then write `## Blocked` with the probe evidence, and forbid production timers or sleeps that race a plugin's internals unless the proposal's `## Decision` allows them.
+The fix command SHALL run one headless scratch-file probe logging the relevant state before editing code for a non-obvious failure, allow at most 2 implementation attempts per pass and then write `## Stuck` with the probe evidence, and forbid production timers or sleeps that race a plugin's internals unless the proposal's `## Decision` allows them.
 
 #### Scenario: Fix prompt probes first and caps attempts
 - **WHEN** `.archon/commands/fix.md` is read
-- **THEN** it asks for one headless probe before editing a non-obvious failure, caps attempts at 2 per pass then `## Blocked` with the probe output, and forbids timers or sleeps against plugin internals without a `## Decision`
+- **THEN** it asks for one headless probe before editing a non-obvious failure, caps attempts at 2 per pass then `## Stuck` with the probe output, and forbids timers or sleeps against plugin internals without a `## Decision`
 
 ### Requirement: Bug root cause carries evidence
 The spec prompts SHALL give a bug proposal an `## Evidence` section of `file:line` refs or probe output for its root cause; context_pack.py SHALL carry that section into context.md, and the implement prompt SHALL not re-read plugin source the Evidence covers.
@@ -618,7 +618,7 @@ work-queue SHALL skip the queue-spec step when the adopted change's tasks.md has
 
 #### Scenario: Implement and fix self-check like the gate before handing back
 - **WHEN** the Makefile and `.archon/commands/fix.md` and `implement.md` are read
-- **THEN** `make self-check CHANGE=<id>` runs the hard rules (`integrity.py`, `pinned.py --check`), lint, types, strict validation of the change and `spec_trial.py` (no tests, no e2e), both prompts run it before they commit (committing anyway with a `loop:` note when only base or loop tooling is red), and both fix an ordinary bug instead of writing `## Blocked` while an attempt is left
+- **THEN** `make self-check CHANGE=<id>` runs the hard rules (`integrity.py`, `pinned.py --check`), lint, types, strict validation of the change and `spec_trial.py` (no tests, no e2e), both prompts run it before they commit (committing anyway with a `loop:` note when only base or loop tooling is red), and both fix an ordinary bug instead of writing `## Stuck` while an attempt is left
 
 #### Scenario: Fix keeps the red regression test and review blocks scope creep
 - **WHEN** `.archon/commands/fix.md` and `review.md` are read
@@ -747,6 +747,21 @@ The loop SHALL leave the user's contract to the user: no step changes a requirem
 #### Scenario: Fix and implement prompts send loop tooling failures to loop notes
 - **WHEN** `.archon/commands/fix.md` and `implement.md` are read
 - **THEN** each says to append a `loop: <failure>` line to `$ARTIFACTS_DIR/loop-notes.md`, not tasks.md, and neither says to write `## Blocked` with `loop:`
+
+### Requirement: Stuck work goes to the fix passes
+A `## Stuck` section in tasks.md (a behaviour red after both attempts, no decision needed) SHALL never ask the user nor hold a queued change before spec: the build loop stays red on it and sends it to a higher-effort fix pass, and an exhausted loop is rejected and re-queued with it. Agents SHALL decide small design choices themselves and record them under `## Agent decisions`.
+
+#### Scenario: Verdict sends a Stuck section to the fix pass
+- **WHEN** `.archon/scripts/verdict.py` runs on an otherwise green pass for a change whose tasks.md has a `## Stuck` section
+- **THEN** it reports `done`, `passed` and `blocked` false, `stuck` true, `failed_gates` `stuck` and feedback quoting the section, and nvim-deliver's `fix-stuck` node (the fix command at `effort: high`) runs the next pass when `stuck` is true
+
+#### Scenario: A Stuck change never asks and is never held before spec
+- **WHEN** blocked.py, escalation.py (`exhausted` true) and tasks.py run for a change whose tasks.md has a `## Stuck` section
+- **THEN** blocked.py reports `blocked` false, the judge's `decision` is `reject` (no ask) with reasons quoting the section under `- stuck:`, and tasks.py ends the task loop
+
+#### Scenario: Agents decide small choices and record them
+- **WHEN** `.archon/commands/implement.md`, `fix.md` and `review.md` are read
+- **THEN** implement and fix decide small design choices themselves, record each under `## Agent decisions` in tasks.md, and write `## Blocked` only for a choice beyond the spec or design, a contradiction or a breaking change, with the question, options and a recommendation; fix deletes `## Stuck` once green; review checks the Agent decisions against the spec and design
 
 #### Scenario: Judge hands the review findings to the follow-up
 - **WHEN** `.archon/scripts/escalation.py` runs with `weakened_test` true and 3000+ chars of review findings starting with a `## ` line, and again with the findings alone

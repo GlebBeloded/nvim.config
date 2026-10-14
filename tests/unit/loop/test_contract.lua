@@ -229,6 +229,63 @@ T["loop: A Blocked section of only loop items never stops the change"] = functio
 	eq(run("blocked.py", repo, env).blocked, true)
 end
 
+local STUCK = '## Stuck\n- Probe: `Left: "[]"`, `Right: "{}"`\n- Attempt 2: round-trip still red'
+
+T["loop: Verdict sends a Stuck section to the fix pass"] = function()
+	local repo = branch_repo({}, { ["openspec/changes/c/tasks.md"] = "## 1. T\n- [ ] 1.1 x\n\n" .. STUCK })
+	local env = {
+		INPUTS_CHANGE = "c",
+		INPUTS_GREEN = "true",
+		INPUTS_SPEC_OK = "true",
+		INPUTS_TASKS_DONE = "true",
+		INPUTS_CRITICAL = "0",
+		INPUTS_APPROVE = "true",
+		INPUTS_ATTEMPT = "1",
+		LOOP_CHANGES_DIR = "",
+	}
+	local out = run("verdict.py", repo, env)
+	eq({ out.done, out.passed, out.blocked, out.stuck, out.failed_gates }, { false, false, false, true, "stuck" })
+	has(out.feedback, "stuck (tasks.md, earlier attempts; fix it, then delete the section): " .. STUCK)
+	local workflow = read(vim.fs.joinpath(H.root, ".archon/workflows/nvim-deliver/nvim-deliver.yaml"))
+	has(workflow, "- id: fix-stuck # the same fix pass at high effort when tasks.md has `## Stuck`")
+	has(
+		workflow,
+		'effort: high\n          idle_timeout: 900000\n          when: "$LOOP_PREV.verdict.output.done == false && $LOOP_PREV.verdict.output.stuck == true"'
+	)
+end
+
+T["loop: A Stuck change never asks and is never held before spec"] = function()
+	local repo = branch_repo({}, { ["openspec/changes/c/tasks.md"] = "## 1. T\n- [ ] 1.1 x\n\n" .. STUCK })
+	local env = { INPUTS_CHANGE = "c", LOOP_CHANGES_DIR = "" }
+	eq(run("blocked.py", repo, env), { blocked = false, text = "" })
+	local judge = run("escalation.py", repo, vim.tbl_extend("force", env, { INPUTS_EXHAUSTED = "true" }))
+	eq({ judge.decision, judge.escalate }, { "reject", false })
+	has(judge.reasons, "- stuck:\n  ## Stuck\n  - Probe:")
+	local tasks = H.system(child, { "python3", vim.fs.joinpath(SCRIPTS, "tasks.py") }, repo, {
+		ARTIFACTS_DIR = H.tempdir(child),
+		INPUTS_CHANGE = "c",
+	})
+	eq(tasks.code, 0, { fail_reason = "the task loop ends on a Stuck section: " .. tasks.stderr })
+end
+
+T["loop: Agents decide small choices and record them"] = function()
+	for _, name in ipairs({ "implement.md", "fix.md" }) do
+		local prompt = read(vim.fs.joinpath(H.root, ".archon/commands", name)):gsub("%s+", " ")
+		has(prompt, "record each in one line under `## Agent decisions` in tasks.md")
+		has(
+			prompt,
+			"Write `## Blocked` only for a choice that changes user-visible behaviour beyond the spec or design"
+		)
+		has(prompt, "it states the question, the options and your recommendation")
+		eq(prompt:find("block it with that evidence", 1, true), nil, { fail_reason = name })
+	end
+	has(read(vim.fs.joinpath(H.root, ".archon/commands/fix.md")), "delete the `## Stuck` section in the same commit")
+	has(
+		read(vim.fs.joinpath(H.root, ".archon/commands/review.md")),
+		"each line under tasks.md `## Agent decisions` is consistent"
+	)
+end
+
 T["loop: Judge lists loop notes for the auditor"] = function()
 	local repo = branch_repo({}, { ["openspec/changes/c/tasks.md"] = "## 1. T\n- [x] 1.1 x\n\n" .. LOOP_ONLY })
 	local artifacts = H.tempdir(child)
