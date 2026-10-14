@@ -70,3 +70,10 @@ The Python type-check commands SHALL change the configured type-check mode witho
 #### Scenario: Type-check toggle reattaches every Python buffer without reloading
 - **WHEN** `:PyTypeCheckOn` or `:PyTypeCheckOff` is executed with two loaded Python buffers and the current buffer has unsaved changes
 - **THEN** the command raises no error and basedpyright attaches to both Python buffers with the selected type-check mode
+
+### Requirement: Unavailable Terraform formatter is omitted
+When the `terraform` executable is unavailable, the config SHALL omit the `terraform_fmt` source from null-ls so its health check does not report a missing command.
+
+#### Scenario: Terraform formatter is omitted when Terraform is unavailable
+- **WHEN** a full-config Neovim starts with a `PATH` where `terraform` is not executable
+- **THEN** the registered null-ls sources do not include `terraform_fmt`

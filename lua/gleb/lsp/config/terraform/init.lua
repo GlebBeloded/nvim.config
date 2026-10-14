@@ -9,6 +9,10 @@ M.lsp_config = { filetypes = { "terraform", "tf", "hcl" } }
 -- table returned by this function is passed to null_ls(linter) setup
 -- table should contain list of diagnostics to use
 M.null_ls = function(null_ls)
+	if vim.fn.executable("terraform") ~= 1 then
+		return {}
+	end
+
 	return { null_ls.builtins.formatting.terraform_fmt }
 end
 
