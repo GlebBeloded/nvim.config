@@ -3,7 +3,7 @@
 Menus come from four separate places: Telescope for live grep and references, a nui.nvim code-action menu, the 99 echo-prompt menu, and plugin pickers. Each one looks and behaves differently. The user wants a single custom UI that we control, built on a library rich enough to draw anything.
 
 Kind: feature
-Adopt: loop/picker-ui-20261014-195908
+Adopt: loop/picker-ui
 
 ## What Changes
 
@@ -69,9 +69,13 @@ Adopt: loop/picker-ui-20261014-195908
 - Search stays in separate pickers: no tab bar. Code search gets its own shortcut and menus later.
 
 ## Rejected run
-Run on `loop/picker-ui-20261014-195908` was rejected by the judge:
+Run on `loop/picker-ui` was rejected by the judge:
 - fix loop exhausted with gates still red: review
 - review findings:
-  [must-fix] Live grep results crash the shared picker's `show`. In `lua/gleb/picker/frame.lua:97-100`, `create_show` wraps string items as `{ text = tostring(item) }` and passes them to `rows.render`. Results from mini.pick `grep_live` (mini.pick.lua:3564, `rg --field-match-separator \x00`) are strings like `path\0lnum\0col\0text`. `rows.render` measures them with `vim.fn.strdisplaywidth`/`strcharpart` (`lua/gleb/picker/rows.lua:37,48,141`), and a NUL-containing string turns into a Blob there. A headless probe of `rows.render` on such an item raised `Vim:E976: Using a Blob as a String`. So `<A-F>` (`keymaps.lua:149`) and the dashboard "Find text" button (`alpha.lua:20`) fail as soon as a query returns matches. mini.pick's own `default_show` handles this by replacing `%z` with `│` (mini.pick.lua:1098). Fix: fall back to `MiniPick.default_show` for non-row items, or sanitize the NUL separators. Then add a case that types a query into live grep and asserts the rendered rows. Why earlier passes missed it: `keymaps: Alt-F opens live grep` and `picker: Dashboard opens shared list pickers` only check that the picker opens with an empty query, so `show` never received string results. The earlier `rows.show` path (d1a6336 `frame.lua:125`) also indexed string items as tables.
-  
-  [must-fix] The last fix pass (892ce19) changed session behaviour that no spec covers. `lua/gleb/session/init.lua:51-53` now resets cwd to the cwd from before `resession.load`, which throws away the cwd the session
+  [must-fix] The match counter shows up on the bottom border whenever the picker is in preview or info view. This breaks the picker spec's frame requirement ("SHALL show no match counter") and rule 8.9 of docs/architecture.md (hints and counters never sit on a border).
+  - Where: lua/gleb/picker/frame.lua:93-96 and :111. The footer is cleared only inside `create_show`, and that function returns early when `vim.fn.bufwinid(buf) == -1`.
+  - Why: mini.pick sets the footer every time it updates the border text (mini/pick.lua:2678-2682: source name plus the `cur|matched|total` counter). In preview or info view the main window shows a different buffer, so `show` never reaches `nvim_win_set_config(win, { footer = "" })`.
+  - Reproduced with `make probe`: start `gleb.picker.start({...})` and press `<Tab>` (mini.pick's default toggle_preview). The footer becomes `{ " T ", "────…", " 1|2|2 " }`.
+  - Affected pickers: every shared picker that keeps mini.pick's default `<Tab>`/`<S-Tab>` (live grep, references, files, recent files, general `vim.ui.select`). Code actions remap preview to `<M-p>` and are hit through that key.
+  - Fix: clear the footer through a path that does not depend on the main buffer being visible, for example a `MiniPickStart` autocmd or updating config on the window itself. Add a scenario that toggles preview.
+  - Why earlier passes missed it: all frame and screen tests (tests/screen/picker/test_frame.lua, test_responsive.lua) check only the main view, so the early-return branch w
