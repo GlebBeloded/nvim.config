@@ -1,11 +1,11 @@
-# f. change without tasks: plan-check says needed, plan runs with the change and the gate feedback,
+# f. change without tasks: plan-check says needed, plan runs with the change and the extra user text,
 # then the normal happy path.
 fixture:
   expect: completed
   inputs: { change: demo-change, feedback: "use option B" }
   reached: [plan-check, plan, plan-gate, implement, ship, shipped]
   resolved-text-contains:
-    plan: "User feedback from the approval gate (may be empty, it overrides the proposal): use option B"
+    plan: "Extra user text (usually empty: there are no approval gates; it overrides the proposal): use option B"
 exec-code: true
 skills-check: "skills ok"
 plan-check: { needed: true, has_change: true }

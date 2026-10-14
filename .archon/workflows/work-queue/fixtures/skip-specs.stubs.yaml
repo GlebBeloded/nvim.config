@@ -1,6 +1,6 @@
 # g7. a skip_specs change (fixtures/changes/skip-change, LOOP_CHANGES_DIR): meta (real, no_design.py) keeps it on
 # the no-design schema and reports skip_specs, the spec step runs (no JSON answer, as for every change),
-# classify (real, classify.py) answers visible_ui false for a skip_specs change, so no preview or design gate runs, and the change delivers.
+# classify (real, classify.py) answers visible_ui false for a skip_specs change, so no preview runs, and the change delivers.
 fixture:
   expect: completed
   inputs: { change: skip-change }

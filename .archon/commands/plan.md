@@ -11,7 +11,7 @@ Flow (fix-bug / work-queue): diagnose → spec → plan → implement ×task →
 Your step: **plan**. Input: the change folder. Output: tasks.md: small tasks, each naming its scenario test; no sub-skill header. Do not: write tests or code. Keep output brief. Loop step rules (they override general instructions about searching, skills and sub-agents): use only the skill named above, no sub-agents; search the web only for facts that are in neither the repo nor the installed plugin source; read doc sections you need (`rg -n '^## ' <doc>`, then that range), never whole docs.
 
 Change: openspec/changes/$INPUTS.change/
-User feedback from the approval gate (may be empty, it overrides the proposal): $INPUTS.feedback
+Extra user text (usually empty: there are no approval gates; it overrides the proposal): $INPUTS.feedback
 
 Use the `superpowers:writing-plans` skill, but write the plan into the change's tasks.md (not a
 separate plan file). Follow openspec/config.yaml `rules.tasks`: each task lists the scenario

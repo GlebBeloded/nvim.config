@@ -1,14 +1,21 @@
 # g5. a queued change with a `## Blocked` section (fixtures/changes/blocked-change, LOOP_CHANGES_DIR):
-# blocked (real) quotes it, spec and build never run, the blocked gate shows the quote and the run stops.
+# blocked (real) quotes it; settle-queued (default model, xhigh) and then unblock-queued (Claude, xhigh)
+# are stubbed and leave it, so settled and unblocked (real) still find it and still-blocked fails the
+# run loudly (no pause, no user); the spec step and the build never run.
 fixture:
-  expect: cancelled
+  expect: failed
+  fail-node: still-blocked
   inputs: { change: blocked-change }
-  reached: [pick, adopt, adopted-state, blocked, blocked-gate, blocked-stop]
+  reached: [pick, adopt, adopted-state, blocked, settle-queued, settled, unblock-queued, unblocked]
   resolved-text-contains:
-    blocked-gate: "fixture bound conflict: pick (A) or (B)"
+    settle-queued: "openspec/changes/blocked-change/"
+    unblock-queued: "openspec/changes/blocked-change/"
 exec-code: true
 skills-check: "skills ok"
 pick: { found: true, change: blocked-change, kind: fix, has_tasks: false }
+settle-queued: "left it"
+unblock-queued: "left it"
+pinned: "MUST-NOT-RUN"
 complete: "MUST-NOT-RUN"
 classify: "MUST-NOT-RUN"
 spec-gate: "MUST-NOT-RUN"

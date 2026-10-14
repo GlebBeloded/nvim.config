@@ -237,7 +237,7 @@ T["loop: Red spec gate reruns the spec step once"] = function()
 	)
 	has(queue, 'when: "$spec-gate.output.ok == true || $spec-gate-2.output.ok == true"')
 	has(queue, "nothing opens on the host depends_on: [spec-ok]")
-	has(queue, "depends_on: [adopted-state, blocked, spec-ok, design-gate]")
+	has(queue, "depends_on: [adopted-state, blocked, still-blocked, spec-ok, preview]")
 	has(read(".archon/commands/queue-spec.md"), "Spec gate feedback: $INPUTS.gate_log.")
 end
 

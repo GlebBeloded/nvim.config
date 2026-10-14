@@ -1,11 +1,12 @@
 """End of one build pass: passed when every gate holds (check, spec, tasks, hard rules, /opsx:verify
 without CRITICAL, AI review approves). `feedback` carries only the failures and blocking review findings
-(minor ones are the judge's notes on ship, findings.py), so the next pass's fix step reads nothing else; `notes` (flaky cases gate.py passed on rerun) is no finding. The loop stops when passed, after MAX_ATTEMPTS, or as soon as the
-change has a `## Blocked` section (blocked.py: no fix pass can resolve it) or the gate reports `infra`
-(the sandbox failed twice: no fix pass can resolve that either), so an exhausted or blocked
+(minor ones are the judge's notes on ship, findings.py), so the next pass's fix step reads nothing else; `notes` (flaky cases gate.py passed on rerun) is no finding. The loop stops when passed, after MAX_ATTEMPTS
+(or MAX_PASSES passes), when the gate reports `infra` (the sandbox failed twice: no fix pass can resolve it), or when a `## Blocked` section
+(blocked.py) is still there after the settle pass (default model, xhigh) and the unblock pass (Claude): `blocked_passes`
+counts consecutive blocked passes (1: the next pass settles, 2: Claude unblocks, 3: the end), so an exhausted or blocked
 loop reaches the judge instead of failing the run. A `## Stuck` section (a behaviour still red after
-both attempts) is a failed gate `stuck`, never an end: its text leads the feedback and `stuck` lets the
-fix pass run at higher effort; the fix pass deletes it once green. Lessons are persisted by the judge
+both attempts) is a failed gate `stuck`, never an end: its text leads the feedback and `stuck_passes` (consecutive)
+sends the next pass to fix-stuck at xhigh (1), then to Claude (2 or more); the fix pass deletes it once green. Lessons are persisted by the judge
 (escalation.py) after the loop, never here: docs/workflow.md stays clean between passes.
 """
 
@@ -20,6 +21,8 @@ from integrity import CASE_SEEN, CASE_SNAPSHOT, hard_rule_violations, plan_files
 from lessons import drop_overturned
 
 MAX_ATTEMPTS = 3
+MAX_PASSES = 6  # nvim-deliver build max_iterations: blocked passes are no attempts
+BLOCKED_PASSES = 3  # settle, unblock, then the end
 FEEDBACK_CHARS = 6000
 
 
@@ -56,10 +59,24 @@ passed = all(gates.values())
 attempt = int(value("attempt", 0))
 blocked = "" if passed else blocked_text(os.environ.get("INPUTS_CHANGE", ""))
 infra = "" if passed else str(value("infra", "") or "")
-exhausted = not passed and not blocked and not infra and attempt >= MAX_ATTEMPTS
+artifacts = pathlib.Path(os.environ.get("ARTIFACTS_DIR", "."))
+
+
+def streak(name: str, on: bool) -> int:
+    """Consecutive passes (this one included) with `on` true, kept in ARTIFACTS_DIR/<name>."""
+    path = artifacts / name
+    count = int(path.read_text() or 0) + 1 if on and path.exists() else int(on)
+    path.write_text(str(count))
+    return count
+
+
+passes = streak("passes", True)
+blocked_passes = streak("blocked-passes", bool(blocked))
+stuck_passes = streak("stuck-passes", bool(stuck) and not blocked)
+exhausted = not passed and not blocked and not infra and (attempt >= MAX_ATTEMPTS or passes >= MAX_PASSES)
+blocked_end = bool(blocked) and (blocked_passes >= BLOCKED_PASSES or passes >= MAX_PASSES)
 red = [failures] + [f"hard rule: {v}" for v in violations if f"hard rule: {v}" not in failures]  # gate.py may list them
 feedback = [f"stuck (tasks.md, earlier attempts; fix it, then delete the section): {stuck}" if stuck else "", *red]
-artifacts = pathlib.Path(os.environ.get("ARTIFACTS_DIR", "."))
 scope = artifacts / "fix-scope.md"
 if "review" not in gates and scope.exists():  # the review did not see it: send it to the next pass
     feedback.append(scope.read_text().strip())
@@ -76,11 +93,13 @@ notes = "flaky test cases (failed, then passed on rerun): " + ", ".join(map(str,
 print(
     json.dumps(
         {
-            "done": passed or exhausted or bool(blocked) or bool(infra),
+            "done": passed or exhausted or blocked_end or bool(infra),
             "passed": passed,
             "exhausted": exhausted,
             "blocked": bool(blocked),
             "stuck": bool(stuck),
+            "stuck_passes": stuck_passes,
+            "blocked_passes": blocked_passes,
             "infra": infra,
             "attempt": attempt,
             "failed_gates": ",".join(k for k, ok in gates.items() if not ok),

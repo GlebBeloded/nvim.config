@@ -157,8 +157,7 @@ T["loop: Drain works queued changes until the queue is empty"] = function()
 	write_change(repo, "t-c", "2026-01-03")
 	set_outcome(stubs, "t-a", "failed")
 	local out = output(drain(repo, stubs))
-	eq(ran(stubs), { "t-a", "t-c" })
-	eq(out:find("skip t-b (Blocked)", 1, true) ~= nil, true, { fail_reason = out })
+	eq(ran(stubs), { "t-a", "t-b", "t-c" })
 	eq(out:find("t-a failed", 1, true) ~= nil, true, { fail_reason = out })
 	eq(out:find("queue is empty", 1, true) ~= nil, true, { fail_reason = out })
 end
@@ -171,14 +170,14 @@ T["loop: Drain stops after N runs"] = function()
 	eq(ran(stubs), { "t-a" })
 end
 
-T["loop: Drain stops at a run that waits for the user"] = function()
+T["loop: Drain stops at a paused run"] = function()
 	local repo, stubs = make_repo(), stub_env()
 	write_change(repo, "t-a", "2026-01-01")
 	write_change(repo, "t-c", "2026-01-03")
 	set_outcome(stubs, "t-a", "paused")
 	local out = output(drain(repo, stubs))
 	eq(ran(stubs), { "t-a" })
-	eq(out:find("t-a waits for you", 1, true) ~= nil, true, { fail_reason = out })
+	eq(out:find("t-a paused (no node should pause: a loop bug)", 1, true) ~= nil, true, { fail_reason = out })
 end
 
 T["loop: Drain stops when the sandbox infra fails"] = function()

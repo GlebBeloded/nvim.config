@@ -1,10 +1,9 @@
 """Bounded queue drain (`make drain [N=<max runs>]`): works queued changes one at a time through
 `make queue CHANGE=<id>` in the foreground (so the Adopt rules of `make queue` apply; work-queue is
 interactive-class, so Archon refuses `--detach`). The foreground CLI returns when the run completes,
-fails, is cancelled or pauses at a gate; the run's status is then read from the Archon DB. It stops when the queue is empty, after N runs, or at the first run that
-pauses for the user (a gate, a Blocked section), or at a run the stop-infra node cancelled (the sandbox
-failed twice: the host is broken, so the next change would fail the same way; exit 1). A change with a
-`## Blocked` section is skipped, not run; any other failed or cancelled run is recorded and the drain goes on. No change runs twice in one drain.
+fails or is cancelled (there are no manual gates; a `## Blocked` change runs too: its unblock step settles it); the run's status is then read from the Archon DB. It stops when the queue is empty, after N runs,
+at the first paused run (no workflow node pauses any more: a loop bug, kept as a defensive stop), or at a run the stop-infra node cancelled (the sandbox
+failed twice: the host is broken, so the next change would fail the same way; exit 1). Any other failed or cancelled run is recorded and the drain goes on. No change runs twice in one drain.
 """
 
 import argparse
@@ -14,9 +13,6 @@ import pathlib
 import sqlite3
 import subprocess
 import sys
-
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from blocked import blocked_text  # noqa: E402
 
 SCRIPTS = pathlib.Path(__file__).resolve().parent
 MAKE = os.environ.get("MAKE") or "make"
@@ -91,15 +87,12 @@ def drain(limit: int | None) -> int:
             print("drain: queue is empty")
             return 0
         skip.add(change)
-        if blocked_text(change):
-            print(f"drain: skip {change} (Blocked)")
-            continue
         print(f"drain: {change} starting", flush=True)
         runs += 1
         run_id, status = run(change)
         print(f"drain: {change} {status}", flush=True)
         if status == "paused":
-            print(f"drain: stopped, {change} waits for you: archon workflow status (run {run_id})")
+            print(f"drain: stopped, {change} paused (no node should pause: a loop bug): archon workflow status (run {run_id})")
             return 0
         if status == "infra":
             print(f"drain: stopped, e2e sandbox infra failed twice on {change} (run {run_id}): fix the host, then rerun")

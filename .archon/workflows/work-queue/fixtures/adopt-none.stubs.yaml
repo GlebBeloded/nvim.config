@@ -1,5 +1,5 @@
 # g2. no adopt input: adopt (real) reports "nothing to adopt" into the queue-spec prompt; a fix
-# without visible UI skips preview and the design gate and delivers.
+# without visible UI skips preview and delivers.
 fixture:
   expect: completed
   inputs: { change: demo-change }

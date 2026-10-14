@@ -1,8 +1,8 @@
 name: work-queue
 description: |
   Work the local queue (docs/workflow.md): take one pending change from openspec/changes/ (input
-  `change`, or the oldest untaken one), complete its artifacts when it is only a proposal, preview +
-  approval for features and visible-UI fixes, then nvim-deliver into auto.
+  `change`, or the oldest untaken one), complete its artifacts when it is only a proposal, a preview
+  for features and visible-UI fixes (no manual gates), then nvim-deliver into auto.
   `make queue` picks the change and names the branch loop/<change>.
 interactive: true
 worktree:
@@ -70,50 +70,77 @@ nodes:
         visible_ui: { type: boolean }
       required: [archived, tasks_done, visible_ui]
 
-  - id: blocked # a `## Blocked` section (proposal.md or tasks.md) needs the user: no spec, no build
+  # --- Blocked (proposal.md or tasks.md `## Blocked`): never the user; the default model settles it at xhigh,
+  # then Claude if one is left, and a section that survives both fails the run (no pause) -------------
+  - id: blocked
     script: blocked
     runtime: uv
     depends_on: [adopted-state]
     with:
       change: $pick.output.change
-    output_format:
+    output_format: &blocked_output
       type: object
       properties:
         blocked: { type: boolean }
         text: { type: string }
       required: [blocked, text]
 
-  - id: blocked-gate
+  - id: settle-queued
+    command: unblock
+    context: fresh
+    effort: xhigh
+    idle_timeout: 900000
     depends_on: [blocked]
     when: "$blocked.output.blocked == true"
-    approval:
-      message: |
-        Queued change $pick.output.change is blocked and needs your decision:
-        $blocked.output.text
-        Answer in its proposal.md `## Decision` and delete each `## Blocked` section quoted above, then `make queue CHANGE=$pick.output.change`.
-        Either button stops this run.
-      decisions:
-        - { id: approve, label: "Stop: I will answer in the proposal" }
-        - { id: reject, label: Stop }
+    with:
+      change: $pick.output.change
 
-  - id: blocked-stop
-    cancel: "Stopped: the change is blocked (see escalation.md)."
-    depends_on: [blocked, blocked-gate]
-    trigger_rule: all_done
-    when: "$blocked.output.blocked == true"
+  - id: settled
+    script: blocked
+    runtime: uv
+    depends_on: [settle-queued]
+    with:
+      change: $pick.output.change
+    output_format: *blocked_output
+
+  - id: unblock-queued # Claude MUST settle what the default model left
+    command: unblock
+    provider: claude
+    effort: xhigh
+    context: fresh
+    idle_timeout: 900000
+    depends_on: [settled]
+    when: "$settled.output.blocked == true"
+    with:
+      change: $pick.output.change
+
+  - id: unblocked
+    script: blocked
+    runtime: uv
+    depends_on: [unblock-queued]
+    with:
+      change: $pick.output.change
+    output_format: *blocked_output
+
+  - id: still-blocked
+    bash: "echo 'Failed: a Blocked section survived the default model and Claude (escalation.md)' >&2; exit 1"
+    depends_on: [unblocked]
+    when: "$unblocked.output.blocked == true"
 
   # --- Specify: complete a queued proposal ------------------------------------------------------------
   - id: pinned # main-spec scenarios naming a symbol the change touches, with no delta or Impact line (no AI);
     # runs whenever spec-gate does (also all tasks ticked): spec-retry needs the list the gate checks
     bash: python3 .archon/scripts/pinned.py $pick.output.change # LOOP_CHANGES_DIR: fixtures' own changes
-    depends_on: [pick, adopted-state, blocked]
-    when: "$pick.output.found == true && $adopted-state.output.archived == false && $blocked.output.blocked == false"
+    depends_on: [pick, adopted-state, blocked, still-blocked]
+    trigger_rule: none_failed_min_one_success # still-blocked runs only when Blocked survived (it fails the run)
+    when: "$pick.output.found == true && $adopted-state.output.archived == false"
 
   - id: meta # picks the change's schema before the spec step (no AI): no-design unless a feature or a render-holding proposal/design.md
     script: no_design
     runtime: uv
-    depends_on: [pick, adopted-state, blocked]
-    when: "$pick.output.found == true && $adopted-state.output.archived == false && $adopted-state.output.tasks_done == false && $blocked.output.blocked == false"
+    depends_on: [pick, adopted-state, blocked, still-blocked]
+    trigger_rule: none_failed_min_one_success
+    when: "$pick.output.found == true && $adopted-state.output.archived == false && $adopted-state.output.tasks_done == false"
     with:
       change: $pick.output.change
     output_format:
@@ -127,7 +154,7 @@ nodes:
     command: queue-spec
     context: fresh # reads its input artifact; no carried-over session
     depends_on: [pick, skills-check, adopted-state, blocked, pinned, meta]
-    when: "$pick.output.found == true && $adopted-state.output.archived == false && $adopted-state.output.tasks_done == false && $blocked.output.blocked == false"
+    when: "$pick.output.found == true && $adopted-state.output.archived == false && $adopted-state.output.tasks_done == false"
     with:
       change: $pick.output.change
       adopted: $adopt.output.summary
@@ -151,9 +178,9 @@ nodes:
   - id: spec-gate # main specs after a trial archive; pins planned (spec_gate.py: {ok, log}, exits 0 so a red pass routes back)
     script: spec_gate
     runtime: uv
-    depends_on: [complete, classify, adopted-state, blocked]
+    depends_on: [complete, classify, adopted-state, blocked, still-blocked]
     trigger_rule: none_failed_min_one_success # complete and classify are skipped when the adopted tasks are all ticked
-    when: "$adopted-state.output.archived == false && $blocked.output.blocked == false"
+    when: "$adopted-state.output.archived == false"
     with:
       change: $pick.output.change
       failed_log: ""
@@ -200,56 +227,27 @@ nodes:
     trigger_rule: none_failed_min_one_success
     when: "$spec-gate.output.ok == true || $spec-gate-2.output.ok == true"
 
-  # --- Preview + approval: always for features, else only for visible UI ----------------
+  # --- Preview (an artifact, never a pause): features and visible-UI changes -------------
   - id: preview
     bash: make -s preview CHANGE=$pick.output.change OPEN= # OPEN= beats an exported OPEN: nothing opens on the host
     depends_on: [spec-ok]
     # left to right, && before ||: the adopted design.md decides only when complete was skipped (tasks all ticked); otherwise classify (the written design.md; false for skip_specs) decides
     when: "$pick.output.kind == 'feature' || $adopted-state.output.tasks_done == true && $adopted-state.output.visible_ui == true || $adopted-state.output.tasks_done == false && $classify.output.visible_ui == true"
 
-  - id: design-approved # the user approved this same design.md in an earlier run (proposal.md `Design-approved:`): no second ask (no AI)
-    script: design_approval
-    runtime: uv
-    depends_on: [preview]
-    with:
-      change: $pick.output.change
-      mode: check
-      feedback: ""
-    output_format:
-      type: object
-      properties:
-        approved: { type: boolean }
-        decision: { type: string }
-        feedback: { type: string }
-      required: [approved, decision, feedback]
-
-  - id: design-gate
-    depends_on: [preview, design-approved]
-    when: "$design-approved.output.approved == false"
-    approval:
-      message: |
-        Queued change $pick.output.change ($pick.output.kind) is ready to build.
-        Preview (nothing opens on the host): $preview.output
-        Approve to build; put the picked render option or corrections in the comment.
-      decisions:
-        - { id: approve, label: Build it }
-        - { id: reject, label: Stop }
-
   - id: design-decide
     script: decide
     runtime: uv
-    depends_on: [adopted-state, blocked, spec-ok, design-gate]
+    depends_on: [adopted-state, blocked, still-blocked, spec-ok, preview]
     trigger_rule: none_failed_min_one_success
     # an archived adopted change has no spec gate; otherwise a pass must be green (a red second pass fails the run)
-    when: "$blocked.output.blocked == false && $adopted-state.output.archived == true || $spec-ok.output == 'ok'"
+    when: "$adopted-state.output.archived == true || $spec-ok.output == 'ok'"
     with:
       cancel_on_reject: "true"
       verdict: ""
       blocked: "false"
-      needed: { from: $preview.output, if_skipped: "" }
-      decision: { from: $design-gate.output.decision, if_skipped: auto }
-      feedback: { from: $design-gate.output.text, if_skipped: "" }
-      earlier: { from: $design-approved.output, if_skipped: "" }
+      needed: "false" # no manual gates: the preview is an artifact, never a pause
+      decision: auto
+      feedback: ""
     output_format:
       type: object
       properties:
@@ -258,25 +256,14 @@ nodes:
         feedback: { type: string }
       required: [go, decision, feedback]
 
-  - id: design-record # the user approved at the gate: record design.md's hash and the comment in proposal.md, committed (no AI)
-    script: design_approval
-    runtime: uv
-    depends_on: [design-gate, design-decide]
-    when: "$design-decide.output.go == true"
-    with:
-      change: $pick.output.change
-      mode: record
-      feedback: $design-decide.output.feedback
-
   - id: stop
-    cancel: "Stopped at the design gate."
+    cancel: "Stopped: the spec did not pass."
     depends_on: [design-decide]
     when: "$design-decide.output.go == false"
 
   - id: deliver
     include: nvim-deliver
-    depends_on: [design-decide, design-record]
-    trigger_rule: none_failed_min_one_success # design-record runs only after a gate approval
+    depends_on: [design-decide]
     when: "$design-decide.output.go == true"
     with:
       change: $pick.output.change

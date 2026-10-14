@@ -117,17 +117,26 @@ T["loop: Judge ships a renamed capability"] = function()
 	eq(result.decision, "ship", { fail_reason = result.reasons })
 end
 
-T["loop: Judge asks for a scenario removal a rename does not cover"] = function()
+T["loop: Judge notes a scenario removal a rename does not cover"] = function()
 	local base = { [C_SPEC] = spec("c", { "old title", "kept" }), [C_TEST] = cases({ "c: old title", "c: kept" }) }
 	local removed = judge(base, { [C_SPEC] = spec("c", { "kept" }) })
-	eq({ removed.decision, has(removed.reasons, "c: old title") }, { "ask", true })
+	eq({
+		removed.decision,
+		has(removed.reasons, "note: breaking: removes behaviour") and has(removed.reasons, "c: old title"),
+	}, { "ship", true })
 	local kept_test = judge(base, {
 		[C_SPEC] = spec("c", { "new title", "kept" }),
 		[C_TEST] = cases({ "c: old title", "c: new title", "c: kept" }),
 	})
-	eq({ kept_test.decision, has(kept_test.reasons, "c: old title") }, { "ask", true })
+	eq({
+		kept_test.decision,
+		has(kept_test.reasons, "note: breaking: removes behaviour") and has(kept_test.reasons, "c: old title"),
+	}, { "ship", true })
 	local untested = judge(base, { [C_SPEC] = spec("c", { "new title", "kept" }) })
-	eq({ untested.decision, has(untested.reasons, "c: old title") }, { "ask", true })
+	eq({
+		untested.decision,
+		has(untested.reasons, "note: breaking: removes behaviour") and has(untested.reasons, "c: old title"),
+	}, { "ship", true })
 end
 
 T["loop: Judge rejects a lost test case by name"] = function()

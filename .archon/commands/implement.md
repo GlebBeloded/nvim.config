@@ -35,7 +35,7 @@ correction is directly verified, append one concise cause-to-action line to
 `$ARTIFACTS_DIR/lesson-candidates.txt` (start it with `loop:` when it is about loop tooling: such lessons are dropped); otherwise do not write a candidate.
 
 Never delete, skip or weaken a test or scenario to get green; if the spec is wrong (it contradicts itself, the code or a `## Decision`), write it in
-tasks.md under "## Blocked" with the options and your recommendation, and stop.
+tasks.md under "## Blocked" with the options and your recommendation, and stop (no user is asked: the unblock step settles it on your recommendation).
 
 If a failure comes from loop tooling (`.archon/`, `tests/trace.lua`, `tests/sandbox/`, the `make check` targets) and not from this change, do not fix it here: append one line `loop: <failure>` to `$ARTIFACTS_DIR/loop-notes.md` (not tasks.md: the judge lists it for the auditor, and it never stops the change; `<failure>` quotes the failing log line verbatim, never restating its numbers) and go on with the change.
 

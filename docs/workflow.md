@@ -4,6 +4,28 @@ How to operate this repo: the local AI loop, the queue, design renders, and debu
 and their layers are in [testing](testing.md). The loop's stages and gates are drawn in
 [architecture](architecture.md#ai-maintenance-loop).
 
+## Goals
+
+- You design a change up front (a Claude session, `/opsx:explore` into small queued changes chained by
+  `Depends:`); the loop then delivers it end to end with no human input: no manual approval gates, and
+  `make drain` works the queue in order.
+- Strict automatic gates replace the human: `make check` (e2e only in the Lume VM, never on the host),
+  trace, the spec gate, pinned scenarios, the integrity and drop/weaken detectors, review must-fix.
+  Partial or untested work never ships; temporary breakage is accepted for progress (a breaking change
+  ships with a note).
+- Agents decide small choices and log them under `## Agent decisions`. A `## Blocked` section is settled by
+  the model itself at xhigh, then by a Claude unblock step that must settle it. Technical exhaustion is
+  `## Stuck`: an xhigh fix pass, then Claude, then an automatic reject and re-queue with actionable
+  reasons that adopts the branch and keeps the work.
+- Small steps: each knows the whole flow and its own boundary, gets a narrow context pack and one task
+  group per implement pass; no AI where a script can decide.
+- Roles: Archon (Codex) does all Neovim work (`lua/`, its tests). The auditor (a Claude session) only
+  reviews each phase in a subagent and fixes the loop (`.archon/`, loop tests, sandbox) on `loop/round<N>`
+  branches merged into `auto` after `make check E2E=1`; nothing is pushed, `main` stays untouched, tests
+  are never weakened.
+- Efficiency: measure each step's time and tokens from the Archon DB and fix the weak spots after each
+  run (flaky or infra reruns, one exhaustive review pass, scenario-named regression tests).
+
 ## Loop lessons
 
 - For an implementation-free follow-up, replace ignored adoption metadata with `skip_specs: true` so strict validation accepts zero deltas.
@@ -34,9 +56,9 @@ Each run works in its own git worktree cut from `auto` and, when every gate is g
 | Command | What it does |
 |---|---|
 | `make fix BUG="…"` | `fix-bug`: root cause, spec delta, TDD fix. `BUG` can also be a change id |
-| `make feature IDEA="…"` | `new-feature`: brainstorm, proposal with renders; always stops for your approval |
+| `make feature IDEA="…"` | `new-feature`: brainstorm, proposal with renders and a preview, then build (no approval stop) |
 | `make queue [CHANGE=<id>]` | `work-queue`: the oldest change in `openspec/changes/` that no run has taken (no `loop/<id>` branch) |
-| `make drain [N=<runs>]` | `drain.py`: foreground `make queue CHANGE=<id>` one change at a time (status read from the Archon DB) until the queue is empty, N runs, a run waits for you, or stop-infra cancels a run (broken host, exit 1); skips `## Blocked` changes |
+| `make drain [N=<runs>]` | `drain.py`: foreground `make queue CHANGE=<id>` one change at a time (status read from the Archon DB) until the queue is empty, N runs, a paused run (a loop bug: no node pauses), or stop-infra cancels a run (broken host, exit 1); a `## Blocked` change runs too (its unblock step settles it) |
 | `make loop-clean [APPLY=1]` | `loop_clean.py`: remove worktree and branch of shipped or superseded `loop/*` runs; dry run unless `APPLY=1` |
 | `make outdated` | plugins with commits past `lazy-lock.json` (read-only) |
 | `make update PLUGIN=<name>` | `plugin-update`: update that one plugin, test it, ship it or adapt the config |
@@ -46,9 +68,8 @@ Each run works in its own git worktree cut from `auto` and, when every gate is g
 | `make self-check CHANGE=<id>` | the gate's cheap checks (hard rules: `integrity.py`, `pinned.py --check`; lint, types, strict validation of the change and of its trial archive), run by implement and fix before they commit |
 | `make loop-status` / `make loop-validate` | active and last runs plus the latest report URI / `archon validate workflows` |
 
-Run the targets from `~/.config/nvim` (the `auto` checkout). `fix`, `feature`, `queue` and `update` can
-pause, so they stay in the foreground. Answer gates in the terminal, in the console, or from another shell with
-`archon workflow approve|reject|respond <run-id> [text]`.
+Run the targets from `~/.config/nvim` (the `auto` checkout). `fix`, `feature`, `queue` and `update` are
+interactive-class workflows, so they stay in the foreground; no node pauses for you.
 
 Steps are small and know their place in the flow (each prompt opens with the flow and its own
 input, output and limits). Scripts do everything that needs no judgment:
@@ -63,18 +84,19 @@ input, output and limits). Scripts do everything that needs no judgment:
 | pack | script `context_pack.py` | none | `context.md`: next task, a bug's `## Evidence`, change, named files, lessons, last failures; `has_task` (false skips implement) |
 | implement, once per task (one session for ≤ 4 tasks) | agent, fresh | `superpowers:test-driven-development` | 1 commit per task, ticked |
 | check | script `gate.py` | none | a `## Blocked` change first (red with `blocked`, at once: no `make check`, no review), then hard rules (a violation is red at once: no `make check`, no review), then `make check E2E=1` once per pass (a failed case reruns once unless the change owns it; e2e failing on sandbox infra twice is `infra`: the run stops with no fix pass, no attempt, no reject), strict validate, untested change scenarios (`scenarios.py`, replaces a verify agent), JSON |
-| fix (pass 2-3 only) | agent, fresh | `superpowers:systematic-debugging` (none when every finding is a hard rule) | 1 commit for the listed findings: one headless probe first for a non-obvious failure, at most 2 attempts, then `## Stuck` with the probe output, reverting only non-test edits and committing the red test with it (implement follows the same rule); after a Stuck pass the `fix-stuck` node runs it at high effort with the Stuck text as its first finding, and deletes the section once green |
+| fix (pass 2-3 only) | agent, fresh | `superpowers:systematic-debugging` (none when every finding is a hard rule) | 1 commit for the listed findings: one headless probe first for a non-obvious failure, at most 2 attempts, then `## Stuck` with the probe output, reverting only non-test edits and committing the red test with it (implement follows the same rule); after a Stuck pass the `fix-stuck` node runs it at xhigh effort with the Stuck text as its first finding (`fix-stuck-claude`, on Claude, while it stays red), and deletes the section once green |
+| unblock (a `## Blocked` section) | agent, xhigh: default model, then Claude if one is left | none | 1 commit: each section settled on its recommendation, logged under `## Agent decisions` |
 | review | agent, Claude | `superpowers:requesting-code-review` | JSON |
 | verdict, judge, ship, follow-up | scripts | none | JSON, `escalation.md`, merge commit |
 
 Agents run only their own test case and never `make quick` or `make check`; general instructions about web searches, extra skills and sub-agents do not apply in a step (`codex-loop.sh` also turns off Codex sub-agents, hooks, apps, the skills catalog, GUI and MCP tools, and the global `~/.codex/AGENTS.md`, and caps each tool output at 6000 tokens (`tool_output_token_limit`), and `codex_preflight.py` refuses the call when `codex --version` is outside its tested range or an MCP server or GUI plugin is still enabled; widen the range only after checking the overrides against the new Codex). A failure in loop tooling is never fixed inside a change: the step appends a `loop: …` line to `$ARTIFACTS_DIR/loop-notes.md`, which the judge lists as a note; a `## Blocked` section holding only `loop:` items blocks nothing and is listed the same way. The check/review
-group runs at most 3 times; a red pass sends only its findings (`verdict.py` `feedback`, which also
+group runs at most 3 attempts (a blocked pass is none; at most 6 passes); a red pass sends only its findings (`verdict.py` `feedback`, which also
 lists hard-rule violations from `integrity.py`) to the next pass's fix step. A fix pass stays on those
 findings: verdict snapshots the change's proposal.md, `.openspec.yaml` and spec deltas, and the next gate
 lists any of them the fix edited in `fix-scope.md`, a finding for the review. Verdict also snapshots the test
 case names, and with `ARTIFACTS_DIR` set every `make test` adds the cases it collected to `case-seen.json`
 (verdict clears it): a case the previous pass had, or a run of this pass saw, that is now in neither the branch
-nor the base is a hard rule (`test added then removed during build`), and the judge asks while it stays gone. The judge keeps the 15 newest
+nor the base is a hard rule (`test added then removed during build`), and the judge rejects while it stays gone. The judge keeps the 15 newest
 lessons in `## Loop lessons` (`lessons.py`), a new one replacing a near duplicate; a lesson about loop
 tooling starts with `loop:` and is never kept.
 
@@ -91,27 +113,26 @@ that does not ship (escalation rejected), the old pin stays and only the change 
 next `make update PLUGIN=<name>` (`make queue` skips it). After a merge, run `:Lazy restore` in your
 editor.
 
-### When you get pinged
+### Gates without you
 
-- The design gate: always for a feature, and for a fix that changes visible UI. The gate message prints
-  the absolute path of `preview.html`; nothing opens on the host (no `open`, `osascript` or browser).
-  It asks once per design: your approval and comment land in the proposal's `## Design approval`
-  section, and a re-queued run whose design.md is unchanged skips the gate with them.
-- The judge (`.archon/scripts/escalation.py`) asks only for breaking changes: a test case the build added and then removed,
-  a plugin added or removed,
-  a core keymap or the leader changed, behaviour (a spec scenario) removed, a requirement removed and
-  re-added, or your `## Decision` text reworded. A scenario or capability renamed together with its
+- Preview: always for a feature, and for a fix that changes visible UI; `preview.html` is an artifact, never a
+  pause, and nothing opens on the host (no `open`, `osascript` or browser).
+- The judge (`.archon/scripts/escalation.py`) never asks. It rejects a test case the build added and then removed,
+  a requirement removed and re-added, or your `## Decision` text reworded; it ships other breaking changes
+  (a plugin added or removed, a core keymap or the leader changed, behaviour (a spec scenario) removed) with a
+  `- note: breaking:` line. A scenario or capability renamed together with its
   `<capability>: <title>` tests, or a `## RENAMED Requirements` delta, is no removal; test cases count
   by name, so a lost one is rejected even when others are added. A deleted test file is no loss when
 every case it held still exists by name in another test file. On ship, review findings marked `[minor]` (or
   under a `Minor (non-blocking):` heading) are `- note:` lines in `escalation.md`.
-- A `## Blocked` section (one not only of `loop:` items) in a change's proposal.md or tasks.md: `work-queue` stops before spec, and a
-  build loop stops at once; you get its text, the change never ships and is re-queued. Answer in
-  `## Decision` and delete the `## Blocked` section.
+- A `## Blocked` section (one not only of `loop:` items) in a change's proposal.md or tasks.md goes to the
+  unblock step (`.archon/commands/unblock.md`): the default model settles it at xhigh, then Claude if one is
+  left. In `work-queue` that runs before spec, and one surviving both fails the run; in the build loop the
+  next passes settle it, and one still standing is rejected and re-queued. A blocked change never ships.
 - Small design choices the spec leaves open (format details, names, internal APIs, defaults, ordering) are the
   agent's: one line each under `## Agent decisions` in tasks.md, checked by the review. `## Blocked` is only for a
   choice beyond the spec or design, a contradiction or a breaking change (question, options, recommendation).
-  A behaviour red after both attempts is `## Stuck`, not Blocked: it never asks and never holds a queued change;
+  A behaviour red after both attempts is `## Stuck`, not Blocked: it never holds a queued change;
   implement skips its task and goes on with the later ones, the build loop stays red on it (gate `stuck`), and an
   exhausted loop is rejected and re-queued with it (tasks.md keeps its text).
 
@@ -143,7 +164,7 @@ Known issues and planned work are queued changes in `openspec/changes/`; there i
   (`classify.py`) answers after it: visible UI when design.md has a render section (written only for a new or
   changed look), architecture when proposal.md `## Impact` or tasks.md names plugin wiring or load-order files
   (`lua/gleb/plugins/`, `init.lua`, `lazy-lock.json`, `docs/architecture.md`); a skip_specs change is neither.
-  Visible UI sends a fix to the preview and design gate.
+  Visible UI sends a fix to the preview.
 - Order: a `Depends: <change>[, <change>]` line in proposal.md holds the change until those are archived.
 - A test that pins a known bug wraps the case in `H.xfail("<change id>", fn)` ([testing](testing.md)).
 
@@ -187,8 +208,6 @@ Known issues and planned work are queued changes in `openspec/changes/`; there i
   declared skills (Skill tool on Claude, `$<skill>` on Codex) as its first step. Archon's "Claude
   skills not found on disk: superpowers:…" warning is expected for plugin skills; `skills-check` is
   the real check.
-- `--dry-run` auto-approves gates with the plain string `approved`, so nodes that read
-  `$gate.output.decision` fail in a dry run. Pass `--pause-at-gates`, or stub the nodes after the gate.
 
 ## Design renders
 

@@ -1,6 +1,6 @@
 # g1. adopt input set: the adopt bash node runs for real in the scratch worktree (merging 'auto',
 # already contained, so nothing changes) and its report reaches the queue-spec prompt; then the
-# fix path (no preview, design gate skipped) delivers.
+# fix path (no preview) delivers.
 fixture:
   expect: completed
   inputs: { adopt: auto }

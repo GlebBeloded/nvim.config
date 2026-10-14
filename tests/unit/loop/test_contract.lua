@@ -82,7 +82,7 @@ T["loop: Queue spec prompt keeps the user's contract"] = function()
 	has(prompt, "never change a number or bound")
 	has(prompt, "never REMOVE a requirement to ADD it again")
 	has(prompt, "never reword the `## Decision` text")
-	has(prompt, "keep any `## Blocked` section as it is")
+	has(prompt, "settle any `## Blocked` section left")
 end
 
 T["loop: Queue spec prompt never empties a test file"] = function()
@@ -91,7 +91,7 @@ T["loop: Queue spec prompt never empties a test file"] = function()
 	has(prompt, "keep the copy in the file that would be emptied")
 end
 
-T["loop: Judge asks when a change re-adds a removed requirement"] = function()
+T["loop: Judge rejects a change that re-adds a removed requirement"] = function()
 	local delta = table.concat({
 		"## REMOVED Requirements",
 		"### Requirement: Server readiness",
@@ -107,16 +107,16 @@ T["loop: Judge asks when a change re-adds a removed requirement"] = function()
 	}, "\n")
 	local repo = branch_repo({}, { ["openspec/changes/c/specs/lsp/spec.md"] = delta })
 	local out = run("escalation.py", repo)
-	eq(out.decision, "ask")
+	eq(out.decision, "reject")
 	has(out.reasons, "re-adds requirement 'Server readiness'")
 end
 
-T["loop: Judge asks when a change rewrites the user's Decision"] = function()
+T["loop: Judge rejects a change that rewrites the user's Decision"] = function()
 	local proposal = "## Why\nslow\n\n" .. DECISION .. "\n"
 	local base = { ["openspec/changes/c/proposal.md"] = proposal }
 	local reworded = branch_repo(base, { ["openspec/changes/c/proposal.md"] = proposal:gsub("1 s", "2.5 s") })
 	local out = run("escalation.py", reworded)
-	eq(out.decision, "ask")
+	eq(out.decision, "reject")
 	has(out.reasons, "rewrites the user's ## Decision in openspec/changes/c/proposal.md")
 	local why_only = branch_repo(base, { ["openspec/changes/c/proposal.md"] = proposal:gsub("slow", "very slow") })
 	eq(run("escalation.py", why_only).decision, "ship")
@@ -140,7 +140,7 @@ T["loop: Adopt reverts main spec edits"] = function()
 	eq(read(vim.fs.joinpath(repo, "openspec/specs/lsp/spec.md")), "main")
 end
 
-T["loop: Blocked queued change goes straight to the user"] = function()
+T["loop: Blocked queued change goes to the unblock step"] = function()
 	local repo = H.tempdir(child)
 	write(repo, {
 		["openspec/changes/b/proposal.md"] = "## Why\nx\n\n" .. BLOCKED .. "\n\n## Impact\n- y",
@@ -149,9 +149,20 @@ T["loop: Blocked queued change goes straight to the user"] = function()
 	local out, artifacts = run("blocked.py", repo, { INPUTS_CHANGE = "b", LOOP_CHANGES_DIR = "" })
 	eq(out, { blocked = true, text = "proposal.md: " .. BLOCKED })
 	local escalation = read(vim.fs.joinpath(artifacts, "escalation.md"))
-	has(escalation, "# Judge: ask")
+	has(escalation, "# Blocked (the unblock step settles it)")
 	has(escalation, "pick (A) or (B)")
 	eq(run("blocked.py", repo, { INPUTS_CHANGE = "ok", LOOP_CHANGES_DIR = "" }).blocked, false)
+	local queue = read(vim.fs.joinpath(H.root, ".archon/workflows/work-queue/work-queue.yaml"))
+	has(queue, "- id: settle-queued\n    command: unblock\n    context: fresh\n    effort: xhigh")
+	has(queue, 'depends_on: [blocked]\n    when: "$blocked.output.blocked == true"')
+	has(
+		queue,
+		"- id: unblock-queued # Claude MUST settle what the default model left\n    command: unblock\n    provider: claude\n    effort: xhigh"
+	)
+	has(queue, 'when: "$settled.output.blocked == true"')
+	has(queue, "- id: still-blocked\n    bash: \"echo 'Failed: a Blocked section survived")
+	has(queue, 'depends_on: [unblocked]\n    when: "$unblocked.output.blocked == true"')
+	eq(queue:find("approval:", 1, true), nil)
 end
 
 --- Commits everything in `repo` with committer date `date` (seconds since the epoch).
@@ -182,21 +193,47 @@ T["loop: An Unblocked section resolves an earlier Blocked section"] = function()
 	eq(run("blocked.py", repo, { INPUTS_CHANGE = "b", LOOP_CHANGES_DIR = "" }).blocked, false)
 end
 
-T["loop: Verdict ends the build loop on a Blocked section"] = function()
+T["loop: Blocked build pass goes to settle, then Claude"] = function()
 	local repo = branch_repo({}, { ["openspec/changes/c/tasks.md"] = "## 1. T\n- [ ] 1.1 x\n\n" .. BLOCKED })
-	local out = run("verdict.py", repo, {
+	local env = {
 		INPUTS_CHANGE = "c",
 		INPUTS_GREEN = "false",
 		INPUTS_SPEC_OK = "true",
 		INPUTS_TASKS_DONE = "false",
 		INPUTS_CRITICAL = "0",
-		INPUTS_ATTEMPT = "1",
+		INPUTS_ATTEMPT = "0",
 		LOOP_CHANGES_DIR = "",
-	})
-	eq({ out.done, out.blocked, out.exhausted, out.passed }, { true, true, false, false })
+	}
+	local seen, artifacts = {}, H.tempdir(child)
+	for _ = 1, 3 do
+		local out = run("verdict.py", repo, env, artifacts)
+		table.insert(seen, { out.blocked_passes, out.done, out.blocked, out.exhausted })
+	end
+	eq(seen, { { 1, false, true, false }, { 2, false, true, false }, { 3, true, true, false } })
+	local workflow = read(vim.fs.joinpath(H.root, ".archon/workflows/nvim-deliver/nvim-deliver.yaml"))
+	has(workflow, '$LOOP_PREV.verdict.output.stuck == false && $LOOP_PREV.verdict.output.blocked == false"')
+	has(
+		workflow,
+		"- id: settle # implement or fix wrote `## Blocked`: the default model settles it at xhigh (never the user)\n          command: unblock\n          effort: xhigh"
+	)
+	has(workflow, '$LOOP_PREV.verdict.output.blocked == true && $LOOP_PREV.verdict.output.blocked_passes == 1"')
+	has(
+		workflow,
+		"- id: unblock # Blocked still left after settle: Claude MUST settle it\n          command: unblock\n          provider: claude\n          effort: xhigh"
+	)
+	has(workflow, '$LOOP_PREV.verdict.output.blocked == true && $LOOP_PREV.verdict.output.blocked_passes == 2"')
+	eq(workflow:find("ship-gate", 1, true), nil)
 end
 
-T["loop: Judge quotes a Blocked section and asks"] = function()
+T["loop: Unblock prompt settles every Blocked section"] = function()
+	local prompt = read(vim.fs.joinpath(H.root, ".archon/commands/unblock.md")):gsub("%s+", " ")
+	has(prompt, "Do not: ask the user, leave a `## Blocked` section")
+	has(prompt, "pick its recommendation unless that contradicts the spec, design.md or a `## Decision`")
+	has(prompt, "Write one line per choice under `## Agent decisions` in tasks.md (create the section if needed)")
+	has(prompt, "Delete each settled `## Blocked` section")
+end
+
+T["loop: Judge rejects a Blocked section, never asks"] = function()
 	local repo = branch_repo({}, { ["openspec/changes/c/tasks.md"] = "## 1. T\n- [ ] 1.1 x\n\n" .. BLOCKED })
 	local out, artifacts = run("escalation.py", repo, {
 		INPUTS_CHANGE = "c",
@@ -204,7 +241,7 @@ T["loop: Judge quotes a Blocked section and asks"] = function()
 		INPUTS_FAILED_GATES = "tests",
 		LOOP_CHANGES_DIR = "",
 	})
-	eq({ out.decision, out.escalate }, { "ask", true })
+	eq({ out.decision, out.escalate }, { "reject", false })
 	has(out.reasons, "blocked: tasks.md: " .. BLOCKED)
 	has(read(vim.fs.joinpath(artifacts, "escalation.md")), "lua_ls misses the 1 s bound")
 end
@@ -243,14 +280,24 @@ T["loop: Verdict sends a Stuck section to the fix pass"] = function()
 		INPUTS_ATTEMPT = "1",
 		LOOP_CHANGES_DIR = "",
 	}
-	local out = run("verdict.py", repo, env)
+	local out, artifacts = run("verdict.py", repo, env)
 	eq({ out.done, out.passed, out.blocked, out.stuck, out.failed_gates }, { false, false, false, true, "stuck" })
 	has(out.feedback, "stuck (tasks.md, earlier attempts; fix it, then delete the section): " .. STUCK)
+	eq({ out.stuck_passes, run("verdict.py", repo, env, artifacts).stuck_passes }, { 1, 2 })
 	local workflow = read(vim.fs.joinpath(H.root, ".archon/workflows/nvim-deliver/nvim-deliver.yaml"))
-	has(workflow, "- id: fix-stuck # the same fix pass at high effort when tasks.md has `## Stuck`")
+	has(workflow, "- id: fix-stuck # the same fix pass at xhigh effort when tasks.md has `## Stuck`")
 	has(
 		workflow,
-		'effort: high\n          idle_timeout: 900000\n          when: "$LOOP_PREV.verdict.output.done == false && $LOOP_PREV.verdict.output.stuck == true"'
+		'effort: xhigh\n          idle_timeout: 900000\n          when: "$LOOP_PREV.verdict.output.done == false && $LOOP_PREV.verdict.output.stuck == true && $LOOP_PREV.verdict.output.blocked == false && $LOOP_PREV.verdict.output.stuck_passes == 1"'
+	)
+	has(
+		workflow,
+		"- id: fix-stuck-claude # Stuck still red after the xhigh pass: Claude takes it\n          command: fix\n          provider: claude\n          effort: xhigh"
+	)
+	has(workflow, '$LOOP_PREV.verdict.output.stuck_passes != 1"')
+	has(
+		read(vim.fs.joinpath(H.root, ".archon/commands/fix.md")),
+		"solve it yourself (the run hands it to Claude only if you leave it red)"
 	)
 end
 

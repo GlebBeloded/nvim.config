@@ -1,17 +1,14 @@
 # h. the fix step wrote `## Blocked` (fixtures/changes/blocked-build/tasks.md, LOOP_CHANGES_DIR; a
-# `loop:` item next to a change item, so it blocks): verdict
-# (real, given the change) runs on it after the first red pass and the judge's ask, quoting the Blocked
-# text, reaches ship-gate. Dry-run limits: until_bash never runs (the loop ends after pass 1 anyway;
-# unit test "Verdict ends the build loop on a Blocked section"), the judge is stubbed (integrity.py
-# needs a real base branch; unit test "Judge quotes a Blocked section and asks"), and ship-decide
-# fails on the bare "approved" as in d.
+# `loop:` item next to a change item, so it blocks): verdict (real, given the change) reports it with
+# blocked_passes 1 and done false, so the next pass would be settle (default model, xhigh), then unblock
+# (Claude), never the user. Dry-run limit: until_bash never runs, so the loop ends after pass 1 and the
+# settle/unblock passes cannot be simulated (unit test "Blocked build pass goes to settle, then Claude");
+# the surviving Blocked section is rejected by the judge (stubbed: integrity.py needs a real base branch;
+# unit test "Judge rejects a Blocked section, never asks") and followup re-queues it.
 fixture:
-  expect: failed
-  fail-node: [ship-decide, stop]
+  expect: cancelled
   inputs: { change: blocked-build }
-  reached: [gate, verdict, escalation, ship-gate]
-  resolved-text-contains:
-    ship-gate: "loop: fixture tooling failure the fix step cannot repair"
+  reached: [gate, verdict, escalation, ship-decide, followup, stop]
 exec-code: true
 skills-check: "skills ok"
 plan-check: { needed: false, has_change: true }
@@ -19,8 +16,8 @@ plan-gate: "change blocked-build is valid"
 pack: { has_task: false, context: context.md }
 implement: "MUST-NOT-RUN"
 fix: "MUST-NOT-RUN"
-gate: { green: false, spec_ok: true, tasks_done: false, untested: 0, attempt: 1, failures: "blocked: tasks.md: ## Blocked", blocked: true }
+gate: { green: false, spec_ok: true, tasks_done: false, untested: 0, attempt: 0, failures: "blocked: tasks.md: ## Blocked", blocked: true }
 review: "MUST-NOT-RUN"
-escalation: { decision: ask, escalate: true, reasons: "- blocked: tasks.md: ## Blocked\nloop: fixture tooling failure the fix step cannot repair\nfixture bound conflict the fix step cannot resolve: pick (A) or (B)" }
+escalation: { decision: reject, escalate: false, reasons: "- blocked: tasks.md: ## Blocked\nloop: fixture tooling failure the fix step cannot repair\nfixture bound conflict the fix step cannot resolve: pick (A) or (B)" }
+followup: '{"queued": true, "change": "blocked-build"}'
 ship: "MUST-NOT-RUN"
-followup: "MUST-NOT-RUN"

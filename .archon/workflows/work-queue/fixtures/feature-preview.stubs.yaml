@@ -1,18 +1,23 @@
-# g4. a feature always gets the preview and the design gate, whose message names the change.
-# Archon 0.11.1 dry-run limit (see nvim-deliver d): the auto-approved gate outputs "approved", not
-# {"decision": ...}, so design-decide fails here; flip to expect: completed once Archon fixes it.
+# g4. a feature always gets the preview (an artifact, never a pause: no design gate) and delivers.
 fixture:
-  expect: failed
-  fail-node: design-decide
+  expect: completed
   inputs: { change: demo-change }
-  reached: [pick, complete, classify, preview, design-gate]
-  resolved-text-contains:
-    design-gate: "Queued change demo-change (feature) is ready to build."
+  reached: [pick, complete, classify, preview, design-decide, deliver__ship, deliver__shipped]
 exec-code: true
 skills-check: "skills ok"
 pick: { found: true, change: demo-change, kind: feature, has_tasks: true }
 complete: "spec written"
 spec-gate: { ok: true, log: "" }
 preview: "http://localhost:8000/preview/demo-change"
-
 adopted-state: { archived: false, tasks_done: false, visible_ui: false }
+# nvim-deliver (include `deliver`): top-level ids get the deliver__ prefix, loop bodies keep theirs
+deliver__skills-check: "skills ok"
+deliver__plan-check: { needed: false, has_change: true }
+deliver__plan-gate: "valid"
+pack: { has_task: false, context: context.md }
+implement: "MUST-NOT-RUN"
+gate: { green: true, spec_ok: true, tasks_done: true, untested: 0, attempt: 1, failures: "", blocked: false }
+review: { approve: true, findings: "", weakened_scenario: false, weakened_test: false }
+deliver__escalation: { decision: ship, escalate: false, reasons: "- none" }
+deliver__followup: "MUST-NOT-RUN"
+deliver__ship: { merged: true, conflict: false, branch: loop/demo-change, commit: abc123 }

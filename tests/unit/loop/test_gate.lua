@@ -619,7 +619,7 @@ T["loop: Gate flags a test case added then removed during build"] = function()
 
 	write(repo, { ["tests/unit/a/test_a.lua"] = 'T["a: old"] = function() end' })
 	local judge = loop_script("escalation.py", repo, { ARTIFACTS_DIR = artifacts })
-	eq(judge.decision, "ask", { fail_reason = judge.reasons })
+	eq(judge.decision, "reject", { fail_reason = judge.reasons })
 	has(judge.reasons, "test added then removed during build: a: new")
 end
 
@@ -719,6 +719,7 @@ T["loop: Gate reports a Blocked change before make check"] = function()
 	)
 	has(gate.failures, "blocked: tasks.md: ## Blocked")
 	has(gate.failures, "pick (A) or (B)")
+	eq({ gate.attempt, loop_script("gate.py", repo, env).attempt }, { 1, 1 }) -- a blocked pass is no attempt
 	local workflow = read(vim.fs.joinpath(H.root, ".archon/workflows/nvim-deliver/nvim-deliver.yaml"))
 	has(workflow, 'when: "$gate.output.blocked == false && $gate.output.green == true')
 end

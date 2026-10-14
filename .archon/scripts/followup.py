@@ -1,9 +1,7 @@
 """After a rejected run: re-queue the work on `auto` (under the ship lock) so `make queue`/`make drain`
 picks it up again from the kept branch. When `<change>` is still active on `auto`, its proposal gets
 `Adopt: <branch>` and a `## Rejected run` section with the judge's reasons (no second change for the
-same work), and the run branch's `## Design approval` section (design_approval.py) so the re-queued run
-skips the design gate for an unchanged design.md; otherwise a follow-up change `followup-<change>` is
-queued. No AI. Prints {queued, change}.
+same work); otherwise a follow-up change `followup-<change>` is queued. No AI. Prints {queued, change}.
 """
 
 import json
@@ -13,7 +11,6 @@ import shutil
 import subprocess
 import tempfile
 
-from design_approval import section, set_section
 from shiplock import acquire_lock, lock_path, release_lock
 
 BASE = os.environ.get("BASE_BRANCH") or "auto"
@@ -88,19 +85,12 @@ def set_rejected(text: str, branch: str) -> str:
     return f"{text}\n\n## Rejected run\nRun on `{branch}` was rejected by the judge:\n{reasons}\n"
 
 
-def approved_section() -> str:
-    """The run branch's (this worktree's) `## Design approval` section, or ""."""
-    path = os.path.join("openspec/changes", change, "proposal.md")
-    return section(open(path).read()) if os.path.isfile(path) else ""
-
-
 def requeue(root: str, branch: str) -> None:
     path = os.path.join(root, "openspec/changes", change, "proposal.md")
     with open(path) as f:
-        text = set_adopt(f.read(), branch)
-    approved = approved_section()
+        text = f.read()
     with open(path, "w") as f:
-        f.write(set_rejected(set_section(text, approved) if approved else text, branch))
+        f.write(set_rejected(set_adopt(text, branch), branch))
 
 
 def registered(path: str) -> bool:

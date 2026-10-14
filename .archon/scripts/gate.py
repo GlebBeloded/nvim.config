@@ -103,7 +103,8 @@ def red(failures: str, blocked: bool = False, infra: str = "") -> None:
 
 
 blocked = blocked_text(change)
-if blocked:  # verdict ends the loop on it and the judge asks: checking or reviewing it is wasted
+if blocked:  # the next pass settles it (unblock.md), so checking or reviewing it is wasted; no attempt either
+    counter.write_text(str(attempt - 1))
     red("blocked: " + blocked, blocked=True)
 record_fix_scope()
 violations = hard_rules()

@@ -1,13 +1,12 @@
 # k. gate.py reports a `## Blocked` change (fixtures/changes/blocked-build) with `blocked: true` and no
 # make check; review's `when:` checks `blocked` first, so it is skipped even with the other gate fields
-# green (stubbed so only `blocked` can skip it; review's stub breaks its schema). verdict (real) ends
-# the loop on the Blocked section and the judge's ask reaches ship-gate, as in h.
+# green (stubbed so only `blocked` can skip it; review's stub breaks its schema). verdict (real) keeps
+# the loop for the settle pass; after pass 1 (dry-run limit, as in h) the judge rejects it, never asks.
 # Unit test "Gate reports a Blocked change before make check".
 fixture:
-  expect: failed
-  fail-node: [ship-decide, stop]
+  expect: cancelled
   inputs: { change: blocked-build }
-  reached: [gate, verdict, escalation, ship-gate]
+  reached: [gate, verdict, escalation, ship-decide, followup, stop]
 exec-code: true
 skills-check: "skills ok"
 plan-check: { needed: false, has_change: true }
@@ -15,8 +14,8 @@ plan-gate: "change blocked-build is valid"
 pack: { has_task: false, context: context.md }
 implement: "MUST-NOT-RUN"
 fix: "MUST-NOT-RUN"
-gate: { green: true, spec_ok: true, tasks_done: true, untested: 0, attempt: 1, failures: "blocked: tasks.md: ## Blocked", blocked: true }
+gate: { green: true, spec_ok: true, tasks_done: true, untested: 0, attempt: 0, failures: "blocked: tasks.md: ## Blocked", blocked: true }
 review: "MUST-NOT-RUN"
-escalation: { decision: ask, escalate: true, reasons: "- blocked: tasks.md: ## Blocked" }
+escalation: { decision: reject, escalate: false, reasons: "- blocked: tasks.md: ## Blocked" }
+followup: '{"queued": true, "change": "blocked-build"}'
 ship: "MUST-NOT-RUN"
-followup: "MUST-NOT-RUN"

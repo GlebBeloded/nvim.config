@@ -1,6 +1,6 @@
 # m. implement wrote `## Stuck` (fixtures/changes/stuck-build/tasks.md: both attempts red, no decision
 # needed): verdict (real) keeps the loop going (done=false, stuck=true: the next pass is fix-stuck at
-# high effort, fed the Stuck text) and never ends it as blocked; the judge rejects (never asks) and
+# xhigh effort on the default model, then fix-stuck-claude if still red, fed the Stuck text) and never ends it as blocked; the judge rejects (never asks) and
 # followup re-queues. Dry-run limit: until_bash never runs, so the loop ends after pass 1 and the
 # fix-stuck pass cannot be simulated (unit test "Verdict sends a Stuck section to the fix pass").
 fixture:

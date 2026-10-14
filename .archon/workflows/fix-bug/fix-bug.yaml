@@ -35,36 +35,24 @@ nodes:
     bash: openspec validate $spec.output.change --strict --no-interactive && python3 .archon/scripts/spec_trial.py $spec.output.change && python3 .archon/scripts/scenarios.py --unknown $spec.output.change && python3 .archon/scripts/pinned.py --check $spec.output.change # main specs after a trial archive; pins planned
     depends_on: [spec]
 
-  # --- Preview + approval (only for visible UI changes) -----------------------------
+  # --- Preview (an artifact, never a pause; only for visible UI changes) ------------
   - id: preview
     bash: make -s preview CHANGE=$spec.output.change OPEN= # OPEN= beats an exported OPEN: nothing opens on the host
     depends_on: [spec-gate]
     when: "$spec.output.visible_ui == true" # breaking for the user; internals never pause
 
-  - id: design-gate
-    depends_on: [preview]
-    approval:
-      message: |
-        Change $spec.output.change changes visible UI.
-        Preview (nothing opens on the host): $preview.output
-        Approve to build. Put the chosen render option or corrections in the comment.
-      decisions:
-        - { id: approve, label: Build it }
-        - { id: reject, label: Stop }
-
   - id: design-decide
     script: decide
     runtime: uv
-    depends_on: [spec-gate, design-gate]
+    depends_on: [spec-gate, preview]
     trigger_rule: none_failed_min_one_success # a failed spec-gate stops the run
     with:
-      earlier: "" # no earlier approval to reuse (work-queue design-decide only)
       cancel_on_reject: "true"
       verdict: ""
       blocked: "false"
-      needed: { from: $preview.output, if_skipped: "" }
-      decision: { from: $design-gate.output.decision, if_skipped: auto }
-      feedback: { from: $design-gate.output.text, if_skipped: "" }
+      needed: "false" # no manual gates: the preview is an artifact, never a pause
+      decision: auto
+      feedback: ""
     output_format:
       type: object
       properties:
@@ -74,7 +62,7 @@ nodes:
       required: [go, decision, feedback]
 
   - id: stop
-    cancel: "Stopped at the design gate. The change folder is kept on the run branch."
+    cancel: "Stopped: the spec did not pass. The change folder is kept on the run branch."
     depends_on: [design-decide]
     when: "$design-decide.output.go == false"
 
