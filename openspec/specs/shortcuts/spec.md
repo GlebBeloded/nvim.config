@@ -230,6 +230,25 @@ Every `tests/sandbox/sandbox.sh` command that changes the guest (`up`, `provisio
 - **WHEN** a live process holds `$SANDBOX_STATE/lock` and `tests/sandbox/sandbox.sh e2e` starts with the same stubs, and the holder exits 2 s later
 - **THEN** no `rsync` is logged while the holder lives, stderr says `sandbox: waiting for`, and after the holder exits the run syncs, restores and runs `make -s e2e-local`, then exits 0
 
+### Requirement: Concurrent make check runs on one host run one at a time
+`tests/check.sh` (`make check`) SHALL hold one host-wide check lock (`$CHECK_LOCK_DIR`, default `~/.cache/nvim-check-lock`, the `tests/sandbox/lock.sh` mkdir lock) for its whole run, so checks of different checkouts never skew each other's timing layers. A check that finds it held waits and says so. A check started inside a check uses its holder's lock. `CHECK_LOCK=0` runs unlocked. The sandbox lock is taken only inside it.
+
+#### Scenario: make check holds the check lock for its whole run
+- **WHEN** `tests/check.sh a b +c` runs with `make` stubbed to log whether `$CHECK_LOCK_DIR` exists at each target
+- **THEN** it exists at every target, and after `check.sh` exits it no longer exists
+
+#### Scenario: A second make check waits for the check lock and says so
+- **WHEN** one `tests/check.sh` holds the check lock while its stubbed target runs for 2 s, and a second `tests/check.sh a` starts with the same `$CHECK_LOCK_DIR`
+- **THEN** the second prints `check: waiting for the check lock held by pid <holder> (` on stderr, starts `a` only after the holder's target ended, and exits 0
+
+#### Scenario: A make check run inside a make check does not wait for its own lock
+- **WHEN** a stubbed target of a running `tests/check.sh` runs `tests/check.sh inner` with `CHECK_LOCK_TIMEOUT=1`
+- **THEN** the inner check runs `inner` with the lock still held, never prints `waiting for`, and both exit 0
+
+#### Scenario: CHECK_LOCK=0 runs make check without the check lock
+- **WHEN** a live process holds `$CHECK_LOCK_DIR` and `tests/check.sh a` runs with `CHECK_LOCK=0`
+- **THEN** it runs `a` and exits 0 while the holder still runs, without printing `waiting for`, and the lock still names the holder
+
 ### Requirement: Test harness deadlines scale with host load
 The stack harness deadlines (`M.wait_for` default, zellij CLI retry) and the smoke startup budget SHALL be multiplied by the host load factor `max(1, 1-min load average / CPU count)` from `tests/helpers.lua`. An idle host (load ≤ CPU count) keeps the unscaled values exactly.
 

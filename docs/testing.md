@@ -11,6 +11,8 @@
 
 `check.sh` prints one status line per layer as it finishes, then the full log of every failed layer. A layer that cannot run here prints `skip` with its reason (e2e while the sandbox VM is down). `make quick` takes `ALL=1`, `STACK=1`, `E2E=1`, `SMOKE=1` and `TYPES=1` to force a layer.
 
+Checks of all checkouts on this host run one at a time: `check.sh` holds `~/.cache/nvim-check-lock` (`CHECK_LOCK_DIR`; the `tests/sandbox/lock.sh` mechanism) for its whole run, so concurrent checks never skew each other's timing layers. A second one prints `check: waiting for the check lock held by pid N (<checkout>)` and waits up to `CHECK_LOCK_TIMEOUT` s (default 3600). A check run inside a check reuses the lock (`CHECK_LOCK_HOLDER`); `CHECK_LOCK=0` skips it. The check lock is outer, the sandbox lock inner. `make quick` and `make test` take no lock.
+
 Pyramid, bottom to top. Times are wall times of one layer on its own (in `make check` they overlap).
 
 | Layer | Command | What it checks | Time |
