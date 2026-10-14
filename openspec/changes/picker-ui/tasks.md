@@ -93,9 +93,9 @@ Scenarios: `keymaps: Live grep renders matching rows`
 
 ## 16. Restore the saved session cwd
 Scenarios: `session: bare nvim restores a cwd session after pane id change`
-- [ ] 16.1 Tighten `session: bare nvim restores a cwd session after pane id change` in tests/integration/session/test_session.lua to assert the saved cwd as well as its buffer and see it fail
-- [ ] 16.2 Remove the post-load cwd reset so `resession.load` restores the saved session state
-- [ ] 16.3 Run `make test FILE=tests/integration/session/test_session.lua CASE="bare nvim restores a cwd session after pane id change"` and see it pass
+- [x] 16.1 Tighten `session: bare nvim restores a cwd session after pane id change` in tests/integration/session/test_session.lua to assert the saved cwd as well as its buffer and see it fail
+- [x] 16.2 Remove the post-load cwd reset so `resession.load` restores the saved session state
+- [x] 16.3 Run `make test FILE=tests/integration/session/test_session.lua CASE="bare nvim restores a cwd session after pane id change"` and see it pass
 
 ## Agent decisions
 
