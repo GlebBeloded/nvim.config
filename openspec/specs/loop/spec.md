@@ -68,6 +68,10 @@ After a judge reject, `.archon/scripts/followup.py` SHALL re-queue the work on `
 - **WHEN** `python3 .archon/scripts/followup.py` runs with `INPUTS_CHANGE=x` and `INPUTS_REASONS` in a worktree on `loop/x-20260101` of a throwaway repo whose main checkout is on `auto` and holds `openspec/changes/x/proposal.md` with `Kind: bug`, an `Adopt: loop/x` line and an old `## Rejected run` section
 - **THEN** it prints `queued` true and `change` `x`, no `openspec/changes/followup-x` exists on `auto`, the proposal's only `Adopt:` line is `Adopt: loop/x-20260101`, it has one `## Rejected run` section holding the new reasons and not the old ones, the latest `auto` commit is `chore(openspec): re-queue x from loop/x-20260101`, and no ship lock file remains
 
+#### Scenario: Rejected run quotes the review findings
+- **WHEN** followup.py re-queues active change `x` with `INPUTS_REASONS` holding `- review findings:` and indented finding lines, one of them `  ## Removed assert`
+- **THEN** the proposal's `## Rejected run` section holds each finding line as given and the proposal has no heading beyond `## Why`, `## What Changes`, `## Impact` and `## Rejected run`
+
 #### Scenario: Adopt line is added to a proposal without one
 - **WHEN** followup.py re-queues a change whose proposal has a `Kind:` line and no `Adopt:` line, and one whose proposal has neither (only `## Why` and `## What Changes`)
 - **THEN** the first gets `Adopt: <branch>` on the line after `Kind:`, the second at the end of `## Why`, before `## What Changes`
@@ -518,7 +522,7 @@ The judge SHALL count a removed main-spec scenario as renamed when, one for one,
 - **THEN** each JSON `decision` is `reject` and `reasons` names the lost case (`c: kept`, `c: old title`), never the group
 
 ### Requirement: Loop keeps the user's contract
-The loop SHALL leave the user's contract to the user: no step changes a requirement's bounds or the `## Decision` text unasked, main specs change only by archive, and a `## Blocked` section in a change's proposal.md or tasks.md stops agent work on it, is quoted to the user, and never ships, until a later user `## Decision` resolves it.
+The loop SHALL leave the user's contract to the user: no step changes a requirement's bounds or the `## Decision` text unasked, main specs change only by archive, and a `## Blocked` section in a change's proposal.md or tasks.md stops agent work on it, is quoted to the user, and never ships, until a later user `## Decision` resolves it. A section of only `loop:` items stops nothing; the judge lists those items and `loop-notes.md` lines as notes.
 
 #### Scenario: Queue spec prompt keeps the user's contract
 - **WHEN** `.archon/commands/queue-spec.md` is read
@@ -551,6 +555,22 @@ The loop SHALL leave the user's contract to the user: no step changes a requirem
 #### Scenario: Judge quotes a Blocked section and asks
 - **WHEN** `.archon/scripts/escalation.py` runs with `exhausted` true for a change whose tasks.md has a `## Blocked` section
 - **THEN** its JSON `decision` is `ask` and escalation.md quotes the Blocked text
+
+#### Scenario: A Blocked section of only loop items never stops the change
+- **WHEN** `.archon/scripts/blocked.py` and `verdict.py` (first red pass) run for a change whose tasks.md `## Blocked` section holds only `loop:` items, and blocked.py again after a non-`loop:` line joins that section
+- **THEN** blocked.py prints `blocked` false and writes no escalation.md, verdict reports `done` and `blocked` false, and the second blocked.py run reports `blocked` true
+
+#### Scenario: Judge lists loop notes for the auditor
+- **WHEN** `.archon/scripts/escalation.py` runs for a done change whose tasks.md `## Blocked` section holds only `loop:` items and whose `$ARTIFACTS_DIR/loop-notes.md` holds `loop:` lines, one repeating an item
+- **THEN** its JSON `decision` is `ship`, and `reasons` and escalation.md list each item and line once as `- note: loop: …`
+
+#### Scenario: Fix and implement prompts send loop tooling failures to loop notes
+- **WHEN** `.archon/commands/fix.md` and `implement.md` are read
+- **THEN** each says to append a `loop: <failure>` line to `$ARTIFACTS_DIR/loop-notes.md`, not tasks.md, and neither says to write `## Blocked` with `loop:`
+
+#### Scenario: Judge hands the review findings to the follow-up
+- **WHEN** `.archon/scripts/escalation.py` runs with `weakened_test` true and 3000+ chars of review findings starting with a `## ` line, and again with the findings alone
+- **THEN** the first `decision` is `reject` and `reasons` holds `review: test weakened`, then `- review findings:` with at most 1500 chars of the findings indented two spaces, no line starting `## `; the second is `ship` without them
 
 #### Scenario: A blocked run never ships
 - **WHEN** `.archon/scripts/decide.py` runs with `INPUTS_BLOCKED=true`, verdict `ask` and gate decision `approve`
