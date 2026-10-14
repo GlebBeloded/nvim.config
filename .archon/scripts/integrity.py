@@ -173,6 +173,7 @@ def moved_test_files(base: str, deleted: list[str]) -> bool:
 
 
 CASE_SNAPSHOT = "case-snapshot.json"  # verdict.py: the case names at the end of a build pass
+CASE_SEEN = "case-seen.json"  # tests/parallel.lua: {file, case} of each `make test` run; verdict.py clears it
 DROPPED_CASES = "dropped-cases.json"  # gate.py: names a later pass dropped, for the judge
 
 
@@ -194,10 +195,18 @@ def dropped_cases(seen: list[str]) -> list[str]:
     return sorted(gone - base_case_names()) if gone else []
 
 
+def seen_case_names(artifacts: pathlib.Path) -> set[str]:
+    """Case names of verdict's last snapshot and of every `make test` run since (CASE_SEEN, tests/parallel.lua)."""
+    snapshot, seen = artifacts / CASE_SNAPSHOT, artifacts / CASE_SEEN
+    names = set(json.loads(snapshot.read_text())) if snapshot.exists() else set()
+    return names | ({entry["case"] for entry in json.loads(seen.read_text())} if seen.exists() else set())
+
+
 def record_dropped(artifacts: pathlib.Path) -> list[str]:
-    """Cases dropped since verdict's last snapshot, added to DROPPED_CASES so the judge still sees them."""
-    snapshot, record = artifacts / CASE_SNAPSHOT, artifacts / DROPPED_CASES
-    names = dropped_cases(json.loads(snapshot.read_text())) if snapshot.exists() else []
+    """Cases dropped since verdict's last snapshot (a case added and removed within the pass included),
+    added to DROPPED_CASES so the judge still sees them."""
+    record = artifacts / DROPPED_CASES
+    names = dropped_cases(sorted(seen_case_names(artifacts)))
     if names:
         known = json.loads(record.read_text()) if record.exists() else []
         record.write_text(json.dumps(sorted(set(known) | set(names))))

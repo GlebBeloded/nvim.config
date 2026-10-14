@@ -474,6 +474,87 @@ T["loop: Fix prompt probes first and caps attempts"] = function()
 	has(fix, "unless the proposal's `## Decision` allows it")
 end
 
+T["loop: Blocked attempts keep the red test"] = function()
+	for _, name in ipairs({ "fix.md", "implement.md" }) do
+		local prompt = read(vim.fs.joinpath(H.root, ".archon/commands", name)):gsub("%s+", " ")
+		has(prompt, "run one headless probe first (the scratch-file probe rule below) that logs the relevant state")
+		has(prompt, "At most 2 implementation attempts per")
+		has(prompt, "revert only the non-test edits (`lua/` and other code; keep the new red")
+		has(prompt, "commit the failing test together with tasks.md (a blocked change never ships)")
+		eq(prompt:find("revert the uncommitted edits", 1, true), nil)
+	end
+end
+
+T["loop: Test run records the cases it collected"] = function()
+	local root = H.tempdir(child)
+	local artifacts = H.tempdir(child)
+	write(root, {
+		["probe/test_probe.lua"] = 'local T = require("mini.test").new_set()\nT["seen: probe"] = function() end\nreturn T',
+	})
+	write(artifacts, { ["case-seen.json"] = '[{"file":"tests/unit/a/test_a.lua","case":"a: earlier"}]' })
+	vim.uv.fs_symlink(vim.fs.joinpath(H.root, "tests"), vim.fs.joinpath(root, "tests"))
+	local env = {
+		ARTIFACTS_DIR = artifacts,
+		FILE = "probe/test_probe.lua",
+		JOBS = "1",
+		TEST_DEPS_DIR = vim.fs.joinpath(H.root, ".tests/deps"),
+	}
+	local cmd = { vim.v.progpath, "-u", "tests/minimal_init.lua", "-l", "tests/parallel.lua" }
+	local result = H.system(child, cmd, root, env)
+	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
+	eq(vim.json.decode(read(vim.fs.joinpath(artifacts, "case-seen.json"))), {
+		{ file = "tests/unit/a/test_a.lua", case = "a: earlier" },
+		{ file = "probe/test_probe.lua", case = "seen: probe" },
+	})
+end
+
+T["loop: Gate flags a test case added and removed within one pass"] = function()
+	local repo = branch_repo({ ["tests/unit/a/test_a.lua"] = 'T["a: old"] = function() end' })
+	local artifacts = H.tempdir(child)
+	local scratch = H.tempdir(child)
+	local bin = fake_tool(scratch, "make", "exit 0")
+	local env = { ARTIFACTS_DIR = artifacts, PATH = bin .. ":" .. vim.env.PATH }
+	loop_script("verdict.py", repo, verdict_env(artifacts))
+	local seen =
+		'[{"file":"tests/unit/a/test_a.lua","case":"a: old"},{"file":"tests/unit/a/test_a.lua","case":"a: tmp"}]'
+	write(artifacts, { ["case-seen.json"] = seen })
+
+	local first = loop_script("gate.py", repo, env)
+	eq(first.green, false)
+	has(first.failures, "hard rule: test added then removed during build: a: tmp")
+	eq(first.failures:find("a: old", 1, true), nil, { fail_reason = first.failures })
+	loop_script(
+		"verdict.py",
+		repo,
+		verdict_env(artifacts, { INPUTS_GREEN = "false", INPUTS_FAILURES = first.failures })
+	)
+	eq(vim.fn.filereadable(vim.fs.joinpath(artifacts, "case-seen.json")), 0)
+	local second = loop_script("gate.py", repo, env)
+	eq(second.failures:find("during build", 1, true), nil, { fail_reason = second.failures })
+end
+
+T["loop: Gate reports a Blocked change before make check"] = function()
+	local repo = branch_repo({
+		["openspec/changes/c/proposal.md"] = "# c",
+		["openspec/changes/c/tasks.md"] = "## 1. Task\n- [ ] 1.1 a\n\n## Blocked\n\n- pick (A) or (B)",
+	})
+	local scratch = H.tempdir(child)
+	local artifacts = H.tempdir(child)
+	local bin = fake_tool(scratch, "make", ('touch "%s/make-ran"'):format(scratch))
+	local env = { ARTIFACTS_DIR = artifacts, INPUTS_CHANGE = "c", PATH = bin .. ":" .. vim.env.PATH }
+
+	local gate = loop_script("gate.py", repo, env)
+	eq(
+		{ gate.green, gate.blocked, vim.fn.filereadable(vim.fs.joinpath(scratch, "make-ran")) },
+		{ false, true, 0 },
+		{ fail_reason = gate.failures }
+	)
+	has(gate.failures, "blocked: tasks.md: ## Blocked")
+	has(gate.failures, "pick (A) or (B)")
+	local workflow = read(vim.fs.joinpath(H.root, ".archon/workflows/nvim-deliver/nvim-deliver.yaml"))
+	has(workflow, 'when: "$gate.output.blocked == false && $gate.output.green == true')
+end
+
 ---@param proposal string
 ---@return string context.md of a change whose proposal.md is `proposal`
 local function pack_context(proposal)

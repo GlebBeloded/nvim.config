@@ -10,7 +10,7 @@ plan-check: { needed: false, has_change: true }
 plan-gate: "change demo-change is valid"
 pack: { has_task: true, context: context.md }
 implement: "task 1 done"
-gate: { green: true, spec_ok: true, tasks_done: true, untested: 0, attempt: 1, failures: "" }
+gate: { green: true, spec_ok: true, tasks_done: true, untested: 0, attempt: 1, failures: "", blocked: false }
 review: { approve: true, findings: "", weakened_scenario: false, weakened_test: true }
 escalation: { decision: reject, escalate: false, reasons: "- review: test weakened" }
 followup: '{"queued": true, "change": "demo-change-followup"}'

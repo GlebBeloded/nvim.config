@@ -59,8 +59,8 @@ input, output and limits). Scripts do everything that needs no judgment:
 | plan (only when spec wrote no tasks) | agent, low effort | `superpowers:writing-plans` | `tasks.md` |
 | pack | script `context_pack.py` | none | `context.md`: next task, a bug's `## Evidence`, change, named files, lessons, last failures; `has_task` (false skips implement) |
 | implement, once per task (one session for ≤ 4 tasks) | agent, fresh | `superpowers:test-driven-development` | 1 commit per task, ticked |
-| check | script `gate.py` | none | hard rules first (a violation is red at once: no `make check`, no review), then `make check E2E=1` once per pass, strict validate, untested change scenarios (`scenarios.py`, replaces a verify agent), JSON |
-| fix (pass 2-3 only) | agent, fresh | `superpowers:systematic-debugging` (none when every finding is a hard rule) | 1 commit for the listed findings: one headless probe first for a non-obvious failure, at most 2 attempts, then `## Blocked` with the probe output |
+| check | script `gate.py` | none | a `## Blocked` change first (red with `blocked`, at once: no `make check`, no review), then hard rules (a violation is red at once: no `make check`, no review), then `make check E2E=1` once per pass, strict validate, untested change scenarios (`scenarios.py`, replaces a verify agent), JSON |
+| fix (pass 2-3 only) | agent, fresh | `superpowers:systematic-debugging` (none when every finding is a hard rule) | 1 commit for the listed findings: one headless probe first for a non-obvious failure, at most 2 attempts, then `## Blocked` with the probe output, reverting only non-test edits and committing the red test with it (implement follows the same rule) |
 | review | agent, Claude | `superpowers:requesting-code-review` | JSON |
 | verdict, judge, ship, follow-up | scripts | none | JSON, `escalation.md`, merge commit |
 
@@ -69,8 +69,9 @@ group runs at most 3 times; a red pass sends only its findings (`verdict.py` `fe
 lists hard-rule violations from `integrity.py`) to the next pass's fix step. A fix pass stays on those
 findings: verdict snapshots the change's proposal.md, `.openspec.yaml` and spec deltas, and the next gate
 lists any of them the fix edited in `fix-scope.md`, a finding for the review. Verdict also snapshots the test
-case names: a case the previous pass had that is now in neither the branch nor the base is a hard rule
-(`test added then removed during build`), and the judge asks while it stays gone. The judge keeps the 15 newest
+case names, and with `ARTIFACTS_DIR` set every `make test` adds the cases it collected to `case-seen.json`
+(verdict clears it): a case the previous pass had, or a run of this pass saw, that is now in neither the branch
+nor the base is a hard rule (`test added then removed during build`), and the judge asks while it stays gone. The judge keeps the 15 newest
 lessons in `## Loop lessons` (`lessons.py`), a new one replacing a near duplicate; a lesson about loop
 tooling starts with `loop:` and is never kept.
 

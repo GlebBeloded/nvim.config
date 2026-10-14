@@ -495,6 +495,31 @@ verdict.py SHALL snapshot the test case names at the end of each pass. The next 
 - **WHEN** gate.py recorded `a: new` as dropped and the case is back in a test file when the judge runs
 - **THEN** the judge's decision is `ship`
 
+### Requirement: Test runs record the cases they collect
+With `ARTIFACTS_DIR` set, tests/parallel.lua SHALL add each collected case (file, name) to `$ARTIFACTS_DIR/case-seen.json`. gate.py SHALL treat the names of case-snapshot.json and case-seen.json alike, so a case added and removed within one pass that is on neither the base nor the branch is the dropped-case hard rule; verdict.py SHALL clear case-seen.json when it snapshots.
+
+#### Scenario: Test run records the cases it collected
+- **WHEN** tests/parallel.lua runs one test file holding `seen: probe` with `ARTIFACTS_DIR` holding a case-seen.json that lists `a: earlier`
+- **THEN** it exits 0 and case-seen.json lists `a: earlier`, then `seen: probe` with its file
+
+#### Scenario: Gate flags a test case added and removed within one pass
+- **WHEN** verdict.py snapshots a branch holding base case `a: old`, case-seen.json then lists `a: old` and `a: tmp`, and gate.py, verdict.py and gate.py run
+- **THEN** the first gate is red naming `hard rule: test added then removed during build: a: tmp` and not `a: old`, verdict removes case-seen.json, and the second gate does not repeat it
+
+### Requirement: Gate skips a Blocked change
+gate.py SHALL check for a blocking `## Blocked` section (blocked.py) before anything else and then print a red verdict with `blocked` true and the Blocked text as failures, with no `make check`; nvim-deliver's review node SHALL run only when the gate's `blocked` is false.
+
+#### Scenario: Gate reports a Blocked change before make check
+- **WHEN** gate.py runs for a change whose tasks.md has a `## Blocked` section, with a `make` stub that records being called
+- **THEN** `green` is false, `blocked` is true, failures quote the Blocked section, make never ran, and the review node's `when:` requires `$gate.output.blocked == false`
+
+### Requirement: Blocked attempts keep the red test
+The fix and implement commands SHALL run one headless probe before editing for a non-obvious failure and cap attempts at 2; when the second fails they SHALL revert only non-test edits, write `## Blocked` with the probe output and both attempts, and commit the failing test with it.
+
+#### Scenario: Blocked attempts keep the red test
+- **WHEN** `.archon/commands/fix.md` and `implement.md` are read
+- **THEN** each asks for the probe first, caps attempts at 2, reverts only non-test edits, commits the failing test with tasks.md, and no longer says to revert the uncommitted edits
+
 ### Requirement: Fix pass probes before it edits
 The fix command SHALL run one headless scratch-file probe logging the relevant state before editing code for a non-obvious failure, allow at most 2 implementation attempts per pass and then write `## Blocked` with the probe evidence, and forbid production timers or sleeps that race a plugin's internals unless the proposal's `## Decision` allows them.
 

@@ -18,7 +18,7 @@ deliver__plan: "MUST-NOT-RUN"
 deliver__plan-gate: "MUST-NOT-RUN"
 pack: "MUST-NOT-RUN"
 implement: "MUST-NOT-RUN"
-gate: { green: true, spec_ok: true, tasks_done: true, untested: 0, attempt: 1, failures: "" }
+gate: { green: true, spec_ok: true, tasks_done: true, untested: 0, attempt: 1, failures: "", blocked: false }
 review: { approve: true, findings: "", weakened_scenario: false, weakened_test: false }
 deliver__escalation: { decision: ship, escalate: false, reasons: "- none" }
 deliver__ship: { merged: true, conflict: false, branch: loop/demo-change-1, commit: abc123 }
