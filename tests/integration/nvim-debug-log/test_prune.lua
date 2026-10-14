@@ -8,6 +8,7 @@ local child = H.new_child()
 
 local LOG_DIR = "/tmp/nvim"
 local DAY_S = 24 * 60 * 60
+local FIXTURE_PID_BASE = 4000000000 + vim.fn.getpid() * 10
 
 local function start()
 	child.start_bare()
@@ -46,7 +47,7 @@ end
 local T = H.child_set(child, start)
 
 T["nvim-debug-log: logs older than 7 days are deleted"] = function()
-	local old_pid, recent_pid = 4000000001, 4000000002
+	local old_pid, recent_pid = FIXTURE_PID_BASE + 1, FIXTURE_PID_BASE + 2
 	local old = fixture(string.format("%d_%d.txt", days_ago(8), old_pid))
 	local recent = fixture(string.format("%d_%d.txt", days_ago(1), recent_pid))
 
@@ -61,8 +62,8 @@ end
 
 T["nvim-debug-log: other files in the log directory are kept"] = function()
 	local old_time = days_ago(8)
-	local other_ext = fixture(string.format("%d_%d.log", old_time, 4000000003))
-	local other_name = fixture(string.format("notes_%d.txt", old_time))
+	local other_ext = fixture(string.format("%d_%d.log", old_time, FIXTURE_PID_BASE + 3))
+	local other_name = fixture(string.format("notes_%d_%d.txt", old_time, FIXTURE_PID_BASE + 4))
 
 	finally(function()
 		child.lua([[require("gleb.nvim_debug_log").setup()]])

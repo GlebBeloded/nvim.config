@@ -16,6 +16,7 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - When consolidating duplicate test names, preserve the original file and case, then split new coverage into a distinct specified scenario.
 - When async work runs under rising parallel load, refresh and monotonically extend the load-scaled polling budget instead of fixing it at poll start.
 - Explicitly stop and await a warmed LSP client before restarting its test child so the old server cannot contend with the measured process.
+- Use process-unique names for fixtures in shared global directories so concurrent test invocations cannot delete each other's files.
 
 ## The loop
 

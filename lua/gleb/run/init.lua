@@ -7,7 +7,7 @@ vim.api.nvim_create_user_command("Run", function()
 	-- if directory contains index.html, open it in browser
 	if vim.fn.filereadable("index.html") == 1 then
 		vim.cmd("silent !open -a Safari index.html")
-	elseif vim.fn.filereadable("Cargo.lock") then
+	elseif vim.fn.filereadable("Cargo.lock") == 1 then
 		vim.cmd("!cd " .. git_root() .. ";cargo run")
 	end
 end, { range = false })

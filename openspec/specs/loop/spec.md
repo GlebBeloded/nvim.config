@@ -634,6 +634,13 @@ The smoke startup timing SHALL fail when a timed start exits non-zero or writes 
 - **WHEN** `make smoke-startup` runs with a config whose init.lua raises an error
 - **THEN** it exits non-zero and prints the error
 
+### Requirement: Quick routes reference existing config files
+Every literal `lua/gleb` file path routed by `tests/quick.sh` SHALL exist in the repository.
+
+#### Scenario: Literal quick routes exist
+- **WHEN** the literal `lua/gleb` file routes in `tests/quick.sh` are checked against the worktree
+- **THEN** every routed file exists
+
 ### Requirement: Spec step plans the main-spec scenarios a change pins
 `.archon/scripts/pinned.py <change>` SHALL list each main-spec scenario naming a symbol the change touches (config identifiers and keymap lhs backticked in the proposal's What Changes and Impact; lhs and callables of mappings and local functions the branch diff changes) whose capability has no delta and whose title `## Impact` does not name; `--check` SHALL exit 1 when any. The spec steps SHALL plan each; the spec gates and gate.py SHALL run the check.
 
