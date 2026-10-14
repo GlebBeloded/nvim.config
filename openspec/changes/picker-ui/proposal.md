@@ -72,7 +72,7 @@ Adopt: loop/picker-ui
 - Small windows show just the commands. The agent picks the exact breakpoints.
 - Search stays in separate pickers: no tab bar. Code search gets its own shortcut and menus later.
 
-## Rejected run
+## Evidence
 Run on `loop/picker-ui` was rejected by the judge:
 - fix loop exhausted with gates still red: review
 - review findings:

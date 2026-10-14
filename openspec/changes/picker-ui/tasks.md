@@ -97,6 +97,12 @@ Scenarios: `session: bare nvim restores a cwd session after pane id change`
 - [x] 16.2 Remove the post-load cwd reset so `resession.load` restores the saved session state
 - [x] 16.3 Run `make test FILE=tests/integration/session/test_session.lua CASE="bare nvim restores a cwd session after pane id change"` and see it pass
 
+## 17. Keep alternate picker views counter-free
+Scenarios: `picker: Alternate picker views keep the border counter-free`
+- [x] 17.1 Write the test `picker: Alternate picker views keep the border counter-free` in tests/screen/picker/test_frame.lua, toggle preview and info view, and see the match counter appear
+- [x] 17.2 Clear mini.pick's footer through picker lifecycle handling that does not depend on the main results buffer being visible
+- [x] 17.3 Run `make test FILE=tests/screen/picker/test_frame.lua CASE="Alternate picker views keep the border counter-free"` and see it pass
+
 ## Agent decisions
 
 - Live grep uses mini.pick's built-in `grep_live`, because the installed mini.extra has no live-grep source; frame options preserve the specified shared UI.
@@ -110,3 +116,4 @@ Scenarios: `session: bare nvim restores a cwd session after pane id change`
 - Dashboard files use MiniPick's built-in files source and recent files use MiniExtra's oldfiles source because they directly replace Telescope's corresponding list actions.
 - Existing unit scenario identities remain authoritative; runtime integration coverage uses distinct scenarios so traceability stays one-to-one.
 - Renderer dispatch uses the first item's shape because shared structured sources use tables while mini.pick built-ins emit strings.
+- Alternate views clear their footer from a scheduled `BufWinEnter` handler because mini.pick refreshes border text after changing the main window's buffer.

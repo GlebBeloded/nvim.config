@@ -15,6 +15,10 @@ Every shared picker SHALL draw a complete rounded border. Only its title and cur
 - **WHEN** focus moves beyond the fourth result in a shared picker with at least six matches
 - **THEN** the focused match remains visible in the reserved item area above the hint row
 
+#### Scenario: Alternate picker views keep the border counter-free
+- **WHEN** a shared picker toggles from its main results into preview or info view
+- **THEN** its complete border remains visible without a match counter
+
 ### Requirement: Picker rows
 Picker rows SHALL place primary text first, optional secondary text immediately after it in a dimmer highlight, and optional category text right-aligned in a muted highlight. A section header SHALL end in a rule that fills its remaining width.
 

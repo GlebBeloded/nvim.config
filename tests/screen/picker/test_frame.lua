@@ -82,4 +82,38 @@ T["picker: Focused match remains above the hint row"] = function()
 	child.type_keys("<Esc>")
 end
 
+T["picker: Alternate picker views keep the border counter-free"] = function()
+	child.lua_notify([[require("gleb.picker").start({
+			title = "Alternate Views",
+			items = { "first", "second" },
+			match = function(_, inds) return inds end,
+		})]])
+	assert(child.wait([[require("mini.pick").is_picker_active()]]), "shared picker did not open")
+
+	child.type_keys("<Tab>")
+	assert(
+		child.wait([[
+		require("mini.pick").get_picker_state().buffers.main
+			~= vim.api.nvim_win_get_buf(require("mini.pick").get_picker_state().windows.main)
+	]]),
+		"preview view did not open"
+	)
+	local preview_config =
+		child.lua_get([[vim.api.nvim_win_get_config(require("mini.pick").get_picker_state().windows.main)]])
+	eq(preview_config.footer, nil)
+
+	child.type_keys("<S-Tab>")
+	assert(
+		child.wait([[
+		require("mini.pick").get_picker_state().buffers.info
+			== vim.api.nvim_win_get_buf(require("mini.pick").get_picker_state().windows.main)
+	]]),
+		"info view did not open"
+	)
+	local info_config =
+		child.lua_get([[vim.api.nvim_win_get_config(require("mini.pick").get_picker_state().windows.main)]])
+	eq(info_config.footer, nil)
+	child.type_keys("<Esc>")
+end
+
 return T

@@ -44,6 +44,20 @@ local function close_chrome_windows()
 	chrome_windows = {}
 end
 
+local function clear_picker_footer()
+	if not MiniPick.is_picker_active() then
+		return
+	end
+	local win = MiniPick.get_picker_state().windows.main
+	if vim.api.nvim_win_is_valid(win) then
+		vim.api.nvim_win_set_config(win, { footer = "" })
+	end
+end
+
+local function schedule_clear_picker_footer()
+	vim.schedule(clear_picker_footer)
+end
+
 ---@param hint string
 ---@param parent integer
 local function open_hint_window(hint, parent)
@@ -151,6 +165,8 @@ function M.setup()
 	setup_highlights()
 	local group = vim.api.nvim_create_augroup("gleb_picker", { clear = true })
 	vim.api.nvim_create_autocmd("ColorScheme", { group = group, callback = setup_highlights })
+	vim.api.nvim_create_autocmd("BufWinEnter", { group = group, callback = schedule_clear_picker_footer })
+	vim.api.nvim_create_autocmd("User", { group = group, pattern = "MiniPickStart", callback = clear_picker_footer })
 	vim.api.nvim_create_autocmd("User", { group = group, pattern = "MiniPickStop", callback = close_chrome_windows })
 end
 
