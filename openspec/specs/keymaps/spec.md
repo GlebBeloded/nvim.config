@@ -4,6 +4,7 @@
 Global editor keymaps defined in `lua/gleb/keymaps.lua`: window navigation and resizing, jump list, buffer close, editing helpers in insert/visual modes, file-tree/git/search entry points, LSP and diagnostics navigation, and leader keys. All mappings in this file are non-recursive and silent.
 
 ## Requirements
+
 ### Requirement: Mapping options
 The config SHALL define every keymap in `lua/gleb/keymaps.lua` as non-recursive (`noremap`) and silent, with a `desc` of the form `<Area>: <Action>` (a capitalised area, a colon, a space, then a non-empty action, e.g. `Window: Move left`, `LSP: Rename`).
 
@@ -194,7 +195,7 @@ The config SHALL map `<A-F>` in normal mode to `:Telescope live_grep`.
 - **THEN** a Telescope prompt buffer (`filetype` `TelescopePrompt`) is focused with the live grep picker
 
 ### Requirement: LSP actions and navigation
-The config SHALL map `<C-CR>` in normal mode and in visual mode (`x` only) to `vim.lsp.buf.code_action`, and in normal mode `gD` to `vim.lsp.buf.declaration`, `gd` to `vim.lsp.buf.definition`, `K` to `vim.lsp.buf.hover`, `gi` to `vim.lsp.buf.implementation`, `gr` to Telescope `lsp_references`, and `<A-r>` to `vim.lsp.buf.rename`.
+The config SHALL map `<C-CR>` in normal mode and visual mode (`x` only) to `vim.lsp.buf.code_action`; map `gD`, `gd`, `K`, `gi`, and `<A-r>` in normal mode to the corresponding `vim.lsp.buf` actions; and map normal-mode `gr` to a callback that invokes Telescope `lsp_references` with `include_current_line = true`.
 
 #### Scenario: LSP mappings bound to vim.lsp.buf
 - **WHEN** the full config is loaded and `vim.fn.maparg(lhs, "n", false, true).callback` is read for `gD`, `gd`, `K`, `gi`, `<A-r>`, `<C-CR>`
@@ -205,8 +206,8 @@ The config SHALL map `<C-CR>` in normal mode and in visual mode (`x` only) to `v
 - **THEN** it equals `vim.lsp.buf.code_action`
 
 #### Scenario: gr bound to Telescope references
-- **WHEN** the full config is loaded and `vim.fn.maparg("gr", "n", false, true).callback` is read
-- **THEN** it equals `require("telescope.builtin").lsp_references`
+- **WHEN** the full config is loaded and the callback from `vim.fn.maparg("gr", "n", false, true)` is invoked
+- **THEN** it calls `require("telescope.builtin").lsp_references` with `include_current_line = true`
 
 ### Requirement: Diagnostic navigation
 The config SHALL map `<A-w>` and `ge` in normal mode to jump to the next diagnostic and `[d` to jump to the previous diagnostic, using `vim.diagnostic.jump` with `count` `1` / `-1` and an `on_jump` callback that opens the diagnostic float, so that each jump opens the float and calls no deprecated API.
