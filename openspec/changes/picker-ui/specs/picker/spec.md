@@ -11,6 +11,10 @@ Every shared picker SHALL draw a complete rounded border. Only its title and cur
 - **WHEN** a shared picker with sections, metadata and hints is shown in a window at least 72 columns wide
 - **THEN** its frame, rows, joined hint rule and highlights match the approved wide reference screenshot
 
+#### Scenario: Focused match remains above the hint row
+- **WHEN** focus moves beyond the fourth result in a shared picker with at least six matches
+- **THEN** the focused match remains visible in the reserved item area above the hint row
+
 ### Requirement: Picker rows
 Picker rows SHALL place primary text first, optional secondary text immediately after it in a dimmer highlight, and optional category text right-aligned in a muted highlight. A section header SHALL end in a rule that fills its remaining width.
 

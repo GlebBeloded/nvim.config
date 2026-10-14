@@ -12,8 +12,7 @@ local layout = require("gleb.picker.layout")
 local rows = require("gleb.picker.rows")
 local palette = require("gleb.colors.gruvbox-material.palette")
 
-local join_windows = {}
-local namespace = vim.api.nvim_create_namespace("gleb_picker_frame")
+local chrome_windows = {}
 
 ---@class gleb.picker.FrameOpts
 ---@field title string
@@ -36,52 +35,62 @@ local function setup_highlights()
 	vim.api.nvim_set_hl(0, "PickerBorder", { fg = bg.bg3, bg = bg.bg0 })
 end
 
-local function close_join_windows()
-	for _, win in ipairs(join_windows) do
+local function close_chrome_windows()
+	for _, win in ipairs(chrome_windows) do
 		if vim.api.nvim_win_is_valid(win) then
 			vim.api.nvim_win_close(win, true)
 		end
 	end
-	join_windows = {}
+	chrome_windows = {}
 end
 
----@param char string
----@param row integer
----@param col integer
----@param zindex integer
-local function open_join_window(char, row, col, zindex)
+---@param hint string
+---@param parent integer
+local function open_hint_window(hint, parent)
+	close_chrome_windows()
+	local position = vim.api.nvim_win_get_position(parent)
+	local width = vim.api.nvim_win_get_width(parent)
+	local height = vim.api.nvim_win_get_height(parent)
+	local zindex = vim.api.nvim_win_get_config(parent).zindex + 1
+	local available = math.max(width - 2, 0)
+	local clipped = vim.fn.strcharpart(hint, 0, available)
+	local padding = math.max(available - vim.fn.strdisplaywidth(clipped), 0)
 	local buf = vim.api.nvim_create_buf(false, true)
 	vim.bo[buf].bufhidden = "wipe"
-	vim.api.nvim_buf_set_lines(buf, 0, -1, false, { char })
+	vim.api.nvim_buf_set_lines(buf, 0, -1, false, { " " .. string.rep(" ", padding) .. clipped .. " " })
 	local win = vim.api.nvim_open_win(buf, false, {
 		relative = "editor",
-		row = row,
-		col = col,
-		width = 1,
+		row = position[1] + height + 1,
+		col = position[2],
+		width = width,
 		height = 1,
+		border = { "├", "─", "┤", "│", "╯", "─", "╰", "│" },
 		style = "minimal",
 		focusable = false,
 		zindex = zindex,
 	})
-	vim.wo[win].winhighlight = "Normal:PickerBorder"
-	table.insert(join_windows, win)
+	vim.wo[win].winhighlight = "Normal:PickerHint,FloatBorder:PickerBorder"
+	table.insert(chrome_windows, win)
 end
 
----@param win integer
-local function draw_joins(win)
-	close_join_windows()
-	local position = vim.api.nvim_win_get_position(win)
-	local width = vim.api.nvim_win_get_width(win)
-	local height = vim.api.nvim_win_get_height(win)
-	local zindex = vim.api.nvim_win_get_config(win).zindex + 1
-	local separator_row = position[1] + height - 1
-	open_join_window("├", separator_row, position[2], zindex)
-	open_join_window("┤", separator_row, position[2] + width + 1, zindex)
+---@alias gleb.picker.Hint string|fun(): string?
+
+---@param hints? gleb.picker.Hint
+---@return string?
+local function current_hint(hints)
+	if type(hints) == "function" then
+		return hints()
+	end
+	if hints then
+		return layout.current().kind == "narrow" and nil or hints
+	end
+	return layout.hint()
 end
 
----@param hints string
+---@param hints? gleb.picker.Hint
+---@param on_show? fun(items: gleb.picker.Row[])
 ---@return fun(buf: integer, items: gleb.picker.Row[], query: string[])
-local function create_show(hints)
+local function create_show(hints, on_show)
 	return function(buf, items, _query)
 		local win = vim.fn.bufwinid(buf)
 		if win == -1 then
@@ -89,41 +98,43 @@ local function create_show(hints)
 		end
 
 		local width = vim.api.nvim_win_get_width(win)
-		local height = vim.api.nvim_win_get_height(win)
-		local item_count = math.max(height - 2, 0)
 		local shown = vim.tbl_map(function(item)
 			return type(item) == "table" and item or { text = tostring(item) }
-		end, vim.list_slice(items, 1, item_count))
+		end, items)
 		rows.render(buf, shown, width, vim.tbl_extend("force", layout.row_options(), { padding = 1 }))
 
-		local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
-		while #lines < item_count do
-			table.insert(lines, "")
+		local hint = current_hint(hints)
+		if hint then
+			open_hint_window(hint, win)
+		else
+			close_chrome_windows()
 		end
-		table.insert(lines, string.rep("─", width))
-		local available = math.max(width - 2, 0)
-		local clipped_hint = vim.fn.strcharpart(hints, 0, available)
-		local padding = math.max(available - vim.fn.strdisplaywidth(clipped_hint), 0)
-		table.insert(lines, " " .. string.rep(" ", padding) .. clipped_hint .. " ")
-		vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
-		vim.api.nvim_buf_clear_namespace(buf, namespace, 0, -1)
-		vim.api.nvim_buf_set_extmark(buf, namespace, height - 1, 0, {
-			end_col = #lines[height],
-			hl_group = "PickerHint",
-		})
 		vim.api.nvim_win_set_config(win, { footer = "" })
-		draw_joins(win)
+		if on_show then
+			on_show(items)
+		end
 	end
 end
 
 ---@param title string
----@param hints? string
+---@param hints? gleb.picker.Hint
+---@param window_config? fun(): table
+---@param on_show? fun(items: gleb.picker.Row[])
 ---@return table
-function M.options(title, hints)
-	hints = hints or layout.hint()
+function M.options(title, hints, window_config, on_show)
+	local base_window_config = window_config or layout.window_config
 	return {
-		source = { name = title, show = hints and create_show(hints) or rows.show },
-		window = { prompt_prefix = " " .. title .. " › " },
+		source = { name = title, show = create_show(hints, on_show) },
+		window = {
+			prompt_prefix = " " .. title .. " › ",
+			config = function()
+				local config = vim.deepcopy(base_window_config())
+				if current_hint(hints) then
+					config.height = math.max(config.height - 2, 1)
+				end
+				return config
+			end,
+		},
 	}
 end
 
@@ -139,7 +150,7 @@ function M.setup()
 	setup_highlights()
 	local group = vim.api.nvim_create_augroup("gleb_picker", { clear = true })
 	vim.api.nvim_create_autocmd("ColorScheme", { group = group, callback = setup_highlights })
-	vim.api.nvim_create_autocmd("User", { group = group, pattern = "MiniPickStop", callback = close_join_windows })
+	vim.api.nvim_create_autocmd("User", { group = group, pattern = "MiniPickStop", callback = close_chrome_windows })
 end
 
 ---@param opts gleb.picker.FrameOpts

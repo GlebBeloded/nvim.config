@@ -8,7 +8,7 @@ if not ok then
 end
 
 local layout = require("gleb.picker.layout")
-local rows = require("gleb.picker.rows")
+local frame = require("gleb.picker.frame")
 
 ---@class gleb.picker.SelectKeymap
 ---@field focus_next string[]
@@ -84,33 +84,47 @@ local function stop_picker()
 	return true
 end
 
+---@param keymap gleb.picker.SelectKeymap
 ---@return table
-local function picker_mappings()
+local function picker_mappings(keymap)
 	return {
-		move_down = "j",
-		move_up = "k",
-		choose = "<CR>",
-		stop = "<Esc>",
+		move_down = keymap.focus_next[1],
+		move_up = keymap.focus_prev[1],
+		choose = keymap.submit[1],
+		stop = keymap.close[1],
 		toggle_preview = "<M-p>",
 		toggle_info = "<M-i>",
-		focus_next_tab = { char = "<Tab>", func = move_next },
-		focus_previous_tab = { char = "<S-Tab>", func = move_previous },
-		close_control_c = { char = "<C-c>", func = stop_picker },
-		submit_space = { char = "<Space>", func = submit_current },
+		focus_next_down = { char = keymap.focus_next[2], func = move_next },
+		focus_next_tab = { char = keymap.focus_next[3], func = move_next },
+		focus_previous_up = { char = keymap.focus_prev[2], func = move_previous },
+		focus_previous_tab = { char = keymap.focus_prev[3], func = move_previous },
+		close_control_c = { char = keymap.close[2], func = stop_picker },
+		submit_space = { char = keymap.submit[2], func = submit_current },
 	}
 end
 
 ---@param preview_item? fun(item: any)
----@return fun(buf: integer, items: gleb.picker.Row[], query: string[])
-local function create_show(preview_item)
+---@return fun()
+local function create_preview(preview_item)
 	local previewed_index
-	return function(buf, items, query)
-		rows.show(buf, items, query)
-		local current = MiniPick.get_picker_matches().current
+	return function()
+		local matches = MiniPick.get_picker_matches()
+		local current = matches and matches.current
 		if preview_item and current and current.index ~= previewed_index then
 			previewed_index = current.index
 			preview_item(current.item)
 		end
+	end
+end
+
+---@return string?
+local function selection_hint()
+	local kind = layout.current().kind
+	if kind == "full" then
+		return "Choose ↩ · Cancel Esc"
+	end
+	if kind == "compact" then
+		return "↩ · Esc"
 	end
 end
 
@@ -120,12 +134,6 @@ end
 ---@return any
 function M.select(items, opts, on_choice)
 	opts = opts or {}
-	local format_item = opts.format_item or tostring
-	local picker_items = {}
-	for index, item in ipairs(items) do
-		picker_items[index] = { text = format_item(item), item = item, index = index }
-	end
-
 	local completed = false
 	local function complete(item, index)
 		if completed then
@@ -135,26 +143,25 @@ function M.select(items, opts, on_choice)
 		on_choice(item, index)
 	end
 
-	local source = {
-		items = picker_items,
-		name = opts.prompt or opts.kind or "Select",
-		show = create_show(opts.preview_item),
-		choose = function(item)
-			complete(item.item, item.index)
-		end,
-	}
-	local window_config = opts.kind == "codeaction" and function()
-		return M.window_config(items, opts)
-	end or layout.window_config
-	local selected = MiniPick.start({
-		source = source,
-		mappings = picker_mappings(),
-		window = { config = window_config },
-	})
-	if selected == nil then
-		complete(nil, nil)
+	local title = opts.prompt or opts.kind or "Select"
+	local window_config = layout.window_config
+	if opts.kind == "codeaction" then
+		window_config = function()
+			return M.window_config(items, opts)
+		end
 	end
-	return selected
+	local start_opts = frame.options(title, selection_hint, window_config, create_preview(opts.preview_item))
+	if opts.kind == "codeaction" then
+		start_opts.mappings = picker_mappings(M.default_keymap())
+	end
+
+	return MiniPick.ui_select(items, opts, function(item, index)
+		if item == nil then
+			complete(nil, nil)
+		else
+			complete(item, index)
+		end
+	end, start_opts)
 end
 
 ---@diagnostic disable-next-line: duplicate-set-field

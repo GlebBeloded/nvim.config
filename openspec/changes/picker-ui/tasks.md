@@ -1,8 +1,9 @@
 ## 1. Build and register the shared picker frame
-Scenarios: `picker: Wide picker matches reference screenshot`
+Scenarios: `picker: Wide picker matches reference screenshot`, `picker: Focused match remains above the hint row`
 - [x] 1.1 Write the test `picker: Wide picker matches reference screenshot` in tests/screen/picker/test_frame.lua and see it fail
 - [x] 1.2 Declare and lock mini.nvim, add the shared picker setup, complete rounded frame, title/query rendering, reserved joined hint row and palette-backed highlight groups, wire it from `init.lua`, and add architecture rule 8.9
 - [x] 1.3 Run `make test FILE=tests/screen/picker/test_frame.lua CASE="Wide picker matches reference screenshot"` and see it pass
+- [x] 1.4 Keep mini.pick's viewport limited to match rows so focused matches never enter the attached hint area
 
 ## 2. Render picker rows
 Scenarios: `picker: Rows expose primary secondary and category text`, `picker: Section header fills its row with a rule`
@@ -17,16 +18,18 @@ Scenarios: `picker: Compact picker matches reference screenshot`, `picker: Narro
 - [x] 3.3 Run the four scenarios in tests/screen/picker/test_responsive.lua and see them pass
 
 ## 4. Give code actions the shared picker mappings
-Scenarios: `select: Code action menu receives picker mappings`
+Scenarios: `select: Code action menu receives picker mappings`, `select: Shared code action uses picker mappings`, `select: General selection keeps text input mappings`
 - [x] 4.1 Write the scenario in tests/integration/select/test_picker.lua and see it fail
 - [x] 4.2 Apply the shared picker's declared mappings to code-action selections
 - [x] 4.3 Run `make test FILE=tests/integration/select/test_picker.lua CASE="Code action menu receives picker mappings"` and see it pass
+- [x] 4.4 Derive active aliases from the default keymap and apply them only to code actions
 
 ## 5. Preserve the selection completion contract
-Scenarios: `select: Selection accepts omitted options`, `select: Cancelling a code action completes selection`
+Scenarios: `select: Selection accepts omitted options`, `select: Cancelling a code action completes selection`, `select: Selection callback runs in the target window`
 - [x] 5.1 Write the two completion scenarios in tests/integration/select/test_picker.lua and see them fail
 - [x] 5.2 Accept omitted options and invoke a cancelled code-action callback exactly once with two nil arguments
 - [x] 5.3 Run both completion scenarios in tests/integration/select/test_picker.lua and see them pass
+- [x] 5.4 Delegate selection to MiniPick.ui_select so callbacks run in the originating target window
 
 ## 6. Fit code-action pickers to the editor
 Scenarios: `select: Code action popup fits editor width`
@@ -85,7 +88,7 @@ Scenarios: `ai: Keymaps exist after VeryLazy`, `ai: Missing 99 is tolerated`, `a
 ## Agent decisions
 
 - Live grep uses mini.pick's built-in `grep_live`, because the installed mini.extra has no live-grep source; frame options preserve the specified shared UI.
-- The joined hint rule uses two non-focusable one-cell overlays above mini.pick's float so its side glyphs are true `├` and `┤` border joins.
+- The hint area is an attached non-focusable one-row window whose top border joins mini.pick's frame, keeping mini.pick's viewport limited to match rows.
 - Row visibility uses named `show_*` options and built-in `Comment`/`PmenuExtra`/`PmenuKind` groups so responsive callers can hide fields while the frame task remains responsible for palette-backed links.
 - Normal picker geometry is a centered 72-by-8-cell frame, while editors below 15 lines use every row, matching the approved wide render and preserving results on short screens.
 - Selection items retain their original value and index beside formatted row text so matching uses what users see while callbacks receive the original item.

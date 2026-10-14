@@ -106,9 +106,9 @@ T["session: bare nvim restores a cwd session after pane id change"] = function()
 	vim.fn.writefile({ "startup" }, startup_file)
 	child.stop()
 
-	restart_in_pane("z", "5", nil, "edit " .. startup_file)
+	restart_in_pane("z", "5", nil, "edit " .. startup_file .. " | cd " .. root)
 
-	eq(child.fn.expand("%:t"), "a.txt")
+	eq({ child.fn.getcwd(), child.fn.expand("%:t") }, { root, "a.txt" })
 end
 
 T["session: nvim with a file argument does not restore"] = function()

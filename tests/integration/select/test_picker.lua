@@ -31,28 +31,33 @@ local function open_select(items, opts, callback)
 end
 
 T["select: Shared code action uses picker mappings"] = function()
-	local result = child.lua_get([[(function()
-		local ok, select = pcall(require, "gleb.picker.select")
-		return { ok = ok, keymap = ok and select.default_keymap() or nil }
-	end)()]])
-
-	eq(result.ok, true)
-	eq(result.keymap, {
-		focus_next = { "j", "<Down>", "<Tab>" },
-		focus_prev = { "k", "<Up>", "<S-Tab>" },
-		close = { "<Esc>", "<C-c>" },
-		submit = { "<CR>", "<Space>" },
-	})
-
 	open_select({ "fix" }, { kind = "codeaction", prompt = "Code Actions" }, "Choice = { item, index }")
 	local mappings = child.lua_get([[(function()
 		local mappings = MiniPick.get_picker_opts().mappings
-		return { move_down = mappings.move_down, move_up = mappings.move_up, choose = mappings.choose, stop = mappings.stop }
+		return {
+			mappings.move_down,
+			mappings.focus_next_down.char,
+			mappings.focus_next_tab.char,
+			mappings.move_up,
+			mappings.focus_previous_up.char,
+			mappings.focus_previous_tab.char,
+			mappings.stop,
+			mappings.close_control_c.char,
+			mappings.choose,
+			mappings.submit_space.char,
+		}
 	end)()]])
-	eq(mappings.move_down, "j")
-	eq(mappings.move_up, "k")
-	eq(mappings.choose, "<CR>")
-	eq(mappings.stop, "<Esc>")
+	eq(mappings, { "j", "<Down>", "<Tab>", "k", "<Up>", "<S-Tab>", "<Esc>", "<C-c>", "<CR>", "<Space>" })
+	local config = child.lua_get([[vim.api.nvim_win_get_config(MiniPick.get_picker_state().windows.main)]])
+	eq(config.footer, nil)
+	eq(config.title[1][1]:find("Code Actions", 1, true) ~= nil, true)
+	child.type_keys("<Esc>")
+end
+
+T["select: General selection keeps text input mappings"] = function()
+	open_select({ "j k" }, {}, "Choice = { item, index }")
+	child.type_keys("j k")
+	eq(child.wait([[table.concat(MiniPick.get_picker_query()) == "j k"]]), true)
 	child.type_keys("<Esc>")
 end
 
@@ -84,6 +89,21 @@ T["select: Shared code action cancellation preserves callback arity"] = function
 	eq(child.lua_get("CancelArgs"), { count = 2, item_is_nil = true, index_is_nil = true })
 end
 
+T["select: Selection callback runs in the target window"] = function()
+	child.lua([[SelectTarget = { win = vim.api.nvim_get_current_win(), buf = vim.api.nvim_get_current_buf() }]])
+	open_select(
+		{ "fix" },
+		{ kind = "codeaction" },
+		[[
+		ChoiceContext = { win = vim.api.nvim_get_current_win(), buf = vim.api.nvim_get_current_buf(), item = item, index = index }
+	]]
+	)
+	child.type_keys("<CR>")
+	eq(child.wait("ChoiceContext ~= nil"), true)
+	local context = child.lua_get([[{ target = SelectTarget, choice = ChoiceContext }]])
+	eq(context.choice, { win = context.target.win, buf = context.target.buf, item = "fix", index = 1 })
+end
+
 T["select: Formatted code action width configures shared picker"] = function()
 	local result = child.lua_get([[(function()
 		vim.o.columns = 80
@@ -110,7 +130,7 @@ T["select: Selection previews the current item"] = function()
 	eq(child.wait([[MiniPick.get_picker_matches().current ~= nil]]), true)
 
 	local buf = child.lua_get([[MiniPick.get_picker_state().buffers.main]])
-	eq(child.api.nvim_buf_get_lines(buf, 0, -1, false)[1], "formatted one")
+	eq(child.api.nvim_buf_get_lines(buf, 0, -1, false)[1], " formatted one")
 	child.type_keys("<Down>")
 	eq(child.wait([[Previewed == "two"]]), true)
 	child.type_keys("<Esc>")

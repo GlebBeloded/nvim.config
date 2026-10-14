@@ -19,36 +19,19 @@ end
 local T = H.child_set(child, start)
 
 local function load_picker()
-	eq(child.lua_get([[pcall(require, "gleb.picker.layout")]]), true)
+	eq(child.lua_get([[pcall(require, "gleb.picker")]]), true)
 	child.lua(
 		[[
-		PickerLayout = require("gleb.picker.layout")
-		PickerRows = require("gleb.picker.rows")
+		Picker = require("gleb.picker")
+		MiniPick = require("mini.pick")
 		PickerItems = ...
 
 		function ShowResponsivePicker()
-			local config = PickerLayout.window_config()
-			local buf = vim.api.nvim_create_buf(false, true)
-			local win = vim.api.nvim_open_win(buf, true, vim.tbl_extend("force", config, {
-				style = "minimal",
-				border = "rounded",
-				title = " Live Grep › picker ",
-				title_pos = "left",
-			}))
-			PickerRows.show(buf, PickerItems, {})
-			local hint = PickerLayout.hint()
-			if hint then
-				local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
-				while #lines < config.height - 2 do
-					table.insert(lines, "")
-				end
-				table.insert(lines, string.rep("─", config.width))
-				table.insert(lines, string.rep(" ", math.max(config.width - vim.fn.strdisplaywidth(hint), 0)) .. hint)
-				vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
-			end
-			vim.cmd("redraw")
-			ResponsivePicker = { buf = buf, win = win }
-			return ResponsivePicker
+			Picker.start({
+				title = "Live Grep",
+				items = PickerItems,
+				match = function(_, inds) return inds end,
+			})
 		end
 	]],
 		{ ITEMS }
@@ -63,29 +46,33 @@ end
 T["picker: Compact picker matches reference screenshot"] = function()
 	set_size(24, 60)
 	load_picker()
-	child.lua([[ShowResponsivePicker()]])
+	child.lua_notify([[ShowResponsivePicker()]])
+	assert(child.wait([[MiniPick.is_picker_active()]]), "shared picker did not open")
+	child.type_keys("picker")
+	assert(child.wait([[table.concat(MiniPick.get_picker_query()) == "picker"]]), "query was not rendered")
 
 	local text = table.concat(vim.tbl_map(table.concat, child.get_screenshot().text), "\n")
 	eq(text:find("Config", 1, true), nil)
 	eq(text:find("Open", 1, true), nil)
-	eq(
-		child.lua_get([=[vim.api.nvim_buf_get_lines(ResponsivePicker.buf, -2, -1, false)[1]]=]):find("↩", 1, true)
-			~= nil,
-		true
-	)
+	eq(text:find("↩", 1, true) ~= nil, true)
 	H.expect_screenshot(child.get_screenshot())
+	child.type_keys("<Esc>")
 end
 
 T["picker: Narrow picker matches reference screenshot"] = function()
 	set_size(24, 40)
 	load_picker()
-	child.lua([[ShowResponsivePicker()]])
+	child.lua_notify([[ShowResponsivePicker()]])
+	assert(child.wait([[MiniPick.is_picker_active()]]), "shared picker did not open")
+	child.type_keys("picker")
+	assert(child.wait([[table.concat(MiniPick.get_picker_query()) == "picker"]]), "query was not rendered")
 
 	local text = table.concat(vim.tbl_map(table.concat, child.get_screenshot().text), "\n")
 	eq(text:find("vim.ui.select = function", 1, true) ~= nil, true)
 	eq(text:find("lua/gleb/select", 1, true), nil)
 	eq(text:find("↩", 1, true), nil)
 	H.expect_screenshot(child.get_screenshot())
+	child.type_keys("<Esc>")
 end
 
 T["picker: Short editor gives the picker full height"] = function()
@@ -100,19 +87,23 @@ end
 T["picker: Resize recomputes picker layout"] = function()
 	set_size(24, 80)
 	load_picker()
-	child.lua([[ShowResponsivePicker()]])
+	child.lua_notify([[ShowResponsivePicker()]])
+	assert(child.wait([[MiniPick.is_picker_active()]]), "shared picker did not open")
 	set_size(24, 40)
 	child.cmd("doautocmd VimResized")
-	child.lua([[
-		vim.api.nvim_win_set_config(ResponsivePicker.win, PickerLayout.window_config())
-		PickerRows.show(ResponsivePicker.buf, PickerItems, {})
-	]])
+	assert(
+		child.wait([[vim.api.nvim_win_get_config(MiniPick.get_picker_state().windows.main).width == 38]]),
+		"picker did not resize"
+	)
 
-	local config = child.lua_get([[vim.api.nvim_win_get_config(ResponsivePicker.win)]])
-	local lines = child.lua_get([[vim.api.nvim_buf_get_lines(ResponsivePicker.buf, 0, -1, false)]])
+	local config = child.lua_get([[vim.api.nvim_win_get_config(MiniPick.get_picker_state().windows.main)]])
+	local lines = child.lua_get([[vim.api.nvim_buf_get_lines(MiniPick.get_picker_state().buffers.main, 0, -1, false)]])
 	eq(config.width, 38)
 	eq(config.col, 0)
-	eq(lines[1], "vim.ui.select = function")
+	eq(lines[1], " vim.ui.select = function")
+	local text = table.concat(vim.tbl_map(table.concat, child.get_screenshot().text), "\n")
+	eq(text:find("↩", 1, true), nil)
+	child.type_keys("<Esc>")
 end
 
 return T

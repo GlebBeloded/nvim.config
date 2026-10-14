@@ -13,6 +13,15 @@ local ITEMS = {
 	{ text = 'require("gleb.picker")', secondary = "init.lua:17", category = "Startup" },
 }
 
+local MANY_ITEMS = {
+	{ text = "first" },
+	{ text = "second" },
+	{ text = "third" },
+	{ text = "fourth" },
+	{ text = "fifth" },
+	{ text = "sixth" },
+}
+
 local function start()
 	child.start_bare({ "gruvbox-material" })
 	child.o.lines = 24
@@ -48,6 +57,28 @@ T["picker: Wide picker matches reference screenshot"] = function()
 	H.expect_hl_colors(child, "MiniPickMatchCurrent", { bg = "#32302f" })
 	H.expect_hl_colors(child, "PickerHint", { fg = "#5a524c" })
 	H.expect_screenshot(child.get_screenshot())
+	child.type_keys("<Esc>")
+end
+
+T["picker: Focused match remains above the hint row"] = function()
+	child.lua_notify(
+		[[require("gleb.picker").start({
+			title = "Many Matches",
+			items = ...,
+			hints = "Open ↵ · Split ⌃S · Vsplit ⌃V",
+			match = function(_, inds) return inds end,
+		})]],
+		{ MANY_ITEMS }
+	)
+	assert(child.wait([[require("mini.pick").is_picker_active()]]), "shared picker did not open")
+	child.type_keys("<Down><Down><Down><Down>")
+	assert(child.wait([[require("mini.pick").get_picker_matches().current.text == "fifth"]]), "fifth match not focused")
+
+	local lines = child.lua_get([[
+		vim.api.nvim_buf_get_lines(require("mini.pick").get_picker_state().buffers.main, 0, -1, false)
+	]])
+	eq(vim.tbl_contains(lines, " fifth"), true)
+	eq(#lines, 4)
 	child.type_keys("<Esc>")
 end
 
