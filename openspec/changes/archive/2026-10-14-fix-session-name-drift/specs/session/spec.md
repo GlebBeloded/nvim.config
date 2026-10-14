@@ -1,7 +1,7 @@
 ## MODIFIED Requirements
 
 ### Requirement: Restore on bare startup
-The config SHALL capture `key.session_name()` once during module load, before later cwd changes. On `VimEnter`, it SHALL load the session returned by `key.resolve(<captured session name>, <saved sessions>)` only when Neovim was started with no file arguments (`argc(-1) == 0`), with nested autocmds enabled so `FileType` fires for restored buffers, and errors silenced. The saved sessions SHALL be listed newest first by modification time, so the cwd fallback picks the most recently saved session for the cwd.
+The config SHALL capture `key.session_name()` once at module load, before later cwd changes. On `VimEnter`, it SHALL load `key.resolve(<captured session name>, <saved sessions>)` only when started with no file arguments (`argc(-1) == 0`), with nested autocmds so `FileType` fires for restored buffers and with errors silenced. Saved sessions SHALL be listed newest first by modification time, so cwd fallback picks the most recently saved session for the cwd.
 
 #### Scenario: bare nvim restores the pane session
 - **WHEN** a session named `key.session_name()` containing file `a.txt` exists and Neovim is started with no file arguments in the same cwd and zellij env

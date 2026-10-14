@@ -6,7 +6,7 @@ Kind: bug
 Adopt: loop/fix-session-name-drift
 
 ## Evidence
-- `lua/gleb/session/init.lua:40` and `lua/gleb/session/init.lua:48` call `key.session_name()` separately when saving and restoring.
+- Baseline `auto` at `lua/gleb/session/init.lua:40` and `lua/gleb/session/init.lua:48` calls `key.session_name()` separately when saving and restoring.
 - `lua/gleb/session/key.lua:19` derives each call from the live `vim.fn.getcwd()` value.
 - `lua/gleb/project.lua:16` enables automatic project-directory changes, and installed project.nvim source at `~/.local/share/nvim/lazy/project.nvim/lua/project_nvim/project.lua:180` changes the global cwd.
 
