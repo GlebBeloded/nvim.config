@@ -37,6 +37,10 @@ STOP = {
 }
 
 
+# the loop's own spec quotes config symbols as examples (e.g. `gr`); it never pins config behaviour
+TOOLING = {"loop"}
+
+
 def section(text: str, title: str) -> str:
     m = re.search(rf"^## {title}\s*$(.*?)(?=^## |\Z)", text, re.MULTILINE | re.DOTALL)
     return m.group(1) if m else ""
@@ -177,7 +181,7 @@ def pinned(change: str) -> list[str]:
     out = []
     for spec in sorted(pathlib.Path("openspec/specs").glob("*/spec.md")):
         capability = spec.parent.name
-        if (folder / "specs" / capability / "spec.md").is_file():
+        if capability in TOOLING or (folder / "specs" / capability / "spec.md").is_file():
             continue
         for title, line in spec_pins(spec, lhs, idents):
             if title.removeprefix("Requirement: ") not in impact:

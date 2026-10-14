@@ -648,6 +648,10 @@ Every literal `lua/gleb` file path routed by `tests/quick.sh` SHALL exist in the
 - **WHEN** pinned.py runs for a proposal naming `gr` and `lsp_references(…)` and `H.xfail`, against a spec with a scenario reading `maparg("gr")` whose callback is `lsp_references`, a desc enumeration naming `gr`, a screenshot scenario with no `gr` row and an `H.xfail` scenario
 - **THEN** it prints only the first scenario with its spec line, and `--check` exits 1
 
+#### Scenario: Pinned ignores the loop spec's examples
+- **WHEN** `pinned.py` runs for a proposal naming `gr` in a repo whose `openspec/specs/loop/spec.md` quotes the same `gr` scenario text as the keymaps spec
+- **THEN** it lists only the keymaps pin
+
 #### Scenario: Pinned skips a planned or explained scenario
 - **WHEN** pinned.py `--check` runs for that change once with a `specs/keymaps/spec.md` delta and once with an Impact line naming the scenario's title
 - **THEN** both exit 0 and print nothing
