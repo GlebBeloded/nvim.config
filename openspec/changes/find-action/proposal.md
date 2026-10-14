@@ -46,8 +46,8 @@ Depends: action-registry, picker-ui
 ## Impact
 
 - Code:
-  - New: `lua/gleb/find_action/`.
-  - Changed: `terminal/alacritty` (Cmd+Shift+A binding), `lua/gleb/ai/entry_keymaps.lua`, `settings/keymap.json` (adds `find_action.open`).
+  - New: `lua/gleb/find_action/`, `lua/gleb/ai/actions.lua`.
+  - Changed: `init.lua` (registers and loads the feature), `terminal/alacritty/keymaps_macos.toml` (Cmd+Shift+A binding), `lua/gleb/ai/entry_keymaps.lua`, `settings/keymap.json` (adds `find_action.open`).
 - **Tests.** The user asked for a full suite with visual verification, because the logic is complex:
   - **Unit:** ordering (recently used, curated, the hidden separator), the label mapping (lhs → physical label), and the conflict and choice outcomes.
   - **Integration, generated over every registered action:**

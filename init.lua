@@ -12,7 +12,7 @@ require("gleb.options")
 require("gleb.colors")
 require("gleb.picker")
 require("gleb.keymaps") -- after plugins: needs smart-splits
-require("gleb.actions").setup({})
+require("gleb.actions").setup({ require("gleb.find_action.actions") })
 require("gleb.cmp")
 require("gleb.lsp")
 require("gleb.select")
