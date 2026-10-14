@@ -3,6 +3,7 @@
 Shortcuts are spread over `keymaps.lua`, feature modules, plugin `mappings` tables, lazy.nvim `keys` specs and plugin defaults, so nothing can list every action, show its shortcut, or rebind it at runtime. A Find Action palette (`find-action`) needs one registry of actions and one file of shortcuts underneath it.
 
 Kind: feature
+Adopt: loop/action-registry
 
 ## What Changes
 
@@ -38,3 +39,11 @@ Kind: feature
 - Shortcuts are saved in the repo, in a directory rather than the repo root ("I like repo root to be clean"), and the user syncs them to git manually.
 - Both chords and key sequences can be assigned.
 - Each package exposes its actions in a clean, idiomatic way.
+
+## Rejected run
+Run on `loop/action-registry` was rejected by the judge:
+- blocked: tasks.md: ## Blocked
+
+- Probe: not needed because the deterministic test exposed the value directly: `Left: "[]"`, `Right: "{}"`.
+- Attempt 1: the shortcut store passed the four listed scenarios, but review of the repository's initial `{}` file exposed that empty Lua tables were rejected as lists.
+- Attempt 2: empty tables were accepted, but `vim.json.encode` serialized the empty shortcut map as `[]`; `actions: Shortcut file round-trips deterministically` remained red.
