@@ -8,6 +8,7 @@
 | `make check E2E=1` | the same, booting the sandbox VM for e2e if it is down; the loop's gate (`.archon/scripts/gate.py`) | ~15 s (VM up) |
 | `make quick` | lint + trace, plus only the layers the changes vs `BASE` (default `auto`) can affect (`tests/quick.sh` has the mapping) | <1 s docs only, ~7 s one capability |
 | `make test FILE=… CASE=…` | one file / matching cases | ~1–3 s |
+| `make probe SCRIPT=<file.lua>` / `PROBE='lua code'` | a Lua snippet in one full-config child ([Probing](#probing)) | ~1 s warm |
 
 `check.sh` prints one status line per layer as it finishes, then the full log of every failed layer. A layer that cannot run here prints `skip` with its reason (e2e while the sandbox VM is down). `make quick` takes `ALL=1`, `STACK=1`, `E2E=1`, `SMOKE=1` and `TYPES=1` to force a layer.
 
@@ -57,6 +58,7 @@ tests/
   fixtures.lua          F.copy(name, dest) and F.go_env() for e2e stacks
   screenshots/          reference screenshots (text, committed)
   smoke/                make smoke (run.lua outside, probe.lua inside nvim)
+  probe.lua             make probe
   render/               make render / make colorize (cases.lua, tmux capture, mockup colorizer)
   trace.lua             make trace
 ```
@@ -73,6 +75,10 @@ Every child gets its own sandbox (`tests/helpers.lua`), so tests never touch you
 - `g:clipboard` is an in-memory provider (`tests/child_init.lua`).
 - `copilot.lua` is disabled in full-config children because it lazy-loads on InsertEnter and talks to the network.
 - nvim-debug-log writes `/tmp/nvim/<time>_<pid>.txt` (hard-coded). The harness deletes its own children's files by pid.
+
+## Probing
+
+`make probe SCRIPT=<file.lua>` (or `PROBE='lua code'`) runs Lua in a child started like a test's: `H.new_child()` + `start_config()` (same rtp, XDG sandbox and plugin data, copilot off), then `wait_very_lazy()`. It prints what the snippet `print`s, then each return value through `vim.inspect`, and exits 1 on a load or runtime error (message on stderr, after the prints), 124 after `PROBE_TIMEOUT` ms (default 30000). Use it instead of hand-building `nvim -l` with rtp or XDG dirs. LSP restart and neo-tree renders are async: wait for the end state (`vim.wait`), not for attachment.
 
 ## Naming rule = traceability
 
