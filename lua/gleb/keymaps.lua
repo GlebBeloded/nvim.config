@@ -157,14 +157,20 @@ local function lsp_references()
 	require("telescope.builtin").lsp_references({ include_current_line = true })
 end
 
+local function clear_long_gr_maps()
+	for _, mapping in ipairs(vim.api.nvim_get_keymap("n")) do
+		if mapping.lhs ~= "gr" and vim.startswith(mapping.lhs, "gr") then
+			vim.keymap.del("n", mapping.lhs)
+		end
+	end
+end
+
 map("n", "gD", vim.lsp.buf.declaration, "LSP: Go to declaration")
 map("n", "gd", vim.lsp.buf.definition, "LSP: Go to definition")
 map("n", "K", vim.lsp.buf.hover, "LSP: Hover")
 map("n", "gi", vim.lsp.buf.implementation, "LSP: Go to implementation")
 map("n", "gr", lsp_references, "LSP: References")
-for _, lhs in ipairs({ "grn", "gra", "grx", "grr", "gri", "grt" }) do
-	vim.keymap.del("n", lhs)
-end
+clear_long_gr_maps()
 map("n", "<A-r>", vim.lsp.buf.rename, "LSP: Rename")
 
 -- Diagnostics

@@ -17,3 +17,4 @@ None. `skip_specs: true`.
 ## Impact
 - Code: `lua/gleb/keymaps.lua`, keymaps integration test.
 - Plugins: none. Core keymaps: unchanged meaning.
+- Pinned scenario preserved: `file-tree: gr keeps its global meaning in git status tree` still holds because cleanup excludes the exact global `gr` mapping while removing longer `gr*` mappings.
