@@ -3,7 +3,7 @@
 There is no way to see every action, find one by name, see its shortcut, or bind a key to it while working. The user wants a GoLand-style "Find Action" on Cmd+Shift+A that becomes the main entry point to editor and plugin actions, with shortcuts assignable at runtime.
 
 Kind: feature
-Adopt: loop/find-action
+Adopt: loop/find-action-20261014-222127
 Depends: action-registry, picker-ui
 
 ## What Changes
@@ -78,22 +78,7 @@ Depends: action-registry, picker-ui
 - Cmd+Shift+A: add the Alacritty binding (shortcut table).
 
 ## Rejected run
-Run on `loop/find-action` was rejected by the judge:
-- fix loop exhausted with gates still red: tests,stuck
-- stuck: tasks.md `## Stuck` (earlier attempts, kept on the branch: not quoted here)
-- last failures:
-  make check is red:
-  full log: /Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/499b0b85-ea4d-47ff-b047-aa4720bc6db5/check-3.log
-  ok   lint             0.2 s
-  ok   trace            0.5 s
-  ok   types            1.3 s
-  ok   specs            2.7 s
-  ok   chain            5.8 s
-  ok   smoke-health    16.2 s
-  ok   stack           16.3 s
-  FAIL test            77.5 s
-  FAIL e2e             80.2 s
-  ok   smoke-startup    1.2 s
-- note: loop: ENOENT: no such file or directory (cmd): '/Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/worktrees/loop/find-action/.tests/venv/bin/python'
-- note: loop: - keymaps: Smart-splits resize keys are not remapped (openspec/specs/keymaps/spec.md:80)
-- note: loop: FAIL in tests/e2e/shortcuts/test_e2e.lua | shortcuts: Ctrl+Up grows the current Neovim split from a real key press: /Users/lume/nvim/tests/shortcuts/stack.lua:171: stack: timed out waiting for split 2 rows taller
+Run on `loop/find-action-20261014-222127` was rejected by the judge:
+- fix loop exhausted with gates still red: review
+- review findings:
+  [must-fix] With an empty query, the palette opens with the section header selected instead of the first action. Approved render design.md:73 says "Open Differ selected", and its highlight row design.md:116 shows Open Differ in PmenuSel/PmenuExtraSel with the `recently used` rule unselected. Instead, palette.lua:210-225 leaves current_ind=1 on the `recently used`/`other actions` section row. The pinned reference tests/screenshots/tests-screen-find-action-test_palette.lua---find-action--Wide-palette-matches-reference-screenshots (attr rows 07-08) has the current-line highlight on the section row and no selection on Open Differ, so it does not match the approved render ("Wide palette matches reference screenshots"). Functional effect, confirmed by `make probe`: on open, current is `ind=1 text=other actions`. `<M-}>` does nothing there, because request_assignment at palette.lua:128-144 returns early on rows without an action, so Option+Return cannot assign the displayed first action. `<Down>` then moves to the first action, which `<CR>` (choose_action at palette.lua:153-162) already resolved to from the header. Enter, ⌥↩ and Down therefore disagree about which row is selected. The same happens after show_hidden (palette.lua:120-125 set_picker_items) and when a query's first match is the `More results` separator. Fix: make the current match the first action row after start and after set_picker_items, and regenerate the wide references against the H1 highlights. Earlier passes miss
