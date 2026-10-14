@@ -1,6 +1,6 @@
 local M = {}
 
-M.lsp_name = "vtsls"
+M.lsp_names = { "vtsls", "eslint" }
 
 M.lsp_config = {
 	settings = {
@@ -35,14 +35,6 @@ M.lsp_config = {
 		},
 	},
 }
-
--- Note: eslint_d builtin was removed from none-ls
--- ESLint diagnostics are now provided by eslint-lsp via native LSP
-M.null_ls = function(null_ls)
-	return {
-		null_ls.builtins.code_actions.refactoring,
-	}
-end
 
 M.mason = {
 	"eslint-lsp",
