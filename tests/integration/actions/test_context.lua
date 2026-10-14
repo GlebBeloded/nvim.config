@@ -73,6 +73,27 @@ T["actions: Visual actions restore the selection"] = function()
 	eq(child.lua_get([[RunState.ctx == Captured]]), true)
 end
 
+T["actions: Visual shortcuts preserve the active selection"] = function()
+	child.lua([[
+		vim.api.nvim_win_set_cursor(0, { 4, 0 })
+		vim.cmd('execute "normal! v\\<Esc>"')
+		vim.api.nvim_win_set_cursor(0, { 1, 0 })
+		vim.cmd("normal! V2j")
+		Captured = Context.capture()
+		Context.run({ run = function()
+			RunState = {
+				mode = vim.fn.mode(1),
+				anchor = vim.fn.getpos("v"),
+				cursor = vim.api.nvim_win_get_cursor(0),
+			}
+		end }, Captured)
+	]])
+
+	eq(child.lua_get([[RunState.mode]]), "V")
+	eq(child.lua_get([[{ RunState.anchor[2], RunState.anchor[3] }]]), { 1, 1 })
+	eq(child.lua_get([[RunState.cursor]]), { 3, 0 })
+end
+
 T["actions: Availability and toggles share the context"] = function()
 	child.lua([[
 		Captured = Context.capture()

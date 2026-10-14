@@ -153,6 +153,10 @@ function M.new(action_lists, opts)
 			table.insert(catalog.actions, action)
 			catalog.by_id[action.id] = action
 			for _, alias in ipairs(action.aliases or {}) do
+				validate_id(alias)
+				if catalog.by_id[alias] then
+					error("duplicate action id: " .. alias)
+				end
 				catalog.by_id[alias] = action
 			end
 		end

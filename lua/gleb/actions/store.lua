@@ -47,7 +47,10 @@ local function validate_actions(self, shortcuts, warn_unknown)
 	local valid = {}
 	for id, lhs_list in pairs(shortcuts) do
 		local action = self.catalog:get(id)
-		if not action then
+		if (not action and id:match("^ex%.")) or (action and action.hidden) then
+			notify_error("Hidden action cannot receive shortcuts: " .. id)
+			return nil
+		elseif not action then
 			if warn_unknown then
 				if not self.warned_unknown[id] then
 					vim.notify("Unknown action id: " .. id, vim.log.levels.WARN)
@@ -57,9 +60,6 @@ local function validate_actions(self, shortcuts, warn_unknown)
 				notify_error("Unknown action id: " .. id)
 				return nil
 			end
-		elseif action.hidden then
-			notify_error("Hidden action cannot receive shortcuts: " .. id)
-			return nil
 		else
 			valid[id] = lhs_list
 		end

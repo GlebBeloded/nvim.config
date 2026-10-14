@@ -1,7 +1,7 @@
 ## 1. Build the action catalog
 Scenarios: `actions: Valid actions are available by id`, `actions: Invalid action ids are rejected`, `actions: Duplicate action ids are rejected`, `actions: Scoped actions are filtered by context`
 - [x] 1.1 Write the tests for these scenarios in `tests/unit/actions/test_registry.lua` and run each with `make test FILE=tests/unit/actions/test_registry.lua CASE="<scenario title>"` to see it fail
-- [x] 1.2 Add the typed action model and pure catalog under `lua/gleb/actions/`, expose feature-owned action lists, and update the `docs/architecture.md` module map and convention
+- [x] 1.2 Add the typed action model and pure catalog under `lua/gleb/actions/`, and update the `docs/architecture.md` module map and convention. Concrete feature-owned `actions.lua` lists and their collection are owned by `keymaps-migration`.
 - [x] 1.3 Run each scenario with `make test FILE=tests/unit/actions/test_registry.lua CASE="<scenario title>"` and see it pass
 
 ## 2. Persist shortcuts deterministically

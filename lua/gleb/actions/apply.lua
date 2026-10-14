@@ -32,14 +32,6 @@ local function description(action)
 	return action.category .. ": " .. action.title
 end
 
----@param action gleb.Action
----@return function
-local function invoke(action)
-	return function()
-		Context.run(action, Context.capture())
-	end
-end
-
 ---@param binding gleb.AppliedBinding
 local function delete_global(binding)
 	pcall(vim.keymap.del, binding.mode, binding.lhs)
@@ -59,12 +51,16 @@ local function apply_buffer(self, buf)
 	if not vim.api.nvim_buf_is_valid(buf) then
 		return
 	end
+	for _, binding in ipairs(self.buffer_bindings[buf] or {}) do
+		delete_buffer(buf, binding)
+	end
+	self.buffer_bindings[buf] = nil
 
 	local filetype = vim.bo[buf].filetype
 	local applied = {}
 	for _, binding in ipairs(self.scoped_bindings) do
 		if binding.action.ft == filetype then
-			vim.keymap.set(binding.mode, binding.lhs, invoke(binding.action), {
+			vim.keymap.set(binding.mode, binding.lhs, Context.invoke(binding.action), {
 				buffer = buf,
 				desc = description(binding.action),
 				silent = true,
@@ -104,7 +100,7 @@ function Applicator:apply(shortcuts)
 					if action.ft then
 						table.insert(self.scoped_bindings, { action = action, mode = mode, lhs = lhs })
 					else
-						vim.keymap.set(mode, lhs, invoke(action), { desc = description(action), silent = true })
+						vim.keymap.set(mode, lhs, Context.invoke(action), { desc = description(action), silent = true })
 						table.insert(self.global_bindings, { mode = mode, lhs = lhs })
 					end
 				end

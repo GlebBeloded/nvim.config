@@ -42,6 +42,20 @@ local function lhs_overlaps(left, right)
 	return left:sub(1, #right) == right or right:sub(1, #left) == left
 end
 
+---@param catalog gleb.ActionCatalog
+---@param shortcuts gleb.ShortcutMap
+---@param action gleb.Action
+---@return string[]
+local function action_shortcuts(catalog, shortcuts, action)
+	local result = {}
+	for id, lhs_list in pairs(shortcuts) do
+		if catalog:get(id) == action then
+			vim.list_extend(result, lhs_list)
+		end
+	end
+	return result
+end
+
 ---@param read_key? fun(): string
 ---@return string?
 function M.capture(read_key)
@@ -71,7 +85,7 @@ function M.conflicts(catalog, shortcuts, action_id, proposed_lhs)
 	local conflicts = {}
 	for _, other in ipairs(catalog.actions) do
 		if other.id ~= action.id and modes_overlap(action, other) and scopes_overlap(action, other) then
-			for _, lhs in ipairs(shortcuts[other.id] or {}) do
+			for _, lhs in ipairs(action_shortcuts(catalog, shortcuts, other)) do
 				if lhs_overlaps(proposed_lhs, lhs) then
 					table.insert(conflicts, {
 						action_id = other.id,

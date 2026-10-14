@@ -47,9 +47,26 @@ local function restore_selection(ctx)
 	if not selection then
 		return
 	end
+	local current_mode = vim.fn.mode(1)
+	if current_mode == ctx.mode and vim.deep_equal(capture_selection(), selection) then
+		return
+	end
+	if VISUAL_MODES[current_mode] then
+		vim.cmd.normal({ args = { vim.keycode("<Esc>") }, bang = true })
+	end
 	vim.api.nvim_buf_set_mark(ctx.buf, "<", selection.start[1], selection.start[2], {})
 	vim.api.nvim_buf_set_mark(ctx.buf, ">", selection.finish[1], selection.finish[2], {})
-	vim.cmd("normal! gv")
+	vim.api.nvim_win_set_cursor(ctx.win, selection.start)
+	vim.cmd.normal({ args = { ctx.mode }, bang = true })
+	vim.api.nvim_win_set_cursor(ctx.win, selection.finish)
+end
+
+---@param action gleb.Action
+---@return function
+function M.invoke(action)
+	return function()
+		M.run(action, M.capture())
+	end
 end
 
 ---@param action gleb.Action

@@ -60,6 +60,28 @@ T["actions: Exact and prefix overlaps conflict in one scope"] = function()
 	})
 end
 
+T["actions: Alias shortcuts participate in conflict detection"] = function()
+	child.lua([[
+		Catalog = Registry.new({ {
+			{ id = "edit.target", title = "Target", category = "Edit", run = function() end },
+			{
+				id = "edit.open",
+				title = "Open",
+				category = "Edit",
+				aliases = { "edit.open_file" },
+				run = function() end,
+			},
+		} })
+		Conflicts = Capture.conflicts(Catalog, {
+			["edit.open_file"] = { "g" },
+		}, "edit.target", "g")
+	]])
+
+	eq(child.lua_get([[Conflicts]]), {
+		{ action_id = "edit.open", lhs = "g", proposed_lhs = "g" },
+	})
+end
+
 T["actions: Separate scopes do not conflict"] = function()
 	child.lua([[
 		Catalog = Registry.new({ {

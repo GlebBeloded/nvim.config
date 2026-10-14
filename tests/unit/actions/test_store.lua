@@ -91,4 +91,22 @@ T["actions: Hidden actions cannot receive shortcuts"] = function()
 	eq(child.lua_get([[Notifications[1].msg:match("command.hidden")]]), "command.hidden")
 end
 
+T["actions: Undiscovered Ex actions are rejected consistently"] = function()
+	child.lua([[
+		Notifications = {}
+		vim.notify = function(msg, level) table.insert(Notifications, { msg = msg, level = level }) end
+		vim.fn.writefile({ '{"ex.diffview_open":["g"]}' }, Path)
+		BeforeDiscovery, BeforeOk = ShortcutStore:load()
+		Catalog:hidden()
+		AfterDiscovery, AfterOk = ShortcutStore:load()
+	]])
+
+	eq(child.lua_get([[BeforeOk]]), false)
+	eq(child.lua_get([[AfterOk]]), false)
+	eq(child.lua_get([[BeforeDiscovery]]), {})
+	eq(child.lua_get([[AfterDiscovery]]), {})
+	eq(child.lua_get([[Notifications[1].msg:match("Hidden action")]]), "Hidden action")
+	eq(child.lua_get([[Notifications[2].msg:match("Hidden action")]]), "Hidden action")
+end
+
 return T

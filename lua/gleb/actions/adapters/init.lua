@@ -19,20 +19,9 @@ local function belongs_to(areas, id)
 end
 
 ---@param lhs_list string[]
----@return string|string[]
+---@return string?
 local function native_lhs(lhs_list)
-	if #lhs_list == 1 then
-		return lhs_list[1]
-	end
-	return vim.deepcopy(lhs_list)
-end
-
----@param action gleb.Action
----@return function
-local function invoke(action)
-	return function()
-		Context.run(action, Context.capture())
-	end
+	return lhs_list[1]
 end
 
 ---@param areas string[]
@@ -42,7 +31,7 @@ function M.by_action(areas)
 
 	---@param catalog gleb.ActionCatalog
 	---@param shortcuts gleb.ShortcutMap
-	---@return table<string, string|string[]>
+	---@return table<string, string>
 	function adapter.mappings(catalog, shortcuts)
 		local mappings = {}
 		for id, lhs_list in pairs(shortcuts) do
@@ -71,7 +60,7 @@ function M.by_lhs(areas, wrap)
 			local action = belongs_to(areas, id) and catalog:get(id) or nil
 			if action then
 				for _, lhs in ipairs(lhs_list) do
-					mappings[lhs] = wrap(invoke(action))
+					mappings[lhs] = wrap(Context.invoke(action))
 				end
 			end
 		end
