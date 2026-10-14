@@ -1,0 +1,4 @@
+## 1. Preserve the startup cwd for pane-id fallback
+Scenarios: `session: bare nvim restores a cwd session after pane id change`
+- [x] 1.1 Tighten the assertion in `tests/integration/session/test_session.lua` so startup in `repo/sub` still restores that cwd's session after project.nvim changes the live cwd to `repo`; with a temporary fault that derives the fallback slug from the live cwd, run `make test FILE=tests/integration/session/test_session.lua CASE="bare nvim restores a cwd session after pane id change"`, see it fail and record the failure, then remove the fault
+- [x] 1.2 Capture the startup cwd slug with the session name and pass it to `key.resolve` for fallback matching; run `make test FILE=tests/integration/session/test_session.lua CASE="bare nvim restores a cwd session after pane id change"` and see it pass
