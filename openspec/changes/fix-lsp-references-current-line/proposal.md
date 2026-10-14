@@ -12,6 +12,8 @@ Adopt: loop/fix-lsp-references-current-line
 ## Capabilities
 ### Modified Capabilities
 - `lsp`: `Go references workflow` lists the declaration under the cursor too.
+- `keymaps`: `gr bound to Telescope references` invokes the picker with the current line included.
+- `file-tree`: `gr keeps its global meaning in git status tree` retains the updated global callback.
 
 ## Impact
 - Code: `lua/gleb/keymaps.lua`.
