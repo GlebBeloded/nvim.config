@@ -18,9 +18,9 @@ Scenarios: `actions: Global bindings exist after VeryLazy`, `actions: Filetype b
 
 ## 4. Adapt plugin-window mappings
 Scenarios: `actions: Adapter output follows current shortcuts`, `actions: Adapter reassignment applies on reopen`
-- [ ] 4.1 Write the tests for these scenarios in `tests/integration/actions/test_adapters.lua` and run each with `make test FILE=tests/integration/actions/test_adapters.lua CASE="<scenario title>"` to see it fail
-- [ ] 4.2 Add adapters under `lua/gleb/actions/adapters/` for differ, codediff, dap-ui, neotest, mason, lazy, blink, copilot, and neo-tree; keep diffview on filetype-scoped actions
-- [ ] 4.3 Run each scenario with `make test FILE=tests/integration/actions/test_adapters.lua CASE="<scenario title>"` and see it pass
+- [x] 4.1 Write the tests for these scenarios in `tests/integration/actions/test_adapters.lua` and run each with `make test FILE=tests/integration/actions/test_adapters.lua CASE="<scenario title>"` to see it fail
+- [x] 4.2 Add adapters under `lua/gleb/actions/adapters/` for differ, codediff, dap-ui, neotest, mason, lazy, blink, copilot, and neo-tree; keep diffview on filetype-scoped actions
+- [x] 4.3 Run each scenario with `make test FILE=tests/integration/actions/test_adapters.lua CASE="<scenario title>"` and see it pass
 
 ## 5. Preserve action invocation context
 Scenarios: `actions: Invocation captures editor state`, `actions: Actions run in the invocation window`, `actions: Visual actions restore the selection`, `actions: Availability and toggles share the context`
