@@ -48,7 +48,7 @@ local function make_repo()
 	child.lua("vim.uv.fs_symlink(...)", { vim.fs.joinpath(H.root, "Makefile"), vim.fs.joinpath(repo, "Makefile") })
 	local scripts = vim.fs.joinpath(repo, ".archon/scripts")
 	child.fn.mkdir(scripts, "p")
-	for _, script in ipairs({ "queue_pick.py", "skills_check.py" }) do
+	for _, script in ipairs({ "queue_pick.py", "skills_check.py", "adopt_pick.py" }) do
 		child.lua(
 			"vim.uv.fs_copyfile(...)",
 			{ vim.fs.joinpath(H.root, ".archon/scripts", script), vim.fs.joinpath(scripts, script) }
