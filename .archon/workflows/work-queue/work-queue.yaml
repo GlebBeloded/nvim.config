@@ -108,11 +108,26 @@ nodes:
     depends_on: [pick, adopted-state, blocked]
     when: "$pick.output.found == true && $adopted-state.output.archived == false && $adopted-state.output.tasks_done == false && $blocked.output.blocked == false"
 
+  - id: meta # skip_specs (test-only, refactor): no-design schema, visible_ui/architecture false without asking the agent (no AI)
+    script: no_design
+    runtime: uv
+    depends_on: [pick, adopted-state, blocked]
+    when: "$pick.output.found == true && $adopted-state.output.archived == false && $adopted-state.output.tasks_done == false && $blocked.output.blocked == false"
+    with:
+      change: $pick.output.change
+    output_format:
+      type: object
+      properties:
+        skip_specs: { type: boolean }
+        visible_ui: { type: boolean }
+        architecture: { type: boolean }
+      required: [skip_specs, visible_ui, architecture]
+
   - id: complete
     command: queue-spec
     context: fresh # reads its input artifact; no carried-over session
-    depends_on: [pick, skills-check, adopted-state, blocked, pinned]
-    when: "$pick.output.found == true && $adopted-state.output.archived == false && $adopted-state.output.tasks_done == false && $blocked.output.blocked == false"
+    depends_on: [pick, skills-check, adopted-state, blocked, pinned, meta]
+    when: "$pick.output.found == true && $adopted-state.output.archived == false && $adopted-state.output.tasks_done == false && $blocked.output.blocked == false && $meta.output.skip_specs == false"
     with:
       change: $pick.output.change
       adopted: $adopt.output.summary
@@ -125,18 +140,29 @@ nodes:
         architecture: { type: boolean }
       required: [visible_ui, architecture]
 
+  - id: complete-skip # same step for a skip_specs change: no JSON answer (meta gave it), so no forced JSON per turn
+    command: queue-spec
+    context: fresh
+    depends_on: [pick, skills-check, adopted-state, blocked, pinned, meta]
+    when: "$pick.output.found == true && $adopted-state.output.archived == false && $adopted-state.output.tasks_done == false && $blocked.output.blocked == false && $meta.output.skip_specs == true"
+    with:
+      change: $pick.output.change
+      adopted: $adopt.output.summary
+      pinned: $pinned.output
+    skills: [openspec-continue-change]
+
   - id: spec-gate
     bash: openspec validate $pick.output.change --strict --no-interactive && python3 .archon/scripts/spec_trial.py $pick.output.change && python3 .archon/scripts/scenarios.py --unknown $pick.output.change && python3 .archon/scripts/pinned.py --check $pick.output.change # main specs after a trial archive; pins planned
-    depends_on: [complete, adopted-state, blocked]
-    trigger_rule: none_failed_min_one_success # complete is skipped when the adopted tasks are all ticked
+    depends_on: [complete, complete-skip, adopted-state, blocked]
+    trigger_rule: none_failed_min_one_success # complete and complete-skip are skipped when the adopted tasks are all ticked
     when: "$adopted-state.output.archived == false && $blocked.output.blocked == false"
 
   # --- Preview + approval: always for features, else only for visible UI ----------------
   - id: preview
     bash: make -s preview CHANGE=$pick.output.change OPEN= # OPEN= beats an exported OPEN: nothing opens on the host
     depends_on: [spec-gate]
-    # left to right, && before ||: the adopted design.md decides only when complete was skipped (tasks all ticked); otherwise complete's answer decides
-    when: "$pick.output.kind == 'feature' || $adopted-state.output.tasks_done == true && $adopted-state.output.visible_ui == true || $adopted-state.output.tasks_done == false && $complete.output.visible_ui == true"
+    # left to right, && before ||: the adopted design.md decides only when complete was skipped (tasks all ticked); a skip_specs change never has visible UI; otherwise complete's answer decides
+    when: "$pick.output.kind == 'feature' || $adopted-state.output.tasks_done == true && $adopted-state.output.visible_ui == true || $adopted-state.output.tasks_done == false && $meta.output.skip_specs == false && $complete.output.visible_ui == true"
 
   - id: design-gate
     depends_on: [preview]

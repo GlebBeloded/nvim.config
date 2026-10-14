@@ -3,6 +3,7 @@
 # features.multi_agent=false alone does not stop gpt-5.6-sol, openai/codex#50880, agents.enabled=false does), no
 # user hooks (they inject extra skills),
 # no computer use, browser, host-GUI or MCP tools (each adds tool schemas to every turn).
+# Tool output (a command's stdout) is cut to 6000 tokens per call, so one wide read cannot flood the context.
 # Fixed context per call: no skills catalog (steps name their skill; `$name` still injects it), no apps,
 # no recommended plugins, no collaboration-mode or multi-agent usage hints, and no global ~/.codex/AGENTS.md:
 # CODEX_HOME is a mirror of ~/.codex (symlinks, so auth, config, plugins and sessions stay in ~/.codex)
@@ -43,6 +44,7 @@ overrides=(
     -c include_collaboration_mode_instructions=false
     -c features.tool_suggest=false
     -c skills.include_instructions=false
+    -c tool_output_token_limit=6000
     -c mcp_servers.computer-use.enabled=false
     -c mcp_servers.node_repl.enabled=false
     -c mcp_servers.cograph.enabled=false
