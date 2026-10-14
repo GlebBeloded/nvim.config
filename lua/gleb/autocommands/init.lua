@@ -1,10 +1,5 @@
 local general = vim.api.nvim_create_augroup("gleb_general", { clear = true })
 
----@param event vim.api.keyset.create_autocmd.callback_args
-local function map_q_to_close(event)
-	vim.keymap.set("n", "q", "<Cmd>close<CR>", { buffer = event.buf, silent = true, desc = "Window: Close" })
-end
-
 local function highlight_yank()
 	vim.hl.on_yank({ higroup = "Visual", timeout = 200 })
 end
@@ -24,11 +19,6 @@ local function set_filetype_sh(event)
 	vim.bo[event.buf].filetype = "sh"
 end
 
-vim.api.nvim_create_autocmd("FileType", {
-	group = general,
-	pattern = { "qf", "help", "man", "lspinfo" },
-	callback = map_q_to_close,
-})
 vim.api.nvim_create_autocmd("TextYankPost", { group = general, callback = highlight_yank })
 vim.api.nvim_create_autocmd("BufWinEnter", { group = general, callback = drop_comment_continuation })
 vim.api.nvim_create_autocmd("FileType", { group = general, pattern = "qf", callback = unlist_buffer })

@@ -38,6 +38,18 @@ local function callback(action)
 	return action.mapping or Context.invoke(action)
 end
 
+---@param action gleb.Action
+---@param filetype string
+---@return boolean
+local function matches_filetype(action, filetype)
+	if type(action.ft) == "table" then
+		local filetypes = action.ft
+		---@cast filetypes string[]
+		return vim.tbl_contains(filetypes, filetype)
+	end
+	return action.ft == filetype
+end
+
 ---@param binding gleb.AppliedBinding
 local function delete_global(binding)
 	pcall(vim.keymap.del, binding.mode, binding.lhs)
@@ -65,7 +77,7 @@ local function apply_buffer(self, buf)
 	local filetype = vim.bo[buf].filetype
 	local applied = {}
 	for _, binding in ipairs(self.scoped_bindings) do
-		if binding.action.ft == filetype then
+		if matches_filetype(binding.action, filetype) then
 			vim.keymap.set(binding.mode, binding.lhs, callback(binding.action), {
 				buffer = buf,
 				desc = description(binding.action),
