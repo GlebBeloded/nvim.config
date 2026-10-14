@@ -17,3 +17,6 @@ None. `skip_specs: true`.
 ## Impact
 - Code: `lua/gleb/run/init.lua`, `tests/unit/run/test_run.lua`.
 - Plugins: none.
+- `run: Run ignores a directory without a supported project marker` still holds because the fix only changes Cargo root discovery after a readable `Cargo.lock` has selected the Cargo runner.
+- `run: Run executes cargo run when Cargo.lock is readable` still holds because the fix makes Cargo root discovery follow the cwd where the readable marker was found, independently of the current buffer.
+- `run: Run opens the browser when index.html is readable` still holds because HTML dispatch occurs before Cargo root discovery and is unchanged.

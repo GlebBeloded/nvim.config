@@ -33,6 +33,9 @@ T["run: Run executes cargo run when Cargo.lock is readable"] = function()
 		vim.fn.system({ "git", "init", GitRoot })
 		assert(vim.v.shell_error == 0)
 		vim.fn.chdir(CargoDir)
+		local outside_file = vim.fn.tempname() .. ".lua"
+		vim.fn.writefile({}, outside_file)
+		vim.cmd.edit(vim.fn.fnameescape(outside_file))
 		require("gleb.run")
 		RunCommands = {}
 		vim.cmd = function(command) table.insert(RunCommands, command) end

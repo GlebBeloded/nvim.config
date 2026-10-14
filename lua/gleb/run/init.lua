@@ -1,5 +1,5 @@
 local function cargo_root()
-	return vim.fs.root(0, "Cargo.toml")
+	return vim.fs.root(vim.fn.getcwd(), "Cargo.toml") or vim.fn.getcwd()
 end
 
 vim.api.nvim_create_user_command("Run", function()
