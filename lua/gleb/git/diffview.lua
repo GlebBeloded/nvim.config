@@ -31,10 +31,6 @@ diffview.setup({
 			["<tab>"] = actions.select_next_entry,
 			["<s-tab>"] = actions.select_prev_entry,
 			["gf"] = actions.goto_file_edit,
-			["<D-o>"] = actions.conflict_choose("ours"),
-			["<D-i>"] = actions.conflict_choose("theirs"),
-			["<D-d>"] = actions.conflict_choose("base"),
-			["<D-a>"] = actions.conflict_choose("all"),
 			["dx"] = actions.conflict_choose("none"),
 		},
 		file_panel = {

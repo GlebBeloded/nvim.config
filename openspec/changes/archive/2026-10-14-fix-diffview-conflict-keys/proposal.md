@@ -6,7 +6,9 @@ Kind: bug
 Adopt: loop/fix-diffview-conflict-keys
 
 ## Evidence
-- Locate code with `rg -n`; the paths above are from the audit (line numbers may drift).
+- `lua/gleb/git/diffview.lua:34-37` replaces four conflict actions with `<D-o>`, `<D-i>`, `<D-d>`, and `<D-a>` mappings.
+- `terminal/alacritty/keymaps_macos.toml:1-225` defines the Cmd sequences Alacritty emits but has no bindings for Cmd+O/I/D/A, so those Neovim mappings are unreachable from the configured terminal stack.
+- `/Users/hlebbeladzed/.local/share/nvim/lazy/diffview.nvim/lua/diffview/config.lua:137-141` provides reachable defaults for the same conflict actions at `<leader>co`, `<leader>ct`, `<leader>cb`, `<leader>ca`, and `dx`.
 
 ## What Changes
 - Drop the dead `<D-*>` overrides and keep diffview's default conflict keys (`<leader>co`/`ct`/`cb`/`ca`/`dx` etc. — check diffview's defaults), so conflict resolution works; test the default keys exist in a diffview merge view.
@@ -17,9 +19,11 @@ Adopt: loop/fix-diffview-conflict-keys
 - `git`: a scenario for the fixed behaviour (add one if none covers it).
 
 ## Impact
-- Code: the files named above and their tests.
+- Code: `lua/gleb/git/diffview.lua` and `tests/integration/git/test_diffview.lua`.
+- Core keymaps: conflict choices change from unreachable Cmd overrides to Diffview's default leader mappings; existing `dx` behaviour still holds.
+- Architecture: unchanged; plugin wiring, load order, and module layout are untouched.
+- Visible UI: unchanged.
 - Plugins: none added or upgraded.
-
 ## Rejected run
 Run on `loop/fix-diffview-conflict-keys` was rejected by the judge:
 - blocked: tasks.md: ## Blocked
@@ -31,3 +35,5 @@ Probe output: `literal_leader_hit=false`, `actual_leader_hit=false` (the second 
 
 ## Unblocked
 The Blocked section is a test-harness slip, not a user decision: attempt 2's expansion was right, but `string.gsub()` returns two values, so pass `(s:gsub(...))` (parenthesized) or `vim.keycode`/`nvim_replace_termcodes` output to `nvim_input`. Remove the `## Blocked` section from tasks.md, keep the `<D-*>` removal, and make the four default-key scenarios pass.
+
+- Out of scope: terminal key bindings, Diffview layout and file-panel mappings, whole-file conflict actions, and the pinned Diffview version.

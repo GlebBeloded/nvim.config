@@ -18,8 +18,8 @@ T["lsp: JavaScript config enables vtsls and eslint"] = function()
 
 	eq(child.bo.filetype, "javascript")
 	eq(
-		child.lua_get([[vim.iter(vim.lsp.get_configs({ enabled = true, filetype = vim.bo.filetype }))
-			:map(function(config) return config.name end):totable()]]),
+		child.lua_get([[vim.fn.sort(vim.iter(vim.lsp.get_configs({ enabled = true, filetype = vim.bo.filetype }))
+			:map(function(config) return config.name end):totable())]]),
 		{ "eslint", "vtsls" }
 	)
 end
