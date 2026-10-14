@@ -11,6 +11,7 @@ require("gleb.plugins")
 require("gleb.options")
 require("gleb.colors")
 require("gleb.keymaps") -- after plugins: needs smart-splits and telescope
+require("gleb.actions").setup({})
 require("gleb.cmp")
 require("gleb.lsp")
 require("gleb.telescope")
