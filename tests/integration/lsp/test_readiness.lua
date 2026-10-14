@@ -4,7 +4,8 @@ local H = require("tests.helpers")
 local child = H.new_child()
 
 ---@type integer How long to wait for the answer before failing.
-local TIMEOUT_MS = 10000
+local BOUND_MS = 10000 -- every server; tune later (user decision 2026-10-14)
+local TIMEOUT_MS = 15000 -- above the bound: a slow start reports the bound, not a timeout
 
 local function start()
 	child.start_config()
@@ -115,11 +116,11 @@ end
 
 local T = H.child_set(child, start)
 
-T["lsp: lua_ls ready within 2.5 s in this config"] = function()
-	expect_ready(H.root, "lua/gleb/lsp/config/init.lua", "lua_ls", 2500)
+T["lsp: lua_ls ready in this config"] = function()
+	expect_ready(H.root, "lua/gleb/lsp/config/init.lua", "lua_ls", BOUND_MS)
 end
 
-T["lsp: gopls ready within 1 s in a small module"] = function()
+T["lsp: gopls ready in a small module"] = function()
 	local dir = write_fixture({
 		["go.mod"] = "module example.com/ready\n\ngo 1.22",
 		["greet/greet.go"] = 'package greet\n\nfunc Hello() string { return "hello" }',
@@ -131,24 +132,24 @@ T["lsp: gopls ready within 1 s in a small module"] = function()
 			"func main() { fmt.Println(greet.Hello()) }",
 		}, "\n"),
 	})
-	expect_ready(dir, "main.go", "gopls", 1000)
+	expect_ready(dir, "main.go", "gopls", BOUND_MS)
 end
 
-T["lsp: basedpyright ready within 1 s in a small project"] = function()
+T["lsp: basedpyright ready in a small project"] = function()
 	local dir = write_fixture({
 		["pyproject.toml"] = '[project]\nname = "ready"',
 		["ready.py"] = 'def hello() -> str:\n    return "hello"',
 	})
-	expect_ready(dir, "ready.py", "basedpyright", 1000)
+	expect_ready(dir, "ready.py", "basedpyright", BOUND_MS)
 end
 
-T["lsp: vtsls ready within 1 s in a small project"] = function()
+T["lsp: vtsls ready in a small project"] = function()
 	local dir = write_fixture({
 		["package.json"] = '{"name":"ready"}',
 		["tsconfig.json"] = '{"compilerOptions":{"strict":true}}',
 		["index.ts"] = 'export function hello(): string {\n  return "hello";\n}',
 	})
-	expect_ready(dir, "index.ts", "vtsls", 1000)
+	expect_ready(dir, "index.ts", "vtsls", BOUND_MS)
 end
 
 return T

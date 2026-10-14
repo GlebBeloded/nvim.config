@@ -17,23 +17,23 @@ The config SHALL configure `vim.diagnostic` signs with the Nerd Font glyphs U+F0
 - **THEN** the screen row of line 1 shows U+F057 in the sign column
 
 ### Requirement: Language server readiness
-The config SHALL make lua_ls answer its first `textDocument/documentSymbol` request within 2500 ms in this checkout, and gopls, basedpyright, and vtsls answer within 1000 ms in their small fixture projects. Time is measured from `:edit` in a full-config Neovim after an earlier server start has warmed server and toolchain caches; the fixed bounds SHALL NOT scale with host load.
+The config SHALL make lua_ls answer its first `textDocument/documentSymbol` request in this checkout, and gopls, basedpyright, and vtsls in their small fixture projects, within the readiness bound (`BOUND_MS` in `tests/integration/lsp/test_readiness.lua`, one value for every server). Time is measured from `:edit` in a full-config Neovim after an earlier server start has warmed server and toolchain caches; the fixed bounds SHALL NOT scale with host load.
 
-#### Scenario: lua_ls ready within 2.5 s in this config
+#### Scenario: lua_ls ready in this config
 - **WHEN** a full-config Neovim with cwd at this checkout runs `:edit lua/gleb/lsp/config/init.lua`
-- **THEN** the `lua_ls` client attached to the buffer answers `textDocument/documentSymbol` without error within 2500 ms of the `:edit`
+- **THEN** the `lua_ls` client attached to the buffer answers `textDocument/documentSymbol` without error within the readiness bound of the `:edit`
 
-#### Scenario: gopls ready within 1 s in a small module
+#### Scenario: gopls ready in a small module
 - **WHEN** a full-config Neovim with cwd at a fixture Go module (`go.mod`, `main.go` importing one local package) runs `:edit main.go`
-- **THEN** the `gopls` client attached to the buffer answers `textDocument/documentSymbol` without error within 1000 ms of the `:edit`
+- **THEN** the `gopls` client attached to the buffer answers `textDocument/documentSymbol` without error within the readiness bound of the `:edit`
 
-#### Scenario: basedpyright ready within 1 s in a small project
+#### Scenario: basedpyright ready in a small project
 - **WHEN** a full-config Neovim with cwd at a fixture Python project (`pyproject.toml`, one module) runs `:edit` on that module
-- **THEN** the `basedpyright` client attached to the buffer answers `textDocument/documentSymbol` without error within 1000 ms of the `:edit`
+- **THEN** the `basedpyright` client attached to the buffer answers `textDocument/documentSymbol` without error within the readiness bound of the `:edit`
 
-#### Scenario: vtsls ready within 1 s in a small project
+#### Scenario: vtsls ready in a small project
 - **WHEN** a full-config Neovim with cwd at a fixture TypeScript project (`package.json`, `tsconfig.json`, one `.ts` file) runs `:edit` on that file
-- **THEN** the `vtsls` client attached to the buffer answers `textDocument/documentSymbol` without error within 1000 ms of the `:edit`
+- **THEN** the `vtsls` client attached to the buffer answers `textDocument/documentSymbol` without error within the readiness bound of the `:edit`
 
 ### Requirement: Go references workflow
 In a Go module, `gr` in Normal mode SHALL open the Telescope references picker for the symbol under the cursor, listing the declaration and every reference reported by gopls across all packages of the module, including reported locations on the cursor's current line, and selecting an entry SHALL open its file with the cursor on the reference.
