@@ -116,4 +116,4 @@ Scenarios: `picker: Alternate picker views keep the border counter-free`
 - Dashboard files use MiniPick's built-in files source and recent files use MiniExtra's oldfiles source because they directly replace Telescope's corresponding list actions.
 - Existing unit scenario identities remain authoritative; runtime integration coverage uses distinct scenarios so traceability stays one-to-one.
 - Renderer dispatch uses the first item's shape because shared structured sources use tables while mini.pick built-ins emit strings.
-- Alternate views clear their footer from a scheduled `BufWinEnter` handler because mini.pick refreshes border text after changing the main window's buffer.
+- Alternate views update footer and hint chrome from `source.show` using the picker window because movement and resize do not re-enter its buffer.

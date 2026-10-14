@@ -106,25 +106,27 @@ end
 ---@return fun(buf: integer, items: any[], query: string[])
 local function create_show(hints, on_show)
 	return function(buf, items, query)
-		local win = vim.fn.bufwinid(buf)
-		if win == -1 then
+		local picker_win = MiniPick.get_picker_state().windows.main
+		vim.api.nvim_win_set_config(picker_win, { footer = "" })
+		local hint = current_hint(hints)
+		if hint then
+			open_hint_window(hint, picker_win)
+		else
+			close_chrome_windows()
+		end
+
+		local render_win = vim.fn.bufwinid(buf)
+		if render_win == -1 then
 			return
 		end
 
 		if type(items[1]) == "table" then
-			local width = vim.api.nvim_win_get_width(win)
+			local width = vim.api.nvim_win_get_width(render_win)
 			rows.render(buf, items, width, vim.tbl_extend("force", layout.row_options(), { padding = 1 }))
 		else
 			MiniPick.default_show(buf, items, query)
 		end
 
-		local hint = current_hint(hints)
-		if hint then
-			open_hint_window(hint, win)
-		else
-			close_chrome_windows()
-		end
-		vim.api.nvim_win_set_config(win, { footer = "" })
 		if on_show then
 			on_show(items)
 		end

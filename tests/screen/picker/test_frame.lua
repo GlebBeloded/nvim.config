@@ -31,6 +31,25 @@ end
 
 local T = H.child_set(child, start)
 
+local function expect_hint_tracks_picker()
+	local geometry = child.lua_get([[(function()
+		local main = require("mini.pick").get_picker_state().windows.main
+		for _, win in ipairs(vim.api.nvim_list_wins()) do
+			if vim.wo[win].winhighlight:find("Normal:PickerHint", 1, true) then
+				return {
+					hint = vim.api.nvim_win_get_config(win),
+					position = vim.api.nvim_win_get_position(main),
+					width = vim.api.nvim_win_get_width(main),
+					height = vim.api.nvim_win_get_height(main),
+				}
+			end
+		end
+	end)()]])
+	eq(geometry.hint.width, geometry.width)
+	eq(geometry.hint.row, geometry.position[1] + geometry.height + 1)
+	eq(geometry.hint.col, geometry.position[2])
+end
+
 T["picker: Wide picker matches reference screenshot"] = function()
 	local loaded = child.lua_get([[(function()
 		local ok, picker = pcall(require, "gleb.picker")
@@ -101,6 +120,21 @@ T["picker: Alternate picker views keep the border counter-free"] = function()
 	local preview_config =
 		child.lua_get([[vim.api.nvim_win_get_config(require("mini.pick").get_picker_state().windows.main)]])
 	eq(preview_config.footer, nil)
+	child.type_keys("<C-n>")
+	assert(child.wait([[require("mini.pick").get_picker_matches().current == "second"]]), "second match not focused")
+	preview_config =
+		child.lua_get([[vim.api.nvim_win_get_config(require("mini.pick").get_picker_state().windows.main)]])
+	eq(preview_config.footer, nil)
+	child.o.columns = 70
+	child.cmd("doautocmd VimResized")
+	assert(
+		child.wait([[vim.api.nvim_win_get_config(require("mini.pick").get_picker_state().windows.main).width == 68]]),
+		"preview view did not resize"
+	)
+	preview_config =
+		child.lua_get([[vim.api.nvim_win_get_config(require("mini.pick").get_picker_state().windows.main)]])
+	eq(preview_config.footer, nil)
+	expect_hint_tracks_picker()
 
 	child.type_keys("<S-Tab>")
 	assert(
@@ -113,6 +147,19 @@ T["picker: Alternate picker views keep the border counter-free"] = function()
 	local info_config =
 		child.lua_get([[vim.api.nvim_win_get_config(require("mini.pick").get_picker_state().windows.main)]])
 	eq(info_config.footer, nil)
+	child.type_keys("<C-p>")
+	assert(child.wait([[require("mini.pick").get_picker_matches().current == "first"]]), "first match not focused")
+	info_config = child.lua_get([[vim.api.nvim_win_get_config(require("mini.pick").get_picker_state().windows.main)]])
+	eq(info_config.footer, nil)
+	child.o.columns = 80
+	child.cmd("doautocmd VimResized")
+	assert(
+		child.wait([[vim.api.nvim_win_get_config(require("mini.pick").get_picker_state().windows.main).width == 70]]),
+		"info view did not resize"
+	)
+	info_config = child.lua_get([[vim.api.nvim_win_get_config(require("mini.pick").get_picker_state().windows.main)]])
+	eq(info_config.footer, nil)
+	expect_hint_tracks_picker()
 	child.type_keys("<Esc>")
 end
 
