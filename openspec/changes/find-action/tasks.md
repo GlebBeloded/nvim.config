@@ -8,6 +8,8 @@ Scenarios: `find-action: Find Action opens from its shortcut`, `find-action: Fin
 
 - Start the entry-point picker with an empty item list because row population belongs to the later rendering and ordering tasks.
 - Pass resolved toggle state into row formatting so the formatter stays pure and does not call action callbacks.
+- Store history in most-recent-first order, moving a repeated action to the front so use order stays stable across sessions.
+- Fuzzy-match case-insensitive subsequences within each field independently so characters cannot match across unrelated metadata.
 
 ## 2. Render action rows
 Scenarios: `find-action: Rows show action metadata`, `find-action: Rows fall back to Vim notation`, `find-action: Toggle rows show state glyphs`
@@ -17,9 +19,9 @@ Scenarios: `find-action: Rows show action metadata`, `find-action: Rows fall bac
 
 ## 3. Order and match actions
 Scenarios: `find-action: Empty query puts recent actions first`, `find-action: Recent history keeps the last 20 actions`, `find-action: Query matches all searchable fields`
-- [ ] 3.1 Write the tests in `tests/unit/find-action/test_items.lua` and run `make test FILE=tests/unit/find-action/test_items.lua`, seeing all three scenarios fail
-- [ ] 3.2 Add pure item matching and ordering plus a last-20 MRU store at `stdpath("state")/find_action_recent.json`
-- [ ] 3.3 Run `make test FILE=tests/unit/find-action/test_items.lua` and see all three scenarios pass
+- [x] 3.1 Write the tests in `tests/unit/find-action/test_items.lua` and run `make test FILE=tests/unit/find-action/test_items.lua`, seeing all three scenarios fail
+- [x] 3.2 Add pure item matching and ordering plus a last-20 MRU store at `stdpath("state")/find_action_recent.json`
+- [x] 3.3 Run `make test FILE=tests/unit/find-action/test_items.lua` and see all three scenarios pass
 
 ## 4. Reveal hidden actions
 Scenarios: `find-action: Hidden and unavailable actions start absent`, `find-action: Show hidden reveals a separate tier`, `find-action: Hidden commands cannot be assigned`
