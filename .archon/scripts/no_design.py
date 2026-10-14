@@ -14,6 +14,7 @@ import json
 import os
 import pathlib
 import re
+import subprocess
 
 SCHEMA = "spec-driven-no-design"
 SKIP = re.compile(r"^skip_specs:\s*true\s*$", re.MULTILINE)
@@ -33,7 +34,18 @@ def no_design(meta: pathlib.Path) -> bool:
     updated = SCHEMA_LINE.sub(line, text, count=1) if SCHEMA_LINE.search(text) else f"{line}\n{text}"
     if updated != text:
         meta.write_text(updated)
+        commit(meta)
     return True
+
+
+def commit(meta: pathlib.Path) -> None:
+    """Commit the schema switch on its own, so it never rides along in the next step's commit (fixture
+    runs, which point LOOP_CHANGES_DIR elsewhere, commit nothing)."""
+    if os.environ.get("LOOP_CHANGES_DIR"):
+        return
+    subprocess.run(["git", "add", "--", str(meta)], capture_output=True)
+    message = f"chore(openspec): {meta.parent.name} uses the no-design schema"
+    subprocess.run(["git", "commit", "-q", "-m", message, "--", str(meta)], capture_output=True)
 
 
 def main() -> None:
