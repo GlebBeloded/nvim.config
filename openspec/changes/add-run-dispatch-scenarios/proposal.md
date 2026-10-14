@@ -9,8 +9,8 @@ Kind: bug
 
 ## Capabilities
 ### Modified Capabilities
-- `run`: two or three added scenarios.
+- `run`: two added scenarios covering Cargo dispatch, browser dispatch, and browser precedence.
 
 ## Impact
-- Code: `tests/unit/run/test_run.lua`, `run` spec delta.
+- Code: `tests/unit/run/test_run.lua`.
 - Plugins: none. Core keymaps: unchanged.
