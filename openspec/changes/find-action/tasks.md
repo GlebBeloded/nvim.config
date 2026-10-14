@@ -7,12 +7,13 @@ Scenarios: `find-action: Find Action opens from its shortcut`, `find-action: Fin
 ## Agent decisions
 
 - Start the entry-point picker with an empty item list because row population belongs to the later rendering and ordering tasks.
+- Pass resolved toggle state into row formatting so the formatter stays pure and does not call action callbacks.
 
 ## 2. Render action rows
 Scenarios: `find-action: Rows show action metadata`, `find-action: Rows fall back to Vim notation`, `find-action: Toggle rows show state glyphs`
-- [ ] 2.1 Write the tests in `tests/unit/find-action/test_rows.lua` and run `make test FILE=tests/unit/find-action/test_rows.lua`, seeing all three scenarios fail
-- [ ] 2.2 Add pure row and physical-label formatting for titles, first shortcuts, categories, and toggle glyphs
-- [ ] 2.3 Run `make test FILE=tests/unit/find-action/test_rows.lua` and see all three scenarios pass
+- [x] 2.1 Write the tests in `tests/unit/find-action/test_rows.lua` and run `make test FILE=tests/unit/find-action/test_rows.lua`, seeing all three scenarios fail
+- [x] 2.2 Add pure row and physical-label formatting for titles, first shortcuts, categories, and toggle glyphs
+- [x] 2.3 Run `make test FILE=tests/unit/find-action/test_rows.lua` and see all three scenarios pass
 
 ## 3. Order and match actions
 Scenarios: `find-action: Empty query puts recent actions first`, `find-action: Recent history keeps the last 20 actions`, `find-action: Query matches all searchable fields`
