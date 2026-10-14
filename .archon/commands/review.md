@@ -29,3 +29,4 @@ the diff against the conventions in docs/architecture.md and openspec/specs plus
 Evidence bar: cite file:line for each finding; drop anything that rests on "might". Do not edit
 files. Start each finding `[must-fix]` or `[minor]` (the judge lists `[minor]`
 findings as notes, also on ship). Set `approve` to false only for findings that must be fixed before merge.
+Before asking to restore or add wording to a requirement in the change's delta, check its text stays under 500 characters (OpenSpec strict); if it would not, ask to move the detail into a scenario instead.

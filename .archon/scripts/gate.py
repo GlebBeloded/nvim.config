@@ -54,6 +54,18 @@ def archived_specs_ok(log: str) -> tuple[bool, str]:
     return ok, tail(out)
 
 
+def long_delta_requirements() -> str:
+    """Names and lengths of this change's delta requirements over OpenSpec's 500-character limit."""
+    lines = []
+    for spec in sorted((pathlib.Path("openspec/changes") / change / "specs").glob("*/spec.md")):
+        for block in re.split(r"(?m)^### Requirement:\s*", spec.read_text())[1:]:
+            title, _, rest = block.partition("\n")
+            text = re.split(r"(?m)^#### ", rest)[0].strip()
+            if len(text) > 500:
+                lines.append(f"- delta `{title.strip()}` ({spec}) is {len(text)} chars, limit 500")
+    return ("\n" + "\n".join(lines)) if lines else ""
+
+
 def hard_rules() -> list[str]:
     try:
         reasons = hard_rule_violations()
@@ -181,7 +193,11 @@ if missing:
 if not green:
     failures.append("make check is red:\n" + summarize(check_out, str(artifacts / check_log)))
 if not spec_ok:
-    failures.append("openspec validate --strict (change, or main specs after a trial archive) failed:\n" + spec_tail)
+    failures.append(
+        "openspec validate --strict (change, or main specs after a trial archive) failed; reproduce with "
+        f"`python3 .archon/scripts/spec_trial.py {change}` (a green `openspec validate --specs` on the unarchived "
+        "main specs does not count):\n" + spec_tail + long_delta_requirements()
+    )
 if not tasks_done:
     failures.append(f"openspec/changes/{change}/tasks.md has unchecked tasks")
 
