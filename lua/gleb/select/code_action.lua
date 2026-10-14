@@ -68,7 +68,7 @@ function code_action:menu()
 	return {
 		lines = { unpack(options) },
 		max_width = 20,
-		keymap = code_action.keymap,
+		keymap = self:default_keymap(),
 		on_submit = function(item)
 			self.on_choice(item.data, item.index)
 		end,
