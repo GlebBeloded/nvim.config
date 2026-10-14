@@ -48,7 +48,9 @@ local function restore()
 	end
 	local name = key.resolve(session_name, resession.list(), session_slug)
 	if name then
+		local cwd = vim.fn.getcwd()
 		resession.load(name, { silence_errors = true })
+		vim.api.nvim_set_current_dir(cwd)
 	end
 end
 

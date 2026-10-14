@@ -48,7 +48,7 @@ flowchart LR
     dbg["nvim_debug_log"]
     lazy["plugins/ — lazy.nvim"]
     core["options · colors · keymaps · autocommands"]
-    edit["lsp · cmp · telescope · treesitter · folding"]
+    edit["lsp · cmp · picker · treesitter · folding"]
     ui["statusline/ · bufferline · alpha"]
     ft["file_tree/"]
     git["git/"]
@@ -152,7 +152,7 @@ flowchart LR
 ## Key decisions
 
 - **keymaps**: `<A-g>` opens Differ and `<A-G>` the neo-tree git status, kept side by side to compare both
-  flows. `gr` goes to Telescope references. Buffers with URI names (`vscodediff://…`) are not revealed in
+  flows. `gr` opens shared mini.pick references. Buffers with URI names (`vscodediff://…`) are not revealed in
   neo-tree, which cannot parse them.
 - **ai**: 99 loads on `VeryLazy` to stay out of startup. `pi` runs with `--no-session --thinking low`, so
   each prompt is stateless and cheap. 99 prompts submit on write (`acwrite`), so `<S-CR>` maps to
@@ -256,6 +256,7 @@ relative to `lua/gleb/`.
 - 8.6 Floating windows use `border = "rounded"`.
 - 8.7 Colors come from the gruvbox-material palette helpers, never hard-coded hex.
 - 8.8 A change with visible UI includes a Current render and Proposed renders ([design renders](workflow.md#design-renders)).
+- 8.9 Borders are always drawn in full; hints and counters never sit on a border; the title (and query) is the only border text; hints go right-aligned in grey on the last inner row below a joined rule.
 
 ### 9. Comments and style
 

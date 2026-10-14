@@ -7,12 +7,8 @@ local child = H.new_child()
 local function start()
 	child.start_bare()
 	child.lua([[
-		select_calls = 0
-		vim.ui.select = function(items, opts, on_choice)
-			select_calls = select_calls + 1
-			on_choice(items[1], 1)
-		end
-		package.loaded["gleb.select.code_action"] = {}
+		MiniPick = require("mini.pick")
+		MiniPick.setup()
 		require("gleb.select")
 	]])
 end
@@ -20,15 +16,14 @@ end
 local T = H.child_set(child, start)
 
 T["select: Selection accepts omitted options"] = function()
-	local result = child.lua_get([[
-		(function()
-			local choice
-			vim.ui.select({ "x" }, nil, function(item, index) choice = { item, index } end)
-			return { calls = select_calls, choice = choice }
-		end)()
+	child.lua_notify([[
+		select_ok, select_error = pcall(vim.ui.select, { "x" }, nil, function() end)
 	]])
 
-	eq(result, { calls = 1, choice = { "x", 1 } })
+	eq(child.wait("MiniPick.is_picker_active()"), true)
+	child.type_keys("<Esc>")
+	eq(child.wait("select_ok ~= nil"), true)
+	eq({ child.lua_get("select_ok"), child.lua_get("select_error") }, { true, vim.NIL })
 end
 
 return T
