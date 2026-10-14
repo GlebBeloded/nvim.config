@@ -38,6 +38,9 @@ Adopt: loop/picker-ui
 - `telescope`: removed (requirements retired).
 - `select`: the code-action picker becomes a `picker` consumer. Its keymap, completion-contract and fit-width requirements change.
 - `keymaps`: `<A-F>` live grep and `gr` references run through `picker` sources instead of Telescope.
+- `shortcuts`: Cmd+Shift+F keeps its terminal route while invoking the replacement live-grep picker.
+- `lsp`: the Go references workflow uses the shared references picker instead of Telescope.
+- `session`: the startup-session-name guarantee survives generic cwd changes after project.nvim is removed.
 - `ai`: 99 search uses its native picker extension.
 
 ## Impact
@@ -54,9 +57,10 @@ Adopt: loop/picker-ui
     | fzf-lua | 4.5k | 2026-10-14 | Fastest, but fzf-rendered rows cannot draw right-aligned extmark labels |
     | nui.nvim | 2.1k | 2026-08-18 | Primitives only: no matcher, no async |
     | telescope.nvim (current) | 19.8k | 2026-08-17 | 464 open issues; replaced |
-- Code: new `lua/gleb/picker/`; `lua/gleb/select/`, `lua/gleb/keymaps.lua` (`gr`, `<A-F>`), `lua/gleb/ai/`, `lua/gleb/project.lua`, `lua/gleb/plugins/plugins.lua` and `init.lua` change; `lua/gleb/telescope.lua` is deleted.
+- Code: new `lua/gleb/picker/`; `lua/gleb/select/`, `lua/gleb/keymaps.lua` (`gr`, `<A-F>`), `lua/gleb/ai/`, `lua/gleb/alpha.lua`, `lua/gleb/project.lua`, `lua/gleb/plugins/plugins.lua`, `init.lua` and `lazy-lock.json` change; `lua/gleb/telescope.lua` is deleted.
 - Tests: screen tests (reference screenshots) for the frame, the hint row and the three widths; integration tests for grep, references and `ui.select`; unit tests for the breakpoint logic. The old telescope tests are retired together with their spec.
 - Core keymaps: `<A-F>` and `gr` keep their keys but open the new picker.
+- Pinned behavior: `file-tree: gr keeps its global meaning in git status tree` still holds because the tree continues to leave `gr` unmapped and inherits the replacement global references picker.
 - Out of scope: the Find Action palette (`find-action`), new code-search menus (separate shortcut, later), and moving keys onto the registry.
 
 ## Decision (user, 2026-10-14)
@@ -78,4 +82,8 @@ Run on `loop/picker-ui` was rejected by the judge:
   - Reproduced with `make probe`: start `gleb.picker.start({...})` and press `<Tab>` (mini.pick's default toggle_preview). The footer becomes `{ " T ", "────…", " 1|2|2 " }`.
   - Affected pickers: every shared picker that keeps mini.pick's default `<Tab>`/`<S-Tab>` (live grep, references, files, recent files, general `vim.ui.select`). Code actions remap preview to `<M-p>` and are hit through that key.
   - Fix: clear the footer through a path that does not depend on the main buffer being visible, for example a `MiniPickStart` autocmd or updating config on the window itself. Add a scenario that toggles preview.
-  - Why earlier passes missed it: all frame and screen tests (tests/screen/picker/test_frame.lua, test_responsive.lua) check only the main view, so the early-return branch w
+  - Why earlier passes missed it: all frame and screen tests (tests/screen/picker/test_frame.lua, test_responsive.lua) check only the main view, so the early-return branch was not exercised.
+  - Live grep results crash the shared picker's `show`: `lua/gleb/picker/frame.lua:101` wraps mini.pick grep strings as structured rows, while `lua/gleb/picker/rows.lua:35` passes their NUL field separators to Vim string functions and raises `Vim:E976: Using a Blob as a String`. The installed mini.pick source emits those separators and its `default_show` sanitizes them. Existing tests stop before a query produces results.
+  - Commit `892ce19` resets cwd after `resession.load` in `lua/gleb/session/init.lua:51`, discarding the cwd restored from the saved session. `tests/integration/session/test_session.lua:109` was changed to expect that regression instead of preserving the existing restore contract.
+
+The remaining work adds result-bearing live-grep coverage, delegates unstructured source rows to mini.pick's safe renderer, restores the session cwd contract, prevents counters in alternate picker views, and leaves the approved picker renders unchanged.
