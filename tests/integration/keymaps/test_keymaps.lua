@@ -679,4 +679,21 @@ T["keymaps: Alt-F opens live grep"] = function()
 	eq(child.lua_get([[require("mini.pick").get_picker_opts().source.name]]), "Live Grep")
 end
 
+T["keymaps: Live grep renders matching rows"] = function()
+	local repo = H.git_repo({ ["matched.lua"] = "local pickerneedle = true\n" })
+	child.cmd("cd " .. repo .. " | edit matched.lua")
+	child.type_keys("<M-F>", "pickerneedle")
+
+	local rendered_match = [[(function()
+		local MiniPick = require("mini.pick")
+		if not MiniPick.is_picker_active() then return false end
+		local buf = MiniPick.get_picker_state().buffers.main
+		local text = table.concat(vim.api.nvim_buf_get_lines(buf, 0, -1, false), "\n")
+		return text:find("matched.lua", 1, true) ~= nil
+			and text:find("1", 1, true) ~= nil
+			and text:find("local pickerneedle = true", 1, true) ~= nil
+	end)()]]
+	eq(child.wait(rendered_match, async_ms()), true)
+end
+
 return T

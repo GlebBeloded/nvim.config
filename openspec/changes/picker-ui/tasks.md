@@ -85,6 +85,18 @@ Scenarios: `ai: Keymaps exist after VeryLazy`, `ai: Missing 99 is tolerated`, `a
 - [x] 14.2 Configure 99's native completion source and remove its Telescope dependency without changing its provider, model or keymaps
 - [x] 14.3 Run the three named AI scenarios in their test files and see them pass
 
+## 15. Render live-grep results safely
+Scenarios: `keymaps: Live grep renders matching rows`
+- [x] 15.1 Write the test `keymaps: Live grep renders matching rows` in tests/integration/keymaps/test_keymaps.lua, type a matching query, assert the rendered file, line and text, and see it fail with the NUL-separated result error
+- [x] 15.2 Route unstructured source items through `MiniPick.default_show` while retaining the shared frame chrome and structured row renderer
+- [x] 15.3 Run `make test FILE=tests/integration/keymaps/test_keymaps.lua CASE="Live grep renders matching rows"` and see it pass
+
+## 16. Restore the saved session cwd
+Scenarios: `session: bare nvim restores a cwd session after pane id change`
+- [ ] 16.1 Tighten `session: bare nvim restores a cwd session after pane id change` in tests/integration/session/test_session.lua to assert the saved cwd as well as its buffer and see it fail
+- [ ] 16.2 Remove the post-load cwd reset so `resession.load` restores the saved session state
+- [ ] 16.3 Run `make test FILE=tests/integration/session/test_session.lua CASE="bare nvim restores a cwd session after pane id change"` and see it pass
+
 ## Agent decisions
 
 - Live grep uses mini.pick's built-in `grep_live`, because the installed mini.extra has no live-grep source; frame options preserve the specified shared UI.
@@ -97,3 +109,4 @@ Scenarios: `ai: Keymaps exist after VeryLazy`, `ai: Missing 99 is tolerated`, `a
 - The Go references E2E driver uses mini.pick's public item and match APIs; task 9's mini.extra source already passed both scenarios, so no duplicate source was added.
 - Dashboard files use MiniPick's built-in files source and recent files use MiniExtra's oldfiles source because they directly replace Telescope's corresponding list actions.
 - Existing unit scenario identities remain authoritative; runtime integration coverage uses distinct scenarios so traceability stays one-to-one.
+- Renderer dispatch uses the first item's shape because shared structured sources use tables while mini.pick built-ins emit strings.

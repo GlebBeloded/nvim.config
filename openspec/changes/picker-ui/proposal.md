@@ -38,6 +38,7 @@ Adopt: loop/picker-ui-20261014-195908
 - `telescope`: removed (requirements retired).
 - `select`: the code-action picker becomes a `picker` consumer. Its keymap, completion-contract and fit-width requirements change.
 - `keymaps`: `<A-F>` live grep and `gr` references run through `picker` sources instead of Telescope.
+- `shortcuts`: Cmd+Shift+F keeps its terminal route while invoking the replacement live-grep picker.
 - `lsp`: the Go references workflow uses the shared references picker instead of Telescope.
 - `session`: the startup-session-name guarantee survives generic cwd changes after project.nvim is removed.
 - `ai`: 99 search uses its native picker extension.
@@ -75,6 +76,7 @@ Adopt: loop/picker-ui-20261014-195908
 Run on `loop/picker-ui-20261014-195908` was rejected by the judge:
 - fix loop exhausted with gates still red: review
 - review findings:
-  [must-fix] Live grep results crash the shared picker's `show`. In `lua/gleb/picker/frame.lua:97-100`, `create_show` wraps string items as `{ text = tostring(item) }` and passes them to `rows.render`. Results from mini.pick `grep_live` (mini.pick.lua:3564, `rg --field-match-separator \x00`) are strings like `path\0lnum\0col\0text`. `rows.render` measures them with `vim.fn.strdisplaywidth`/`strcharpart` (`lua/gleb/picker/rows.lua:37,48,141`), and a NUL-containing string turns into a Blob there. A headless probe of `rows.render` on such an item raised `Vim:E976: Using a Blob as a String`. So `<A-F>` (`keymaps.lua:149`) and the dashboard "Find text" button (`alpha.lua:20`) fail as soon as a query returns matches. mini.pick's own `default_show` handles this by replacing `%z` with `│` (mini.pick.lua:1098). Fix: fall back to `MiniPick.default_show` for non-row items, or sanitize the NUL separators. Then add a case that types a query into live grep and asserts the rendered rows. Why earlier passes missed it: `keymaps: Alt-F opens live grep` and `picker: Dashboard opens shared list pickers` only check that the picker opens with an empty query, so `show` never received string results. The earlier `rows.show` path (d1a6336 `frame.lua:125`) also indexed string items as tables.
-  
-  [must-fix] The last fix pass (892ce19) changed session behaviour that no spec covers. `lua/gleb/session/init.lua:51-53` now resets cwd to the cwd from before `resession.load`, which throws away the cwd the session
+  - Live grep results crash the shared picker's `show`: `lua/gleb/picker/frame.lua:101` wraps mini.pick grep strings as structured rows, while `lua/gleb/picker/rows.lua:35` passes their NUL field separators to Vim string functions and raises `Vim:E976: Using a Blob as a String`. The installed mini.pick source emits those separators and its `default_show` sanitizes them. Existing tests stop before a query produces results.
+  - Commit `892ce19` resets cwd after `resession.load` in `lua/gleb/session/init.lua:51`, discarding the cwd restored from the saved session. `tests/integration/session/test_session.lua:109` was changed to expect that regression instead of preserving the existing restore contract.
+
+The remaining work adds result-bearing live-grep coverage, delegates unstructured source rows to mini.pick's safe renderer, restores the session cwd contract, and leaves the approved picker renders unchanged.

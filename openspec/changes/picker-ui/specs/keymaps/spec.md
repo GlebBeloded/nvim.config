@@ -7,6 +7,10 @@ The config SHALL map `<A-F>` in normal mode to the shared picker's live-grep sou
 - **WHEN** `<A-F>` is pressed in normal mode
 - **THEN** a shared picker is focused with the live-grep source and title `Live Grep`
 
+#### Scenario: Live grep renders matching rows
+- **WHEN** `<A-F>` is pressed in normal mode and a query matching a repository file is typed
+- **THEN** the shared picker remains open and renders the matching file, line and text without an error
+
 ### Requirement: LSP actions and navigation
 The config SHALL map `<C-CR>` in normal and visual (`x`) modes to code action; map `gD`, `gd`, `K`, `gi`, and `<A-r>` in normal mode to their corresponding `vim.lsp.buf` actions; map normal-mode `gr` to the shared LSP-references source including the current line; and leave no other normal-mode mapping whose lhs starts with `gr`.
 

@@ -88,20 +88,21 @@ local function current_hint(hints)
 end
 
 ---@param hints? gleb.picker.Hint
----@param on_show? fun(items: gleb.picker.Row[])
----@return fun(buf: integer, items: gleb.picker.Row[], query: string[])
+---@param on_show? fun(items: any[])
+---@return fun(buf: integer, items: any[], query: string[])
 local function create_show(hints, on_show)
-	return function(buf, items, _query)
+	return function(buf, items, query)
 		local win = vim.fn.bufwinid(buf)
 		if win == -1 then
 			return
 		end
 
-		local width = vim.api.nvim_win_get_width(win)
-		local shown = vim.tbl_map(function(item)
-			return type(item) == "table" and item or { text = tostring(item) }
-		end, items)
-		rows.render(buf, shown, width, vim.tbl_extend("force", layout.row_options(), { padding = 1 }))
+		if type(items[1]) == "table" then
+			local width = vim.api.nvim_win_get_width(win)
+			rows.render(buf, items, width, vim.tbl_extend("force", layout.row_options(), { padding = 1 }))
+		else
+			MiniPick.default_show(buf, items, query)
+		end
 
 		local hint = current_hint(hints)
 		if hint then
