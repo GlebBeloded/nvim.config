@@ -199,9 +199,8 @@ queue: loop-setup # make queue [CHANGE=<id>]: work the next (or the given) chang
 	@id=$$(INPUTS_CHANGE="$$CHANGE" python3 .archon/scripts/queue_pick.py | python3 -c 'import json,sys; print(json.load(sys.stdin)["change"])'); \
 	test -n "$$id" || { echo "Queue is empty: no untaken change in openspec/changes/"; exit 0; }; \
 	echo "Working on $$id"; branch=loop/$$id; adopt=; \
-	if git show-ref -q --verify "refs/heads/loop/$$id"; then adopt=loop/$$id; branch=loop/$$id-$(STAMP); fi; \
-	from=$$(sed -n 's/^Adopt: *//p' "openspec/changes/$$id/proposal.md" 2>/dev/null | head -n 1); \
-	if [ -n "$$from" ] && git show-ref -q --verify "refs/heads/$$from"; then adopt=$$from; fi; \
+	if git show-ref -q --verify "refs/heads/loop/$$id"; then branch=loop/$$id-$(STAMP); fi; \
+	adopt=$$(python3 .archon/scripts/adopt_pick.py "$$id"); \
 	[ -z "$$adopt" ] || echo "Adopting $$adopt"; \
 	$(ARCHON) workflow run work-queue --base auto --branch $$branch --input change=$$id --input adopt=$$adopt "Work queued change $$id"; status=$$?; $(CLEANUP); exit $$status
 
