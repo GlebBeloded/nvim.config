@@ -45,7 +45,8 @@ whole log. Search code with one specific term per `rg` and a path, never a broad
 
 Regenerate a reference screenshot (`tests/screenshots/`) only when its cell diff is limited to UI that
 a merged or base commit changed; name that commit (short hash and subject) in the commit message.
-Any other screenshot diff is a bug to fix, not a reference to update.
+Any other screenshot diff is a bug to fix, not a reference to update. A regenerated reference of a visible-UI change must
+match design.md's Proposed render (layout, borders, alignment, clipping); fix the code until it does, never bless output that differs.
 
 Tests whose assertion is a time bound (readiness, startup budgets): one sample, no retry, no load factor; if over the bound on a loaded host,
 rerun the case once and write `## Stuck` if still over. Waits for a condition are different: they may scale with `H.load_factor()`.

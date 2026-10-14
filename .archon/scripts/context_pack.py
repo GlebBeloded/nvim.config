@@ -44,6 +44,27 @@ def lessons() -> str:
     return match.group(1) if match else ""
 
 
+def conventions() -> str:
+    """docs/architecture.md's `## Conventions` and an index of tests/helpers.lua (each `M.` function, its line and
+    `---` summary), so implement passes do not re-read either file whole."""
+    arch = pathlib.Path("docs/architecture.md")
+    text = arch.read_text() if arch.is_file() else ""
+    match = re.search(r"^## Conventions\n(.*?)(?=^## |\Z)", text, re.MULTILINE | re.DOTALL)
+    helpers = pathlib.Path("tests/helpers.lua")
+    lines = helpers.read_text().splitlines() if helpers.is_file() else []
+    index = []
+    for i, line in enumerate(lines):
+        if line.startswith("function M."):
+            start = i
+            while start and lines[start - 1].startswith("---"):
+                start -= 1
+            doc = next((line[3:].strip() for line in lines[start:i] if not line.startswith("---@")), "")
+            index.append(f"- {line.removeprefix('function ')}  (line {i + 1}){': ' + doc if doc else ''}")
+    parts = [match.group(1).strip()] if match else []
+    parts += ["tests/helpers.lua (`local H = require(\"tests.helpers\")`; read a range only to call it):", *index] if index else []
+    return "\n".join(parts)
+
+
 def evidence(change_dir: pathlib.Path) -> str:
     """The `## Evidence` section of the change's proposal.md (a bug's root-cause refs), or ""."""
     proposal = change_dir / "proposal.md"
@@ -149,14 +170,20 @@ def referenced_files(change_dir: pathlib.Path, task: str, evidence: str) -> list
 
 
 def plugin_sources(change_dir: pathlib.Path) -> str:
-    """Install paths of the lazy.nvim plugins the change mentions, so agents read plugin source there."""
+    """Install paths of the lazy.nvim plugins the change mentions, so agents read plugin source there, and of the
+    test-only plugins in .tests/deps (mini.nvim lives only there) with the modules the change names (`mini.pick`)."""
     lock = pathlib.Path("lazy-lock.json")
-    if not lock.exists():
-        return ""
     text = "\n".join(p.read_text(errors="replace") for p in change_dir.rglob("*.md"))
     data = pathlib.Path(os.environ.get("NVIM_TEST_DATA_DIR") or pathlib.Path.home() / ".local/share/nvim")
-    names = [n for n in json.loads(lock.read_text()) if n in text or n.removesuffix(".nvim") in text]
-    return "\n".join(f"- {n}: {data / 'lazy' / n}" for n in names)
+    names = [n for n in json.loads(lock.read_text()) if n in text or n.removesuffix(".nvim") in text] if lock.exists() else []
+    lines = [f"- {n}: {data / 'lazy' / n}" for n in names]
+    for dep in sorted(pathlib.Path(".tests/deps").glob("*/")):
+        base = dep.name.removesuffix(".nvim")
+        if dep.name in names or not re.search(rf"(?<![\w-]){re.escape(base)}(?![\w-])", text):
+            continue
+        mods = sorted(f.relative_to(dep).as_posix() for f in dep.glob(f"lua/{base}/*.lua") if f"{base}.{f.stem}" in text)
+        lines.append(f"- {dep.name} (test dependency): {dep.resolve()}" + (f" (modules: {', '.join(mods)})" if mods else ""))
+    return "\n".join(lines)
 
 
 def last_failures() -> str:
@@ -180,6 +207,9 @@ def main() -> None:
         parts.append(section("Evidence", found + "\n\n(root cause, proposal.md: do not re-read plugin source these refs cover)"))
     parts.append(section("Loop lessons", lessons()))
     parts.append(section("Probing", PROBING))
+    found_conventions = conventions()
+    if found_conventions:
+        parts.append(section("Conventions (docs/architecture.md) and test helpers", found_conventions))
     parts += change_artifacts(change_dir, task)
     plugins = plugin_sources(change_dir)
     if plugins:

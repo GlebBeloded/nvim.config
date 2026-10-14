@@ -20,8 +20,9 @@ import re
 import subprocess
 import time
 
-SECTION = re.compile(r"^## Blocked\b.*?(?=^## |\Z)", re.MULTILINE | re.DOTALL)
-STUCK = re.compile(r"^## Stuck\b.*?(?=^## |\Z)", re.MULTILINE | re.DOTALL)
+# a section counts only with a body: an empty heading (a spec step's leftover) is as good as none
+SECTION = re.compile(r"^## Blocked\b[^\n]*\n\s*(?!## )\S.*?(?=^## |\Z)", re.MULTILINE | re.DOTALL)
+STUCK = re.compile(r"^## Stuck\b[^\n]*\n\s*(?!## )\S.*?(?=^## |\Z)", re.MULTILINE | re.DOTALL)
 LOOP_ITEM = re.compile(r"^(?:[-*]\s+)?(loop:.*)$", re.IGNORECASE)
 QUOTE_CHARS = 2000
 
