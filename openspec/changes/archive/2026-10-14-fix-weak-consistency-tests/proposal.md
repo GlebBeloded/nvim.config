@@ -16,4 +16,5 @@ None. `skip_specs: true` (both cases test existing scenarios).
 
 ## Impact
 - Code: `tests/unit/loop/test_quick.lua`, `tests/unit/run/test_run.lua`.
+- `run: Run ignores a directory without a supported project marker` still holds: the added `Cargo.lock` case strengthens coverage of the same marker-based dispatch requirement without changing the no-marker behavior.
 - Plugins: none. Core keymaps: unchanged.
