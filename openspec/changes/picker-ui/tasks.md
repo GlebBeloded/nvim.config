@@ -12,9 +12,9 @@ Scenarios: `picker: Rows expose primary secondary and category text`, `picker: S
 
 ## 3. Make picker layout responsive
 Scenarios: `picker: Compact picker matches reference screenshot`, `picker: Narrow picker matches reference screenshot`, `picker: Short editor gives the picker full height`, `picker: Resize recomputes picker layout`
-- [ ] 3.1 Write the tests for the four responsive picker scenarios in tests/screen/picker/test_responsive.lua and see them fail
-- [ ] 3.2 Add pure breakpoint logic and a callable mini.pick window config that refreshes fields, hints and geometry after resize
-- [ ] 3.3 Run `make test FILE=tests/screen/picker/test_responsive.lua CASE="Compact picker matches reference screenshot"`, `CASE="Narrow picker matches reference screenshot"`, `CASE="Short editor gives the picker full height"` and `CASE="Resize recomputes picker layout"` and see them pass
+- [x] 3.1 Write the tests for the four responsive picker scenarios in tests/screen/picker/test_responsive.lua and see them fail
+- [x] 3.2 Add pure breakpoint logic and a callable mini.pick window config that refreshes fields, hints and geometry after resize
+- [x] 3.3 Run `make test FILE=tests/screen/picker/test_responsive.lua CASE="Compact picker matches reference screenshot"`, `CASE="Narrow picker matches reference screenshot"`, `CASE="Short editor gives the picker full height"` and `CASE="Resize recomputes picker layout"` and see them pass
 
 ## 4. Replace the selection interface
 Scenarios: `select: Code action menu receives picker mappings`, `select: Selection accepts omitted options`, `select: Cancelling a code action completes selection`, `select: Code action popup fits editor width`, `select: Selection previews the current item`
@@ -51,3 +51,4 @@ Scenarios: `ai: Keymaps exist after VeryLazy`, `ai: Missing 99 is tolerated`, `a
 ## Agent decisions
 
 - Row visibility uses named `show_*` options and built-in `Comment`/`PmenuExtra`/`PmenuKind` groups so responsive callers can hide fields while the frame task remains responsible for palette-backed links.
+- Normal picker geometry is a centered 72-by-8-cell frame, while editors below 15 lines use every row, matching the approved wide render and preserving results on short screens.

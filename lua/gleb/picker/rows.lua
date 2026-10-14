@@ -4,6 +4,7 @@
 local M = {}
 
 local namespace = vim.api.nvim_create_namespace("gleb_picker_rows")
+local layout = require("gleb.picker.layout")
 
 ---@class gleb.picker.Row
 ---@field text string
@@ -31,6 +32,18 @@ local namespace = vim.api.nvim_create_namespace("gleb_picker_rows")
 ---@return integer
 local function display_width(text)
 	return vim.fn.strdisplaywidth(text)
+end
+
+---@param text string
+---@param width integer
+---@return string
+local function truncate(text, width)
+	local characters = vim.fn.strchars(text)
+	while characters > 0 and display_width(text) > width do
+		characters = characters - 1
+		text = vim.fn.strcharpart(text, 0, characters)
+	end
+	return text
 end
 
 ---@param item gleb.picker.Row
@@ -116,6 +129,11 @@ function M.render(buf, items, width, opts)
 	local lines = {}
 	for index, item in ipairs(items) do
 		local row = item.section and render_section(item, width) or render_item(item, width, opts)
+		row.text = truncate(row.text, width)
+		row.highlights = vim.tbl_filter(function(highlight)
+			highlight.end_col = math.min(highlight.end_col, #row.text)
+			return highlight.col < highlight.end_col
+		end, row.highlights)
 		rendered[index] = row
 		lines[index] = row.text
 	end
@@ -139,7 +157,7 @@ end
 function M.show(buf, items, _query)
 	local win = vim.fn.bufwinid(buf)
 	local width = win == -1 and vim.o.columns or vim.api.nvim_win_get_width(win)
-	M.render(buf, items, width)
+	M.render(buf, items, width, layout.row_options())
 end
 
 return M
