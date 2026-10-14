@@ -43,6 +43,7 @@ Each run works in its own git worktree cut from `auto` and, when every gate is g
 | `make preview CHANGE=<id> [OPEN=1]` | regenerate `openspec/changes/<id>/preview.html` and print its absolute path (`OPEN=1` is for you; the loop passes `OPEN=`) |
 | `make console` | `archon serve`, the web console at http://localhost:3090 |
 | `make loop-report [RUN=<id>]` | generate a local HTML report for the named run, or the latest run for this codebase |
+| `make self-check CHANGE=<id>` | the gate's cheap checks (lint, types, strict validation of the change and of its trial archive), run by implement and fix before they commit |
 | `make loop-status` / `make loop-validate` | active and last runs plus the latest report URI / `archon validate workflows` |
 
 Run the targets from `~/.config/nvim` (the `auto` checkout). `fix`, `feature`, `queue` and `update` can

@@ -147,7 +147,7 @@ STAMP := $(shell date +%Y%m%d-%H%M%S)
 # Archon judges "merged" against local/auto without fetching it, so refresh it with the run's merge first.
 CLEANUP = { git fetch -q local; $(ARCHON) isolation cleanup --merged; } >/dev/null 2>&1 || true
 
-.PHONY: loop-setup loop-register loop-validate loop-test loop-clean fix feature queue drain update outdated console loop-report loop-status preview
+.PHONY: loop-setup loop-register loop-validate self-check loop-test loop-clean fix feature queue drain update outdated console loop-report loop-status preview
 
 loop-setup: # self-remote: Archon cuts worktrees from <remote>/auto, and auto stays local
 	@git remote get-url local >/dev/null 2>&1 || git remote add local "$$(git rev-parse --path-format=absolute --git-common-dir | sed 's|/.git$$||')"
@@ -167,6 +167,14 @@ loop-register:
 
 loop-validate:
 	@$(ARCHON) validate workflows
+
+# make self-check CHANGE=<id>: the gate's cheap checks, for implement/fix before they hand back (no tests, no e2e):
+# lint, types, strict validate of the change, then of the main specs after a trial archive (gate.py)
+self-check:
+	@test -n "$(CHANGE)" || { echo 'usage: make self-check CHANGE=<change id>' >&2; exit 2; }
+	@$(MAKE) -s lint types
+	@openspec validate "$(CHANGE)" --strict --no-interactive
+	@python3 .archon/scripts/spec_trial.py "$(CHANGE)"
 
 # dry-run fixtures (.archon/workflows/<workflow>/fixtures/*.stubs.yaml): no AI, no run, ~13 s;
 # exec-code fixtures see the fixture-owned changes, never the live queue
