@@ -78,9 +78,9 @@ Scenarios: `session: project cwd change preserves the startup session name`
 
 ## 14. Use 99 native completion
 Scenarios: `ai: Keymaps exist after VeryLazy`, `ai: Missing 99 is tolerated`, `ai: 99 uses native completion`
-- [ ] 14.1 Update the three scenarios in tests/integration/ai/test_setup.lua and tests/unit/ai/test_setup.lua, then see the native-completion scenario fail
-- [ ] 14.2 Configure 99's native completion source and remove its Telescope dependency without changing its provider, model or keymaps
-- [ ] 14.3 Run the three named AI scenarios in their test files and see them pass
+- [x] 14.1 Update the three scenarios in tests/integration/ai/test_setup.lua and tests/unit/ai/test_setup.lua, then see the native-completion scenario fail
+- [x] 14.2 Configure 99's native completion source and remove its Telescope dependency without changing its provider, model or keymaps
+- [x] 14.3 Run the three named AI scenarios in their test files and see them pass
 
 ## Agent decisions
 
