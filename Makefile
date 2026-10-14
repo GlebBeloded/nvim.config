@@ -1,6 +1,7 @@
 # Test pyramid for this Neovim config. See docs/testing.md.
 #   make check   - every layer below, concurrently (tests/check.sh); E2E=1 for the merge gate
 #   make quick   - only what the changes vs $(BASE) touch (tests/quick.sh); the inner loop
+#   make probe   - run a Lua snippet in a full-config test child (tests/probe.lua)
 
 # not NVIM: Neovim exports $NVIM (its server address) to :terminal jobs
 NVIM_BIN ?= nvim
@@ -22,7 +23,7 @@ export NVIM_TEST_DATA_DIR ?= $(CURDIR)/.tests/xdg/data/nvim
 endif
 
 .PHONY: check quick install deps fmt lint types test test-unit test-integration test-screen test-readiness \
-	screenshots smoke smoke-health smoke-startup trace specs render colorize clean
+	screenshots smoke smoke-health smoke-startup trace probe specs render colorize clean
 
 # timing-sensitive layers run alone after the rest, so other layers do not skew them
 check:
@@ -79,6 +80,12 @@ smoke-startup: deps
 
 trace: deps
 	@$(NVIM_LUA) tests/trace.lua $(if $(VERBOSE),,--quiet)
+
+# make probe SCRIPT=<file.lua> | PROBE='lua code' [PROBE_TIMEOUT=ms]: run Lua in a full-config test child
+probe: export SCRIPT := $(SCRIPT)
+probe: export PROBE := $(PROBE)
+probe: deps
+	@$(NVIM_LUA) tests/probe.lua
 
 # main specs pass strict validation (what a trial archive needs)
 specs:

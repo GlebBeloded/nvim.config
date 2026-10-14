@@ -53,6 +53,7 @@ for f in $changed; do
 	tests/helpers.lua | tests/minimal_init.lua | tests/child_init.lua | tests/runner.lua | tests/parallel.lua)
 		all=1 ;;
 	tests/smoke/*) smoke=1 ;;
+	tests/probe.lua) add_cap loop ;;
 	tests/shortcuts/* | openspec/specs/shortcuts/* | openspec/changes/*/specs/shortcuts/*)
 		chain=1 stack=1 e2e=1 ;;
 	tests/chain/* | tests/stack/*) chain=1 stack=1 ;;

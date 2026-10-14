@@ -21,6 +21,13 @@ TOTAL_LINES = 2500  # all referenced files together
 PATH_RE = re.compile(r"`((?:lua|tests|plugins|terminal|ops|\.archon|docs)/[\w./-]+\.(?:lua|py|sh|md|yaml|json))(?::\d+)?")
 
 
+PROBING = (
+    "- `make probe SCRIPT=<file.lua>` (or `PROBE='lua code'`) runs Lua in the tests' full-config child "
+    "and sandbox, prints its output and return values, exits non-zero on error (docs/testing.md).\n"
+    "- LSP restart and neo-tree renders are async: wait for the end state, not for attachment."
+)
+
+
 def section(title: str, body: str) -> str:
     return f"## {title}\n\n{body.strip()}\n"
 
@@ -97,6 +104,7 @@ def main() -> None:
     if found:
         parts.append(section("Evidence", found + "\n\n(root cause, proposal.md: do not re-read plugin source these refs cover)"))
     parts.append(section("Loop lessons", lessons()))
+    parts.append(section("Probing", PROBING))
     parts += change_artifacts(change_dir)
     plugins = plugin_sources(change_dir)
     if plugins:
