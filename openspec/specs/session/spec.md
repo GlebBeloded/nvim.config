@@ -4,6 +4,7 @@
 Zellij-aware session recovery: every Neovim pane saves its window/buffer layout under a key derived from the zellij session, pane id and cwd, and a bare `nvim` restores it. Modified file buffers are auto-written so a restored session never misses edits.
 
 ## Requirements
+
 ### Requirement: Session key
 The config SHALL name a session `<zellij session>-<pane id>-<cwd slug>` via `require("gleb.session.key").session_name()`, where the zellij session is `$ZELLIJ_SESSION_NAME` (default `no-zellij`), the pane id is `$ZELLIJ_PANE_ID` (default `0`), and the cwd slug is `getcwd()` with every `/`, `\` and `:` replaced by `%` (`key.slugify`).
 
@@ -39,7 +40,7 @@ The config SHALL resolve which saved session to load with `key.resolve(name, sav
 - **THEN** it returns `nil`
 
 ### Requirement: Restore on bare startup
-The config SHALL, on `VimEnter`, load the session returned by `key.resolve(key.session_name(), <saved sessions>)` only when Neovim was started with no file arguments (`argc(-1) == 0`), with nested autocmds enabled so `FileType` fires for restored buffers, and errors silenced. The saved sessions SHALL be listed newest first by modification time, so the cwd fallback picks the most recently saved session for the cwd.
+The config SHALL capture `key.session_name()` once at module load, before later cwd changes. On `VimEnter`, it SHALL load `key.resolve(<captured session name>, <saved sessions>)` only when started with no file arguments (`argc(-1) == 0`), with nested autocmds so `FileType` fires for restored buffers and with errors silenced. Saved sessions SHALL be listed newest first by modification time, so cwd fallback picks the most recently saved session for the cwd.
 
 #### Scenario: bare nvim restores the pane session
 - **WHEN** a session named `key.session_name()` containing file `a.txt` exists and Neovim is started with no file arguments in the same cwd and zellij env
@@ -62,7 +63,7 @@ The config SHALL, on `VimEnter`, load the session returned by `key.resolve(key.s
 - **THEN** after `VimEnter` the current buffer is the empty startup buffer (or the dashboard)
 
 ### Requirement: Save on write and exit
-The config SHALL save the current layout as session `key.session_name()` (without notification) on every `BufWritePost` and on `VimLeavePre`, but only when Neovim was started with no file arguments (`argc(-1) == 0`) and at least one listed buffer has a non-empty name and an empty `buftype`; otherwise it SHALL NOT save and an existing session with that name stays unchanged. The session plugin's own periodic autosave is disabled.
+The config SHALL save the current layout as the session name captured once during module load (without notification) on every `BufWritePost` and on `VimLeavePre`, but only when Neovim was started with no file arguments (`argc(-1) == 0`) and at least one listed buffer has a non-empty name and an empty `buftype`; otherwise it SHALL NOT save and an existing session with that name stays unchanged. The session plugin's own periodic autosave is disabled.
 
 #### Scenario: writing a buffer saves the session
 - **WHEN** `:write` is executed on a file buffer
@@ -79,6 +80,10 @@ The config SHALL save the current layout as session `key.session_name()` (withou
 #### Scenario: quitting without file buffers keeps the previous session
 - **WHEN** a session named `key.session_name()` listing `a.txt` exists, Neovim is started with no file arguments, `:%bwipeout` leaves only an unnamed buffer, and `:qall` is executed
 - **THEN** the session file named `key.session_name()` is unchanged and still lists `a.txt`
+
+#### Scenario: project cwd change preserves the startup session name
+- **WHEN** Neovim starts with no file arguments in a project subdirectory, project.nvim changes the cwd to the project root after a file buffer opens, and that buffer is written
+- **THEN** the saved session name is derived from the startup subdirectory rather than the project root
 
 ### Requirement: Auto-save modified buffers
 The config SHALL automatically write modified buffers after a 1000 ms debounce, but only for buffers with a non-empty name and an empty `buftype` whose `filetype` is not `gitcommit` or `gitrebase`.
