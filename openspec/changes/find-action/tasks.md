@@ -21,6 +21,7 @@ Scenarios: `find-action: Find Action opens from its shortcut`, `find-action: Fin
 - Give self-context-capturing actions an explicit mapping callback so Find Action keeps registry assignment while exposing its exact entry point.
 - Observe stack pickers by their active source name over RPC so real-byte tests assert the opened UI without replacing mappings.
 - Let an e2e recorder optionally call the saved mapping callback so one physical press proves both key arrival and its action.
+- Use `ai.search` and `ai.vibe` in the AI category so the stable IDs follow the feature-action convention while the titles retain the 99 product name.
 
 ## 2. Render action rows
 Scenarios: `find-action: Rows show action metadata`, `find-action: Rows fall back to Vim notation`, `find-action: Toggle rows show state glyphs`
@@ -90,9 +91,9 @@ Scenarios: `shortcuts: Cmd+Shift+A opens Find Action from a real key press`
 
 ## 13. Replace the normal 99 menu with actions
 Scenarios: `ai: Menu shows prompt`, `ai: Menu s opens search prompt`, `ai: Menu v opens vibe prompt`, `ai: Menu ignores other keys`
-- [ ] 13.1 Update the cases in `tests/integration/ai/test_prompt_keys.lua` for the action-based entry points and absent normal `<A-9>` menu, then run `make test FILE=tests/integration/ai/test_prompt_keys.lua`, seeing the four changed scenarios fail
-- [ ] 13.2 Add `lua/gleb/ai/actions.lua`, register 99 Search and 99 Vibe, and remove the normal-mode `<A-9>` menu
-- [ ] 13.3 Run `make test FILE=tests/integration/ai/test_prompt_keys.lua` and see all four scenarios pass
+- [x] 13.1 Update the cases in `tests/integration/ai/test_prompt_keys.lua` for the action-based entry points and absent normal `<A-9>` menu, then run `make test FILE=tests/integration/ai/test_prompt_keys.lua`, seeing the four changed scenarios fail
+- [x] 13.2 Add `lua/gleb/ai/actions.lua`, register 99 Search and 99 Vibe, and remove the normal-mode `<A-9>` menu
+- [x] 13.3 Run `make test FILE=tests/integration/ai/test_prompt_keys.lua` and see all four scenarios pass
 
 ## 14. Preserve direct 99 prompt mappings
 Scenarios: `ai: Shift-Enter opens vibe prompt`, `ai: Visual Alt-9 opens visual prompt`, `ai: Visual Shift-Enter opens visual prompt`

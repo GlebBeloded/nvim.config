@@ -4,8 +4,6 @@ local H = require("tests.helpers")
 local eq = MiniTest.expect.equality
 local child = H.new_child()
 
-local MENU = "99> [s]earch [v]ibe: "
-
 ---@class test.AiPrompt
 ---@field name string buffer name tail (99 names every prompt buffer `99-prompt`)
 ---@field title string
@@ -29,12 +27,6 @@ local function start()
 end
 
 local T = H.child_set(child, start)
-
---- Text of the bottom (message) row of the child's screen.
----@return string
-local function message_row()
-	return table.concat(H.screen_rows(child, -1).text[1])
-end
 
 --- Buffer name, float title and mode of the focused window.
 ---@return test.AiPrompt
@@ -81,40 +73,33 @@ local function selection_lines(buf)
 	return { child.api.nvim_buf_get_mark(buf, "<")[1], child.api.nvim_buf_get_mark(buf, ">")[1] }
 end
 
---- Wait until the message row starts with the menu prompt.
----@return string row
-local function wait_menu_row()
-	vim.wait(1000, function()
-		return vim.startswith(message_row(), MENU)
-	end, 20)
-	return message_row()
-end
-
--- nvim_input, not child.type_keys: type_keys' `v:errmsg` round-trips make the
--- menu's pending getchar() return, so the prompt would be gone before reading.
 T["ai: Menu shows prompt"] = function()
-	child.lua([[Echoed = {}
-local echo = vim.api.nvim_echo
-vim.api.nvim_echo = function(chunks, ...)
-	vim.list_extend(Echoed, chunks)
-	return echo(chunks, ...)
-end]])
-	child.api.nvim_input("<A-9>")
-
-	eq(wait_menu_row():sub(1, #MENU), MENU)
-	eq(child.lua_get("Echoed"), { { MENU, "Question" } })
+	eq(child.fn.maparg("<A-9>", "n"), "")
 	eq(prompt_buffers(), 0)
 end
 
+---@param id string
+---@param title string
+local function run_action(id, title)
+	child.lua(([[
+		local action = require("gleb.actions").state.applicator.catalog:get(%q)
+		assert(action, "action is not registered")
+		assert(action.title == %q, "action has the wrong title")
+		vim.schedule(function()
+			action.run(require("gleb.actions.context").capture())
+		end)
+	]]):format(id, title))
+end
+
 T["ai: Menu s opens search prompt"] = function()
-	child.type_keys("<A-9>", "s")
+	run_action("ai.search", "99 Search")
 	wait_prompt()
 
 	eq(focused_prompt(), expected_prompt("Search"))
 end
 
 T["ai: Menu v opens vibe prompt"] = function()
-	child.type_keys("<A-9>", "v")
+	run_action("ai.vibe", "99 Vibe")
 	wait_prompt()
 
 	eq(focused_prompt(), expected_prompt("Vibe"))
@@ -127,12 +112,11 @@ local function wait_keys_done()
 end
 
 T["ai: Menu ignores other keys"] = function()
-	child.api.nvim_buf_set_lines(0, 0, -1, false, { "keep" })
 	child.type_keys("<A-9>", "x")
 	wait_keys_done()
 
 	eq({ prompt_buffers(), child.api.nvim_get_mode().mode }, { 0, "n" })
-	eq(child.api.nvim_buf_get_lines(0, 0, -1, false), { "keep" })
+	eq(child.fn.maparg("<A-9>", "n"), "")
 end
 
 T["ai: Shift-Enter opens vibe prompt"] = function()
