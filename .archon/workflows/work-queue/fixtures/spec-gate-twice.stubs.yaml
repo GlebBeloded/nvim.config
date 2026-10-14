@@ -1,0 +1,18 @@
+# g9. the spec gate is red on both passes: spec-failed (real, spec_gate.py) fails the run with the
+# second gate's log; preview, design-decide and deliver never run.
+fixture:
+  expect: failed
+  fail-node: spec-failed
+  inputs: { change: skip-change }
+  reached: [pick, complete, classify, spec-gate, spec-retry, spec-gate-2]
+exec-code: true
+skills-check: "skills ok"
+pick: { found: true, change: skip-change, kind: fix, has_tasks: false }
+complete: "tasks written"
+spec-gate: { ok: false, log: "pinned.py failed (exit 1):\n- run: Cargo root from cwd" }
+spec-retry: "Impact lines added"
+spec-gate-2: { ok: false, log: "pinned.py failed (exit 1):\n- run: Cargo test in workspace" }
+spec-ok: "MUST-NOT-RUN"
+preview: "MUST-NOT-RUN"
+design-decide: "MUST-NOT-RUN"
+deliver__ship: "MUST-NOT-RUN"

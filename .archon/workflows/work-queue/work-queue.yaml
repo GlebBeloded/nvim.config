@@ -131,6 +131,7 @@ nodes:
       change: $pick.output.change
       adopted: $adopt.output.summary
       pinned: $pinned.output
+      gate_log: none
     skills: [openspec-continue-change]
 
   - id: classify # visible_ui (design.md has a render) and architecture (Impact/tasks name wiring files) from the written change (no AI)
@@ -146,16 +147,62 @@ nodes:
         architecture: { type: boolean }
       required: [visible_ui, architecture]
 
-  - id: spec-gate
-    bash: openspec validate $pick.output.change --strict --no-interactive && python3 .archon/scripts/spec_trial.py $pick.output.change && python3 .archon/scripts/scenarios.py --unknown $pick.output.change && python3 .archon/scripts/pinned.py --check $pick.output.change # main specs after a trial archive; pins planned
+  - id: spec-gate # main specs after a trial archive; pins planned (spec_gate.py: {ok, log}, exits 0 so a red pass routes back)
+    script: spec_gate
+    runtime: uv
     depends_on: [complete, classify, adopted-state, blocked]
     trigger_rule: none_failed_min_one_success # complete and classify are skipped when the adopted tasks are all ticked
     when: "$adopted-state.output.archived == false && $blocked.output.blocked == false"
+    with:
+      change: $pick.output.change
+      failed_log: ""
+    output_format: &gate_output
+      type: object
+      properties:
+        ok: { type: boolean }
+        log: { type: string }
+      required: [ok, log]
+
+  - id: spec-retry # one more spec pass with the red gate's log; a second red gate fails the run
+    command: queue-spec
+    context: fresh
+    depends_on: [spec-gate]
+    when: "$spec-gate.output.ok == false"
+    with:
+      change: $pick.output.change
+      adopted: $adopt.output.summary
+      pinned: $pinned.output
+      gate_log: $spec-gate.output.log
+    skills: [openspec-continue-change]
+
+  - id: spec-gate-2
+    script: spec_gate
+    runtime: uv
+    depends_on: [spec-retry]
+    with:
+      change: $pick.output.change
+      failed_log: ""
+    output_format: *gate_output
+
+  - id: spec-failed # the run fails with the second gate's log
+    script: spec_gate
+    runtime: uv
+    depends_on: [spec-gate-2]
+    when: "$spec-gate-2.output.ok == false"
+    with:
+      change: $pick.output.change
+      failed_log: $spec-gate-2.output.log
+
+  - id: spec-ok # either spec pass is green (no AI); skipped when the gate was (an adopted archived change)
+    bash: echo ok
+    depends_on: [spec-gate, spec-gate-2]
+    trigger_rule: none_failed_min_one_success
+    when: "$spec-gate.output.ok == true || $spec-gate-2.output.ok == true"
 
   # --- Preview + approval: always for features, else only for visible UI ----------------
   - id: preview
     bash: make -s preview CHANGE=$pick.output.change OPEN= # OPEN= beats an exported OPEN: nothing opens on the host
-    depends_on: [spec-gate]
+    depends_on: [spec-ok]
     # left to right, && before ||: the adopted design.md decides only when complete was skipped (tasks all ticked); otherwise classify (the written design.md; false for skip_specs) decides
     when: "$pick.output.kind == 'feature' || $adopted-state.output.tasks_done == true && $adopted-state.output.visible_ui == true || $adopted-state.output.tasks_done == false && $classify.output.visible_ui == true"
 
@@ -173,9 +220,10 @@ nodes:
   - id: design-decide
     script: decide
     runtime: uv
-    depends_on: [adopted-state, blocked, spec-gate, design-gate]
+    depends_on: [adopted-state, blocked, spec-ok, design-gate]
     trigger_rule: none_failed_min_one_success
-    when: "$blocked.output.blocked == false"
+    # an archived adopted change has no spec gate; otherwise a pass must be green (a red second pass fails the run)
+    when: "$blocked.output.blocked == false && $adopted-state.output.archived == true || $spec-ok.output == 'ok'"
     with:
       cancel_on_reject: "true"
       verdict: ""

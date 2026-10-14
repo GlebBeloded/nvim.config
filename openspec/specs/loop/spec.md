@@ -809,3 +809,18 @@ Every literal `lua/gleb` file path routed by `tests/quick.sh` SHALL exist in the
 #### Scenario: Queue spec prompt keeps skip_specs and flake tasks narrow
 - **WHEN** `.archon/commands/queue-spec.md` is read
 - **THEN** it locates code by `rg -n <symbol>`, gives a skip_specs task template reading only scenario titles, and has flake tasks copy the proposal's `FAIL in` lines without searching `artifacts/runs`
+
+#### Scenario: Queue spec fast path plans pinned scenarios
+- **WHEN** `.archon/commands/queue-spec.md` is read
+- **THEN** the pinned list precedes the skip_specs fast path, which adds one `## Impact` line per pinned scenario saying why it still holds (or drops skip_specs for a MODIFIED delta)
+
+### Requirement: Red spec gate reruns the spec step once
+The work-queue spec gate (`spec_gate.py`) SHALL print `{ok, log}` and exit 0. A red first pass SHALL rerun queue-spec once with the gate's log as feedback, then gate again; only a red second gate SHALL fail the run, printing its log. Preview and the design decision SHALL wait for a green pass.
+
+#### Scenario: Spec gate prints its log instead of failing
+- **WHEN** `spec_gate.py` runs for a change pinning an unplanned scenario, then with `INPUTS_FAILED_LOG` set to that log
+- **THEN** the first exits 0 with `ok` false and a log naming `pinned.py` and the scenario; the second exits 1 printing the log
+
+#### Scenario: Red spec gate reruns the spec step once
+- **WHEN** `.archon/workflows/work-queue/work-queue.yaml` and queue-spec.md are read
+- **THEN** `spec-retry` runs queue-spec with `$spec-gate.output.log` when the gate is red, `spec-gate-2` follows, `spec-failed` fails the run on a second red gate, and preview and design-decide wait for `spec-ok`

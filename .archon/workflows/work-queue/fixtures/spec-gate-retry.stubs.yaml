@@ -1,0 +1,28 @@
+# g8. the spec gate is red once (two pinned scenarios with no delta or Impact line): spec-retry runs
+# queue-spec again with the gate's log as feedback, spec-gate-2 is green and the change delivers.
+fixture:
+  expect: completed
+  inputs: { change: skip-change }
+  reached: [pick, complete, classify, spec-gate, spec-retry, spec-gate-2, spec-ok, design-decide, deliver__ship, deliver__shipped]
+  resolved-text-contains:
+    spec-retry: "pinned.py failed (exit 1):\n- run: Cargo root from cwd"
+exec-code: true
+skills-check: "skills ok"
+pick: { found: true, change: skip-change, kind: fix, has_tasks: false }
+complete: "tasks written"
+spec-gate: { ok: false, log: "pinned.py failed (exit 1):\n- run: Cargo root from cwd\n- run: Cargo test in workspace" }
+spec-retry: "Impact lines added"
+spec-gate-2: { ok: true, log: "" }
+spec-failed: "MUST-NOT-RUN"
+preview: "MUST-NOT-RUN"
+# nvim-deliver (include `deliver`): top-level ids get the deliver__ prefix, loop bodies keep theirs
+deliver__skills-check: "skills ok"
+deliver__plan-check: { needed: false, has_change: true }
+deliver__plan-gate: "valid"
+pack: { has_task: true, context: context.md }
+implement: "task 1 done"
+gate: { green: true, spec_ok: true, tasks_done: true, untested: 0, attempt: 1, failures: "", blocked: false }
+review: { approve: true, findings: "", weakened_scenario: false, weakened_test: false }
+deliver__escalation: { decision: ship, escalate: false, reasons: "- none" }
+deliver__ship: { merged: true, conflict: false, branch: loop/skip-change, commit: abc123 }
+deliver__followup: "MUST-NOT-RUN"

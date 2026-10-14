@@ -12,5 +12,5 @@ skills-check: "skills ok"
 pick: { found: true, change: ui-change, kind: fix, has_tasks: false }
 pinned: "none"
 complete: "spec written"
-spec-gate: "valid"
+spec-gate: { ok: true, log: "" }
 preview: "http://localhost:8000/preview/ui-change"
