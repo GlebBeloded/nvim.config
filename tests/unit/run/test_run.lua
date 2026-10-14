@@ -22,6 +22,13 @@ T["run: Run ignores a directory without a supported project marker"] = function(
 	]])
 
 	eq(child.lua_get("RunCommands"), {})
+
+	child.lua([[
+		vim.fn.writefile({}, "Cargo.lock")
+		vim.api.nvim_cmd({ cmd = "Run" }, {})
+	]])
+
+	eq(child.lua_get("RunCommands"), { "!cd .;cargo run" })
 end
 
 return T
