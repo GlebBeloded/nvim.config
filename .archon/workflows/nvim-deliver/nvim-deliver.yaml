@@ -216,6 +216,7 @@ nodes:
     depends_on: [escalation, ship-gate]
     trigger_rule: all_done
     with:
+      earlier: "" # no earlier approval to reuse (work-queue design-decide only)
       needed: $escalation.output.escalate
       verdict: $escalation.output.decision
       blocked: $build.output.blocked

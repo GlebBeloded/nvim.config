@@ -207,8 +207,25 @@ nodes:
     # left to right, && before ||: the adopted design.md decides only when complete was skipped (tasks all ticked); otherwise classify (the written design.md; false for skip_specs) decides
     when: "$pick.output.kind == 'feature' || $adopted-state.output.tasks_done == true && $adopted-state.output.visible_ui == true || $adopted-state.output.tasks_done == false && $classify.output.visible_ui == true"
 
-  - id: design-gate
+  - id: design-approved # the user approved this same design.md in an earlier run (proposal.md `Design-approved:`): no second ask (no AI)
+    script: design_approval
+    runtime: uv
     depends_on: [preview]
+    with:
+      change: $pick.output.change
+      mode: check
+      feedback: ""
+    output_format:
+      type: object
+      properties:
+        approved: { type: boolean }
+        decision: { type: string }
+        feedback: { type: string }
+      required: [approved, decision, feedback]
+
+  - id: design-gate
+    depends_on: [preview, design-approved]
+    when: "$design-approved.output.approved == false"
     approval:
       message: |
         Queued change $pick.output.change ($pick.output.kind) is ready to build.
@@ -232,6 +249,7 @@ nodes:
       needed: { from: $preview.output, if_skipped: "" }
       decision: { from: $design-gate.output.decision, if_skipped: auto }
       feedback: { from: $design-gate.output.text, if_skipped: "" }
+      earlier: { from: $design-approved.output, if_skipped: "" }
     output_format:
       type: object
       properties:
@@ -240,6 +258,16 @@ nodes:
         feedback: { type: string }
       required: [go, decision, feedback]
 
+  - id: design-record # the user approved at the gate: record design.md's hash and the comment in proposal.md, committed (no AI)
+    script: design_approval
+    runtime: uv
+    depends_on: [design-gate, design-decide]
+    when: "$design-decide.output.go == true"
+    with:
+      change: $pick.output.change
+      mode: record
+      feedback: $design-decide.output.feedback
+
   - id: stop
     cancel: "Stopped at the design gate."
     depends_on: [design-decide]
@@ -247,7 +275,8 @@ nodes:
 
   - id: deliver
     include: nvim-deliver
-    depends_on: [design-decide]
+    depends_on: [design-decide, design-record]
+    trigger_rule: none_failed_min_one_success # design-record runs only after a gate approval
     when: "$design-decide.output.go == true"
     with:
       change: $pick.output.change

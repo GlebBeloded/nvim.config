@@ -84,6 +84,17 @@ After a judge reject, `.archon/scripts/followup.py` SHALL re-queue the work on `
 - **WHEN** followup.py runs where `auto` is checked out in no worktree and a `post-checkout` hook exits 1, then again without the hook
 - **THEN** the first run exits non-zero with empty stdout, leaves `auto`, `git worktree list` and the ship lock as before; the second queues `followup-x` and leaves `git worktree list` as before
 
+### Requirement: Design gate asks once per design
+When the user approves work-queue's design gate, `.archon/scripts/design_approval.py` SHALL record `Design-approved: <sha256 of design.md>` and the comment in a `## Design approval` section of the change's proposal.md, committed on the run branch, and followup.py SHALL carry it to `auto` on re-queue; a later run whose design.md still has that hash SHALL skip the gate with decision `approve` and the earlier comment, any other run SHALL ask.
+
+#### Scenario: Approved design skips the gate on a later run
+- **WHEN** design_approval.py runs in a throwaway repo for change `x` with a design.md: check, record with comment `take option B`, check, then check again after design.md changed, and decide.py runs on each check's JSON as `INPUTS_EARLIER` with decision `auto` and a preview as `needed`
+- **THEN** the first check is not approved; record commits `chore(openspec): record design approval of x` with the line `Design-approved: <sha256 of design.md>` before the last section; the second check prints `approved` true, decision `approve` and the comment, and decide goes with them; after the edit the check is not approved and decide does not go
+
+#### Scenario: Rejected run carries the design approval
+- **WHEN** design_approval.py records an approval on the run branch, followup.py re-queues active change `x`, and `auto` then merges the run branch
+- **THEN** `auto`'s proposal has one `Design-approved:` line and the comment, the merge has no conflict, and a check on the merged change is approved
+
 ### Requirement: Queue waits for a change's dependencies
 `.archon/scripts/queue_pick.py` SHALL not pick a change whose proposal.md has a `Depends: <change>[, <change>]` line until every named change is archived under `openspec/changes/archive/`, whether it is picked automatically or named by `INPUTS_CHANGE`.
 
@@ -623,6 +634,10 @@ work-queue SHALL skip the queue-spec step when the adopted change's tasks.md has
 #### Scenario: Fix keeps the red regression test and review blocks scope creep
 - **WHEN** `.archon/commands/fix.md` and `review.md` are read
 - **THEN** fix forbids deleting or weakening the red regression test an earlier pass added, and review marks an edit outside the proposal and tasks `[must-fix]` unless the gate needed it, which the finding says, and keeps new scenario test files, whitespace-only `make fmt` edits and the change's folder in scope
+
+#### Scenario: Review lists every must-fix in one pass
+- **WHEN** `.archon/commands/review.md` and `fix.md` are read
+- **THEN** review checks every unit implementing each delta requirement and scenario, not a sample, lists all must-fix findings at once and says why an earlier pass missed one in code it already reviewed; fix applies a finding about a shared contract to every unit, each against its own native API
 
 #### Scenario: Adopted change with every task ticked skips the spec step
 - **WHEN** `tasks.py --adopted-state` runs for change `c` with all tasks ticked (with a design.md holding a render section, with a technical design.md, without one, and with a proposal holding a `## Rejected run` section), with one unticked, with no tasks.md and with no change folder

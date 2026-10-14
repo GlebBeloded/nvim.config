@@ -95,6 +95,8 @@ editor.
 
 - The design gate: always for a feature, and for a fix that changes visible UI. The gate message prints
   the absolute path of `preview.html`; nothing opens on the host (no `open`, `osascript` or browser).
+  It asks once per design: your approval and comment land in the proposal's `## Design approval`
+  section, and a re-queued run whose design.md is unchanged skips the gate with them.
 - The judge (`.archon/scripts/escalation.py`) asks only for breaking changes: a test case the build added and then removed,
   a plugin added or removed,
   a core keymap or the leader changed, behaviour (a spec scenario) removed, a requirement removed and

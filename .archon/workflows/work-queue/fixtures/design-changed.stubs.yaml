@@ -1,0 +1,15 @@
+# g12. as g11, but design.md changed after the recorded approval (fixtures/changes/design-changed): the
+# hash no longer matches, so the design gate asks again. Dry-run limit as in g4: the auto-approved gate
+# outputs "approved", so design-decide fails here.
+fixture:
+  expect: failed
+  fail-node: design-decide
+  inputs: { change: design-changed }
+  reached: [pick, adopted-state, spec-gate, preview, design-approved, design-gate]
+exec-code: true
+skills-check: "skills ok"
+pick: { found: true, change: design-changed, kind: fix, has_tasks: true }
+complete: "MUST-NOT-RUN"
+classify: "MUST-NOT-RUN"
+spec-gate: { ok: true, log: "" }
+preview: "http://localhost:8000/preview/design-changed"

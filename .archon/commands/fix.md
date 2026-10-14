@@ -18,7 +18,9 @@ Change: openspec/changes/$INPUTS.change/
 Findings of the previous pass (check failures, untested scenarios, hard rules, review):
 $LOOP_PREV.verdict.output.feedback
 
-Fix exactly these findings and nothing else, smallest change first. Stay on the listed findings:
+Fix exactly these findings and nothing else, smallest change first. A finding about a contract several
+units implement (each adapter, caller or plugin integration) is fixed in every unit it applies to, each checked
+against its own native API (installed plugin source), not one rule for all. Stay on the listed findings:
 never edit the change's proposal.md, .openspec.yaml or spec deltas unless a finding is about them (the
 gate lists such edits for the review), or a failing test pins a main-spec scenario this change intentionally
 contradicts: then add a MODIFIED delta restating that scenario to the new behaviour and update the test to the new THEN.

@@ -455,6 +455,21 @@ T["loop: Fix keeps the red regression test and review blocks scope creep"] = fun
 	eq(review:find(in_scope, 1, true) ~= nil, true, { fail_reason = review })
 end
 
+T["loop: Review lists every must-fix in one pass"] = function()
+	local review = table.concat(vim.fn.readfile(vim.fs.joinpath(H.root, ".archon/commands/review.md")), " ")
+	review = review:gsub("%s+", " ")
+	for _, needle in ipairs({
+		"check every unit that implements it (every adapter, caller or plugin integration, not a sample",
+		"list all `[must-fix]` findings at once",
+		"says why that pass missed it",
+	}) do
+		eq(review:find(needle, 1, true) ~= nil, true, { fail_reason = needle })
+	end
+	local fix = table.concat(vim.fn.readfile(vim.fs.joinpath(H.root, ".archon/commands/fix.md")), " ")
+	local shared = "is fixed in every unit it applies to, each checked against its own native API"
+	eq(fix:gsub("%s+", " "):find(shared, 1, true) ~= nil, true)
+end
+
 T["loop: Fix prompt shortens an overlong delta requirement"] = function()
 	local fix = table.concat(vim.fn.readfile(vim.fs.joinpath(H.root, ".archon/commands/fix.md")), "\n")
 	eq(fix:gsub("%s+", " "):find("Requirement text is very long", 1, true) ~= nil, true)
