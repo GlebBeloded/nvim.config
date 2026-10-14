@@ -1,6 +1,7 @@
 -- Find Action captures its invocation context before handing focus to the shared picker frame.
 
 local Context = require("gleb.actions.context")
+local Assign = require("gleb.find_action.assign")
 local Items = require("gleb.find_action.items")
 local Rows = require("gleb.find_action.rows")
 local picker = require("gleb.picker")
@@ -115,6 +116,16 @@ local function request_assignment()
 	local current = MiniPick.get_picker_matches().current
 	if current and current.hidden then
 		return false
+	end
+	if not current or not current.action then
+		return false
+	end
+	local selected = MiniPick.get_picker_matches().current_ind
+	Assign.open(current.action)
+	M.state.rows = make_rows()
+	MiniPick.set_picker_items(M.state.rows)
+	if selected then
+		MiniPick.set_picker_match_inds({ selected }, "current")
 	end
 	return false
 end

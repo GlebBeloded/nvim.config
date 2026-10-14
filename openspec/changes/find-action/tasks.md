@@ -11,6 +11,8 @@ Scenarios: `find-action: Find Action opens from its shortcut`, `find-action: Fin
 - Store history in most-recent-first order, moving a repeated action to the front so use order stays stable across sessions.
 - Fuzzy-match case-insensitive subsequences within each field independently so characters cannot match across unrelated metadata.
 - Keep the backing action on each picker row so reveal and assignment decisions use registry metadata rather than rendered text.
+- Append a newly assigned lhs once so existing shortcuts remain available without creating duplicates.
+- Identify adapter-owned actions by their established action-area prefixes so the palette can name the plugin reopen boundary without loading plugins.
 
 ## 2. Render action rows
 Scenarios: `find-action: Rows show action metadata`, `find-action: Rows fall back to Vim notation`, `find-action: Toggle rows show state glyphs`
@@ -38,9 +40,9 @@ Scenarios: `find-action: Regular action runs like its shortcut`, `find-action: T
 
 ## 6. Assign shortcuts from the palette
 Scenarios: `find-action: Assign float captures a free shortcut`, `find-action: Assignment can be cancelled`, `find-action: Conflict choices have distinct outcomes`, `find-action: Saved shortcut applies immediately`, `find-action: Adapter assignment reports deferred application`
-- [ ] 6.1 Write the tests in `tests/integration/find-action/test_assign.lua` and run `make test FILE=tests/integration/find-action/test_assign.lua`, seeing all five scenarios fail
-- [ ] 6.2 Add the modal capture float, conflict controls, store-and-reapply flow, and adapter reopen notice
-- [ ] 6.3 Run `make test FILE=tests/integration/find-action/test_assign.lua` and see all five scenarios pass
+- [x] 6.1 Write the tests in `tests/integration/find-action/test_assign.lua` and run `make test FILE=tests/integration/find-action/test_assign.lua`, seeing all five scenarios fail
+- [x] 6.2 Add the modal capture float, conflict controls, store-and-reapply flow, and adapter reopen notice
+- [x] 6.3 Run `make test FILE=tests/integration/find-action/test_assign.lua` and see all five scenarios pass
 
 ## 7. Pin Find Action reference screens
 Scenarios: `find-action: Wide palette matches reference screenshots`, `find-action: Compact palette matches reference screenshot`, `find-action: Narrow palette matches reference screenshot`, `find-action: Conflict assignment matches reference screenshot`, `find-action: Free assignment matches reference screenshot`
