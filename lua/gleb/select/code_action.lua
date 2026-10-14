@@ -72,6 +72,9 @@ function code_action:menu()
 		on_submit = function(item)
 			self.on_choice(item.data, item.index)
 		end,
+		on_close = function()
+			self.on_choice(nil, nil)
+		end,
 	}
 end
 
