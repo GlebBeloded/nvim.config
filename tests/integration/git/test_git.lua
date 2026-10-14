@@ -63,12 +63,14 @@ return signs]]
 
 --- Child-side: sign extmarks on line 2 outside gitsigns namespaces.
 local COMPETING_LINE_2_SIGNS_LUA = [[
-local signs = {}
+local gitsigns_namespaces = {}
 for name, ns in pairs(vim.api.nvim_get_namespaces()) do
-	if not name:find("^gitsigns_") then
-		for _, mark in ipairs(vim.api.nvim_buf_get_extmarks(0, ns, { 1, 0 }, { 1, -1 }, { details = true, type = "sign" })) do
-			table.insert(signs, { name, vim.trim(mark[4].sign_text or "") })
-		end
+	if name:find("^gitsigns_") then gitsigns_namespaces[ns] = true end
+end
+local signs = {}
+for _, mark in ipairs(vim.api.nvim_buf_get_extmarks(0, -1, { 1, 0 }, { 1, -1 }, { details = true, type = "sign" })) do
+	if not gitsigns_namespaces[mark[4].ns_id] then
+		table.insert(signs, { mark[4].ns_id, vim.trim(mark[4].sign_text or "") })
 	end
 end
 return signs]]
