@@ -30,9 +30,9 @@ Scenarios: `actions: Invocation captures editor state`, `actions: Actions run in
 
 ## 6. Capture shortcuts and detect conflicts
 Scenarios: `actions: Enter finishes a normalized key sequence`, `actions: Esc cancels capture`, `actions: Backspace removes the last captured key`, `actions: Exact and prefix overlaps conflict in one scope`, `actions: Separate scopes do not conflict`
-- [ ] 6.1 Write the tests for these scenarios in `tests/unit/actions/test_capture.lua` and run each with `make test FILE=tests/unit/actions/test_capture.lua CASE="<scenario title>"` to see it fail
-- [ ] 6.2 Add key capture normalization, editing controls, cancellation, and scope-aware exact and prefix conflict detection
-- [ ] 6.3 Run each scenario with `make test FILE=tests/unit/actions/test_capture.lua CASE="<scenario title>"` and see it pass
+- [x] 6.1 Write the tests for these scenarios in `tests/unit/actions/test_capture.lua` and run each with `make test FILE=tests/unit/actions/test_capture.lua CASE="<scenario title>"` to see it fail
+- [x] 6.2 Add key capture normalization, editing controls, cancellation, and scope-aware exact and prefix conflict detection
+- [x] 6.3 Run each scenario with `make test FILE=tests/unit/actions/test_capture.lua CASE="<scenario title>"` and see it pass
 
 ## 7. Discover hidden Ex-command actions
 Scenarios: `actions: Ex commands become humanized hidden actions`, `actions: Registered commands are not duplicated`, `actions: Hidden command discovery is cached`
