@@ -544,6 +544,13 @@ For a change whose `.openspec.yaml` has `skip_specs: true`, the work-queue `meta
 - **WHEN** `.archon/commands/queue-spec.md` is read
 - **THEN** the refactor template is limited to changes that leave every assertion as is, and a change adding or tightening an assertion gets a task 1.1 that makes it fail once by a temporary fault, records the failure and removes the fault
 
+### Requirement: OpenSpec config rules are plain strings
+Every entry under `rules` in `openspec/config.yaml` SHALL load as a plain string, so an unquoted `- Key: text` line cannot become a mapping that openspec silently drops with the rest of its section.
+
+#### Scenario: OpenSpec config rules are plain strings
+- **WHEN** `openspec/config.yaml` is loaded with Ruby's YAML parser
+- **THEN** `rules` has at least one section and every entry of every section is a string
+
 ### Requirement: Judge tells a tested rename from a removal
 The judge SHALL count a removed main-spec scenario as renamed when, one for one, an added scenario of the same capability (or the capability Git sees its spec renamed to) gains its `<capability>: <title>` test and the old test name is removed; a renamed capability's renamed tests are kept too. `## RENAMED Requirements` is no removal. Test cases SHALL be compared by name, so an added case never offsets a lost one.
 

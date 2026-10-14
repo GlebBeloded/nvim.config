@@ -29,7 +29,7 @@ or spec deltas. If the change needs a spec delta after all, delete `skip_specs` 
 The change is a queue item (for example a finding from a review) and may
 only have proposal.md. Read it, find the root cause if it is a bug (systematic-debugging,
 no code changes), then complete the missing artifacts with the `openspec-continue-change` skill
-until specs, design.md (only for visible UI: Current + Proposed renders) and tasks exist; refresh any counts or lists the queued proposal quotes (e.g. `make trace VERBOSE=1`) instead of trusting them,
+until specs, design.md (only for visible UI: Current + Proposed renders) and tasks exist; refresh any counts or lists the queued proposal quotes (e.g. one capability's trace: `make -s trace VERBOSE=1 | sed -n '/^<capability> /,/^[^ ]/p'`, never the whole listing) instead of trusting them,
 following the `rules:` block of openspec/config.yaml (read only that block: `sed -n '/^rules:/,/^operations:/p' openspec/config.yaml`). Locate cited code with `rg -n <symbol>`, not by the proposal's line numbers (they may be stale).
 Read the requirement the proposal names and each pinned scenario below, only those ranges (`rg -n 'Requirement:' <spec>`, then that range).
 Pinned scenarios (`pinned.py`: main-spec scenarios naming a symbol this change touches): $INPUTS.pinned. Each gets a MODIFIED delta restated to the new behaviour, or one line in proposal.md `## Impact` naming `<capability>: <scenario>` and saying why it still holds; the spec gate reruns `pinned.py --check`.
