@@ -1,6 +1,7 @@
 """Test gate for one build iteration. Hard rules (integrity.py, then pinned.py on the proposal and branch diff) first: a violation is red at once, with
-no make check and no review. When only the `test` layer fails, each failing case is rerun once,
-serially: all passing makes the check green with them listed as `flaky` (a note, not a finding). Planning files the fix pass edited (vs. the snapshot verdict.py took
+no make check and no review. When only the `test`, `test-readiness` and e2e layers fail, each failing
+case is rerun once, serially (e2e only when it failed on sandbox infra alone, with no `FAIL in` case: one
+`make e2e E2E=1`): all passing makes the check green with them listed as `flaky` (a note, not a finding). Planning files the fix pass edited (vs. the snapshot verdict.py took
 at the pass's start) go to $ARTIFACTS_DIR/fix-scope.md for the review. Then make check (lint, types, tests, smoke, trace), strict OpenSpec
 validation of the change and of the main specs after a trial archive, and tasks.md completion. Never fails the node: prints one JSON verdict so
 the build loop can feed failures back to the next implement pass. Counts attempts in ARTIFACTS_DIR.
@@ -10,9 +11,10 @@ import json
 import os
 import pathlib
 import subprocess
+import re
 import sys
 
-from check_log import failed_targets, failing_cases, strip_ansi, summarize
+from check_log import failed_targets, failing_cases, sections, strip_ansi, summarize
 from integrity import hard_rule_violations, plan_edits
 from pinned import pinned
 from scenarios import covered, untested
@@ -80,21 +82,55 @@ violations = hard_rules()
 if violations:  # never shipped: a full make check and a review would be wasted on it
     red("\n".join(f"hard rule: {v}" for v in violations))
 
+# e2e lines of a VM that never answered (sandbox.sh, Lume, make): the e2e layer did not run, nothing it tests failed
+INFRA_LINE = re.compile(r"^(sandbox: |Error: VM |\[[\dT:.Z-]+\] [A-Z]+: |make(\[\d+\])?: \*\*\* )")
+INFRA = re.compile(r"did not answer|not running|stopped while booting|lost track of|no GUI session")
+
+
+def e2e_infra(body: list[str]) -> str:
+    """The infra reason of an e2e section with no `FAIL in` case and only sandbox lines; empty otherwise."""
+    lines = [line.strip() for line in body if line.strip()]
+    if failing_cases(lines) or not all(INFRA_LINE.match(line) for line in lines):
+        return ""
+    return next((line for line in reversed(lines) if INFRA.search(line)), "")  # the last: sandbox.sh dies on it
+
+
+def rerun_plan(out: str) -> list[tuple[str, list[str]]]:
+    """(case, rerun command) for every failure of a check whose failed targets all rerun; else none."""
+    targets, bodies = failed_targets(out), dict(sections(out.splitlines()))
+    plan: list[tuple[str, list[str]]] = []
+    for target in targets:
+        body = bodies.get(target, [])
+        if target == "e2e":
+            reason = e2e_infra(body)
+            if not reason:
+                return []
+            plan.append((f"e2e: {reason}", ["make", "e2e", "E2E=1"]))
+            continue
+        cases = failing_cases(body)
+        if target not in ("test", "test-readiness") or not cases or any(" | " not in c for c in cases):
+            return []
+        for case in cases:
+            file, name = case.split(" | ", 1)
+            narrow = [f"CASE={name}"] if target == "test-readiness" else [f"FILE={file}", f"CASE={name}"]
+            plan.append((case, ["make", target, *narrow]))
+    return plan
+
+
 def rerun_flaky(out: str, log: str) -> list[str]:
-    """The failing cases of a check where only the `test` layer failed, if each passes on one serial
-    rerun (`make test FILE=<file> CASE=<name>`); otherwise none. Reruns are appended to `log`."""
-    cases = failing_cases(out.splitlines())
-    if failed_targets(out) != ["test"] or not cases or any(" | " not in c for c in cases):
-        return []
-    for index, case in enumerate(cases):
-        file, name = case.split(" | ", 1)
-        ok, rerun_out = run(["make", "test", f"FILE={file}", f"CASE={name}"], f"rerun-{attempt}-{index + 1}.log")
+    """The failures of a check whose failed targets all rerun (rerun_plan), if each passes on one serial
+    rerun; otherwise none. Reruns are appended to `log`."""
+    plan = rerun_plan(out)
+    for index, (case, cmd) in enumerate(plan):
+        ok, rerun_out = run(cmd, f"rerun-{attempt}-{index + 1}.log")
         with (artifacts / log).open("a") as f:
             f.write(f"\n===== rerun {case}: {'ok' if ok else 'FAIL'} =====\n{tail(rerun_out)}\n")
         if not ok:
             return []
-    with (artifacts / log).open("a") as f:
-        f.write("\nflaky (failed, then passed on rerun): " + ", ".join(cases) + "\n")
+    cases = [case for case, _ in plan]
+    if cases:
+        with (artifacts / log).open("a") as f:
+            f.write("\nflaky (failed, then passed on rerun): " + ", ".join(cases) + "\n")
     return cases
 
 
