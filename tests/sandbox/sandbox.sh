@@ -65,10 +65,23 @@ d = d[0] if isinstance(d, list) else d
 print(d.get(sys.argv[1]) or "")' "$1"
 }
 
-# `lume get` can report a running VM as stopped (seen after a detached run); the
-# `lume run` process owning the VM is the ground truth
+# Lume's own view only: a `lume run` process Lume reports as not running is a mismatch that
+# `lume ssh` refuses too, so boot_wait handles it instead of treating the VM as up
 running() {
-	[ "$(vm_field status)" = running ] || pgrep -qf "libexec/lume run $VM( |\$)"
+	[ "$(vm_field status)" = running ]
+}
+
+# the `lume run` process that owns the VM is alive
+run_alive() {
+	pgrep -qf "libexec/lume run $VM( |\$)"
+}
+
+# $1 s multiplied by max(1, 1-min load average / CPU count), as tests/helpers.lua scales deadlines
+load_scaled() {
+	local load cpus
+	load=$(sysctl -n vm.loadavg 2>/dev/null | awk '{print $2}')
+	cpus=$(sysctl -n hw.ncpu 2>/dev/null)
+	awk -v s="$1" -v l="${load:-0}" -v c="${cpus:-0}" 'BEGIN { f = (c > 0 && l > c) ? l / c : 1; printf "%d\n", s * f + 0.5 }'
 }
 
 IP= # cached by boot() / bootstrap_guest() in the main shell
@@ -119,17 +132,27 @@ create() {
 boot() {
 	IP=
 	running && return
+	mkdir -p "$STATE" "$SHARE"
+	if run_alive; then
+		log "$VM has a lume run process while Lume reports it $(vm_field status); waiting for it"
+	else
+		start_run
+	fi
+	boot_wait
+}
+
+# `lume run` in the foreground of a detached long-lived process (not --detach, whose short-lived
+# launcher Lume can lose track of); --log-file applies only to --detach, so its output goes to vm.log
+start_run() {
 	log "booting $VM headless"
-	mkdir -p "$STATE"
-	mkdir -p "$SHARE"
 	local try
 	for try in 1 2 3 4 5; do
-		lume run "$VM" --no-display --detach --shared-dir "$SHARE" --log-file "$STATE/vm.log" >/dev/null
+		nohup lume run "$VM" --no-display --shared-dir "$SHARE" >>"$STATE/vm.log" 2>&1 </dev/null &
+		disown
 		storage_locked || break
 		log "$VM still holds its storage after a stop; retrying boot ($try/5)"
 		sleep 5
 	done
-	boot_wait
 }
 
 # true when the boot just failed because a killed VM process has not released its disk yet
@@ -151,22 +174,28 @@ share_probe() {
 	return 2
 }
 
-# Lume can lose track of a detached VM (`lume get` says stopped while its `lume run` is alive); then
-# `lume ssh` refuses every command. Stop that orphaned run (SIGTERM, SIGKILL after 60 s) and boot again.
 # no caller stops or restarts the shared VM while another holds the lock
 require_lock() {
 	lock_held_by_me "$LOCK" || die "refusing to $1 $VM without holding $LOCK"
 }
 
+# Lume can lose track of a VM (`lume get` says stopped while its `lume run` is alive); then `lume ssh`
+# refuses every command. Stop that run and boot again.
 restart_vm() {
 	require_lock restart
 	log "$1; restarting $VM"
 	lume ssh "$VM" -t 10 sync >/dev/null 2>&1 || true # lume stop is a power-off
 	lume stop "$VM" >/dev/null 2>&1 || true
-	pkill -TERM -f "libexec/lume run $VM( |\$)" 2>/dev/null || true
-	for _ in $(seq 60); do pgrep -qf "libexec/lume run $VM( |\$)" || break; sleep 1; done
-	pkill -KILL -f "libexec/lume run $VM( |\$)" 2>/dev/null || true
+	kill_run
 	boot
+}
+
+# stop the VM's `lume run` process: SIGTERM, SIGKILL after 60 s
+kill_run() {
+	require_lock stop
+	pkill -TERM -f "libexec/lume run $VM( |\$)" 2>/dev/null || true
+	for _ in $(seq 60); do run_alive || break; sleep 1; done
+	pkill -KILL -f "libexec/lume run $VM( |\$)" 2>/dev/null || true
 }
 
 # the guest answers and mounts the shared folder (a VM booted by an older sandbox.sh has none)
@@ -184,10 +213,27 @@ ensure_share() {
 	done
 }
 
+# until the guest answers `lume ssh`. A `lume run` that Lume reports as not running for over
+# SANDBOX_MISMATCH_S s (default 20, load-scaled) never answers: kill it and boot once more ($1 = 1)
 boot_wait() {
-	local deadline=$((SECONDS + 180))
+	local retry=${1:-1} deadline=$((SECONDS + 180)) grace since=
+	grace=$(load_scaled "${SANDBOX_MISMATCH_S:-20}")
 	until [ -n "$(ip)" ] && lume ssh "$VM" -t 10 true >/dev/null 2>&1; do
-		pgrep -qf "libexec/lume run $VM( |\$)" || die "$VM stopped while booting ($STATE/vm.log)"
+		run_alive || die "$VM stopped while booting ($STATE/vm.log)"
+		if running; then
+			since=
+		elif [ -z "$since" ]; then
+			since=$SECONDS
+		elif [ $((SECONDS - since)) -ge "$grace" ]; then
+			local state
+			state=$(vm_field status)
+			[ "$retry" = 1 ] || die "Lume still reports $VM ${state:-unknown} while its lume run process is alive, after one restart; giving up ($STATE/vm.log)"
+			log "Lume reports $VM ${state:-unknown} while its lume run process is alive for ${grace} s; killing it and booting once more"
+			kill_run
+			start_run
+			boot_wait 0
+			return
+		fi
 		[ $SECONDS -lt $deadline ] || die "$VM did not answer SSH within 180 s ($STATE/vm.log)"
 		sleep 2
 	done
@@ -476,13 +522,13 @@ provision)
 	;;
 down)
 	sandbox_lock "$LOCK"
-	if command -v lume >/dev/null && running; then
+	if command -v lume >/dev/null && { running || run_alive; }; then
 		require_lock stop
 		{ bootstrap_guest && gssh "sync"; } || true # lume stop is a power-off
 		lume stop "$VM" >/dev/null 2>&1 || true
 		# the owning `lume run` stops the VM on SIGTERM (when lume get lost track of it)
 		pkill -TERM -f "libexec/lume run $VM( |\$)" || true
-		for _ in $(seq 30); do running || break; sleep 1; done
+		for _ in $(seq 30); do { running || run_alive; } || break; sleep 1; done
 	fi
 	echo "sandbox: $VM stopped"
 	;;

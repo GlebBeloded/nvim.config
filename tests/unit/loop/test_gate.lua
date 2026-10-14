@@ -362,4 +362,70 @@ T["loop: Gate passes a test case that passes on rerun"] = function()
 	has(judge.reasons, "- note: flaky test cases (failed, then passed on rerun): " .. case)
 end
 
+--- make stub: `make check` prints `log`; any other target appends its arguments to `<scratch>/reruns`
+--- and exits `rerun_code`.
+---@param scratch string
+---@param log string[]
+---@param rerun_code integer
+---@return string bin
+local function rerun_make(scratch, log, rerun_code)
+	write(scratch, { ["check.log"] = table.concat(log, "\n") })
+	local body = 'if [ "$1" != check ]; then echo "$*" >>"%s/reruns"; exit %d; fi\ncat "%s/check.log"\nexit 1'
+	return fake_tool(scratch, "make", body:format(scratch, rerun_code, scratch))
+end
+
+--- gate.py on a check printing `log`, its reruns exiting `rerun_code`.
+---@param log string[]
+---@param rerun_code integer
+---@return table verdict, string reruns, string check_log
+local function rerun_gate(log, rerun_code)
+	local repo = branch_repo({ ["README.md"] = "x" })
+	local scratch, artifacts = H.tempdir(child), H.tempdir(child)
+	local env = { ARTIFACTS_DIR = artifacts, PATH = rerun_make(scratch, log, rerun_code) .. ":" .. vim.env.PATH }
+	local out = loop_script("gate.py", repo, env)
+	local reruns = vim.fs.joinpath(scratch, "reruns")
+	return out, vim.fn.filereadable(reruns) == 1 and read(reruns) or "", read(vim.fs.joinpath(artifacts, "check-1.log"))
+end
+
+T["loop: Gate reruns a failed readiness case once"] = function()
+	local case = "tests/integration/lsp/test_readiness.lua | lsp: slow case"
+	local log = {
+		"FAIL test-readiness 9.0 s",
+		"===== test-readiness =====",
+		"FAIL in " .. case .. ":",
+		"check: FAILED: test-readiness (9.0 s)",
+	}
+	local passed, reruns, check_log = rerun_gate(log, 0)
+	eq({ passed.green, passed.flaky, reruns }, { true, { case }, "test-readiness CASE=lsp: slow case" })
+	has(check_log, "flaky (failed, then passed on rerun): " .. case)
+	local failed = rerun_gate(log, 1)
+	eq({ failed.green, failed.flaky }, { false, {} })
+end
+
+T["loop: Gate reruns e2e once after a sandbox failure"] = function()
+	local infra = "sandbox: nvim-e2e did not answer SSH within 180 s (/tmp/vm.log)"
+	local function e2e_log(body)
+		return vim.list_extend(
+			{ "FAIL e2e 230.0 s", "===== e2e =====" },
+			vim.list_extend(body, { "make[2]: *** [e2e] Error 1", "", "check: FAILED: e2e (230.3 s)" })
+		)
+	end
+	local sandbox = { "Error: VM 'nvim-e2e' is not running", "[2026-10-13T17:49:01Z] INFO: Cleaned up", infra }
+	local passed, reruns = rerun_gate(e2e_log(sandbox), 0)
+	eq({ passed.green, passed.flaky, reruns }, { true, { "e2e: " .. infra }, "e2e E2E=1" })
+	local failed, failed_reruns = rerun_gate(e2e_log(sandbox), 1)
+	eq({ failed.green, failed.flaky, failed_reruns }, { false, {}, "e2e E2E=1" })
+	local broken, broken_reruns = rerun_gate(e2e_log({ "FAIL in tests/e2e/a/test_a.lua | a: key:", infra }), 0)
+	eq({ broken.green, broken_reruns }, { false, "" })
+	local other, other_reruns = rerun_gate(e2e_log({ "keys: Accessibility not granted" }), 0)
+	eq({ other.green, other_reruns }, { false, "" })
+end
+
+T["loop: Fix prompt never makes an empty commit"] = function()
+	local fix = read(vim.fs.joinpath(H.root, ".archon/commands/fix.md")):gsub("%s+", " ")
+	has(fix, "or none when nothing needs changing (say so: the gate reruns); never an empty commit")
+	has(fix, "never `git commit --allow-empty`")
+	has(fix, "or restates a rule of this command: such lessons are dropped")
+end
+
 return T

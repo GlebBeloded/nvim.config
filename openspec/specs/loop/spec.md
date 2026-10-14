@@ -485,11 +485,26 @@ verdict.py SHALL snapshot the change's proposal.md, `.openspec.yaml` and spec de
 - **THEN** it loads no skill when every finding starts with `hard rule:` and never edits proposal.md, .openspec.yaml or spec deltas unless a finding is about them
 
 ### Requirement: Gate reruns failed test cases once
-When `make check` fails only in its `test` target, gate.py SHALL rerun each `FAIL in` case once, serially (`make test FILE=<file> CASE=<name>`). When all pass, the gate is green, lists them in `flaky` and the check log, verdict passes them as `notes` and the judge lists them as a note, never a reason. A case failing again stays red; other targets never rerun.
+When `make check` fails only in `test`, `test-readiness` or `e2e`, gate.py SHALL rerun each `FAIL in` case once, serially (`make test FILE=<file> CASE=<name>`, `make test-readiness CASE=<name>`); e2e only when its log has no `FAIL in` and only sandbox/Lume infra lines (`make e2e E2E=1`). All passing: green, listed in `flaky` and the check log, a judge note. A rerun failing stays red; other targets never rerun.
 
 #### Scenario: Gate passes a test case that passes on rerun
 - **WHEN** gate.py runs with a `make` stub whose check fails in `test` on one case and whose rerun passes, then one whose rerun fails, then one whose check fails in `lint test`, and verdict and the judge run on the first gate's `flaky`
 - **THEN** the first gate is green with that case in `flaky` and the check log; the second is red; the third is red with no rerun; the verdict passes and the judge ships with a `- note:` naming the case
+
+#### Scenario: Gate reruns a failed readiness case once
+- **WHEN** gate.py runs with a `make` stub whose check fails in `test-readiness` on one case and whose rerun passes, then one whose rerun fails
+- **THEN** the first gate reruns `make test-readiness CASE=<name>` and is green with the case in `flaky` and the check log; the second is red
+
+#### Scenario: Gate reruns e2e once after a sandbox failure
+- **WHEN** gate.py runs with a `make` stub whose check fails in `e2e` with only sandbox lines (`did not answer SSH`, `is not running`) and whose rerun passes, then fails; then with a `FAIL in` case; then with another non-sandbox line
+- **THEN** the first reruns `make e2e E2E=1` and is green with `e2e: <last sandbox line>` in `flaky`; the second is red; the last two are red with no rerun
+
+### Requirement: Fix pass never makes an empty commit
+The fix command SHALL commit nothing when no listed finding needs a change and say so (the gate reruns), never an empty commit, and SHALL prefix with `loop:` (dropped) a lesson candidate that restates one of its own rules.
+
+#### Scenario: Fix prompt never makes an empty commit
+- **WHEN** `.archon/commands/fix.md` is read
+- **THEN** it allows no commit when nothing needs changing, forbids `git commit --allow-empty`, and has lesson candidates that restate a rule of the command start with `loop:`
 
 ### Requirement: Spec step plans only unfinished adopted work
 work-queue SHALL skip the queue-spec step when the adopted change's tasks.md has tasks and all are ticked (`tasks.py --adopted-state`), reading visible UI from design.md; queue-spec SHALL read adopt notes only if they exist and never let a task empty a test file.

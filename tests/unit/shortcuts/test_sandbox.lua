@@ -16,6 +16,9 @@ printf '%s\t%s\n' "$line" "$held" >>"$LOCK_LOG"
 --- shared folder: the stub logs that script (the guest command) to $GUEST_LOG and $LOCK_LOG; the
 --- guest is provisioned at $PROVISION_REV and its GUI session belongs to `lume`. `lume stop` logs
 --- whether the locker writing $HOLDER_LOG had left by then, and the VM reports stopped afterwards.
+--- `lume run` leaves a live run process ($SANDBOX_STATE/run-alive, seen by the pgrep stub); its first
+--- $LUME_MISMATCH_RUNS runs leave the VM reported stopped (Lume lost track), later ones running.
+--- `lume ssh` refuses while the VM is reported stopped.
 local LUME_STUB = [[#!/bin/sh
 echo "lume $*" >>"$GUEST_LOG"
 case "$1" in
@@ -30,7 +33,14 @@ stop)
 	echo "stop holder-left=$left" >>"$GUEST_LOG"
 	touch "$SANDBOX_STATE/stopped"
 	;;
+run)
+	runs=$(($(cat "$SANDBOX_STATE/runs" 2>/dev/null || echo 0) + 1))
+	echo "$runs" >"$SANDBOX_STATE/runs"
+	touch "$SANDBOX_STATE/run-alive"
+	[ "$runs" -gt "${LUME_MISMATCH_RUNS:-0}" ] && rm -f "$SANDBOX_STATE/stopped"
+	;;
 ssh)
+	[ -f "$SANDBOX_STATE/stopped" ] && { echo "Error: VM 'nvim-e2e' is not running" >&2; exit 1; }
 	for last; do :; done
 	case "$last" in *"test -d"*SHARED*) echo SHARED; exit 0 ;; esac
 	script=$(printf '%s' "$last" | sed -n "s|^bash '/Volumes/My Shared Files/share/\([^']*\)'.*|\1|p")
@@ -60,14 +70,16 @@ echo "rsync $dest" >>"$GUEST_LOG"
 exit 0
 ]]
 
---- `pgrep` / `pkill` stubs: no `lume run` process on this host; nothing real is ever signalled.
+--- `pgrep` / `pkill` stubs: the `lume run` process is $SANDBOX_STATE/run-alive; pkill removes it.
+--- Nothing real is ever signalled.
 local PGREP_STUB = [[#!/bin/sh
 echo "pgrep $*" >>"$GUEST_LOG"
-exit 1
+[ -f "$SANDBOX_STATE/run-alive" ]
 ]]
 local PKILL_STUB = [[#!/bin/sh
 echo "pkill $*" >>"$GUEST_LOG"
-exit 1
+[ -f "$SANDBOX_STATE/run-alive" ] || exit 1
+rm -f "$SANDBOX_STATE/run-alive"
 ]]
 
 --- `sysctl` stub: not inside a VM.
@@ -504,6 +516,54 @@ T["shortcuts: sandbox.sh down never stops the VM while another checkout holds th
 	eq(stops, { "stop holder-left=yes" })
 	eq(wait_locker("holder").code, 0)
 	eq(child.fn.isdirectory(dir), 0)
+end
+
+--- The `lume run` and `pkill -TERM` lines of a guest log, in order.
+---@param log string[]
+---@return string[]
+local function run_and_kill_lines(log)
+	return vim.tbl_filter(function(line)
+		return vim.startswith(line, "lume run ") or vim.startswith(line, "pkill -TERM")
+	end, log)
+end
+
+T["shortcuts: sandbox.sh restarts a VM Lume reports stopped while its lume run lives"] = function()
+	local env = vim.tbl_extend("force", sandbox_env(), { SANDBOX_MISMATCH_S = "1" })
+	child.fn.writefile({}, vim.fs.joinpath(env.SANDBOX_STATE, "stopped"))
+	child.fn.writefile({}, vim.fs.joinpath(env.SANDBOX_STATE, "run-alive"))
+
+	local run = system({ "tests/sandbox/sandbox.sh", "e2e" }, H.root, env)
+
+	eq(run.code, 0, { fail_reason = run.stderr })
+	MiniTest.expect.no_equality(run.stderr:find("killing it and booting once more", 1, true), nil)
+	local log = read_lines(env.GUEST_LOG)
+	local lines = run_and_kill_lines(log)
+	eq(#lines, 2, { fail_reason = table.concat(lines, "\n") })
+	eq({ vim.startswith(lines[1], "pkill -TERM"), vim.startswith(lines[2], "lume run nvim-e2e --no-display") }, {
+		true,
+		true,
+	})
+	eq(lines[2]:find("--detach", 1, true), nil)
+	eq(first_index(log, is_e2e_layer) ~= nil, true)
+end
+
+T["shortcuts: sandbox.sh gives up when Lume loses track of the VM again after one restart"] = function()
+	local env = vim.tbl_extend("force", sandbox_env(), { SANDBOX_MISMATCH_S = "1", LUME_MISMATCH_RUNS = "2" })
+	child.fn.writefile({}, vim.fs.joinpath(env.SANDBOX_STATE, "stopped"))
+
+	local run = system({ "tests/sandbox/sandbox.sh", "e2e" }, H.root, env)
+
+	MiniTest.expect.no_equality(run.code, 0)
+	MiniTest.expect.no_equality(run.stderr:find("after one restart; giving up", 1, true), nil)
+	local lines = run_and_kill_lines(read_lines(env.GUEST_LOG))
+	eq(#lines, 3, { fail_reason = table.concat(lines, "\n") })
+	eq({
+		vim.startswith(lines[1], "lume run "),
+		vim.startswith(lines[2], "pkill -TERM"),
+		vim.startswith(lines[3], "lume run "),
+	}, { true, true, true })
+	local log = read_lines(env.GUEST_LOG)
+	eq(first_index(log, is_e2e_layer), nil)
 end
 
 --- `make` stub for tests/check.sh: `deps` passes; every other target appends "<target> start
