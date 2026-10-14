@@ -372,7 +372,7 @@ The judge SHALL append a supplied one-line lesson only for an earlier attempt's 
 - **THEN** `lesson-candidates.txt` is empty after the first run and the second run adds no lesson
 
 ### Requirement: Small steps with a script judge
-The delivery loop SHALL implement one task per fresh agent session from a script-built context pack, count only real checkbox list items as tasks, send only a failing pass's findings to the next fix step, and decide shipping by script: reject partial or rule-breaking work, ask the user only for breaking changes, and ship everything else.
+The delivery loop SHALL implement one task per fresh agent session from a script-built context pack, count only real checkbox list items as tasks, send only a failing pass's findings to the next fix step, and decide shipping by script: reject partial or rule-breaking work, never ask the user, and ship everything else (a breaking change with a note).
 
 #### Scenario: An abandoned run's branch does not take its change
 - **WHEN** `.archon/scripts/queue_pick.py` runs where change `c` has a `loop/c` branch but no running or paused Archon run works it
@@ -735,6 +735,10 @@ The loop SHALL keep the user's contract unasked: no step changes a requirement's
 #### Scenario: An Unblocked section resolves an earlier Blocked section
 - **WHEN** `.archon/scripts/blocked.py` runs for a change whose tasks.md `## Blocked` section was committed before a `## Unblocked` section in its proposal.md
 - **THEN** it reports `blocked` false
+
+#### Scenario: Blocked task is settled in its pass so later tasks still run
+- **WHEN** nvim-deliver.yaml's task loop is read
+- **THEN** after `implement` a `task-blocked` check runs; a `## Blocked` section goes to `task-settle` (the unblock command at `effort: xhigh`), and one still left after `task-settled` goes to `task-unblock` (`provider: claude`, `effort: xhigh`) in the same pass, so the next pass implements the next task
 
 #### Scenario: Blocked build pass goes to settle, then Claude
 - **WHEN** `.archon/scripts/verdict.py` runs three times in one artifacts dir on red passes for a change whose tasks.md has a `## Blocked` section, and nvim-deliver.yaml is read

@@ -13,13 +13,14 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
   trace, the spec gate, pinned scenarios, the integrity and drop/weaken detectors, review must-fix.
   Partial or untested work never ships; temporary breakage is accepted for progress (a breaking change
   ships with a note).
-- Agents decide small choices and log them under `## Agent decisions`. A `## Blocked` section is settled by
-  the model itself at xhigh, then by a Claude unblock step that must settle it. Technical exhaustion is
-  `## Stuck`: an xhigh fix pass, then Claude, then an automatic reject and re-queue with actionable
+- Agents decide small choices and log them under `## Agent decisions`. A `## Blocked` section is settled in the
+  same pass (the task loop too, so later tasks still run) by the model itself at xhigh, then by a Claude unblock step that must settle it. Technical exhaustion is
+  `## Stuck`: an xhigh fix pass, then Claude while attempts are left, then an automatic reject and re-queue with actionable
   reasons that adopts the branch and keeps the work.
 - Small steps: each knows the whole flow and its own boundary, gets a narrow context pack and one task
   group per implement pass; no AI where a script can decide.
-- Roles: Archon (Codex) does all Neovim work (`lua/`, its tests). The auditor (a Claude session) only
+- Roles: Archon does all Neovim work (`lua/`, its tests): Codex by default, Claude for review and the
+  last-resort Stuck and Blocked steps. The auditor (a Claude session) only
   reviews each phase in a subagent and fixes the loop (`.archon/`, loop tests, sandbox) on `loop/round<N>`
   branches merged into `auto` after `make check E2E=1`; nothing is pushed, `main` stays untouched, tests
   are never weakened.

@@ -5,4 +5,4 @@ Kind: bug
 
 ## Rejected run
 Run on `loop/stuck-change` was rejected by the judge:
-- fix loop exhausted (3 attempts) with gates still red: tests
+- fix loop exhausted with gates still red: tests

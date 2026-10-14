@@ -193,6 +193,21 @@ T["loop: An Unblocked section resolves an earlier Blocked section"] = function()
 	eq(run("blocked.py", repo, { INPUTS_CHANGE = "b", LOOP_CHANGES_DIR = "" }).blocked, false)
 end
 
+T["loop: Blocked task is settled in its pass so later tasks still run"] = function()
+	local workflow = read(vim.fs.joinpath(H.root, ".archon/workflows/nvim-deliver/nvim-deliver.yaml"))
+	has(
+		workflow,
+		"- id: task-blocked\n          script: blocked\n          runtime: uv\n          depends_on: [implement]"
+	)
+	has(workflow, "- id: task-settle\n          command: unblock\n          effort: xhigh")
+	has(workflow, 'depends_on: [task-blocked]\n          when: "$task-blocked.output.blocked == true"')
+	has(
+		workflow,
+		"- id: task-unblock # Claude MUST settle what the default model left\n          command: unblock\n          provider: claude\n          effort: xhigh"
+	)
+	has(workflow, 'depends_on: [task-settled]\n          when: "$task-settled.output.blocked == true"')
+end
+
 T["loop: Blocked build pass goes to settle, then Claude"] = function()
 	local repo = branch_repo({}, { ["openspec/changes/c/tasks.md"] = "## 1. T\n- [ ] 1.1 x\n\n" .. BLOCKED })
 	local env = {

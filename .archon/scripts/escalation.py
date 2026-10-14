@@ -37,7 +37,7 @@ if flag("weakened_scenario"):
 if flag("weakened_test"):
     reject.append("review: test weakened")
 if flag("exhausted"):
-    reject.append("fix loop exhausted (3 attempts) with gates still red: " + os.environ.get("INPUTS_FAILED_GATES", ""))
+    reject.append("fix loop exhausted with gates still red: " + os.environ.get("INPUTS_FAILED_GATES", ""))
 blocked = blocked_text(os.environ.get("INPUTS_CHANGE", ""))
 dropped = still_dropped(artifacts)
 dropped_reason = ["test added then removed during build: " + ", ".join(dropped)] if dropped else []

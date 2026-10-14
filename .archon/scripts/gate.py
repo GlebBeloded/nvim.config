@@ -72,7 +72,7 @@ def long_delta_requirements() -> str:
 def hard_rules() -> list[str]:
     try:
         reasons = hard_rule_violations()
-        # a case an earlier pass had (verdict's snapshot) and this pass removed; the judge asks if it stays gone
+        # a case an earlier pass had (verdict's snapshot) and this pass removed; the judge rejects if it stays gone
         dropped = record_dropped(artifacts)
     except subprocess.CalledProcessError:  # not a git repo, or no base branch: nothing to compare
         reasons, dropped = [], []

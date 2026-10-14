@@ -77,6 +77,44 @@ nodes:
           idle_timeout: 900000
           skills: [superpowers:test-driven-development]
 
+        # implement wrote `## Blocked`: settle it in this pass (default model at xhigh, then Claude), so the
+        # remaining tasks still get implemented; a section both leave ends the loop (tasks.py) for the build loop
+        - id: task-blocked
+          script: blocked
+          runtime: uv
+          depends_on: [implement]
+          with:
+            change: $INPUTS.change
+          output_format: &task_blocked
+            type: object
+            properties:
+              blocked: { type: boolean }
+              text: { type: string }
+            required: [blocked, text]
+
+        - id: task-settle
+          command: unblock
+          effort: xhigh
+          idle_timeout: 900000
+          depends_on: [task-blocked]
+          when: "$task-blocked.output.blocked == true"
+
+        - id: task-settled
+          script: blocked
+          runtime: uv
+          depends_on: [task-settle]
+          with:
+            change: $INPUTS.change
+          output_format: *task_blocked
+
+        - id: task-unblock # Claude MUST settle what the default model left
+          command: unblock
+          provider: claude
+          effort: xhigh
+          idle_timeout: 900000
+          depends_on: [task-settled]
+          when: "$task-settled.output.blocked == true"
+
   # --- Check -> Verify -> Review, max 3 passes; a red pass sends only its findings to fix -------------
   - id: build
     depends_on: [tasks]
