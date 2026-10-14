@@ -566,6 +566,8 @@ T["shortcuts: sandbox.sh restarts a VM Lume reports stopped while its lume run l
 		true,
 	})
 	eq(lines[2]:find("--detach", 1, true), nil)
+	-- no VNC server: lume would otherwise write its VNC config into the guest over host ssh at boot
+	eq(lines[2]:find("--vnc disabled", 1, true) ~= nil, true)
 	eq(first_index(log, is_e2e_layer) ~= nil, true)
 end
 
