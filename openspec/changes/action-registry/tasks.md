@@ -6,7 +6,7 @@ Scenarios: `actions: Valid actions are available by id`, `actions: Invalid actio
 
 ## 2. Persist shortcuts deterministically
 Scenarios: `actions: Shortcut file round-trips deterministically`, `actions: Invalid shortcut JSON preserves bindings`, `actions: Unknown action ids are skipped once`, `actions: Hidden actions cannot receive shortcuts`
-- [ ] 2.1 Write the tests for these scenarios in `tests/unit/actions/test_store.lua` and run each with `make test FILE=tests/unit/actions/test_store.lua CASE="<scenario title>"` to see it fail
+- [x] 2.1 Write the tests for these scenarios in `tests/unit/actions/test_store.lua` and run each with `make test FILE=tests/unit/actions/test_store.lua CASE="<scenario title>"` to see it fail
 - [ ] 2.2 Add the JSON shortcut store and repository `settings/keymap.json`, including stable encoding, validation, warnings, and last-good-state handling
 - [ ] 2.3 Run each scenario with `make test FILE=tests/unit/actions/test_store.lua CASE="<scenario title>"` and see it pass
 
@@ -39,3 +39,9 @@ Scenarios: `actions: Ex commands become humanized hidden actions`, `actions: Reg
 - [ ] 7.1 Write the tests for these scenarios in `tests/unit/actions/test_commands.lua` and run each with `make test FILE=tests/unit/actions/test_commands.lua CASE="<scenario title>"` to see it fail
 - [ ] 7.2 Add lazy, session-cached Ex-command discovery, title humanization, registered-command deduplication, and hidden-action enforcement
 - [ ] 7.3 Run each scenario with `make test FILE=tests/unit/actions/test_commands.lua CASE="<scenario title>"` and see it pass
+
+## Blocked
+
+- Probe: not needed because the deterministic test exposed the value directly: `Left: "[]"`, `Right: "{}"`.
+- Attempt 1: the shortcut store passed the four listed scenarios, but review of the repository's initial `{}` file exposed that empty Lua tables were rejected as lists.
+- Attempt 2: empty tables were accepted, but `vim.json.encode` serialized the empty shortcut map as `[]`; `actions: Shortcut file round-trips deterministically` remained red.
