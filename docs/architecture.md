@@ -256,6 +256,7 @@ relative to `lua/gleb/`.
 - 8.6 Floating windows use `border = "rounded"`.
 - 8.7 Colors come from the gruvbox-material palette helpers, never hard-coded hex.
 - 8.8 A change with visible UI includes a Current render and Proposed renders ([design renders](workflow.md#design-renders)).
+- 8.9 Borders are always drawn in full; hints and counters never sit on a border; the title (and query) is the only border text; hints go right-aligned in grey on the last inner row below a joined rule.
 
 ### 9. Comments and style
 
