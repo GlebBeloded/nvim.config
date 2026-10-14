@@ -10,6 +10,7 @@ Kind: bug
 ## What Changes
 - Size the popup to the widest formatted item / prompt (`vim.fn.strdisplaywidth`) plus padding, capped at `vim.o.columns - 4`; keep everything else as is. This repairs a broken render (border off-screen), not a new look.
 - `select` scenario for the width rule; test on an 80-column child with short and long items, RED first.
+- Also (review note, run f082e845): the select cancel case (`tests/unit/select/test_code_action.lua`) calls `menu.on_close()` directly; make it press `<Esc>` in the mounted menu as its scenario says, keeping the `on_choice(nil, nil)` assertion.
 
 ## Capabilities
 ### Modified Capabilities
