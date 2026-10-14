@@ -24,9 +24,9 @@ Scenarios: `actions: Adapter output follows current shortcuts`, `actions: Adapte
 
 ## 5. Preserve action invocation context
 Scenarios: `actions: Invocation captures editor state`, `actions: Actions run in the invocation window`, `actions: Visual actions restore the selection`, `actions: Availability and toggles share the context`
-- [ ] 5.1 Write the tests for these scenarios in `tests/integration/actions/test_context.lua` and run each with `make test FILE=tests/integration/actions/test_context.lua CASE="<scenario title>"` to see it fail
-- [ ] 5.2 Add context capture and guarded restoration for action availability, toggles, and execution
-- [ ] 5.3 Run each scenario with `make test FILE=tests/integration/actions/test_context.lua CASE="<scenario title>"` and see it pass
+- [x] 5.1 Write the tests for these scenarios in `tests/integration/actions/test_context.lua` and run each with `make test FILE=tests/integration/actions/test_context.lua CASE="<scenario title>"` to see it fail
+- [x] 5.2 Add context capture and guarded restoration for action availability, toggles, and execution
+- [x] 5.3 Run each scenario with `make test FILE=tests/integration/actions/test_context.lua CASE="<scenario title>"` and see it pass
 
 ## 6. Capture shortcuts and detect conflicts
 Scenarios: `actions: Enter finishes a normalized key sequence`, `actions: Esc cancels capture`, `actions: Backspace removes the last captured key`, `actions: Exact and prefix overlaps conflict in one scope`, `actions: Separate scopes do not conflict`

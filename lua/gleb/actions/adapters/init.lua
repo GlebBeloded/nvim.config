@@ -1,5 +1,7 @@
 -- Plugin adapters translate the current shortcut map without retaining state between window opens.
 
+local Context = require("gleb.actions.context")
+
 local M = {}
 
 ---@param id string
@@ -23,6 +25,14 @@ local function native_lhs(lhs_list)
 		return lhs_list[1]
 	end
 	return vim.deepcopy(lhs_list)
+end
+
+---@param action gleb.Action
+---@return function
+local function invoke(action)
+	return function()
+		Context.run(action, Context.capture())
+	end
 end
 
 ---@param areas string[]
@@ -61,7 +71,7 @@ function M.by_lhs(areas, wrap)
 			local action = belongs_to(areas, id) and catalog:get(id) or nil
 			if action then
 				for _, lhs in ipairs(lhs_list) do
-					mappings[lhs] = wrap(action.run)
+					mappings[lhs] = wrap(invoke(action))
 				end
 			end
 		end
