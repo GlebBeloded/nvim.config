@@ -31,7 +31,13 @@ end
 
 -- @return number
 function code_action:longest_entry_length()
-	return 255
+	local width = vim.fn.strdisplaywidth(self:popup_name())
+	for _, item in pairs(self.items) do
+		local text = self.opts.format_item and self.opts.format_item(item) or tostring(item)
+		width = math.max(width, vim.fn.strdisplaywidth(text))
+	end
+
+	return math.min(width + 2, vim.o.columns - 4)
 end
 
 -- popup_under_cursor_options returns popup_options for menu under cursor
