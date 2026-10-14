@@ -98,12 +98,22 @@ def delta_requirements(text: str, task: str) -> str:
     return "".join([blocks[0], *named]) + ("\nOther requirements (not this task's):\n" + "\n".join(others) if others else "")
 
 
+def current_design(text: str, path: str) -> str:
+    """design.md without its `## Renders` section, named by path instead: renders are read from the file only
+    when the task draws (they were 27 KB of a 77 KB pack, run 499b0b85)."""
+    if not re.search(r"(?m)^## Renders\b", text):
+        return text
+    return drop_section(text, "Renders") + f"\n(## Renders: read {path} when the task draws or tests the screen)\n"
+
+
 def change_artifacts(change_dir: pathlib.Path, task: str) -> list[str]:
     parts = []
     texts = {name: (change_dir / name).read_text() for name in ("proposal.md", "design.md", "tasks.md") if (change_dir / name).exists()}
     blocked = any(BLOCKED.search(text) and blocks(text) for text in texts.values())
     for name, text in texts.items():
-        parts.append(section(f"{change_dir.name}/{name}", current_proposal(text, blocked) if name == "proposal.md" else text))
+        body = current_proposal(text, blocked) if name == "proposal.md" else text
+        body = current_design(body, f"openspec/changes/{change_dir.name}/design.md") if name == "design.md" else body
+        parts.append(section(f"{change_dir.name}/{name}", body))
     for spec in sorted((change_dir / "specs").glob("*/spec.md")):
         parts.append(section(f"spec delta: {spec.parent.name}", delta_requirements(spec.read_text(), task)))
     return parts

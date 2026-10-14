@@ -435,8 +435,12 @@ provision() {
 	local plugin_dir
 	plugin_dir=$(grep -o 'file:[^"]*vim-zellij-navigator.wasm' "$ROOT/terminal/zellij/config.kdl" | head -1 | sed 's|^file:||; s|/[^/]*$||')
 	gssh "sudo mkdir -p '$plugin_dir' && sudo chown -R $GUEST_USER '${plugin_dir%%/.config/*}'"
-	stage "$ROOT/terminal/zellij/plugins/vim-zellij-navigator.wasm" "$SHARE/"
-	gssh "cp '$GSHARE/vim-zellij-navigator.wasm' '$plugin_dir/'"
+	# a fresh sync folder, as sync_repo: the guest's VirtioFS mount can miss a file new in the share root
+	local d
+	d=$(sync_dir)
+	stage "$ROOT/terminal/zellij/plugins/vim-zellij-navigator.wasm" "$SHARE/$d/"
+	gssh "cp '$GSHARE/$d/vim-zellij-navigator.wasm' '$plugin_dir/'"
+	rm -rf "${SHARE:?}/$d"
 	sync_repo
 	gssh "cd $GUEST_REPO && zsh -lc 'tests/e2e/build.sh >/dev/null && make -s deps deps-shortcuts'"
 	if ! gssh "csrutil status" | grep -q disabled; then
