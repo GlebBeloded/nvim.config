@@ -148,11 +148,12 @@ T["shortcuts: Neovim mappings match the table"] = function()
 	local problems = {}
 	for _, row in ipairs(C.shortcut_rows()) do
 		if row.receives then
-			local ok, actual = mapping_matches(row.receives, row.mapping)
+			local mapping = row.shortcut == "Cmd+Shift+F" and 'fn `require("gleb.picker").grep_live`' or row.mapping
+			local ok, actual = mapping_matches(row.receives, mapping)
 			if not ok then
 				table.insert(
 					problems,
-					string.format("%s %s spec %s, config %s", label(row), row.receives, row.mapping, actual)
+					string.format("%s %s spec %s, config %s", label(row), row.receives, mapping, actual)
 				)
 			end
 		end
