@@ -1,7 +1,11 @@
 -- Shortcut assignment owns its modal key loop so the Find Action picker stays open behind it.
 
 local Capture = require("gleb.actions.capture")
+local Rows = require("gleb.find_action.rows")
 local MiniPick = require("mini.pick")
+
+local KEY_BOX_WIDTH = 48
+local HIGHLIGHT_NAMESPACE = vim.api.nvim_create_namespace("gleb_find_action_assign")
 
 local ADAPTER_PLUGINS = {
 	blink = "blink",
@@ -33,8 +37,9 @@ end
 ---@return gleb.FindActionAssignWindow
 local function open_window(title)
 	local palette_win = MiniPick.get_picker_state().windows.main
+	local zindex = vim.api.nvim_win_get_config(palette_win).zindex + 1
 	local width = math.min(56, math.max(vim.o.columns - 4, 20))
-	local height = 7
+	local height = 9
 	local buf = vim.api.nvim_create_buf(false, true)
 	vim.bo[buf].bufhidden = "wipe"
 	local win = vim.api.nvim_open_win(buf, true, {
@@ -49,47 +54,97 @@ local function open_window(title)
 		title_pos = "center",
 		footer = " Tab next   ↩ choose ",
 		footer_pos = "right",
+		zindex = zindex,
 	})
-	vim.wo[win].winhighlight = "Normal:NormalFloat,FloatBorder:FloatBorder"
+	vim.wo[win].winhighlight =
+		"Normal:NormalFloat,FloatBorder:FloatBorder,FloatTitle:FloatTitle,FloatFooter:FloatFooter"
 	return { buf = buf, win = win, palette_win = palette_win }
 end
 
 ---@param window gleb.FindActionAssignWindow
 ---@param lines string[]
-local function draw(window, lines)
+---@param highlights? table[]
+local function draw(window, lines, highlights)
 	if not vim.api.nvim_buf_is_valid(window.buf) then
 		return
 	end
 	vim.bo[window.buf].modifiable = true
 	vim.api.nvim_buf_set_lines(window.buf, 0, -1, false, lines)
+	vim.api.nvim_buf_clear_namespace(window.buf, HIGHLIGHT_NAMESPACE, 0, -1)
+	for _, highlight in ipairs(highlights or {}) do
+		local end_col = highlight.end_col == -1 and #lines[highlight.line + 1] or highlight.end_col
+		vim.api.nvim_buf_set_extmark(
+			window.buf,
+			HIGHLIGHT_NAMESPACE,
+			highlight.line,
+			highlight.col,
+			{ end_col = end_col, hl_group = highlight.group }
+		)
+	end
 	vim.bo[window.buf].modifiable = false
 	vim.cmd.redraw()
+end
+
+---@param lhs string
+---@return string[], table[]
+local function key_box(lhs)
+	local label = Rows.physical_label(lhs) .. " █"
+	local padding = math.max(KEY_BOX_WIDTH - vim.fn.strdisplaywidth(label) - 2, 0)
+	local lines = {
+		"  ╭" .. string.rep("─", KEY_BOX_WIDTH) .. "╮",
+		"  │ " .. label .. string.rep(" ", padding) .. " │",
+		"  ╰" .. string.rep("─", KEY_BOX_WIDTH) .. "╯",
+	}
+	return lines,
+		{
+			{ line = 0, col = 2, end_col = -1, group = "FloatBorder" },
+			{ line = 1, col = 2, end_col = 5, group = "FloatBorder" },
+			{ line = 1, col = 6, end_col = 6 + #Rows.physical_label(lhs), group = "Search" },
+			{ line = 1, col = #lines[2] - 3, end_col = -1, group = "FloatBorder" },
+			{ line = 2, col = 2, end_col = -1, group = "FloatBorder" },
+		}
+end
+
+---@param highlights table[]
+local function offset_key_box(highlights)
+	for _, highlight in ipairs(highlights) do
+		highlight.line = highlight.line + 2
+	end
 end
 
 ---@param window gleb.FindActionAssignWindow
 ---@param lhs string
 local function draw_capture(window, lhs)
-	draw(window, {
-		" Press keys, Enter to save, Esc to cancel",
-		"",
-		"  " .. lhs .. " █",
-		"",
-		" No conflicts",
-		"",
-		" [ Save ]  [ Cancel ]",
-	})
+	local box, highlights = key_box(lhs)
+	offset_key_box(highlights)
+	draw(
+		window,
+		{
+			" Press keys, Enter to save, Esc to cancel",
+			"",
+			box[1],
+			box[2],
+			box[3],
+			"",
+			" No conflicts",
+			"",
+			" [ Save ]  [ Cancel ]",
+		},
+		vim.list_extend(highlights, {
+			{ line = 6, col = 1, end_col = -1, group = "DiffAdd" },
+			{ line = 8, col = 1, end_col = 9, group = "PmenuSel" },
+			{ line = 8, col = 11, end_col = -1, group = "TabLine" },
+		})
+	)
 end
 
 ---@param catalog gleb.ActionCatalog
 ---@param conflicts gleb.ShortcutConflict[]
 ---@return string
 local function conflict_text(catalog, conflicts)
-	local titles = {}
-	for _, conflict in ipairs(conflicts) do
-		local action = assert(catalog:get(conflict.action_id))
-		table.insert(titles, action.title)
-	end
-	return table.concat(titles, ", ")
+	local action = assert(catalog:get(conflicts[1].action_id))
+	local padding = math.max(54 - vim.fn.strdisplaywidth(action.title) - vim.fn.strdisplaywidth(action.category), 1)
+	return " " .. action.title .. string.rep(" ", padding) .. action.category
 end
 
 ---@param window gleb.FindActionAssignWindow
@@ -100,21 +155,36 @@ end
 local function draw_conflict(window, lhs, catalog, conflicts, selected)
 	local labels = { "Remove other", "Keep both", "Cancel" }
 	local buttons = {}
-	for index, label in ipairs(labels) do
-		local marker = index == selected and ">" or " "
-		table.insert(buttons, marker .. "[ " .. label .. " ]")
+	for _, label in ipairs(labels) do
+		table.insert(buttons, "[ " .. label .. " ]")
 	end
-	draw(window, {
-		" Press keys, Enter to save, Esc to cancel",
-		"",
-		"  " .. lhs .. " █",
-		"",
-		" Already assigned to:",
-		" " .. conflict_text(catalog, conflicts),
-		"",
-		table.concat(buttons, "  "),
-	})
-	vim.api.nvim_win_set_config(window.win, { height = 8 })
+	local box, highlights = key_box(lhs)
+	offset_key_box(highlights)
+	local button_line = " " .. table.concat(buttons, "  ")
+	local button_col = ({ 1, 19, 35 })[selected]
+	draw(
+		window,
+		{
+			" Press keys, Enter to save, Esc to cancel",
+			"",
+			box[1],
+			box[2],
+			box[3],
+			"",
+			" Already assigned to:",
+			conflict_text(catalog, conflicts),
+			"",
+			button_line,
+			"",
+		},
+		vim.list_extend(highlights, {
+			{ line = 6, col = 1, end_col = -1, group = "PmenuExtra" },
+			{ line = 7, col = 1, end_col = -1, group = "NormalFloat" },
+			{ line = 9, col = 1, end_col = -1, group = "TabLine" },
+			{ line = 9, col = button_col, end_col = button_col + #buttons[selected], group = "PmenuSel" },
+		})
+	)
+	vim.api.nvim_win_set_config(window.win, { height = 11 })
 end
 
 ---@param window gleb.FindActionAssignWindow

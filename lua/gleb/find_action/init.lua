@@ -5,6 +5,7 @@ local Assign = require("gleb.find_action.assign")
 local Items = require("gleb.find_action.items")
 local Rows = require("gleb.find_action.rows")
 local picker = require("gleb.picker")
+local picker_layout = require("gleb.picker.layout")
 local MiniPick = require("mini.pick")
 
 ---@class gleb.FindActionState
@@ -57,7 +58,16 @@ local function make_rows()
 		return not action.hidden
 	end, available)
 
-	local rows = vim.tbl_map(action_row, visible)
+	local ordered = Items.order(visible, Items.history():load())
+	local rows = {}
+	if #ordered.recent > 0 then
+		table.insert(rows, { text = "recently used", section = true })
+		vim.list_extend(rows, vim.tbl_map(action_row, ordered.recent))
+	end
+	if #ordered.curated > 0 then
+		table.insert(rows, { text = "other actions", section = true })
+		vim.list_extend(rows, vim.tbl_map(action_row, ordered.curated))
+	end
 	if not M.state.show_hidden then
 		return rows
 	end
@@ -85,6 +95,9 @@ end
 local function match_rows(_, inds, query)
 	local rows = assert(M.state.rows, "Find Action rows are missing")
 	local text = table.concat(query)
+	if text == "" then
+		return inds
+	end
 	local visible_matches = {}
 	local hidden_matches = {}
 	local separator
@@ -138,6 +151,7 @@ local function choose_action(row)
 		return true
 	end
 	local ctx = assert(M.state.context, "Find Action context is missing")
+	Items.history():record(action.id)
 	if action.toggle then
 		local selected = MiniPick.get_picker_matches().current_ind
 		local rows = assert(M.state.rows, "Find Action rows are missing")
@@ -161,6 +175,24 @@ local function choose_action(row)
 	return false
 end
 
+---@return string?
+local function hints()
+	local kind = picker_layout.current().kind
+	if kind == "full" then
+		return "Assign ⌥↩ · Show hidden ⌘⇧A"
+	elseif kind == "compact" then
+		return "⌥↩ · ⌘⇧A"
+	end
+end
+
+---@return table
+local function window_config()
+	local config = picker_layout.window_config()
+	config.height = math.min(16, math.max(vim.o.lines - 4, 1))
+	config.row = math.max(math.floor((vim.o.lines - config.height - 4) / 2), 0)
+	return config
+end
+
 ---@param ctx? gleb.ActionContext
 ---@return any
 function M.open(ctx)
@@ -170,6 +202,8 @@ function M.open(ctx)
 	return picker.start({
 		title = "Find Action",
 		items = M.state.rows,
+		hints = hints,
+		window_config = window_config,
 		match = match_rows,
 		choose = choose_action,
 		mappings = {

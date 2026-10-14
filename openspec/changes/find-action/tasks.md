@@ -13,6 +13,9 @@ Scenarios: `find-action: Find Action opens from its shortcut`, `find-action: Fin
 - Keep the backing action on each picker row so reveal and assignment decisions use registry metadata rather than rendered text.
 - Append a newly assigned lhs once so existing shortcuts remain available without creating duplicates.
 - Identify adapter-owned actions by their established action-area prefixes so the palette can name the plugin reopen boundary without loading plugins.
+- Keep a fourteen-row Find Action result area at every width so responsive layouts change fields without changing the approved H1 capacity.
+- Reduce the compact Find Action hint to its two physical keys so it preserves both operations without labels.
+- Style assignment keys and choices with existing semantic highlight groups so the float follows the active colorscheme.
 
 ## 2. Render action rows
 Scenarios: `find-action: Rows show action metadata`, `find-action: Rows fall back to Vim notation`, `find-action: Toggle rows show state glyphs`
@@ -46,9 +49,9 @@ Scenarios: `find-action: Assign float captures a free shortcut`, `find-action: A
 
 ## 7. Pin Find Action reference screens
 Scenarios: `find-action: Wide palette matches reference screenshots`, `find-action: Compact palette matches reference screenshot`, `find-action: Narrow palette matches reference screenshot`, `find-action: Conflict assignment matches reference screenshot`, `find-action: Free assignment matches reference screenshot`
-- [ ] 7.1 Write the screen tests in `tests/screen/find-action/test_palette.lua` from the approved design renders and run `make test FILE=tests/screen/find-action/test_palette.lua`, seeing all five scenarios fail
-- [ ] 7.2 Apply the approved picker layout, hint text, responsive fields, state highlights, and assignment-float styling
-- [ ] 7.3 Run `make test FILE=tests/screen/find-action/test_palette.lua` and see all five scenarios pass
+- [x] 7.1 Write the screen tests in `tests/screen/find-action/test_palette.lua` from the approved design renders and run `make test FILE=tests/screen/find-action/test_palette.lua`, seeing all five scenarios fail
+- [x] 7.2 Apply the approved picker layout, hint text, responsive fields, state highlights, and assignment-float styling
+- [x] 7.3 Run `make test FILE=tests/screen/find-action/test_palette.lua` and see all five scenarios pass
 
 ## 8. Persist the real-key workflow
 Scenarios: `find-action: Physical Find Action workflow persists an assignment`
