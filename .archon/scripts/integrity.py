@@ -243,13 +243,32 @@ def unqueued_xfails(base: str) -> list[str]:
     return out
 
 
+def planned_removals(changes: str = "openspec/changes") -> set[str]:
+    """`<capability>: <scenario>` of every scenario a change's spec delta lists under `## REMOVED
+    Requirements`: the spec removes that behaviour, so its test case goes with it (exact names only)."""
+    found: set[str] = set()
+    for spec in pathlib.Path(os.environ.get("LOOP_CHANGES_DIR") or changes).glob("*/specs/*/spec.md"):
+        text = spec.read_text()
+        marks = list(DELTA_SECTION.finditer(text))
+        for mark, end in zip(marks, [m.start() for m in marks[1:]] + [len(text)]):
+            if mark.group(1) == "REMOVED":
+                found |= {f"{spec.parent.name}: {t}" for t in SCENARIO_LINE.findall(text[mark.end() : end])}
+    return found
+
+
+SCENARIO_LINE = re.compile(r"^#### Scenario:\s*(.+?)\s*$", re.MULTILINE)
+
+
 def hard_rule_violations() -> list[str]:
     base = git("merge-base", "HEAD", BASE).strip()
     tests = diff("tests/")
     reasons = []
-    lost = sorted(Coverage().lost)  # by name: an unrelated new case cannot offset a lost one
+    planned = planned_removals()
+    removed_cases = Coverage().lost
+    lost = sorted(removed_cases - planned)  # by name: an unrelated new case cannot offset a lost one
     deleted = git("diff", "--cached", "--diff-filter=D", "--name-only", base, "--", "tests/").split()
-    if deleted and (lost or not moved_test_files(base, deleted)):  # a file whose cases all moved is no loss
+    only_planned = deleted and all(case_names(git("show", f"{base}:{path}")) <= planned for path in deleted)
+    if deleted and (lost or not (moved_test_files(base, deleted) or only_planned)):  # moved or spec-removed: no loss
         reasons.append("test files deleted: " + ", ".join(deleted))
     if lost:
         reasons.append(f"{len(lost)} test case(s) removed: " + ", ".join(lost))
