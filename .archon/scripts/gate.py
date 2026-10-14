@@ -15,6 +15,7 @@ the build loop can feed failures back to the next implement pass. Counts attempt
 import json
 import os
 import pathlib
+import signal
 import subprocess
 import re
 import sys
@@ -39,12 +40,29 @@ counter.write_text(str(attempt))
 LSP_TIMEOUT_MS = "120000"
 
 
-def run(cmd: list[str], log: str) -> tuple[bool, str]:
+# below the node's `timeout:` (nvim-deliver.yaml), so an overloaded host ends as `infra`, not a killed node
+CHECK_TIMEOUT_S = int(os.environ.get("CHECK_TIMEOUT_S") or 2700)
+TIMED_OUT = "check: TIMEOUT"
+
+
+def run(cmd: list[str], log: str, timeout: int | None = None) -> tuple[bool, str]:
+    """Runs `cmd` writing its output to the log as it goes (a killed gate still leaves evidence); past
+    `timeout` s the whole process group is killed and the output ends with a TIMED_OUT line."""
     env = {**os.environ, "LSP_TIMEOUT_MS": os.environ.get("LSP_TIMEOUT_MS") or LSP_TIMEOUT_MS}
-    proc = subprocess.run(cmd, capture_output=True, text=True, env=env)
-    out = strip_ansi(proc.stdout + proc.stderr)  # plain text, so `rg 'FAIL in'` finds every case
-    (artifacts / log).write_text(out)
-    return proc.returncode == 0, out
+    path = artifacts / log
+    with path.open("w") as f:
+        proc = subprocess.Popen(cmd, stdout=f, stderr=subprocess.STDOUT, text=True, env=env, start_new_session=True)
+        try:
+            code = proc.wait(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            os.killpg(proc.pid, signal.SIGKILL)
+            proc.wait()
+            code = None
+    out = strip_ansi(path.read_text())  # plain text, so `rg 'FAIL in'` finds every case
+    if code is None:
+        out += f"\n{TIMED_OUT} after {timeout} s (host overloaded or a hung test)\n"
+    path.write_text(out)
+    return code == 0, out
 
 
 def tail(out: str) -> str:
@@ -225,7 +243,10 @@ def rerun_flaky(out: str, log: str) -> tuple[list[str], str, list[str]]:
 
 # E2E=1: e2e runs in the sandbox VM and boots it when it is down (docs/testing.md, Sandbox VM)
 check_log = f"check-{attempt}.log"
-green, check_out = run(["make", "check", "E2E=1"], check_log)
+green, check_out = run(["make", "check", "E2E=1"], check_log, CHECK_TIMEOUT_S)
+if TIMED_OUT in check_out:  # not the change's failure: no fix pass, no attempt; the loop stops as infra
+    counter.write_text(str(attempt - 1))
+    red(f"infra: make check timed out after {CHECK_TIMEOUT_S} s\nfull log: {artifacts / check_log}", infra="check timed out")
 change_dir = pathlib.Path("openspec/changes") / change
 flaky, infra, owned = ([], "", []) if green else rerun_flaky(check_out, check_log)
 green = green or (bool(flaky) and not owned)

@@ -161,7 +161,7 @@ nodes:
         - id: gate # make check (incl. make trace) + openspec validate --strict + tasks ticked
           script: gate
           runtime: uv
-          timeout: 1200000
+          timeout: 3600000 # above gate.py CHECK_TIMEOUT_S
           depends_on: [fix, fix-stuck, fix-stuck-claude, settle, unblock]
           trigger_rule: all_done
           with:
@@ -340,7 +340,7 @@ nodes:
         - id: regate
           script: gate
           runtime: uv
-          timeout: 1200000
+          timeout: 3600000 # above gate.py CHECK_TIMEOUT_S
           depends_on: [resolve]
           with:
             change: $INPUTS.change
