@@ -45,13 +45,12 @@ Adopt: loop/action-registry-20261014-150436
 - Both chords and key sequences can be assigned.
 - Each package exposes its actions in a clean, idiomatic way.
 
-## Unblocked
-Technical, not a user decision: encode an empty shortcut map with `vim.empty_dict()` (or a JSON object
-writer) so `{}` round-trips; empty Lua tables stay valid maps. Continue the adopted branch.
+## Design approval
+Design-approved: 1a8a597045867b637e6f4f40fdae17f17b1672e403cc53f33ade30886058e719
 
 ## Rejected run
 Run on `loop/action-registry-20261014-150436` was rejected by the judge:
 - fix loop exhausted (3 attempts) with gates still red: review
 - review findings:
   [must-fix] lua/gleb/actions/adapters/differ.lua:1 and lua/gleb/actions/adapters/neotest.lua:1 call `by_action` without `supports_multiple = true`, so `native_lhs` (lua/gleb/actions/adapters/init.lua:29) fails its assert when an action has two lhs. Both plugins accept `string|string[]`: differ.nvim binds through `util/keymap.lua:19` (`type(spec) == "table" and spec or { spec }`), and neotest types its summary mappings as `string|string[]` (`config/init.lua:105`, default `expand = { "<CR>", "<2-LeftMouse>" }`). A valid `settings/keymap.json` entry such as `"neotest.run": ["r", "R"]` therefore makes the adapter throw. That contradicts the scenario `actions: Adapter output follows current shortcuts` ("contains each current lhs"). It also misapplies the agent decision, which limits the rejection to string-only adapters. Fix: pass `{ supports_multiple = true }` for differ and neotest, as dap_ui does, and cover a two-lhs case for them in tests/integration/actions/test_adapters.lua.
-  [minor] tests/integration/actions/test_adapters.lua:42-52: for the name-keyed adapters (differ, codediff, dap_ui, neotest, mason, copilot), `InvokeNamedMapping` builds the `Context.invoke` callback inside the test itself. The `Invoked` entries for those adapters therefore prove only that the native name maps to a catalog id. They do not prove that the adapter output invokes the action. This is a consequence of plugin-native name→lhs tables, where the plugin runs its own function and not `action.run(ctx)`,
+  [minor] tests/integration/actions/test_adapters.lua:42-52: for the name-keyed adapters (differ, codediff, dap_ui, neotest, mason, copilot), `InvokeNamedMapping` builds the `Context.invoke` callback inside the test itself. The `Invoked` entries for those adapters therefore prove only that the native name maps to a catalog id. They do not prove that the adapter output invokes the action. This is a consequence of plugin-native name→lhs tables, where the plugin runs its own function and not `action.run(ctx)`, so the test should assert those adapters' native output shapes directly.
