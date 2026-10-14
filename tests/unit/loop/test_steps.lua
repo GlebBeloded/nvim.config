@@ -341,6 +341,14 @@ T["loop: Agents never load the host to reproduce a flake"] = function()
 	eq(fix:find("Run `make fmt`, then commit", 1, true) ~= nil, true)
 end
 
+T["loop: Harness slips are not implementation attempts"] = function()
+	for _, name in ipairs({ "fix", "implement" }) do
+		local prompt =
+			table.concat(vim.fn.readfile(vim.fs.joinpath(H.root, ".archon/commands/" .. name .. ".md")), "\n")
+		eq(prompt:gsub("%s+", " "):find("rerunning is not an attempt", 1, true) ~= nil, true, { fail_reason = name })
+	end
+end
+
 T["loop: Adopted change with every task ticked skips the spec step"] = function()
 	local done, todo = "## 1. Task\n- [x] 1.1 a", "## 1. Task\n- [x] 1.1 a\n- [ ] 1.2 b"
 	local ui = {

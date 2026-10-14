@@ -27,7 +27,7 @@ Find the cause before editing. When the cause is not obvious from the log line (
 headless probe first (the scratch-file probe rule below) that logs the relevant state, and base the edit on its output.
 At most 2 implementation attempts per pass (an edit plus rerunning the failing test): if the second still fails, revert
 only the non-test edits (`lua/` and other code; keep the new red regression test), write `## Blocked` in tasks.md with the probe output and both attempts,
-commit the failing test together with tasks.md (a blocked change never ships), and stop.
+commit the failing test together with tasks.md (a blocked change never ships), and stop. An attempt is a change to production code (`lua/`) or to your hypothesis about the cause; fixing a mechanical error in your own test or harness code (syntax, arity or multiple returns such as `gsub`, a wrong API or key notation) and rerunning is not an attempt, as long as the test's scenario and assertions stay the same. Block only when the second production attempt fails on an assertion that tests the behaviour.
 Production code (`lua/`) never uses timers or sleeps (`vim.defer_fn`, `vim.uv` timers, `vim.wait`) to win a race with a
 plugin's internals unless the proposal's `## Decision` allows it. Do not re-read plugin source the context pack's `## Evidence` covers.
 Read only the latest check log, the `full log:` path in the findings (never a `check-*.log` glob):
