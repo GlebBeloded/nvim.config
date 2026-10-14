@@ -126,8 +126,9 @@ end
 ---@param layer string
 ---@param indices integer[]
 ---@param out string
+---@param on_exit fun(done: vim.SystemCompleted)
 ---@return vim.SystemObj
-local function spawn(layer, indices, out)
+local function spawn(layer, indices, out, on_exit)
 	local cmd = {
 		vim.v.progpath,
 		"--headless",
@@ -138,7 +139,7 @@ local function spawn(layer, indices, out)
 		string.format("lua require('tests.runner').run(%q)", layer),
 	}
 	local env = { TEST_SHARD_CASES = table.concat(indices, ","), TEST_SHARD_OUT = out }
-	return vim.system(cmd, { env = env, text = true })
+	return vim.system(cmd, { env = env, text = true }, on_exit)
 end
 
 ---@param indices integer[]
@@ -149,6 +150,65 @@ local function crashed(indices, cases, reason)
 	return vim.tbl_map(function(i)
 		return { index = i, desc = cases[i].desc, args = "[]", fails = { reason }, notes = {}, state = "Fail" }
 	end, indices)
+end
+
+-- a case with no progress this long is hung (e.g. a picker waiting for keys): its worker is killed and the
+-- case fails by name, instead of `make check` running until the gate's timeout (run 8e207440)
+local STALL_S = tonumber(vim.env.TEST_STALL_S) or 300
+
+---@param path string
+---@return { current: integer?, results: parallel.Result[] }?
+local function read_progress(path)
+	local ok, progress = pcall(function()
+		return vim.json.decode(table.concat(vim.fn.readfile(path), "\n"))
+	end)
+	return ok and progress or nil
+end
+
+--- Results of a worker killed on a stalled case: finished cases keep theirs, the stalled one fails as hung,
+--- the rest of the shard fail as not run (the gate reruns them).
+---@param worker table
+---@param cases table[]
+---@return parallel.Result[]
+local function stalled(worker, cases)
+	local progress = read_progress(worker.out .. ".progress") or { results = {} }
+	local done = {}
+	for _, r in ipairs(progress.results or {}) do
+		if r.state and r.index ~= progress.current then
+			done[r.index] = r
+		end
+	end
+	return vim.tbl_map(function(i)
+		if done[i] then
+			return done[i]
+		end
+		local reason = i == progress.current
+				and string.format("hung: no progress for %d s (waiting for input or a never-met condition?)", STALL_S)
+			or "not run: its worker was killed after a hung case"
+		return crashed({ i }, cases, reason)[1]
+	end, worker.indices)
+end
+
+--- Waits for every worker, killing one whose progress file stays unchanged for STALL_S.
+---@param workers table[]
+local function wait_all(workers)
+	local function mtime(worker)
+		local stat = vim.uv.fs_stat(worker.out .. ".progress")
+		return stat and stat.mtime.sec or worker.spawned
+	end
+	local function all_done()
+		return vim.iter(workers):all(function(worker)
+			return worker.result ~= nil
+		end)
+	end
+	while not vim.wait(1000, all_done, 200) do
+		for _, worker in ipairs(workers) do
+			if not worker.result and not worker.stalled and os.time() - mtime(worker) > STALL_S then
+				worker.stalled = true
+				worker.process:kill(9)
+			end
+		end
+	end
 end
 
 ---@param path string
@@ -212,13 +272,18 @@ local function main()
 	local workers = {}
 	for s, indices in ipairs(shards) do
 		local out = vim.fn.tempname() .. ".json"
-		workers[s] = { indices = indices, out = out, process = spawn(layer, indices, out) }
+		local worker = { indices = indices, out = out, spawned = os.time() }
+		worker.process = spawn(layer, indices, out, function(done)
+			worker.result = done
+		end)
+		workers[s] = worker
 	end
+	wait_all(workers)
 
 	local results, stderr = {}, {}
 	for _, worker in ipairs(workers) do
-		local done = worker.process:wait()
-		local shard = read_results(worker.out)
+		local done = worker.result
+		local shard = worker.stalled and stalled(worker, cases) or read_results(worker.out)
 		if not shard then
 			local reason = string.format("worker exited %d without results\n%s", done.code, done.stderr or "")
 			shard = crashed(worker.indices, cases, reason)

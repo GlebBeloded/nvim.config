@@ -76,7 +76,7 @@ end
 ---@return table
 local function shard_reporter(path, indices)
 	local cases, started, durations = {}, {}, {}
-	local function finish()
+	local function results_so_far()
 		local results = {}
 		for i, case in ipairs(cases) do
 			local exec = case.exec or { fails = {}, notes = {} }
@@ -91,7 +91,10 @@ local function shard_reporter(path, indices)
 				ms = durations[i],
 			}
 		end
-		vim.fn.writefile({ vim.json.encode(results) }, path)
+		return results
+	end
+	local function finish()
+		vim.fn.writefile({ vim.json.encode(results_so_far()) }, path)
 		vim.cmd("qa!")
 	end
 	return {
@@ -101,6 +104,10 @@ local function shard_reporter(path, indices)
 		update = function(i)
 			started[i] = started[i] or vim.uv.hrtime()
 			durations[i] = (vim.uv.hrtime() - started[i]) / 1e6
+			-- progress for tests/parallel.lua: the case running now and the results so far, so a hung case
+			-- is named when its worker is killed
+			local partial = { current = indices[i], results = results_so_far() }
+			vim.fn.writefile({ vim.json.encode(partial) }, path .. ".progress")
 		end,
 		finish = finish,
 		finish_empty = finish,
