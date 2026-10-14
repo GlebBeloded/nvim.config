@@ -1,7 +1,7 @@
 local M = {}
 
 -- lsp_name is server name, to be passed as lspconfig["M.lsp_name"] = M.lsp_config
-M.lsp_name = "terraform_lsp"
+M.lsp_name = "terraformls"
 
 -- native lsp config
 M.lsp_config = { filetypes = { "terraform", "tf", "hcl" } }
