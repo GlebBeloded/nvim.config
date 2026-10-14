@@ -10,7 +10,7 @@ skills-check: "skills ok"
 pick: { found: true, change: adopted-done, kind: fix, has_tasks: true }
 complete: "MUST-NOT-RUN"
 classify: "MUST-NOT-RUN"
-spec-gate: "valid"
+spec-gate: { ok: true, log: "" }
 preview: "MUST-NOT-RUN"
 # nvim-deliver (include `deliver`): top-level ids get the deliver__ prefix, loop bodies keep theirs
 deliver__skills-check: "skills ok"

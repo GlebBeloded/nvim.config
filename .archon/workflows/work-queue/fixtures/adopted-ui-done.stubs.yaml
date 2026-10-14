@@ -11,5 +11,5 @@ skills-check: "skills ok"
 pick: { found: true, change: adopted-ui-done, kind: fix, has_tasks: true }
 complete: "MUST-NOT-RUN"
 classify: "MUST-NOT-RUN"
-spec-gate: "valid"
+spec-gate: { ok: true, log: "" }
 preview: "http://localhost:8000/preview/adopted-ui-done"

@@ -10,7 +10,7 @@ exec-code: true
 skills-check: "skills ok"
 pick: { found: true, change: demo-change, kind: fix, has_tasks: true }
 complete: "spec written"
-spec-gate: "valid"
+spec-gate: { ok: true, log: "" }
 preview: "MUST-NOT-RUN"
 # nvim-deliver (include `deliver`): top-level ids get the deliver__ prefix, loop bodies keep theirs
 deliver__skills-check: "skills ok"

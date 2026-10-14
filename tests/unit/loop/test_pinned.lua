@@ -168,7 +168,8 @@ T["loop: Spec steps receive pinned scenarios"] = function()
 	has(queue, "bash: python3 .archon/scripts/pinned.py $pick.output.change")
 	has(queue, "depends_on: [pick, skills-check, adopted-state, blocked, pinned, meta]")
 	has(queue, "pinned: $pinned.output")
-	has(queue, "pinned.py --check $pick.output.change")
+	has(queue, "- id: spec-gate # main specs after a trial archive; pins planned (spec_gate.py")
+	has(read(".archon/scripts/spec_gate.py"), '"pinned.py"), "--check", change]')
 	has(read(".archon/workflows/fix-bug/fix-bug.yaml"), "pinned.py --check $spec.output.change")
 	local rule = "Each gets a MODIFIED delta restated to the new behaviour, or one line in proposal.md `## Impact`"
 	local spec = read(".archon/commands/queue-spec.md")
@@ -196,6 +197,58 @@ T["loop: Queue spec prompt keeps skip_specs and flake tasks narrow"] = function(
 	has(spec, "With `skip_specs: true`, read only `rg -n '^#### Scenario:'` of the named spec, no archive examples")
 	has(spec, "visible_ui/architecture are false for test-only changes")
 	has(spec, "copy the `FAIL in` lines from the proposal; never search `artifacts/runs` or old gate logs")
+end
+
+---@param repo string
+---@param env table<string, string>
+---@return table result of spec_gate.py in `repo`, with `openspec` stubbed to exit 0
+local function spec_gate(repo, env)
+	local bin = vim.fs.joinpath(H.tempdir(child), "bin")
+	write(bin, { openspec = "#!/bin/sh\nexit 0" })
+	vim.fn.setfperm(vim.fs.joinpath(bin, "openspec"), "rwxr-xr-x")
+	env = vim.tbl_extend("force", { PATH = bin .. ":" .. vim.env.PATH }, env)
+	return H.system(child, { "python3", vim.fs.joinpath(SCRIPTS, "spec_gate.py") }, repo, env)
+end
+
+T["loop: Spec gate prints its log instead of failing"] = function()
+	local repo = repo_with({ ["openspec/changes/c/proposal.md"] = PROPOSAL })
+	local result = spec_gate(repo, { INPUTS_CHANGE = "c", INPUTS_FAILED_LOG = "" })
+	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
+	local gate = vim.json.decode(result.stdout)
+	eq(gate.ok, false)
+	has(gate.log, "pinned.py failed (exit 1)")
+	has(gate.log, PIN)
+	local failed = spec_gate(repo, { INPUTS_CHANGE = "c", INPUTS_FAILED_LOG = gate.log })
+	eq(failed.code, 1)
+	has(failed.stderr, "spec gate failed twice:")
+	has(failed.stderr, PIN)
+end
+
+T["loop: Red spec gate reruns the spec step once"] = function()
+	local queue = read(".archon/workflows/work-queue/work-queue.yaml")
+	has(queue, "gate_log: none")
+	has(queue, "- id: spec-retry")
+	has(queue, 'command: queue-spec context: fresh depends_on: [spec-gate] when: "$spec-gate.output.ok == false"')
+	has(queue, "gate_log: $spec-gate.output.log")
+	has(queue, "- id: spec-gate-2 script: spec_gate runtime: uv depends_on: [spec-retry]")
+	has(
+		queue,
+		'when: "$spec-gate-2.output.ok == false" with: change: $pick.output.change failed_log: $spec-gate-2.output.log'
+	)
+	has(queue, 'when: "$spec-gate.output.ok == true || $spec-gate-2.output.ok == true"')
+	has(queue, "nothing opens on the host depends_on: [spec-ok]")
+	has(queue, "depends_on: [adopted-state, blocked, spec-ok, design-gate]")
+	has(read(".archon/commands/queue-spec.md"), "Spec gate feedback: $INPUTS.gate_log.")
+end
+
+T["loop: Queue spec fast path plans pinned scenarios"] = function()
+	local spec = read(".archon/commands/queue-spec.md")
+	has(
+		spec,
+		"Pinned scenarios listed above still apply with skip_specs: add one `## Impact` line per pinned scenario saying why it still holds (or drop skip_specs and add a MODIFIED delta)."
+	)
+	local pins = spec:find("Pinned scenarios (`pinned.py`", 1, true)
+	eq(pins ~= nil and pins < spec:find("**Fast path", 1, true), true)
 end
 
 return T

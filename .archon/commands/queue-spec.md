@@ -14,12 +14,13 @@ Change: openspec/changes/$INPUTS.change/
 Schema: the work-queue meta step already set the change's `schema:` in `.openspec.yaml` (`spec-driven` with a design artifact only for a feature or a proposal with renders, else `spec-driven-no-design`, which still takes spec deltas). Never change the `schema:` line, never read `openspec/schemas/` or run `openspec instructions design`.
 Search narrowly: never list every Requirement or Scenario of all specs (no `rg` over `openspec/specs/` as a whole); grep one capability: `rg -n '^### Requirement:|^#### Scenario:' openspec/specs/<capability>/spec.md`.
 Earlier work: $INPUTS.adopted. Only if that is not "nothing to adopt" (it says "adopted" or "conflicts merging"; the adopt-resolve step finished that merge; read `$ARTIFACTS_DIR/adopt-notes.md`, the hunks it gave up, only if it exists; never search for it): `git log --oneline auto..HEAD` and `git diff auto...HEAD --stat` show what is already done; specify and plan only the rest.
+Pinned scenarios (`pinned.py`: main-spec scenarios naming a symbol this change touches): $INPUTS.pinned. Each gets a MODIFIED delta restated to the new behaviour, or one line in proposal.md `## Impact` naming `<capability>: <scenario>` and saying why it still holds; the spec gate reruns `pinned.py --check`.
+Spec gate feedback: $INPUTS.gate_log. Only if that is not "none" (this is the retry pass): the spec gate rejected the change folder you already wrote; fix only what the log names (edit the existing artifacts, keep their `schema:`), then run `openspec status` once.
 
 **Fast path, `skip_specs: true`** (check `.openspec.yaml` first; a test-only, refactor or follow-up change). The
 work-queue meta step already set `schema: spec-driven-no-design` (no design artifact); visible_ui/architecture
 are false for test-only changes: there is no JSON to return and no design.md to write.
-Write only tasks.md from the matching template under "Refactor or cleanup" below (plus the `## Impact` line for each pinned
-scenario, as below), then run `openspec status --change
+Write tasks.md from the matching template under "Refactor or cleanup" below; touch proposal.md only for the Impact lines. Pinned scenarios listed above still apply with skip_specs: add one `## Impact` line per pinned scenario saying why it still holds (or drop skip_specs and add a MODIFIED delta). Then run `openspec status --change
 $INPUTS.change` once; expected: `[x] proposal`, `[~] specs (skipped: change declares skip_specs)`, `[x] tasks`,
 "All planning artifacts complete!". Forbidden on this path: reading `.archon/`, `openspec/config.yaml` or
 `openspec/changes/archive/`, running `openspec instructions` (any artifact) or `openspec list`, writing design.md
@@ -33,8 +34,7 @@ only have proposal.md. Read it, find the root cause if it is a bug (systematic-d
 no code changes), then complete the missing artifacts with the `openspec-continue-change` skill
 until specs, design.md (only for visible UI: Current + Proposed renders; under `spec-driven-no-design` write it by hand, it is not in that schema) and tasks exist; refresh any counts or lists the queued proposal quotes (e.g. one capability's trace: `make -s trace VERBOSE=1 | sed -n '/^<capability> /,/^[^ ]/p'`, never the whole listing) instead of trusting them,
 following the `rules:` block of openspec/config.yaml (read only that block: `sed -n '/^rules:/,/^operations:/p' openspec/config.yaml`). Locate cited code with `rg -n <symbol>`, not by the proposal's line numbers (they may be stale).
-Read the requirement the proposal names and each pinned scenario below, only those ranges (`rg -n 'Requirement:' <spec>`, then that range).
-Pinned scenarios (`pinned.py`: main-spec scenarios naming a symbol this change touches): $INPUTS.pinned. Each gets a MODIFIED delta restated to the new behaviour, or one line in proposal.md `## Impact` naming `<capability>: <scenario>` and saying why it still holds; the spec gate reruns `pinned.py --check`.
+Read the requirement the proposal names and each pinned scenario above, only those ranges (`rg -n 'Requirement:' <spec>`, then that range).
 A bug's proposal (`Kind: bug`) states its root cause with an `## Evidence` section: a list of `file:line` refs (repo or
 installed plugin source) or headless probe output that shows the cause; the context pack hands it to implement and fix.
 Drop main spec paths from the proposal's Impact; the delta covers them. Do not implement. `visible_ui` is true when the change alters what is drawn on screen: then, and only then, design.md holds `Current render` / `Proposed render` sections (the classify step reads visible UI from them; drop render sections an adopted design.md no longer needs).
