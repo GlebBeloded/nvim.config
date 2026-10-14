@@ -568,6 +568,20 @@ When `make check` fails only in `test`, `test-readiness` or `e2e`, gate.py SHALL
 - **WHEN** gate.py runs with a `make` stub whose check fails in `e2e` with only sandbox lines (`did not answer SSH`, `is not running`) and whose rerun passes, then fails; then with a `FAIL in` case; then with another non-sandbox line
 - **THEN** the first reruns `make e2e E2E=1` and is green with `e2e: <last sandbox line>` in `flaky`; the second is red; the last two are red with no rerun
 
+### Requirement: Gate stops on sandbox infra
+When the e2e rerun fails on sandbox infra again (incl. the image pull disk guard) and every other rerun passes, gate.py SHALL print `infra` (the sandbox line) and not count the pass as an attempt; verdict SHALL end the loop with no fix pass and not exhausted; the judge SHALL decide `infra` (neither reject nor re-queue) and ship-decide SHALL stop the run.
+
+#### Scenario: Gate stops on sandbox infra that fails again on rerun
+- **WHEN** gate.py runs on a check failing in e2e on the image pull disk guard and in test-readiness on a timing bound, the e2e rerun failing on it again and the readiness rerun passing; then with the readiness rerun failing; then with an e2e rerun that passes
+- **THEN** the first is red with `infra` set and the attempt counter at 0, verdict is done and not exhausted, the judge decides `infra` and ship-decide stops without go; the second is red with no `infra`; the third is green with both in `flaky`
+
+### Requirement: Gate never passes a case the change owns as flaky
+gate.py SHALL never rerun a failed case whose test file the branch changes or that is named after a scenario of the change, and SHALL count a test rerun as passed only when it exits 0 and prints that case as passed.
+
+#### Scenario: Gate never passes a case the change owns as flaky
+- **WHEN** gate.py runs on a check failing in `test` on one case whose file the branch edits; then on one named after a scenario of the change; then with a rerun that exits 0 printing `No test cases matched`; then with a rerun printing the case as passed
+- **THEN** the first two are red with no rerun, the third is red, the last is green with the case in `flaky`
+
 ### Requirement: Fix pass never makes an empty commit
 The fix command SHALL commit nothing when no listed finding needs a change and say so (the gate reruns), never an empty commit, and SHALL prefix with `loop:` (dropped) a lesson candidate that restates one of its own rules.
 
