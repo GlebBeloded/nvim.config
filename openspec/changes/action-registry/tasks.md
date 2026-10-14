@@ -39,3 +39,8 @@ Scenarios: `actions: Ex commands become humanized hidden actions`, `actions: Reg
 - [x] 7.1 Write the tests for these scenarios in `tests/unit/actions/test_commands.lua` and run each with `make test FILE=tests/unit/actions/test_commands.lua CASE="<scenario title>"` to see it fail
 - [x] 7.2 Add lazy, session-cached Ex-command discovery, title humanization, registered-command deduplication, and hidden-action enforcement
 - [x] 7.3 Run each scenario with `make test FILE=tests/unit/actions/test_commands.lua CASE="<scenario title>"` and see it pass
+
+## Agent decisions
+
+- Reject multiple shortcuts in string-only adapters so invalid lhs lists never reach plugin keymap APIs.
+- Nest codediff actions under `keymaps.view` and copilot actions under `suggestion.keymap`, matching the registered actions' native plugin sections.

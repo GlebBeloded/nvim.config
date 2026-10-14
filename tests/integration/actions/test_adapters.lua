@@ -39,16 +39,16 @@ local function start()
 			["copilot.accept"] = { "<M-l>" },
 			["file_tree.open"] = { "o" },
 		}
-		function InvokeNative(adapter, area, lhs)
-			local mappings = {}
-			for name, native_lhs in pairs(adapter.mappings(Catalog, Shortcuts)) do
+		function InvokeNamedMapping(mappings, area, lhs)
+			local callbacks = {}
+			for name, native_lhs in pairs(mappings) do
 				local lhs_list = type(native_lhs) == "table" and native_lhs or { native_lhs }
 				for _, mapped_lhs in ipairs(lhs_list) do
 					local action = assert(Catalog:get(area .. "." .. name))
-					mappings[mapped_lhs] = require("gleb.actions.context").invoke(action)
+					callbacks[mapped_lhs] = require("gleb.actions.context").invoke(action)
 				end
 			end
-			assert(mappings[lhs], "missing native mapping for " .. lhs)()
+			assert(callbacks[lhs], "missing native mapping for " .. lhs)()
 		end
 		function OpenPluginWindow(adapter)
 			local buf = vim.api.nvim_create_buf(false, true)
@@ -64,12 +64,7 @@ local T = H.child_set(child, start)
 
 T["actions: Adapter output follows current shortcuts"] = function()
 	child.lua([[
-		Shortcuts["differ.next_hunk"] = { "]c", "[c" }
-		Shortcuts["codediff.next_hunk"] = { "]d", "[d" }
 		Shortcuts["dap_ui.expand"] = { "<CR>", "o" }
-		Shortcuts["neotest.run"] = { "r", "R" }
-		Shortcuts["mason.install_package"] = { "i", "I" }
-		Shortcuts["copilot.accept"] = { "<M-l>", "<M-L>" }
 	]])
 	eq(
 		child.lua_get([[(function()
@@ -83,50 +78,50 @@ T["actions: Adapter output follows current shortcuts"] = function()
 			local copilot = require("gleb.actions.adapters.copilot").mappings(Catalog, Shortcuts)
 			local neo_tree = require("gleb.actions.adapters.neo_tree").mappings(Catalog, Shortcuts)
 
-			InvokeNative(require("gleb.actions.adapters.differ"), "differ", "]c")
-			InvokeNative(require("gleb.actions.adapters.differ"), "differ", "[c")
-			InvokeNative(require("gleb.actions.adapters.codediff"), "codediff", "]d")
-			InvokeNative(require("gleb.actions.adapters.codediff"), "codediff", "[d")
-			InvokeNative(require("gleb.actions.adapters.dap_ui"), "dap_ui", "<CR>")
-			InvokeNative(require("gleb.actions.adapters.dap_ui"), "dap_ui", "o")
-			InvokeNative(require("gleb.actions.adapters.neotest"), "neotest", "r")
-			InvokeNative(require("gleb.actions.adapters.neotest"), "neotest", "R")
-			InvokeNative(require("gleb.actions.adapters.mason"), "mason", "i")
-			InvokeNative(require("gleb.actions.adapters.mason"), "mason", "I")
-			InvokeNative(require("gleb.actions.adapters.copilot"), "copilot", "<M-l>")
-			InvokeNative(require("gleb.actions.adapters.copilot"), "copilot", "<M-L>")
+			InvokeNamedMapping(differ, "differ", "]c")
+			InvokeNamedMapping(codediff.keymaps.view, "codediff", "]d")
+			InvokeNamedMapping(dap_ui, "dap_ui", "<CR>")
+			InvokeNamedMapping(dap_ui, "dap_ui", "o")
+			InvokeNamedMapping(neotest, "neotest", "r")
+			InvokeNamedMapping(mason, "mason", "i")
+			InvokeNamedMapping(copilot.suggestion.keymap, "copilot", "<M-l>")
 			lazy.q()
 			blink["<CR>"][1]()
 			neo_tree.o()
+
+			Shortcuts["mason.install_package"] = { "i", "I" }
+			local mason_accepts_multiple = pcall(require("gleb.actions.adapters.mason").mappings, Catalog, Shortcuts)
+			Shortcuts["mason.install_package"] = { "i" }
+			Shortcuts["copilot.accept"] = { "<M-l>", "<M-L>" }
+			local copilot_accepts_multiple = pcall(require("gleb.actions.adapters.copilot").mappings, Catalog, Shortcuts)
 			return {
 				differ.next_hunk,
-				codediff.next_hunk,
+				codediff.keymaps.view.next_hunk,
 				dap_ui.expand,
 				neotest.run,
 				mason.install_package,
-				copilot.accept,
+				copilot.suggestion.keymap.accept,
+				mason_accepts_multiple,
+				copilot_accepts_multiple,
 				Invoked,
 			}
 		end)()]]),
 		{
-			{ "]c", "[c" },
-			{ "]d", "[d" },
+			"]c",
+			"]d",
 			{ "<CR>", "o" },
-			{ "r", "R" },
-			{ "i", "I" },
-			{ "<M-l>", "<M-L>" },
+			"r",
+			"i",
+			"<M-l>",
+			false,
+			false,
 			{
 				"differ.next_hunk",
-				"differ.next_hunk",
-				"codediff.next_hunk",
 				"codediff.next_hunk",
 				"dap_ui.expand",
 				"dap_ui.expand",
 				"neotest.run",
-				"neotest.run",
 				"mason.install_package",
-				"mason.install_package",
-				"copilot.accept",
 				"copilot.accept",
 				"lazy.close",
 				"blink.accept",

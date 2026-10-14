@@ -18,18 +18,23 @@ local function belongs_to(areas, id)
 	return vim.tbl_contains(areas, area)
 end
 
+---@param id string
 ---@param lhs_list string[]
+---@param supports_multiple boolean
 ---@return string|string[]
-local function native_lhs(lhs_list)
+local function native_lhs(id, lhs_list, supports_multiple)
 	if #lhs_list == 1 then
 		return lhs_list[1]
 	end
+	assert(supports_multiple, ("%s accepts only one shortcut"):format(id))
 	return lhs_list
 end
 
 ---@param areas string[]
+---@param opts? { supports_multiple: boolean? }
 ---@return table
-function M.by_action(areas)
+function M.by_action(areas, opts)
+	opts = opts or {}
 	local adapter = {}
 
 	---@param catalog gleb.ActionCatalog
@@ -39,7 +44,7 @@ function M.by_action(areas)
 		local mappings = {}
 		for id, lhs_list in pairs(shortcuts) do
 			if belongs_to(areas, id) and catalog:get(id) then
-				mappings[action_name(id)] = native_lhs(lhs_list)
+				mappings[action_name(id)] = native_lhs(id, lhs_list, opts.supports_multiple == true)
 			end
 		end
 		return mappings
