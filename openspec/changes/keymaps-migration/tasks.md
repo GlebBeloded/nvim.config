@@ -15,6 +15,12 @@ Scenarios: `actions: Every configured mapping is action-owned`, `keymaps: Unadop
 - [ ] 2.2 Delete unadopted Neovim defaults during startup, register retained defaults as actions, disable nvim-surround defaults with `vim.g.nvim_surround_no_mappings = true`, and bind its `<Plug>` targets through actions
 - [ ] 2.3 Run `make test FILE=tests/integration/actions/test_ownership.lua CASE="actions: Every configured mapping is action-owned"` and `make test FILE=tests/integration/keymaps/test_keymaps.lua` and see them pass
 
+## Stuck
+
+- Probe: with `Vj` active, mode was `V`, visual anchor was `{ 0, 1, 1, 0 }`, both `'<` and `'>` were `{ 0, 0, 0, 0 }`, and `J` resolved to `Edit: Move selection down`.
+- Attempt 1 removed all unadopted Lua defaults and registered surround `<Plug>` mappings; the new built-in and surround scenarios passed, but the existing real `VjJ`/`VjK` paths failed with `E20: Mark not set`.
+- Attempt 2 retained Neovim grammar defaults while removing only LSP, diagnostic, unimpaired, and selection defaults; `keymaps: Move selected lines down` still failed with `E20: Mark not set`.
+
 ## 3. Make plugin adapters the sole owner of plugin-window keys
 Scenarios: `actions: Plugin-window mappings are action-owned`, `actions: Unconfigured defaults are absent`, `actions: Lazy specs define no shortcut keys`
 - [ ] 3.1 Write the scenarios in `tests/integration/actions/test_plugin_ownership.lua`; open the real neo-tree, dap-ui, diffview, differ, codediff, neotest, mason, lazy, blink, and copilot surfaces with populated data, run `make test FILE=tests/integration/actions/test_plugin_ownership.lua CASE="actions: Plugin-window mappings are action-owned"`, and see it fail

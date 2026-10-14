@@ -60,4 +60,8 @@ T["actions: Every configured action is registered"] = function()
 	eq(unknown, {})
 end
 
+T["actions: Every configured mapping is action-owned"] = function()
+	eq(child.lua_get([[require("gleb.actions").audit()]]), {})
+end
+
 return T

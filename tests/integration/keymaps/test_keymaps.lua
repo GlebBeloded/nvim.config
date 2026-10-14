@@ -335,6 +335,45 @@ T["keymaps: Core mappings resolve through actions"] = function()
 	eq(offenders, {})
 end
 
+T["keymaps: Unadopted built-in mappings are removed"] = function()
+	local defaults = { "grn", "gra", "grr", "gri", "grt", "gO", "]d", "[q", "]q" }
+	local mappings = vim.tbl_map(function(lhs)
+		return child.fn.maparg(lhs, "n")
+	end, defaults)
+
+	eq(mappings, { "", "", "", "", "", "", "", "", "" })
+end
+
+T["keymaps: Adopted built-in mappings are registry actions"] = function()
+	local map = child.fn.maparg("[d", "n", false, true)
+	local action = child.lua_get([[require("gleb.actions").state.applicator.catalog:get("diag.previous")]])
+
+	eq({ map.desc, type(map.callback), action.id }, { "Diagnostics: Previous", "function", "diag.previous" })
+end
+
+T["keymaps: Surround mappings use registered actions"] = function()
+	local expected = {
+		{ "i", "<C-g>s", "<Plug>(nvim-surround-insert)", "Surround: Insert" },
+		{ "i", "<C-g>S", "<Plug>(nvim-surround-insert-line)", "Surround: Insert line" },
+		{ "n", "ys", "<Plug>(nvim-surround-normal)", "Surround: Add" },
+		{ "n", "yss", "<Plug>(nvim-surround-normal-cur)", "Surround: Add line" },
+		{ "n", "yS", "<Plug>(nvim-surround-normal-line)", "Surround: Add on lines" },
+		{ "n", "ySS", "<Plug>(nvim-surround-normal-cur-line)", "Surround: Add current on lines" },
+		{ "n", "ds", "<Plug>(nvim-surround-delete)", "Surround: Delete" },
+		{ "n", "cs", "<Plug>(nvim-surround-change)", "Surround: Change" },
+		{ "n", "cS", "<Plug>(nvim-surround-change-line)", "Surround: Change on lines" },
+		{ "x", "S", "<Plug>(nvim-surround-visual)", "Surround: Visual" },
+		{ "x", "gS", "<Plug>(nvim-surround-visual-line)", "Surround: Visual line" },
+	}
+	local actual = vim.tbl_map(function(item)
+		local map = child.fn.maparg(item[2], item[1], false, true)
+		return { item[1], item[2], map.rhs, map.desc }
+	end, expected)
+
+	eq(actual, expected)
+	eq(child.g.nvim_surround_no_mappings, true)
+end
+
 T["keymaps: Leader values after startup"] = function()
 	eq({ child.g.mapleader, child.g.maplocalleader }, { " ", "\\" })
 end
