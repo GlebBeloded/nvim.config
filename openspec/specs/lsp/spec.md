@@ -45,3 +45,10 @@ In a Go module, `gr` in Normal mode SHALL open the Telescope references picker f
 #### Scenario: Selecting a reference opens its file at the call site
 - **WHEN** in that picker `summary` is typed into the prompt and Return is pressed as real key presses
 - **THEN** the picker is closed, the current buffer is `report/summary.go` of the fixture copy, and the cursor is at the manifest's line and column of the `Format` call in that file
+
+### Requirement: Terraform language server registration
+The config SHALL register and enable the nvim-lspconfig server named `terraformls` for Terraform buffers, using the installed `terraform-ls` executable definition.
+
+#### Scenario: Terraform files use terraformls
+- **WHEN** a full-config Neovim opens a `.tf` file whose detected filetype is `terraform`
+- **THEN** the buffer's enabled language-server config is named `terraformls`
