@@ -2,7 +2,7 @@
 # so the spec step runs (this caught a quoting bug that skipped spec). queued-change lives in
 # fixtures/changes/ (LOOP_CHANGES_DIR, set by make loop-test), so no live queued change is needed.
 # was g2. no adopt input: adopt (real) reports "nothing to adopt" into the queue-spec prompt; a fix
-# without visible UI skips preview and the design gate and delivers.
+# without visible UI skips preview and delivers.
 fixture:
   expect: completed
   inputs: { change: queued-change }

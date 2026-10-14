@@ -1,6 +1,6 @@
 # m. implement wrote `## Stuck` (fixtures/changes/stuck-build/tasks.md: both attempts red, no decision
 # needed): verdict (real) keeps the loop going (done=false, stuck=true: the next pass is fix-stuck at
-# high effort, fed the Stuck text) and never ends it as blocked; the judge rejects (never asks) and
+# xhigh effort on the default model, then fix-stuck-claude if still red, fed the Stuck text) and never ends it as blocked; the judge rejects (never asks) and
 # followup re-queues. Dry-run limit: until_bash never runs, so the loop ends after pass 1 and the
 # fix-stuck pass cannot be simulated (unit test "Verdict sends a Stuck section to the fix pass").
 fixture:
@@ -17,6 +17,6 @@ fix: "MUST-NOT-RUN"
 fix-stuck: "MUST-NOT-RUN"
 gate: { green: false, spec_ok: true, tasks_done: false, untested: 0, attempt: 3, failures: "FAIL in actions: Shortcut file round-trips deterministically", blocked: false }
 review: "MUST-NOT-RUN"
-escalation: { decision: reject, escalate: false, reasons: "- fix loop exhausted (3 attempts) with gates still red: tests,tasks,stuck" }
+escalation: { decision: reject, escalate: false, reasons: "- fix loop exhausted with gates still red: tests,tasks,stuck" }
 followup: '{"queued": true, "change": "stuck-build"}'
 ship: "MUST-NOT-RUN"

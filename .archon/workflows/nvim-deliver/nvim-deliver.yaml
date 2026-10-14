@@ -9,7 +9,7 @@ inputs:
     description: OpenSpec change id under openspec/changes/
   feedback:
     default: ""
-    description: User text from an earlier approval gate
+    description: Extra user text for the build (no approval gates)
   message:
     default: ""
     description: Commit message for the ship commit
@@ -77,33 +77,92 @@ nodes:
           idle_timeout: 900000
           skills: [superpowers:test-driven-development]
 
+        # implement wrote `## Blocked`: settle it in this pass (default model at xhigh, then Claude), so the
+        # remaining tasks still get implemented; a section both leave ends the loop (tasks.py) for the build loop
+        - id: task-blocked
+          script: blocked
+          runtime: uv
+          depends_on: [implement]
+          with:
+            change: $INPUTS.change
+          output_format: &task_blocked
+            type: object
+            properties:
+              blocked: { type: boolean }
+              text: { type: string }
+            required: [blocked, text]
+
+        - id: task-settle
+          command: unblock
+          effort: xhigh
+          idle_timeout: 900000
+          depends_on: [task-blocked]
+          when: "$task-blocked.output.blocked == true"
+
+        - id: task-settled
+          script: blocked
+          runtime: uv
+          depends_on: [task-settle]
+          with:
+            change: $INPUTS.change
+          output_format: *task_blocked
+
+        - id: task-unblock # Claude MUST settle what the default model left
+          command: unblock
+          provider: claude
+          effort: xhigh
+          idle_timeout: 900000
+          depends_on: [task-settled]
+          when: "$task-settled.output.blocked == true"
+
   # --- Check -> Verify -> Review, max 3 passes; a red pass sends only its findings to fix -------------
   - id: build
     depends_on: [tasks]
     trigger_rule: all_done
     loop_group:
-      max_iterations: 3
+      max_iterations: 6 # verdict.py ends it: 3 attempts (blocked passes are none), or Blocked left after Claude
       fresh_context: true
       until_bash: test $verdict.output.done = true
       nodes:
         - id: fix # skipped on the first pass; later passes get only the previous verdict's feedback
           command: fix
           idle_timeout: 900000
-          when: "$LOOP_PREV.verdict.output.done == false && $LOOP_PREV.verdict.output.stuck == false"
+          when: "$LOOP_PREV.verdict.output.done == false && $LOOP_PREV.verdict.output.stuck == false && $LOOP_PREV.verdict.output.blocked == false"
           skills: [superpowers:systematic-debugging]
 
-        - id: fix-stuck # the same fix pass at high effort when tasks.md has `## Stuck` (both attempts red)
+        - id: fix-stuck # the same fix pass at xhigh effort when tasks.md has `## Stuck` (both attempts red)
           command: fix
-          effort: high
+          effort: xhigh
           idle_timeout: 900000
-          when: "$LOOP_PREV.verdict.output.done == false && $LOOP_PREV.verdict.output.stuck == true"
+          when: "$LOOP_PREV.verdict.output.done == false && $LOOP_PREV.verdict.output.stuck == true && $LOOP_PREV.verdict.output.blocked == false && $LOOP_PREV.verdict.output.stuck_passes == 1"
           skills: [superpowers:systematic-debugging]
+
+        - id: fix-stuck-claude # Stuck still red after the xhigh pass: Claude takes it
+          command: fix
+          provider: claude
+          effort: xhigh
+          idle_timeout: 900000
+          when: "$LOOP_PREV.verdict.output.done == false && $LOOP_PREV.verdict.output.stuck == true && $LOOP_PREV.verdict.output.blocked == false && $LOOP_PREV.verdict.output.stuck_passes != 1"
+          skills: [superpowers:systematic-debugging]
+
+        - id: settle # implement or fix wrote `## Blocked`: the default model settles it at xhigh (never the user)
+          command: unblock
+          effort: xhigh
+          idle_timeout: 900000
+          when: "$LOOP_PREV.verdict.output.done == false && $LOOP_PREV.verdict.output.blocked == true && $LOOP_PREV.verdict.output.blocked_passes == 1"
+
+        - id: unblock # Blocked still left after settle: Claude MUST settle it
+          command: unblock
+          provider: claude
+          effort: xhigh
+          idle_timeout: 900000
+          when: "$LOOP_PREV.verdict.output.done == false && $LOOP_PREV.verdict.output.blocked == true && $LOOP_PREV.verdict.output.blocked_passes == 2"
 
         - id: gate # make check (incl. make trace) + openspec validate --strict + tasks ticked
           script: gate
           runtime: uv
           timeout: 1200000
-          depends_on: [fix, fix-stuck]
+          depends_on: [fix, fix-stuck, fix-stuck-claude, settle, unblock]
           trigger_rule: all_done
           with:
             change: $INPUTS.change
@@ -137,7 +196,7 @@ nodes:
               weakened_test: { type: boolean }
             required: [approve, findings, weakened_scenario, weakened_test]
 
-        - id: verdict # also runs the hard-rule checks (integrity.py); a `## Blocked` section ends the loop
+        - id: verdict # also runs the hard-rule checks (integrity.py); a `## Blocked` section left after Claude ends the loop
           script: verdict
           runtime: uv
           depends_on: [gate, review]
@@ -163,7 +222,9 @@ nodes:
               passed: { type: boolean }
               exhausted: { type: boolean }
               blocked: { type: boolean }
-              stuck: { type: boolean } # tasks.md `## Stuck`: the next pass is fix-stuck (high effort)
+              stuck: { type: boolean } # tasks.md `## Stuck`: the next pass is fix-stuck (xhigh), then fix-stuck-claude
+              stuck_passes: { type: integer } # consecutive passes ending with Stuck
+              blocked_passes: { type: integer } # consecutive passes ending with Blocked: 1 settle, 2 unblock, 3 ends the loop
               infra: { type: string }
               attempt: { type: integer }
               failed_gates: { type: string }
@@ -173,15 +234,15 @@ nodes:
               weakened_test: { type: boolean }
               notes: { type: string }
               review_findings: { type: string }
-            required: [done, passed, exhausted, blocked, stuck, attempt, failed_gates, feedback, weakened_scenario, weakened_test]
+            required: [done, passed, exhausted, blocked, stuck, stuck_passes, blocked_passes, attempt, failed_gates, feedback, weakened_scenario, weakened_test]
 
-  # --- Judge (no AI): ship, ask the user (breaking changes only), or reject ---------------------------
+  # --- Judge (no AI): ship (breaking changes with a note) or reject; never asks the user ---------------------------
   - id: escalation
     script: escalation
     runtime: uv
     depends_on: [build]
     with:
-      change: $INPUTS.change # a `## Blocked` section is quoted and asked about
+      change: $INPUTS.change # a surviving `## Blocked` section is quoted and rejected
       exhausted: $build.output.exhausted
       failed_gates: $build.output.failed_gates
       failures: $build.output.failures # an exhausted loop's reasons quote its first lines
@@ -198,31 +259,18 @@ nodes:
         reasons: { type: string }
       required: [decision, escalate, reasons]
 
-  - id: ship-gate
-    depends_on: [escalation]
-    when: "$escalation.output.escalate == true"
-    approval:
-      message: |
-        Asking about $INPUTS.change (a breaking change, or a `## Blocked` section: that one never ships, either button re-queues it):
-        $escalation.output.reasons
-        Inspect the run worktree (archon workflow get <run-id>) before deciding.
-      decisions:
-        - { id: approve, label: Ship into auto }
-        - { id: reject, label: "Stop (keep the branch for manual work)" }
-
   - id: ship-decide
     script: decide
     runtime: uv
-    depends_on: [escalation, ship-gate]
+    depends_on: [escalation]
     trigger_rule: all_done
     with:
-      earlier: "" # no earlier approval to reuse (work-queue design-decide only)
       needed: $escalation.output.escalate
       verdict: $escalation.output.decision
       blocked: $build.output.blocked
       cancel_on_reject: $INPUTS.cancel_on_reject
-      decision: { from: $ship-gate.output.decision, if_skipped: auto }
-      feedback: { from: $ship-gate.output.text, if_skipped: "" }
+      decision: auto # no manual gates: the judge decides
+      feedback: ""
     output_format:
       type: object
       properties:

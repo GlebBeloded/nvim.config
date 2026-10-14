@@ -1,11 +1,9 @@
 # g7. as g6, but the adopted change has design.md (fixtures/changes/adopted-ui-done): with the spec
-# step skipped, visible UI comes from design.md, so the preview and the design gate run. Dry-run limit
-# as in g4: the auto-approved gate outputs "approved", so design-decide fails here.
+# step skipped, visible UI comes from design.md, so the preview runs; no gate pauses, the change delivers.
 fixture:
-  expect: failed
-  fail-node: design-decide
+  expect: completed
   inputs: { change: adopted-ui-done }
-  reached: [pick, adopt, adopted-state, spec-gate, preview, design-gate]
+  reached: [pick, adopt, adopted-state, spec-gate, preview, design-decide, deliver__ship, deliver__shipped]
 exec-code: true
 skills-check: "skills ok"
 pick: { found: true, change: adopted-ui-done, kind: fix, has_tasks: true }
@@ -13,3 +11,14 @@ complete: "MUST-NOT-RUN"
 classify: "MUST-NOT-RUN"
 spec-gate: { ok: true, log: "" }
 preview: "http://localhost:8000/preview/adopted-ui-done"
+# nvim-deliver (include `deliver`): top-level ids get the deliver__ prefix, loop bodies keep theirs
+deliver__skills-check: "skills ok"
+deliver__plan-check: { needed: false, has_change: true }
+deliver__plan-gate: "valid"
+pack: { has_task: false, context: context.md }
+implement: "MUST-NOT-RUN"
+gate: { green: true, spec_ok: true, tasks_done: true, untested: 0, attempt: 1, failures: "", blocked: false }
+review: { approve: true, findings: "", weakened_scenario: false, weakened_test: false }
+deliver__escalation: { decision: ship, escalate: false, reasons: "- none" }
+deliver__followup: "MUST-NOT-RUN"
+deliver__ship: { merged: true, conflict: false, branch: loop/adopted-ui-done, commit: abc123 }

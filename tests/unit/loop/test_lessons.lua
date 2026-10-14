@@ -187,7 +187,7 @@ T["loop: Exhausted run retains a corrected earlier failure"] = function()
 	for _ = 1, 2 do
 		local result = run_escalation(repo, artifacts)
 		eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
-		local expected_reason = "- fix loop exhausted (3 attempts) with gates still red: tests"
+		local expected_reason = "- fix loop exhausted with gates still red: tests"
 		eq(vim.json.decode(result.stdout), { decision = "reject", escalate = false, reasons = expected_reason })
 		eq(read(vim.fs.joinpath(artifacts, "escalation.md")), "# Judge: reject\n\n" .. expected_reason)
 		eq(read(vim.fs.joinpath(repo, "docs/workflow.md")), workflow({ "Existing lesson", lesson }))

@@ -72,7 +72,7 @@ def long_delta_requirements() -> str:
 def hard_rules() -> list[str]:
     try:
         reasons = hard_rule_violations()
-        # a case an earlier pass had (verdict's snapshot) and this pass removed; the judge asks if it stays gone
+        # a case an earlier pass had (verdict's snapshot) and this pass removed; the judge rejects if it stays gone
         dropped = record_dropped(artifacts)
     except subprocess.CalledProcessError:  # not a git repo, or no base branch: nothing to compare
         reasons, dropped = [], []
@@ -103,7 +103,8 @@ def red(failures: str, blocked: bool = False, infra: str = "") -> None:
 
 
 blocked = blocked_text(change)
-if blocked:  # verdict ends the loop on it and the judge asks: checking or reviewing it is wasted
+if blocked:  # the next pass settles it (unblock.md), so checking or reviewing it is wasted; no attempt either
+    counter.write_text(str(attempt - 1))
     red("blocked: " + blocked, blocked=True)
 record_fix_scope()
 violations = hard_rules()

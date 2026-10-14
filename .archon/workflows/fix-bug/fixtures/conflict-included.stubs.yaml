@@ -1,5 +1,5 @@
 # h3. (included deliver) ship conflict: resolve's prompt must name ship's conflicting files.
-# Rest as h1: visible_ui false, so preview and design gate are skipped.
+# Rest as h1: visible_ui false, so preview is skipped.
 fixture:
   expect: completed
   reached: [deliver__ship, resolve, regate, reship, deliver__shipped]

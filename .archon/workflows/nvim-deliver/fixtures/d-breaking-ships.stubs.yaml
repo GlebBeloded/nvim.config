@@ -1,0 +1,19 @@
+# d. breaking change: the judge never asks (no manual gates); it ships with the breaking change listed
+# as a note in its reasons, and ship-decide (real) goes.
+fixture:
+  expect: completed
+  inputs: { change: demo-change }
+  reached: [escalation, ship-decide, ship, shipped]
+exec-code: true
+skills-check: "skills ok"
+plan-check: { needed: false, has_change: true }
+plan-gate: "change demo-change is valid"
+pack: { has_task: true, context: context.md }
+implement: "task 1 done"
+gate: { green: true, spec_ok: true, tasks_done: true, untested: 0, attempt: 1, failures: "", blocked: false }
+review: { approve: true, findings: "", weakened_scenario: false, weakened_test: false }
+escalation: { decision: ship, escalate: false, reasons: "- none\n- note: breaking: adds a plugin: folke/snacks.nvim" }
+ship: { merged: true, conflict: false, branch: loop/demo-change, commit: abc123 }
+followup: "MUST-NOT-RUN"
+regate: "MUST-NOT-RUN"
+reship: "MUST-NOT-RUN"

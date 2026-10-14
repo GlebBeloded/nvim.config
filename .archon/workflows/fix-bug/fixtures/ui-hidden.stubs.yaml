@@ -1,5 +1,5 @@
-# h1. visible_ui false: preview and design gate are skipped, design-decide (real) says go with
-# decision auto, deliver ships. Guard: reaching the design gate would fail design-decide (see h2).
+# h1. visible_ui false: preview is skipped, design-decide (real) says go with
+# decision auto, deliver ships.
 fixture:
   expect: completed
   reached: [explore, spec, spec-gate, design-decide, deliver__ship, deliver__shipped]

@@ -1,22 +1,13 @@
-"""Join after an optional approval gate. go is true when the gate was not needed (INPUTS_NEEDED empty
-or "false", gate skipped) or the user picked `approve`, and never when the judge's INPUTS_VERDICT is
-`reject` or `infra` (the run stops, nothing is re-queued) or INPUTS_BLOCKED is true (a blocked change is
-asked about, then re-queued, never shipped);
-feedback carries the user's text onward. A skipped gate whose INPUTS_EARLIER (design_approval.py's JSON) has
-`approved` true counts as approved, with its `feedback`: the user approved this same design.md in an earlier run.
+"""Join after the judge or a spec step (no manual gates remain: callers pass decision `auto` and needed
+"false"). go is true when no gate is needed (INPUTS_NEEDED empty or "false") with decision `auto`, or on
+`approve`, and never when the judge's INPUTS_VERDICT is `reject` or `infra` (the run stops) or INPUTS_BLOCKED
+is true (a blocked change is re-queued, never shipped); feedback carries any user text onward.
 """
 
 import json
 import os
 
 decision = os.environ.get("INPUTS_DECISION", "") or "auto"
-feedback = os.environ.get("INPUTS_FEEDBACK", "")
-try:
-    earlier = json.loads(os.environ.get("INPUTS_EARLIER", "") or "{}")
-except json.JSONDecodeError:
-    earlier = {}
-if decision == "auto" and isinstance(earlier, dict) and earlier.get("approved") is True:
-    decision, feedback = "approve", str(earlier.get("feedback", ""))
 needed = os.environ.get("INPUTS_NEEDED", "").strip().lower() not in ("", "false")
 blocked = os.environ.get("INPUTS_BLOCKED", "").strip().lower() == "true"
 verdict = os.environ.get("INPUTS_VERDICT", "").strip().lower()
@@ -26,6 +17,6 @@ go = verdict != "infra" and not rejected and (decision == "approve" or (not need
 cancel = not go and os.environ.get("INPUTS_CANCEL_ON_REJECT", "true").strip().lower() != "false"
 print(
     json.dumps(
-        {"go": go, "cancel": cancel, "decision": "reject" if rejected else "infra" if verdict == "infra" else decision, "feedback": feedback}
+        {"go": go, "cancel": cancel, "decision": "reject" if rejected else "infra" if verdict == "infra" else decision, "feedback": os.environ.get("INPUTS_FEEDBACK", "")}
     )
 )

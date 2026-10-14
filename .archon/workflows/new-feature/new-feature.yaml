@@ -1,8 +1,7 @@
 name: new-feature
 description: |
   Local loop for a feature idea (docs/workflow.md). Explore + brainstorm -> propose with Current and
-  Proposed A/B renders -> preview.html -> ALWAYS an approval gate (pick a render option, revise, or
-  stop) -> nvim-deliver (plan, TDD build, make check, trace, verify, review, escalation, ship).
+  Proposed A/B renders -> preview.html (an artifact; no manual gate, the spec picks the render) -> nvim-deliver (plan, TDD build, make check, trace, verify, review, escalation, ship).
 interactive: true
 worktree:
   enabled: true
@@ -16,12 +15,12 @@ nodes:
     skills: [superpowers:brainstorming]
     idle_timeout: 900000
 
-  # --- Specify + preview + approval; "revise" runs the proposal again with the user's comment -------
+  # --- Specify + preview (no manual gate) ---------------------------------------------------------
   - id: design
     depends_on: [explore]
     loop_group:
-      max_iterations: 5
-      until_bash: test $design-gate.output.decision != revise
+      max_iterations: 1 # no manual gate: one proposal pass
+      until_bash: "true"
       nodes:
         - id: spec
           command: spec-feature
@@ -41,19 +40,6 @@ nodes:
           bash: make -s preview CHANGE=$spec.output.change OPEN= # OPEN= beats an exported OPEN: nothing opens on the host
           depends_on: [spec-gate]
 
-        - id: design-gate
-          depends_on: [preview]
-          approval:
-            message: |
-              Proposal $spec.output.change is ready.
-              Preview (nothing opens on the host): $preview.output
-              approve: build it; put the picked option (e.g. "Proposed B") and any corrections in the comment.
-              revise: rewrite the proposal using your comment. reject: stop.
-            decisions:
-              - { id: approve, label: Build it }
-              - { id: revise, label: Revise the proposal }
-              - { id: reject, label: Stop }
-
   - id: change
     bash: cat "$ARTIFACTS_DIR/change-id" # written by design.spec-gate
     depends_on: [design]
@@ -63,13 +49,12 @@ nodes:
     runtime: uv
     depends_on: [design]
     with:
-      earlier: "" # no earlier approval to reuse (work-queue design-decide only)
       cancel_on_reject: "true"
       verdict: ""
       blocked: "false"
-      needed: "true"
-      decision: $design.output.decision # the body's sink is design-gate: {decision, text}
-      feedback: $design.output.text
+      needed: "false" # no manual gates
+      decision: auto
+      feedback: ""
     output_format:
       type: object
       properties:
@@ -79,7 +64,7 @@ nodes:
       required: [go, decision, feedback]
 
   - id: stop
-    cancel: "Stopped at the design gate. The change folder is kept on the run branch."
+    cancel: "Stopped: the spec did not pass. The change folder is kept on the run branch."
     depends_on: [design-decide]
     when: "$design-decide.output.go == false"
 

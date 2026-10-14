@@ -84,17 +84,6 @@ After a judge reject, `.archon/scripts/followup.py` SHALL re-queue the work on `
 - **WHEN** followup.py runs where `auto` is checked out in no worktree and a `post-checkout` hook exits 1, then again without the hook
 - **THEN** the first run exits non-zero with empty stdout, leaves `auto`, `git worktree list` and the ship lock as before; the second queues `followup-x` and leaves `git worktree list` as before
 
-### Requirement: Design gate asks once per design
-When the user approves work-queue's design gate, `.archon/scripts/design_approval.py` SHALL record `Design-approved: <sha256 of design.md>` and the comment in a `## Design approval` section of the change's proposal.md, committed on the run branch, and followup.py SHALL carry it to `auto` on re-queue; a later run whose design.md still has that hash SHALL skip the gate with decision `approve` and the earlier comment, any other run SHALL ask.
-
-#### Scenario: Approved design skips the gate on a later run
-- **WHEN** design_approval.py runs in a throwaway repo for change `x` with a design.md: check, record with comment `take option B`, check, then check again after design.md changed, and decide.py runs on each check's JSON as `INPUTS_EARLIER` with decision `auto` and a preview as `needed`
-- **THEN** the first check is not approved; record commits `chore(openspec): record design approval of x` with the line `Design-approved: <sha256 of design.md>` before the last section; the second check prints `approved` true, decision `approve` and the comment, and decide goes with them; after the edit the check is not approved and decide does not go
-
-#### Scenario: Rejected run carries the design approval
-- **WHEN** design_approval.py records an approval on the run branch, followup.py re-queues active change `x`, and `auto` then merges the run branch
-- **THEN** `auto`'s proposal has one `Design-approved:` line and the comment, the merge has no conflict, and a check on the merged change is approved
-
 ### Requirement: Queue waits for a change's dependencies
 `.archon/scripts/queue_pick.py` SHALL not pick a change whose proposal.md has a `Depends: <change>[, <change>]` line until every named change is archived under `openspec/changes/archive/`, whether it is picked automatically or named by `INPUTS_CHANGE`.
 
@@ -103,19 +92,19 @@ When the user approves work-queue's design gate, `.archon/scripts/design_approva
 - **THEN** the first run picks `t-b`, the named run finds nothing and its stderr names `t-b`, and the last run picks `t-a`
 
 ### Requirement: Drain works the queue one run at a time
-`make drain [N=<max runs>]` SHALL work queued changes one at a time through a foreground `make queue CHANGE=<id>` (never `--detach`), read each run's status from the newest row of its run in the Archon DB, skip a change with a `## Blocked` section, go on after a failed run, run no change twice, and stop when the queue is empty, after N runs, at the first run that waits for the user, or (exit 1) at a run the stop-infra node cancelled.
+`make drain [N=<max runs>]` SHALL work queued changes one at a time through a foreground `make queue CHANGE=<id>` (never `--detach`), read each run's status from the newest row of its run in the Archon DB, run a change with a `## Blocked` section like any other (its unblock step settles it), go on after a failed run, run no change twice, and stop when the queue is empty, after N runs, at a paused run (no node pauses: a defensive stop), or (exit 1) at a run the stop-infra node cancelled.
 
 #### Scenario: Drain works queued changes until the queue is empty
 - **WHEN** `make drain` runs via `vim.system` in a throwaway repo with `ARCHON` stubbed to record runs in a throwaway `ARCHON_DB` and changes `t-a`, `t-b` (with a `## Blocked` section) and `t-c`, oldest first, where the run of `t-a` fails and the run of `t-c` completes
-- **THEN** it exits 0, Archon is asked for foreground work-queue runs of `t-a` then `t-c` only, each once, and the output reports `t-b` skipped and the queue empty
+- **THEN** it exits 0, Archon is asked for foreground work-queue runs of `t-a`, `t-b` and `t-c`, each once, and the output reports `t-a` failed and the queue empty
 
 #### Scenario: Drain stops after N runs
 - **WHEN** `make drain N=1` runs with the same stubs and two runnable changes
 - **THEN** it exits 0 after exactly one work-queue run, of the older change
 
-#### Scenario: Drain stops at a run that waits for the user
+#### Scenario: Drain stops at a paused run
 - **WHEN** `make drain` runs where the first run is recorded `paused` and a second change is queued
-- **THEN** it exits 0, starts no second run and its output names the paused change
+- **THEN** it exits 0, starts no second run and its output names the paused change as a loop bug
 
 #### Scenario: Drain stops when the sandbox infra fails
 - **WHEN** `make drain` runs where the first run is cancelled, the second is cancelled by the stop-infra node (its `workflow_cancelled` event) and a third change is queued
@@ -276,15 +265,15 @@ Before running Codex, `codex-loop.sh` SHALL run `codex_preflight.py`, which read
 - **THEN** the wrapper exits 0 and the stub ran `exec`
 
 ### Requirement: Loop never opens anything on the host
-No file under `.archon/` SHALL run `open`, `osascript`, `xdg-open` or a browser launcher, or pass `OPEN=1`. Every `preview` node SHALL run `make -s preview` with `OPEN=` (which beats an exported `OPEN`), and `make preview` SHALL print the absolute path of `preview.html`. Every `design-gate` message SHALL show `$preview.output` and say that nothing opens on the host.
+No file under `.archon/` SHALL run `open`, `osascript`, `xdg-open` or a browser launcher, or pass `OPEN=1`. Every `preview` node SHALL run `make -s preview` with `OPEN=` (which beats an exported `OPEN`), and `make preview` SHALL print the absolute path of `preview.html`. No workflow node SHALL be an `approval` gate: the preview is an artifact, never a pause.
 
 #### Scenario: Loop automation launches no host application
 - **WHEN** every file under `.archon/` is scanned line by line for host launchers
 - **THEN** none matches, while the same scanner flags `open "$out"`, `subprocess.run(["open", p])`, `osascript -e x`, `xdg-open x`, `python3 -m webbrowser x` and `make preview OPEN=1`, and does not flag `open(path)`
 
-#### Scenario: Design gate prints the preview path
-- **WHEN** every workflow under `.archon/workflows/` is parsed and its `preview` and `design-gate` nodes are found (loop nodes included)
-- **THEN** each `preview` node runs `make -s preview` with `OPEN=` as its last argument, and each `design-gate` message contains `$preview.output` and `nothing opens on the host`
+#### Scenario: Preview prints its path and no node pauses
+- **WHEN** every workflow under `.archon/workflows/` is parsed and its nodes are walked (loop nodes included)
+- **THEN** each `preview` node runs `make -s preview` with `OPEN=` as its last argument, and no node has an `approval` key
 
 #### Scenario: Preview prints the absolute preview path and opens nothing
 - **WHEN** `make -s preview CHANGE=<a change in openspec/changes/> OPEN=` runs with `OPEN=1` in the environment and an `open` stub first on `PATH`
@@ -383,7 +372,7 @@ The judge SHALL append a supplied one-line lesson only for an earlier attempt's 
 - **THEN** `lesson-candidates.txt` is empty after the first run and the second run adds no lesson
 
 ### Requirement: Small steps with a script judge
-The delivery loop SHALL implement one task per fresh agent session from a script-built context pack, count only real checkbox list items as tasks, send only a failing pass's findings to the next fix step, and decide shipping by script: reject partial or rule-breaking work, ask the user only for breaking changes, and ship everything else.
+The delivery loop SHALL implement one task per fresh agent session from a script-built context pack, count only real checkbox list items as tasks, send only a failing pass's findings to the next fix step, and decide shipping by script: reject partial or rule-breaking work, never ask the user, and ship everything else (a breaking change with a note).
 
 #### Scenario: An abandoned run's branch does not take its change
 - **WHEN** `.archon/scripts/queue_pick.py` runs where change `c` has a `loop/c` branch but no running or paused Archon run works it
@@ -449,9 +438,9 @@ The delivery loop SHALL implement one task per fresh agent session from a script
 - **WHEN** escalation.py runs on a branch whose test file has `local WHY = "queued-x: reason"` and an `H.xfail(` call split over lines that passes `WHY`, once with `openspec/changes/queued-x/` present and once without
 - **THEN** the first decision is not `reject` and the second is `reject`
 
-#### Scenario: Judge asks only for a breaking change
+#### Scenario: Judge ships a breaking change with a note
 - **WHEN** `.archon/scripts/escalation.py` runs on a branch that adds a `vim.keymap.set` line to `lua/gleb/keymaps.lua`
-- **THEN** its JSON `decision` is `ask`
+- **THEN** its JSON `decision` is `ship`, `escalate` is false and `reasons` has `- note: breaking: changes core keymaps`
 
 #### Scenario: Judge ignores REMOVED Requirements mentioned in prose
 - **WHEN** `.archon/scripts/escalation.py` runs on a branch whose change delta only mentions `## REMOVED Requirements` inside a scenario sentence
@@ -504,11 +493,11 @@ verdict.py SHALL snapshot the change's proposal.md, `.openspec.yaml` and spec de
 - **THEN** it loads no skill when every finding starts with `hard rule:` and never edits proposal.md, .openspec.yaml or spec deltas unless a finding is about them
 
 ### Requirement: Build keeps the test cases it added
-verdict.py SHALL snapshot the test case names at the end of each pass. The next gate.py SHALL report each snapshot name in neither the worktree's tests nor the base as the hard rule `test added then removed during build: <names>` and record it; the judge SHALL ask about each recorded name still missing.
+verdict.py SHALL snapshot the test case names at the end of each pass. The next gate.py SHALL report each snapshot name in neither the worktree's tests nor the base as the hard rule `test added then removed during build: <names>` and record it; the judge SHALL reject while a recorded name is still missing.
 
 #### Scenario: Gate flags a test case added then removed during build
 - **WHEN** verdict.py ends a pass on a branch that adds case `a: new` to a test file holding base case `a: old`, both are then removed and gate.py runs, then verdict.py and gate.py run again and the judge runs
-- **THEN** the first gate is red naming `hard rule: test added then removed during build: a: new` and not `a: old`, the second gate does not repeat it, and the judge asks with that reason
+- **THEN** the first gate is red naming `hard rule: test added then removed during build: a: new` and not `a: old`, the second gate does not repeat it, and the judge rejects with that reason
 
 #### Scenario: Judge ships once a dropped test case is restored
 - **WHEN** gate.py recorded `a: new` as dropped and the case is back in a test file when the judge runs
@@ -526,11 +515,11 @@ With `ARTIFACTS_DIR` set, tests/parallel.lua SHALL add each collected case (file
 - **THEN** the first gate is red naming `hard rule: test added then removed during build: a: tmp` and not `a: old`, verdict removes case-seen.json, and the second gate does not repeat it
 
 ### Requirement: Gate skips a Blocked change
-gate.py SHALL check for a blocking `## Blocked` section (blocked.py) before anything else and then print a red verdict with `blocked` true and the Blocked text as failures, with no `make check`; nvim-deliver's review node SHALL run only when the gate's `blocked` is false.
+gate.py SHALL check for a blocking `## Blocked` section (blocked.py) before anything else and then print a red verdict with `blocked` true and the Blocked text as failures, with no `make check` and without counting the pass as an attempt; nvim-deliver's review node SHALL run only when the gate's `blocked` is false.
 
 #### Scenario: Gate reports a Blocked change before make check
 - **WHEN** gate.py runs for a change whose tasks.md has a `## Blocked` section, with a `make` stub that records being called
-- **THEN** `green` is false, `blocked` is true, failures quote the Blocked section, make never ran, and the review node's `when:` requires `$gate.output.blocked == false`
+- **THEN** `green` is false, `blocked` is true, failures quote the Blocked section, make never ran, a second run reports the same `attempt`, and the review node's `when:` requires `$gate.output.blocked == false`
 
 ### Requirement: Stuck attempts keep the red test
 The fix and implement commands SHALL run one headless probe before editing for a non-obvious failure and cap attempts at 2; when the second fails they SHALL revert only non-test edits, write `## Stuck` with the probe output and both attempts, and commit the failing test with it.
@@ -704,36 +693,40 @@ The judge SHALL count a removed main-spec scenario as renamed when, one for one,
 - **WHEN** `.archon/scripts/escalation.py` runs on a branch that moves `openspec/specs/a/spec.md` to `openspec/specs/b/spec.md` unchanged and renames tests `a: one`, `a: two` to `b: one`, `b: two`
 - **THEN** its JSON `decision` is `ship`
 
-#### Scenario: Judge asks for a scenario removal a rename does not cover
+#### Scenario: Judge notes a scenario removal a rename does not cover
 - **WHEN** `.archon/scripts/escalation.py` runs on a branch that removes scenario `old title` of `c` and keeps test `c: old title`, one that retitles it while keeping the old test beside `c: new title`, and one that retitles it with no test change
-- **THEN** each JSON `decision` is `ask` and `reasons` names `c: old title`
+- **THEN** each JSON `decision` is `ship` and `reasons` has a `note: breaking: removes behaviour` line naming `c: old title`
 
 #### Scenario: Judge rejects a lost test case by name
 - **WHEN** `.archon/scripts/escalation.py` runs on a branch that replaces test `c: kept` by `c: unrelated` (same case count), one that does so inside a nested `T["group"]` set, and one that moves scenario `old title` to capability `d` as `new title` with its test renamed to `d: new title`
 - **THEN** each JSON `decision` is `reject` and `reasons` names the lost case (`c: kept`, `c: old title`), never the group
 
 ### Requirement: Loop keeps the user's contract
-The loop SHALL leave the user's contract to the user: no step changes a requirement's bounds or the `## Decision` text unasked, main specs change only by archive, and a `## Blocked` section in a change's proposal.md or tasks.md stops agent work on it, is quoted to the user, and never ships, until a later user `## Decision` resolves it. A section of only `loop:` items stops nothing; the judge lists those items and `loop-notes.md` lines as notes.
+The loop SHALL keep the user's contract unasked: no step changes a requirement's bounds or the `## Decision` text (the judge rejects it), main specs change only by archive, and a `## Blocked` section is settled by `unblock.md` (default model at `xhigh`, then Claude if one is left), never ships, and fails work-queue's run if it survives both. A section of only `loop:` items stops nothing; the judge lists those items and `loop-notes.md` lines as notes.
 
 #### Scenario: Queue spec prompt keeps the user's contract
 - **WHEN** `.archon/commands/queue-spec.md` is read
-- **THEN** it forbids changing a requirement's numbers or bounds, removing a requirement to add it again and rewording `## Decision`, and keeps any `## Blocked` section
+- **THEN** it forbids changing a requirement's numbers or bounds, removing a requirement to add it again and rewording `## Decision`, and settles any `## Blocked` section left
 
-#### Scenario: Judge asks when a change re-adds a removed requirement
+#### Scenario: Judge rejects a change that re-adds a removed requirement
 - **WHEN** `.archon/scripts/escalation.py` runs on a branch whose change delta REMOVES requirement `Server readiness` and ADDS `Server readiness.` (a near name)
-- **THEN** its JSON `decision` is `ask` and `reasons` names the re-added requirement
+- **THEN** its JSON `decision` is `reject` and `reasons` names the re-added requirement
 
-#### Scenario: Judge asks when a change rewrites the user's Decision
+#### Scenario: Judge rejects a change that rewrites the user's Decision
 - **WHEN** `.archon/scripts/escalation.py` runs on a branch that rewords the `## Decision` section of a proposal on `auto`, and on one that edits only its `## Why`
-- **THEN** the first JSON `decision` is `ask` with a reason naming the proposal, and the second is `ship`
+- **THEN** the first JSON `decision` is `reject` with a reason naming the proposal, and the second is `ship`
 
 #### Scenario: Adopt reverts main spec edits
 - **WHEN** `.archon/scripts/adopt.py` merges a branch that edits and adds files under `openspec/specs/` and edits another file
 - **THEN** `openspec/specs/` equals the pre-merge state in a new commit, the other edit is kept, and the summary names the reverted spec
 
-#### Scenario: Blocked queued change goes straight to the user
-- **WHEN** `.archon/scripts/blocked.py` runs for a change whose proposal.md has a `## Blocked` section, and for one without
-- **THEN** the first prints `blocked` true with the section text and writes an `ask` escalation.md quoting it; the second prints `blocked` false
+#### Scenario: Blocked queued change goes to the unblock step
+- **WHEN** `.archon/scripts/blocked.py` runs for a change whose proposal.md has a `## Blocked` section, and for one without, and work-queue.yaml is read
+- **THEN** the first prints `blocked` true with the section text and writes an escalation.md quoting it; the second prints `blocked` false; work-queue runs `settle-queued` (the unblock command at `effort: xhigh`) when `blocked` is true, `unblock-queued` (`provider: claude`, `effort: xhigh`) when the recheck `settled` still is, and the failing `still-blocked` when `unblocked` still is, with no `approval:` node
+
+#### Scenario: Unblock prompt settles every Blocked section
+- **WHEN** `.archon/commands/unblock.md` is read
+- **THEN** it never asks the user nor leaves a `## Blocked` section, picks the recommendation unless it contradicts the spec, design.md or a `## Decision`, writes one line per choice under `## Agent decisions` in tasks.md (creating it if needed) and deletes each settled section
 
 #### Scenario: A later user Decision resolves a Blocked section
 - **WHEN** `.archon/scripts/blocked.py` runs for a change whose tasks.md `## Blocked` section was committed before a user `## Decision` in its proposal.md, and again after tasks.md gets an uncommitted new Blocked section
@@ -743,13 +736,17 @@ The loop SHALL leave the user's contract to the user: no step changes a requirem
 - **WHEN** `.archon/scripts/blocked.py` runs for a change whose tasks.md `## Blocked` section was committed before a `## Unblocked` section in its proposal.md
 - **THEN** it reports `blocked` false
 
-#### Scenario: Verdict ends the build loop on a Blocked section
-- **WHEN** `.archon/scripts/verdict.py` runs on the first red pass for a change whose tasks.md has a `## Blocked` section
-- **THEN** it reports `done` true, `blocked` true and `exhausted` false
+#### Scenario: Blocked task is settled in its pass so later tasks still run
+- **WHEN** nvim-deliver.yaml's task loop is read
+- **THEN** after `implement` a `task-blocked` check runs; a `## Blocked` section goes to `task-settle` (the unblock command at `effort: xhigh`), and one still left after `task-settled` goes to `task-unblock` (`provider: claude`, `effort: xhigh`) in the same pass, so the next pass implements the next task
 
-#### Scenario: Judge quotes a Blocked section and asks
+#### Scenario: Blocked build pass goes to settle, then Claude
+- **WHEN** `.archon/scripts/verdict.py` runs three times in one artifacts dir on red passes for a change whose tasks.md has a `## Blocked` section, and nvim-deliver.yaml is read
+- **THEN** it reports `blocked` true, `exhausted` false and `blocked_passes` 1, 2, 3 with `done` false, false, true; the build loop's `fix` runs only when `blocked` is false, `settle` (the unblock command at `effort: xhigh`) when `blocked_passes` is 1 and `unblock` (`provider: claude`, `effort: xhigh`) when it is 2, and there is no `ship-gate`
+
+#### Scenario: Judge rejects a Blocked section, never asks
 - **WHEN** `.archon/scripts/escalation.py` runs with `exhausted` true for a change whose tasks.md has a `## Blocked` section
-- **THEN** its JSON `decision` is `ask` and escalation.md quotes the Blocked text
+- **THEN** its JSON `decision` is `reject`, `escalate` is false and escalation.md quotes the Blocked text
 
 #### Scenario: A Blocked section of only loop items never stops the change
 - **WHEN** `.archon/scripts/blocked.py` and `verdict.py` (first red pass) run for a change whose tasks.md `## Blocked` section holds only `loop:` items, and blocked.py again after a non-`loop:` line joins that section
@@ -764,11 +761,11 @@ The loop SHALL leave the user's contract to the user: no step changes a requirem
 - **THEN** each says to append a `loop: <failure>` line to `$ARTIFACTS_DIR/loop-notes.md`, not tasks.md, and neither says to write `## Blocked` with `loop:`
 
 ### Requirement: Stuck work goes to the fix passes
-A `## Stuck` section in tasks.md (a behaviour red after both attempts, no decision needed) SHALL never ask the user nor hold a queued change before spec nor stop later tasks: the build loop stays red on it and sends it to a higher-effort fix pass, and an exhausted loop is rejected and re-queued with it. Agents SHALL decide small design choices themselves and record them under `## Agent decisions`.
+A `## Stuck` section in tasks.md (a behaviour red after both attempts, no decision needed) SHALL never ask the user nor hold a queued change before spec nor stop later tasks: the build loop stays red on it and sends it to a fix pass on the default model at `effort: xhigh`, then to Claude at `xhigh` while it stays red, and an exhausted loop is rejected and re-queued with it. Agents SHALL decide small design choices themselves and record them under `## Agent decisions`.
 
 #### Scenario: Verdict sends a Stuck section to the fix pass
 - **WHEN** `.archon/scripts/verdict.py` runs on an otherwise green pass for a change whose tasks.md has a `## Stuck` section
-- **THEN** it reports `done`, `passed` and `blocked` false, `stuck` true, `failed_gates` `stuck` and feedback quoting the section, and nvim-deliver's `fix-stuck` node (the fix command at `effort: high`) runs the next pass when `stuck` is true
+- **THEN** it reports `done`, `passed` and `blocked` false, `stuck` true, `failed_gates` `stuck`, feedback quoting the section and `stuck_passes` 1 (2 on a second run in the same artifacts dir); nvim-deliver's `fix-stuck` node (the fix command at `effort: xhigh`) runs the next pass when `stuck_passes` is 1 and `fix-stuck-claude` (`provider: claude`, `effort: xhigh`) otherwise, and fix.md tells it to solve it itself
 
 #### Scenario: A Stuck change never asks and is never held before spec
 - **WHEN** blocked.py, escalation.py (`exhausted` true) and tasks.py run for a change whose tasks.md has a `## Stuck` section

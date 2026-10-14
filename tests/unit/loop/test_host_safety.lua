@@ -93,7 +93,7 @@ T["loop: Loop automation launches no host application"] = function()
 	eq(launches(), {})
 end
 
-T["loop: Design gate prints the preview path"] = function()
+T["loop: Preview prints its path and no node pauses"] = function()
 	local checked = 0
 	for _, path in ipairs(vim.fn.glob(vim.fs.joinpath(H.root, ".archon/workflows/*/*.yaml"), false, true)) do
 		local workflow = load_yaml(path:sub(#H.root + 2))
@@ -105,14 +105,9 @@ T["loop: Design gate prints the preview path"] = function()
 			)
 			checked = checked + 1
 		end
-		for _, gate in ipairs(nodes(workflow, "design-gate")) do
-			local message = gate.approval.message
-			for _, needle in ipairs({ "$preview.output", "nothing opens on the host" }) do
-				eq(
-					message:find(needle, 1, true) ~= nil,
-					true,
-					{ fail_reason = path .. " design-gate lacks " .. needle }
-				)
+		for _, top in ipairs(workflow.nodes) do
+			for _, node in ipairs(vim.list_extend({ top }, top.loop_group and top.loop_group.nodes or {})) do
+				eq(node.approval, nil, { fail_reason = path .. ": approval node " .. node.id })
 			end
 		end
 	end

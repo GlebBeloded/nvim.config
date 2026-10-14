@@ -4,7 +4,7 @@ that has no `loop/<change>` branch yet (a branch means a run already took it). `
 changes are skipped: they need the new plugin commit, so `make update PLUGIN=<plugin>` works them.
 A change whose proposal.md has a `Depends: <change>[, <change>...]` line waits (even when named)
 until each of those changes is archived. QUEUE_SKIP (space- or comma-separated) excludes changes
-from an automatic pick (`drain.py` passes the ones it already ran or found blocked).
+from an automatic pick (`drain.py` passes the ones it already ran).
 Kind: a `Kind: feature` line in proposal.md, or an add-/feat-/new- prefix, makes it a feature;
 everything else is a bug fix.
 """

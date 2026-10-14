@@ -1,7 +1,7 @@
 # g10. run 1561f68e: a bug whose adopted branch carried design.md renders (adopted-state stubbed
 # visible_ui true, tasks open); the spec step kept a technical design.md (fixtures/changes/
 # adopted-ui-dropped, renders dropped: the fix restores specified behaviour). classify (real) reads
-# that design.md, not the adopted one: no preview, no design gate, and the change delivers.
+# that design.md, not the adopted one: no preview, and the change delivers.
 fixture:
   expect: completed
   inputs: { change: adopted-ui-dropped }
@@ -14,7 +14,6 @@ pinned: "none"
 complete: "spec written"
 spec-gate: { ok: true, log: "" }
 preview: "MUST-NOT-RUN"
-design-gate: "MUST-NOT-RUN"
 # nvim-deliver (include `deliver`): top-level ids get the deliver__ prefix, loop bodies keep theirs
 deliver__skills-check: "skills ok"
 deliver__plan-check: { needed: false, has_change: true }

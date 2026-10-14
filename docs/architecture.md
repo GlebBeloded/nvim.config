@@ -100,14 +100,15 @@ flowchart TD
     idea(["Idea, bug or queued change"])
     spec["Specify: proposal, spec delta, design.md with renders; openspec validate --strict"]
     esc{"Feature, visible UI or architecture?"}
-    user["Preview + user approves"]
+    user["Preview (an artifact, no pause)"]
     plan["Plan: tasks.md, each task lists its scenario titles"]
     build["Build TDD: failing test first, then the code"]
     verify["Verify: make check, /opsx:verify"]
     green{"Green, no CRITICAL?"}
     align["Review against the conventions and specs"]
     ok{"Conventions hold?"}
-    gate{"Escalation: new plugin, core keymap, scenario or test removed, loop exhausted?"}
+    gate{"Judge (no AI, never asks): Blocked left, test dropped, contract broken, loop exhausted?"}
+    requeue(["Reject: re-queue, keep the branch"])
     ship(["Ship: openspec archive, merge into auto"])
 
     idea --> spec --> esc
@@ -118,8 +119,8 @@ flowchart TD
     green -- "yes" --> align --> ok
     ok -- "no (max 3 passes)" --> build
     ok -- "yes" --> gate
-    gate -- "yes: user approves" --> ship
-    gate -- "no" --> ship
+    gate -- "yes" --> requeue
+    gate -- "no (breaking ships with a note)" --> ship
 ```
 
 The loop runs locally as Archon workflows in `.archon/workflows/`; how to run it is in

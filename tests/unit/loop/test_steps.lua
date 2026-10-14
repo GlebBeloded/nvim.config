@@ -107,11 +107,13 @@ T["loop: Judge resolves an xfail reason held in a local"] = function()
 	eq(vim.json.decode(missing.stdout).decision, "reject")
 end
 
-T["loop: Judge asks only for a breaking change"] = function()
+T["loop: Judge ships a breaking change with a note"] = function()
 	local repo = branch_repo({ ["lua/gleb/keymaps.lua"] = 'vim.keymap.set("n", "x", "y")' })
 	local result = run("escalation.py", repo)
 	eq(result.code, 0, { fail_reason = result.stderr })
-	eq(vim.json.decode(result.stdout).decision, "ask")
+	local out = vim.json.decode(result.stdout)
+	eq({ out.decision, out.escalate }, { "ship", false })
+	eq(out.reasons:find("- note: breaking: changes core keymaps", 1, true) ~= nil, true, { fail_reason = out.reasons })
 end
 
 T["loop: Judge ignores REMOVED Requirements mentioned in prose"] = function()
@@ -507,7 +509,11 @@ T["loop: Adopted change with every task ticked skips the spec step"] = function(
 	local queue =
 		table.concat(vim.fn.readfile(vim.fs.joinpath(H.root, ".archon/workflows/work-queue/work-queue.yaml")), "\n")
 	eq(
-		queue:find("$adopted-state.output.tasks_done == false && $blocked.output.blocked == false", 1, true) ~= nil,
+		queue:find(
+			'when: "$pick.output.found == true && $adopted-state.output.archived == false && $adopted-state.output.tasks_done == false"',
+			1,
+			true
+		) ~= nil,
 		true
 	)
 	local prompt = table.concat(vim.fn.readfile(vim.fs.joinpath(H.root, ".archon/commands/queue-spec.md")), " ")

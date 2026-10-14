@@ -1,6 +1,7 @@
-"""`## Blocked` sections: a step that cannot go on without the user writes one in the change's
-proposal.md or tasks.md. Then no agent works the change any more: work-queue goes straight to the
-blocked gate (before spec), verdict.py ends the build loop and escalation.py asks, quoting it.
+"""`## Blocked` sections: a step facing a choice beyond the spec writes one in the change's proposal.md
+or tasks.md, with a recommendation. No user is asked: the unblock step (unblock.md) settles it, first on the
+default model at xhigh, then on Claude if one is left (work-queue before spec, nvim-deliver's build loop
+on the next passes); one surviving both fails work-queue's run, and escalation.py rejects it after the build.
 A section whose every item starts with `loop:` is about loop tooling, not the change: it blocks
 nothing and escalation.py lists its items, with $ARTIFACTS_DIR/loop-notes.md lines, as notes.
 `## Stuck` (tasks.md): a behaviour still red after both attempts, no decision needed. It never asks the
@@ -8,7 +9,7 @@ user and never stops a queued change: tasks.py ends the task loop on it, verdict
 red and sends its text to the next fix pass (which deletes it once green), and an exhausted loop is rejected and
 re-queued as any other.
 
-As a script (work-queue `blocked` node): prints {blocked, text} for INPUTS_CHANGE under
+As a script (work-queue `blocked`, `settled`, `unblocked` nodes): prints {blocked, text} for INPUTS_CHANGE under
 LOOP_CHANGES_DIR (fixtures) or openspec/changes, and writes escalation.md when blocked.
 """
 
@@ -105,7 +106,7 @@ def main() -> None:
     text = blocked_text(change)
     if text:
         artifacts = pathlib.Path(os.environ.get("ARTIFACTS_DIR", "."))
-        (artifacts / "escalation.md").write_text(f"# Judge: ask\n\n- blocked: {text}\n")
+        (artifacts / "escalation.md").write_text(f"# Blocked (the unblock step settles it)\n\n- blocked: {text}\n")
     print(json.dumps({"blocked": bool(text), "text": text}))
 
 
