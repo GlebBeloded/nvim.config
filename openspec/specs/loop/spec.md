@@ -633,3 +633,34 @@ The smoke startup timing SHALL fail when a timed start exits non-zero or writes 
 #### Scenario: Startup timing fails on a startup error
 - **WHEN** `make smoke-startup` runs with a config whose init.lua raises an error
 - **THEN** it exits non-zero and prints the error
+
+### Requirement: Spec step plans the main-spec scenarios a change pins
+`.archon/scripts/pinned.py <change>` SHALL list each main-spec scenario naming a symbol the change touches (config identifiers and keymap lhs backticked in the proposal's What Changes and Impact; lhs and callables of mappings and local functions the branch diff changes) whose capability has no delta and whose title `## Impact` does not name; `--check` SHALL exit 1 when any. The spec steps SHALL plan each; the spec gates and gate.py SHALL run the check.
+
+#### Scenario: Pinned lists a scenario a proposal symbol names
+- **WHEN** pinned.py runs for a proposal naming `gr` and `lsp_references(…)` and `H.xfail`, against a spec with a scenario reading `maparg("gr")` whose callback is `lsp_references`, a desc enumeration naming `gr`, a screenshot scenario with no `gr` row and an `H.xfail` scenario
+- **THEN** it prints only the first scenario with its spec line, and `--check` exits 1
+
+#### Scenario: Pinned skips a planned or explained scenario
+- **WHEN** pinned.py `--check` runs for that change once with a `specs/keymaps/spec.md` delta and once with an Impact line naming the scenario's title
+- **THEN** both exit 0 and print nothing
+
+#### Scenario: Pinned reads mappings the branch diff changes
+- **WHEN** pinned.py runs for a proposal with no backticked symbol on a branch that changes the `gr` mapping's callback, and on one that changes only its desc
+- **THEN** the first prints the `gr` scenario and the second prints `none`
+
+#### Scenario: Gate rejects a pinned scenario before make check
+- **WHEN** gate.py runs for a change whose proposal pins an undeclared scenario, with a `make` stub that records being called
+- **THEN** `green` is false, the failures name `hard rule: pinned scenario` and the scenario, and make never ran
+
+#### Scenario: Spec steps receive pinned scenarios
+- **WHEN** the work-queue and fix-bug workflows and the queue-spec and spec-bug prompts are read
+- **THEN** a `pinned` node runs before `complete` and its output reaches queue-spec as `Pinned scenarios`, spec-bug runs pinned.py, each pin gets a MODIFIED delta or an Impact line, and both spec gates run `pinned.py --check`
+
+#### Scenario: Fix prompt allows a delta for a contradicted pin
+- **WHEN** `.archon/commands/fix.md` is read
+- **THEN** it allows a MODIFIED delta when a failing test pins a main-spec scenario the change contradicts, and calls replacing a behaviour check with metadata (desc, buffer) weakening
+
+#### Scenario: Queue spec prompt keeps skip_specs and flake tasks narrow
+- **WHEN** `.archon/commands/queue-spec.md` is read
+- **THEN** it locates code by `rg -n <symbol>`, gives a skip_specs task template reading only scenario titles, and has flake tasks copy the proposal's `FAIL in` lines without searching `artifacts/runs`

@@ -6,7 +6,7 @@
 fixture:
   expect: completed
   inputs: { change: queued-change }
-  reached: [pick, adopt, complete, spec-gate, design-decide, deliver__ship, deliver__shipped]
+  reached: [pick, adopt, pinned, complete, spec-gate, design-decide, deliver__ship, deliver__shipped]
   resolved-text-contains:
     complete: "Earlier work: nothing to adopt"
 exec-code: true

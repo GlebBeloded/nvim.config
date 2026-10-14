@@ -17,9 +17,10 @@ The change is a queue item (for example a finding from a review) and may
 only have proposal.md. Read it, find the root cause if it is a bug (systematic-debugging,
 no code changes), then complete the missing artifacts with the `openspec-continue-change` skill
 until specs, design.md (only for visible UI: Current + Proposed renders) and tasks exist; refresh any counts or lists the queued proposal quotes (e.g. `make trace VERBOSE=1`) instead of trusting them,
-following openspec/config.yaml rules. If the proposal cites file:line and names the requirement, read only those
-ranges (`rg -n 'Requirement:' <spec>`, then that range). Drop main spec paths from the proposal's Impact; the delta
-covers them. Do not implement. Set `visible_ui` to true when the change alters what is drawn on screen,
+following openspec/config.yaml rules. Locate cited code with `rg -n <symbol>`, not by the proposal's line numbers (they may be stale).
+Read the requirement the proposal names and each pinned scenario below, only those ranges (`rg -n 'Requirement:' <spec>`, then that range).
+Pinned scenarios (`pinned.py`: main-spec scenarios naming a symbol this change touches): $INPUTS.pinned. Each gets a MODIFIED delta restated to the new behaviour, or one line in proposal.md `## Impact` naming `<capability>: <scenario>` and saying why it still holds; the spec gate reruns `pinned.py --check`.
+Drop main spec paths from the proposal's Impact; the delta covers them. Do not implement. Set `visible_ui` to true when the change alters what is drawn on screen,
 `architecture` to true when it changes module layout, load order or plugin wiring (docs/architecture.md). A bug fix that only makes the screen match what an existing spec scenario already requires is not `visible_ui` (no design.md, no design gate); `visible_ui` means a new or changed look.
 
 The contract is the user's: never change a number or bound (time, size, count) in a requirement or scenario the proposal or an existing delta states, never REMOVE a requirement to ADD it again, never reword the `## Decision` text, and keep any `## Blocked` section as it is, unless a user `## Decision` in the proposal answers it: then delete that Blocked section and follow the Decision. If the contract cannot be met, write `## Blocked` with the reason in tasks.md and stop (the judge asks the user).
@@ -42,6 +43,13 @@ once, at the end. Do not re-read files you just wrote; read files with `nl -ba` 
 Refactor or cleanup (no behaviour change, `skip_specs: true`): tasks name existing scenarios whose tests guard the
 code you touch; each task is "run those tests and see them pass, change the code, run them again". Never
 invent a scenario name: every name on a `Scenarios:` line must be a `#### Scenario:` in openspec/specs or this change's delta.
+With `skip_specs: true`, read only `rg -n '^#### Scenario:'` of the named spec, no archive examples; visible_ui/architecture are false for test-only changes — don't grep for them. Task template:
+
+```
+## 1. <task title>
+Scenarios: `<capability>: <scenario title>`
+- [ ] 1.1 Run `make test FILE=<test file> CASE="<scenario title>"` and see it pass, make the change, run it again and see it pass
+```
 
 Before finishing, when the change has a spec delta: keep each requirement's text (between `### Requirement:` and its first scenario, MODIFIED ones restated in full) under 500 characters, and run `python3 .archon/scripts/spec_trial.py <change>`; fix the delta until it exits 0.
-For a timing flake, task 1.1 cites the gate log's `FAIL in` line as the failing evidence; it never asks to reproduce under artificial load.
+For a timing flake, task 1.1 cites the gate log's `FAIL in` line as the failing evidence: copy the `FAIL in` lines from the proposal; never search `artifacts/runs` or old gate logs. It never asks to reproduce under artificial load.

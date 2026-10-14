@@ -1,4 +1,4 @@
-"""Test gate for one build iteration. Hard rules (integrity.py) first: a violation is red at once, with
+"""Test gate for one build iteration. Hard rules (integrity.py, then pinned.py on the proposal and branch diff) first: a violation is red at once, with
 no make check and no review. When only the `test` layer fails, each failing case is rerun once,
 serially: all passing makes the check green with them listed as `flaky` (a note, not a finding). Planning files the fix pass edited (vs. the snapshot verdict.py took
 at the pass's start) go to $ARTIFACTS_DIR/fix-scope.md for the review. Then make check (lint, types, tests, smoke, trace), strict OpenSpec
@@ -14,6 +14,7 @@ import sys
 
 from check_log import failed_targets, failing_cases, strip_ansi, summarize
 from integrity import hard_rule_violations, plan_edits
+from pinned import pinned
 from scenarios import covered, untested
 from spec_trial import archived_specs_ok as trial_archive
 from tasks import tick_gate_items, unchecked
@@ -50,9 +51,12 @@ def archived_specs_ok(log: str) -> tuple[bool, str]:
 
 def hard_rules() -> list[str]:
     try:
-        return hard_rule_violations()
+        reasons = hard_rule_violations()
     except subprocess.CalledProcessError:  # not a git repo, or no base branch: nothing to compare
-        return []
+        reasons = []
+    # main-spec scenarios the proposal or the branch diff touches with no delta and no Impact line
+    pins = pinned(change) if change else []
+    return reasons + [f"pinned scenario with no MODIFIED delta or Impact line: {p}" for p in pins]
 
 
 def record_fix_scope() -> None:
