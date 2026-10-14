@@ -1,0 +1,19 @@
+## Why
+fix-session-name-drift captures the session name once at startup, but the pane-id-changed fallback in `lua/gleb/session/key.lua` (`rg -n getcwd lua/gleb/session/key.lua`) still builds its slug from the live `vim.fn.getcwd()`. project.nvim's VimEnter autocmd (registered before the session's) can cd to the git root before `restore()` runs, so the fallback can look up the wrong cwd's session (review of run 2b5060b7, by code reading).
+
+Kind: bug
+
+## Evidence
+- `lua/gleb/project.lua` VimEnter autocmd registration precedes `gleb.session`; `key.resolve` uses `getcwd()` for the fallback slug.
+
+## What Changes
+- Capture the startup cwd slug together with the name and pass it to `resolve`; never read the live cwd there.
+- Test: start in `repo/sub` with a changed pane id and project.nvim cd'ing to `repo` before restore; the fallback restores `repo/sub`'s newest session. Task 1.1 shows it failing on the current code (use `make probe` to confirm the ordering first).
+
+## Capabilities
+### Modified Capabilities
+None. `skip_specs: true` (unless a scenario must be added for the fallback path).
+
+## Impact
+- Code: `lua/gleb/session/init.lua`, `lua/gleb/session/key.lua`, session tests.
+- Plugins: none.
