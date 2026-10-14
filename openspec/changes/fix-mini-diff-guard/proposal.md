@@ -12,5 +12,6 @@ Kind: bug
 - `git`: the guard scenario's wording only.
 
 ## Impact
-- Code: `tests/integration/git/test_git.lua`; the `git` spec scenario wording.
+- Code: `tests/integration/git/test_git.lua`.
 - Plugins: none. Core keymaps: unchanged.
+- Out of scope: changing hunk-sign providers, gitsigns configuration, or plugin dependencies.

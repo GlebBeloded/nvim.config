@@ -239,6 +239,8 @@ T["git: Added line has no competing hunk sign"] = function()
 	child.api.nvim_buf_set_lines(0, 1, 1, false, { "added" })
 
 	eq(child.wait("GitsignsSigns()['2'] ~= nil", ASYNC_MS), true)
+	eq(child.lua_get('package.loaded["mini.diff"]'), vim.NIL)
+	eq(child.lua_get('require("lazy.core.config").plugins["mini.diff"]'), vim.NIL)
 	eq(child.lua(MINIDIFF_SIGNS_LUA), {})
 end
 
