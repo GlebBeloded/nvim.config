@@ -38,20 +38,22 @@ local function open_git_status(dir)
 	child.lua([[vim.fn.search("a.txt")]])
 end
 
---- Does the current `gr` mapping call Telescope references with the current line included?
+--- Does the current `gr` mapping open the shared LSP references source?
 ---@return boolean
-local function gr_includes_current_line()
+local function gr_opens_shared_references()
 	child.lua([[
-local telescope = require("telescope.builtin")
-local original = telescope.lsp_references
-local included
-telescope.lsp_references = function(opts) included = opts.include_current_line end
+local mini_extra = require("mini.extra")
+local original = mini_extra.pickers.lsp
+local call
+mini_extra.pickers.lsp = function(local_opts, opts) call = { local_opts = local_opts, opts = opts } end
 local ok, err = pcall(vim.fn.maparg("gr", "n", false, true).callback)
-telescope.lsp_references = original
+mini_extra.pickers.lsp = original
 if not ok then error(err) end
-GrIncludesCurrentLine = included
+GrOpensSharedReferences = call ~= nil
+	and call.local_opts.scope == "references"
+	and call.opts.source.name == "References"
 ]])
-	return child.lua_get("GrIncludesCurrentLine")
+	return child.lua_get("GrOpensSharedReferences")
 end
 
 --- Press X on the cursor node and answer the neo-tree confirm popup.
@@ -542,7 +544,7 @@ KeymapsReloaded = pcall(require, "gleb.keymaps")
 	eq(child.lua_get("KeymapsReloaded"), true)
 	eq(child.lua_get([[vim.fn.maparg("grz", "n")]]), "")
 	eq(child.lua_get([[vim.fn.maparg("gr", "n", false, true).buffer]]), 0)
-	eq(gr_includes_current_line(), true)
+	eq(gr_opens_shared_references(), true)
 end
 
 T["file-tree: c is copy in git status tree"] = function()

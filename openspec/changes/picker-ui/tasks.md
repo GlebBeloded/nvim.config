@@ -60,9 +60,9 @@ Scenarios: `lsp: References of a Go function list call sites across packages`, `
 
 ## 11. Preserve gr inside the git status tree
 Scenarios: `file-tree: gr keeps its global meaning in git status tree`
-- [ ] 11.1 Update the scenario in tests/integration/file-tree/test_tree.lua to observe the shared references source and see it fail
-- [ ] 11.2 Keep `gr` unbound in the git status tree so it inherits the replacement global mapping
-- [ ] 11.3 Run `make test FILE=tests/integration/file-tree/test_tree.lua CASE="gr keeps its global meaning in git status tree"` and see it pass
+- [x] 11.1 Update the scenario in tests/integration/file-tree/test_tree.lua to observe the shared references source and see it fail
+- [x] 11.2 Keep `gr` unbound in the git status tree so it inherits the replacement global mapping
+- [x] 11.3 Run `make test FILE=tests/integration/file-tree/test_tree.lua CASE="gr keeps its global meaning in git status tree"` and see it pass
 
 ## 12. Move dashboard lists and remove Telescope
 Scenarios: `picker: Dashboard opens shared list pickers`
