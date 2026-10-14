@@ -20,7 +20,7 @@ function handler:nth_word_of_line(n)
 	return self.virtText[n][n]
 end
 
----@return integer|false
+---@return integer|false|nil
 function handler:is_return_err()
 	if #self:get_fold_text() == 2 then
 		return self:get_fold_text()[1]:find("return", 1, true) -- contains return statement
@@ -38,7 +38,7 @@ function handler:return_arguments()
 	return text
 end
 
----@return integer|false
+---@return integer|false|nil
 function handler:is_panic()
 	if #self:get_fold_text() == 2 then
 		return self:get_fold_text()[1]:find("panic(", 1, true) -- contains return statement
