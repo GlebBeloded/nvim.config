@@ -26,6 +26,7 @@ Scenarios: `find-action: Find Action opens from its shortcut`, `find-action: Fin
 - Keep task 15 as a regression-test correction because task 14 already registered the required `n`/`x` mappings and left select mode untouched.
 - Compose e2e references from exact zellij rows so every workflow capture is fully compared without duplicating unchanged palette rows.
 - Schedule actionable-row selection from the matcher and read the latest matches so rapid query replacements cannot apply a stale index.
+- Override Find Action's native movement keys to cycle only action rows because section rows are display-only.
 
 ## 2. Render action rows
 Scenarios: `find-action: Rows show action metadata`, `find-action: Rows fall back to Vim notation`, `find-action: Toggle rows show state glyphs`

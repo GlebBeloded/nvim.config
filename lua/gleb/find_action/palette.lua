@@ -109,6 +109,31 @@ local function schedule_first_actionable_match()
 	vim.schedule(select_first_actionable_match)
 end
 
+---@param offset integer
+local function move_to_actionable_match(offset)
+	local matches = MiniPick.get_picker_matches()
+	if not matches or not matches.current_ind or #matches.all_inds == 0 then
+		return
+	end
+	local position = vim.fn.index(matches.all_inds, matches.current_ind) + 1
+	for _ = 1, #matches.all_inds do
+		position = ((position - 1 + offset) % #matches.all_inds) + 1
+		local index = matches.all_inds[position]
+		if assert(M.state.rows, "Find Action rows are missing")[index].action then
+			MiniPick.set_picker_match_inds({ index }, "current")
+			return
+		end
+	end
+end
+
+local function move_to_next_action()
+	move_to_actionable_match(1)
+end
+
+local function move_to_previous_action()
+	move_to_actionable_match(-1)
+end
+
 ---@param _ string[]
 ---@param inds integer[]
 ---@param query string[]
@@ -244,6 +269,15 @@ function M.open(ctx)
 		mappings = {
 			show_hidden = { char = "<M-A>", func = show_hidden },
 			assign_shortcut = { char = "<M-}>", func = request_assignment },
+			move_down = "",
+			move_action_down = { char = "<C-n>", func = move_to_next_action },
+			move_down_arrow = { char = "<Down>", func = move_to_next_action },
+			move_up = "",
+			move_action_up = { char = "<C-p>", func = move_to_previous_action },
+			move_up_arrow = { char = "<Up>", func = move_to_previous_action },
+			move_start = "",
+			move_action_start = { char = "<C-g>", func = select_first_actionable_match },
+			move_start_home = { char = "<Home>", func = select_first_actionable_match },
 		},
 	})
 end

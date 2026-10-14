@@ -20,7 +20,7 @@ local chrome_windows = {}
 ---@field hints? gleb.picker.Hint
 ---@field choose? fun(item: gleb.picker.Row)
 ---@field match? fun(stritems: string[], inds: integer[], query: string[]): integer[]
----@field mappings? table<string, table>
+---@field mappings? table<string, string|table>
 ---@field window_config? fun(): table
 
 local function setup_highlights()
