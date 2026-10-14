@@ -19,6 +19,7 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - Use process-unique names for fixtures in shared global directories so concurrent test invocations cannot delete each other's files.
 - When a global keymap callback is wrapped, stub its external boundary and invoke the active mapping instead of weakening the test to metadata.
 - When a fixed readiness bound overruns once but passes the mandated isolated rerun, treat host contention as the cause and preserve the bound without retries or load scaling.
+- Neo-tree's shared `_ready` flag can be true while another filesystem navigation remains queued; subscribe before a debounce-length quiet wait and recheck readiness before applying an authoritative toggle.
 
 ## The loop
 

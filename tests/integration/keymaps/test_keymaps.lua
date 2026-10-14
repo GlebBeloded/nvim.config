@@ -104,6 +104,36 @@ local function focus_tree(source)
 	assert(wait_tree_focused(source), "neo-tree " .. source .. " not focused")
 end
 
+--- Hold the next filesystem refresh immediately before it starts rendering.
+local function delay_filesystem_render()
+	child.lua([[
+		local filesystem = require("neo-tree.sources.filesystem")
+		local original = filesystem._navigate_internal
+		filesystem._navigate_internal = function(...)
+			filesystem._navigate_internal = original
+			_G.pending_filesystem_render = {
+				args = { n = select("#", ...), ... },
+				original = original,
+			}
+		end
+		_G.pending_filesystem_render_complete = false
+		require("neo-tree.sources.manager").refresh("filesystem", function()
+			_G.pending_filesystem_render_complete = true
+		end)
+	]])
+	assert(child.wait("_G.pending_filesystem_render ~= nil", async_ms()), "filesystem render was not delayed")
+end
+
+--- Release the filesystem refresh held by `delay_filesystem_render`.
+local function finish_filesystem_render()
+	child.lua([[
+		local pending = _G.pending_filesystem_render
+		_G.pending_filesystem_render = nil
+		pending.original(unpack(pending.args, 1, pending.args.n))
+	]])
+	assert(child.wait("_G.pending_filesystem_render_complete == true", async_ms()), "filesystem render did not finish")
+end
+
 --- Path of the filesystem tree node under the cursor (nil if none).
 ---@return string?
 local function tree_cursor_path()
@@ -598,6 +628,23 @@ T["keymaps: Alt-G closes focused git status tree"] = function()
 	child.type_keys("<M-G>")
 
 	eq(wait_no_tree(), true)
+end
+
+T["keymaps: Toggle wins over pending filesystem render"] = function()
+	edit_repo_file()
+	focus_tree("filesystem")
+	delay_filesystem_render()
+	child.type_keys("<M-e>")
+	finish_filesystem_render()
+
+	eq(wait_no_tree(), true)
+
+	focus_tree("filesystem")
+	delay_filesystem_render()
+	child.type_keys("<M-G>")
+	finish_filesystem_render()
+
+	eq(wait_tree_focused("git_status"), true)
 end
 
 T["keymaps: Alt-g opens Differ"] = function()

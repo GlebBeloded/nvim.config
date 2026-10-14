@@ -7,16 +7,20 @@ Both pass alone. Likely a real race in `smart_toggle_neotree` (`lua/gleb/keymaps
 Kind: bug
 
 ## Root Cause
-To be confirmed by instrumenting (not by stressing the host): record neo-tree events / window+source state around the key press in the failing cases, e.g. log `neo_tree` events and `vim.api.nvim_list_wins()` in the child; reproduce by delaying neo-tree's async render (stub/wrap) in a test, not by loading the machine.
+Neo-tree marks the filesystem source visible before all work that can render it has settled. Its filesystem navigation is debounced and file-watcher refreshes can queue another navigation; `focus_tree` returns as soon as the source window is focused. If the toggle closes that window or replaces it with `git_status` before the queued navigation runs, the stale filesystem render opens/focuses the filesystem source again. The existing wait therefore observes an intermediate state, not completion of the operation that can overwrite the toggle.
 
 ## What Changes
-- Fix the race in the config (e.g. make the toggle act on neo-tree's settled state, or have `focus_tree` in the tests wait for neo-tree's render-complete event), whichever the root cause shows; keep every assertion.
+- Make the smart toggle's close or source-switch result win over a filesystem render that was already pending; keep every assertion.
 - Add a deterministic case that delays neo-tree's async completion and proves the toggle still closes / switches.
 
 ## Capabilities
 ### Modified Capabilities
-- `keymaps`: only if the fix needs a new scenario for the delayed-render case.
+- `keymaps`: define the toggle result while a prior filesystem render is pending.
+
+## Out of Scope
+- Changing neo-tree's implementation, debounce interval, or file-watcher configuration.
+- Changing core keymaps or the visible tree layout.
 
 ## Impact
-- Code: `lua/gleb/keymaps.lua` (if the race is in the config), `tests/integration/keymaps/test_keymaps.lua`.
+- Code: `lua/gleb/keymaps.lua`, `tests/integration/keymaps/test_keymaps.lua`.
 - Plugins: none. Core keymaps: behaviour unchanged.

@@ -54,6 +54,56 @@ map("x", "<A-j>", ":move '>+1<CR>gv-gv", "Edit: Move selection down")
 map("x", "<A-k>", ":move '<-2<CR>gv-gv", "Edit: Move selection up")
 
 -- Smart neo-tree toggle: switch source, close if same & focused, focus if not
+---@param source string
+---@param current_source string
+local function apply_neotree_toggle(source, current_source)
+	if current_source == source then
+		vim.cmd("Neotree close")
+	else
+		vim.cmd("Neotree " .. source)
+	end
+end
+
+---@param callback function
+local function after_pending_filesystem_render(callback)
+	local state = require("neo-tree.sources.manager").get_state("filesystem")
+	local events = require("neo-tree.events")
+	local render_generation = 0
+	local finished = false
+	local subscription
+	local function finish()
+		if finished then
+			return
+		end
+		finished = true
+		events.unsubscribe(subscription)
+		callback()
+	end
+
+	local function finish_after_debounce()
+		render_generation = render_generation + 1
+		local expected_generation = render_generation
+		vim.defer_fn(function()
+			if expected_generation == render_generation and state._ready ~= false then
+				finish()
+			end
+		end, 120)
+	end
+
+	subscription = {
+		event = events.AFTER_RENDER,
+		handler = function(rendered_state)
+			if rendered_state ~= state then
+				return
+			end
+			finish_after_debounce()
+		end,
+	}
+	events.subscribe(subscription)
+	finish_after_debounce()
+	vim.defer_fn(finish, 5000)
+end
+
 local function smart_toggle_neotree(source)
 	local current_win = vim.api.nvim_get_current_win()
 	local current_buf = vim.api.nvim_win_get_buf(current_win)
@@ -63,10 +113,12 @@ local function smart_toggle_neotree(source)
 		local bufname = vim.api.nvim_buf_get_name(current_buf)
 		local current_source = bufname:match("neo%-tree ([%w_]+)")
 
-		if current_source == source then
-			vim.cmd("Neotree close")
+		if current_source == "filesystem" then
+			after_pending_filesystem_render(function()
+				apply_neotree_toggle(source, current_source)
+			end)
 		else
-			vim.cmd("Neotree " .. source)
+			apply_neotree_toggle(source, current_source)
 		end
 	else
 		if source == "filesystem" then
