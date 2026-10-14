@@ -26,11 +26,16 @@ Adopt: loop/action-registry
 
 ## Impact
 
-- Code: new `lua/gleb/actions/` (registry is pure logic per rule 1.3), `settings/keymap.json`, `init.lua` (apply after VeryLazy).
+- Architecture: new `lua/gleb/actions/` feature module (registry is pure logic per rule 1.3), new feature-owned `actions.lua` modules, and `init.lua` load-order wiring that applies bindings after `VeryLazy`.
+- Code: new `settings/keymap.json`; adapter modules expose plugin-native mapping tables without changing `lua/gleb/plugins/plugins.lua` or `lazy-lock.json`.
 - Tests: unit (registry, store round-trip and formatting, conflicts, capture parsing, humanized Ex titles), integration (apply/re-apply, `ft` binding, adapter output, context restore). Every scenario is verified by an automated layer.
 - Docs: `docs/architecture.md` module map, plus a new convention: a feature's actions live in `actions.lua` and keys only in `settings/keymap.json`.
 - Plugins: none added or removed. Core keymaps: unchanged in this change.
 - Out of scope: the palette UI (`find-action`), the shared picker (`picker-ui`), moving existing keymaps (`keymaps-migration`), and a shortcuts editor screen (later).
+- `ai: Keymaps exist after VeryLazy` still holds because this change does not move or alter the 99 setup keymaps.
+- `ai: Requirement: Prompt submit keymap` still holds because buffer-local prompt submission remains outside the registry until `keymaps-migration`.
+- `session: Requirement: Restore on bare startup` still holds because the new post-`VeryLazy` action wiring does not change `VimEnter` session restore order.
+- `shortcuts: Neovim mappings match the table` still holds because existing mappings remain unchanged until `keymaps-migration`.
 
 ## Decision (user, 2026-10-14)
 

@@ -33,6 +33,7 @@ Feature code lives in `lua/gleb/<feature>/`; the capability name is the kebab-ca
 | `plugins/` | lazy.nvim bootstrap and the one plugin list | |
 | `options.lua`, `autocommands.lua`, `colors/` | Editor options, general autocmds, gruvbox-material and its palette | |
 | `keymaps.lua` | Global keymaps | [keymaps](../openspec/specs/keymaps/spec.md), [shortcuts](../openspec/specs/shortcuts/spec.md) |
+| `actions/` | Typed action catalog shared by feature-owned action lists | |
 | `lsp/`, `cmp.lua`, `select/`, editing modules | LSP, completion, treesitter, folding, comments | |
 | `git/` | Signs, diff viewers, permalinks, AI commit popup | [git](../openspec/specs/git/spec.md) |
 | `file_tree/` | neo-tree, git status tree with live diff preview | [file-tree](../openspec/specs/file-tree/spec.md) |
@@ -190,6 +191,7 @@ relative to `lua/gleb/`.
 - 1.6 `init.lua` order is load order. If a line must come before another, a trailing comment says why, and stays true.
 - 1.7 Editor options are set in `options.lua`; a feature sets only options it owns (e.g. fold options).
 - 1.8 Tests live in `tests/<layer>/<capability>/` ([testing](testing.md)).
+- 1.9 A feature exposes its actions from `<feature>/actions.lua`; shortcut keys live outside action definitions.
 
 ### 2. Plugin specs and wiring
 
