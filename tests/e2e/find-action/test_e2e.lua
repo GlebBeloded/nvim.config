@@ -3,8 +3,8 @@
 local MiniTest = require("mini.test")
 local E = require("tests.e2e.alacritty")
 local S = require("tests.shortcuts.stack")
+local approved_screens = require("tests.e2e.find-action.screens")
 
-local eq = MiniTest.expect.equality
 local STACK_OPTS = { layout = "nvim", columns = 100, lines = 30 }
 
 ---@type e2e.Stack?
@@ -42,20 +42,15 @@ local function screen(s)
 end
 
 ---@param s e2e.Stack
----@param expected string[]
 ---@param title string
-local function expect_screen(s, expected, title)
+local function expect_screen(s, title)
+	local expected = assert(approved_screens[title], "missing approved screen: " .. title)
 	local captured
 	local matched = vim.wait(3000, function()
 		captured = screen(s)
-		return vim.iter(expected):all(function(text)
-			return captured:find(text, 1, true) ~= nil
-		end)
+		return captured == expected
 	end, 50)
-	assert(matched, title .. " did not match:\n" .. captured)
-	for _, text in ipairs(expected) do
-		eq(captured:find(text, 1, true) ~= nil, true)
-	end
+	assert(matched, title .. " did not match its approved render:\n" .. captured)
 end
 
 ---@param s e2e.Stack
@@ -77,26 +72,18 @@ T["find-action: Physical Find Action workflow persists an assignment"] = functio
 	s:lua([[vim.cmd("enew")]])
 	press(s, "cmd+shift+a")
 	wait_palette(s)
-	expect_screen(
-		s,
-		{ "Find Action", "Find Action... ⌘⇧A", "Assign ⌥↩ · Show hidden ⌘⇧A" },
-		"opened palette screen"
-	)
+	expect_screen(s, "opened palette screen")
 
 	press(s, { "f", "i", "n", "d" })
-	expect_screen(s, { "Find Action › find", "Find Action... ⌘⇧A" }, "searched palette screen")
+	expect_screen(s, "searched palette screen")
 	press(s, "return")
 	wait_palette(s)
-	expect_screen(s, { "Find Action ›", "Find Action... ⌘⇧A" }, "run action screen")
+	expect_screen(s, "run action screen")
 
 	press(s, { "f", "i", "n", "d", "opt+return" })
-	expect_screen(
-		s,
-		{ "Assign Shortcut · Find Action...", "Press keys, Enter to save, Esc to cancel", "No conflicts" },
-		"shortcut capture screen"
-	)
+	expect_screen(s, "shortcut capture screen")
 	press(s, "cmd+d")
-	expect_screen(s, { "⌘D █", "No conflicts", "[ Save ]  [ Cancel ]" }, "captured shortcut screen")
+	expect_screen(s, "captured shortcut screen")
 	press(s, "return")
 	S.wait_for(function()
 		return s:lua([[return vim.fn.maparg("<D-d>", "n") ~= ""]])
@@ -108,14 +95,14 @@ T["find-action: Physical Find Action workflow persists an assignment"] = functio
 	end, "Find Action palette to close", 3000)
 	press(s, "cmd+d")
 	wait_palette(s)
-	expect_screen(s, { "Find Action", "Find Action... ⌘⇧A" }, "assigned shortcut screen")
+	expect_screen(s, "assigned shortcut screen")
 
 	stop()
 	stack = E.start(STACK_OPTS)
 	s = get()
 	press(s, "cmd+d")
 	wait_palette(s)
-	expect_screen(s, { "Find Action", "Find Action... ⌘⇧A" }, "persisted shortcut screen")
+	expect_screen(s, "persisted shortcut screen")
 end
 
 return T

@@ -9,6 +9,7 @@ local function start()
 	child.wait_very_lazy()
 	child.lua([[
 		vim.api.nvim_set_current_buf(vim.api.nvim_create_buf(true, false))
+		RealActions = require("gleb.actions").state.applicator.catalog.actions
 		local Context = require("gleb.actions.context")
 		local Registry = require("gleb.actions.registry")
 		local catalog = Registry.new({ {
@@ -92,6 +93,115 @@ T["find-action: Regular action runs like its shortcut"] = function()
 
 	eq(child.lua_get([[MiniPick.is_picker_active()]]), false)
 	eq(child.lua_get([[RegularRun]]), shortcut_run)
+
+	child.lua([[
+		local Actions = require("gleb.actions")
+		RegisteredOpen = require("gleb.find_action").open
+		RegisteredRuns = {}
+		RegisteredActions = RealActions
+		local shortcuts = {}
+		for index, action in ipairs(RegisteredActions) do
+			local lhs = ("<F%d>"):format(index + 20)
+			shortcuts[action.id] = { lhs }
+			if not action.toggle then
+				local id = action.id
+				local function record()
+					table.insert(RegisteredRuns, id)
+				end
+				action.run = record
+				action.mapping = record
+			end
+		end
+		Actions.setup({ RegisteredActions }, vim.fn.tempname())
+		Actions.state.store:save(shortcuts)
+		Actions.state.applicator:apply(Actions.state.store.last_good)
+	]])
+	child.lua([[vim.schedule(RegisteredOpen)]])
+	assert(child.wait("MiniPick.is_picker_active()", 5000), "Registered-action palette did not open")
+	eq(
+		child.lua_get([[
+			vim.iter(MiniPick.get_picker_items()):filter(function(row)
+				return row.action ~= nil
+			end):map(function(row)
+				return { row.action.id, row.text, row.category, row.secondary, row.glyph }
+			end):totable()
+		]]),
+		child.lua_get([[
+			vim.tbl_map(function(action)
+				local lhs = require("gleb.actions").state.store.last_good[action.id][1]
+				return {
+					action.id,
+					action.title,
+					action.category,
+					require("gleb.find_action.rows").physical_label(lhs),
+					require("gleb.actions.context").get_toggle(action, require("gleb.find_action").state.context),
+				}
+			end, RegisteredActions)
+		]])
+	)
+	child.type_keys("<Esc>")
+
+	local actions = child.lua_get([[
+		vim.tbl_map(function(action)
+			return { id = action.id, title = action.title, lhs = require("gleb.actions").state.store.last_good[action.id][1], toggle = action.toggle ~= nil }
+		end, RegisteredActions)
+	]])
+	local run_count = 0
+	for _, action in ipairs(actions) do
+		local initial_toggle
+		local shortcut_toggle
+		if action.toggle then
+			initial_toggle = child.lua_get(([[
+				local action = require("gleb.actions").state.applicator.catalog:get(%q)
+				return require("gleb.actions.context").get_toggle(action, require("gleb.actions.context").capture())
+			]]):format(action.id))
+		else
+			child.type_keys(action.lhs)
+			run_count = run_count + 1
+			assert(child.wait(("#RegisteredRuns == %d"):format(run_count), 5000), action.id .. " shortcut did not run")
+			eq(child.lua_get([=[RegisteredRuns[#RegisteredRuns]]=]), action.id)
+		end
+		if action.toggle then
+			child.type_keys(action.lhs)
+			shortcut_toggle = child.lua_get(([[
+				local action = require("gleb.actions").state.applicator.catalog:get(%q)
+				return require("gleb.actions.context").get_toggle(action, require("gleb.actions.context").capture())
+			]]):format(action.id))
+			child.lua(
+				([[
+				local action = require("gleb.actions").state.applicator.catalog:get(%q)
+				require("gleb.actions.context").set_toggle(action, require("gleb.actions.context").capture(), ...)
+			]]):format(action.id),
+				{ initial_toggle }
+			)
+		end
+
+		child.lua([[vim.schedule(RegisteredOpen)]])
+		assert(child.wait("MiniPick.is_picker_active()", 5000), action.id .. " palette did not open")
+		child.type_keys(action.title:gsub("%.+$", ""):lower())
+		assert(
+			child.wait(([[MiniPick.get_picker_matches().current.action.id == %q]]):format(action.id), 5000),
+			action.id .. " did not match"
+		)
+		child.type_keys("<CR>")
+		if action.toggle then
+			eq(
+				child.lua_get(([[
+					local action = require("gleb.actions").state.applicator.catalog:get(%q)
+					return require("gleb.actions.context").get_toggle(action, require("gleb.find_action").state.context)
+				]]):format(action.id)),
+				shortcut_toggle
+			)
+			child.type_keys("<Esc>")
+		else
+			run_count = run_count + 1
+			assert(
+				child.wait(("#RegisteredRuns == %d"):format(run_count), 5000),
+				action.id .. " palette action did not run"
+			)
+			eq(child.lua_get([=[RegisteredRuns[#RegisteredRuns]]=]), action.id)
+		end
+	end
 end
 
 T["find-action: Toggle changes without closing the palette"] = function()
@@ -108,6 +218,18 @@ T["find-action: Toggle changes without closing the palette"] = function()
 	eq(child.lua_get([[ToggleWin]]), editor_win)
 	eq(child.lua_get([[MiniPick.get_picker_matches().current_ind]]), selected)
 	eq(child.lua_get([[MiniPick.get_picker_matches().current.glyph]]), true)
+
+	child.type_keys("<Esc>")
+	child.wo.wrap = false
+	open_palette()
+	local section = child.lua_get([[MiniPick.get_picker_matches().current_ind]])
+	child.type_keys("<CR>")
+	assert(child.wait("vim.wo[require('gleb.find_action').state.context.win].wrap", 5000), "Section toggle did not run")
+
+	eq(child.lua_get([[MiniPick.get_picker_matches().current_ind]]), section)
+	eq(child.lua_get([[MiniPick.get_picker_items()[2].text]]), "Toggle Wrap")
+	eq(child.lua_get([[MiniPick.get_picker_items()[2].glyph]]), true)
+	eq(child.lua_get([[MiniPick.get_picker_items()[1].glyph]]), vim.NIL)
 end
 
 T["find-action: Visual palette preserves the selection"] = function()

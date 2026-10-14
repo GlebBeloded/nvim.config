@@ -139,10 +139,10 @@ local function draw_capture(window, lhs)
 end
 
 ---@param catalog gleb.ActionCatalog
----@param conflicts gleb.ShortcutConflict[]
+---@param conflict gleb.ShortcutConflict
 ---@return string
-local function conflict_text(catalog, conflicts)
-	local action = assert(catalog:get(conflicts[1].action_id))
+local function conflict_text(catalog, conflict)
+	local action = assert(catalog:get(conflict.action_id))
 	local padding = math.max(54 - vim.fn.strdisplaywidth(action.title) - vim.fn.strdisplaywidth(action.category), 1)
 	return " " .. action.title .. string.rep(" ", padding) .. action.category
 end
@@ -162,29 +162,30 @@ local function draw_conflict(window, lhs, catalog, conflicts, selected)
 	offset_key_box(highlights)
 	local button_line = " " .. table.concat(buttons, "  ")
 	local button_col = ({ 1, 19, 35 })[selected]
-	draw(
-		window,
-		{
-			" Press keys, Enter to save, Esc to cancel",
-			"",
-			box[1],
-			box[2],
-			box[3],
-			"",
-			" Already assigned to:",
-			conflict_text(catalog, conflicts),
-			"",
-			button_line,
-			"",
-		},
-		vim.list_extend(highlights, {
-			{ line = 6, col = 1, end_col = -1, group = "PmenuExtra" },
-			{ line = 7, col = 1, end_col = -1, group = "NormalFloat" },
-			{ line = 9, col = 1, end_col = -1, group = "TabLine" },
-			{ line = 9, col = button_col, end_col = button_col + #buttons[selected], group = "PmenuSel" },
-		})
-	)
-	vim.api.nvim_win_set_config(window.win, { height = 11 })
+	local lines = {
+		" Press keys, Enter to save, Esc to cancel",
+		"",
+		box[1],
+		box[2],
+		box[3],
+		"",
+		" Already assigned to:",
+	}
+	for _, conflict in ipairs(conflicts) do
+		table.insert(lines, conflict_text(catalog, conflict))
+		table.insert(highlights, { line = #lines - 1, col = 1, end_col = -1, group = "NormalFloat" })
+	end
+	table.insert(lines, "")
+	table.insert(lines, button_line)
+	local button_row = #lines - 1
+	table.insert(lines, "")
+	vim.list_extend(highlights, {
+		{ line = 6, col = 1, end_col = -1, group = "PmenuExtra" },
+		{ line = button_row, col = 1, end_col = -1, group = "TabLine" },
+		{ line = button_row, col = button_col, end_col = button_col + #buttons[selected], group = "PmenuSel" },
+	})
+	draw(window, lines, highlights)
+	vim.api.nvim_win_set_config(window.win, { height = #lines })
 end
 
 ---@param window gleb.FindActionAssignWindow

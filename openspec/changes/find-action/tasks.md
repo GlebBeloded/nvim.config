@@ -24,6 +24,7 @@ Scenarios: `find-action: Find Action opens from its shortcut`, `find-action: Fin
 - Use `ai.search` and `ai.vibe` in the AI category so the stable IDs follow the feature-action convention while the titles retain the 99 product name.
 - Expose stable named prompt callbacks from the entry-keymap module so direct mappings and registry actions share one invocation path.
 - Keep task 15 as a regression-test correction because task 14 already registered the required `n`/`x` mappings and left select mode untouched.
+- Compose e2e references from exact zellij rows so every workflow capture is fully compared without duplicating unchanged palette rows.
 
 ## 2. Render action rows
 Scenarios: `find-action: Rows show action metadata`, `find-action: Rows fall back to Vim notation`, `find-action: Toggle rows show state glyphs`

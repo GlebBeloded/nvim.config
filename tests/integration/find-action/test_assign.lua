@@ -136,6 +136,23 @@ T["find-action: Conflict choices have distinct outcomes"] = function()
 	})
 
 	child.type_keys("<Esc>")
+	open_action("adapter")
+	assign("<F21><CR>")
+	assert(
+		child.wait([[vim.api.nvim_get_current_win() ~= MiniPick.get_picker_state().windows.main]], 5000),
+		"Third assignment conflict did not open"
+	)
+	local conflict_text = child.lua_get([[table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")]])
+	eq(conflict_text:find("Target Action", 1, true) ~= nil, true)
+	eq(conflict_text:find("Other Action", 1, true) ~= nil, true)
+	child.type_keys("r")
+	assert(
+		child.wait([[require("gleb.actions").state.store.last_good["file_tree.open"][1] == "<F21>"]], 5000),
+		"Multi-conflict removal did not save"
+	)
+	eq(shortcut_map(), { ["file_tree.open"] = { "<F21>" } })
+
+	child.type_keys("<Esc>")
 	reset_shortcuts()
 	open_action("target")
 	assign("<F21><CR>c")
