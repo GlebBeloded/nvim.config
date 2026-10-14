@@ -25,7 +25,7 @@ The config SHALL show git hunk signs in the sign column using `┃` for added, u
 
 #### Scenario: Added line has no competing hunk sign
 - **WHEN** a tracked file is edited to add a new line and gitsigns has refreshed the buffer
-- **THEN** no other plugin contributes a hunk sign to that line
+- **THEN** gitsigns is the only configured hunk-sign source on that line, and `mini.diff` is neither loaded nor registered with lazy.nvim
 
 #### Scenario: Blame is off by default
 - **WHEN** a tracked file is opened and the cursor rests on a line for more than 300 ms
