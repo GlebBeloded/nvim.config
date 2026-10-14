@@ -21,8 +21,19 @@ if not status_ok then
 	return
 end
 
+--- lazy.nvim's default custom keys, off: lazy window keys come from settings/keymap.json.
+---@return table<string, false>
+local function disabled_custom_keys()
+	local keys = {}
+	for lhs in pairs(require("lazy.core.config").defaults.ui.custom_keys) do
+		keys[lhs] = false
+	end
+	return keys
+end
+
 local config = {
 	spec = { require("gleb.plugins.plugins") },
+	ui = { custom_keys = disabled_custom_keys() },
 	-- Configure any other settings here. See the documentation for more details.
 	-- colorscheme that will be used when installing plugins.
 	install = { colorscheme = { "gruvbox-material" } },

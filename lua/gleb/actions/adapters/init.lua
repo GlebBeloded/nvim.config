@@ -78,6 +78,29 @@ function M.by_lhs(areas, wrap)
 	return adapter
 end
 
+--- Run a plugin-window action by replaying its first assigned key, which the plugin itself maps.
+---@param id string
+---@return fun()
+function M.replay(id)
+	return function()
+		local store = assert(require("gleb.actions").state.store, "actions are not set up")
+		local lhs = assert(store.last_good[id], "shortcut is not configured")[1]
+		vim.api.nvim_feedkeys(vim.keycode(lhs), "m", false)
+	end
+end
+
+--- Native defaults with every key cleared, ready to receive the adapter's keys.
+---@param defaults table<string, unknown> plugin action name → default key(s)
+---@param cleared unknown value the plugin reads as "no key"
+---@return table<string, unknown>
+function M.cleared(defaults, cleared)
+	local keys = {}
+	for name in pairs(defaults) do
+		keys[name] = cleared
+	end
+	return keys
+end
+
 ---@param run fun(ctx: gleb.ActionContext)
 ---@return fun(ctx: gleb.ActionContext)
 function M.callback(run)

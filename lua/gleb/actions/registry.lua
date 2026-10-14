@@ -19,8 +19,10 @@
 ---@field id string
 ---@field title string
 ---@field category string
----@field run fun(ctx: gleb.ActionContext)
+---@field run fun(ctx: gleb.ActionContext): boolean? Returns whether a plugin command handled the key
 ---@field mapping? fun() Direct mapping callback for actions that capture their own context
+---@field plug? string `<Plug>` target mapped recursively instead of a callback
+---@field commands? (string|function)[] Native plugin command list an adapter binds instead of `run`
 ---@field modes? string[]
 ---@field ft? string|string[]
 ---@field when? fun(ctx: gleb.ActionContext): boolean
@@ -57,6 +59,10 @@ end
 ---@param ctx gleb.ActionContext
 ---@return boolean
 local function is_available(action, mode, filetype, ctx)
+	-- plugin-window actions run only from the mappings their adapter installs
+	if action.plugin then
+		return false
+	end
 	if not vim.tbl_contains(action.modes or { "n" }, mode) then
 		return false
 	end

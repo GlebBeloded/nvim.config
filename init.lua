@@ -21,6 +21,13 @@ require("gleb.actions").setup({
 	require("gleb.git.actions"),
 	require("gleb.file_tree.actions"),
 	require("gleb.autocommands.actions"),
+	require("gleb.surround.actions"),
+	require("gleb.cmp.actions"),
+	require("gleb.copilot.actions"),
+	require("gleb.debugging.actions"),
+	require("gleb.testing.actions"),
+	require("gleb.lsp.actions"),
+	require("gleb.plugins.actions"),
 })
 require("gleb.cmp")
 require("gleb.lsp")

@@ -6,8 +6,8 @@ local prompts = require("gleb.ai.entry_keymaps")
 local actions = {
 	{
 		id = "ai.search",
-		title = "Search",
-		category = "99",
+		title = "99 Search",
+		category = "AI",
 		run = prompts.search_prompt,
 	},
 	{

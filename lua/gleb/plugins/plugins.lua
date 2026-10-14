@@ -46,15 +46,9 @@ local plugins = {
 	--   1. As you type, blink.cmp gathers suggestions from multiple sources (LSP, snippets, etc.)
 	--   2. Fuzzy matching ranks results by relevance, allowing typos
 	--   3. Menu appears after typing keywords (letters/numbers), NOT on special chars like "."
-	--   4. Copilot shows ghost text only when completion menu is hidden (see copilot.lua autocmds)
+	--   4. Copilot shows ghost text only when completion menu is hidden (see lua/gleb/copilot autocmds)
 	--
-	-- Keybinds:
-	--   Tab / Down = Select next completion (Tab also accepts Copilot if no menu)
-	--   S-Tab / Up = Select previous completion
-	--   Enter      = Accept selected completion
-	--   C-Space    = Manually trigger completion menu
-	--   C-e        = Close menu
-	--   C-b / C-f  = Scroll documentation
+	-- Configured in lua/gleb/cmp (after the action registry); keys are completion actions.
 	---@type LazyPluginSpec
 	{
 		"saghen/blink.cmp",
@@ -62,93 +56,6 @@ local plugins = {
 		dependencies = {
 			"rafamadriz/friendly-snippets", -- snippet collection
 		},
-		opts = {
-			-- Custom keymap: Tab is "super key" for both completions and Copilot
-			keymap = {
-				preset = "none", -- disable defaults, define our own
-				["<C-Space>"] = { "show" },
-				["<Tab>"] = {
-					-- Priority: completion menu > copilot > normal tab
-					function(cmp)
-						if cmp.is_visible() then
-							return cmp.select_next()
-						elseif require("copilot.suggestion").is_visible() then
-							require("copilot.suggestion").accept()
-							return true -- handled, don't fallback
-						end
-						-- return nil = fallback to normal tab (indent)
-					end,
-					"fallback",
-				},
-				["<S-Tab>"] = { "select_prev", "fallback" },
-				["<Down>"] = { "select_next", "fallback" },
-				["<Up>"] = { "select_prev", "fallback" },
-				["<CR>"] = { "accept", "fallback" },
-				["<C-e>"] = { "cancel", "fallback" },
-				["<C-b>"] = { "scroll_documentation_up", "fallback" },
-				["<C-f>"] = { "scroll_documentation_down", "fallback" },
-			},
-
-			appearance = {
-				nerd_font_variant = "mono", -- "mono" for Nerd Font Mono, "normal" otherwise
-			},
-
-			-- Rust-based fuzzy matcher for speed (falls back to Lua if unavailable)
-			fuzzy = { implementation = "prefer_rust_with_warning" },
-
-			-- Completion sources in priority order (first = highest priority)
-			sources = {
-				default = { "lazydev", "lsp", "path", "snippets", "buffer" },
-				providers = {
-					lazydev = {
-						name = "LazyDev",
-						module = "lazydev.integrations.blink",
-						score_offset = 100, -- boost priority for Neovim Lua API completions
-					},
-				},
-			},
-
-			completion = {
-				-- Auto-insert brackets for functions/methods
-				accept = { auto_brackets = { enabled = true } },
-
-				-- Disabled: Copilot provides ghost text instead
-				ghost_text = { enabled = false },
-
-				-- Show docs automatically when item selected
-				documentation = { auto_show = true },
-
-				trigger = {
-					-- Don't auto-show on ".", ":", etc. - only on keywords
-					-- Use C-Space to manually trigger after special chars
-					show_on_trigger_character = false,
-				},
-
-				menu = {
-					draw = {
-						-- Menu columns: [icon] [label + description]
-						columns = { { "kind_icon" }, { "label", "label_description", gap = 1 } },
-					},
-				},
-			},
-
-			-- Show function signature help while typing arguments
-			signature = { enabled = true },
-
-			-- Command-line completion (:, /, ?)
-			cmdline = {
-				keymap = {
-					preset = "none",
-					["<Tab>"] = { "show", "select_next", "fallback" },
-					["<S-Tab>"] = { "show", "select_prev", "fallback" },
-					["<Down>"] = { "select_next", "fallback" },
-					["<Up>"] = { "select_prev", "fallback" },
-					["<CR>"] = { "accept", "fallback" },
-					["<C-e>"] = { "cancel", "fallback" },
-				},
-			},
-		},
-		opts_extend = { "sources.default" }, -- allow other plugins to extend sources
 	},
 
 	-- yaml schema detection (kubernetes, etc.)
@@ -316,6 +223,9 @@ local plugins = {
 		"kylechui/nvim-surround",
 		version = "*", -- Use for stability; omit to use the main branch for the latest features
 		event = "VeryLazy",
+		init = function()
+			vim.g.nvim_surround_no_mappings = true -- keys come from surround actions
+		end,
 		opts = {},
 	},
 	"windwp/nvim-ts-autotag", -- Autoclose HTML tags

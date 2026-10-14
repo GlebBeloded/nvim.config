@@ -286,7 +286,7 @@ local actions = {
 	neo_tree_action("toggle_stage", "Toggle stage", "git_status", function(ctx)
 		git_toggle_stage(tree_state(ctx))
 	end),
-	neo_tree_action("commit", "Commit", "git_status", function()
+	neo_tree_action("commit", "Commit (AI)", "git_status", function()
 		git_commit()
 	end),
 	neo_tree_action("push", "Push", "git_status", function()

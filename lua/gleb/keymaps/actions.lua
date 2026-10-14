@@ -13,6 +13,28 @@ local function command(ex_command)
 	end
 end
 
+--- Jump list motion with the typed count; a count also keeps `:normal` from dropping a leading <Tab>.
+---@param keys string
+local function jump(keys)
+	normal(vim.v.count1 .. keys)
+end
+
+local function leave_insert()
+	vim.cmd.stopinsert()
+end
+
+--- Leave Visual mode so `'<`/`'>` mark the selection, move it, then reselect it.
+---@param target string `:move` address
+local function move_selection(target)
+	normal("<Esc>")
+	vim.cmd("'<,'>move " .. target)
+	normal("gv-gv")
+end
+
+local function signature_help()
+	vim.lsp.buf.signature_help()
+end
+
 ---@param diagnostic vim.Diagnostic?
 ---@param bufnr integer
 local function open_float_on_jump(diagnostic, bufnr)
@@ -64,7 +86,7 @@ local actions = {
 		title = "Back",
 		category = "Jump",
 		run = function()
-			normal("<C-O>")
+			jump("<C-O>")
 		end,
 	},
 	{
@@ -72,7 +94,7 @@ local actions = {
 		title = "Forward",
 		category = "Jump",
 		run = function()
-			normal("<C-I>")
+			jump("<C-I>")
 		end,
 	},
 	{ id = "window.increase_height", title = "Increase height", category = "Window", run = command("resize +2") },
@@ -123,7 +145,7 @@ local actions = {
 		title = "Leave insert mode",
 		category = "Edit",
 		modes = { "i" },
-		run = vim.cmd.stopinsert,
+		run = leave_insert,
 	},
 	{
 		id = "edit.outdent_selection",
@@ -158,8 +180,7 @@ local actions = {
 		category = "Edit",
 		modes = { "x" },
 		run = function()
-			vim.cmd("move '>+1")
-			normal("gv-gv")
+			move_selection("'>+1")
 		end,
 	},
 	{
@@ -168,8 +189,7 @@ local actions = {
 		category = "Edit",
 		modes = { "x" },
 		run = function()
-			vim.cmd("move '<-2")
-			normal("gv-gv")
+			move_selection("'<-2")
 		end,
 	},
 	{
@@ -217,6 +237,14 @@ local actions = {
 		mapping = require("gleb.picker").lsp_references,
 	},
 	{ id = "lsp.rename", title = "Rename", category = "LSP", run = vim.lsp.buf.rename, mapping = vim.lsp.buf.rename },
+	{
+		id = "lsp.signature_help",
+		title = "Signature help",
+		category = "LSP",
+		modes = { "i", "s" },
+		run = signature_help,
+		mapping = signature_help,
+	},
 	{ id = "diag.next", title = "Next", category = "Diagnostics", run = jump_next },
 	{ id = "diag.previous", title = "Previous", category = "Diagnostics", run = jump_previous },
 }

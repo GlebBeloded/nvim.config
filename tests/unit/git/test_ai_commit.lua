@@ -205,9 +205,10 @@ T["git: Enter on empty buffer does nothing"] = function()
 	eq(commits(), {})
 end
 
-T["git: Enter on placeholder does nothing"] = function()
+T["git: Popup confirm action ignores the placeholder"] = function()
 	show_commit_input()
-	child.type_keys("<CR>")
+	eq(popup_lines(), { "# No staged changes" })
+	press_popup_mapping("Git: Confirm commit message")
 
 	eq(popup_open(), true)
 	eq(commits(), {})

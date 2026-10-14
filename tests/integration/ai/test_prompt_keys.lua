@@ -265,7 +265,7 @@ local function run_action(id, title)
 end
 
 T["ai: Menu s opens search prompt"] = function()
-	run_action("ai.search", "Search")
+	run_action("ai.search", "99 Search")
 	wait_prompt()
 
 	eq(focused_prompt(), expected_prompt("Search"))

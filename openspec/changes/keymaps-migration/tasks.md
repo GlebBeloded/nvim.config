@@ -14,30 +14,31 @@ Scenarios: `actions: Feature actions contain no shortcut keys`, `actions: Every 
 - The prompt-submit action covers both `99` and native completion's final `99prompt` filetype so the second FileType event retains the buffer mapping.
 - Task 9 adds regression coverage only because task 1 already moved fold and special-buffer behavior into actions.
 - Cmd+9 remains `none` in the normal-mode shortcut table because its configured `ai.visual` action is visual-only.
+- `actions.audit()` walks global mappings in all seven modes and owns a key when `settings/keymap.json` assigns it to a registered action in that mode, so plugin-native maps on assigned keys (blink's command-line keys, autopairs' `<CR>` behind `blink.accept`) count; `<Plug>`/`<SNR>` lhs are skipped as unpressable.
+- The grammar allowlist is the Neovim defaults that refine built-in keys, operators, motions and text objects: `Y`, `&`, `gc`/`gcc`, visual `*` `#` `@` `Q`, `an`/`in`, visual `[n` `]n` `[N` `]N`, matchit's `%` family, insert `<C-U>`/`<C-W>`, and snippet `<Tab>`/`<S-Tab>`.
+- Plugin-window buffers are not audited: mason's `q`, `<Esc>`, `1`–`5` and lazy.nvim's view keys are hardcoded and cannot be disabled; adapters own every configurable plugin key.
+- Startup deletes the `gr` family, `gO`, `gx`, `<C-W>d`/`<C-W><C-D>`, every `[x`/`]x` bracket pair, visual `gra`/`gx` and insert/select `<C-S>`; `[d` and `<C-S>` come back as `diag.previous` and `lsp.signature_help`, keeping the pinned Ctrl+S collision row.
+- Surround actions carry a `plug` rhs that the registry maps with `remap = true`; a palette run feeds the same `<Plug>` target.
+- Find Action excludes plugin-window actions: they run only through the mappings their adapter installs in that window.
+- `ai.search` keeps its base title `99 Search` and category `AI` (it has no mapping), so Find Action's title-or-category match no longer ties it with `Search: Live grep`.
+- Neo-tree uses one `desc` for the buffer mapping and its help row, so the help lists action descriptions; `neo_tree.commit` is titled `Commit (AI)` to keep the AI label.
+- Blink actions carry blink's native command lists (`commands`) so blink keeps its fallback and select-mode behaviour; blink setup moved to `lua/gleb/cmp` because lazy.nvim runs spec `opts` before the registry exists.
+- Mason and gitlinker have no "no key" value, so unassigned defaults get an unreachable `<Plug>` lhs.
+- `lazy.close` is a filetype action (lazy.nvim is set up before the registry) and lazy.nvim's default custom keys are off; dap-ui's float close uses its own `dap_float` adapter area.
+- The plugin-default case now queries each plugin's own buffer with an unconfigured default key: it read whichever window was current, and `<CR>` (neo-tree), `o` (dap-ui) and `<C-Space>` (blink) are configured keys; lazy.nvim's headless check is stubbed so its window opens.
+- The unit copy of `git: Enter on placeholder does nothing` became `git: Popup confirm action ignores the placeholder` (integration keeps the original case).
 
 ## 2. Remove unowned built-in and surround defaults
 Scenarios: `actions: Every configured mapping is action-owned`, `keymaps: Unadopted built-in mappings are removed`, `keymaps: Adopted built-in mappings are registry actions`, `keymaps: Surround mappings use registered actions`, `keymaps: [d jumps to previous diagnostic`
 - [x] 2.1 Write the scenarios in `tests/integration/actions/test_ownership.lua` and `tests/integration/keymaps/test_keymaps.lua`; load the full config, fire `VeryLazy`, query the real default and surround lhs values, and press `[d`; run `make test FILE=tests/integration/keymaps/test_keymaps.lua CASE="keymaps: Unadopted built-in mappings are removed"` and see it fail
-- [ ] 2.2 Delete unadopted Neovim defaults during startup, register retained defaults as actions, disable nvim-surround defaults with `vim.g.nvim_surround_no_mappings = true`, and bind its `<Plug>` targets through actions
-- [ ] 2.3 Run `make test FILE=tests/integration/actions/test_ownership.lua CASE="actions: Every configured mapping is action-owned"` and `make test FILE=tests/integration/keymaps/test_keymaps.lua` and see them pass
-
-## Stuck
-
-- Probe: the real visual `J` callback failed with unset `'<`/`'>` marks, then moved `{ "a", "b", "c" }` to `{ "b", "a", "c" }` and stayed in mode `V` after those marks were seeded from the captured selection.
-- Attempt 1 seeded visual marks in the action context, registered surround and retained defaults, and fixed the callback API errors; all 53 keymap cases passed, but the ownership audit reported alpha-buffer and Neovim grammar mappings.
-- Attempt 2 added a runtime allowlist and plugin-surface filtering; the audit still reported alpha-buffer and grammar mappings, and neo-tree's full help screenshot still differed after its three required labels were restored, so all production edits were reverted while the red regression coverage was retained.
+- [x] 2.2 Delete unadopted Neovim defaults during startup, register retained defaults as actions, disable nvim-surround defaults with `vim.g.nvim_surround_no_mappings = true`, and bind its `<Plug>` targets through actions
+- [x] 2.3 Run `make test FILE=tests/integration/actions/test_ownership.lua CASE="actions: Every configured mapping is action-owned"` and `make test FILE=tests/integration/keymaps/test_keymaps.lua` and see them pass
 
 ## 3. Make plugin adapters the sole owner of plugin-window keys
 Scenarios: `actions: Plugin-window mappings are action-owned`, `actions: Unconfigured defaults are absent`, `actions: Lazy specs define no shortcut keys`
 - [x] 3.1 Write the scenarios in `tests/integration/actions/test_plugin_ownership.lua`; open the real neo-tree, dap-ui, diffview, differ, codediff, neotest, mason, lazy, blink, and copilot surfaces with populated data, run `make test FILE=tests/integration/actions/test_plugin_ownership.lua CASE="actions: Plugin-window mappings are action-owned"`, and see it fail
-- [ ] 3.2 Feed current shortcuts through each existing adapter, disable each plugin's defaults, remove every lazy.nvim `keys` field, and use `cmd`, `event`, or action-time `require` for loading
-- [ ] 3.3 Run `make test FILE=tests/integration/actions/test_plugin_ownership.lua` and see it pass
-
-### Stuck
-
-- Probe: dap-ui's live config contained only `expand = { "e" }`, but opening its layout left the current filetype as `alpha`; Mason's isolated `mason` buffer contained `i` and disabled `<Plug>` mappings with no `<CR>`. The existing sequential check was reading whichever window stayed current, not necessarily the plugin surface it had just opened.
-- Attempt 1 registered the missing plugin actions and applied each adapter through its installed native config; ownership passed, while the current-buffer default check still reported dap-ui, lazy, Mason, neo-tree, and neotest.
-- Attempt 2 targeted buffers by plugin filetype and made blink's early setup independent of the global registry; the sequence did not leave a Mason buffer open and the ownership audit remained red, so all production edits were reverted and the real-surface regression remains red.
+- [x] 3.2 Feed current shortcuts through each existing adapter, disable each plugin's defaults, remove every lazy.nvim `keys` field, and use `cmd`, `event`, or action-time `require` for loading
+- [x] 3.3 Run `make test FILE=tests/integration/actions/test_plugin_ownership.lua` and see it pass
 
 ## 4. Migrate neo-tree mappings without changing behavior
 Scenarios: `file-tree: Tree mappings come from the shortcut file`, `file-tree: Neo-tree defaults stay disabled`, `file-tree: q closes preview and tree`
@@ -80,3 +81,12 @@ Scenarios: `shortcuts: Shortcut table names action ids`, `shortcuts: Shortcut me
 - [x] 10.1 Add the action-id table assertion and full-config keypress coverage to `tests/chain/shortcuts/test_chain.lua`, update the existing e2e case only to resolve the action-backed mapping, run `make test FILE=tests/chain/shortcuts/test_chain.lua CASE="shortcuts: Shortcut table names action ids"`, and see it fail
 - [x] 10.2 Replace each mapped row's implementation label with its action id while preserving every physical shortcut, byte sequence, zellij route, received key, and behavior
 - [x] 10.3 Run `make test FILE=tests/chain/shortcuts/test_chain.lua`, then run `make e2e FILE=tests/e2e/shortcuts/test_e2e.lua CASE="shortcuts: Ctrl+Return reaches Neovim as <C-CR> from a real key press"` in the sandbox VM and see them pass
+
+## Blocked
+
+- Question: how should diffview's conflict choices `<leader>co`, `<leader>ct`, `<leader>cb` and `<leader>ca` survive `keymaps.disable_defaults = true`? The main git spec ("Diffview view mappings") retains them and `tests/integration/git/test_diffview.lua` presses them, but with the registry as the only source they must be assigned in `settings/keymap.json`, which rewritten rule 3.8 forbids for `<leader>`.
+- Option 1: register `diffview.choose_ours`, `diffview.choose_theirs`, `diffview.choose_base` and `diffview.choose_all` (view scope, `conflict_choose`) with their current `<leader>c*` keys and amend rule 3.8 to exempt plugin-window keys that keep a spec-retained plugin default.
+- Option 2: drop the four keys and add a MODIFIED delta of "Diffview view mappings" without them, updating `test_diffview.lua`; conflicts are then resolved in differ or codediff.
+- Option 3: give them new non-leader keys (new shortcuts, out of the proposal's scope).
+- Recommendation: option 1; no physical key changes meaning and the registry stays the only source.
+
