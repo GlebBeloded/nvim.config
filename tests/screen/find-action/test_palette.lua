@@ -109,6 +109,13 @@ end
 T["find-action: Wide palette matches reference screenshots"] = function()
 	set_size(100)
 	open_palette()
+	eq(
+		child.lua_get([[(function()
+			local current = require("mini.pick").get_picker_matches().current
+			return current.action and current.action.id or vim.NIL
+		end)()]]),
+		"git.open_differ"
+	)
 	local text = screen_text()
 	eq(text:find("recently used", 1, true) ~= nil, true)
 	eq(text:find("Assign ⌥↩ · Show hidden ⌘⇧A", 1, true) ~= nil, true)

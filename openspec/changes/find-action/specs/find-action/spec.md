@@ -33,7 +33,7 @@ The palette SHALL draw each action with its title first, its first shortcut imme
 - **THEN** their rows show green `●` and grey `○` state glyphs respectively and no ON/OFF text
 
 ### Requirement: Action ordering and matching
-With an empty query, the palette SHALL list recently used actions saved across sessions before curated actions, retaining at most the last 20 action ids. With a query, it SHALL fuzzy-match action titles, categories, and aliases.
+With an empty query, the palette SHALL list recently used actions saved across sessions before curated actions, retaining at most the last 20 action ids. With a query, it SHALL fuzzy-match action titles, categories, and aliases. Section rows SHALL be display-only; after opening or replacing results, the first actionable match SHALL be current.
 
 #### Scenario: Empty query puts recent actions first
 - **WHEN** the palette opens with no query after actions have been used
@@ -46,6 +46,10 @@ With an empty query, the palette SHALL list recently used actions saved across s
 #### Scenario: Query matches all searchable fields
 - **WHEN** a query fuzzy-matches an action title, category, or alias
 - **THEN** that action appears in the matching results
+
+#### Scenario: Selection skips section rows
+- **WHEN** the palette opens or Show hidden or a query makes a section row the first match
+- **THEN** the first actionable match is selected and Enter, `<M-}>`, and navigation all act from that row
 
 ### Requirement: Hidden and unavailable actions
 Hidden Ex-command actions and actions unavailable for the captured mode, filetype, or `when` condition SHALL be absent initially. Pressing `<M-A>` again while the palette is open SHALL preserve the query and reveal them below a `More results` separator; hidden Ex commands SHALL remain ineligible for shortcut assignment.

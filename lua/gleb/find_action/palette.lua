@@ -88,6 +88,27 @@ local function make_rows()
 	return rows
 end
 
+local function select_first_actionable_match()
+	if not MiniPick.is_picker_active() then
+		return
+	end
+	local matches = MiniPick.get_picker_matches()
+	if not matches then
+		return
+	end
+	for _, index in ipairs(matches.all_inds) do
+		local row = assert(M.state.rows, "Find Action rows are missing")[index]
+		if row.action then
+			MiniPick.set_picker_match_inds({ index }, "current")
+			return
+		end
+	end
+end
+
+local function schedule_first_actionable_match()
+	vim.schedule(select_first_actionable_match)
+end
+
 ---@param _ string[]
 ---@param inds integer[]
 ---@param query string[]
@@ -96,6 +117,7 @@ local function match_rows(_, inds, query)
 	local rows = assert(M.state.rows, "Find Action rows are missing")
 	local text = table.concat(query)
 	if text == "" then
+		schedule_first_actionable_match()
 		return inds
 	end
 	local visible_matches = {}
@@ -113,6 +135,7 @@ local function match_rows(_, inds, query)
 		table.insert(visible_matches, separator)
 		vim.list_extend(visible_matches, hidden_matches)
 	end
+	schedule_first_actionable_match()
 	return visible_matches
 end
 

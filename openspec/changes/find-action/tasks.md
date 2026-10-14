@@ -25,6 +25,7 @@ Scenarios: `find-action: Find Action opens from its shortcut`, `find-action: Fin
 - Expose stable named prompt callbacks from the entry-keymap module so direct mappings and registry actions share one invocation path.
 - Keep task 15 as a regression-test correction because task 14 already registered the required `n`/`x` mappings and left select mode untouched.
 - Compose e2e references from exact zellij rows so every workflow capture is fully compared without duplicating unchanged palette rows.
+- Schedule actionable-row selection from the matcher and read the latest matches so rapid query replacements cannot apply a stale index.
 
 ## 2. Render action rows
 Scenarios: `find-action: Rows show action metadata`, `find-action: Rows fall back to Vim notation`, `find-action: Toggle rows show state glyphs`
@@ -115,3 +116,9 @@ Scenarios: `find-action: Visual palette preserves the selection`
 - [x] 16.1 Run `make test FILE=tests/integration/find-action/test_run.lua CASE="Visual palette preserves the selection"` against the real `<M-A>` picker populated with the visual action, press `<CR>`, and see it fail because the initial section row has no action
 - [x] 16.2 Make the smallest Find Action choice change so `<CR>` on an initial section row resolves the following action by the picker's current match index, preserving the captured visual selection and the approved section-row highlight
 - [x] 16.3 Run `make test FILE=tests/integration/find-action/test_run.lua CASE="Visual palette preserves the selection"` and `make test FILE=tests/screen/find-action/test_palette.lua`, and see them pass
+
+## 17. Keep selection on actionable rows
+Scenarios: `find-action: Selection skips section rows`, `find-action: Wide palette matches reference screenshots`
+- [x] 17.1 Write the test `find-action: Selection skips section rows` in `tests/integration/find-action/test_open.lua`, driving the real `<M-A>` picker with populated visible and hidden actions through open, query, and Show hidden; tighten `tests/screen/find-action/test_palette.lua` to require the approved first-action highlight, then run both named cases and see them fail
+- [x] 17.2 Make the smallest `lua/gleb/find_action/palette.lua` change that selects the first actionable match after start and every item or match replacement, so Enter, `<M-}>`, and navigation agree, then regenerate only the affected wide references
+- [x] 17.3 Run `make test FILE=tests/integration/find-action/test_open.lua CASE="Selection skips section rows"` and `make test FILE=tests/screen/find-action/test_palette.lua CASE="Wide palette matches reference screenshots"` and see them pass
