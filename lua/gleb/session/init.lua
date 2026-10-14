@@ -17,7 +17,7 @@ if not status_ok then
 end
 
 local key = require("gleb.session.key")
-local session_name = key.session_name()
+local session_name, session_slug = key.session_name()
 
 -- Read once at load: a later `:argadd` must not change how nvim was started.
 local started_bare = vim.fn.argc(-1) == 0
@@ -46,7 +46,7 @@ local function restore()
 	if not started_bare then
 		return
 	end
-	local name = key.resolve(session_name, resession.list())
+	local name = key.resolve(session_name, resession.list(), session_slug)
 	if name then
 		resession.load(name, { silence_errors = true })
 	end

@@ -18,7 +18,7 @@ end
 ---@param available string[]
 ---@return string?
 local function resolve(name, available)
-	return child.lua_get("Key.resolve(...)", { name, available })
+	return child.lua_get("Key.resolve(...)", { name, available, cwd_slug() })
 end
 
 local T = H.child_set(child, start)
