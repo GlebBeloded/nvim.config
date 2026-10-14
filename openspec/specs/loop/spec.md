@@ -604,6 +604,14 @@ work-queue SHALL skip the queue-spec step when the adopted change's tasks.md has
 - **WHEN** `.archon/commands/fix.md` is read
 - **THEN** it treats a "Requirement text is very long" validate finding as a fix to this change's spec delta and reruns `spec_trial.py`
 
+#### Scenario: Implement and fix self-check like the gate before handing back
+- **WHEN** the Makefile and `.archon/commands/fix.md` and `implement.md` are read
+- **THEN** `make self-check CHANGE=<id>` runs lint, types, strict validation of the change and `spec_trial.py` (no tests, no e2e), both prompts run it before they commit, and both fix an ordinary bug instead of writing `## Blocked`
+
+#### Scenario: Fix keeps the red regression test and review blocks scope creep
+- **WHEN** `.archon/commands/fix.md` and `review.md` are read
+- **THEN** fix forbids deleting or weakening the red regression test an earlier pass added, and review marks an edit outside the proposal and tasks `[must-fix]` unless the gate needed it, which the finding says
+
 #### Scenario: Adopted change with every task ticked skips the spec step
 - **WHEN** `tasks.py --adopted-state` runs for change `c` with all tasks ticked (with a design.md holding a render section, with a technical design.md, without one, and with a proposal holding a `## Rejected run` section), with one unticked, with no tasks.md and with no change folder
 - **THEN** it prints `tasks_done` true only for the ticked ones without a rejected run, `visible_ui` true only with the render-holding design.md and `archived` true only without the folder; work-queue's `complete` requires `tasks_done == false` and queue-spec reads adopt-notes.md only if it exists
