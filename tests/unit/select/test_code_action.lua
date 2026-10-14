@@ -27,4 +27,23 @@ T["select: Code action menu receives picker mappings"] = function()
 	})
 end
 
+T["select: Cancelling a code action completes selection"] = function()
+	local result = child.lua_get([[
+		(function()
+			local calls = 0
+			local item_is_nil = false
+			local index_is_nil = false
+			local menu = CodeAction:new({}, { prompt = "Actions" }, function(item, index)
+				calls = calls + 1
+				item_is_nil = item == nil
+				index_is_nil = index == nil
+			end):menu()
+			if menu.on_close then menu.on_close() end
+			return { calls = calls, item_is_nil = item_is_nil, index_is_nil = index_is_nil }
+		end)()
+	]])
+
+	eq(result, { calls = 1, item_is_nil = true, index_is_nil = true })
+end
+
 return T
