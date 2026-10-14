@@ -54,6 +54,39 @@ map("x", "<A-j>", ":move '>+1<CR>gv-gv", "Edit: Move selection down")
 map("x", "<A-k>", ":move '<-2<CR>gv-gv", "Edit: Move selection up")
 
 -- Smart neo-tree toggle: switch source, close if same & focused, focus if not
+---@param source string
+---@param current_source string
+local function apply_neotree_toggle(source, current_source)
+	if current_source == source then
+		vim.cmd("Neotree close")
+	else
+		vim.cmd("Neotree " .. source)
+	end
+end
+
+---@param callback function
+local function after_pending_filesystem_render(callback)
+	local state = require("neo-tree.sources.manager").get_state("filesystem")
+	if state._ready ~= false then
+		callback()
+		return
+	end
+
+	local events = require("neo-tree.events")
+	local subscription
+	subscription = {
+		event = events.AFTER_RENDER,
+		handler = function(rendered_state)
+			if rendered_state ~= state then
+				return
+			end
+			events.unsubscribe(subscription)
+			callback()
+		end,
+	}
+	events.subscribe(subscription)
+end
+
 local function smart_toggle_neotree(source)
 	local current_win = vim.api.nvim_get_current_win()
 	local current_buf = vim.api.nvim_win_get_buf(current_win)
@@ -63,10 +96,12 @@ local function smart_toggle_neotree(source)
 		local bufname = vim.api.nvim_buf_get_name(current_buf)
 		local current_source = bufname:match("neo%-tree ([%w_]+)")
 
-		if current_source == source then
-			vim.cmd("Neotree close")
+		if current_source == "filesystem" then
+			after_pending_filesystem_render(function()
+				apply_neotree_toggle(source, current_source)
+			end)
 		else
-			vim.cmd("Neotree " .. source)
+			apply_neotree_toggle(source, current_source)
 		end
 	else
 		if source == "filesystem" then
