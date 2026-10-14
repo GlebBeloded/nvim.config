@@ -23,3 +23,6 @@ Adopt: loop/fix-session-name-drift
 ## Rejected run
 Run on `loop/fix-session-name-drift` was rejected by the judge:
 - fix loop exhausted (3 attempts) with gates still red: spec,review_skipped
+
+## Unblocked
+The previous run's code and tests were green (all check layers ok); only the trial archive failed: `spec/session requirements[2]: Requirement text is very long (>500 characters)`. Shorten that requirement's text in the change's session delta (move examples and edge cases into scenarios, keep the meaning), run `python3 .archon/scripts/spec_trial.py fix-session-name-drift` until it exits 0, and keep the code and tests as adopted.
