@@ -117,7 +117,8 @@ T["session: bare nvim restores the newest cwd session"] = function()
 	-- `a-8-…` wins a filename sort, so only modification time picks `b-7-…`.
 	local new = save_pane_session("b", "7", "new.txt")
 	local old = save_pane_session("a", "8", "old.txt")
-	child.stop() -- VimLeavePre saves again; stop first so the mtimes below stick
+	child.cmd("%bwipeout!") -- Keep VimLeavePre from adding the startup-name session.
+	child.stop()
 	local now = os.time()
 	set_mtime(new, now)
 	set_mtime(old, now - 60)

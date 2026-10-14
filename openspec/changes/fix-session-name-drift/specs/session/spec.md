@@ -1,7 +1,7 @@
 ## MODIFIED Requirements
 
 ### Requirement: Restore on bare startup
-The config SHALL capture `key.session_name()` once during module load, before later cwd changes. On `VimEnter`, it SHALL resolve and load using that captured name only when Neovim started with no file arguments (`argc(-1) == 0`), with nested autocmds and silenced errors. Saved sessions SHALL be listed newest first by modification time.
+The config SHALL capture `key.session_name()` once during module load, before later cwd changes. On `VimEnter`, it SHALL load the session returned by `key.resolve(<captured session name>, <saved sessions>)` only when Neovim was started with no file arguments (`argc(-1) == 0`), with nested autocmds enabled so `FileType` fires for restored buffers, and errors silenced. The saved sessions SHALL be listed newest first by modification time, so the cwd fallback picks the most recently saved session for the cwd.
 
 #### Scenario: bare nvim restores the pane session
 - **WHEN** a session named `key.session_name()` containing file `a.txt` exists and Neovim is started with no file arguments in the same cwd and zellij env
@@ -24,7 +24,7 @@ The config SHALL capture `key.session_name()` once during module load, before la
 - **THEN** after `VimEnter` the current buffer is the empty startup buffer (or the dashboard)
 
 ### Requirement: Save on write and exit
-The config SHALL save the current layout under the session name captured once during module load, without notification, on every `BufWritePost` and `VimLeavePre`. It SHALL save only when Neovim started with no file arguments and a listed file buffer exists; otherwise the existing session SHALL remain unchanged. Plugin periodic autosave SHALL be disabled.
+The config SHALL save the current layout as the session name captured once during module load (without notification) on every `BufWritePost` and on `VimLeavePre`, but only when Neovim was started with no file arguments (`argc(-1) == 0`) and at least one listed buffer has a non-empty name and an empty `buftype`; otherwise it SHALL NOT save and an existing session with that name stays unchanged. The session plugin's own periodic autosave is disabled.
 
 #### Scenario: writing a buffer saves the session
 - **WHEN** `:write` is executed on a file buffer
