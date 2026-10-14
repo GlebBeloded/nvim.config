@@ -17,6 +17,7 @@ Depends: action-registry, picker-ui
   - The category is right-aligned (`Git | Diff`).
   - There is no icon column.
   - Toggles show `●` (green, on) or `○` (grey, off) before the category, with no ON/OFF text. Enter flips a toggle and the palette stays open on the same row.
+  - Section headers and the `More results` separator are display-only. On open and after results change, the first actionable row is selected so Enter, Option+Return, and navigation agree.
 - **Ordering:**
   - An empty query shows "recently used" (saved across sessions) and then the curated actions.
   - A query does fuzzy matching on title, category and aliases.
@@ -35,6 +36,14 @@ Depends: action-registry, picker-ui
 - **Small windows:** the picker breakpoints apply. Below 48 columns the rows show titles only.
 - **Removed:** the 99 echo-prompt menu on Cmd+9 (`normal_menu`). Its two actions, 99 Search and 99 Vibe, become registry actions.
 
+## Evidence
+
+- `lua/gleb/find_action/palette.lua:123` replaces rows for Show hidden without selecting an actionable match.
+- `lua/gleb/find_action/palette.lua:133` rejects shortcut assignment when the current match is a section row.
+- `lua/gleb/find_action/palette.lua:153` special-cases Enter on a section row, making Enter disagree with assignment and navigation.
+- `lua/gleb/find_action/palette.lua:214` starts the picker without moving the current match past the leading section row.
+- Headless probe from the rejected run: `ind=1 text=other actions` immediately after open.
+
 ## Capabilities
 
 ### New Capabilities
@@ -47,8 +56,8 @@ Depends: action-registry, picker-ui
 ## Impact
 
 - Code:
-  - New: `lua/gleb/find_action/`.
-  - Changed: `terminal/alacritty` (Cmd+Shift+A binding), `lua/gleb/ai/entry_keymaps.lua`, `settings/keymap.json` (adds `find_action.open`).
+  - New: `lua/gleb/find_action/`, `lua/gleb/ai/actions.lua`.
+  - Changed: `init.lua` (registers and loads the feature), `terminal/alacritty/keymaps_macos.toml` (Cmd+Shift+A binding), `lua/gleb/ai/entry_keymaps.lua`, `settings/keymap.json` (adds `find_action.open`).
 - **Tests.** The user asked for a full suite with visual verification, because the logic is complex:
   - **Unit:** ordering (recently used, curated, the hidden separator), the label mapping (lhs → physical label), and the conflict and choice outcomes.
   - **Integration, generated over every registered action:**
@@ -61,6 +70,7 @@ Depends: action-registry, picker-ui
     - real key presses: open, search, run, assign by pressing physical keys, use the new key, restart, use it again;
     - each step's screen (zellij dump) is compared with its approved render.
 - Plugins: none added beyond `picker-ui`. Core keymaps: **adds Cmd+Shift+A** and **removes Cmd+9 (99 menu)**.
+- The `Smart-splits resize keys are not remapped` scenario still holds because this change does not alter the `<A-H>`, `<A-J>`, `<A-K>`, or `<A-L>` mappings.
 - Out of scope:
   - tabs / Search Everywhere;
   - a shortcuts editor (remove or reset);

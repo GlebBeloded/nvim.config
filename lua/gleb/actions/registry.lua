@@ -20,6 +20,7 @@
 ---@field title string
 ---@field category string
 ---@field run fun(ctx: gleb.ActionContext)
+---@field mapping? fun() Direct mapping callback for actions that capture their own context
 ---@field modes? string[]
 ---@field ft? string
 ---@field when? fun(ctx: gleb.ActionContext): boolean
@@ -53,7 +54,7 @@ end
 ---@param ctx gleb.ActionContext
 ---@return boolean
 local function is_available(action, mode, filetype, ctx)
-	if action.modes and not vim.tbl_contains(action.modes, mode) then
+	if not vim.tbl_contains(action.modes or { "n" }, mode) then
 		return false
 	end
 	if action.ft and action.ft ~= filetype then

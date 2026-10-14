@@ -360,8 +360,9 @@ end
 --- Install recorders for `keys` that also push their hits to this runner.
 ---@param self e2e.Stack
 ---@param lhs string[]
-function M.record(self, lhs)
-	self:record(lhs)
+---@param passthrough? boolean also call each saved mapping callback
+function M.record(self, lhs, passthrough)
+	self:record(lhs, passthrough)
 	-- the runner's channel id as Neovim sees it (nvim_get_api_info is RPC-only)
 	local id = vim.rpcrequest(assert(self.channel, "Neovim not connected"), "nvim_get_api_info")[1]
 	self:lua("_G.shortcut_notify = ...", { id })

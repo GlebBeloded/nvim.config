@@ -8,7 +8,7 @@ Unlike other capabilities, these scenarios are not verified in a headless child 
 ## Requirements
 
 ### Requirement: Shortcut table
-The chain SHALL route every shortcut in the shortcut table (section "Shortcut table" below) as listed, with zellij in `normal` mode and the focused zellij pane running Neovim in normal mode. Cmd+Shift+F SHALL invoke `require("gleb.picker").grep_live`.
+The chain SHALL route every shortcut in the shortcut table (section "Shortcut table" below) as listed, with zellij in `normal` mode and the focused zellij pane running Neovim in normal mode. Cmd+9 SHALL have no normal-mode mapping. Cmd+Shift+F SHALL invoke `require("gleb.picker").grep_live`. Cmd+Shift+A SHALL send `\eA`, pass through zellij, arrive as `<M-A>`, and invoke `require("gleb.find_action").open`.
 
 #### Scenario: Alacritty bindings match the shortcut table
 - **WHEN** the effective Alacritty bindings (imports followed) are parsed
@@ -32,7 +32,7 @@ The chain SHALL route every shortcut in the shortcut table (section "Shortcut ta
 
 #### Scenario: Neovim mappings match the table
 - **WHEN** the full config is loaded, VeryLazy has fired, and `vim.fn.maparg(<received key>, "n", false, true)` is read for each row
-- **THEN** it matches the row's *Mapping* column, including Cmd+Shift+F invoking `require("gleb.picker").grep_live`
+- **THEN** it matches the row's *Mapping* column except that Cmd+9 has no mapping, including Cmd+Shift+F invoking `require("gleb.picker").grep_live` and Cmd+Shift+A invoking `require("gleb.find_action").open`
 
 ### Requirement: Collisions
 The chain SHALL have exactly the zellij `normal`-mode bindings in the collision table (section "Collision table" below) shadowing a global Neovim mapping (any mode): keys zellij consumes, and navigator keys whose written bytes differ from the key that was sent.
@@ -305,6 +305,17 @@ Cmd+O, Cmd+I, Cmd+D and Cmd+A SHALL have no Alacritty binding and no zellij `nor
 - **WHEN** recorders are set in Neovim normal mode for `<D-o>`, `<D-i>`, `<D-d>`, `<D-a>`, `<M-o>`, `<M-i>`, `<M-d>`, `<M-a>`, `o`, `i`, `d`, `a` and Cmd+O, Cmd+I, Cmd+D, Cmd+A are pressed in that order in the Alacritty window
 - **THEN** exactly `<D-o>`, `<D-i>`, `<D-d>`, `<D-a>` are recorded, in that order, and the Alacritty process is still running
 
+### Requirement: Find Action shortcut delivery
+Cmd+Shift+A SHALL open Find Action through a real zellij stack and from a real macOS key press in the sandbox VM.
+
+#### Scenario: Cmd+Shift+A opens Find Action through real zellij
+- **WHEN** Cmd+Shift+A bytes are sent through the real zellij stack to Neovim
+- **THEN** the Find Action palette opens
+
+#### Scenario: Cmd+Shift+A opens Find Action from a real key press
+- **WHEN** Cmd+Shift+A is posted to the sandbox Alacritty process as a real macOS key press
+- **THEN** the Find Action palette opens in Neovim
+
 ## Shortcut table
 Columns of the table the "Shortcut table" requirement refers to:
 - *Source* `chars`: an Alacritty `chars` binding sends the bytes verbatim. `kitty`: no binding; Alacritty's own encoding while zellij has pushed kitty keyboard flag 1 (zellij always does at startup).
@@ -325,6 +336,7 @@ Columns of the table the "Shortcut table" requirement refers to:
 | Cmd+/ | chars | `\e/` | pass | `<M-/>` | `gcc` |
 | Cmd+F | chars | `\ef` | ToggleFloatingPanes | — | — |
 | Cmd+Shift+F | chars | `\eF` | pass | `<M-F>` | `<Cmd>Telescope live_grep<CR>` |
+| Cmd+Shift+A | chars | `\eA` | pass | `<M-A>` | fn `require("gleb.find_action").open` |
 | Cmd+W | chars | `\ew` | pass | `<M-w>` | desc `Diagnostics: Next` |
 | Cmd+Shift+W | chars | `\eW` | pass | `<M-W>` | none |
 | Cmd+H | chars | `\x08` | navigator move_focus_or_tab left | `<C-H>` | fn `require("smart-splits").move_cursor_left` |

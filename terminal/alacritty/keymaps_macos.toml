@@ -49,6 +49,11 @@ key = "F"
 mods = "Command|Shift"
 
 [[keyboard.bindings]]
+chars = "\u001BA"
+key = "A"
+mods = "Command|Shift"
+
+[[keyboard.bindings]]
 chars = "\u001Bw"
 key = "W"
 mods = "Command"
