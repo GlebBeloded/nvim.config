@@ -171,6 +171,7 @@ loop-validate:
 # dry-run fixtures (.archon/workflows/<workflow>/fixtures/*.stubs.yaml): no AI, no run, ~13 s;
 # exec-code fixtures see the fixture-owned changes, never the live queue
 loop-test:
+	@.archon/scripts/loop_changed_test.sh
 	@LOG_LEVEL=error LOOP_CHANGES_DIR=.archon/workflows/work-queue/fixtures/changes $(ARCHON) workflow test
 
 fix: loop-setup # make fix BUG="what is wrong"  (or BUG=<openspec change id>)
