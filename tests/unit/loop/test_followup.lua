@@ -195,4 +195,22 @@ T["loop: Follow-up leaves no worktree when checkout fails"] = function()
 	eq(#matching(read_auto(repo, "openspec/changes/followup-x/proposal.md"), "^Adopt: "), 1)
 end
 
+T["loop: Rejected run drops a stale Unblocked section"] = function()
+	local proposal = { "## Why", "w", "", "## Unblocked", "use vim.empty_dict()", "", "## Impact", "- i" }
+	local repo = make_repo(proposal)
+	followup(repo)
+	local stale = read_auto(repo, "openspec/changes/x/proposal.md")
+	eq(
+		{ #matching(stale, "^## Unblocked$"), #matching(stale, "empty_dict"), #matching(stale, "^## Impact$") },
+		{ 0, 0, 1 }
+	)
+
+	repo = make_repo(proposal)
+	child.fn.writefile({ "## Blocked", "- pick (A) or (B)" }, vim.fs.joinpath(repo, "openspec/changes/x/tasks.md"))
+	git_ok({ "add", "-A" }, repo)
+	git_ok({ "commit", "-q", "-m", "blocked" }, repo)
+	followup(repo)
+	eq(#matching(read_auto(repo, "openspec/changes/x/proposal.md"), "^## Unblocked$"), 1)
+end
+
 return T

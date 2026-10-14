@@ -185,7 +185,10 @@ for _, capability in ipairs(capabilities) do
 end
 
 if #orphans > 0 then
-	out('\nORPHAN cases (name is not "<capability>: <scenario title>"):')
+	out(
+		'\nORPHAN cases (name is not "<capability>: <scenario title>"; name it after a scenario, or add that scenario'
+			.. " to openspec/changes/<change>/specs; never delete it):"
+	)
 	for _, orphan in ipairs(orphans) do
 		out("  %s", orphan)
 	end

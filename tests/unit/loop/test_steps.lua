@@ -166,6 +166,46 @@ T["loop: Trace counts scenarios an active change adds"] = function()
 	)
 end
 
+T["loop: Trace orphan message names the remedy"] = function()
+	local repo = H.tempdir(child)
+	write(repo, {
+		["openspec/specs/x/spec.md"] = "#### Scenario: base",
+		["tests/unit/x/test_x.lua"] = 'local T = MiniTest.new_set()\nT["x: base"] = function() end\nT["x: invented"] = function() end\nreturn T',
+	})
+	local nvim = { vim.v.progpath, "--clean", "--headless", "-u", vim.fs.joinpath(H.root, "tests/minimal_init.lua") }
+	local result = H.system(child, vim.list_extend(nvim, { "-l", vim.fs.joinpath(H.root, "tests/trace.lua") }), repo)
+	local output = result.stdout .. result.stderr
+	eq(result.code, 1, { fail_reason = output })
+	local remedy = "name it after a scenario, or add that scenario to openspec/changes/<change>/specs; never delete it"
+	eq(
+		{ output:find(remedy, 1, true) ~= nil, output:find("x: invented  (tests/unit/x/test_x.lua)", 1, true) ~= nil },
+		{ true, true }
+	)
+end
+
+T["loop: Context pack keeps only what the next task needs"] = function()
+	local repo = H.tempdir(child)
+	local artifacts = H.tempdir(child)
+	write(repo, {
+		["docs/workflow.md"] = "## Loop lessons\n\n## The loop\n",
+		["docs/guide.md"] = "# Guide\n\n## Module map\n\nmap body\n\n## Startup\n\nstartup body\n",
+		["lua/big.lua"] = "return 'big body'",
+		["tests/unit/x/test_x.lua"] = 'local H = "header"\nT["x: one"] = function()\n\tone_body()\nend\n\nT["x: two"] = function()\n\ttwo_body()\nend\n\nreturn T',
+		["openspec/changes/c/proposal.md"] = "## Why\nw\n\n## Unblocked\nstale guidance\n\n## Impact\n- i",
+		["openspec/changes/c/design.md"] = "## Context\nsee `lua/big.lua`",
+		["openspec/changes/c/tasks.md"] = "## 1. A\nScenarios: `x: one`\n- [ ] 1.1 test in `tests/unit/x/test_x.lua`, update the `docs/guide.md` module map",
+	})
+	eq(run("context_pack.py", repo, { INPUTS_CHANGE = "c", ARTIFACTS_DIR = artifacts }).code, 0)
+	local pack = table.concat(vim.fn.readfile(vim.fs.joinpath(artifacts, "context.md")), "\n")
+	local found = function(text)
+		return pack:find(text, 1, true) ~= nil
+	end
+	eq({ found('local H = "header"'), found("one_body()"), found("two_body()") }, { true, true, false })
+	eq({ found("map body"), found("startup body"), found("## Startup  (line ") }, { true, false, true })
+	eq({ found("- `lua/big.lua`"), found("big body") }, { true, false })
+	eq({ found("## Unblocked"), found("stale guidance"), found("## Impact") }, { false, false, true })
+end
+
 T["loop: Trace fails on a case name in two test files"] = function()
 	local repo = H.tempdir(child)
 	local case = 'local T = MiniTest.new_set()\nT["x: base"] = function() end\nreturn T'

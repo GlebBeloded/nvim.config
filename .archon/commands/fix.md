@@ -22,6 +22,9 @@ Fix exactly these findings and nothing else, smallest change first. Stay on the 
 never edit the change's proposal.md, .openspec.yaml or spec deltas unless a finding is about them (the
 gate lists such edits for the review), or a failing test pins a main-spec scenario this change intentionally
 contradicts: then add a MODIFIED delta restating that scenario to the new behaviour and update the test to the new THEN.
+Name each new regression test `<capability>: <scenario title>`: put it in the existing case of that scenario, or add a
+same-titled scenario (ADDED, or MODIFIED restating a main-spec one) to openspec/changes/$INPUTS.change/specs; never invent a case name
+the specs lack, and never fold or rename a case an earlier pass added (add its scenario instead: the gate counts a vanished case as dropped).
 An edited assertion must still prove its scenario's THEN; replacing a behaviour/callback check with metadata (desc, buffer) is weakening.
 Find the cause before editing. When the cause is not obvious from the log line (a race, state you cannot see), run one
 headless probe first (the scratch-file probe rule below) that logs the relevant state, and base the edit on its output.

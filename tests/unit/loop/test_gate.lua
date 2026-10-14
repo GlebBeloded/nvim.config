@@ -777,4 +777,68 @@ T["loop: Judge notes minor review findings on ship"] = function()
 	eq(escalation:find("No blocking findings", 1, true), nil)
 end
 
+T["loop: Verdict sends only blocking review findings to fix"] = function()
+	local repo = branch_repo({ ["README.md"] = "x" })
+	local artifacts = H.tempdir(child)
+	local findings = table.concat({
+		"1. [must-fix] lua/gleb/a.lua:3 drops the selection.",
+		"2. [minor] lua/gleb/a.lua:9 magic number.",
+		"Minor (non-blocking):",
+		"3. naming nit in tests/unit/a/test_a.lua.",
+	}, "\n")
+	local env = verdict_env(artifacts, { INPUTS_APPROVE = "false", INPUTS_REVIEW_FINDINGS = findings })
+	local rejected = loop_script("verdict.py", repo, env)
+	has(rejected.feedback, "review: 1. [must-fix] lua/gleb/a.lua:3 drops the selection.")
+	eq({ rejected.feedback:find("magic number", 1, true), rejected.feedback:find("naming nit", 1, true) }, { nil, nil })
+	eq(rejected.review_findings, findings)
+	local skipped = loop_script("verdict.py", repo, verdict_env(artifacts, { INPUTS_GREEN = "false" }))
+	eq(skipped.failed_gates, "tests")
+end
+
+T["loop: Exhausted judge quotes the last failures"] = function()
+	local repo = branch_repo({ ["README.md"] = "x" })
+	local feedback = "make check is red:\nFAIL trace\n  actions: Invented name  (tests/unit/a/test_a.lua)"
+	local env = { ARTIFACTS_DIR = H.tempdir(child), INPUTS_EXHAUSTED = "true", INPUTS_FAILED_GATES = "tests" }
+	local judge = loop_script("escalation.py", repo, vim.tbl_extend("force", env, { INPUTS_FEEDBACK = feedback }))
+	eq(judge.decision, "reject")
+	has(judge.reasons, "- last failures:\n  make check is red:\n  FAIL trace\n    actions: Invented name")
+	local workflow = read(vim.fs.joinpath(H.root, ".archon/workflows/nvim-deliver/nvim-deliver.yaml"))
+	has(workflow, "feedback: $build.output.feedback")
+end
+
+T["loop: Gate returns dropped cases to fix with the remedy"] = function()
+	local repo = branch_repo({ ["tests/unit/a/test_a.lua"] = 'T["a: old"] = function() end' })
+	write(repo, { ["tests/unit/a/test_a.lua"] = 'T["a: old"] = function() end\nT["a: new"] = function() end' })
+	local artifacts = H.tempdir(child)
+	local bin = fake_tool(H.tempdir(child), "make", "exit 0")
+	local env = { ARTIFACTS_DIR = artifacts, PATH = bin .. ":" .. vim.env.PATH }
+	loop_script("verdict.py", repo, verdict_env(artifacts))
+	write(repo, { ["tests/unit/a/test_a.lua"] = 'T["a: old"] = function() end' })
+	local gate = loop_script("gate.py", repo, env)
+	has(gate.failures, "during build: a: new (restore these cases under their names, or add a same-titled scenario")
+	local red = verdict_env(artifacts, { INPUTS_GREEN = "false", INPUTS_FAILURES = gate.failures })
+	local verdict = loop_script("verdict.py", repo, red)
+	eq({ verdict.done, verdict.failed_gates }, { false, "tests,rules" }, { fail_reason = verdict.feedback })
+	has(verdict.feedback, "restore these cases under their names")
+	local judge = loop_script("escalation.py", repo, { ARTIFACTS_DIR = artifacts })
+	eq(judge.decision ~= "ship", true, { fail_reason = judge.reasons })
+end
+
+T["loop: Fix prompt names regression tests after scenarios"] = function()
+	local fix = read(vim.fs.joinpath(H.root, ".archon/commands/fix.md")):gsub("%s+", " ")
+	has(fix, "Name each new regression test `<capability>: <scenario title>`")
+	has(
+		fix,
+		"add a same-titled scenario (ADDED, or MODIFIED restating a main-spec one) to openspec/changes/$INPUTS.change/specs"
+	)
+	has(fix, "never invent a case name the specs lack, and never fold or rename a case an earlier pass added")
+end
+
+T["loop: Implement tests mode-dependent behaviour in the mode"] = function()
+	local implement = read(vim.fs.joinpath(H.root, ".archon/commands/implement.md")):gsub("%s+", " ")
+	has(implement, "Mode-dependent behaviour (Visual, Insert, operator-pending)")
+	has(implement, "through the real mapping with the mode still active")
+	has(implement, "never after `<Esc>`")
+end
+
 return T

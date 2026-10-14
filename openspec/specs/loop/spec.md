@@ -900,3 +900,41 @@ The work-queue spec gate (`spec_gate.py`) SHALL print `{ok, log}` and exit 0. A 
 #### Scenario: Agent prompts and context pack point probes at make probe
 - **WHEN** implement.md, fix.md, explore-bug.md and a built context pack are read
 - **THEN** each names `make probe` and says LSP restart and neo-tree renders are async: wait for the end state, not for attachment
+
+### Requirement: Rejections say what to fix
+A red pass SHALL tell the next fix pass, and a rejection the re-queued run, what to fix: verdict.py sends only blocking review findings to fix and never lists a skipped review as a failed gate; an exhausted judge quotes the first lines of the last failures; gate.py names dropped cases with their remedy while the judge still never ships them; followup.py drops a stale `## Unblocked` section.
+
+#### Scenario: Verdict sends only blocking review findings to fix
+- **WHEN** verdict.py runs on a pass the review rejected with one `[must-fix]` finding and `[minor]` ones, and on a red pass the review skipped
+- **THEN** the first feedback holds the must-fix finding and no minor one (review_findings keeps them all), and the second `failed_gates` has no `review_skipped`
+
+#### Scenario: Exhausted judge quotes the last failures
+- **WHEN** escalation.py runs with `exhausted` true and a feedback holding a make check failure
+- **THEN** its reasons have a `- last failures:` item quoting the first lines of that failure, indented
+
+#### Scenario: Gate returns dropped cases to fix with the remedy
+- **WHEN** gate.py runs on attempt 1 after the fix pass dropped a case the previous pass added, then verdict.py on that result, then escalation.py with the case still gone
+- **THEN** failures name the case with "restore these cases under their names, or add a same-titled scenario", the verdict is not done and its `failed_gates` has `rules`, and the judge does not ship
+
+#### Scenario: Rejected run drops a stale Unblocked section
+- **WHEN** followup.py re-queues an active change whose proposal has an `## Unblocked` section and no `## Blocked` section is left, and one whose tasks.md still has a `## Blocked` section
+- **THEN** the first proposal has no `## Unblocked` section and the second keeps it
+
+### Requirement: Agents get narrow context and test rules
+The context pack SHALL hold only what the next task needs, and the prompts and trace SHALL say how a regression test is named: after a scenario of the change, never invented, folded or deleted; a test of mode-dependent behaviour SHALL drive the real mapping with the mode still active.
+
+#### Scenario: Context pack keeps only what the next task needs
+- **WHEN** context_pack.py runs for a change whose next task names one scenario of a test file with two cases and a doc section, whose design names another file, and whose proposal has an `## Unblocked` section and no Blocked one
+- **THEN** the pack holds the test file's header and named case only, the doc's named section and an outline of the rest, lists the other file by path without its content, and has no `## Unblocked` section
+
+#### Scenario: Trace orphan message names the remedy
+- **WHEN** `tests/trace.lua` runs on a test case named after no scenario
+- **THEN** it exits 1 and the ORPHAN heading says to name it after a scenario or add that scenario to `openspec/changes/<change>/specs`, never delete it
+
+#### Scenario: Fix prompt names regression tests after scenarios
+- **WHEN** `.archon/commands/fix.md` is read
+- **THEN** it names each new regression test `<capability>: <scenario title>`, reusing a scenario's case or adding a same-titled scenario to the change's spec delta, and forbids inventing a case name or folding or renaming a case an earlier pass added
+
+#### Scenario: Implement tests mode-dependent behaviour in the mode
+- **WHEN** `.archon/commands/implement.md` is read
+- **THEN** it says a Visual, Insert or operator-pending behaviour is tested through the real mapping with the mode still active, never after `<Esc>`

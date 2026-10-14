@@ -6,42 +6,27 @@ re-queued; the run stops until the host is fixed), `ask` for breaking changes (t
 `ship`. A `## Stuck` section (a behaviour still red after both attempts, no decision needed) never asks:
 an exhausted loop with it is rejected as any other, its text quoted for the re-queued run. `notes` (flaky cases, `loop:` notes) are listed, never decide; the
 last review's findings follow a non-ship decision, so a re-queued change says what to fix; on ship its
-minor (non-blocking) findings are listed as notes for the auditor. A test case the build added and then
+minor (non-blocking) findings are listed as notes for the auditor. An exhausted loop's reasons quote the first
+lines of the last pass's failures (`feedback`), so the re-queued `## Rejected run` is actionable. A test case the build added and then
 removed (gate.py's record) and still missing is asked about. Writes a
 short escalation.md and prints {decision, escalate, reasons}.
 """
 
 import json
 import os
-import re
 from pathlib import Path
 
 from blocked import blocked_text, loop_notes, stuck_text
+from findings import minor_findings
 from integrity import breaking_changes, hard_rule_violations, still_dropped
 from lessons import persist_lessons
 
 FINDINGS_CHARS = 1500  # indented: no finding line reads as a markdown heading of the proposal
-MINOR_CHARS = 300  # per minor finding listed as a note
-MINOR_MARK = re.compile(r"\[(minor|nit|non-blocking)\]|\b(minor|nit|non-blocking)\b\s*[:)]", re.IGNORECASE)
-MINOR_HEAD = re.compile(r"^\W*(minor|nits?|non-blocking)\b[^:]*:$", re.IGNORECASE)  # "Minor (non-blocking):"
-BLOCKING_HEAD = re.compile(r"^\W*(\[?must[- ]fix|\[?blocking)\b", re.IGNORECASE)
+FAILURE_LINES = 12  # of the last pass's failures, quoted under an exhausted loop's reason
 
 
 def flag(name: str) -> bool:
     return os.environ.get("INPUTS_" + name.upper(), "").strip().lower() == "true"
-
-
-def minor_findings(text: str) -> list[str]:
-    """Review finding lines marked minor or non-blocking (`[minor]`, `minor:`), or under a `Minor …:` heading."""
-    found, under = [], False
-    for line in (raw.strip() for raw in text.splitlines()):
-        if MINOR_HEAD.match(line):
-            under = True
-        elif BLOCKING_HEAD.match(line):
-            under = False
-        elif line and (under or MINOR_MARK.search(line)):
-            found.append(line[:MINOR_CHARS])
-    return found
 
 
 artifacts = Path(os.environ.get("ARTIFACTS_DIR", "."))
@@ -65,6 +50,11 @@ summary = "\n".join("- " + r for r in reject + ask) or "- none"
 stuck = stuck_text(os.environ.get("INPUTS_CHANGE", ""))
 if stuck and decision != "ship":  # the re-queued run's fix pass starts from these attempts
     summary += "\n- stuck:\n" + "\n".join("  " + line for line in stuck.splitlines())
+# the last pass's failures (gate, hard rules) as the fix pass got them; stuck and review text are quoted apart
+failures = [p for p in os.environ.get("INPUTS_FEEDBACK", "").split("\n\n") if not p.startswith(("stuck (", "review: "))]
+failed = [line for line in "\n".join(failures).splitlines() if line.strip()][:FAILURE_LINES]
+if failed and flag("exhausted"):  # the re-queued run's `## Rejected run` says what was still red
+    summary += "\n- last failures:\n" + "\n".join("  " + line for line in failed)
 findings = os.environ.get("INPUTS_REVIEW_FINDINGS", "").strip()[:FINDINGS_CHARS]
 if findings and decision != "ship":  # followup.py writes the reasons under `## Rejected run`: say what to fix
     summary += "\n- review findings:\n" + "\n".join("  " + line for line in findings.splitlines())

@@ -1,7 +1,7 @@
 """After a rejected run: re-queue the work on `auto` (under the ship lock) so `make queue`/`make drain`
 picks it up again from the kept branch. When `<change>` is still active on `auto`, its proposal gets
 `Adopt: <branch>` and a `## Rejected run` section with the judge's reasons (no second change for the
-same work); otherwise a follow-up change `followup-<change>` is queued. No AI. Prints {queued, change}.
+same work; a stale `## Unblocked` section, its Blocked gone, is dropped); otherwise a follow-up change `followup-<change>` is queued. No AI. Prints {queued, change}.
 """
 
 import json
@@ -11,6 +11,7 @@ import shutil
 import subprocess
 import tempfile
 
+from blocked import blocks
 from shiplock import acquire_lock, lock_path, release_lock
 
 BASE = os.environ.get("BASE_BRANCH") or "auto"
@@ -77,11 +78,16 @@ def set_adopt(text: str, branch: str) -> str:
     return "\n".join(lines) + "\n"
 
 
-def set_rejected(text: str, branch: str) -> str:
-    """`text` with its `## Rejected run` section (if any) replaced by one for `branch` at the end."""
-    text = re.sub(r"^## Rejected run\n(?:(?!## ).*\n?)*", "", text, flags=re.M).rstrip(
-        "\n"
-    )
+def drop_section(text: str, title: str) -> str:
+    return re.sub(rf"^## {title}\n(?:(?!## ).*\n?)*", "", text, flags=re.M)
+
+
+def set_rejected(text: str, branch: str, blocked: bool = False) -> str:
+    """`text` with its `## Rejected run` section (if any) replaced by one for `branch` at the end, and
+    its `## Unblocked` guidance dropped once no `## Blocked` section is left for it to resolve."""
+    text = drop_section(text, "Rejected run")
+    text = text if blocked else drop_section(text, "Unblocked")
+    text = text.rstrip("\n")
     return f"{text}\n\n## Rejected run\nRun on `{branch}` was rejected by the judge:\n{reasons}\n"
 
 
@@ -89,8 +95,10 @@ def requeue(root: str, branch: str) -> None:
     path = os.path.join(root, "openspec/changes", change, "proposal.md")
     with open(path) as f:
         text = f.read()
+    tasks = os.path.join(root, "openspec/changes", change, "tasks.md")
+    blocked = blocks(text) or (os.path.isfile(tasks) and blocks(open(tasks).read()))
     with open(path, "w") as f:
-        f.write(set_rejected(set_adopt(text, branch), branch))
+        f.write(set_rejected(set_adopt(text, branch), branch, blocked))
 
 
 def registered(path: str) -> bool:
