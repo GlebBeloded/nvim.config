@@ -18,9 +18,9 @@ Scenarios: `picker: Compact picker matches reference screenshot`, `picker: Narro
 
 ## 4. Replace the selection interface
 Scenarios: `select: Code action menu receives picker mappings`, `select: Selection accepts omitted options`, `select: Cancelling a code action completes selection`, `select: Code action popup fits editor width`, `select: Selection previews the current item`
-- [ ] 4.1 Write or update the five selection tests in tests/integration/select/test_picker.lua and see them fail
-- [ ] 4.2 Implement `vim.ui.select` and code actions on the shared picker, preserving width, mappings and exactly-once cancellation while supporting formatting and previews; remove the nui selection implementation
-- [ ] 4.3 Run `make test FILE=tests/integration/select/test_picker.lua` with `CASE="Code action menu receives picker mappings"`, `CASE="Selection accepts omitted options"`, `CASE="Cancelling a code action completes selection"`, `CASE="Code action popup fits editor width"` and `CASE="Selection previews the current item"` and see them pass
+- [x] 4.1 Write or update the five selection tests in tests/integration/select/test_picker.lua and see them fail
+- [x] 4.2 Implement `vim.ui.select` and code actions on the shared picker, preserving width, mappings and exactly-once cancellation while supporting formatting and previews; remove the nui selection implementation
+- [x] 4.3 Run `make test FILE=tests/integration/select/test_picker.lua` with `CASE="Code action menu receives picker mappings"`, `CASE="Selection accepts omitted options"`, `CASE="Cancelling a code action completes selection"`, `CASE="Code action popup fits editor width"` and `CASE="Selection previews the current item"` and see them pass
 
 ## 5. Move live grep to the shared picker
 Scenarios: `keymaps: Alt-F opens live grep`
@@ -52,3 +52,5 @@ Scenarios: `ai: Keymaps exist after VeryLazy`, `ai: Missing 99 is tolerated`, `a
 
 - Row visibility uses named `show_*` options and built-in `Comment`/`PmenuExtra`/`PmenuKind` groups so responsive callers can hide fields while the frame task remains responsible for palette-backed links.
 - Normal picker geometry is a centered 72-by-8-cell frame, while editors below 15 lines use every row, matching the approved wide render and preserving results on short screens.
+- Selection items retain their original value and index beside formatted row text so matching uses what users see while callbacks receive the original item.
+- Picker aliases use MiniPick custom actions for Tab, Shift-Tab, Control-C and Space because each built-in action accepts only one configurable key.
