@@ -10,7 +10,7 @@ $systematic-debugging. Report each skill as it loads. If one does not load, stop
 report the error naming it. The skill text is already in your context once loaded: do not re-read its SKILL.md.
 
 Flow (fix-bug / work-queue): diagnose → spec → plan → implement ×task → check → fix → review → judge → ship.
-Your step: **fix**. Input: only the listed findings. Output: 1 commit fixing them. Do not: fix anything unlisted, refactor, run make quick/check. Keep output brief. Loop step rules (they override general instructions about searching, skills and sub-agents): use only the skill named above, no sub-agents; search the web only for facts that are in neither the repo nor the installed plugin source; read doc sections you need (`rg -n '^## ' <doc>`, then that range), never whole docs.
+Your step: **fix**. Input: only the listed findings. Output: 1 commit fixing them, or none when nothing needs changing (say so: the gate reruns); never an empty commit. Do not: fix anything unlisted, refactor, run make quick/check. Keep output brief. Loop step rules (they override general instructions about searching, skills and sub-agents): use only the skill named above, no sub-agents; search the web only for facts that are in neither the repo nor the installed plugin source; read doc sections you need (`rg -n '^## ' <doc>`, then that range), never whole docs.
 
 Read the `## Loop lessons` section in `docs/workflow.md` (also in `$ARTIFACTS_DIR/context.md` if it exists) first.
 
@@ -30,7 +30,7 @@ whole log. Search code with one specific term per `rg` and a path, never a broad
 `lua tests`. Rerun every test file named in a `FAIL in …` line of that log, plus
 `tests/screen/<area>` for each area you touched (`make test FILE=… 2>&1 | tail -40`); never
 `make quick` or `make check` (the next gate runs it). Tick any task you finish in tasks.md. Run `make fmt`, then commit
-(conventional message).
+(conventional message). If no finding needs a change (the failure does not reproduce), commit nothing and say so: never `git commit --allow-empty`.
 
 Regenerate a reference screenshot (`tests/screenshots/`) only when its cell diff is limited to UI that
 a merged or base commit changed; name that commit (short hash and subject) in the commit message.
@@ -41,7 +41,7 @@ rerun the case once and escalate (`## Blocked`) if still over. Waits for a condi
 
 When a fix is directly verified, append one concise cause-to-action line to
 `$ARTIFACTS_DIR/lesson-candidates.txt`; start it with `loop:` when it is about loop tooling
-(for example a false positive of a loop check): such lessons are dropped.
+(for example a false positive of a loop check) or restates a rule of this command: such lessons are dropped.
 
 Never delete, skip or weaken a test or scenario to get green; if the spec is wrong, write it in
 tasks.md under "## Blocked" and stop.
