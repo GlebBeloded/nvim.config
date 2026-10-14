@@ -28,7 +28,15 @@ A `## Stuck` section an earlier task left is the fix passes' (the pack skips its
 tasks.md, run `make fmt` and `make self-check CHANGE=$INPUTS.change` (the gate's lint, types and strict validation of the change and of the trial archive; a green `make specs` or `openspec validate --specs` does not count) and fix what it reports (red only from base or loop tooling, not this change: commit anyway and append a `loop: …` line to `$ARTIFACTS_DIR/loop-notes.md`), commit with `git add -A <touched files> openspec/changes/$INPUTS.change` (conventional message), once. Mode-dependent behaviour (Visual, Insert, operator-pending): the test drives the invocation path through the real mapping with the mode still active (e.g. `vjj` then the mapped keys), never after `<Esc>` or with marks set first. Run only that test:
 `make test FILE=tests/<layer>/<capability>/test_x.lua CASE="…" 2>&1 | tail -40`. Never run
 `make quick` or `make check` (the gate after the task loop runs it once). Keep tool output short: read
-file ranges, not whole files; no full logs. Follow the conventions in docs/architecture.md.
+file ranges, not whole files; no full logs. Follow the conventions in docs/architecture.md: the pack inlines its
+`## Conventions` and an index of tests/helpers.lua, so do not re-read either whole (read a helper's range when you call it).
+Uncommitted spec artifacts in the change folder go into your commit (the `openspec/changes/$INPUTS.change` path above).
+
+A new or regenerated reference screenshot (`tests/screenshots/`) of a visible-UI change must match design.md's
+Proposed render (layout, borders, alignment, clipping) cell for cell where the render shows them; never bless output that
+differs. If the code cannot draw it yet because a foundation task (an earlier group: the frame, the layout) is not done,
+implement that task first, in this pass (the one exception to "a task the pack does not list"; tick its boxes once its
+test passes), rather than accepting the current output.
 
 When this task corrects a failure from the previous pass (pack section "Last gate failures") and the
 correction is directly verified, append one concise cause-to-action line to
