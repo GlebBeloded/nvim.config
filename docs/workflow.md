@@ -51,6 +51,7 @@ input, output and limits). Scripts do everything that needs no judgment:
 |---|---|---|---|
 | diagnose (fix) / brainstorm (feature) | agent | `superpowers:systematic-debugging` / `superpowers:brainstorming` | `root-cause.md` / `idea.md`, a few lines |
 | spec | agent | `openspec-propose` (queued change: `openspec-continue-change`) | change folder + JSON |
+| pinned (queued change; fix-bug: spec runs it) | script `pinned.py` | none | main-spec scenarios that name a symbol the change touches (proposal What Changes/Impact, branch diff) with no delta and no `## Impact` line; spec gives each a MODIFIED delta or an Impact line, the spec gate and `gate.py` (a hard rule) run `--check` |
 | plan (only when spec wrote no tasks) | agent, low effort | `superpowers:writing-plans` | `tasks.md` |
 | pack | script `context_pack.py` | none | `context.md`: next task, change, named files, lessons, last failures; `has_task` (false skips implement) |
 | implement, once per task (one session for ≤ 4 tasks) | agent, fresh | `superpowers:test-driven-development` | 1 commit per task, ticked |

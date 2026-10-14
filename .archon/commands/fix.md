@@ -20,7 +20,10 @@ $LOOP_PREV.verdict.output.feedback
 
 Fix exactly these findings and nothing else, smallest change first. Stay on the listed findings:
 never edit the change's proposal.md, .openspec.yaml or spec deltas unless a finding is about them (the
-gate lists such edits for the review). Find the cause before editing.
+gate lists such edits for the review), or a failing test pins a main-spec scenario this change intentionally
+contradicts: then add a MODIFIED delta restating that scenario to the new behaviour and update the test to the new THEN.
+An edited assertion must still prove its scenario's THEN; replacing a behaviour/callback check with metadata (desc, buffer) is weakening.
+Find the cause before editing.
 Read only the latest check log, the `full log:` path in the findings (never a `check-*.log` glob):
 search it with `rg -n 'FAIL in' <log>` and `rg -n -C 3 '<pattern>' <log>` (at most `-C 3`), not the
 whole log. Search code with one specific term per `rg` and a path, never a broad multi-word `rg` over

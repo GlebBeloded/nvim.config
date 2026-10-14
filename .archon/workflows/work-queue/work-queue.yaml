@@ -103,14 +103,20 @@ nodes:
     when: "$blocked.output.blocked == true"
 
   # --- Specify: complete a queued proposal ------------------------------------------------------------
+  - id: pinned # main-spec scenarios naming a symbol the change touches, with no delta or Impact line (no AI)
+    bash: python3 .archon/scripts/pinned.py $pick.output.change # LOOP_CHANGES_DIR: fixtures' own changes
+    depends_on: [pick, adopted-state, blocked]
+    when: "$pick.output.found == true && $adopted-state.output.archived == false && $adopted-state.output.tasks_done == false && $blocked.output.blocked == false"
+
   - id: complete
     command: queue-spec
     context: fresh # reads its input artifact; no carried-over session
-    depends_on: [pick, skills-check, adopted-state, blocked]
+    depends_on: [pick, skills-check, adopted-state, blocked, pinned]
     when: "$pick.output.found == true && $adopted-state.output.archived == false && $adopted-state.output.tasks_done == false && $blocked.output.blocked == false"
     with:
       change: $pick.output.change
       adopted: $adopt.output.summary
+      pinned: $pinned.output
     skills: [openspec-continue-change]
     output_format:
       type: object
@@ -120,7 +126,7 @@ nodes:
       required: [visible_ui, architecture]
 
   - id: spec-gate
-    bash: openspec validate $pick.output.change --strict --no-interactive && python3 .archon/scripts/spec_trial.py $pick.output.change && python3 .archon/scripts/scenarios.py --unknown $pick.output.change # main specs after a trial archive
+    bash: openspec validate $pick.output.change --strict --no-interactive && python3 .archon/scripts/spec_trial.py $pick.output.change && python3 .archon/scripts/scenarios.py --unknown $pick.output.change && python3 .archon/scripts/pinned.py --check $pick.output.change # main specs after a trial archive; pins planned
     depends_on: [complete, adopted-state, blocked]
     trigger_rule: none_failed_min_one_success # complete is skipped when the adopted tasks are all ticked
     when: "$adopted-state.output.archived == false && $blocked.output.blocked == false"
