@@ -12,7 +12,7 @@ import pathlib
 import subprocess
 
 from blocked import blocked_text
-from integrity import CASE_SNAPSHOT, hard_rule_violations, plan_files, tree_case_names
+from integrity import CASE_SEEN, CASE_SNAPSHOT, hard_rule_violations, plan_files, tree_case_names
 from lessons import drop_overturned
 
 MAX_ATTEMPTS = 3
@@ -61,6 +61,7 @@ drop_overturned(artifacts, "review" in gates and not gates["review"])  # lessons
 # the next fix pass starts here: gate.py compares the change's planning files against this snapshot
 (artifacts / "plan-snapshot.json").write_text(json.dumps(plan_files(os.environ.get("INPUTS_CHANGE", ""))))
 (artifacts / CASE_SNAPSHOT).write_text(json.dumps(sorted(tree_case_names())))  # gate.py: a case the next pass drops
+(artifacts / CASE_SEEN).unlink(missing_ok=True)  # the snapshot holds them now; the next pass's runs start afresh
 feedback += [f"verify: {value('verify_findings', '')}" if int(value("critical", -1)) > 0 and value("verify_findings", "") else ""]
 feedback += [f"review: {value('review_findings', '')}" if value("approve", False) is not True and value("review_findings", "") else ""]
 flaky = value("flaky", []) or []

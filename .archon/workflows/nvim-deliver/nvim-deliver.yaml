@@ -110,14 +110,15 @@ nodes:
               attempt: { type: integer }
               failures: { type: string }
               flaky: { type: array, items: { type: string } } # failed, then passed on a serial rerun
-            required: [green, spec_ok, tasks_done, untested, attempt, failures]
+              blocked: { type: boolean } # a `## Blocked` change: red at once, never checked or reviewed
+            required: [green, spec_ok, tasks_done, untested, attempt, failures, blocked]
 
         - id: review # consistency, scope creep, test integrity, reuse
           command: review
           provider: claude # cross-model review
           context: fresh
           depends_on: [gate]
-          when: "$gate.output.green == true && $gate.output.spec_ok == true && $gate.output.untested == 0"
+          when: "$gate.output.blocked == false && $gate.output.green == true && $gate.output.spec_ok == true && $gate.output.untested == 0"
           skills: [superpowers:requesting-code-review]
           output_format:
             type: object

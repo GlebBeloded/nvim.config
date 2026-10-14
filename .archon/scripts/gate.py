@@ -1,4 +1,5 @@
-"""Test gate for one build iteration. Hard rules (integrity.py, then pinned.py on the proposal and branch diff) first: a violation is red at once, with
+"""Test gate for one build iteration. A change with a `## Blocked` section (blocked.py, not only `loop:` items) is red at once
+with `blocked` true: no make check and no review, since it never ships. Hard rules (integrity.py, then pinned.py on the proposal and branch diff) first: a violation is red at once, with
 no make check and no review. When only the `test`, `test-readiness` and e2e layers fail, each failing
 case is rerun once, serially (e2e only when it failed on sandbox infra alone, with no `FAIL in` case: one
 `make e2e E2E=1`): all passing makes the check green with them listed as `flaky` (a note, not a finding). A test case the previous pass had and that is now gone (on base neither:
@@ -15,6 +16,7 @@ import subprocess
 import re
 import sys
 
+from blocked import blocked_text
 from check_log import failed_targets, failing_cases, sections, strip_ansi, summarize
 from integrity import hard_rule_violations, plan_edits, record_dropped
 from pinned import pinned
@@ -75,12 +77,15 @@ def record_fix_scope() -> None:
         scope.write_text("fix pass edited planning files (allowed only when a listed finding needs it): " + ", ".join(edits) + "\n")
 
 
-def red(failures: str) -> None:
+def red(failures: str, blocked: bool = False) -> None:
     out = {"green": False, "spec_ok": True, "tasks_done": True, "untested": 0, "attempt": attempt, "failures": failures, "flaky": []}
-    print(json.dumps(out))
+    print(json.dumps({**out, "blocked": blocked}))
     sys.exit(0)
 
 
+blocked = blocked_text(change)
+if blocked:  # verdict ends the loop on it and the judge asks: checking or reviewing it is wasted
+    red("blocked: " + blocked, blocked=True)
 record_fix_scope()
 violations = hard_rules()
 if violations:  # never shipped: a full make check and a review would be wasted on it
@@ -178,6 +183,7 @@ print(
             "attempt": attempt,
             "failures": "\n\n".join(failures),
             "flaky": flaky,
+            "blocked": False,
         }
     )
 )

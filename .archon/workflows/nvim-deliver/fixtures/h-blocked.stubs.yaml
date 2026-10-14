@@ -19,7 +19,7 @@ plan-gate: "change blocked-build is valid"
 pack: { has_task: false, context: context.md }
 implement: "MUST-NOT-RUN"
 fix: "MUST-NOT-RUN"
-gate: { green: false, spec_ok: true, tasks_done: false, untested: 0, attempt: 1, failures: "make check red" }
+gate: { green: false, spec_ok: true, tasks_done: false, untested: 0, attempt: 1, failures: "blocked: tasks.md: ## Blocked", blocked: true }
 review: "MUST-NOT-RUN"
 escalation: { decision: ask, escalate: true, reasons: "- blocked: tasks.md: ## Blocked\nloop: fixture tooling failure the fix step cannot repair\nfixture bound conflict the fix step cannot resolve: pick (A) or (B)" }
 ship: "MUST-NOT-RUN"

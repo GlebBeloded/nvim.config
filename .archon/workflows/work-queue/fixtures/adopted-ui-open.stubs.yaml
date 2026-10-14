@@ -17,7 +17,7 @@ deliver__plan-check: { needed: false, has_change: true }
 deliver__plan-gate: "valid"
 pack: { has_task: true, context: context.md }
 implement: "task 1 done"
-gate: { green: true, spec_ok: true, tasks_done: true, untested: 0, attempt: 1, failures: "" }
+gate: { green: true, spec_ok: true, tasks_done: true, untested: 0, attempt: 1, failures: "", blocked: false }
 review: { approve: true, findings: "", weakened_scenario: false, weakened_test: false }
 deliver__escalation: { decision: ship, escalate: false, reasons: "- none" }
 deliver__ship: { merged: true, conflict: false, branch: loop/adopted-ui-open, commit: abc123 }

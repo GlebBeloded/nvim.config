@@ -4,12 +4,15 @@
 --   nvim -u tests/minimal_init.lua -l tests/parallel.lua [layer[,layer]]
 -- JOBS defaults to cores - 2. Cases are balanced by the durations of earlier
 -- runs (.tests/timings.json); every worker isolates itself (tests/helpers.lua),
--- so workers share no temp paths.
+-- so workers share no temp paths. With ARTIFACTS_DIR set (a loop run), the
+-- collected case names are added to $ARTIFACTS_DIR/case-seen.json, so the
+-- gate sees a case added and removed again within one build pass.
 
 local MiniTest = require("mini.test")
 local runner = require("tests.runner")
 
 local TIMINGS = ".tests/timings.json"
+local CASE_SEEN = "case-seen.json" -- .archon/scripts/integrity.py reads it
 local DEFAULT_MS = 500
 
 ---@class parallel.Result
@@ -45,6 +48,49 @@ local function write_timings(timings, results)
 	end
 	vim.fn.mkdir(vim.fs.dirname(TIMINGS), "p")
 	vim.fn.writefile({ vim.json.encode(timings) }, TIMINGS)
+end
+
+---@class parallel.SeenCase
+---@field file string
+---@field case string
+
+---@param path string
+---@return parallel.SeenCase[]
+local function read_seen(path)
+	local ok, data = pcall(function()
+		return vim.json.decode(table.concat(vim.fn.readfile(path), "\n"))
+	end)
+	return ok and type(data) == "table" and data or {}
+end
+
+---@param entry parallel.SeenCase
+---@return string
+local function seen_key(entry)
+	return entry.file .. "\0" .. entry.case
+end
+
+--- Add each collected case (file, last name key) to $ARTIFACTS_DIR/case-seen.json; no-op outside a loop run.
+---@param cases table[]
+local function record_seen(cases)
+	local dir = vim.env.ARTIFACTS_DIR
+	if not dir or dir == "" or vim.fn.isdirectory(dir) == 0 then
+		return
+	end
+	local path = vim.fs.joinpath(dir, CASE_SEEN)
+	local seen, keys = read_seen(path), {}
+	for _, entry in ipairs(seen) do
+		keys[seen_key(entry)] = true
+	end
+	for _, case in ipairs(cases) do
+		local entry = { file = case.desc[1], case = case.desc[#case.desc] }
+		if not keys[seen_key(entry)] then
+			keys[seen_key(entry)] = true
+			table.insert(seen, entry)
+		end
+	end
+	local tmp = path .. "." .. vim.fn.getpid()
+	vim.fn.writefile({ vim.json.encode(seen) }, tmp)
+	vim.uv.fs_rename(tmp, path)
 end
 
 --- Longest-processing-time-first: each case goes to the least loaded shard.
@@ -157,6 +203,7 @@ local function main()
 		io.write("No test cases matched\n")
 		return 1
 	end
+	record_seen(cases)
 	local jobs = tonumber(vim.env.JOBS) or math.max(1, vim.uv.available_parallelism() - 2)
 	jobs = math.min(jobs, #cases)
 	local timings = read_timings()

@@ -15,6 +15,11 @@ Read `$ARTIFACTS_DIR/context.md` first: it holds the `## Loop lessons` section o
 the next task, the root cause's `## Evidence`, the change artifacts and the files tasks.md names. Open other files only when the task
 needs them; do not survey the repo, and do not re-read plugin source the Evidence already covers (read a cited range only to edit near it).
 Production code (`lua/`) never uses timers or sleeps to win a race with a plugin's internals unless the proposal's `## Decision` allows it.
+Find the cause before editing code. When it is not obvious (a race, state you cannot see), run one headless probe first
+(the scratch-file probe rule below) that logs the relevant state, and base the edit on its output. At most 2 implementation
+attempts per task (an edit plus rerunning its test): if the second still fails, revert only the non-test edits (`lua/` and
+other code; keep the new red test), write `## Blocked` in tasks.md with the probe output and both attempts, commit the failing
+test together with tasks.md (a blocked change never ships), and stop.
 
 Change: openspec/changes/$INPUTS.change/ (the pack quotes proposal, specs, design and tasks.md)
 

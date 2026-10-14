@@ -12,7 +12,7 @@ plan-check: { needed: false, has_change: true }
 plan-gate: "change demo-change is valid"
 pack: { has_task: true, context: context.md }
 implement: "task 1 done"
-gate: { green: false, spec_ok: true, tasks_done: true, untested: 0, attempt: 1, failures: "FAIL tests/unit/x_spec.lua: expected 1, got 2" }
+gate: { green: false, spec_ok: true, tasks_done: true, untested: 0, attempt: 1, failures: "FAIL tests/unit/x_spec.lua: expected 1, got 2", blocked: false }
 review: "MUST-NOT-RUN"
 escalation: { decision: ship, escalate: false, reasons: "- none" }
 ship: { merged: true, conflict: false, branch: loop/demo-change, commit: abc123 }
