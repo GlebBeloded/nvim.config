@@ -74,7 +74,7 @@ end
 ---@return string[]
 local function choose(key)
 	open_conflict_view()
-	child.api.nvim_input(key)
+	child.api.nvim_input((key:gsub("<leader>", child.g.mapleader)))
 	child.wait(NO_CONFLICT_MARKER, ASYNC_MS)
 	return working_lines()
 end
@@ -82,22 +82,22 @@ end
 local T = MiniTest.new_set({ hooks = { post_once = child.stop } })
 
 T["git: Cmd+O chooses ours"] = function()
-	eq(choose("<D-o>"), { "ours" })
+	eq(choose("<leader>co"), { "ours" })
 	eq(conflict_resolved(), true)
 end
 
 T["git: Cmd+I chooses theirs"] = function()
-	eq(choose("<D-i>"), { "theirs" })
+	eq(choose("<leader>ct"), { "theirs" })
 	eq(conflict_resolved(), true)
 end
 
 T["git: Cmd+D chooses base"] = function()
-	eq(choose("<D-d>"), { "base" })
+	eq(choose("<leader>cb"), { "base" })
 	eq(conflict_resolved(), true)
 end
 
 T["git: Cmd+A chooses all"] = function()
-	eq(choose("<D-a>"), { "ours", "base", "theirs" })
+	eq(choose("<leader>ca"), { "ours", "base", "theirs" })
 	eq(conflict_resolved(), true)
 end
 
