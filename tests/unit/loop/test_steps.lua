@@ -464,6 +464,8 @@ T["loop: Review lists every must-fix in one pass"] = function()
 		"check every unit that implements it (every adapter, caller or plugin integration, not a sample",
 		"list all `[must-fix]` findings at once",
 		"says why that pass missed it",
+		"Check each requirement across its entry points (keymap, button `<CR>`, command), data states (empty, populated)",
+		"and views/events (main, alternate views, move, resize), with one `make probe` per relevant cell",
 	}) do
 		eq(review:find(needle, 1, true) ~= nil, true, { fail_reason = needle })
 	end

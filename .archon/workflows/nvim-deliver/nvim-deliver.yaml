@@ -227,6 +227,7 @@ nodes:
               blocked_passes: { type: integer } # consecutive passes ending with Blocked: 1 settle, 2 unblock, 3 ends the loop
               infra: { type: string }
               attempt: { type: integer }
+              reviews: { type: integer } # reviewed passes so far: MAX_ATTEMPTS counts these, gate-red passes are free
               failed_gates: { type: string }
               feedback: { type: string }
               failures: { type: string } # gate failures and hard rules, without stuck or review text

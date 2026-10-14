@@ -1,7 +1,7 @@
 """End of one build pass: passed when every gate holds (check, spec, tasks, hard rules, /opsx:verify
 without CRITICAL, AI review approves). `feedback` carries only the failures and blocking review findings
 (minor ones are the judge's notes on ship, findings.py), so the next pass's fix step reads nothing else; `notes` (flaky cases gate.py passed on rerun) is no finding. The loop stops when passed, after MAX_ATTEMPTS
-(or MAX_PASSES passes), when the gate reports `infra` (the sandbox failed twice: no fix pass can resolve it), or when a `## Blocked` section
+reviewed passes (a gate-red pass skips the review, so it burns no attempt) or MAX_PASSES passes, when the gate reports `infra` (the sandbox failed twice: no fix pass can resolve it), or when a `## Blocked` section
 (blocked.py) is still there after the settle pass (default model, xhigh) and the unblock pass (Claude): `blocked_passes`
 counts consecutive blocked passes (1: the next pass settles, 2: Claude unblocks, 3: the end), so an exhausted or blocked
 loop reaches the judge instead of failing the run. A `## Stuck` section (a behaviour still red after
@@ -71,9 +71,12 @@ def streak(name: str, on: bool) -> int:
 
 
 passes = streak("passes", True)
+reviews = int((artifacts / "reviews").read_text() or 0) if (artifacts / "reviews").exists() else 0
+reviews += "review" in gates  # all passes so far, not consecutive: only reviewed ones count against MAX_ATTEMPTS
+(artifacts / "reviews").write_text(str(reviews))
 blocked_passes = streak("blocked-passes", bool(blocked))
 stuck_passes = streak("stuck-passes", bool(stuck) and not blocked)
-exhausted = not passed and not blocked and not infra and (attempt >= MAX_ATTEMPTS or passes >= MAX_PASSES)
+exhausted = not passed and not blocked and not infra and (reviews >= MAX_ATTEMPTS or passes >= MAX_PASSES)
 blocked_end = bool(blocked) and (blocked_passes >= BLOCKED_PASSES or passes >= MAX_PASSES)
 red = [failures] + [f"hard rule: {v}" for v in violations if f"hard rule: {v}" not in failures]  # gate.py may list them
 feedback = [f"stuck (tasks.md, earlier attempts; fix it, then delete the section): {stuck}" if stuck else "", *red]
@@ -102,6 +105,7 @@ print(
             "blocked_passes": blocked_passes,
             "infra": infra,
             "attempt": attempt,
+            "reviews": reviews,
             "failed_gates": ",".join(k for k, ok in gates.items() if not ok),
             "feedback": "\n\n".join(f for f in feedback if f.strip())[:FEEDBACK_CHARS],
             "failures": "\n\n".join(f for f in red if f.strip())[:FEEDBACK_CHARS],  # gate and hard rules only: quoted by the judge
