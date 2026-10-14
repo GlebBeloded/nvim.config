@@ -528,6 +528,10 @@ For a change whose `.openspec.yaml` has `skip_specs: true`, the work-queue `meta
 - **WHEN** `no_design.py` runs for a change with proposal.md, tasks.md and a `.openspec.yaml` holding `schema: spec-driven` and `skip_specs: true`, in a repo carrying `openspec/schemas/spec-driven-no-design`
 - **THEN** it prints skip_specs true and visible_ui and architecture false, the file names `schema: spec-driven-no-design`, and `openspec status --json` lists no `design` artifact and reports the change complete
 
+#### Scenario: No-design switch is committed on its own
+- **WHEN** `no_design.py` switches change `c` to the no-design schema in a git checkout with a clean tree
+- **THEN** the tree is clean afterwards and the latest commit is `chore(openspec): c uses the no-design schema`
+
 #### Scenario: Change without skip_specs keeps its schema
 - **WHEN** `no_design.py` runs for a change whose `.openspec.yaml` holds only `schema: spec-driven`
 - **THEN** it prints skip_specs false and the file is unchanged

@@ -72,6 +72,21 @@ T["loop: Skip-specs change gets the no-design schema"] = function()
 	eq(status.isComplete, true)
 end
 
+T["loop: No-design switch is committed on its own"] = function()
+	local repo = change_repo("schema: spec-driven\nskip_specs: true")
+	local git = function(args)
+		local result = H.system(child, vim.list_extend({ "git" }, args), repo, H.GIT_ENV)
+		eq(result.code, 0, { fail_reason = result.stderr })
+		return result.stdout
+	end
+	git({ "init", "-q", "-b", "run" })
+	git({ "add", "-A" })
+	git({ "commit", "-q", "-m", "base" })
+	no_design(repo)
+	eq(git({ "status", "--porcelain" }), "")
+	eq(vim.trim(git({ "log", "-1", "--format=%s" })), "chore(openspec): c uses the no-design schema")
+end
+
 T["loop: Change without skip_specs keeps its schema"] = function()
 	local repo = change_repo("schema: spec-driven")
 	eq(no_design(repo).skip_specs, false)
