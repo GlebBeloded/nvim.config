@@ -81,8 +81,16 @@ wait_all() {
 	wait
 }
 
+# shellcheck source=.archon/scripts/loop_changed.sh
+source "$ROOT/.archon/scripts/loop_changed.sh"
+
 parallel="" serial=""
 for t in "$@"; do
+	# loop-test (~90 s) only when a file it reads changed vs auto (loop_changed.sh says which)
+	if [ "${t#+}" = loop-test ] && ! loop_changed "$ROOT"; then
+		echo "loop-test: skipped (no loop changes)"
+		continue
+	fi
 	case "$t" in
 	+*) serial="$serial ${t#+}" ;;
 	*) parallel="$parallel $t" ;;

@@ -179,6 +179,7 @@ self-check:
 # dry-run fixtures (.archon/workflows/<workflow>/fixtures/*.stubs.yaml): no AI, no run, ~13 s;
 # exec-code fixtures see the fixture-owned changes, never the live queue
 loop-test:
+	@.archon/scripts/loop_changed_test.sh
 	@python3 -m unittest discover -q -s .archon/scripts -p 'test_*.py'
 	@LOG_LEVEL=error LOOP_CHANGES_DIR=.archon/workflows/work-queue/fixtures/changes $(ARCHON) workflow test
 
