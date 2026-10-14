@@ -19,4 +19,21 @@ T["ai: Missing 99 is tolerated"] = function()
 	eq(child.lua_get('package.loaded["gleb.ai.entry_keymaps"]'), vim.NIL)
 end
 
+T["ai: 99 uses native completion"] = function()
+	child.lua([[
+		package.preload["99"] = function()
+			return {
+				Providers = { BaseProvider = {} },
+				setup = function(opts) SetupOptions = opts end,
+				search = function() end,
+				vibe = function() end,
+				visual = function() end,
+			}
+		end
+		require("gleb.ai").setup()
+	]])
+
+	eq(child.lua_get("SetupOptions.completion.source"), "native")
+end
+
 return T

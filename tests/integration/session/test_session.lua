@@ -160,8 +160,8 @@ T["session: project cwd change preserves the startup session name"] = function()
 
 	restart_in_pane("z", "5")
 	edit_file("a.txt")
-	child.lua([[require("project_nvim.project").set_pwd(..., "pattern")]], { root })
-	assert(child.wait(("vim.fn.getcwd() == %q"):format(root)), "project.nvim did not change cwd")
+	child.cmd("cd " .. root)
+	assert(child.wait(("vim.fn.getcwd() == %q"):format(root)), "directory command did not change cwd")
 	child.cmd("write")
 
 	local startup_name = "z-5-" .. subdir:gsub("[/\\:]", "%%")

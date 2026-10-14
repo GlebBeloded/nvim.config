@@ -4,6 +4,7 @@ if not status_ok then
 end
 
 local dashboard = require("alpha.themes.dashboard")
+local picker = require("gleb.picker")
 dashboard.section.header.val = {
 	[[                               __                ]],
 	[[  ___     ___    ___   __  __ /\_\    ___ ___    ]],
@@ -13,11 +14,10 @@ dashboard.section.header.val = {
 	[[ \/_/\/_/\/____/\/___/  \/__/    \/_/\/_/\/_/\/_/]],
 }
 dashboard.section.buttons.val = {
-	dashboard.button("f", "  Find file", "<Cmd>Telescope find_files<CR>"),
+	dashboard.button("f", "  Find file", picker.files),
 	dashboard.button("e", "  New file", "<Cmd>ene | startinsert<CR>"),
-	dashboard.button("p", "  Find project", "<Cmd>Telescope projects<CR>"),
-	dashboard.button("r", "  Recently used files", "<Cmd>Telescope oldfiles<CR>"),
-	dashboard.button("t", "  Find text", "<Cmd>Telescope live_grep<CR>"),
+	dashboard.button("r", "  Recently used files", picker.recent_files),
+	dashboard.button("t", "  Find text", picker.grep_live),
 	dashboard.button("c", "  Configuration", "<Cmd>e ~/.config/nvim/init.lua<CR>"),
 	dashboard.button("q", "  Quit Neovim", "<Cmd>qa<CR>"),
 }

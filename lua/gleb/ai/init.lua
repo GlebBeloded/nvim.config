@@ -8,7 +8,11 @@ function M.setup()
 		return
 	end
 	local provider = require("gleb.ai.pi_provider")
-	nn.setup({ provider = provider, model = provider.MODEL })
+	nn.setup({
+		provider = provider,
+		model = provider.MODEL,
+		completion = { source = "native" },
+	})
 	require("gleb.ai.prompt_keymaps").setup()
 	require("gleb.ai.entry_keymaps").setup(nn)
 end
