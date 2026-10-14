@@ -473,6 +473,10 @@ The delivery loop SHALL implement one task per fresh agent session from a script
 - **WHEN** `.archon/scripts/escalation.py` runs on a branch that deletes a test file whose case `c: kept` now lives in another test file, and on one where the other file holds only `c: other`
 - **THEN** the first `decision` is `ship`; the second is `reject` with `test files deleted:` naming the file
 
+#### Scenario: Judge ships a test the change's spec delta removes
+- **WHEN** `.archon/scripts/escalation.py` runs on a branch that deletes a test file whose only case `c: dropped` is a scenario a change's spec delta lists under `## REMOVED Requirements`, and on one where the deleted file also held `c: kept`
+- **THEN** the first has neither `test files deleted` nor `test case(s) removed`; the second is `reject` naming `c: kept` and not `c: dropped`
+
 ### Requirement: Fix pass stays on its findings
 verdict.py SHALL snapshot the change's proposal.md, `.openspec.yaml` and spec deltas at the end of each pass; the next gate.py SHALL list in `$ARTIFACTS_DIR/fix-scope.md` those the fix pass changed, for the review (and verdict feedback when no review ran). The fix prompt SHALL keep to the listed findings and load no skill when every finding is a hard rule.
 

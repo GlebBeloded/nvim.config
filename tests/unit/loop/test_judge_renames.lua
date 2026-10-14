@@ -164,4 +164,26 @@ T["loop: Judge ships a deleted test file whose cases all moved"] = function()
 	eq({ deleted.decision, has(deleted.reasons, "test files deleted: " .. C_TEST) }, { "reject", true })
 end
 
+T["loop: Judge ships a test the change's spec delta removes"] = function()
+	local base = { [C_SPEC] = spec("c", { "kept", "dropped" }), [C_TEST] = cases({ "c: dropped" }) }
+	local removed = table.concat({
+		"## REMOVED Requirements",
+		"",
+		"### Requirement: Fixture coverage",
+		"",
+		"#### Scenario: dropped",
+		"- **WHEN** the fixture runs",
+		"- **THEN** it passes",
+	}, "\n")
+	local delta = "openspec/changes/x/specs/c/spec.md"
+	local planned = judge(base, { [C_TEST] = false, [delta] = removed })
+	eq(has(planned.reasons, "test files deleted"), false, { fail_reason = planned.reasons })
+	eq(has(planned.reasons, "test case(s) removed"), false, { fail_reason = planned.reasons })
+	local other = judge(
+		vim.tbl_extend("force", base, { [C_TEST] = cases({ "c: dropped", "c: kept" }) }),
+		{ [C_TEST] = false, [delta] = removed }
+	)
+	eq({ other.decision, has(other.reasons, "c: kept"), has(other.reasons, "c: dropped") }, { "reject", true, false })
+end
+
 return T
