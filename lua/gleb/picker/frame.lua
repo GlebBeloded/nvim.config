@@ -17,9 +17,11 @@ local chrome_windows = {}
 ---@class gleb.picker.FrameOpts
 ---@field title string
 ---@field items gleb.picker.Row[]
----@field hints? string
+---@field hints? gleb.picker.Hint
 ---@field choose? fun(item: gleb.picker.Row)
 ---@field match? fun(stritems: string[], inds: integer[], query: string[]): integer[]
+---@field mappings? table<string, table>
+---@field window_config? fun(): table
 
 local function setup_highlights()
 	local bg = palette.background
@@ -175,13 +177,14 @@ end
 ---@param opts gleb.picker.FrameOpts
 ---@return any
 function M.start(opts)
-	local picker_opts = M.options(opts.title, opts.hints)
+	local picker_opts = M.options(opts.title, opts.hints, opts.window_config)
 	picker_opts.source = vim.tbl_extend("force", picker_opts.source, {
 		name = opts.title,
 		items = opts.items,
 		match = opts.match,
 		choose = opts.choose,
 	})
+	picker_opts.mappings = opts.mappings
 	return MiniPick.start(picker_opts)
 end
 

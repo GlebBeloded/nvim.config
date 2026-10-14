@@ -282,6 +282,15 @@ function Stack:lua(code, args)
 	return vim.rpcrequest(self.channel, "nvim_exec_lua", code, args or {})
 end
 
+--- Active mini.pick source name, or nil when no picker is open.
+---@return string?
+function Stack:active_picker_name()
+	return self:lua([[local ok, pick = pcall(require, "mini.pick")
+		if not ok or not pick.is_picker_active() then return nil end
+		local source = pick.get_picker_opts().source
+		return source and source.name or nil]])
+end
+
 --- Note a startup event with its time since start().
 ---@param event string
 function Stack:mark(event)
@@ -420,9 +429,10 @@ end
 
 -- Recorder mappings: replace the normal-mode mapping of each key with one that
 -- logs the key, so arrival is observable for mapped and unmapped keys alike.
-local RECORD = [[_G.shortcut_hits = {}
+local RECORD = [[local keys, passthrough = ...
+	_G.shortcut_hits = {}
 	_G.shortcut_saved = _G.shortcut_saved or {}
-	for _, lhs in ipairs(...) do
+	for _, lhs in ipairs(keys) do
 		if _G.shortcut_saved[lhs] == nil then
 			_G.shortcut_saved[lhs] = vim.fn.maparg(lhs, "n", false, true)
 		end
@@ -430,6 +440,9 @@ local RECORD = [[_G.shortcut_hits = {}
 			table.insert(_G.shortcut_hits, lhs)
 			if _G.shortcut_notify then -- push to the runner (tests/e2e/alacritty.lua waits on it)
 				pcall(vim.rpcnotify, _G.shortcut_notify, "nvim_exec_lua", "require('tests.e2e.alacritty').on_hit(...)", { lhs })
+			end
+			if passthrough then
+				assert(_G.shortcut_saved[lhs].callback, "recorder passthrough requires a callback mapping")()
 			end
 		end)
 	end]]
@@ -442,8 +455,9 @@ local RESTORE = [[for lhs, saved in pairs(_G.shortcut_saved or {}) do
 
 --- Install recorders for `keys` (Neovim notation) and clear the hit log.
 ---@param keys string[]
-function Stack:record(keys)
-	self:lua(RECORD, { keys })
+---@param passthrough? boolean also call each saved mapping callback
+function Stack:record(keys, passthrough)
+	self:lua(RECORD, { keys, passthrough })
 end
 
 --- Keys recorded since the last record() call.

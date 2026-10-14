@@ -47,8 +47,8 @@ Depends: action-registry, picker-ui
 ## Impact
 
 - Code:
-  - New: `lua/gleb/find_action/`.
-  - Changed: `terminal/alacritty` (Cmd+Shift+A binding), `lua/gleb/ai/entry_keymaps.lua`, `settings/keymap.json` (adds `find_action.open`).
+  - New: `lua/gleb/find_action/`, `lua/gleb/ai/actions.lua`.
+  - Changed: `init.lua` (registers and loads the feature), `terminal/alacritty/keymaps_macos.toml` (Cmd+Shift+A binding), `lua/gleb/ai/entry_keymaps.lua`, `settings/keymap.json` (adds `find_action.open`).
 - **Tests.** The user asked for a full suite with visual verification, because the logic is complex:
   - **Unit:** ordering (recently used, curated, the hidden separator), the label mapping (lhs → physical label), and the conflict and choice outcomes.
   - **Integration, generated over every registered action:**
@@ -61,6 +61,7 @@ Depends: action-registry, picker-ui
     - real key presses: open, search, run, assign by pressing physical keys, use the new key, restart, use it again;
     - each step's screen (zellij dump) is compared with its approved render.
 - Plugins: none added beyond `picker-ui`. Core keymaps: **adds Cmd+Shift+A** and **removes Cmd+9 (99 menu)**.
+- The `Smart-splits resize keys are not remapped` scenario still holds because this change does not alter the `<A-H>`, `<A-J>`, `<A-K>`, or `<A-L>` mappings.
 - Out of scope:
   - tabs / Search Everywhere;
   - a shortcuts editor (remove or reset);
