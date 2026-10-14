@@ -12,9 +12,9 @@ Scenarios: `actions: Shortcut file round-trips deterministically`, `actions: Inv
 
 ## 3. Apply global and filetype shortcuts
 Scenarios: `actions: Global bindings exist after VeryLazy`, `actions: Filetype bindings are buffer-local`, `actions: Reapplying removes stale bindings`, `actions: Failed reload keeps applied bindings`
-- [ ] 3.1 Write the tests for these scenarios in `tests/integration/actions/test_apply.lua` and run each with `make test FILE=tests/integration/actions/test_apply.lua CASE="<scenario title>"` to see it fail
-- [ ] 3.2 Add re-entrant global and filetype binding application and wire `init.lua` to apply it after `VeryLazy`
-- [ ] 3.3 Run each scenario with `make test FILE=tests/integration/actions/test_apply.lua CASE="<scenario title>"` and see it pass
+- [x] 3.1 Write the tests for these scenarios in `tests/integration/actions/test_apply.lua` and run each with `make test FILE=tests/integration/actions/test_apply.lua CASE="<scenario title>"` to see it fail
+- [x] 3.2 Add re-entrant global and filetype binding application and wire `init.lua` to apply it after `VeryLazy`
+- [x] 3.3 Run each scenario with `make test FILE=tests/integration/actions/test_apply.lua CASE="<scenario title>"` and see it pass
 
 ## 4. Adapt plugin-window mappings
 Scenarios: `actions: Adapter output follows current shortcuts`, `actions: Adapter reassignment applies on reopen`

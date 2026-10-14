@@ -67,26 +67,26 @@ local function validate_actions(self, shortcuts, warn_unknown)
 	return valid
 end
 
----@return gleb.ShortcutMap
+---@return gleb.ShortcutMap, boolean
 function Store:load()
 	local read_ok, lines = pcall(vim.fn.readfile, self.path)
 	if not read_ok then
 		notify_error("Could not read shortcut file: " .. tostring(lines))
-		return vim.deepcopy(self.last_good)
+		return vim.deepcopy(self.last_good), false
 	end
 
 	local decode_ok, decoded = pcall(vim.json.decode, table.concat(lines, "\n"))
 	if not decode_ok or not has_valid_shape(decoded) then
 		notify_error("Invalid shortcut JSON: " .. tostring(decoded))
-		return vim.deepcopy(self.last_good)
+		return vim.deepcopy(self.last_good), false
 	end
 
 	local shortcuts = validate_actions(self, decoded, true)
 	if not shortcuts then
-		return vim.deepcopy(self.last_good)
+		return vim.deepcopy(self.last_good), false
 	end
 	self.last_good = vim.deepcopy(shortcuts)
-	return shortcuts
+	return shortcuts, true
 end
 
 ---@param shortcuts gleb.ShortcutMap
