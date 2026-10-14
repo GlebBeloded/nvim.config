@@ -3,6 +3,7 @@
 There is no way to see every action, find one by name, see its shortcut, or bind a key to it while working. The user wants a GoLand-style "Find Action" on Cmd+Shift+A that becomes the main entry point to editor and plugin actions, with shortcuts assignable at runtime.
 
 Kind: feature
+Adopt: loop/find-action
 Depends: action-registry, picker-ui
 
 ## What Changes
@@ -75,3 +76,24 @@ Depends: action-registry, picker-ui
 - Assign UI: a float with keys, conflicts and buttons.
 - A full e2e suite with visual verification: "This is very important, since it's complex logic".
 - Cmd+Shift+A: add the Alacritty binding (shortcut table).
+
+## Rejected run
+Run on `loop/find-action` was rejected by the judge:
+- fix loop exhausted with gates still red: tests,stuck
+- stuck: tasks.md `## Stuck` (earlier attempts, kept on the branch: not quoted here)
+- last failures:
+  make check is red:
+  full log: /Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/499b0b85-ea4d-47ff-b047-aa4720bc6db5/check-3.log
+  ok   lint             0.2 s
+  ok   trace            0.5 s
+  ok   types            1.3 s
+  ok   specs            2.7 s
+  ok   chain            5.8 s
+  ok   smoke-health    16.2 s
+  ok   stack           16.3 s
+  FAIL test            77.5 s
+  FAIL e2e             80.2 s
+  ok   smoke-startup    1.2 s
+- note: loop: ENOENT: no such file or directory (cmd): '/Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/worktrees/loop/find-action/.tests/venv/bin/python'
+- note: loop: - keymaps: Smart-splits resize keys are not remapped (openspec/specs/keymaps/spec.md:80)
+- note: loop: FAIL in tests/e2e/shortcuts/test_e2e.lua | shortcuts: Ctrl+Up grows the current Neovim split from a real key press: /Users/lume/nvim/tests/shortcuts/stack.lua:171: stack: timed out waiting for split 2 rows taller
