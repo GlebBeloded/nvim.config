@@ -6,13 +6,13 @@
 fixture:
   expect: completed
   inputs: { change: queued-change }
-  reached: [pick, adopt, pinned, complete, spec-gate, design-decide, deliver__ship, deliver__shipped]
+  reached: [pick, adopt, pinned, complete, classify, spec-gate, design-decide, deliver__ship, deliver__shipped]
   resolved-text-contains:
     complete: "Earlier work: nothing to adopt"
 exec-code: true
 skills-check: "skills ok"
 pick: { found: true, change: queued-change, kind: fix, has_tasks: true }
-complete: { visible_ui: false, architecture: false }
+complete: "spec written"
 spec-gate: "valid"
 preview: "MUST-NOT-RUN"
 # nvim-deliver (include `deliver`): top-level ids get the deliver__ prefix, loop bodies keep theirs

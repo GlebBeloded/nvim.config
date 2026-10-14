@@ -10,6 +10,7 @@ exec-code: true
 skills-check: "skills ok"
 pick: { found: true, change: blocked-change, kind: fix, has_tasks: false }
 complete: "MUST-NOT-RUN"
+classify: "MUST-NOT-RUN"
 spec-gate: "MUST-NOT-RUN"
 preview: "MUST-NOT-RUN"
 design-decide: "MUST-NOT-RUN"

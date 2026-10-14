@@ -124,9 +124,15 @@ Known issues and planned work are queued changes in `openspec/changes/`; there i
   tasks before building. Add a spec delta yourself when the correct behaviour is already clear.
 - Work it: `make queue` (oldest first) or `make queue CHANGE=<id>`; `make drain` works them all.
 - A change with no behaviour or look change (test-only, refactor, follow-up) sets `skip_specs: true` in
-  `.openspec.yaml`. `work-queue`'s `meta` script (`no_design.py`) then switches it to the repo-local schema
-  `spec-driven-no-design` (`openspec/schemas/`, no design artifact, so `openspec status` is complete with
-  proposal and tasks), answers visible UI as false, and the spec step writes only tasks.md with no JSON answer.
+  `.openspec.yaml`, and the spec step writes only tasks.md.
+- `work-queue`'s `meta` script (`no_design.py`) sets the schema before the spec step, which never changes it:
+  `spec-driven` (with design.md) for a feature or a proposal/design.md holding a render, else the repo-local
+  `spec-driven-no-design` (`openspec/schemas/`, no design artifact, spec deltas allowed; skip_specs always).
+- The spec step never returns JSON (a schema made it repeat the answer every turn). The `classify` script
+  (`classify.py`) answers after it: visible UI when design.md has a render section (written only for a new or
+  changed look), architecture when proposal.md `## Impact` or tasks.md names plugin wiring or load-order files
+  (`lua/gleb/plugins/`, `init.lua`, `lazy-lock.json`, `docs/architecture.md`); a skip_specs change is neither.
+  Visible UI sends a fix to the preview and design gate.
 - Order: a `Depends: <change>[, <change>]` line in proposal.md holds the change until those are archived.
 - A test that pins a known bug wraps the case in `H.xfail("<change id>", fn)` ([testing](testing.md)).
 

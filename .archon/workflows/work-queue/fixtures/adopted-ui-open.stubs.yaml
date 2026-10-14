@@ -1,14 +1,15 @@
 # g8. the adopted branch carries a design.md with a render but tasks are open (adopted-state stubbed):
-# the spec step runs and says visible_ui false (it only restores specified behaviour), so its answer wins
-# over the old design.md: no preview, no design gate, and the change delivers.
+# the spec step runs, and classify (real) reads the change as written then (here no render: the spec step
+# drops renders a fix restoring specified behaviour does not need), not the adopted design.md: no preview,
+# no design gate, and the change delivers.
 fixture:
   expect: completed
   inputs: { change: adopted-ui-open }
-  reached: [pick, adopt, adopted-state, complete, spec-gate, design-decide, deliver__ship, deliver__shipped]
+  reached: [pick, adopt, adopted-state, complete, classify, spec-gate, design-decide, deliver__ship, deliver__shipped]
 exec-code: true
 skills-check: "skills ok"
 pick: { found: true, change: adopted-ui-open, kind: fix, has_tasks: true }
-complete: { visible_ui: false, architecture: false }
+complete: "spec written"
 spec-gate: "valid"
 preview: "MUST-NOT-RUN"
 # nvim-deliver (include `deliver`): top-level ids get the deliver__ prefix, loop bodies keep theirs
