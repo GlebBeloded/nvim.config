@@ -43,7 +43,7 @@ When a fix is directly verified, append one concise cause-to-action line to
 Never delete, skip or weaken a test or scenario to get green; if the spec is wrong, write it in
 tasks.md under "## Blocked" and stop.
 
-If a failure comes from loop tooling (`.archon/`, `tests/trace.lua`, `tests/sandbox/`, the `make check` targets) and not from this change, do not fix it here: write `## Blocked` with `loop: <failure>` in tasks.md and stop.
+If a failure comes from loop tooling (`.archon/`, `tests/trace.lua`, `tests/sandbox/`, the `make check` targets) and not from this change, do not fix it here: append one line `loop: <failure>` to `$ARTIFACTS_DIR/loop-notes.md` (not tasks.md: the judge lists it for the auditor, and it never stops the change) and go on with the change.
 
 Ad-hoc headless runs: write the probe to a scratch file and run `timeout 30 nvim -n --headless -u NONE -l $ARTIFACTS_DIR/probe.lua` (body in `pcall`, `vim.cmd('qa!')` last); never inline `+lua` with shell quoting. Visual marks need `exe "normal! V2j\<Esc>"` or `nvim_buf_set_mark`.
 Never load the host to reproduce a flake (no `yes`/stress loops, no SIGSTOP tricks): other runs share this machine. A gate log's `FAIL in` line is the RED evidence for a timing flake.

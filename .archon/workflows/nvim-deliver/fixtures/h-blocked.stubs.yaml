@@ -1,4 +1,5 @@
-# h. the fix step wrote `## Blocked` (fixtures/changes/blocked-build/tasks.md, LOOP_CHANGES_DIR): verdict
+# h. the fix step wrote `## Blocked` (fixtures/changes/blocked-build/tasks.md, LOOP_CHANGES_DIR; a
+# `loop:` item next to a change item, so it blocks): verdict
 # (real, given the change) runs on it after the first red pass and the judge's ask, quoting the Blocked
 # text, reaches ship-gate. Dry-run limits: until_bash never runs (the loop ends after pass 1 anyway;
 # unit test "Verdict ends the build loop on a Blocked section"), the judge is stubbed (integrity.py
@@ -20,6 +21,6 @@ implement: "MUST-NOT-RUN"
 fix: "MUST-NOT-RUN"
 gate: { green: false, spec_ok: true, tasks_done: false, untested: 0, attempt: 1, failures: "make check red" }
 review: "MUST-NOT-RUN"
-escalation: { decision: ask, escalate: true, reasons: "- blocked: tasks.md: ## Blocked\nloop: fixture tooling failure the fix step cannot repair" }
+escalation: { decision: ask, escalate: true, reasons: "- blocked: tasks.md: ## Blocked\nloop: fixture tooling failure the fix step cannot repair\nfixture bound conflict the fix step cannot resolve: pick (A) or (B)" }
 ship: "MUST-NOT-RUN"
 followup: "MUST-NOT-RUN"

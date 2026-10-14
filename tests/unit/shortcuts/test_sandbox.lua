@@ -103,10 +103,16 @@ local function tempdir()
 	)
 end
 
+--- {} when `path` is missing, also when it disappears between check and read (lock.sh moves a stale lock aside).
+local READ_LINES = [[(function(path)
+	local ok, lines = pcall(vim.fn.readfile, path)
+	return ok and lines or {}
+end)(...)]]
+
 ---@param path string
 ---@return string[]
 local function read_lines(path)
-	return child.lua_get("vim.fn.filereadable(...) == 1 and vim.fn.readfile(...) or {}", { path })
+	return child.lua_get(READ_LINES, { path })
 end
 
 --- PROVISION_REV as tests/sandbox/sandbox.sh defines it.
@@ -236,7 +242,8 @@ end
 local function wait_owner(dir, pid)
 	local named = [[(function(owner, pid, timeout)
 		local function names_pid()
-			return vim.fn.filereadable(owner) == 1 and (vim.fn.readfile(owner)[1] or ""):match("^%d+") == pid
+			local ok, lines = pcall(vim.fn.readfile, owner) -- the reclaimer may move it away mid-read: retry
+			return ok and (lines[1] or ""):match("^%d+") == pid
 		end
 		return vim.wait(timeout, names_pid, 20)
 	end)(...)]]

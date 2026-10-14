@@ -37,12 +37,16 @@ end
 
 --- Runs followup.py for change `x` in a worktree of `repo` on the rejected branch; returns its JSON.
 ---@param repo string
+---@param reasons? string INPUTS_REASONS (default REASONS)
 ---@return { queued: boolean, change: string }
-local function followup(repo)
+local function followup(repo, reasons)
 	local worktree = vim.fs.joinpath(H.tempdir(child), "run")
 	git_ok({ "worktree", "add", "-q", "-b", BRANCH, worktree, "auto" }, repo)
-	local env =
-		vim.tbl_extend("force", H.GIT_ENV, { BASE_BRANCH = "auto", INPUTS_CHANGE = "x", INPUTS_REASONS = REASONS })
+	local env = vim.tbl_extend(
+		"force",
+		H.GIT_ENV,
+		{ BASE_BRANCH = "auto", INPUTS_CHANGE = "x", INPUTS_REASONS = reasons or REASONS }
+	)
 	local result = H.system(child, { "python3", FOLLOWUP }, worktree, env)
 	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
 	return vim.json.decode(result.stdout)
@@ -62,6 +66,16 @@ local function matching(lines, pattern)
 	return vim.tbl_filter(function(line)
 		return line:find(pattern) ~= nil
 	end, lines)
+end
+
+--- Fails unless `text` holds each of `lines` as a whole line.
+---@param text? string
+---@param lines string[]
+local function has_lines(text, lines)
+	local held = vim.split(text or "", "\n", { plain = true })
+	for _, line in ipairs(lines) do
+		eq(vim.tbl_contains(held, line), true, { fail_reason = ("%q not in:\n%s"):format(line, text or "") })
+	end
 end
 
 ---@param repo string
@@ -102,6 +116,16 @@ T["loop: Rejected active change is re-queued in place"] = function()
 	)
 	eq(git_ok({ "status", "--porcelain", "--untracked-files=no" }, repo).stdout, "")
 	eq(exists(repo, ".git/nvim-ship.lock"), false)
+end
+
+T["loop: Rejected run quotes the review findings"] = function()
+	local repo = make_repo({ "## Why", "w", "", "## What Changes", "- c", "", "## Impact", "- i" })
+	local reasons = "- review: test weakened\n- review findings:\n  ## Removed assert\n  tests/unit/x.lua drops the eq"
+	followup(repo, reasons)
+	local proposal = read_auto(repo, "openspec/changes/x/proposal.md")
+	local section = table.concat(proposal, "\n"):match("\n## Rejected run\n(.*)$")
+	has_lines(section, { "- review findings:", "  ## Removed assert", "  tests/unit/x.lua drops the eq" })
+	eq(#matching(proposal, "^## "), 4)
 end
 
 --- Index of the first line equal to `wanted`, or nil.

@@ -59,7 +59,7 @@ input, output and limits). Scripts do everything that needs no judgment:
 | review | agent, Claude | `superpowers:requesting-code-review` | JSON |
 | verdict, judge, ship, follow-up | scripts | none | JSON, `escalation.md`, merge commit |
 
-Agents run only their own test case and never `make quick` or `make check`; general instructions about web searches, extra skills and sub-agents do not apply in a step (`codex-loop.sh` also turns off Codex sub-agents, hooks, apps, the skills catalog, GUI and MCP tools, and the global `~/.codex/AGENTS.md`, and `codex_preflight.py` refuses the call when `codex --version` is outside its tested range or an MCP server or GUI plugin is still enabled; widen the range only after checking the overrides against the new Codex). A failure in loop tooling is never fixed inside a change: the step writes `## Blocked: loop: …`. The check/review
+Agents run only their own test case and never `make quick` or `make check`; general instructions about web searches, extra skills and sub-agents do not apply in a step (`codex-loop.sh` also turns off Codex sub-agents, hooks, apps, the skills catalog, GUI and MCP tools, and the global `~/.codex/AGENTS.md`, and `codex_preflight.py` refuses the call when `codex --version` is outside its tested range or an MCP server or GUI plugin is still enabled; widen the range only after checking the overrides against the new Codex). A failure in loop tooling is never fixed inside a change: the step appends a `loop: …` line to `$ARTIFACTS_DIR/loop-notes.md`, which the judge lists as a note; a `## Blocked` section holding only `loop:` items blocks nothing and is listed the same way. The check/review
 group runs at most 3 times; a red pass sends only its findings (`verdict.py` `feedback`, which also
 lists hard-rule violations from `integrity.py`) to the next pass's fix step. A fix pass stays on those
 findings: verdict snapshots the change's proposal.md, `.openspec.yaml` and spec deltas, and the next gate
@@ -90,7 +90,7 @@ editor.
   `<capability>: <title>` tests, or a `## RENAMED Requirements` delta, is no removal; test cases count
   by name, so a lost one is rejected even when others are added. A deleted test file is no loss when
 every case it held still exists by name in another test file.
-- A `## Blocked` section in a change's proposal.md or tasks.md: `work-queue` stops before spec, and a
+- A `## Blocked` section (one not only of `loop:` items) in a change's proposal.md or tasks.md: `work-queue` stops before spec, and a
   build loop stops at once; you get its text, the change never ships and is re-queued. Answer in
   `## Decision` and delete the `## Blocked` section.
 

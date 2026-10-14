@@ -9,6 +9,7 @@ local T = H.child_set(child, child.start_bare)
 local SCRIPTS = vim.fs.joinpath(H.root, ".archon/scripts")
 local BLOCKED = "## Blocked (needs user decision)\nlua_ls misses the 1 s bound: pick (A) or (B)."
 local DECISION = "## Decision (user)\n1. keep the 1 s bound"
+local LOOP_ONLY = "## Blocked\n- loop: trace.lua misreads a case name\nloop: gate log cut short"
 
 ---@param path string
 ---@return string
@@ -65,10 +66,11 @@ end
 ---@param script string
 ---@param cwd string
 ---@param env? table<string, string>
+---@param artifacts? string ARTIFACTS_DIR (default: a new temp dir)
 ---@return table out decoded JSON stdout
 ---@return string artifacts
-local function run(script, cwd, env)
-	local artifacts = H.tempdir(child)
+local function run(script, cwd, env, artifacts)
+	artifacts = artifacts or H.tempdir(child)
 	local full = vim.tbl_extend("force", H.GIT_ENV, { ARTIFACTS_DIR = artifacts, BASE_BRANCH = "auto" }, env or {})
 	local result = H.system(child, { "python3", vim.fs.joinpath(SCRIPTS, script) }, cwd, full)
 	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
@@ -197,6 +199,64 @@ T["loop: Judge quotes a Blocked section and asks"] = function()
 	eq({ out.decision, out.escalate }, { "ask", true })
 	has(out.reasons, "blocked: tasks.md: " .. BLOCKED)
 	has(read(vim.fs.joinpath(artifacts, "escalation.md")), "lua_ls misses the 1 s bound")
+end
+
+T["loop: A Blocked section of only loop items never stops the change"] = function()
+	local repo = branch_repo({}, { ["openspec/changes/c/tasks.md"] = "## 1. T\n- [ ] 1.1 x\n\n" .. LOOP_ONLY })
+	local env = { INPUTS_CHANGE = "c", LOOP_CHANGES_DIR = "" }
+	local out, artifacts = run("blocked.py", repo, env)
+	eq(out, { blocked = false, text = "" })
+	eq(child.fn.filereadable(vim.fs.joinpath(artifacts, "escalation.md")), 0)
+	local verdict = run("verdict.py", repo, {
+		INPUTS_CHANGE = "c",
+		INPUTS_GREEN = "false",
+		INPUTS_SPEC_OK = "true",
+		INPUTS_TASKS_DONE = "false",
+		INPUTS_CRITICAL = "0",
+		INPUTS_ATTEMPT = "1",
+		LOOP_CHANGES_DIR = "",
+	})
+	eq({ verdict.done, verdict.blocked }, { false, false })
+	write(repo, { ["openspec/changes/c/tasks.md"] = "## 1. T\n\n" .. LOOP_ONLY .. "\nthe 1 s bound cannot hold" })
+	eq(run("blocked.py", repo, env).blocked, true)
+end
+
+T["loop: Judge lists loop notes for the auditor"] = function()
+	local repo = branch_repo({}, { ["openspec/changes/c/tasks.md"] = "## 1. T\n- [x] 1.1 x\n\n" .. LOOP_ONLY })
+	local artifacts = H.tempdir(child)
+	write(artifacts, { ["loop-notes.md"] = "loop: lock.sh owner read raced\n\n- loop: gate log cut short" })
+	local out = run("escalation.py", repo, { INPUTS_CHANGE = "c", LOOP_CHANGES_DIR = "" }, artifacts)
+	eq(out.decision, "ship")
+	local escalation = read(vim.fs.joinpath(artifacts, "escalation.md"))
+	for _, note in ipairs({ "trace.lua misreads a case name", "gate log cut short", "lock.sh owner read raced" }) do
+		has(out.reasons, "\n- note: loop: " .. note)
+		has(escalation, "- note: loop: " .. note)
+	end
+	eq(select(2, out.reasons:gsub("gate log cut short", "")), 1)
+end
+
+T["loop: Fix and implement prompts send loop tooling failures to loop notes"] = function()
+	for _, name in ipairs({ "fix.md", "implement.md" }) do
+		local prompt = read(vim.fs.joinpath(H.root, ".archon/commands", name))
+		has(prompt, "append one line `loop: <failure>` to `$ARTIFACTS_DIR/loop-notes.md` (not tasks.md")
+		eq(prompt:find("write `## Blocked` with `loop:", 1, true), nil, { fail_reason = name })
+	end
+end
+
+T["loop: Judge hands the review findings to the follow-up"] = function()
+	local repo = branch_repo({}, {})
+	local findings = "## Removed assert\ntests/unit/x.lua drops the eq on the count\n" .. ("y"):rep(3000)
+	local out = run("escalation.py", repo, { INPUTS_WEAKENED_TEST = "true", INPUTS_REVIEW_FINDINGS = findings })
+	eq(out.decision, "reject")
+	has(
+		out.reasons,
+		"- review: test weakened\n- review findings:\n  ## Removed assert\n  tests/unit/x.lua drops the eq"
+	)
+	local quoted = out.reasons:match("%- review findings:\n(.*)$")
+	eq(#quoted:gsub("\n  ", "\n") <= 1500 + 2, true, { fail_reason = ("%d chars"):format(#quoted) })
+	eq(out.reasons:find("\n## ", 1, true), nil)
+	local shipped = run("escalation.py", repo, { INPUTS_REVIEW_FINDINGS = findings })
+	eq({ shipped.decision, shipped.reasons:find("review findings", 1, true) }, { "ship", nil })
 end
 
 T["loop: A blocked run never ships"] = function()

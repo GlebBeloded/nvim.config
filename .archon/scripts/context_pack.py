@@ -10,6 +10,7 @@ import os
 import pathlib
 import re
 
+from blocked import blocks
 from tasks import next_task
 
 CHANGE = os.environ.get("INPUTS_CHANGE", "")
@@ -76,7 +77,7 @@ def last_failures() -> str:
 
 
 def has_task(tasks: pathlib.Path, task: str) -> bool:
-    return bool(task) and "## Blocked" not in tasks.read_text()
+    return bool(task) and not blocks(tasks.read_text())
 
 
 def main() -> None:

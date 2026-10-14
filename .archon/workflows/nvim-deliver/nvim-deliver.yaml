@@ -159,6 +159,7 @@ nodes:
               weakened_scenario: { type: boolean }
               weakened_test: { type: boolean }
               notes: { type: string }
+              review_findings: { type: string }
             required: [done, passed, exhausted, blocked, attempt, failed_gates, feedback, weakened_scenario, weakened_test]
 
   # --- Judge (no AI): ship, ask the user (breaking changes only), or reject ---------------------------
@@ -173,6 +174,7 @@ nodes:
       weakened_scenario: $build.output.weakened_scenario
       weakened_test: $build.output.weakened_test
       notes: $build.output.notes # flaky cases: listed in reasons, never a reason
+      review_findings: $build.output.review_findings # quoted under a rejected or asked review reason
     output_format:
       type: object
       properties:
