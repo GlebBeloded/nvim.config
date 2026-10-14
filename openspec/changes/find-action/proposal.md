@@ -60,6 +60,7 @@ Depends: action-registry, picker-ui
     - real key presses: open, search, run, assign by pressing physical keys, use the new key, restart, use it again;
     - each step's screen (zellij dump) is compared with its approved render.
 - Plugins: none added beyond `picker-ui`. Core keymaps: **adds Cmd+Shift+A** and **removes Cmd+9 (99 menu)**.
+- The `Smart-splits resize keys are not remapped` scenario still holds because this change does not alter the `<A-H>`, `<A-J>`, `<A-K>`, or `<A-L>` mappings.
 - Out of scope:
   - tabs / Search Everywhere;
   - a shortcuts editor (remove or reset);
