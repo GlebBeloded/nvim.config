@@ -146,6 +146,7 @@ STAMP := $(shell date +%Y%m%d-%H%M%S)
 # After a run, drop worktrees whose branch is merged into auto (a run cannot delete its own).
 # Archon judges "merged" against local/auto without fetching it, so refresh it with the run's merge first.
 CLEANUP = { git fetch -q local; $(ARCHON) isolation cleanup --merged; } >/dev/null 2>&1 || true
+# make queue then keeps one loop branch per change: loop_clean.py --change drops the superseded reruns.
 
 .PHONY: loop-setup loop-register loop-validate self-check loop-test loop-clean fix feature queue drain update outdated console loop-report loop-status preview
 
@@ -202,7 +203,8 @@ queue: loop-setup # make queue [CHANGE=<id>]: work the next (or the given) chang
 	if git show-ref -q --verify "refs/heads/loop/$$id"; then branch=loop/$$id-$(STAMP); fi; \
 	adopt=$$(python3 .archon/scripts/adopt_pick.py "$$id"); \
 	[ -z "$$adopt" ] || echo "Adopting $$adopt"; \
-	$(ARCHON) workflow run work-queue --base auto --branch $$branch --input change=$$id --input adopt=$$adopt "Work queued change $$id"; status=$$?; $(CLEANUP); exit $$status
+	$(ARCHON) workflow run work-queue --base auto --branch $$branch --input change=$$id --input adopt=$$adopt "Work queued change $$id"; status=$$?; $(CLEANUP); \
+	python3 .archon/scripts/loop_clean.py --change "$$id" --apply || true; exit $$status
 
 drain: loop-setup # make drain [N=<max runs>]: work queued changes one by one until empty, N runs or a pause
 	@python3 .archon/scripts/drain.py $(if $(N),--max $(N))

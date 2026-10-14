@@ -8,9 +8,14 @@ or `main`, a branch with commits not on `auto` (listed as unmerged), a branch st
   loop_clean.py --branch B --apply --wait-pid P  one run (ship.py): waits until no live run holds B
                                                (without an Archon DB: until pid P exits), up to
                                                LOOP_CLEAN_WAIT s, then cleans B
+  loop_clean.py --change C --apply             after `make queue` (one loop branch per change): of C's run
+                                               branches (adopt_pick.candidates) keeps the one adopt_pick picks;
+                                               the others go when their tip is on it or on auto; a shipped or
+                                               superseded worktree's uncommitted leftovers are dropped (listed)
 """
 
 import argparse
+import contextlib
 import dataclasses
 import os
 import pathlib
@@ -73,7 +78,7 @@ def live_runs() -> list[tuple[str, str]] | None:
         return []
     query = "select status, coalesce(working_path, '') from remote_agent_workflow_runs where status in ('running','paused')"
     try:
-        with sqlite3.connect(f"file:{db}?mode=ro", uri=True) as conn:
+        with contextlib.closing(sqlite3.connect(f"file:{db}?mode=ro", uri=True)) as conn:
             return conn.execute(query).fetchall()
     except sqlite3.Error:
         return None
@@ -98,13 +103,32 @@ def dirty(worktree: str) -> bool:
     return bool(git("status", "--porcelain", cwd=worktree, check=False))
 
 
-def classify(branch: Branch, runs: list[tuple[str, str]] | None, shipped: set[str]) -> None:
+def leftovers(worktree: str) -> str:
+    files = [line[3:] for line in git("status", "--porcelain", cwd=worktree, check=False).splitlines()]
+    return f"; dropped uncommitted: {', '.join(files)}" if files else ""
+
+
+def forced(name: str, tip: str, base: str, keeper: str, shipped: set[str]) -> str:
+    """--change mode's reason to remove `name` even with uncommitted leftovers, or ""."""
+    if name != keeper and ok("merge-base", "--is-ancestor", tip, keeper):
+        return f"superseded by {keeper}"
+    if name != keeper and tip == base:
+        return f"empty run (at {BASE})"
+    if tip != base and ok("merge-base", "--is-ancestor", tip, BASE):
+        return "shipped" if tip in shipped else f"superseded (on {BASE})"
+    return ""
+
+
+def classify(branch: Branch, runs: list[tuple[str, str]] | None, shipped: set[str], keeper: str | None = None) -> None:
     tip, base = git("rev-parse", branch.name), git("rev-parse", BASE)
     live = live_status(branch, runs)
     if branch.name in NEVER or not branch.name.startswith("loop/"):
         branch.reason = "never cleaned"
     elif live:
         branch.reason = live
+    elif keeper and (rule := forced(branch.name, tip, base, keeper, shipped)):
+        branch.action = "remove"
+        branch.reason = rule + (leftovers(branch.worktree) if branch.worktree else "")
     elif tip == base:
         branch.reason = f"no commits yet (at {BASE})"
     elif not ok("merge-base", "--is-ancestor", tip, BASE):
@@ -138,12 +162,12 @@ def report(branch: Branch, apply: bool, cwd: str) -> None:
     print(f"loop-clean: {verb}  {branch.name}  {branch.reason}{where}")
 
 
-def clean(names: list[str], apply: bool) -> list[Branch]:
+def clean(names: list[str], apply: bool, keeper: str | None = None) -> list[Branch]:
     cwd = main_checkout()
     trees, runs, shipped = worktrees(), live_runs(), shipped_tips()
     branches = [Branch(name, trees.get(name)) for name in names]
     for branch in branches:
-        classify(branch, runs, shipped)
+        classify(branch, runs, shipped, keeper)
     for branch in sorted(branches, key=lambda b: (b.action != "remove", b.name)):
         report(branch, apply, cwd)
     if apply:
@@ -182,8 +206,17 @@ def main() -> int:
     parser.add_argument("--apply", action="store_true")
     parser.add_argument("--branch")
     parser.add_argument("--wait-pid", type=int)
+    parser.add_argument("--change")
     args = parser.parse_args()
     os.chdir(main_checkout())
+    if args.change:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import adopt_pick
+
+        names = sorted(adopt_pick.candidates(args.change))
+        if names:
+            clean(names, args.apply, adopt_pick.pick(args.change))
+        return 0
     if args.branch:
         if not ok("rev-parse", "--verify", "--quiet", f"refs/heads/{args.branch}"):
             print(f"loop-clean: no branch {args.branch}")
