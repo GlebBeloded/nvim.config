@@ -27,6 +27,7 @@ Scenarios: `actions: Feature actions contain no shortcut keys`, `actions: Every 
 - `lazy.close` is a filetype action (lazy.nvim is set up before the registry) and lazy.nvim's default custom keys are off; dap-ui's float close uses its own `dap_float` adapter area.
 - The plugin-default case now queries each plugin's own buffer with an unconfigured default key: it read whichever window was current, and `<CR>` (neo-tree), `o` (dap-ui) and `<C-Space>` (blink) are configured keys; lazy.nvim's headless check is stubbed so its window opens.
 - The unit copy of `git: Enter on placeholder does nothing` became `git: Popup confirm action ignores the placeholder` (integration keeps the original case).
+- How should Diffview's retained conflict choices survive disabled defaults? Choose option 1: register `diffview.choose_ours`, `diffview.choose_theirs`, `diffview.choose_base`, and `diffview.choose_all` on their current `<leader>c*` keys and narrowly exempt spec-retained plugin-window defaults from rule 3.8, because this preserves both behavior and registry ownership without inventing shortcuts.
 
 ## 2. Remove unowned built-in and surround defaults
 Scenarios: `actions: Every configured mapping is action-owned`, `keymaps: Unadopted built-in mappings are removed`, `keymaps: Adopted built-in mappings are registry actions`, `keymaps: Surround mappings use registered actions`, `keymaps: [d jumps to previous diagnostic`
@@ -82,11 +83,8 @@ Scenarios: `shortcuts: Shortcut table names action ids`, `shortcuts: Shortcut me
 - [x] 10.2 Replace each mapped row's implementation label with its action id while preserving every physical shortcut, byte sequence, zellij route, received key, and behavior
 - [x] 10.3 Run `make test FILE=tests/chain/shortcuts/test_chain.lua`, then run `make e2e FILE=tests/e2e/shortcuts/test_e2e.lua CASE="shortcuts: Ctrl+Return reaches Neovim as <C-CR> from a real key press"` in the sandbox VM and see them pass
 
-## Blocked
-
-- Question: how should diffview's conflict choices `<leader>co`, `<leader>ct`, `<leader>cb` and `<leader>ca` survive `keymaps.disable_defaults = true`? The main git spec ("Diffview view mappings") retains them and `tests/integration/git/test_diffview.lua` presses them, but with the registry as the only source they must be assigned in `settings/keymap.json`, which rewritten rule 3.8 forbids for `<leader>`.
-- Option 1: register `diffview.choose_ours`, `diffview.choose_theirs`, `diffview.choose_base` and `diffview.choose_all` (view scope, `conflict_choose`) with their current `<leader>c*` keys and amend rule 3.8 to exempt plugin-window keys that keep a spec-retained plugin default.
-- Option 2: drop the four keys and add a MODIFIED delta of "Diffview view mappings" without them, updating `test_diffview.lua`; conflicts are then resolved in differ or codediff.
-- Option 3: give them new non-leader keys (new shortcuts, out of the proposal's scope).
-- Recommendation: option 1; no physical key changes meaning and the registry stays the only source.
-
+## 11. Preserve Diffview conflict choices through actions
+Scenarios: `git: Diffview conflict choices come from git actions`, `git: <leader>co chooses ours`, `git: <leader>ct chooses theirs`, `git: <leader>cb chooses base`, `git: <leader>ca chooses all`
+- [ ] 11.1 Add the ownership scenario to `tests/integration/git/test_diffview.lua`; open a real populated conflict view, query the four configured lhs values, run `make test FILE=tests/integration/git/test_diffview.lua CASE="git: Diffview conflict choices come from git actions"`, and see it fail
+- [ ] 11.2 Register the four view-scoped `conflict_choose` actions, assign their current `<leader>c*` keys in `settings/keymap.json`, feed them through the Diffview adapter with defaults disabled, and narrow architecture rule 3.8 to exempt spec-retained plugin-window defaults
+- [ ] 11.3 Run `make test FILE=tests/integration/git/test_diffview.lua` and see all ownership and conflict-choice scenarios pass

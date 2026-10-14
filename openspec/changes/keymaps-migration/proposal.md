@@ -18,7 +18,7 @@ Depends: action-registry, find-action
   - nvim-surround: `vim.g.nvim_surround_no_mappings = true`, with its `<Plug>` maps bound as actions.
 - **lazy.nvim:** no plugin spec uses `keys` any more. Loading is triggered by `cmd`, `event`, or `require` inside an action's `run`.
 - **Ownership check:** after `VeryLazy`, every mapping in modes `n x s o i c t` (global and plugin-window buffers) must be owned by an action through `keymap.json`, or appear on a short allowlist (Neovim's built-in grammar and the 99 exception).
-- **BREAKING (docs):** keymap rules 3.1, 3.3 and 3.8 in `docs/architecture.md` are rewritten. Keys live only in `settings/keymap.json`, and a feature exposes actions in `actions.lua`.
+- **BREAKING (docs):** keymap rules 3.1, 3.3 and 3.8 in `docs/architecture.md` are rewritten. Keys live only in `settings/keymap.json`, and a feature exposes actions in `actions.lua`. Rule 3.8 forbids new `<leader>` mappings but exempts plugin-window mappings that preserve a spec-retained plugin default.
 
 ## Capabilities
 
