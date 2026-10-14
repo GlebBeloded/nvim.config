@@ -3,6 +3,7 @@
 Found by the final audit of auto (2026-10-14).
 
 Kind: bug
+Adopt: loop/fix-diffview-conflict-keys
 
 ## Evidence
 - Locate code with `rg -n`; the paths above are from the audit (line numbers may drift).
@@ -18,3 +19,12 @@ Kind: bug
 ## Impact
 - Code: the files named above and their tests.
 - Plugins: none added or upgraded.
+
+## Rejected run
+Run on `loop/fix-diffview-conflict-keys` was rejected by the judge:
+- blocked: tasks.md: ## Blocked
+
+Probe output: `literal_leader_hit=false`, `actual_leader_hit=false` (the second input followed the unresolved literal input).
+
+- Attempt 1 removed the four `<D-*>` overrides; all four scenarios still failed because `nvim_input()` sent literal `<leader>` notation instead of the configured leader key.
+- Attempt 2 expanded `<leader>` before input; all four scenarios errored with `Wrong number of arguments: expecting 1 but got 2` because `string.gsub()` returned both the expanded string and replacement count to the RPC call.
