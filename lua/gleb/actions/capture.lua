@@ -57,8 +57,9 @@ local function action_shortcuts(catalog, shortcuts, action)
 end
 
 ---@param read_key? fun(): string
+---@param on_change? fun(lhs: string)
 ---@return string?
-function M.capture(read_key)
+function M.capture(read_key, on_change)
 	read_key = read_key or vim.fn.getcharstr
 	local keys = {}
 	while true do
@@ -71,6 +72,9 @@ function M.capture(read_key)
 			table.remove(keys)
 		else
 			table.insert(keys, key)
+		end
+		if on_change then
+			on_change(table.concat(keys))
 		end
 	end
 end

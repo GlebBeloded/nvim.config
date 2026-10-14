@@ -20,6 +20,7 @@
 ---@field title string
 ---@field category string
 ---@field run fun(ctx: gleb.ActionContext)
+---@field mapping? fun() Direct mapping callback for actions that capture their own context
 ---@field modes? string[]
 ---@field ft? string
 ---@field when? fun(ctx: gleb.ActionContext): boolean
