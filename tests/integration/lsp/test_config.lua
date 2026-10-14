@@ -60,4 +60,17 @@ T["lsp: Terraform files use terraformls"] = function()
 	)
 end
 
+T["lsp: Terraform formatter is omitted when Terraform is unavailable"] = function()
+	local empty_path = H.tempdir(child)
+	child.restart_config({}, { env = { PATH = empty_path } })
+	child.wait_very_lazy()
+
+	eq(child.fn.executable("terraform"), 0)
+	eq(
+		child.lua_get([[vim.iter(require("null-ls.sources").get_all())
+			:any(function(source) return source.name == "terraform_fmt" end)]]),
+		false
+	)
+end
+
 return T
