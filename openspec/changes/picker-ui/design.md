@@ -25,18 +25,155 @@ See proposal.md (Why). A throwaway mini.pick prototype was tested in a real tmux
    - `secondary` gets a group dimmer than `category`.
    - A glyph sits before the category: `●` [PmenuKind] when on, `○` [PmenuExtra] when off.
    - Breakpoints are constants at the top of the file (rule 4.3): `FULL_MIN = 72`, `COMPACT_MIN = 48`, `SHORT_LINES = 15`.
-4. **Grep and references** use mini.extra pickers wrapped by the frame, so they get the same hint row (`Open ↩ · Split ⌃S · Vsplit ⌃V`). Their exact hint texts and renders are drawn in the design step.
+4. **Grep and references** use mini.extra pickers wrapped by the frame, so they get the same hint row (`Open ↩ · Split ⌃S · Vsplit ⌃V`).
 5. **`vim.ui.select`.** A single override in `lua/gleb/picker/select.lua` replaces `lua/gleb/select/`. Code actions keep the cursor-anchored small float, since the select spec pins a width that fits its content, but they use the same frame and rows.
+6. **Dashboard.** Find file, recently used and find text move to shared sources. The project button is removed with project.nvim; adding a replacement project history is outside this change.
 
 ## Renders
 
-The approved frame is "Proposed H1 (approved)" in `openspec/changes/find-action/design.md`. Live-grep, references and code-action renders (Current from `make render`, Proposed in the H1 frame) are added in the design step before implementation, so the preview and design gate can approve them.
+**Current render**: `80x24`, Insert, excerpt: Telescope live-grep picker, query `picker`; the prompt and result titles interrupt borders, and the match counter occupies the bottom border
+
+```text
+╭────────────────────────── Live Grep ────────────────────────────╮
+│> picker█                                                        │
+├─────────────────────────── Results ─────────────────────────────┤
+│lua/gleb/select/init.lua:6:vim.ui.select = function(items, opts,  │
+│openspec/changes/picker-ui/proposal.md:9:one shared picker UI     │
+╰─────────────────────────── 2 / 2 ───────────────────────────────╯
+```
+
+```text
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bpppppppffffffffffffffffffffffffffffffffffffffffffffffffffffffffffb
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffb
+bffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffb
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+```
+
+Legend: `b` [TelescopeBorder] · `p` [TelescopePromptPrefix] · `f` [TelescopeNormal]
+
+**Proposed render — wide live grep**: `80x24`, Insert, excerpt: shared picker, 72-column window, query `picker`; full row fields and hints
+
+```text
+╭ Live Grep › picker█───────────────────────────────────────────────────╮
+│ config matches ────────────────────────────────────────────────────── │
+│ vim.ui.select = function  lua/gleb/select/init.lua:6          Config │
+│ one shared picker UI      openspec/changes/picker-ui/proposal.md:9 UI │
+│ require("gleb.picker")    init.lua:17                        Startup │
+├──────────────────────────────────────────────────────────────────────┤
+│                                      Open ↩ · Split ⌃S · Vsplit ⌃V │
+╰──────────────────────────────────────────────────────────────────────╯
+```
+
+```text
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxb
+bSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSb
+bffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffb
+bffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffb
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxb
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+```
+
+Legend: `b` [FloatBorder] · `f` [NormalFloat] · `S` [PmenuSel] · `x` [PmenuExtra] · title query caret [MiniPickPromptCaret]
+
+**Proposed render — LSP references**: `80x24`, Normal, excerpt: shared picker, `lua/gleb/keymaps.lua`, current line included
+
+```text
+╭ References › █────────────────────────────────────────────────────────╮
+│ current file ──────────────────────────────────────────────────────── │
+│ local function lsp_references()  lua/gleb/keymaps.lua:156         Lua │
+│ require("gleb.picker").lsp()     lua/gleb/keymaps.lua:157         Lua │
+├──────────────────────────────────────────────────────────────────────┤
+│                                      Open ↩ · Split ⌃S · Vsplit ⌃V │
+╰──────────────────────────────────────────────────────────────────────╯
+```
+
+```text
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxb
+bSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSb
+bffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffb
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxb
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+```
+
+Legend: `b` [FloatBorder] · `f` [NormalFloat] · `S` [PmenuSel] · `x` [PmenuExtra] · title query caret [MiniPickPromptCaret]
+
+**Proposed render — code action**: `80x24`, Normal, excerpt: cursor-anchored shared picker, code actions available
+
+```text
+╭ Code Actions › █────────────────────────────╮
+│ Add missing import  source.organizeImports  │
+│ Extract function    refactor.extract        │
+├─────────────────────────────────────────────┤
+│                  Choose ↩ · Cancel Esc     │
+╰─────────────────────────────────────────────╯
+```
+
+```text
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSb
+bffffffffffffffffffffffffffffffffffffffffffffffb
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxb
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+```
+
+Legend: `b` [FloatBorder] · `f` [NormalFloat] · `S` [PmenuSel] · `x` [PmenuExtra] · title query caret [MiniPickPromptCaret]
+
+**Proposed render — compact**: `60x24`, Insert, excerpt: shared live-grep picker; categories hidden and hints reduced to keys
+
+```text
+╭ Live Grep › picker█───────────────────────────────────────╮
+│ vim.ui.select = function  lua/gleb/select/init.lua:6      │
+│ one shared picker UI      openspec/changes/picker-ui/...  │
+├──────────────────────────────────────────────────────────┤
+│                                            ↩ · ⌃S · ⌃V │
+╰──────────────────────────────────────────────────────────╯
+```
+
+```text
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSb
+bffffffffffffffffffffffffffffffffffffffffffffffffffffffffffb
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxb
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+```
+
+Legend: `b` [FloatBorder] · `f` [NormalFloat] · `S` [PmenuSel] · `x` [PmenuExtra] · title query caret [MiniPickPromptCaret]
+
+**Proposed render — narrow**: `40x24`, Insert, excerpt: shared live-grep picker; primary text only and no hint row
+
+```text
+╭ Live Grep › picker█───────────────────╮
+│ vim.ui.select = function              │
+│ one shared picker UI                  │
+│ require("gleb.picker")                │
+╰──────────────────────────────────────╯
+```
+
+```text
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSb
+bffffffffffffffffffffffffffffffffffffffb
+bffffffffffffffffffffffffffffffffffffffb
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+```
+
+Legend: `b` [FloatBorder] · `f` [NormalFloat] · `S` [PmenuSel] · title query caret [MiniPickPromptCaret]
+
+The approved choice is the H1 single-window frame at all widths. The compact layouts remove metadata before reducing the result count, keeping search useful while honoring the user's “just the commands” choice on small windows.
 
 ## Risks / Trade-offs
 
 - [mini.pick puts the prompt in the window title, and very long queries truncate] → the title is cut from the left, so the caret stays visible.
 - [A joined `├┤` rule is not a native border feature] → the fallback inner rule is pinned by a screen test, so it cannot regress silently.
-- [99's native picker extension looks different] → 99 search uses the shared `vim.ui.select`, where possible through its native extension.
+- [99 completion could retain a Telescope dependency] → configure 99's installed native completion source explicitly and remove Telescope from its plugin dependencies.
 
 ## Migration Plan
 
