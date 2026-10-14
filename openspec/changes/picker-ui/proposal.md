@@ -3,6 +3,7 @@
 Menus come from four separate places: Telescope for live grep and references, a nui.nvim code-action menu, the 99 echo-prompt menu, and plugin pickers. Each one looks and behaves differently. The user wants a single custom UI that we control, built on a library rich enough to draw anything.
 
 Kind: feature
+Adopt: loop/picker-ui-20261014-195908
 
 ## What Changes
 
@@ -66,3 +67,11 @@ Kind: feature
 - Hint row: separated by a joined rule (H1), right-aligned, with no total count.
 - Small windows show just the commands. The agent picks the exact breakpoints.
 - Search stays in separate pickers: no tab bar. Code search gets its own shortcut and menus later.
+
+## Rejected run
+Run on `loop/picker-ui-20261014-195908` was rejected by the judge:
+- fix loop exhausted with gates still red: review
+- review findings:
+  [must-fix] Live grep results crash the shared picker's `show`. In `lua/gleb/picker/frame.lua:97-100`, `create_show` wraps string items as `{ text = tostring(item) }` and passes them to `rows.render`. Results from mini.pick `grep_live` (mini.pick.lua:3564, `rg --field-match-separator \x00`) are strings like `path\0lnum\0col\0text`. `rows.render` measures them with `vim.fn.strdisplaywidth`/`strcharpart` (`lua/gleb/picker/rows.lua:37,48,141`), and a NUL-containing string turns into a Blob there. A headless probe of `rows.render` on such an item raised `Vim:E976: Using a Blob as a String`. So `<A-F>` (`keymaps.lua:149`) and the dashboard "Find text" button (`alpha.lua:20`) fail as soon as a query returns matches. mini.pick's own `default_show` handles this by replacing `%z` with `│` (mini.pick.lua:1098). Fix: fall back to `MiniPick.default_show` for non-row items, or sanitize the NUL separators. Then add a case that types a query into live grep and asserts the rendered rows. Why earlier passes missed it: `keymaps: Alt-F opens live grep` and `picker: Dashboard opens shared list pickers` only check that the picker opens with an empty query, so `show` never received string results. The earlier `rows.show` path (d1a6336 `frame.lua:125`) also indexed string items as tables.
+  
+  [must-fix] The last fix pass (892ce19) changed session behaviour that no spec covers. `lua/gleb/session/init.lua:51-53` now resets cwd to the cwd from before `resession.load`, which throws away the cwd the session
