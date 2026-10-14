@@ -18,6 +18,7 @@ Scenarios: `find-action: Find Action opens from its shortcut`, `find-action: Fin
 - Style assignment keys and choices with existing semantic highlight groups so the float follows the active colorscheme.
 - Use Cmd+D as the workflow's free assignment because its kitty-protocol key is unbound and remains observable across restart.
 - Keep the task-9 mapping cell generic (`fn`) because exact Find Action callback identity belongs to task 10.
+- Give self-context-capturing actions an explicit mapping callback so Find Action keeps registry assignment while exposing its exact entry point.
 
 ## 2. Render action rows
 Scenarios: `find-action: Rows show action metadata`, `find-action: Rows fall back to Vim notation`, `find-action: Toggle rows show state glyphs`
@@ -69,9 +70,9 @@ Scenarios: `shortcuts: Alacritty bindings match the shortcut table`, `shortcuts:
 
 ## 10. Match the Find Action mapping
 Scenarios: `shortcuts: Neovim mappings match the table`
-- [ ] 10.1 Extend `tests/chain/shortcuts/test_chain.lua` for the Find Action callback and run `make test FILE=tests/chain/shortcuts/test_chain.lua CASE="Neovim mappings match the table"`, seeing it fail
-- [ ] 10.2 Complete the shortcut-table mapping entry for `find_action.open`
-- [ ] 10.3 Run `make test FILE=tests/chain/shortcuts/test_chain.lua CASE="Neovim mappings match the table"` and see it pass
+- [x] 10.1 Extend `tests/chain/shortcuts/test_chain.lua` for the Find Action callback and run `make test FILE=tests/chain/shortcuts/test_chain.lua CASE="Neovim mappings match the table"`, seeing it fail
+- [x] 10.2 Complete the shortcut-table mapping entry for `find_action.open`
+- [x] 10.3 Run `make test FILE=tests/chain/shortcuts/test_chain.lua CASE="Neovim mappings match the table"` and see it pass
 
 ## 11. Deliver Find Action through real zellij
 Scenarios: `shortcuts: Cmd+Shift+A opens Find Action through real zellij`
