@@ -27,4 +27,5 @@ the diff against the conventions in docs/architecture.md and openspec/specs plus
   docs/ file linked from README.md, no dangling relative links, no stale references.
 
 Evidence bar: cite file:line for each finding; drop anything that rests on "might". Do not edit
-files. Set `approve` to false only for findings that must be fixed before merge.
+files. Start each finding `[must-fix]` or `[minor]` (the judge lists `[minor]`
+findings as notes, also on ship). Set `approve` to false only for findings that must be fixed before merge.

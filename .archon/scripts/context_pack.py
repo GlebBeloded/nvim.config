@@ -1,6 +1,7 @@
 """Context pack for one change: everything an agent step needs, gathered once into
 $ARTIFACTS_DIR/context.md so steps read one file instead of exploring the repo (docs/workflow.md,
-Steps). Holds the change artifacts, the Loop lessons, the files tasks.md names (capped) and the
+Steps). Holds the root cause's `## Evidence` (proposal.md: file:line refs or probe output, so agents
+do not re-read what it covers), the change artifacts, the Loop lessons, the files tasks.md names (capped) and the
 failures of the last gate. Prints {"has_task", "context"}: has_task is false when no task is left
 (or tasks.md is blocked), so the task loop skips its implement session.
 """
@@ -28,6 +29,14 @@ def lessons() -> str:
     text = pathlib.Path("docs/workflow.md").read_text()
     match = re.search(r"^## Loop lessons\n(.*?)(?=^## )", text, re.MULTILINE | re.DOTALL)
     return match.group(1) if match else ""
+
+
+def evidence(change_dir: pathlib.Path) -> str:
+    """The `## Evidence` section of the change's proposal.md (a bug's root-cause refs), or ""."""
+    proposal = change_dir / "proposal.md"
+    text = proposal.read_text() if proposal.exists() else ""
+    match = re.search(r"^## Evidence[^\n]*\n(.*?)(?=^## |\Z)", text, re.MULTILINE | re.DOTALL)
+    return match.group(1).strip() if match else ""
 
 
 def change_artifacts(change_dir: pathlib.Path) -> list[str]:
@@ -84,6 +93,9 @@ def main() -> None:
     change_dir = pathlib.Path("openspec/changes") / CHANGE
     task = next_task(change_dir / "tasks.md")
     parts = [f"# Context pack: {CHANGE}\n", section("Next task", task or "(none: every task is ticked)")]
+    found = evidence(change_dir)
+    if found:
+        parts.append(section("Evidence", found + "\n\n(root cause, proposal.md: do not re-read plugin source these refs cover)"))
     parts.append(section("Loop lessons", lessons()))
     parts += change_artifacts(change_dir)
     plugins = plugin_sources(change_dir)

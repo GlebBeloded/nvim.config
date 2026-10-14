@@ -5,7 +5,9 @@
 
 import difflib
 import hashlib
+import json
 import os
+import pathlib
 import re
 import subprocess
 
@@ -168,6 +170,44 @@ def moved_test_files(base: str, deleted: list[str]) -> bool:
     kept = {path for path in git("ls-files", "--cached", "--", "tests/").split() if path.endswith(".lua")}
     present = set().union(*(case_names(open(path).read()) for path in kept if os.path.isfile(path)))
     return all(case_names(git("show", f"{base}:{path}")) <= present for path in deleted)
+
+
+CASE_SNAPSHOT = "case-snapshot.json"  # verdict.py: the case names at the end of a build pass
+DROPPED_CASES = "dropped-cases.json"  # gate.py: names a later pass dropped, for the judge
+
+
+def tree_case_names() -> set[str]:
+    """Test case names in the worktree's tests/ files, committed or not."""
+    return set().union(*(case_names(p.read_text(errors="replace")) for p in pathlib.Path("tests").rglob("*.lua")))
+
+
+def base_case_names() -> set[str]:
+    base = git("merge-base", "HEAD", BASE).strip()
+    found = subprocess.run(["git", "grep", "-h", "-E", r"^\s*T\[", base, "--", "tests/"], capture_output=True, text=True)
+    return case_names(found.stdout)
+
+
+def dropped_cases(seen: list[str]) -> list[str]:
+    """Names of `seen` (cases an earlier build pass had) that neither the worktree nor the base has:
+    a test the build added and then removed."""
+    gone = set(seen) - tree_case_names()
+    return sorted(gone - base_case_names()) if gone else []
+
+
+def record_dropped(artifacts: pathlib.Path) -> list[str]:
+    """Cases dropped since verdict's last snapshot, added to DROPPED_CASES so the judge still sees them."""
+    snapshot, record = artifacts / CASE_SNAPSHOT, artifacts / DROPPED_CASES
+    names = dropped_cases(json.loads(snapshot.read_text())) if snapshot.exists() else []
+    if names:
+        known = json.loads(record.read_text()) if record.exists() else []
+        record.write_text(json.dumps(sorted(set(known) | set(names))))
+    return names
+
+
+def still_dropped(artifacts: pathlib.Path) -> list[str]:
+    """Recorded dropped cases that the branch has not restored."""
+    record = artifacts / DROPPED_CASES
+    return dropped_cases(json.loads(record.read_text())) if record.exists() else []
 
 
 def xfail_refs(text: str) -> list[str]:

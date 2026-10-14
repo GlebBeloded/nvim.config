@@ -19,6 +19,8 @@ openspec continue-change). Otherwise create one with the `openspec-propose` skil
 - spec delta: only when the spec is wrong or missing the behaviour: MODIFIED (the spec describes the buggy behaviour) or ADDED scenario that describes the
   correct behaviour, verifiable in a headless child Neovim. Never remove or weaken a scenario.
 - proposal: plugin dependency change? core keymap change? out of scope.
+- proposal: an `## Evidence` section listing the root cause's `file:line` refs (repo or installed plugin source) or
+  headless probe output, copied from root-cause.md; the context pack hands it to implement and fix.
 - design.md only when there is visible UI (then Current + Proposed renders) or a structural change.
 - tasks.md: each task names its scenario titles on a `Scenarios:` line as `<capability>: <scenario title>` (the gate checks those have tests, also when the spec delta is empty); its first step is the failing test
   "<capability>: <scenario title>" (when a test with that name exists: run it and see it fail).

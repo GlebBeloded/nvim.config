@@ -33,6 +33,8 @@ until specs, design.md (only for visible UI: Current + Proposed renders) and tas
 following the `rules:` block of openspec/config.yaml (read only that block: `sed -n '/^rules:/,/^operations:/p' openspec/config.yaml`). Locate cited code with `rg -n <symbol>`, not by the proposal's line numbers (they may be stale).
 Read the requirement the proposal names and each pinned scenario below, only those ranges (`rg -n 'Requirement:' <spec>`, then that range).
 Pinned scenarios (`pinned.py`: main-spec scenarios naming a symbol this change touches): $INPUTS.pinned. Each gets a MODIFIED delta restated to the new behaviour, or one line in proposal.md `## Impact` naming `<capability>: <scenario>` and saying why it still holds; the spec gate reruns `pinned.py --check`.
+A bug's proposal (`Kind: bug`) states its root cause with an `## Evidence` section: a list of `file:line` refs (repo or
+installed plugin source) or headless probe output that shows the cause; the context pack hands it to implement and fix.
 Drop main spec paths from the proposal's Impact; the delta covers them. Do not implement. Set `visible_ui` to true when the change alters what is drawn on screen,
 `architecture` to true when it changes module layout, load order or plugin wiring (docs/architecture.md). A bug fix that only makes the screen match what an existing spec scenario already requires is not `visible_ui` (no design.md, no design gate); `visible_ui` means a new or changed look.
 

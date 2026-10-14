@@ -1,7 +1,8 @@
 """Test gate for one build iteration. Hard rules (integrity.py, then pinned.py on the proposal and branch diff) first: a violation is red at once, with
 no make check and no review. When only the `test`, `test-readiness` and e2e layers fail, each failing
 case is rerun once, serially (e2e only when it failed on sandbox infra alone, with no `FAIL in` case: one
-`make e2e E2E=1`): all passing makes the check green with them listed as `flaky` (a note, not a finding). Planning files the fix pass edited (vs. the snapshot verdict.py took
+`make e2e E2E=1`): all passing makes the check green with them listed as `flaky` (a note, not a finding). A test case the previous pass had and that is now gone (on base neither:
+verdict.py's case snapshot) is a hard rule, recorded for the judge. Planning files the fix pass edited (vs. the snapshot verdict.py took
 at the pass's start) go to $ARTIFACTS_DIR/fix-scope.md for the review. Then make check (lint, types, tests, smoke, trace), strict OpenSpec
 validation of the change and of the main specs after a trial archive, and tasks.md completion. Never fails the node: prints one JSON verdict so
 the build loop can feed failures back to the next implement pass. Counts attempts in ARTIFACTS_DIR.
@@ -15,7 +16,7 @@ import re
 import sys
 
 from check_log import failed_targets, failing_cases, sections, strip_ansi, summarize
-from integrity import hard_rule_violations, plan_edits
+from integrity import hard_rule_violations, plan_edits, record_dropped
 from pinned import pinned
 from scenarios import covered, untested
 from spec_trial import archived_specs_ok as trial_archive
@@ -54,8 +55,11 @@ def archived_specs_ok(log: str) -> tuple[bool, str]:
 def hard_rules() -> list[str]:
     try:
         reasons = hard_rule_violations()
+        # a case an earlier pass had (verdict's snapshot) and this pass removed; the judge asks if it stays gone
+        dropped = record_dropped(artifacts)
     except subprocess.CalledProcessError:  # not a git repo, or no base branch: nothing to compare
-        reasons = []
+        reasons, dropped = [], []
+    reasons += ["test added then removed during build: " + ", ".join(dropped)] if dropped else []
     # main-spec scenarios the proposal or the branch diff touches with no delta and no Impact line
     pins = pinned(change) if change else []
     return reasons + [f"pinned scenario with no MODIFIED delta or Impact line: {p}" for p in pins]

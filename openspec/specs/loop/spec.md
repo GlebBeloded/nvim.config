@@ -484,6 +484,42 @@ verdict.py SHALL snapshot the change's proposal.md, `.openspec.yaml` and spec de
 - **WHEN** `.archon/commands/fix.md` is read
 - **THEN** it loads no skill when every finding starts with `hard rule:` and never edits proposal.md, .openspec.yaml or spec deltas unless a finding is about them
 
+### Requirement: Build keeps the test cases it added
+verdict.py SHALL snapshot the test case names at the end of each pass. The next gate.py SHALL report each snapshot name in neither the worktree's tests nor the base as the hard rule `test added then removed during build: <names>` and record it; the judge SHALL ask about each recorded name still missing.
+
+#### Scenario: Gate flags a test case added then removed during build
+- **WHEN** verdict.py ends a pass on a branch that adds case `a: new` to a test file holding base case `a: old`, both are then removed and gate.py runs, then verdict.py and gate.py run again and the judge runs
+- **THEN** the first gate is red naming `hard rule: test added then removed during build: a: new` and not `a: old`, the second gate does not repeat it, and the judge asks with that reason
+
+#### Scenario: Judge ships once a dropped test case is restored
+- **WHEN** gate.py recorded `a: new` as dropped and the case is back in a test file when the judge runs
+- **THEN** the judge's decision is `ship`
+
+### Requirement: Fix pass probes before it edits
+The fix command SHALL run one headless scratch-file probe logging the relevant state before editing code for a non-obvious failure, allow at most 2 implementation attempts per pass and then write `## Blocked` with the probe evidence, and forbid production timers or sleeps that race a plugin's internals unless the proposal's `## Decision` allows them.
+
+#### Scenario: Fix prompt probes first and caps attempts
+- **WHEN** `.archon/commands/fix.md` is read
+- **THEN** it asks for one headless probe before editing a non-obvious failure, caps attempts at 2 per pass then `## Blocked` with the probe output, and forbids timers or sleeps against plugin internals without a `## Decision`
+
+### Requirement: Bug root cause carries evidence
+The spec prompts SHALL give a bug proposal an `## Evidence` section of `file:line` refs or probe output for its root cause; context_pack.py SHALL carry that section into context.md, and the implement prompt SHALL not re-read plugin source the Evidence covers.
+
+#### Scenario: Context pack carries the proposal's evidence
+- **WHEN** `.archon/scripts/context_pack.py` runs for a change whose proposal.md has an `## Evidence` section, and for one without
+- **THEN** the first context.md has an `## Evidence` section with its refs before the Loop lessons; the second has none
+
+#### Scenario: Spec prompts require root-cause evidence
+- **WHEN** `.archon/commands/queue-spec.md`, `spec-bug.md` and `implement.md` are read
+- **THEN** both spec prompts require an `## Evidence` section of `file:line` refs or probe output, and implement does not re-read plugin source the Evidence covers
+
+### Requirement: Judge lists minor review findings as notes
+verdict.py SHALL pass on the last review's findings even when it approves; on ship the judge SHALL list each finding marked minor or non-blocking (`[minor]`, or under a `Minor (non-blocking):` heading) as a `- note:` line of escalation.md, never as a reason.
+
+#### Scenario: Judge notes minor review findings on ship
+- **WHEN** verdict.py passes with an approving review whose findings hold a `[minor]` line and a `Minor (non-blocking):` heading with one item, and the judge runs on verdict's `review_findings`
+- **THEN** the decision is `ship` and escalation.md has a `- note: review (minor):` line for each of the two, and none for the summary line
+
 ### Requirement: Gate reruns failed test cases once
 When `make check` fails only in `test`, `test-readiness` or `e2e`, gate.py SHALL rerun each `FAIL in` case once, serially (`make test FILE=<file> CASE=<name>`, `make test-readiness CASE=<name>`); e2e only when its log has no `FAIL in` and only sandbox/Lume infra lines (`make e2e E2E=1`). All passing: green, listed in `flaky` and the check log, a judge note. A rerun failing stays red; other targets never rerun.
 

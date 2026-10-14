@@ -12,7 +12,7 @@ import pathlib
 import subprocess
 
 from blocked import blocked_text
-from integrity import hard_rule_violations, plan_files
+from integrity import CASE_SNAPSHOT, hard_rule_violations, plan_files, tree_case_names
 from lessons import drop_overturned
 
 MAX_ATTEMPTS = 3
@@ -60,6 +60,7 @@ if "review" not in gates and scope.exists():  # the review did not see it: send 
 drop_overturned(artifacts, "review" in gates and not gates["review"])  # lessons of a rejected pass are unverified
 # the next fix pass starts here: gate.py compares the change's planning files against this snapshot
 (artifacts / "plan-snapshot.json").write_text(json.dumps(plan_files(os.environ.get("INPUTS_CHANGE", ""))))
+(artifacts / CASE_SNAPSHOT).write_text(json.dumps(sorted(tree_case_names())))  # gate.py: a case the next pass drops
 feedback += [f"verify: {value('verify_findings', '')}" if int(value("critical", -1)) > 0 and value("verify_findings", "") else ""]
 feedback += [f"review: {value('review_findings', '')}" if value("approve", False) is not True and value("review_findings", "") else ""]
 flaky = value("flaky", []) or []
@@ -77,8 +78,8 @@ print(
             "weakened_scenario": value("weakened_scenario", False) is True,
             "weakened_test": value("weakened_test", False) is True,
             "notes": notes,
-            # the last review's findings when it did not approve: the judge hands them to followup.py
-            "review_findings": "" if value("approve", False) is True else str(value("review_findings", "") or ""),
+            # the last review's findings: quoted by the judge when it does not ship, minor ones listed as notes
+            "review_findings": str(value("review_findings", "") or ""),
         }
     )
 )

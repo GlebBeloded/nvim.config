@@ -428,4 +428,104 @@ T["loop: Fix prompt never makes an empty commit"] = function()
 	has(fix, "or restates a rule of this command: such lessons are dropped")
 end
 
+T["loop: Gate flags a test case added then removed during build"] = function()
+	local repo = branch_repo({ ["tests/unit/a/test_a.lua"] = 'T["a: old"] = function() end' })
+	write(repo, { ["tests/unit/a/test_a.lua"] = 'T["a: old"] = function() end\nT["a: new"] = function() end' })
+	local artifacts = H.tempdir(child)
+	local scratch = H.tempdir(child)
+	local bin = fake_tool(scratch, "make", "exit 0")
+	local env = { ARTIFACTS_DIR = artifacts, PATH = bin .. ":" .. vim.env.PATH }
+
+	loop_script("verdict.py", repo, verdict_env(artifacts))
+	write(repo, { ["tests/unit/a/test_a.lua"] = "-- emptied" })
+	local first = loop_script("gate.py", repo, env)
+	eq(first.green, false)
+	has(first.failures, "hard rule: test added then removed during build: a: new")
+	eq(first.failures:find("during build: a: new, a: old", 1, true), nil)
+	loop_script(
+		"verdict.py",
+		repo,
+		verdict_env(artifacts, { INPUTS_GREEN = "false", INPUTS_FAILURES = first.failures })
+	)
+	local second = loop_script("gate.py", repo, env)
+	eq(second.failures:find("during build", 1, true), nil, { fail_reason = second.failures })
+
+	write(repo, { ["tests/unit/a/test_a.lua"] = 'T["a: old"] = function() end' })
+	local judge = loop_script("escalation.py", repo, { ARTIFACTS_DIR = artifacts })
+	eq(judge.decision, "ask", { fail_reason = judge.reasons })
+	has(judge.reasons, "test added then removed during build: a: new")
+end
+
+T["loop: Judge ships once a dropped test case is restored"] = function()
+	local repo = branch_repo({ ["tests/unit/a/test_a.lua"] = 'T["a: old"] = function() end' })
+	local artifacts = H.tempdir(child)
+	write(artifacts, { ["dropped-cases.json"] = '["a: new"]' })
+	write(repo, { ["tests/unit/a/test_a.lua"] = 'T["a: old"] = function() end\nT["a: new"] = function() end' })
+	local judge = loop_script("escalation.py", repo, { ARTIFACTS_DIR = artifacts })
+	eq(judge.decision, "ship", { fail_reason = judge.reasons })
+end
+
+T["loop: Fix prompt probes first and caps attempts"] = function()
+	local fix = read(vim.fs.joinpath(H.root, ".archon/commands/fix.md")):gsub("%s+", " ")
+	has(fix, "run one headless probe first (the scratch-file probe rule below) that logs the relevant state")
+	has(fix, "At most 2 implementation attempts per pass")
+	has(fix, "write `## Blocked` in tasks.md with the probe output and both attempts")
+	has(fix, "never uses timers or sleeps (`vim.defer_fn`, `vim.uv` timers, `vim.wait`) to win a race")
+	has(fix, "unless the proposal's `## Decision` allows it")
+end
+
+---@param proposal string
+---@return string context.md of a change whose proposal.md is `proposal`
+local function pack_context(proposal)
+	local repo = H.tempdir(child)
+	local artifacts = H.tempdir(child)
+	write(repo, {
+		["docs/workflow.md"] = "## Loop lessons\n\n- lesson\n\n## The loop\n",
+		["openspec/changes/c/proposal.md"] = proposal,
+		["openspec/changes/c/tasks.md"] = "## 1. Todo\n- [ ] 1.1 a",
+	})
+	local env = { INPUTS_CHANGE = "c", ARTIFACTS_DIR = artifacts }
+	local result = H.system(child, { "python3", vim.fs.joinpath(SCRIPTS, "context_pack.py") }, repo, env)
+	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
+	return read(vim.fs.joinpath(artifacts, "context.md"))
+end
+
+T["loop: Context pack carries the proposal's evidence"] = function()
+	local refs = "- neo-tree sources/filesystem/init.lua:198: debounced navigate"
+	local context = pack_context("## Why\n\nrace\n\n## Evidence\n\n" .. refs .. "\n\n## Impact\n\n- x\n")
+	local evidence, lessons = context:find("## Evidence\n\n" .. refs, 1, true), context:find("## Loop lessons", 1, true)
+	eq(evidence ~= nil and evidence < lessons, true, { fail_reason = context })
+	eq(pack_context("## Why\n\nrace\n"):find("## Evidence", 1, true), nil)
+end
+
+T["loop: Spec prompts require root-cause evidence"] = function()
+	for _, name in ipairs({ "queue-spec.md", "spec-bug.md" }) do
+		local prompt = read(vim.fs.joinpath(H.root, ".archon/commands", name)):gsub("%s+", " ")
+		has(prompt, "an `## Evidence` section")
+		has(prompt, "`file:line` refs (repo or installed plugin source) or")
+	end
+	local implement = read(vim.fs.joinpath(H.root, ".archon/commands/implement.md")):gsub("%s+", " ")
+	has(implement, "do not re-read plugin source the Evidence already covers")
+end
+
+T["loop: Judge notes minor review findings on ship"] = function()
+	local repo = branch_repo({ ["README.md"] = "x" })
+	local artifacts = H.tempdir(child)
+	local findings = table.concat({
+		"No blocking findings.",
+		"1. [minor] lua/gleb/keymaps.lua:90 reads a private neo-tree field.",
+		"Minor (non-blocking):",
+		"2. Rule 4.3: magic number at lua/gleb/keymaps.lua:91.",
+	}, "\n")
+	local verdict = loop_script("verdict.py", repo, verdict_env(artifacts, { INPUTS_REVIEW_FINDINGS = findings }))
+	eq(verdict.passed, true, { fail_reason = verdict.feedback })
+	local env = { ARTIFACTS_DIR = artifacts, INPUTS_REVIEW_FINDINGS = verdict.review_findings }
+	local judge = loop_script("escalation.py", repo, env)
+	eq(judge.decision, "ship", { fail_reason = judge.reasons })
+	local escalation = read(vim.fs.joinpath(artifacts, "escalation.md"))
+	has(escalation, "- note: review (minor): 1. [minor] lua/gleb/keymaps.lua:90 reads a private neo-tree field.")
+	has(escalation, "- note: review (minor): 2. Rule 4.3: magic number at lua/gleb/keymaps.lua:91.")
+	eq(escalation:find("No blocking findings", 1, true), nil)
+end
+
 return T
