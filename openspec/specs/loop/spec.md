@@ -556,6 +556,10 @@ When `make check` fails only in `test`, `test-readiness` or `e2e`, gate.py SHALL
 - **WHEN** gate.py runs with a `make` stub whose check fails in `test-readiness` on one case and whose rerun passes, then one whose rerun fails
 - **THEN** the first gate reruns `make test-readiness CASE=<name>` and is green with the case in `flaky` and the check log; the second is red
 
+#### Scenario: Gate reruns a readiness case whose label carries its error
+- **WHEN** gate.py's check log has `FAIL in tests/integration/lsp/test_readiness.lua | lsp: slow case: ready after 3157 ms, bound 2500 ms` and that file defines the case `lsp: slow case`
+- **THEN** the rerun command is `make test-readiness CASE=lsp: slow case`
+
 #### Scenario: Gate reruns e2e once after a sandbox failure
 - **WHEN** gate.py runs with a `make` stub whose check fails in `e2e` with only sandbox lines (`did not answer SSH`, `is not running`) and whose rerun passes, then fails; then with a `FAIL in` case; then with another non-sandbox line
 - **THEN** the first reruns `make e2e E2E=1` and is green with `e2e: <last sandbox line>` in `flaky`; the second is red; the last two are red with no rerun

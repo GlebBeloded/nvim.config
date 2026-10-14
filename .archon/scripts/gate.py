@@ -18,7 +18,7 @@ import sys
 
 from blocked import blocked_text
 from check_log import failed_targets, failing_cases, sections, strip_ansi, summarize
-from integrity import hard_rule_violations, plan_edits, record_dropped
+from integrity import case_names, hard_rule_violations, plan_edits, record_dropped
 from pinned import pinned
 from scenarios import covered, untested
 from spec_trial import archived_specs_ok as trial_archive
@@ -104,6 +104,17 @@ def e2e_infra(body: list[str]) -> str:
     return next((line for line in reversed(lines) if INFRA.search(line)), "")  # the last: sandbox.sh dies on it
 
 
+def case_name(file: str, label: str) -> str:
+    """The case name in a `FAIL in` label, which may carry the error message after it (`<name>: <message>`,
+    e.g. a readiness bound): the longest case of `file` the label starts with, else the label itself."""
+    try:
+        names = case_names(pathlib.Path(file).read_text())
+    except OSError:
+        return label
+    matches = [n for n in names if label == n or label.startswith(n + ":")]
+    return max(matches, key=len) if matches else label
+
+
 def rerun_plan(out: str) -> list[tuple[str, list[str]]]:
     """(case, rerun command) for every failure of a check whose failed targets all rerun; else none."""
     targets, bodies = failed_targets(out), dict(sections(out.splitlines()))
@@ -121,6 +132,7 @@ def rerun_plan(out: str) -> list[tuple[str, list[str]]]:
             return []
         for case in cases:
             file, name = case.split(" | ", 1)
+            name = case_name(file, name)
             narrow = [f"CASE={name}"] if target == "test-readiness" else [f"FILE={file}", f"CASE={name}"]
             plan.append((case, ["make", target, *narrow]))
     return plan
