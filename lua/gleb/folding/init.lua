@@ -21,13 +21,14 @@ local function provider(_, _, _)
 end
 
 -- https://github.com/kevinhwang91/nvim-ufo#customize-fold-text
-local function handler(virtText, lnum, endLnum, width, truncate)
-	local filetype = vim.bo.filetype
+local function handler(virtText, lnum, endLnum, width, truncate, ctx)
+	local bufnr = ctx.bufnr
+	local filetype = vim.bo[bufnr].filetype
 
 	if filetype == "go" then
-		virtText = require("gleb.folding.go"):handle(virtText, lnum, endLnum, width, truncate)
+		virtText = require("gleb.folding.go"):handle(virtText, lnum, endLnum, width, truncate, bufnr)
 	elseif filetype == "lua" then
-		virtText = require("gleb.folding.lua"):handle(virtText, lnum, endLnum, width, truncate)
+		virtText = require("gleb.folding.lua"):handle(virtText, lnum, endLnum, width, truncate, bufnr)
 	else
 		table.insert(virtText, { " ... " }) -- default text
 	end
