@@ -147,6 +147,11 @@ end
 ---@return boolean
 local function choose_action(row)
 	local action = row.action
+	if row.section then
+		local current_ind = MiniPick.get_picker_matches().current_ind
+		local rows = assert(M.state.rows, "Find Action rows are missing")
+		action = current_ind and rows[current_ind + 1] and rows[current_ind + 1].action
+	end
 	if not action then
 		return true
 	end

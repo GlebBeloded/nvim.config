@@ -20,7 +20,7 @@ Scenarios: `find-action: Find Action opens from its shortcut`, `find-action: Fin
 - Keep the task-9 mapping cell generic (`fn`) because exact Find Action callback identity belongs to task 10.
 - Give self-context-capturing actions an explicit mapping callback so Find Action keeps registry assignment while exposing its exact entry point.
 - Observe stack pickers by their active source name over RPC so real-byte tests assert the opened UI without replacing mappings.
-- Let an e2e recorder optionally call the saved mapping callback so one physical press proves both key arrival and its action.
+- Run the physical Find Action mapping directly and stop its stack after assertion so the blocking picker cannot leak into the next case.
 - Use `ai.search` and `ai.vibe` in the AI category so the stable IDs follow the feature-action convention while the titles retain the 99 product name.
 - Expose stable named prompt callbacks from the entry-keymap module so direct mappings and registry actions share one invocation path.
 - Keep task 15 as a regression-test correction because task 14 already registered the required `n`/`x` mappings and left select mode untouched.
@@ -109,20 +109,8 @@ Scenarios: `ai: Entry mappings are silent`, `ai: Select mode keeps its default b
 - [x] 15.2 Register only the specified silent normal and visual mappings and leave select mode untouched
 - [x] 15.3 Run `make test FILE=tests/unit/ai/test_entry_keymaps.lua` and see both scenarios pass
 
-## Stuck
-
-`find-action: Visual palette preserves the selection` remains red because the approved section header is the initial MiniPick match, so one Enter does not run the following visual action.
-
-Probe output:
-
-```text
-current_has_action = false
-current_ind = 1
-current_is_state_row = false
-current_text = "other actions"
-next_has_action = true
-next_text = "Find Action..."
-```
-
-- Attempt 1 selected the first action from a `MiniPickStart` autocmd. The behavior case passed, but the narrow reference screen changed its highlighted row, so the production edit was reverted.
-- Attempt 2 made a section choose the following action by finding the chosen row in `M.state.rows`. Reference screens passed, but the behavior stayed red because MiniPick returns a copied row (`current_is_state_row = false`), so the production edit was reverted.
+## 16. Run the initial visual action from its section row
+Scenarios: `find-action: Visual palette preserves the selection`
+- [x] 16.1 Run `make test FILE=tests/integration/find-action/test_run.lua CASE="Visual palette preserves the selection"` against the real `<M-A>` picker populated with the visual action, press `<CR>`, and see it fail because the initial section row has no action
+- [x] 16.2 Make the smallest Find Action choice change so `<CR>` on an initial section row resolves the following action by the picker's current match index, preserving the captured visual selection and the approved section-row highlight
+- [x] 16.3 Run `make test FILE=tests/integration/find-action/test_run.lua CASE="Visual palette preserves the selection"` and `make test FILE=tests/screen/find-action/test_palette.lua`, and see them pass

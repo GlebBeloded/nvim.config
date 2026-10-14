@@ -333,15 +333,14 @@ end
 
 T["shortcuts: Cmd+Shift+A opens Find Action from a real key press"] = function()
 	local s = get()
-	E.record(s, { row("Cmd+Shift+A").receives }, true)
 	burst(function()
 		E.press(s, E.chord("Cmd+Shift+A"))
 		S.wait_for(function()
 			return s:active_picker_name() == "Find Action"
 		end, "Find Action palette", 3000)
 	end)
-	eq(E.events, { "<M-A>" })
 	eq(s:active_picker_name(), "Find Action")
+	s:stop()
 end
 
 T["shortcuts: Ctrl+Up grows the current Neovim split from a real key press"] = function()
