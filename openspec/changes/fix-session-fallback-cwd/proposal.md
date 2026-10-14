@@ -23,3 +23,6 @@ None. `skip_specs: true` (unless a scenario must be added for the fallback path)
 Run on `loop/fix-session-fallback-cwd` was rejected by the judge:
 - fix loop exhausted (3 attempts) with gates still red: tests,review_skipped
 - note: loop: e2e did not run because the sandbox image pull disk-space guard aborted with 60 GB free, below its required 25 GB post-unpack reserve.
+
+## Unblocked
+The previous run was rejected only for infrastructure: every e2e failure was the sandbox's image-pull guard after a transient `lume get` blip (fixed in round52), plus one lua_ls readiness sample at 2644 ms. Keep the adopted code and tests; they need no change for those findings.
