@@ -169,7 +169,7 @@ T["loop: Spec steps receive pinned scenarios"] = function()
 	has(queue, "depends_on: [pick, skills-check, adopted-state, blocked, pinned, meta]")
 	has(queue, "pinned: $pinned.output")
 	has(queue, "- id: spec-gate # main specs after a trial archive; pins planned (spec_gate.py")
-	has(read(".archon/scripts/spec_gate.py"), '"pinned.py"), "--check", change]')
+	has(read(".archon/scripts/spec_gate.py"), "report = check_report(pinned(change))")
 	has(read(".archon/workflows/fix-bug/fix-bug.yaml"), "pinned.py --check $spec.output.change")
 	local rule = "Each gets a MODIFIED delta restated to the new behaviour, or one line in proposal.md `## Impact`"
 	local spec = read(".archon/commands/queue-spec.md")
