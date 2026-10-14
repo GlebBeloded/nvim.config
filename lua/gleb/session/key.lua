@@ -11,14 +11,16 @@ function M.slugify(path)
 end
 
 --- Unique key per zellij pane and directory; degrades gracefully outside zellij.
----@return string
+---@return string name
+---@return string slug
 function M.session_name()
+	local slug = M.slugify(vim.fn.getcwd())
 	local parts = {
 		vim.env.ZELLIJ_SESSION_NAME or "no-zellij",
 		vim.env.ZELLIJ_PANE_ID or "0",
-		M.slugify(vim.fn.getcwd()),
+		slug,
 	}
-	return table.concat(parts, "-")
+	return table.concat(parts, "-"), slug
 end
 
 -- Whether `candidate` parses as `<zellij session>-<pane id>-<slug>` with the
@@ -40,12 +42,12 @@ end
 -- resurrection); `saved` is newest first (see lua/gleb/session/init.lua).
 ---@param name string
 ---@param saved string[]
+---@param slug string
 ---@return string?
-function M.resolve(name, saved)
+function M.resolve(name, saved, slug)
 	if vim.tbl_contains(saved, name) then
 		return name
 	end
-	local slug = M.slugify(vim.fn.getcwd())
 	for _, candidate in ipairs(saved) do
 		if is_cwd_session(candidate, slug) then
 			return candidate

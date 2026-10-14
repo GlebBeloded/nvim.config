@@ -64,12 +64,16 @@ end
 ---@param zellij string
 ---@param pane string
 ---@param files? string[]
-local function restart_in_pane(zellij, pane, files)
+---@param command? string command to run after config and before VimEnter
+local function restart_in_pane(zellij, pane, files, command)
 	vim.env.ZELLIJ_SESSION_NAME, vim.env.ZELLIJ_PANE_ID = zellij, pane
 	MiniTest.finally(function()
 		vim.env.ZELLIJ_SESSION_NAME, vim.env.ZELLIJ_PANE_ID = nil, nil
 	end)
 	local args = vim.list_extend({ "--cmd", "cd " .. dir }, H.config_args())
+	if command then
+		vim.list_extend(args, { "-c", command })
+	end
 	child.restart(vim.list_extend(args, files or {}))
 	vim.iter(H.DISABLED_PLUGINS):each(child.disable_plugin)
 end
@@ -90,12 +94,21 @@ T["session: bare nvim restores the pane session"] = function()
 end
 
 T["session: bare nvim restores a cwd session after pane id change"] = function()
+	local root = dir
+	local subdir = vim.fs.joinpath(root, "sub")
+	vim.fn.mkdir(subdir, "p")
+	child.cmd("cd " .. subdir)
+	dir = subdir
 	save_pane_session("z", "9", "a.txt")
+	child.cmd("%bwipeout!") -- Keep VimLeavePre from adding the startup-name session.
+	vim.fn.mkdir(vim.fs.joinpath(root, ".git"), "p")
+	local startup_file = vim.fs.joinpath(subdir, "startup.txt")
+	vim.fn.writefile({ "startup" }, startup_file)
 	child.stop()
 
-	restart_in_pane("z", "5")
+	restart_in_pane("z", "5", nil, "edit " .. startup_file)
 
-	eq(child.fn.expand("%:t"), "a.txt")
+	eq({ child.fn.getcwd(), child.fn.expand("%:t") }, { root, "a.txt" })
 end
 
 T["session: nvim with a file argument does not restore"] = function()

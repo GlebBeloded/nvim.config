@@ -5,7 +5,8 @@ Kind: bug
 Adopt: loop/fix-session-fallback-cwd
 
 ## Evidence
-- `lua/gleb/project.lua` VimEnter autocmd registration precedes `gleb.session`; `key.resolve` uses `getcwd()` for the fallback slug.
+- `init.lua:25` loads `gleb.project` before `gleb.session` at `init.lua:27`, so project.nvim can change cwd before session restore runs.
+- In the `auto` baseline, `lua/gleb/session/key.lua:48` derives the fallback slug from live `getcwd()` inside `resolve`, although `lua/gleb/session/init.lua:20` captured the session name earlier. The adopted fix passes that startup slug into `resolve`.
 
 ## What Changes
 - Capture the startup cwd slug together with the name and pass it to `resolve`; never read the live cwd there.
