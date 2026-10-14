@@ -53,3 +53,4 @@ Scenarios: `<capability>: <scenario title>`
 
 Before finishing, when the change has a spec delta: keep each requirement's text (between `### Requirement:` and its first scenario, MODIFIED ones restated in full) under 500 characters, and run `python3 .archon/scripts/spec_trial.py <change>`; fix the delta until it exits 0.
 For a timing flake, task 1.1 cites the gate log's `FAIL in` line as the failing evidence: copy the `FAIL in` lines from the proposal; never search `artifacts/runs` or old gate logs. It never asks to reproduce under artificial load.
+Never read `openspec/config.yaml` or a doc whole (context.md already holds the rules). When the proposal already lists the bugs, do not search old branches for them.

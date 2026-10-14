@@ -476,6 +476,10 @@ verdict.py SHALL snapshot the change's proposal.md, `.openspec.yaml` and spec de
 - **WHEN** verdict.py ends a pass of change `c`, then proposal.md and tasks.md are edited and gate.py runs, then verdict.py and gate.py run again with no edit
 - **THEN** fix-scope.md names proposal.md and not tasks.md, the red verdict's feedback carries it, the second gate removes it, and review.md reads it
 
+#### Scenario: Gate skips the fix-scope check once the change is archived
+- **WHEN** gate.py runs after verdict snapshotted change `c` and the change folder has since been archived (moved away)
+- **THEN** it writes no `fix-scope.md`
+
 #### Scenario: Fix prompt stays on the listed findings
 - **WHEN** `.archon/commands/fix.md` is read
 - **THEN** it loads no skill when every finding starts with `hard rule:` and never edits proposal.md, .openspec.yaml or spec deltas unless a finding is about them
@@ -495,8 +499,8 @@ work-queue SHALL skip the queue-spec step when the adopted change's tasks.md has
 - **THEN** both forbid loading the host (stress loops) to reproduce a flake, and fix.md runs `make fmt` before it commits
 
 #### Scenario: Adopted change with every task ticked skips the spec step
-- **WHEN** `tasks.py --adopted-state` runs for change `c` with all tasks ticked (with a design.md holding a render section, with a technical design.md, and without one), with one unticked, with no tasks.md and with no change folder
-- **THEN** it prints `tasks_done` true only for the ticked ones, `visible_ui` true only with the render-holding design.md and `archived` true only without the folder; work-queue's `complete` requires `tasks_done == false` and queue-spec reads adopt-notes.md only if it exists
+- **WHEN** `tasks.py --adopted-state` runs for change `c` with all tasks ticked (with a design.md holding a render section, with a technical design.md, without one, and with a proposal holding a `## Rejected run` section), with one unticked, with no tasks.md and with no change folder
+- **THEN** it prints `tasks_done` true only for the ticked ones without a rejected run, `visible_ui` true only with the render-holding design.md and `archived` true only without the folder; work-queue's `complete` requires `tasks_done == false` and queue-spec reads adopt-notes.md only if it exists
 
 #### Scenario: Queue spec prompt never empties a test file
 - **WHEN** `.archon/commands/queue-spec.md` is read

@@ -79,9 +79,23 @@ def plan_needed(tasks: pathlib.Path) -> bool:
     return not tasks.exists() or not task_sections(tasks.read_text())
 
 
+def spec_work_left(folder: pathlib.Path) -> bool:
+    """A fully ticked adopted change still needs the spec step when its proposal carries a rejected run's
+    reasons (new tasks to plan) or a main-spec scenario it pins has no delta yet."""
+    proposal = folder / "proposal.md"
+    if proposal.is_file() and re.search(r"(?m)^## Rejected run\b", proposal.read_text()):
+        return True
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from pinned import pinned
+
+    return bool(pinned(folder.name))
+
+
 def adopted_state(folder: pathlib.Path) -> dict[str, bool]:
     tasks = folder / "tasks.md"
     done = tasks.exists() and bool(task_sections(tasks.read_text())) and unchecked(tasks.read_text()) == 0
+    if done and spec_work_left(folder):
+        done = False
     return {"archived": not folder.is_dir(), "tasks_done": done, "visible_ui": has_render(folder / "design.md")}
 
 
