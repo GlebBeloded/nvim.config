@@ -12,6 +12,7 @@ Scenarios: `actions: Feature actions contain no shortcut keys`, `actions: Every 
 - Differ and Codediff retain the explicitly specified next-hunk action while their other plugin defaults are disabled, matching the ownership scenarios without inventing shortcuts.
 - Commit-popup actions resolve a buffer-keyed session so registry callbacks retain each popup's validation, close, and commit context.
 - The prompt-submit action covers both `99` and native completion's final `99prompt` filetype so the second FileType event retains the buffer mapping.
+- Task 9 adds regression coverage only because task 1 already moved fold and special-buffer behavior into actions.
 
 ## 2. Remove unowned built-in and surround defaults
 Scenarios: `actions: Every configured mapping is action-owned`, `keymaps: Unadopted built-in mappings are removed`, `keymaps: Adopted built-in mappings are registry actions`, `keymaps: Surround mappings use registered actions`, `keymaps: [d jumps to previous diagnostic`
@@ -69,9 +70,9 @@ Scenarios: `ai: 99 entry mappings come from AI actions`, `ai: Prompt submit come
 
 ## 9. Preserve fold and special-buffer shortcuts through actions
 Scenarios: `folding: Fold keys invoke registered actions`, `autocommands: q closes special buffers through an action`
-- [ ] 9.1 Write the scenarios in `tests/integration/folding/test_shortcuts.lua` and `tests/integration/autocommands/test_keymaps.lua`; press the real fold lhs values in a folded buffer and `q` in each real special filetype, run `make test FILE=tests/integration/folding/test_shortcuts.lua CASE="folding: Fold keys invoke registered actions"`, and see it fail
-- [ ] 9.2 Move fold behavior to folding actions and replace the autocmd-created `q` map with one filetype-scoped close action covering `qf`, `help`, `man`, and `lspinfo`
-- [ ] 9.3 Run `make test FILE=tests/integration/folding/test_shortcuts.lua` and `make test FILE=tests/integration/autocommands/test_keymaps.lua` and see them pass
+- [x] 9.1 Write the scenarios in `tests/integration/folding/test_shortcuts.lua` and `tests/integration/autocommands/test_keymaps.lua`; press the real fold lhs values in a folded buffer and `q` in each real special filetype, run `make test FILE=tests/integration/folding/test_shortcuts.lua CASE="folding: Fold keys invoke registered actions"`, and see it fail
+- [x] 9.2 Move fold behavior to folding actions and replace the autocmd-created `q` map with one filetype-scoped close action covering `qf`, `help`, `man`, and `lspinfo`
+- [x] 9.3 Run `make test FILE=tests/integration/folding/test_shortcuts.lua` and `make test FILE=tests/integration/autocommands/test_keymaps.lua` and see them pass
 
 ## 10. Make the shortcut table identify actions
 Scenarios: `shortcuts: Shortcut table names action ids`, `shortcuts: Shortcut meanings survive registry migration`, `shortcuts: Neovim mappings match the table`, `shortcuts: Ctrl+Return reaches Neovim as <C-CR> from a real key press`
