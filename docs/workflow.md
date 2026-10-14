@@ -142,7 +142,8 @@ scenario, a CRITICAL verify finding, a deleted or weakened test, an xfail withou
 committed conflict markers go back to fix; after 3 passes the judge rejects, the branch is kept and
 `followup.py` re-queues it on `auto`: a change still active there gets `Adopt: <branch>` and a
 `## Rejected run` section, an archived one a new `followup-<change>`. The next run merges the kept branch
-first (`adopt.py`) and reverts its edits to `openspec/specs/`: main specs change only by archive. When
+first (`adopt.py`) and reverts its edits to `openspec/specs/` (data sections such as the shortcut table
+excepted: archive never writes them): main specs change only by archive. When
 the adopted tasks.md has every task ticked, the spec step is skipped (`tasks.py --adopted-state`;
 visible UI is then read from design.md).
 

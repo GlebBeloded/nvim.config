@@ -808,7 +808,9 @@ T["loop: Exhausted judge quotes the last failures"] = function()
 		["openspec/changes/c/tasks.md"] = "## 1. T\n- [ ] 1.1 x\n\n## Stuck\n- Probe: stuck probe text",
 	})
 	local failures = "make check is red:\nFAIL trace\n  actions: Invented name  (tests/unit/a/test_a.lua)"
-	local red = verdict_env(H.tempdir(child), {
+	local artifacts = H.tempdir(child)
+	write(artifacts, { reviews = "3" }) -- three reviewed passes before: a red pass burns no attempt itself
+	local red = verdict_env(artifacts, {
 		INPUTS_CHANGE = "c",
 		INPUTS_GREEN = "false",
 		INPUTS_ATTEMPT = "3",
@@ -855,6 +857,8 @@ T["loop: Fix prompt names regression tests after scenarios"] = function()
 		"add a same-titled scenario (ADDED, or MODIFIED restating a main-spec one) to openspec/changes/$INPUTS.change/specs"
 	)
 	has(fix, "never invent a case name the specs lack, and never fold or rename a case an earlier pass added")
+	has(fix, "A regression test replays the finding's exact trigger through the real entry point")
+	has(fix, "A fix holds on every update path of what it patches")
 end
 
 T["loop: Implement tests mode-dependent behaviour in the mode"] = function()
@@ -862,6 +866,12 @@ T["loop: Implement tests mode-dependent behaviour in the mode"] = function()
 	has(implement, "Mode-dependent behaviour (Visual, Insert, operator-pending)")
 	has(implement, "through the real mapping with the mode still active")
 	has(implement, "never after `<Esc>`")
+	has(
+		implement,
+		"Every test drives the real entry point (the real mapping or `<CR>`, the real picker, populated data)"
+	)
+	local queue_spec = read(vim.fs.joinpath(H.root, ".archon/commands/queue-spec.md")):gsub("%s+", " ")
+	has(queue_spec, "Each test task names the real entry point it drives")
 end
 
 return T

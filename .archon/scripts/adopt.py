@@ -1,15 +1,35 @@
 """work-queue `adopt` node, no AI: merge an abandoned run's branch (INPUTS_ADOPT) into this run's.
 Main specs (`openspec/specs/`) change only by archive, so whatever the adopted branch edited there
 is reverted to this branch's pre-merge state (also in a conflicted merge, which adopt-resolve then
-finishes) and the summary says so. Prints {conflict, summary}.
+finishes) and the summary says so. Its edits to a spec's data sections (`## ` sections other than Purpose
+and Requirements, e.g. the shortcut table the chain tests read) are kept: archive never writes them, so a
+revert would re-break what the branch fixed (run 794e77a2). Prints {conflict, summary}.
 """
 
 import json
 import os
+import re
 import subprocess
 
 BASE = os.environ.get("BASE_BRANCH") or "auto"
 SPECS = "openspec/specs"
+ARCHIVED = {"Purpose", "Requirements"}  # sections only archive writes
+
+
+def sections(text: str) -> dict[str, str]:
+    """`## <name>` section texts by name (the preamble under ""), in file order."""
+    parts = re.split(r"(?m)^(?=## )", text)
+    return {(p.splitlines()[0][3:].strip() if p.startswith("## ") else ""): p for p in parts}
+
+
+def keep_data(before: str, merged: str) -> str:
+    """`before` with the merged text of each data section (new ones appended)."""
+    old, new = sections(before), sections(merged)
+    for name, text in new.items():
+        if name and name not in ARCHIVED:
+            old[name] = text
+    parts = list(old.values())
+    return "".join(p if p.endswith("\n") else p + "\n" for p in parts[:-1]) + parts[-1]
 
 
 def git(*args: str, check: bool = True) -> subprocess.CompletedProcess[str]:
@@ -17,18 +37,31 @@ def git(*args: str, check: bool = True) -> subprocess.CompletedProcess[str]:
 
 
 def restore_specs(before: str) -> list[str]:
-    """Put SPECS back to `before` in index and work tree; returns the paths that differed."""
+    """Put SPECS back to `before` in index and work tree, keeping data sections; returns the paths reverted."""
     if not git("ls-tree", "-d", before, SPECS).stdout.strip():
         return []
+    conflicted = set(unmerged())  # before `add` resolves them
     git("add", "-A", "--", SPECS)
     changed = git("diff", "--cached", "--name-only", before, "--", SPECS).stdout.split()
-    if changed:
-        git("rm", "-rqf", "--cached", "--", SPECS)
-        git("checkout", before, "--", SPECS)
-        added = git("ls-files", "--others", "--exclude-standard", "--", SPECS).stdout.split()
-        for path in added:
-            os.remove(path)
-    return changed
+    if not changed:
+        return []
+    merged = {p: open(p).read() for p in changed if p not in conflicted and os.path.exists(p)}
+    git("rm", "-rqf", "--cached", "--", SPECS)
+    git("checkout", before, "--", SPECS)
+    added = git("ls-files", "--others", "--exclude-standard", "--", SPECS).stdout.split()
+    for path in added:
+        os.remove(path)
+    reverted = []
+    for path in changed:
+        if path in merged and os.path.exists(path):
+            text = keep_data(open(path).read(), merged[path])
+            with open(path, "w") as f:
+                f.write(text)
+            git("add", "--", path)
+            if text == merged[path]:
+                continue
+        reverted.append(path)
+    return reverted
 
 
 def unmerged() -> list[str]:
