@@ -6,7 +6,6 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 
 ## Loop lessons
 
-- e2e "Neovim is blocked in mode r" is a startup error message: reproduce on the host with `XDG_CONFIG_HOME=$(mktemp -d)`, a symlink `$XDG_CONFIG_HOME/nvim` to the worktree, and `timeout 30 nvim --headless +"lua print(vim.fn.execute('messages'))" +qa`; if the host starts clean, the guest has stale files (a loop bug).
 - For an implementation-free follow-up, replace ignored adoption metadata with `skip_specs: true` so strict validation accepts zero deltas.
 - When merging a keymap-helper rewrite, convert retained mappings to the new helper so removed option tables cannot break startup.
 - Regenerate a screen reference only when the cell diff is limited to UI a merged commit changed; name that commit.
@@ -21,6 +20,7 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - When passing `string.gsub()` directly to a one-argument RPC method, parenthesize it so Lua drops the replacement-count return value.
 - Sort enabled LSP config names before asserting exact membership because `vim.lsp.get_configs()` ordering is not stable.
 - Use boolean true for vim.fn.shellescape's special flag so LuaLS accepts the call while preserving special-character escaping.
+- LuaCATS annotations for string.find-backed predicates must include nil alongside any explicit false return.
 
 ## The loop
 
