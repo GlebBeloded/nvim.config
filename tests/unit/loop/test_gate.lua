@@ -330,6 +330,26 @@ local function flaky_make(scratch, targets, rerun_code)
 	return fake_tool(scratch, "make", body:format(scratch, rerun_code, scratch))
 end
 
+T["loop: Gate names the overlong delta requirement and its repro"] = function()
+	local long = string.rep("The session SHALL keep its name. ", 20)
+	local repo = branch_repo({
+		["openspec/changes/c/proposal.md"] = "# c",
+		["openspec/changes/c/tasks.md"] = "## 1. Task\n- [x] 1.1 a",
+		["openspec/changes/c/specs/session/spec.md"] = "## MODIFIED Requirements\n\n### Requirement: Restore on bare startup\n"
+			.. long
+			.. "\n\n#### Scenario: x\n- **WHEN** x\n- **THEN** y",
+	})
+	local artifacts, scratch = H.tempdir(child), H.tempdir(child)
+	fake_tool(scratch, "openspec", "echo 'Requirement text is very long'; exit 1")
+	local bin = fake_tool(scratch, "make", "exit 0")
+	local env = { ARTIFACTS_DIR = artifacts, INPUTS_CHANGE = "c", PATH = bin .. ":" .. vim.env.PATH }
+	local out = loop_script("gate.py", repo, env)
+	eq(out.spec_ok, false)
+	has(out.failures, "python3 .archon/scripts/spec_trial.py c")
+	has(out.failures, "delta `Restore on bare startup`")
+	has(out.failures, "limit 500")
+end
+
 T["loop: Gate passes a test case that passes on rerun"] = function()
 	local repo = branch_repo({ ["README.md"] = "x" })
 	local case = "tests/unit/a/test_a.lua | a: flaky case"

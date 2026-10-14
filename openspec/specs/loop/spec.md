@@ -480,6 +480,10 @@ verdict.py SHALL snapshot the change's proposal.md, `.openspec.yaml` and spec de
 - **WHEN** gate.py runs after verdict snapshotted change `c` and the change folder has since been archived (moved away)
 - **THEN** it writes no `fix-scope.md`
 
+#### Scenario: Gate names the overlong delta requirement and its repro
+- **WHEN** gate.py runs for change `c` whose session delta requirement `Restore on bare startup` is over 500 characters and `openspec validate` fails
+- **THEN** its failures name the reproduce command `python3 .archon/scripts/spec_trial.py c` and that requirement with its length and the 500 limit
+
 #### Scenario: Fix prompt stays on the listed findings
 - **WHEN** `.archon/commands/fix.md` is read
 - **THEN** it loads no skill when every finding starts with `hard rule:` and never edits proposal.md, .openspec.yaml or spec deltas unless a finding is about them
