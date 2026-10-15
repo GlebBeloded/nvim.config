@@ -197,6 +197,10 @@ def rerun_plan(out: str) -> tuple[list[tuple[str, list[str]]], list[str]]:
                 return [], []
             plan.append((f"e2e: {reason}", ["make", "e2e", "E2E=1"]))
             continue
+        if target == "smoke-health":  # one target run (~15 s): an error the change causes fails again
+            error = next((line.strip() for line in body if "ERROR" in line and not line.startswith("FAIL")), "checkhealth")
+            plan.append((f"smoke-health: {error}", ["make", "smoke-health"]))
+            continue
         cases = failing_cases(body)
         if target not in ("test", "test-readiness") or not cases or any(" | " not in c for c in cases):
             return [], []
@@ -216,7 +220,7 @@ def rerun_plan(out: str) -> tuple[list[tuple[str, list[str]]], list[str]]:
 def rerun_passed(case: str, cmd: list[str], ok: bool, out: str) -> bool:
     """A rerun exited 0 and, for a test case, printed its group as all passed: the reporter groups by file
     and top-level set (group_depth 2), `<file> | <case>: o`, or `<file> | <set>: oo` for a nested set."""
-    if not ok or case.startswith("e2e: "):
+    if not ok or case.startswith(("e2e: ", "smoke-health: ")):  # whole-target reruns: the exit code says it
         return ok
     file, group = case.split(" | ", 1)[0], cmd[-1].removeprefix("CASE=").split(" | ")[0]
     prefix = f"{file} | {group}: "

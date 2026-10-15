@@ -28,7 +28,8 @@ A `## Stuck` section an earlier task left is the fix passes' (the pack skips its
 tasks.md, run `make fmt` and `make self-check CHANGE=$INPUTS.change` (the gate's lint, types and strict validation of the change and of the trial archive; a green `make specs` or `openspec validate --specs` does not count) and fix what it reports (red only from base or loop tooling, not this change: commit anyway and append a `loop: …` line to `$ARTIFACTS_DIR/loop-notes.md`), commit with `git add -A <touched files> openspec/changes/$INPUTS.change` (conventional message), once. Mode-dependent behaviour (Visual, Insert, operator-pending): the test drives the invocation path through the real mapping with the mode still active (e.g. `vjj` then the mapped keys), never after `<Esc>` or with marks set first. Every test drives the real entry point (the real mapping or `<CR>`, the real picker, populated data), never a hand-built stand-in. Run only that test:
 `make test FILE=tests/<layer>/<capability>/test_x.lua CASE="…" 2>&1 | tail -40`. When you edit a module another area requires
 (`rg -l '<module.name>' lua` lists a file outside your capability, e.g. `gleb.actions` from ai or keymaps), also run
-`make test FILE=tests/integration/<area> 2>&1 | tail -40` once for each such area before the commit. Never run
+`make test FILE=tests/integration/<area> 2>&1 | tail -40` once for each such area before the commit; likewise for a
+`tests/helpers.lua` function you edit, run every test file `rg -l '<function>' tests` lists. Never run
 `make quick` or `make check` (the gate after the task loop runs it once). Keep tool output short: read
 file ranges, not whole files; no full logs. Follow the conventions in docs/architecture.md: the pack inlines its
 `## Conventions` and an index of tests/helpers.lua, so do not re-read either whole (read a helper's range when you call it).

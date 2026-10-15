@@ -479,6 +479,21 @@ T["loop: Gate reruns e2e once after a sandbox failure"] = function()
 	eq({ other.green, other_reruns }, { false, "" })
 end
 
+T["loop: Gate reruns smoke-health once after a checkhealth error"] = function()
+	local error = 'vim.health | - ❌ ERROR Failed to run healthcheck for "vim.health" plugin. Exception:'
+	local log = {
+		"FAIL smoke-health 22.8 s",
+		"===== smoke-health =====",
+		"FAIL checkhealth without ERROR: vim.health",
+		"     " .. error,
+		"check: FAILED: smoke-health (169.7 s)",
+	}
+	local passed, reruns = rerun_gate(log, 0)
+	eq({ passed.green, passed.flaky, reruns }, { true, { "smoke-health: " .. error }, "smoke-health" })
+	local failed, failed_reruns = rerun_gate(log, 1)
+	eq({ failed.green, failed.flaky, failed_reruns }, { false, {}, "smoke-health" })
+end
+
 --- check log of a pass failing in `test-readiness` on `lsp: slow case` and in e2e on `e2e_body`.
 ---@param e2e_body string[]
 ---@return string[]
