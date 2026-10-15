@@ -320,6 +320,7 @@ local COMMON_TREE_ACTIONS = {
 local FILESYSTEM_TREE_ACTIONS = { "neo_tree.toggle_hidden" }
 
 local GIT_STATUS_TREE_ACTIONS = {
+	"neo_tree.git_open_file",
 	"neo_tree.navigate_down",
 	"neo_tree.navigate_up",
 	"neo_tree.toggle_stage",
@@ -343,16 +344,20 @@ local maps = vim.iter(vim.api.nvim_buf_get_keymap(0, "n")):fold({}, function(res
 	return result
 end)
 local failures = {}
+local expected = {}
 for _, id in ipairs(ids) do
 	local action = catalog:get(id)
 	if not action or not shortcuts[id] then
 		table.insert(failures, id .. "=<missing>")
 	end
 	for _, lhs in ipairs(shortcuts[id] or {}) do
-		local map = maps[vim.keycode(lhs)]
-		if not map or not map.callback or map.desc ~= action.category .. ": " .. action.title then
-			table.insert(failures, id .. "=" .. lhs)
-		end
+		expected[vim.keycode(lhs)] = { action = action, id = id, lhs = lhs }
+	end
+end
+for key, item in pairs(expected) do
+	local map = maps[key]
+	if not map or not map.callback or map.desc ~= item.action.category .. ": " .. item.action.title then
+		table.insert(failures, item.id .. "=" .. item.lhs)
 	end
 end
 return failures

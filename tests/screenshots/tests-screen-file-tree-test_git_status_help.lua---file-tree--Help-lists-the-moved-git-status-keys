@@ -7,7 +7,7 @@
 06|       └     init.lua          │         KEY(S)    COMMAND                           │            
 07|                                 │              < -> Tree: Previous source             │            
 08|                                 │           <BS> -> Tree: Close node                  │            
-09|                                 │           <CR> -> Tree: Open                        │            
+09|                                 │           <CR> -> Tree: Open file                   │            
 10|                                 │        <Space> -> Tree: Toggle stage                │            
 11|                                 │              > -> Tree: Next source                 │            
 12|                                 │              ? -> Tree: Help                        │            
@@ -49,7 +49,7 @@
 06|???????CC<<DDEE<<<<<<<<??????????8FFFFFFFFFFFFFFF8888FFFFFFFAAAAAAAAAAAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
 07|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIIIIIIIIIIIIAAAAAAAAAAAAA8BBBBBBBBBBBB
 08|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIIIIIIIAAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
-09|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIAAAAAAAAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
+09|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIIIIIIAAAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
 10|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIIIIIIIIIAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
 11|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIIIIIIIIAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
 12|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIAAAAAAAAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
