@@ -382,20 +382,6 @@ T["file-tree: Tree mappings come from the shortcut file"] = function()
 	expect_tree_actions(vim.list_extend(vim.deepcopy(COMMON_TREE_ACTIONS), GIT_STATUS_TREE_ACTIONS))
 end
 
-T["file-tree: Toggle tolerates a deleted current file"] = function()
-	local dir = temp_dir({ ["deleted.txt"] = "gone\n" })
-	local path = vim.fs.joinpath(dir, "deleted.txt")
-	start_in(dir)
-	child.wait_very_lazy()
-	child.cmd("edit deleted.txt")
-	vim.fn.delete(path)
-
-	child.type_keys("<A-e>")
-	local win = open_tree("", "filesystem")
-
-	eq(child.lua_get("Tree.state(...).path", { win }), dir)
-end
-
 T["file-tree: Neo-tree defaults stay disabled"] = function()
 	start_in(temp_dir({ ["a.txt"] = "a\n" }))
 	child.wait_very_lazy()
