@@ -52,7 +52,7 @@ Scenarios: `<capability>: <scenario title>`
 - [ ] 1.2 <the smallest code change>
 - [ ] 1.3 Run `make test FILE=tests/<layer>/<capability>/test_<x>.lua CASE="<scenario title>"` and see it pass
 ```
-Each test task names the real entry point it drives (mapping or `<CR>`, the real picker, populated data), never a hand-built stand-in.
+Each test task names the real entry point it drives (mapping or `<CR>`, the real picker, populated data), never a hand-built stand-in. A change that must keep behaviour (a migration, a refactor) gets a test per key asserting the same effect as before, not only the same action id.
 A task never empties a test file: removing a file's last case deletes the file (a hard rule). When a
 task moves or merges duplicate cases, keep the copy in the file that would be emptied and drop the other.
 No design.md unless the change alters what is drawn on screen (then Current + Proposed renders); a structural change is described in the proposal. Do not run
