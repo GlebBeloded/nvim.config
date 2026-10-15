@@ -108,9 +108,10 @@ local function picker_consumes_keys()
 end
 
 ---@param self gleb.ActionApplicator
+---@param key string
 ---@param typed string
-local function record_shortcut(self, typed)
-	if typed == "" or picker_consumes_keys() then
+local function record_shortcut(self, key, typed)
+	if typed == "" or key == typed or picker_consumes_keys() then
 		return
 	end
 	local mode = mapping_mode(vim.fn.mode(1))
@@ -119,8 +120,7 @@ local function record_shortcut(self, typed)
 		local action = entry.action
 		local active = vim.fn.maparg(entry.lhs, mode, false, true)
 		if
-			action.id ~= "find_action.open"
-			and active.desc == Registry.description(action)
+			active.desc == Registry.description(action)
 			and (not action.ft or matches_filetype(action, vim.bo.filetype))
 		then
 			Context.record(action)
@@ -234,8 +234,8 @@ function M.new(catalog)
 		group = vim.api.nvim_create_augroup("gleb_actions_bindings", { clear = true }),
 		on_key_ns = vim.api.nvim_create_namespace("gleb_actions_history"),
 	}, Applicator)
-	vim.on_key(function(_, typed)
-		record_shortcut(applicator, typed)
+	vim.on_key(function(key, typed)
+		record_shortcut(applicator, key, typed)
 	end, applicator.on_key_ns)
 	return applicator
 end
