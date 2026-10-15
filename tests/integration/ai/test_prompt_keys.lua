@@ -196,9 +196,14 @@ T["ai: 99 hardcoded mappings are the only exceptions"] = function()
 				return vim.api.nvim_buf_is_loaded(candidate)
 					and vim.fs.basename(vim.api.nvim_buf_get_name(candidate)) == "99-prompt"
 			end)
-			return buf and vim.iter(vim.api.nvim_buf_get_keymap(buf, "i")):any(function(map) return map.lhs == '"' end)
+			if not buf then
+				return false
+			end
+			local maps = vim.api.nvim_buf_get_keymap(buf, "i")
+			return vim.iter(maps):any(function(map) return map.lhs == '"' end)
+				and vim.iter(maps):any(function(map) return map.lhs == "<C-Space>" end)
 		end)()]]),
-		"99 prompt insert mappings did not settle"
+		"99 prompt and completion mappings did not settle"
 	)
 	child.lua([[
 		local prompt_buf = vim.iter(vim.api.nvim_list_bufs()):find(function(candidate)
