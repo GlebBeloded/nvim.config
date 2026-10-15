@@ -28,7 +28,7 @@ Name each new regression test `<capability>: <scenario title>`: put it in the ex
 same-titled scenario (ADDED, or MODIFIED restating a main-spec one) to openspec/changes/$INPUTS.change/specs; never invent a case name
 the specs lack, and never fold or rename a case an earlier pass added (add its scenario instead: the gate counts a vanished case as dropped).
 An edited assertion must still prove its scenario's THEN; replacing a behaviour/callback check with metadata (desc, buffer) is weakening.
-A regression test replays the finding's exact trigger through the real entry point (the real mapping or `<CR>`, the real picker, populated data), never a hand-built stand-in.
+A regression test replays the finding's exact trigger through the real entry point (the real mapping or `<CR>`, the real picker, populated data), never a hand-built stand-in. It asserts the observable effect (the buffer, cursor, window or file state after the key), never only which action or desc a key resolves to.
 A fix holds on every update path of what it patches (e.g. a plugin re-setting that state on each update), not only the first.
 Find the cause before editing. When the cause is not obvious from the log line (a race, state you cannot see), run one
 headless probe first (the scratch-file probe rule below) that logs the relevant state, and base the edit on its output.
