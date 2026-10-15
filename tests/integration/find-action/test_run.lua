@@ -179,23 +179,95 @@ T["find-action: Catalog rows use standalone Title Case labels"] = function()
 	)
 	local more_results = {
 		["alpha.find_file"] = { "Find File", "Dashboard" },
+		["alpha.new_file"] = { "Create New File", "Dashboard" },
+		["alpha.recent_files"] = { "Find Recent Files", "Dashboard" },
+		["alpha.find_text"] = { "Find Text", "Dashboard" },
+		["alpha.configuration"] = { "Configuration", "Dashboard" },
+		["alpha.quit"] = { "Quit Neovim", "Dashboard" },
+		["alpha.press"] = { "Press Dashboard Button", "Dashboard" },
+		["alpha.queue_press"] = { "Queue Dashboard Button Press", "Dashboard" },
 		["blink.show"] = { "Show Completion Menu", "Completion" },
+		["blink.select_next_or_accept_copilot"] = {
+			"Select Next Completion Item or Accept Copilot Suggestion",
+			"Completion",
+		},
+		["blink.select_prev"] = { "Select Previous Completion Item", "Completion" },
+		["blink.select_next"] = { "Select Next Completion Item", "Completion" },
+		["blink.accept"] = { "Accept Completion", "Completion" },
+		["blink.cancel"] = { "Cancel Completion", "Completion" },
+		["blink.scroll_documentation_up"] = { "Scroll Completion Documentation Up", "Completion" },
+		["blink.scroll_documentation_down"] = { "Scroll Completion Documentation Down", "Completion" },
+		["blink.cmdline_show_next"] = { "Show or Select Next Command-Line Completion Item", "Completion" },
+		["blink.cmdline_show_prev"] = { "Show or Select Previous Command-Line Completion Item", "Completion" },
+		["blink.cmdline_select_next"] = { "Select Next Command-Line Completion Item", "Completion" },
+		["blink.cmdline_select_prev"] = { "Select Previous Command-Line Completion Item", "Completion" },
+		["blink.cmdline_accept"] = { "Accept Command-Line Completion", "Completion" },
+		["blink.cmdline_cancel"] = { "Cancel Command-Line Completion", "Completion" },
 		["copilot.next"] = { "Next Copilot Suggestion", "Copilot" },
+		["copilot.prev"] = { "Previous Copilot Suggestion", "Copilot" },
+		["copilot.dismiss"] = { "Dismiss Copilot Suggestion", "Copilot" },
 		["dap_ui.open"] = { "Open Debug Element", "Debug" },
+		["dap_ui.remove"] = { "Remove Debug Element", "Debug" },
+		["dap_ui.expand"] = { "Expand Debug Element", "Debug" },
+		["dap_ui.repl"] = { "Send Debug Element to REPL", "Debug" },
+		["dap_ui.toggle"] = { "Toggle Debug Element", "Debug" },
+		["dap_float.close"] = { "Close Debug Floating Window", "Debug" },
+		["git.confirm_commit_popup"] = { "Confirm Commit Message", "Git" },
+		["git.discard_commit_popup"] = { "Discard Commit Message", "Git" },
+		["diffview.select_next_entry"] = { "Select Next Diffview Entry", "Git | Diff" },
+		["diffview.select_prev_entry"] = { "Select Previous Diffview Entry", "Git | Diff" },
+		["diffview.goto_file_edit"] = { "Open Diffview File for Editing", "Git | Diff" },
+		["diffview.choose_ours"] = { "Choose Conflict Ours", "Git | Diff" },
+		["diffview.choose_theirs"] = { "Choose Conflict Theirs", "Git | Diff" },
+		["diffview.choose_base"] = { "Choose Conflict Base", "Git | Diff" },
+		["diffview.choose_all"] = { "Choose Conflict All", "Git | Diff" },
+		["diffview.choose_none"] = { "Drop All Diffview Conflict Sides", "Git | Diff" },
+		["diffview.select_entry"] = { "Select Diffview Entry", "Git | Diff" },
+		["diffview.close_fold"] = { "Close Diffview Fold", "Git | Diff" },
+		["diffview.toggle_stage_entry"] = { "Toggle Diffview Entry Staging", "Git | Diff" },
+		["diffview.stage_all"] = { "Stage All Diffview Files", "Git | Diff" },
+		["diffview.unstage_all"] = { "Unstage All Diffview Files", "Git | Diff" },
+		["diffview.refresh_files"] = { "Refresh Diffview Files", "Git | Diff" },
 		["diffview.close"] = { "Close Diffview", "Git | Diff" },
+		["differ.next_file"] = { "Select Next Differ File", "Git | Diff" },
+		["differ.next_hunk"] = { "Select Next Differ Hunk", "Git | Diff" },
+		["codediff.next_hunk"] = { "Select Next Codediff Hunk", "Git | Diff" },
+		["mason.install_package"] = { "Install Package", "Mason" },
 		["neo_tree.open"] = { "Open Tree Node", "Tree" },
+		["neo_tree.git_open_file"] = { "Open Git Tree File", "Tree" },
+		["neo_tree.close_node"] = { "Close Tree Node", "Tree" },
+		["neo_tree.open_vsplit"] = { "Open Tree Node in Vertical Split", "Tree" },
+		["neo_tree.open_split"] = { "Open Tree Node in Horizontal Split", "Tree" },
+		["neo_tree.open_tab"] = { "Open Tree Node in New Tab", "Tree" },
+		["neo_tree.add"] = { "Add Tree Node", "Tree" },
+		["neo_tree.delete"] = { "Delete Tree Node", "Tree" },
+		["neo_tree.rename"] = { "Rename Tree Node", "Tree" },
+		["neo_tree.copy"] = { "Copy Tree Node", "Tree" },
+		["neo_tree.cut"] = { "Cut Tree Node", "Tree" },
+		["neo_tree.paste"] = { "Paste Tree Node", "Tree" },
+		["neo_tree.refresh"] = { "Refresh Tree", "Tree" },
+		["neo_tree.close"] = { "Close Tree", "Tree" },
+		["neo_tree.help"] = { "Show Tree Help", "Tree" },
+		["neo_tree.previous_source"] = { "Show Previous Tree Source", "Tree" },
+		["neo_tree.next_source"] = { "Show Next Tree Source", "Tree" },
+		["neo_tree.toggle_hidden"] = { "Toggle Hidden Tree Files", "Tree" },
+		["neo_tree.navigate_down"] = { "Navigate Down Git Status Tree", "Tree" },
+		["neo_tree.navigate_up"] = { "Navigate Up Git Status Tree", "Tree" },
+		["neo_tree.toggle_stage"] = { "Toggle Git Tree Node Staging", "Tree" },
+		["neo_tree.commit"] = { "Commit Git Changes with AI", "Tree" },
+		["neo_tree.push"] = { "Push Git Changes", "Tree" },
+		["neo_tree.add_all"] = { "Stage All Git Changes", "Tree" },
+		["neo_tree.revert"] = { "Revert Git Tree File", "Tree" },
 		["neotest.run"] = { "Run Nearest Test", "Test" },
 	}
 	actual = child.lua_get([[(function()
 		local rows = {}
 		for _, row in ipairs(MiniPick.get_picker_items()) do
-			if row.action then rows[row.action.id] = { row.text, row.category } end
+			if row.action and row.hidden and row.action.plugin then rows[row.action.id] = { row.text, row.category } end
 		end
 		return rows
 	end)()]])
-	for id, metadata in pairs(more_results) do
-		eq(actual[id], metadata)
-	end
+	eq(actual, more_results)
 end
 
 T["find-action: Empty query puts recent actions first"] = function()
