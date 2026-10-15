@@ -16,6 +16,12 @@ Scenarios: `find-action: Only executed shortcuts update recent actions`
 - [x] 3.2 Wrap configured `mapping` and `plug` rhs execution with recent-history recording while preserving remap behavior, and remove global typed-key recording
 - [x] 3.3 Run `make test FILE=tests/integration/find-action/test_run.lua CASE="Only executed shortcuts update recent actions"` and see it pass
 
+## 4. Guard H1 shortcut-hint colours
+Scenarios: `find-action: Wide palette matches reference screenshots`
+- [x] 4.1 Replace the local colour-mask helper in `tests/screen/find-action/test_palette.lua` with `H.expect_screen_colors`, add an H1 mask for an unselected row populated with a shortcut hint, and run `make test FILE=tests/screen/find-action/test_palette.lua CASE="Wide palette matches reference screenshots"` to see the `PmenuExtra`/`FloatBorder` mismatch fail
+- [x] 4.2 Render unselected shortcut hints with `FloatBorder` and selected shortcut hints with `PmenuExtraSel`, without changing category highlights or other picker sources
+- [x] 4.3 Run `make test FILE=tests/screen/find-action/test_palette.lua CASE="Wide palette matches reference screenshots"` and see it pass
+
 ## Agent decisions
 
 - Record only when `vim.on_key` reports a post-mapping key different from the typed key, including `find_action.open`, so native callbacks stay intact and command arguments are ignored.
@@ -23,3 +29,4 @@ Scenarios: `find-action: Only executed shortcuts update recent actions`
 - Restore selection from source-match completion because MiniPick item replacement is asynchronous.
 - Observe configured keys only outside MiniPick's input loop so native callback identity and recursive `<Plug>` resolution remain unchanged.
 - Derive selected-row metadata from MiniPick's public `shown_inds` because `source.show` renders that visible subset before updating the cursor.
+- Compare composed screen attribute IDs in the shared colour-mask helper because grid 1 omits floating picker cells.

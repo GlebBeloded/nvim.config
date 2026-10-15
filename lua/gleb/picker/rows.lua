@@ -71,7 +71,7 @@ end
 local function render_item(item, width, opts, selected)
 	local left = item.text
 	local highlights = {}
-	local metadata_group = opts.selected_metadata and (selected and "PmenuExtraSel" or "PmenuExtra") or "Comment"
+	local metadata_group = opts.selected_metadata and (selected and "PmenuExtraSel" or "FloatBorder") or "Comment"
 
 	if item.dim then
 		table.insert(highlights, { col = 0, end_col = #left, group = "Comment" })
