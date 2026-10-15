@@ -153,14 +153,12 @@ local function open_hint_band(hint, hint_keys, parent, highlight_overrides)
 	local clipped = vim.fn.strcharpart(hint, 0, available)
 	local left = " " .. clipped
 	local padding = math.max(width - vim.fn.strdisplaywidth(left) - vim.fn.strdisplaywidth(counter) - 1, 0)
-	local line = "│" .. left .. string.rep(" ", padding) .. counter .. " " .. "│"
+	local line = left .. string.rep(" ", padding) .. counter .. " "
 	local buf = vim.api.nvim_create_buf(false, true)
 	vim.bo[buf].bufhidden = "wipe"
 	vim.api.nvim_buf_set_lines(buf, 0, -1, false, { line })
 	local band_group = highlight_overrides and highlight_overrides.PickerHintBand or "PickerHintBand"
 	highlight_hint(buf, band_group, 0, #line)
-	highlight_hint(buf, "PickerBandBorder", 0, #"│")
-	highlight_hint(buf, "PickerBandBorder", #line - #"│", #line)
 	for _, key in ipairs(hint_keys or {}) do
 		local start_col = line:find(key, 1, true)
 		if start_col then
@@ -169,16 +167,16 @@ local function open_hint_band(hint, hint_keys, parent, highlight_overrides)
 	end
 	local win = vim.api.nvim_open_win(buf, false, {
 		relative = "editor",
-		row = position[1] + height,
+		row = position[1] + height + 1,
 		col = position[2],
-		width = width + 2,
+		width = width,
 		height = 1,
-		border = "none",
+		border = { "", "", "", "│", "╯", "─", "╰", "│" },
 		style = "minimal",
 		focusable = false,
 		zindex = vim.api.nvim_win_get_config(parent).zindex + 1,
 	})
-	vim.wo[win].winhighlight = "Normal:" .. band_group
+	vim.wo[win].winhighlight = "Normal:" .. band_group .. ",FloatBorder:PickerBandBorder"
 	apply_highlight_overrides(win, highlight_overrides)
 	table.insert(chrome_windows, win)
 end
@@ -272,7 +270,7 @@ function M.options(title, hints, window_config, on_show, highlight_overrides, se
 			config = function()
 				local config = vim.deepcopy(base_window_config())
 				if current_hint(hints) then
-					config.height = math.max(config.height - (hint_band and 1 or 2), 1)
+					config.height = math.max(config.height - 2, 1)
 				end
 				return config
 			end,

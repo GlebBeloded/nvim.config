@@ -27,9 +27,4 @@ Scenarios: `find-action: Wide palette matches reference screenshots`, `find-acti
 - Use generic foreground-only picker groups and source-local remaps so selected and normal row backgrounds stay continuous.
 - Count matched non-section rows against all non-section rows because section headings are chrome, not matches.
 - Keep approved sampled colours in the palette helper and apply them only through Find Action window overrides.
-
-## Stuck
-
-- Probe output: the required full-config scratch probe timed out after 30000 ms before its same-process callback could interrupt MiniPick's modal input loop. External-child diagnostics showed the parent at `{ row = 11, height = 5 }` with `last match` on its fifth buffer line and the band at `{ row = 16, height = 1 }`, so the band covers that selected line because `11 + 5 = 16`.
-- Attempt 1: shortened the main window to its true item area, placed a two-line band-and-bottom-border float over its lower border, and passed the exact regression, picker references, and integration cases. `find-action: Free assignment matches reference screenshot` then failed because the replacement bottom-row extmark resolved to the focused assignment float's orange bold border instead of `FindActionBorder`.
-- Attempt 2: split the replacement bottom border into its own one-line float whose `Normal` group was the source-local border group. The same free-assignment screenshot still failed at `tests/screen/find-action/test_palette.lua:374` with row 22 using the wrong border attributes, so the production edits were reverted while the red regression remains.
+- Draw the hint band as a float over the main window's bottom border with native side and bottom borders, so MiniPick's height-based visible range equals the item rows and no match sits under the band.
