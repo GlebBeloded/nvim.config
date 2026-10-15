@@ -32,15 +32,6 @@ local colors = {
 		bg_green = "#a9b665",
 		bg_yellow = "#d8a657",
 	},
-	find_action = {
-		body = "#45403d",
-		selected = "#59524d",
-		text = "#d9c8a5",
-		prompt = "#da8f57",
-		metadata = "#a59a86",
-		dim = "#8f8475",
-		hint = "#32302f",
-	},
 }
 
 return colors

@@ -26,7 +26,15 @@ local M = {
 }
 
 local function setup_highlights()
-	local colors = color_palette.find_action
+	local colors = {
+		body = "#45403d",
+		selected = "#59524d",
+		text = "#d9c8a5",
+		prompt = "#da8f57",
+		metadata = "#a59a86",
+		dim = "#8f8475",
+		hint = "#32302f",
+	}
 	vim.api.nvim_set_hl(0, "FindActionBody", { fg = colors.text, bg = colors.body })
 	vim.api.nvim_set_hl(0, "FindActionSelected", { fg = colors.text, bg = colors.selected })
 	vim.api.nvim_set_hl(0, "FindActionPrompt", { fg = colors.prompt, bg = colors.body })
