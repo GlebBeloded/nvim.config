@@ -92,8 +92,8 @@ Scenarios: `git: Diffview conflict choices come from git actions`, `git: <leader
 
 ## Stuck
 
-Count preservation remains red after two production attempts; production edits were reverted while the regression stays red.
+Count preservation and full plugin-window ownership remain red after two new production attempts; production edits were reverted while the regressions stay red.
 
-- Probe/reproduction: `V2>` indents only once (`"  a"`), `3<A-/>` comments only the first line, and the migrated fold callbacks likewise omit `vim.v.count`. The ownership probe also showed Mason's nil-description navigation maps and lazy.nvim's native view maps, confirming description-filtering skips real buffer mappings.
-- Attempt 1: prefixed `vim.v.count1` to visual indent, comment feedkeys, and `zo`/`zc`. The regression advanced past indent but `3<A-/>` still produced `{ "    -- a", "b", "c" }` instead of commenting all three lines.
-- Attempt 2: executed the count-prefixed remapped comment keys immediately with feed mode `mx`. The same behavior assertion failed: only the first line was commented.
+- Probe output: Mason installs nil-description normal maps for `<Esc>`, `1`-`5`, `i`, and `q`; lazy.nvim installs its native normal/visual view maps (including nil-description `gb`/`gx`); 99 installs nil-description normal `q`/`<CR>`; and nvim-autopairs marks its insert maps with `autopairs ...` descriptions. Native `:normal 3gcc` comments all three lines as one range, producing `{ "--     a", "-- b", "-- c" }`, not the regression's per-line indentation.
+- Attempt 1: prefixed counts for visual indent and folds, called `vim._comment.toggle_lines()` once per counted line using ambient `vim.v.count1`, audited every pressable buffer map with per-plugin native exceptions, and restored the `99 Vibe` title. AI passed; count reached the comment assertion but still changed only line 1, while ownership caught the injected `z` and then reported Neovim's Go ftplugin section motions.
+- Attempt 2: captured `vim.v.count1` in `ActionContext`, consumed that captured count in indent/comment/fold actions, and allowlisted the Go ftplugin grammar. Count still produced `{ "    -- a", "b", "c" }`; ownership advanced to duplicate native Differ reports for `]c`/`]f` in `differdiff` and `differpanel`. AI still passed.
