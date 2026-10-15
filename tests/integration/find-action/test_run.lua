@@ -145,6 +145,56 @@ T["find-action: Shortcut and palette use update recent actions"] = function()
 	)
 end
 
+T["find-action: Only executed shortcuts update recent actions"] = function()
+	child.lua([[
+		local Registry = require("gleb.actions.registry")
+		local mapping_action = {
+			id = "test.mapping",
+			title = "Mapping Action",
+			category = "Test",
+			run = function() MappingRuns = (MappingRuns or 0) + 1 end,
+			mapping = function() MappingRuns = (MappingRuns or 0) + 1 end,
+		}
+		local plug = "<Plug>(TestRecentPlug)"
+		local plug_action = {
+			id = "test.plug",
+			title = "Plug Action",
+			category = "Test",
+			run = function() vim.api.nvim_feedkeys(vim.keycode(plug), "m", false) end,
+			plug = plug,
+		}
+		vim.keymap.set("n", plug, function() PlugRuns = (PlugRuns or 0) + 1 end)
+		local actions = require("gleb.actions")
+		local catalog = Registry.new({ {
+			mapping_action,
+			plug_action,
+			actions.state.applicator.catalog:get("find_action.open"),
+		} })
+		actions.state.applicator.catalog = catalog
+		actions.state.store.catalog = catalog
+		actions.state.store.last_good = {
+			["test.mapping"] = { "<F20>", "<C-h>" },
+			["test.plug"] = { "<F21>" },
+			["find_action.open"] = { "<M-A>" },
+		}
+		actions.state.applicator:apply(actions.state.store.last_good)
+		vim.fn.delete(require("gleb.find_action.items").history().path)
+	]])
+
+	child.type_keys("<F20>")
+	assert(child.wait("MappingRuns == 1", 5000), "Configured mapping shortcut did not run")
+	child.type_keys("<F21>")
+	assert(child.wait("PlugRuns == 1", 5000), "Configured plug shortcut did not run")
+
+	open_palette()
+	child.type_keys("<C-h>")
+	eq(child.lua_get([[MappingRuns]]), 1)
+	eq(child.lua_get([[require("gleb.find_action.items").history():load()]]), {
+		"test.plug",
+		"test.mapping",
+	})
+end
+
 T["find-action: Regular action runs like its shortcut"] = function()
 	child.api.nvim_buf_set_lines(0, 0, -1, false, { "one", "two", "three" })
 	child.api.nvim_win_set_cursor(0, { 2, 1 })

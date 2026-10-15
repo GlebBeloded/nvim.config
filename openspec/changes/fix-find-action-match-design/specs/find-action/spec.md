@@ -7,11 +7,15 @@ With an empty query, the palette SHALL list recently used actions saved across s
 
 #### Scenario: Empty query puts recent actions first
 - **WHEN** catalog actions are run from a configured shortcut and from the palette, then the palette is reopened with no query
-- **THEN** the applicable actions appear before the curated action section in most-recently-used order
+- **THEN** the persisted applicable actions appear before the curated action section in most-recently-used order
 
 #### Scenario: Shortcut and palette use update recent actions
 - **WHEN** one catalog action runs from a configured shortcut and another runs from the palette before reopening it
 - **THEN** both actions appear in the recent section with the last-used action first
+
+#### Scenario: Only executed shortcuts update recent actions
+- **WHEN** configured mapping and plug shortcuts execute, and a colliding configured shortcut key is consumed as input by an open picker
+- **THEN** only actions whose shortcut mappings executed are added to recent history
 
 #### Scenario: Recent history keeps the last 20 actions
 - **WHEN** more than 20 distinct actions are run and the history is loaded in a new session

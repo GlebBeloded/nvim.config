@@ -10,18 +10,12 @@ local Registry = require("gleb.actions.registry")
 ---@class gleb.ScopedBinding: gleb.AppliedBinding
 ---@field action gleb.Action
 
----@class gleb.ShortcutAction
----@field action gleb.Action
----@field lhs string
-
 ---@class gleb.ActionApplicator
 ---@field catalog gleb.ActionCatalog
 ---@field global_bindings gleb.AppliedBinding[]
 ---@field buffer_bindings table<integer, gleb.AppliedBinding[]>
 ---@field scoped_bindings gleb.ScopedBinding[]
----@field shortcut_actions table<string, table<string, gleb.ShortcutAction[]>>
 ---@field group integer
----@field on_key_ns integer
 local Applicator = {}
 Applicator.__index = Applicator
 
@@ -34,16 +28,30 @@ local function modes(action)
 end
 
 ---@param action gleb.Action
----@return string|function rhs
+local function record(action)
+	if action.id ~= "find_action.open" then
+		Context.record(action)
+	end
+end
+
+---@param action gleb.Action
+---@return function rhs
 ---@return boolean remap
+---@return boolean expr
 local function rhs(action)
 	if action.mapping then
-		return action.mapping, false
+		return function()
+			record(action)
+			action.mapping()
+		end, false, false
 	end
 	if action.plug then
-		return action.plug, true
+		return function()
+			record(action)
+			return action.plug
+		end, true, true
 	end
-	return Context.invoke(action), false
+	return Context.invoke(action), false, false
 end
 
 ---@param mode string
@@ -51,12 +59,12 @@ end
 ---@param action gleb.Action
 ---@param buf? integer
 local function set_mapping(mode, lhs, action, buf)
-	local target, remap = rhs(action)
+	local target, remap, expr = rhs(action)
 	vim.keymap.set(
 		mode,
 		lhs,
 		target,
-		{ buffer = buf, desc = Registry.description(action), remap = remap, silent = true }
+		{ buffer = buf, desc = Registry.description(action), remap = remap, expr = expr, silent = true }
 	)
 end
 
@@ -70,57 +78,6 @@ local function matches_filetype(action, filetype)
 		return vim.tbl_contains(filetypes, filetype)
 	end
 	return action.ft == filetype
-end
-
----@param mode string
----@return string
-local function mapping_mode(mode)
-	if mode == "v" or mode == "V" or mode == "\22" then
-		return "x"
-	end
-	return mode:sub(1, 1)
-end
-
----@param self gleb.ActionApplicator
----@param shortcuts gleb.ShortcutMap
-local function index_shortcuts(self, shortcuts)
-	self.shortcut_actions = {}
-	for id, lhs_list in pairs(shortcuts) do
-		local action = self.catalog:get(id)
-		if action then
-			for _, mode in ipairs(modes(action)) do
-				local by_key = self.shortcut_actions[mode] or {}
-				self.shortcut_actions[mode] = by_key
-				for _, lhs in ipairs(lhs_list) do
-					local key = vim.keycode(lhs)
-					by_key[key] = by_key[key] or {}
-					table.insert(by_key[key], { action = action, lhs = lhs })
-				end
-			end
-		end
-	end
-end
-
----@param self gleb.ActionApplicator
----@param typed string
-local function record_shortcut(self, typed)
-	if typed == "" then
-		return
-	end
-	local mode = mapping_mode(vim.fn.mode(1))
-	local by_key = self.shortcut_actions[mode]
-	for _, entry in ipairs((by_key and by_key[typed]) or {}) do
-		local action = entry.action
-		local active = vim.fn.maparg(entry.lhs, mode, false, true)
-		if
-			action.id ~= "find_action.open"
-			and active.desc == Registry.description(action)
-			and (not action.ft or matches_filetype(action, vim.bo.filetype))
-		then
-			Context.record(action)
-			return
-		end
-	end
 end
 
 ---@param binding gleb.AppliedBinding
@@ -179,7 +136,6 @@ end
 ---@param shortcuts gleb.ShortcutMap
 function Applicator:apply(shortcuts)
 	clear(self)
-	index_shortcuts(self, shortcuts)
 	for id, lhs_list in pairs(shortcuts) do
 		local action = self.catalog:get(id)
 		if action and not action.plugin then
@@ -213,7 +169,6 @@ end
 
 function Applicator:clear()
 	clear(self)
-	self.shortcut_actions = {}
 end
 
 ---@param catalog gleb.ActionCatalog
@@ -224,13 +179,8 @@ function M.new(catalog)
 		global_bindings = {},
 		buffer_bindings = {},
 		scoped_bindings = {},
-		shortcut_actions = {},
 		group = vim.api.nvim_create_augroup("gleb_actions_bindings", { clear = true }),
-		on_key_ns = vim.api.nvim_create_namespace("gleb_actions_history"),
 	}, Applicator)
-	vim.on_key(function(_, typed)
-		record_shortcut(applicator, typed)
-	end, applicator.on_key_ns)
 	return applicator
 end
 
