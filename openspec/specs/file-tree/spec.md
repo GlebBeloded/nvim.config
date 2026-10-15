@@ -25,7 +25,7 @@ The config SHALL set up neo-tree with exactly the sources `filesystem` and `git_
 - **THEN** no error is raised
 
 ### Requirement: Common tree open mappings
-In normal mode in any neo-tree window the config SHALL map `<cr>`, `o`, `l` to open, `h`, `<bs>` to close the node, `v` vertical split, `s` horizontal split, `t` new tab, `q` close window, `?` help, `<` previous source and `>` next source. `git_status` mappings override these where they collide.
+In normal mode in any neo-tree window the config SHALL map `<CR>`, `o`, and `l` to native open, `h`/`<BS>` to close node, `v`/`s` to vertical/horizontal split, `t` to new tab, `q` to close, `?` to help, and `<`/`>` to switch source. In `git_status`, only `<CR>` SHALL override native open to close the preview, reveal the file in `filesystem`, move right, and edit it.
 
 #### Scenario: v opens file in vertical split
 - **WHEN** the cursor is on a file node in the `filesystem` tree and `v` is pressed in normal mode
@@ -38,6 +38,10 @@ In normal mode in any neo-tree window the config SHALL map `<cr>`, `o`, `l` to o
 #### Scenario: Next source switches tree source
 - **WHEN** `>` is pressed in normal mode in the `filesystem` tree
 - **THEN** the tree window shows the `git_status` source
+
+#### Scenario: o and l keep native open in git status tree
+- **WHEN** the cursor is on a file node in the `git_status` tree and `o`, then in a fresh tree `l`, is pressed in normal mode
+- **THEN** each key opens the node without replacing the `git_status` tree with the `filesystem` source or explicitly closing the diff preview
 
 ### Requirement: Common tree edit mappings
 In normal mode in any neo-tree window the config SHALL map `a` to add a node (prompt shows a relative path), `d` delete, `r` rename, `c` copy, `x` cut to clipboard, `p` paste from clipboard and `R` refresh.
@@ -127,7 +131,7 @@ In the `git_status` tree, `<space>` on a file node SHALL treat the file as stage
 - **THEN** a notification starting with `Stage failed:` at ERROR is emitted
 
 ### Requirement: Git status revert and key ownership
-In the `git_status` tree, normal-mode `X` SHALL ask `Are you sure you want to revert <name>?` and revert the file only when confirmed (`git_revert_file`). The tree SHALL set no buffer-local `gr` mapping, so the global `gr` applies, and `c` SHALL be the common `copy` mapping.
+In the `git_status` tree, normal-mode `X` SHALL ask `Are you sure you want to revert <name>?` and revert the file only when confirmed (`git_revert_file`). The tree SHALL set no buffer-local `gr` mapping, so the global `gr` applies, and `c` SHALL be the common copy action.
 
 #### Scenario: X reverts a file after confirmation
 - **WHEN** the cursor is on the file node `a.txt` with an unstaged change in the `git_status` tree, `X` is pressed in normal mode and the prompt `Are you sure you want to revert a.txt?` is answered yes
@@ -143,10 +147,10 @@ In the `git_status` tree, normal-mode `X` SHALL ask `Are you sure you want to re
 
 #### Scenario: c is copy in git status tree
 - **WHEN** the `git_status` tree buffer is current and the buffer-local normal-mode mapping for `c` is read with `nvim_buf_get_keymap(0, "n")`
-- **THEN** its `desc` is `copy`
+- **THEN** its `desc` is `Tree: Copy`
 
 ### Requirement: Git status AI commit
-In the `git_status` tree, normal-mode `gc` SHALL open the AI commit popup (`gleb.git.ai_commit`) and run `git commit -m <message>` as an argument list for a confirmed message; on exit 0 it SHALL refresh the `git_status` source and notify `Committed: <first line of message>` at INFO, otherwise notify `Commit failed: <git stderr>` at ERROR. `?` help SHALL label `gc` `commit (AI)`.
+In the `git_status` tree, normal-mode `gc` SHALL open the AI commit popup (`gleb.git.ai_commit`) and run `git commit -m <message>` as an argument list for a confirmed message; on exit 0 it SHALL refresh the `git_status` source and notify `Committed: <first line of message>` at INFO, otherwise notify `Commit failed: <git stderr>` at ERROR. `?` help SHALL label `gc` `Tree: Commit (AI)`.
 
 #### Scenario: gc commits confirmed message
 - **WHEN** `gc` is pressed in normal mode in the `git_status` tree and the popup is confirmed with message `feat: x`, then a new change is staged and `gc` is confirmed with message `fix: it's $HOME`
@@ -158,7 +162,7 @@ In the `git_status` tree, normal-mode `gc` SHALL open the AI commit popup (`gleb
 
 #### Scenario: Help lists the moved git status keys
 - **WHEN** `?` is pressed in normal mode in the `git_status` tree with a 100x40 screen
-- **THEN** the screen matches the reference screenshot: the Neotree Help lists `X -> git_revert_file`, `c -> copy` and `gc -> commit (AI)` and no `gr` row
+- **THEN** the screen matches the reference screenshot: the Neotree Help lists only configured keys, including `X -> Tree: Revert`, `c -> Tree: Copy` and `gc -> Tree: Commit (AI)`, and no `gr` row
 
 ### Requirement: Git status push
 In the `git_status` tree, normal-mode `P` SHALL notify `Pushing...` (INFO), run `git push` asynchronously, then notify `Pushed successfully` (INFO) on exit 0 or `Push failed` (ERROR).
@@ -288,3 +292,14 @@ The tree SHALL draw a Nerd Font glyph in every icon slot: expanders U+F460 (coll
 #### Scenario: filesystem tree matches reference screenshot
 - **WHEN** `:Neotree filesystem` is executed in a fixture directory with subdirectories `docs` (containing `workflow.md`), `empty` (no entries) and `lua` (containing `gleb/`) and file `init.lua`, `<cr>` is pressed on `docs` and twice on `empty`, and a screenshot of the tree rows below the root row is taken
 - **THEN** it matches the stored reference screenshot, with an expander and a folder glyph on every directory row
+
+### Requirement: Neo-tree mapping ownership
+Neo-tree SHALL disable its default mappings and build common, filesystem, and git-status mapping tables from registered file-tree actions and current `settings/keymap.json` assignments whenever setup runs.
+
+#### Scenario: Tree mappings come from the shortcut file
+- **WHEN** a populated filesystem or git-status tree is opened after `VeryLazy`
+- **THEN** every configured tree lhs invokes the file-tree action assigned by `settings/keymap.json`
+
+#### Scenario: Neo-tree defaults stay disabled
+- **WHEN** a populated tree is opened and its buffer-local normal mappings are enumerated
+- **THEN** an unconfigured neo-tree default lhs is absent
