@@ -122,7 +122,7 @@ local function selected_match_position()
 	if not matches then
 		return nil
 	end
-	for position, index in ipairs(matches.all_inds) do
+	for position, index in ipairs(matches.shown_inds) do
 		if index == matches.current_ind then
 			return position
 		end

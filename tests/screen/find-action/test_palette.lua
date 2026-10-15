@@ -231,9 +231,18 @@ T["find-action: Wide palette matches reference screenshots"] = function()
 		child.type_keys("<C-n>")
 	end
 	eq(selected_category_screen_rows(), { selected_screen_row() })
-	H.expect_screen_colors(child, selected_screen_row(), {
-		string.rep("n", 14) .. "b" .. string.rep("S", 54) .. "KS" .. string.rep("E", 13) .. "Sb" .. string.rep("n", 14),
-	}, { n = "Normal", b = "FloatBorder", S = "PmenuSel", E = "PmenuExtraSel", K = "PmenuKind" })
+	expect_color_mask(
+		selected_screen_row(),
+		string.rep("n", 14)
+			.. "b"
+			.. string.rep("S", 16)
+			.. string.rep("E", 3)
+			.. string.rep("S", 46)
+			.. string.rep("E", 4)
+			.. "Sb"
+			.. string.rep("n", 14),
+		{ n = "EndOfBuffer", b = "FloatBorder", S = "PmenuSel", E = "PmenuExtraSel" }
+	)
 	close_palette()
 	child.o.lines = 30
 
