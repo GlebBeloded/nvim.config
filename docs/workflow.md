@@ -29,7 +29,6 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 
 ## Loop lessons
 
-- Neo-tree's shared `_ready` flag can be true while another filesystem navigation remains queued; subscribe before a debounce-length quiet wait and recheck readiness before applying an authoritative toggle.
 - When passing `string.gsub()` directly to a one-argument RPC method, parenthesize it so Lua drops the replacement-count return value.
 - Sort enabled LSP config names before asserting exact membership because `vim.lsp.get_configs()` ordering is not stable.
 - Use boolean true for vim.fn.shellescape's special flag so LuaLS accepts the call while preserving special-character escaping.
@@ -44,6 +43,7 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - Keep source-specific sampled colours beside the source highlight setup so shared theme palettes expose only reusable colours.
 - When a palette's secondary reveal bypasses the initial visibility filter, exercise that reveal key in the catalog-label regression and validate its plugin-owned rows.
 - When action metadata supplies mapping descriptions, update the native integration expectation with the approved title change.
+- Give toggle actions a real `run` implementation so assigned shortcuts and palette selection have the same effect.
 
 ## The loop
 
