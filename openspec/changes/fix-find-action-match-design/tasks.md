@@ -14,3 +14,4 @@ Scenarios: `find-action: Wide palette matches reference screenshots`
 
 - Exclude `find_action.open` from history because recording the launcher on every open displaces the action the user is trying to reuse.
 - Pass highlight and selected-metadata options from Find Action so shared picker sources retain their existing appearance.
+- Restore selection from source-match completion because MiniPick item replacement is asynchronous.

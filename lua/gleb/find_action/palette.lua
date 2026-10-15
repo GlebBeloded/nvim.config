@@ -13,6 +13,7 @@ local MiniPick = require("mini.pick")
 ---@field query? string
 ---@field show_hidden? boolean
 ---@field rows? gleb.FindActionRow[]
+---@field pending_current_ind? integer
 
 ---@class gleb.FindActionRow: gleb.picker.Row
 ---@field action? gleb.Action
@@ -172,6 +173,24 @@ local function scroll_up()
 	scroll_to_actionable_match(-1)
 end
 
+---@param inds integer[]
+local function restore_pending_current(inds)
+	local target = M.state.pending_current_ind
+	if not target then
+		return
+	end
+	M.state.pending_current_ind = nil
+	if not vim.tbl_contains(inds, target) then
+		return
+	end
+	vim.schedule(function()
+		local matches = MiniPick.get_picker_matches()
+		if matches and vim.tbl_contains(matches.all_inds, target) then
+			MiniPick.set_picker_match_inds({ target }, "current")
+		end
+	end)
+end
+
 ---@param _ string[]
 ---@param inds integer[]
 ---@param query string[]
@@ -184,6 +203,7 @@ local function match_rows(_, inds, query)
 		schedule_first_actionable_match()
 	end
 	if text == "" then
+		restore_pending_current(inds)
 		return inds
 	end
 	local visible_matches = {}
@@ -201,6 +221,7 @@ local function match_rows(_, inds, query)
 		table.insert(visible_matches, separator)
 		vim.list_extend(visible_matches, hidden_matches)
 	end
+	restore_pending_current(visible_matches)
 	return visible_matches
 end
 
@@ -225,10 +246,8 @@ local function request_assignment()
 	local selected = MiniPick.get_picker_matches().current_ind
 	Assign.open(current.action)
 	M.state.rows = make_rows()
+	M.state.pending_current_ind = selected
 	MiniPick.set_picker_items(M.state.rows)
-	if selected then
-		MiniPick.set_picker_match_inds({ selected }, "current")
-	end
 	return false
 end
 
@@ -263,10 +282,8 @@ local function choose_action(row)
 		if target then
 			rows[target].glyph = Context.get_toggle(action, ctx)
 		end
+		M.state.pending_current_ind = selected
 		MiniPick.set_picker_items(rows)
-		if selected then
-			MiniPick.set_picker_match_inds({ selected }, "current")
-		end
 		return true
 	end
 
