@@ -58,6 +58,16 @@ T["actions: Plugin-window mappings are action-owned"] = function()
 	open_surface([[vim.cmd("Neotree filesystem")]], "neo-tree")
 	eq(
 		child.lua_get([[(function()
+			local buf = assert(PluginBuffer("neo-tree"))
+			vim.keymap.set("n", "z", "<Nop>", { buffer = buf })
+			local report = require("gleb.actions").audit()
+			vim.keymap.del("n", "z", { buffer = buf })
+			return vim.tbl_contains(report, "neo-tree n z")
+		end)()]]),
+		true
+	)
+	eq(
+		child.lua_get([[(function()
 			local store = require("gleb.actions").state.store
 			local assigned = store.last_good["neo_tree.delete"]
 			store.last_good["neo_tree.delete"] = nil

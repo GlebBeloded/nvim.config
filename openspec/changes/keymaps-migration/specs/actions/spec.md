@@ -3,7 +3,7 @@
 ## ADDED Requirements
 
 ### Requirement: Exclusive shortcut ownership
-After `VeryLazy`, the action registry SHALL be the only source of configured mappings in modes `n`, `x`, `s`, `o`, `i`, `c`, and `t`. Every such global or plugin-window mapping SHALL resolve to an action id in `settings/keymap.json`, except Neovim grammar mappings and 99's hardcoded `q` and `<CR>` window mappings on an explicit allowlist.
+After `VeryLazy`, every global or plugin-window mapping in modes `n`, `x`, `s`, `o`, `i`, `c`, and `t` SHALL resolve to an action id in `settings/keymap.json` or an explicit allowlist. The allowlist SHALL contain only Neovim grammar, Mason navigation, lazy.nvim view operations, autopairs insertion, codediff mouse selection, and 99's hardcoded `q` and `<CR>`.
 
 #### Scenario: Every configured mapping is action-owned
 - **WHEN** the full config has fired `VeryLazy` and global mappings in modes `n`, `x`, `s`, `o`, `i`, `c`, and `t` are enumerated
@@ -11,7 +11,7 @@ After `VeryLazy`, the action registry SHALL be the only source of configured map
 
 #### Scenario: Plugin-window mappings are action-owned
 - **WHEN** neo-tree, dap-ui, diffview, differ, codediff, neotest, mason, lazy, blink, and copilot windows are opened with populated data
-- **THEN** each configured plugin-window mapping resolves to its registered action and current lhs in `settings/keymap.json`, or is one of 99's allowlisted `q` and `<CR>` mappings
+- **THEN** each mapping resolves to its registered action and current lhs, or exactly matches an allowlisted Mason navigation, lazy.nvim view, autopairs insertion, codediff mouse-selection, or 99 `q`/`<CR>` mapping
 
 #### Scenario: Unconfigured defaults are absent
 - **WHEN** the full config has fired `VeryLazy` and Neovim and plugin mappings are enumerated
@@ -31,4 +31,3 @@ Each feature that exposes configurable behavior SHALL define actions in its `act
 #### Scenario: Every configured action is registered
 - **WHEN** `settings/keymap.json` is loaded against the startup action catalog
 - **THEN** every action id in the file resolves without an unknown-action warning
-

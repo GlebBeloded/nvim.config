@@ -579,6 +579,29 @@ T["keymaps: Outdent keeps selection"] = function()
 	eq({ get_lines(), child.fn.mode() }, { { "a", "b" }, "V" })
 end
 
+T["keymaps: Counts preserve mapped operations"] = function()
+	set_lines({ "a", "b", "c" })
+	child.type_keys("gg", "V", "2>")
+	eq(get_lines()[1], "    a")
+
+	child.cmd("normal! \\<Esc>")
+	child.bo.commentstring = "-- %s"
+	child.type_keys("gg", "3<A-/>")
+	eq(get_lines(), { "    -- a", "-- b", "-- c" })
+
+	set_lines({ "outer", "inner", "body", "body", "inner end", "outer end" })
+	child.lua([[
+		vim.wo.foldmethod = "manual"
+		vim.cmd("2,5fold")
+		vim.cmd("1,6fold")
+		vim.api.nvim_win_set_cursor(0, { 1, 0 })
+	]])
+	child.type_keys("2<M-=>")
+	eq({ child.fn.foldclosed(1), child.fn.foldclosed(2) }, { -1, -1 })
+	child.type_keys("2<M-->")
+	eq(child.fn.foldclosed(1), 1)
+end
+
 T["keymaps: Paste over selection keeps register"] = function()
 	-- yank instead of setreg: with 'clipboard=unnamedplus' the unnamed register is "+"
 	set_lines({ "foo", "bar" })

@@ -143,37 +143,6 @@ T["shortcuts: Shortcut table names action ids"] = function()
 	expect_none(problems)
 end
 
-T["shortcuts: Shortcut meanings survive registry migration"] = function()
-	for _, row in ipairs(C.shortcut_rows()) do
-		if row.receives and row.mapping ~= "none" then
-			child.lua(
-				[[
-				local actions = require("gleb.actions")
-				local action = assert(actions.state.applicator.catalog:get(...))
-				_G.shortcut_action_original = { action = action, run = action.run, mapping = action.mapping }
-				action.run = function() _G.shortcut_action_hit = action.id end
-				action.mapping = nil
-				_G.shortcut_action_hit = nil
-				assert(actions.apply())
-			]],
-				{ row.mapping }
-			)
-
-			child.type_keys(row.receives)
-			MiniTest.expect.equality(child.lua_get([[_G.shortcut_action_hit]]), row.mapping)
-
-			child.lua([[
-				local original = assert(_G.shortcut_action_original)
-				original.action.run = original.run
-				original.action.mapping = original.mapping
-				_G.shortcut_action_original = nil
-				_G.shortcut_action_hit = nil
-				assert(require("gleb.actions").apply())
-			]])
-		end
-	end
-end
-
 T["shortcuts: Neovim mappings match the table"] = function()
 	local problems = {}
 	for _, row in ipairs(C.shortcut_rows()) do

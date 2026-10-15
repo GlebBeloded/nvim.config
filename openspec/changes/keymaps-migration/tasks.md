@@ -16,7 +16,6 @@ Scenarios: `actions: Feature actions contain no shortcut keys`, `actions: Every 
 - Cmd+9 remains `none` in the normal-mode shortcut table because its configured `ai.visual` action is visual-only.
 - `actions.audit()` walks global mappings in all seven modes and owns a key when `settings/keymap.json` assigns it to a registered action in that mode, so plugin-native maps on assigned keys (blink's command-line keys, autopairs' `<CR>` behind `blink.accept`) count; `<Plug>`/`<SNR>` lhs are skipped as unpressable.
 - The grammar allowlist is the Neovim defaults that refine built-in keys, operators, motions and text objects: `Y`, `&`, `gc`/`gcc`, visual `*` `#` `@` `Q`, `an`/`in`, visual `[n` `]n` `[N` `]N`, matchit's `%` family, insert `<C-U>`/`<C-W>`, and snippet `<Tab>`/`<S-Tab>`.
-- Plugin-window buffers are not audited: mason's `q`, `<Esc>`, `1`–`5` and lazy.nvim's view keys are hardcoded and cannot be disabled; adapters own every configurable plugin key.
 - Startup deletes the `gr` family, `gO`, `gx`, `<C-W>d`/`<C-W><C-D>`, every `[x`/`]x` bracket pair, visual `gra`/`gx` and insert/select `<C-S>`; `[d` and `<C-S>` come back as `diag.previous` and `lsp.signature_help`, keeping the pinned Ctrl+S collision row.
 - Surround actions carry a `plug` rhs that the registry maps with `remap = true`; a palette run feeds the same `<Plug>` target.
 - Find Action excludes plugin-window actions: they run only through the mappings their adapter installs in that window.
@@ -28,7 +27,7 @@ Scenarios: `actions: Feature actions contain no shortcut keys`, `actions: Every 
 - The plugin-default case now queries each plugin's own buffer with an unconfigured default key: it read whichever window was current, and `<CR>` (neo-tree), `o` (dap-ui) and `<C-Space>` (blink) are configured keys; lazy.nvim's headless check is stubbed so its window opens.
 - The unit copy of `git: Enter on placeholder does nothing` became `git: Popup confirm action ignores the placeholder` (integration keeps the original case).
 - How should Diffview's retained conflict choices survive disabled defaults? Choose option 1: register `diffview.choose_ours`, `diffview.choose_theirs`, `diffview.choose_base`, and `diffview.choose_all` on their current `<leader>c*` keys and narrowly exempt spec-retained plugin-window defaults from rule 3.8, because this preserves both behavior and registry ownership without inventing shortcuts.
-- The plugin-window audit identifies configured mappings by registry-derived descriptions so native UI and autopairs maps are not mistaken for migrated shortcuts.
+- The plugin-window audit checks every pressable buffer mapping and uses the spec's exact native-plugin allowlist for unavoidable exceptions.
 - Neo-tree delete and cut use native command metadata so its renderer preserves visual/select mappings while the registry still owns their lhs values.
 
 ## 2. Remove unowned built-in and surround defaults
@@ -90,3 +89,11 @@ Scenarios: `git: Diffview conflict choices come from git actions`, `git: <leader
 - [x] 11.1 Add the ownership scenario to `tests/integration/git/test_diffview.lua`; open a real populated conflict view, query the four configured lhs values, run `make test FILE=tests/integration/git/test_diffview.lua CASE="git: Diffview conflict choices come from git actions"`, and see it fail
 - [x] 11.2 Register the four view-scoped `conflict_choose` actions, assign their current `<leader>c*` keys in `settings/keymap.json`, feed them through the Diffview adapter with defaults disabled, and narrow architecture rule 3.8 to exempt spec-retained plugin-window defaults
 - [x] 11.3 Run `make test FILE=tests/integration/git/test_diffview.lua` and see all ownership and conflict-choice scenarios pass
+
+## Stuck
+
+Count preservation remains red after two production attempts; production edits were reverted while the regression stays red.
+
+- Probe/reproduction: `V2>` indents only once (`"  a"`), `3<A-/>` comments only the first line, and the migrated fold callbacks likewise omit `vim.v.count`. The ownership probe also showed Mason's nil-description navigation maps and lazy.nvim's native view maps, confirming description-filtering skips real buffer mappings.
+- Attempt 1: prefixed `vim.v.count1` to visual indent, comment feedkeys, and `zo`/`zc`. The regression advanced past indent but `3<A-/>` still produced `{ "    -- a", "b", "c" }` instead of commenting all three lines.
+- Attempt 2: executed the count-prefixed remapped comment keys immediately with feed mode `mx`. The same behavior assertion failed: only the first line was commented.

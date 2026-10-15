@@ -31,3 +31,12 @@ The AI commit popup SHALL install its buffer-local `<CR>` and `q` mappings from 
 #### Scenario: Popup confirm action ignores the placeholder
 - **WHEN** an AI commit popup shows the `# No staged changes` placeholder and its configured confirm lhs is pressed in normal mode
 - **THEN** the popup stays open and `on_commit` is not called
+
+## MODIFIED Requirements
+
+### Requirement: vscode-diff configuration
+When vscode-diff loads, the config SHALL call its setup with the explorer left, 35 columns wide, in tree view mode, with every plugin default diff keymap disabled so registered actions are the sole configured mappings.
+
+#### Scenario: vscode-diff setup runs on plugin load
+- **WHEN** lazy.nvim loads `vscode-diff.nvim`
+- **THEN** `require("gleb.git.vscode_diff")` executes without error and disables every default keymap
