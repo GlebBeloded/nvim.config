@@ -442,58 +442,96 @@ M.UNMASKED = { ["."] = true, [" "] = true }
 ---@class test.ScreenCell
 ---@field text string
 ---@field attrs test.CellAttrs
----@field attr_id integer
 
 ---@class test.ScreenCells
 ---@field cells test.ScreenCell[][]
 ---@field hls table<string, test.CellAttrs|vim.NIL>
----@field attr_ids table<string, integer>
 
 local CELL_FLAGS = { "bold", "italic", "underline", "undercurl", "strikethrough", "reverse" }
 local CELL_COLORS = { "fg", "bg", "sp" }
 
---- Child-side: the composed cells of `count` rows from screen row `row` (as in
+--- Child-side: the drawn cells of `count` rows from screen row `row` (as in
 --- `M.screen_rows`) and the resolved highlights of `groups` (vim.NIL when
---- undefined).
+--- undefined). Floating multigrid rows are matched to their composed screen
+--- text so their resolved attributes replace the underlying grid attributes.
 local SCREEN_CELLS_LUA = [[
-local row, count, groups = ...
+local row, count, groups, include_floats = ...
 local first = row < 0 and vim.o.lines + row or row - 1
+local hls = {}
+for _, name in ipairs(groups) do
+	hls[name] = vim.fn.hlexists(name) == 1 and vim.api.nvim_get_hl(0, { name = name, link = false }) or vim.NIL
+end
+
+local function normalize(attrs)
+	attrs.fg, attrs.bg, attrs.sp = attrs.foreground, attrs.background, attrs.special
+	attrs.foreground, attrs.background, attrs.special = nil, nil, nil
+	return attrs
+end
+
+vim.api.nvim__inspect_cell(1, 0, 0)
 vim.cmd("redraw!")
 local cells = {}
 for r = first, first + count - 1 do
 	local line = {}
 	for col = 0, vim.o.columns - 1 do
+		local inspected = vim.api.nvim__inspect_cell(1, r, col)
 		table.insert(line, {
 			text = vim.fn.screenstring(r + 1, col + 1),
-			attrs = {},
-			attr_id = vim.fn.screenattr(r + 1, col + 1),
+			attrs = normalize(inspected[2]),
 		})
 	end
 	table.insert(cells, line)
 end
-local hls = {}
-local attr_ids = {}
-for _, name in ipairs(groups) do
-	hls[name] = vim.fn.hlexists(name) == 1 and vim.api.nvim_get_hl(0, { name = name, link = false }) or vim.NIL
-	local buf = vim.api.nvim_create_buf(false, true)
-	vim.api.nvim_buf_set_lines(buf, 0, -1, false, { "x" })
-	local win = vim.api.nvim_open_win(buf, false, {
-		relative = "editor",
-		row = 0,
-		col = 0,
-		width = 1,
-		height = 1,
-		style = "minimal",
-		focusable = false,
-		zindex = 250,
-	})
-	vim.wo[win].winhighlight = "Normal:" .. name
-	vim.cmd("redraw!")
-	attr_ids[name] = vim.fn.screenattr(1, 1)
-	vim.api.nvim_win_close(win, true)
+
+local function row_matches(grid_line, screen_line, start)
+	for col, inspected in ipairs(grid_line) do
+		if inspected[1] ~= screen_line[start + col - 1].text then
+			return false
+		end
+	end
+	return true
 end
-vim.cmd("redraw!")
-return { cells = cells, hls = hls, attr_ids = attr_ids }]]
+
+if include_floats then
+	local grid = 2
+	while grid <= 512 do
+		local ok, top_left = pcall(vim.api.nvim__inspect_cell, grid, 0, 0)
+		if ok and not vim.tbl_isempty(top_left) then
+			local width = 0
+			while width < vim.o.columns and not vim.tbl_isempty(vim.api.nvim__inspect_cell(grid, 0, width)) do
+				width = width + 1
+			end
+			for grid_row = 0, vim.o.lines - 1 do
+				local first_cell = vim.api.nvim__inspect_cell(grid, grid_row, 0)
+				if vim.tbl_isempty(first_cell) then
+					break
+				end
+				local grid_line = {}
+				local has_text = false
+				for col = 0, width - 1 do
+					local inspected = vim.api.nvim__inspect_cell(grid, grid_row, col)
+					table.insert(grid_line, inspected)
+					has_text = has_text or inspected[1] ~= " "
+				end
+				if has_text then
+					for _, screen_line in ipairs(cells) do
+						for start = 1, vim.o.columns - width + 1 do
+							if row_matches(grid_line, screen_line, start) then
+								for col, inspected in ipairs(grid_line) do
+									screen_line[start + col - 1].attrs = normalize(inspected[2])
+								end
+								break
+							end
+						end
+					end
+				end
+			end
+		end
+		grid = grid + 1
+	end
+	vim.cmd("redraw!")
+end
+return { cells = cells, hls = hls }]]
 
 ---@param mask string[]
 ---@param columns integer
@@ -528,11 +566,39 @@ local function check_groups(hls, legend)
 	end
 end
 
+--- Whether a grid cell shows `hl`: colors only where `hl` sets them (missing
+--- drawn colors are Normal's), flags always (absent = false).
+---@param attrs test.CellAttrs
+---@param hl test.CellAttrs
+---@param normal test.CellAttrs
+---@return boolean
+local function cell_matches(attrs, hl, normal)
+	for _, key in ipairs(CELL_COLORS) do
+		if hl[key] and hl[key] ~= (attrs[key] or normal[key]) then
+			return false
+		end
+	end
+	for _, flag in ipairs(CELL_FLAGS) do
+		if (hl[flag] or false) ~= (attrs[flag] or false) then
+			return false
+		end
+	end
+	return true
+end
+
+---@param cell test.ScreenCell
+---@param group string
+---@param hls table<string, test.CellAttrs>
+---@return boolean
+local function cell_matches_group(cell, group, hls)
+	return cell_matches(cell.attrs, hls[group], hls[M.DEFAULT_GROUP])
+end
+
 ---@param cells test.ScreenCell[][]
 ---@param legend table<string, string>
----@param attr_ids table<string, integer>
+---@param hls table<string, test.CellAttrs>
 ---@return string[] mask of the first matching letter per cell, `.` for Normal, else `?`
-local function actual_mask(cells, legend, attr_ids)
+local function actual_mask(cells, legend, hls)
 	local letters = vim.tbl_keys(legend)
 	table.sort(letters)
 	local mask = {}
@@ -540,9 +606,9 @@ local function actual_mask(cells, legend, attr_ids)
 		local row = {}
 		for _, cell in ipairs(line) do
 			local found = vim.iter(letters):find(function(letter)
-				return cell.attr_id == attr_ids[legend[letter]]
+				return cell_matches_group(cell, legend[letter], hls)
 			end)
-			table.insert(row, found or (cell.attr_id == attr_ids[M.DEFAULT_GROUP] and ".") or "?")
+			table.insert(row, found or (cell_matches_group(cell, M.DEFAULT_GROUP, hls) and ".") or "?")
 		end
 		table.insert(mask, table.concat(row))
 	end
@@ -576,18 +642,13 @@ end
 ---@param mask string[]
 ---@param groups table<string, string> mask letter (and unmasked) -> group
 ---@param hls table<string, test.CellAttrs>
----@param attr_ids table<string, integer>
 ---@return test.CellMismatch?
-local function first_mismatch(cells, mask, groups, hls, attr_ids)
+local function first_mismatch(cells, mask, groups, hls)
 	for row, line in ipairs(cells) do
 		local letters = vim.fn.split(mask[row], [[\zs]])
 		for col, cell in ipairs(line) do
 			local group = groups[letters[col]]
-			if cell.attr_id ~= attr_ids[group] then
-				local actual_group = vim.iter(vim.tbl_keys(attr_ids)):find(function(name)
-					return cell.attr_id == attr_ids[name]
-				end)
-				cell.attrs = actual_group and hls[actual_group] or {}
+			if not cell_matches_group(cell, group, hls) then
 				return { row = row, col = col, letter = letters[col], group = group }
 			end
 		end
@@ -642,16 +703,22 @@ end
 function M.expect_screen_colors(child, row, mask, legend)
 	check_width(mask, child.o.columns)
 	check_letters(mask, legend)
-	local screen = child.lua(SCREEN_CELLS_LUA, { row, #mask, legend_groups(legend) }) --[[@as test.ScreenCells]]
+	local args = { row, #mask, legend_groups(legend), false }
+	local screen = child.lua(SCREEN_CELLS_LUA, args) --[[@as test.ScreenCells]]
 	check_groups(screen.hls, legend)
 	local hls = screen.hls --[[@as table<string, test.CellAttrs>]]
 	if hls[M.DEFAULT_GROUP] == vim.NIL then
 		hls[M.DEFAULT_GROUP] = {}
 	end
 	local letter_groups = vim.tbl_extend("force", { ["."] = M.DEFAULT_GROUP, [" "] = M.DEFAULT_GROUP }, legend)
-	local bad = first_mismatch(screen.cells, mask, letter_groups, hls, screen.attr_ids)
+	local bad = first_mismatch(screen.cells, mask, letter_groups, hls)
 	if bad then
-		local actual = actual_mask(screen.cells, legend, screen.attr_ids)
+		args[4] = true
+		screen = child.lua(SCREEN_CELLS_LUA, args) --[[@as test.ScreenCells]]
+		bad = first_mismatch(screen.cells, mask, letter_groups, hls)
+	end
+	if bad then
+		local actual = actual_mask(screen.cells, legend, hls)
 		error(mismatch_message(mask, actual, screen.cells, hls, bad), 0)
 	end
 end

@@ -150,34 +150,10 @@ T["find-action: Wide palette matches reference screenshots"] = function()
 	eq(text:find("recently used", 1, true) ~= nil, true)
 	eq(text:find("Assign ⌥↩ · Show hidden ⌘⇧A", 1, true) ~= nil, true)
 	eq(text:find("Toggle Git Status Tree ⌘⇧G", 1, true) ~= nil, true)
-	H.expect_screen_colors(
-		child,
-		8,
-		{ "nnnnnnnnnnnnnnbSSSSSSSSSSSSSEESSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSEEEEEEEEEESbnnnnnnnnnnnnnn" },
-		{ n = "EndOfBuffer", b = "FloatBorder", S = "PmenuSel", E = "PmenuExtraSel" }
-	)
-	H.expect_screen_colors(
-		child,
-		11,
-		{ "nnnnnnnnnnnnnnbffffffffffffffffffbbbfffffffffffffffffffffffffffffffffffffXXXXXXXXXXXfbnnnnnnnnnnnnnn" },
-		{ n = "EndOfBuffer", b = "FloatBorder", f = "NormalFloat", X = "PmenuExtra" }
-	)
-	H.expect_screen_colors(
-		child,
-		20,
-		{ "nnnnnnnnnnnnnnbffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffXXXfbnnnnnnnnnnnnnn" },
-		{ n = "EndOfBuffer", b = "FloatBorder", f = "NormalFloat", X = "PmenuExtra" }
-	)
 	H.expect_screenshot(child.get_screenshot())
 
 	child.type_keys("diff")
 	assert(child.wait([[table.concat(require("mini.pick").get_picker_query()) == "diff"]]), "query was not rendered")
-	H.expect_screen_colors(
-		child,
-		7,
-		{ "nnnnnnnnnnnnnnbSSSSSSSSSSSSSEESSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSEEEEEEEEEESbnnnnnnnnnnnnnn" },
-		{ n = "EndOfBuffer", b = "FloatBorder", S = "PmenuSel", E = "PmenuExtraSel" }
-	)
 	H.expect_screenshot(child.get_screenshot())
 	close_palette()
 
@@ -187,12 +163,6 @@ T["find-action: Wide palette matches reference screenshots"] = function()
 		child.type_keys("<C-n>")
 	end
 	eq(selected_category_screen_rows(), { selected_screen_row() })
-	H.expect_screen_colors(child, selected_screen_row(), {
-		string.rep("n", 14) .. "b" .. string.rep("S", 16) .. string.rep("E", 3) .. string.rep("S", 46) .. string.rep(
-			"E",
-			4
-		) .. "Sb" .. string.rep("n", 14),
-	}, { n = "EndOfBuffer", b = "FloatBorder", S = "PmenuSel", E = "PmenuExtraSel" })
 	close_palette()
 	child.o.lines = 30
 
@@ -223,6 +193,52 @@ T["find-action: Wide palette matches reference screenshots"] = function()
 	assert(child.wait([[require("mini.pick").is_picker_active()]]), "visual Find Action palette did not open")
 	eq(child.lua_get([[require("gleb.find_action").state.context.selection ~= nil]]), true)
 	H.expect_screenshot(child.get_screenshot())
+	close_palette()
+
+	child.lua(
+		[[vim.fn.writefile({ vim.json.encode({ "git.open_differ", "view.soft_wrap", "view.spell_check", "edit.find_files" }) }, require("gleb.find_action.items").history().path)]]
+	)
+	open_palette()
+	H.expect_screen_colors(
+		child,
+		8,
+		{ "nnnnnnnnnnnnnnbSSSSSSSSSSSSSEESSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSEEEEEEEEEESbnnnnnnnnnnnnnn" },
+		{ n = "EndOfBuffer", b = "FloatBorder", S = "PmenuSel", E = "PmenuExtraSel" }
+	)
+	H.expect_screen_colors(
+		child,
+		11,
+		{ "nnnnnnnnnnnnnnbffffffffffffffffffbbbfffffffffffffffffffffffffffffffffffffXXXXXXXXXXXfbnnnnnnnnnnnnnn" },
+		{ n = "EndOfBuffer", b = "FloatBorder", f = "NormalFloat", X = "PmenuExtra" }
+	)
+	H.expect_screen_colors(
+		child,
+		20,
+		{ "nnnnnnnnnnnnnnbffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffXXXfbnnnnnnnnnnnnnn" },
+		{ n = "EndOfBuffer", b = "FloatBorder", f = "NormalFloat", X = "PmenuExtra" }
+	)
+	child.type_keys("diff")
+	assert(child.wait([[table.concat(require("mini.pick").get_picker_query()) == "diff"]]), "query was not rendered")
+	H.expect_screen_colors(
+		child,
+		7,
+		{ "nnnnnnnnnnnnnnbSSSSSSSSSSSSSEESSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSEEEEEEEEEESbnnnnnnnnnnnnnn" },
+		{ n = "EndOfBuffer", b = "FloatBorder", S = "PmenuSel", E = "PmenuExtraSel" }
+	)
+	close_palette()
+
+	child.o.lines = 14
+	open_palette()
+	for _ = 1, 4 do
+		child.type_keys("<C-n>")
+	end
+	H.expect_screen_colors(child, selected_screen_row(), {
+		string.rep("n", 14) .. "b" .. string.rep("S", 16) .. string.rep("E", 3) .. string.rep("S", 46) .. string.rep(
+			"E",
+			4
+		) .. "Sb" .. string.rep("n", 14),
+	}, { n = "EndOfBuffer", b = "FloatBorder", S = "PmenuSel", E = "PmenuExtraSel" })
+	close_palette()
 end
 
 T["find-action: Compact palette matches reference screenshot"] = function()
