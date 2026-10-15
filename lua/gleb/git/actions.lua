@@ -115,6 +115,7 @@ local actions = {
 	diffview_action("close", "Close", { "file_panel" }, function()
 		vim.cmd.DiffviewClose()
 	end),
+	viewer_action("next_file", "Next file", "differ"),
 	viewer_action("next_hunk", "Next hunk", "differ"),
 	viewer_action("next_hunk", "Next hunk", "codediff"),
 }
