@@ -90,7 +90,8 @@ end
 ---@param cmd string[]
 ---@return string output
 local function run(fixture, cmd)
-	local env = vim.tbl_extend("force", H.GIT_ENV, { ARCHON_DB = fixture.db, APPLY = "", MAKEFLAGS = "" })
+	local env =
+		vim.tbl_extend("force", H.GIT_ENV, { ARCHON_DB = fixture.db, APPLY = "", MAKEFLAGS = "", BASE_BRANCH = "auto" })
 	local result = H.system(child, cmd, fixture.repo, env)
 	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
 	return result.stdout .. result.stderr
