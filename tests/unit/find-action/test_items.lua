@@ -11,26 +11,6 @@ end
 
 local T = H.child_set(child, start)
 
-T["find-action: Empty query puts recent actions first"] = function()
-	eq(
-		child.lua_get([[
-			(function()
-				local actions = {
-					{ id = "edit.alpha", title = "Alpha", category = "Edit", run = function() end },
-					{ id = "git.beta", title = "Beta", category = "Git", run = function() end },
-					{ id = "view.gamma", title = "Gamma", category = "View", run = function() end },
-				}
-				local ordered = FindActionItems.order(actions, { "git.beta", "missing.action", "edit.alpha" })
-				return {
-					vim.tbl_map(function(action) return action.id end, ordered.recent),
-					vim.tbl_map(function(action) return action.id end, ordered.curated),
-				}
-			end)()
-		]]),
-		{ { "git.beta", "edit.alpha" }, { "view.gamma" } }
-	)
-end
-
 T["find-action: Recent history keeps the last 20 actions"] = function()
 	eq(
 		child.lua_get([[

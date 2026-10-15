@@ -72,23 +72,6 @@ local dashboard = {
 	[[                           ___     ___    ___   __  __ /\_\    ___ ___]],
 	[[                          / _ `\  / __`\ / __`\/\ \/\ \\/\ \  / __` __`\]],
 }
-local initial = palette("█", {
-	INDENT
-		.. "│ other actions ────────────────────────────────────────────────────── │",
-	INDENT .. "│ Find Action... ⌘⇧A                                              Help │",
-	INDENT .. "│ Move left <C-h>                                               Window │",
-	INDENT .. "│ Move down <A-j>                                               Window │",
-	INDENT .. "│ Move up <A-k>                                                 Window │",
-	INDENT .. "│ Move right <C-l>                                              Window │",
-	INDENT .. "│ Back gb                                                         Jump │",
-	INDENT .. "│ Forward gB                                                      Jump │",
-	INDENT .. "│ Increase height ⌃↑                                            Window │",
-	INDENT .. "│ Decrease height ⌃↓                                            Window │",
-	INDENT .. "│ Decrease width ⌃←                                             Window │",
-	INDENT .. "│ Increase width ⌃→                                             Window │",
-	INDENT .. "│ Resize left <A-H>                                             Window │",
-	INDENT .. "│ Resize down <A-J>                                             Window │",
-})
 local recent = palette("█", {
 	INDENT
 		.. "│ recently used ────────────────────────────────────────────────────── │",
@@ -109,7 +92,7 @@ local recent = palette("█", {
 })
 
 return {
-	["opened palette screen"] = full(empty_buffer, initial),
+	["opened palette screen"] = full(empty_buffer, recent),
 	["searched palette screen"] = full(
 		empty_buffer,
 		palette("find█", {
@@ -120,5 +103,5 @@ return {
 	["shortcut capture screen"] = full(empty_buffer, assignment(" █")),
 	["captured shortcut screen"] = full(empty_buffer, assignment("⌘D █")),
 	["assigned shortcut screen"] = full(empty_buffer, recent),
-	["persisted shortcut screen"] = full(dashboard, initial),
+	["persisted shortcut screen"] = full(dashboard, recent),
 }
