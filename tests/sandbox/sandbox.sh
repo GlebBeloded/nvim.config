@@ -68,7 +68,15 @@ print(d.get(sys.argv[1]) or "")' "$1"
 # Lume's own view only: a `lume run` process Lume reports as not running is a mismatch that
 # `lume ssh` refuses too, so boot_wait handles it instead of treating the VM as up
 running() {
-	[ "$(vm_field status)" = running ]
+	# a busy Lume can answer `lume get` with nothing for a moment (as vm_exists): an empty status is asked
+	# again before it counts, so a blip never sends boot down the "lume run alive, not running" path
+	local try state
+	for try in 1 2 3; do
+		state=$(vm_field status)
+		[ -n "$state" ] && break
+		sleep 1
+	done
+	[ "$state" = running ]
 }
 
 # the `lume run` process that owns the VM is alive
