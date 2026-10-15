@@ -14,8 +14,11 @@ Kind: bug
 - `lua/gleb/file_tree/actions.lua:64-69`: for the filesystem source, `smart_toggle` runs `Neotree reveal_file=<current buffer path>` whenever the buffer has a non-URI name. It never checks that the file still exists on disk, so neo-tree's parser (`parser.lua:108`) errors when the buffer's file was deleted (or not yet written).
 
 ## What Changes
-- Toggle File Tree never errors when the current buffer's file is missing on disk (deleted, renamed or never written). It opens the tree focused with no reveal, or reveals the nearest existing parent directory.
+- Toggle File Tree never errors when the current buffer's file is missing on disk (deleted, renamed or never written). It opens the filesystem tree focused without requesting a reveal.
 - A regression test replays the trigger: open a file, delete it on disk, then run the real Toggle File Tree mapping.
+- No plugin dependency is added, removed, or upgraded.
+- Core keymaps do not change.
+- Handling missing paths in neo-tree entry points other than Toggle File Tree is out of scope.
 
 ## Impact
 - Code: `lua/gleb/file_tree/actions.lua`.
