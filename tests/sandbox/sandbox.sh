@@ -535,6 +535,7 @@ e2e() {
 	sync_repo
 	restore_guest # per run, not in provision(): independent of PROVISION_REV
 	wait_gui 60 || die "no GUI session in the guest after 60 s (make sandbox-provision)"
+	: >"$STATE/e2e.started" # tests run from here: a failure before this is the sandbox's (make e2e retries it once)
 	local vars=""
 	for v in CASE E2E_FOCUS; do
 		[ -n "${!v:-}" ] && vars="$vars $v=$(printf %q "${!v}")"

@@ -115,8 +115,12 @@ stack: deps deps-shortcuts
 
 # real Alacritty + zellij + Neovim, real key events, inside the sandbox VM only (tests/sandbox/sandbox.sh):
 # on the host it boots the VM if needed (SANDBOX_START=0: skip when it is down), syncs and runs e2e-local there
+# a sandbox that fails before any test starts (no e2e.started marker) is stopped and the run tried once more
+E2E_STARTED = $${SANDBOX_STATE:-$$HOME/.cache/nvim-e2e-sandbox}/e2e.started
 e2e:
-	@tests/sandbox/sandbox.sh e2e
+	@rm -f "$(E2E_STARTED)"; tests/sandbox/sandbox.sh e2e || { test -f "$(E2E_STARTED)" && exit 1; \
+		echo "sandbox: e2e setup failed before any test ran; stopping the VM and trying once more" >&2; \
+		tests/sandbox/sandbox.sh down >/dev/null 2>&1; tests/sandbox/sandbox.sh e2e; }
 
 e2e-local: deps deps-shortcuts
 	@CAPS= E2E=$${E2E:-1} $(call MINITEST,e2e)
