@@ -640,6 +640,10 @@ work-queue SHALL skip the queue-spec step when the adopted change's tasks.md has
 - **WHEN** verdict.py runs after two reviewed passes (one rejected, one approved) and after a gate-red pass with no review, and `.archon/commands/review.md` is read
 - **THEN** `$ARTIFACTS_DIR/reviews.md` holds both reviews' findings in pass order under their pass number and outcome, nothing for the unreviewed pass, and review reads it, checks agent decisions first (one narrowing a delta SHALL is `[must-fix]`) and never re-asks for a reverted fix
 
+#### Scenario: A red pass keeps the last review's open findings
+- **WHEN** verdict.py runs after a rejecting review, then on a gate-red pass with no review, then after an approving review, then on another red pass
+- **THEN** the first red pass's feedback quotes the rejecting review's blocking findings as still open, and the red pass after the approval quotes none
+
 #### Scenario: Adopted change with every task ticked skips the spec step
 - **WHEN** `tasks.py --adopted-state` runs for change `c` with all tasks ticked (with a design.md holding a render section, with a technical design.md, without one, and with a proposal holding a `## Rejected run` section), with one unticked, with no tasks.md and with no change folder
 - **THEN** it prints `tasks_done` true only for the ticked ones without a rejected run, `visible_ui` true only with the render-holding design.md and `archived` true only without the folder; work-queue's `complete` requires `tasks_done == false` and queue-spec reads adopt-notes.md only if it exists
