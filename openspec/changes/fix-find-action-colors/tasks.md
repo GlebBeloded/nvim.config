@@ -27,3 +27,9 @@ Scenarios: `find-action: Wide palette matches reference screenshots`, `find-acti
 - Use generic foreground-only picker groups and source-local remaps so selected and normal row backgrounds stay continuous.
 - Count matched non-section rows against all non-section rows because section headings are chrome, not matches.
 - Keep approved sampled colours in the palette helper and apply them only through Find Action window overrides.
+
+## Stuck
+
+- Probe output: the first regression diagnostic reported `{ height = 4, line = 4 }`; the required full-config scratch probe timed out after 30000 ms before returning state. After firing `VimResized`, the observable screenshot remains the authoritative check.
+- Attempt 1: reduced hint-band main-window height by one additional row. The first rerun failed an internal `winline` assertion, later found to use stale 80x24 layout state and not directly observe screen overlap.
+- Attempt 2: restored the original height and moved the band below the last main-window row. The exact 100x30/43-match regression passed, but wide, compact, conflict-assignment, and free-assignment screen cases put the band below the bottom border, contradicting `design.md`'s in-frame render.
