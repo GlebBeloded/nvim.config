@@ -213,7 +213,7 @@ relative to `lua/gleb/`.
 - 3.5 The rhs is a function reference, a named local function or `<Cmd>…<CR>`; no `:…<CR>` strings, no long anonymous functions.
 - 3.6 One mode per behaviour: `x` for visual maps, not both `v` and `x`.
 - 3.7 Cmd shortcuts arrive as `<A-…>` from Alacritty; a Cmd chord with no binding anywhere arrives as `<D-…>` (kitty keyboard protocol). Window moves use smart-splits so they cross into zellij ([terminal stack](#terminal-stack)).
-- 3.8 No `<leader>` assignments in `settings/keymap.json`; Cmd shortcuts instead. Core shortcut changes need user approval.
+- 3.8 No new `<leader>` assignments in `settings/keymap.json`; spec-retained plugin-window defaults are exempt. Cmd shortcuts instead. Core shortcut changes need user approval.
 - 3.9 No deprecated APIs.
 
 ### 4. Naming

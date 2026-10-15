@@ -68,6 +68,12 @@ local function conflict_resolved()
 	return child.lua_get(NO_CONFLICT_MARKER)
 end
 
+---@param id string
+---@return string
+local function configured_lhs(id)
+	return child.lua_get(('require("gleb.actions").state.store.last_good[%q][1]'):format(id))
+end
+
 --- Press `key` in the conflict and return the working-file lines once the
 --- markers are gone (or after the timeout).
 ---@param key string
@@ -80,6 +86,17 @@ local function choose(key)
 end
 
 local T = MiniTest.new_set({ hooks = { post_once = child.stop } })
+
+T["git: Diffview conflict choices come from git actions"] = function()
+	eq(choose("<leader>co"), { "ours" })
+	eq(choose("<leader>ct"), { "theirs" })
+	eq(choose("<leader>cb"), { "base" })
+	eq(choose("<leader>ca"), { "ours", "base", "theirs" })
+	eq(configured_lhs("diffview.choose_ours"), "<leader>co")
+	eq(configured_lhs("diffview.choose_theirs"), "<leader>ct")
+	eq(configured_lhs("diffview.choose_base"), "<leader>cb")
+	eq(configured_lhs("diffview.choose_all"), "<leader>ca")
+end
 
 T["git: <leader>co chooses ours"] = function()
 	eq(choose("<leader>co"), { "ours" })

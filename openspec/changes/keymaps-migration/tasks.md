@@ -85,6 +85,6 @@ Scenarios: `shortcuts: Shortcut table names action ids`, `shortcuts: Shortcut me
 
 ## 11. Preserve Diffview conflict choices through actions
 Scenarios: `git: Diffview conflict choices come from git actions`, `git: <leader>co chooses ours`, `git: <leader>ct chooses theirs`, `git: <leader>cb chooses base`, `git: <leader>ca chooses all`
-- [ ] 11.1 Add the ownership scenario to `tests/integration/git/test_diffview.lua`; open a real populated conflict view, query the four configured lhs values, run `make test FILE=tests/integration/git/test_diffview.lua CASE="git: Diffview conflict choices come from git actions"`, and see it fail
-- [ ] 11.2 Register the four view-scoped `conflict_choose` actions, assign their current `<leader>c*` keys in `settings/keymap.json`, feed them through the Diffview adapter with defaults disabled, and narrow architecture rule 3.8 to exempt spec-retained plugin-window defaults
-- [ ] 11.3 Run `make test FILE=tests/integration/git/test_diffview.lua` and see all ownership and conflict-choice scenarios pass
+- [x] 11.1 Add the ownership scenario to `tests/integration/git/test_diffview.lua`; open a real populated conflict view, query the four configured lhs values, run `make test FILE=tests/integration/git/test_diffview.lua CASE="git: Diffview conflict choices come from git actions"`, and see it fail
+- [x] 11.2 Register the four view-scoped `conflict_choose` actions, assign their current `<leader>c*` keys in `settings/keymap.json`, feed them through the Diffview adapter with defaults disabled, and narrow architecture rule 3.8 to exempt spec-retained plugin-window defaults
+- [x] 11.3 Run `make test FILE=tests/integration/git/test_diffview.lua` and see all ownership and conflict-choice scenarios pass

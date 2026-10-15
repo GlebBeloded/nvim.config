@@ -48,6 +48,14 @@ local function diffview_run(name)
 	end
 end
 
+---@param target "ours"|"theirs"|"base"|"all"
+---@return gleb.Action
+local function diffview_conflict_action(target)
+	return diffview_action("choose_" .. target, "Choose conflict " .. target, { "view" }, function()
+		require("diffview.actions").conflict_choose(target)()
+	end)
+end
+
 ---@type gleb.Action[]
 local actions = {
 	{
@@ -89,6 +97,10 @@ local actions = {
 		diffview_run("select_prev_entry")
 	),
 	diffview_action("goto_file_edit", "Go to file", { "view" }, diffview_run("goto_file_edit")),
+	diffview_conflict_action("ours"),
+	diffview_conflict_action("theirs"),
+	diffview_conflict_action("base"),
+	diffview_conflict_action("all"),
 	diffview_action("choose_none", "Drop conflict sides", { "view" }, function()
 		require("diffview.actions").conflict_choose("none")()
 	end),
