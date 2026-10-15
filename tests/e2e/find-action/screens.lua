@@ -89,6 +89,25 @@ local initial = palette("█", {
 	INDENT .. "│ Resize left <A-H>                                             Window │",
 	INDENT .. "│ Resize down <A-J>                                             Window │",
 })
+local recent = palette("█", {
+	INDENT
+		.. "│ recently used ────────────────────────────────────────────────────── │",
+	INDENT .. "│ Find Action... ⌘⇧A                                              Help │",
+	INDENT
+		.. "│ other actions ────────────────────────────────────────────────────── │",
+	INDENT .. "│ Move left <C-h>                                               Window │",
+	INDENT .. "│ Move down <A-j>                                               Window │",
+	INDENT .. "│ Move up <A-k>                                                 Window │",
+	INDENT .. "│ Move right <C-l>                                              Window │",
+	INDENT .. "│ Back gb                                                         Jump │",
+	INDENT .. "│ Forward gB                                                      Jump │",
+	INDENT .. "│ Increase height ⌃↑                                            Window │",
+	INDENT .. "│ Decrease height ⌃↓                                            Window │",
+	INDENT .. "│ Decrease width ⌃←                                             Window │",
+	INDENT .. "│ Increase width ⌃→                                             Window │",
+	INDENT .. "│ Resize left <A-H>                                             Window │",
+})
+
 return {
 	["opened palette screen"] = full(empty_buffer, initial),
 	["searched palette screen"] = full(
@@ -97,9 +116,9 @@ return {
 			INDENT .. "│ Find Action... ⌘⇧A                                              Help │",
 		})
 	),
-	["run action screen"] = full(empty_buffer, initial),
+	["run action screen"] = full(empty_buffer, recent),
 	["shortcut capture screen"] = full(empty_buffer, assignment(" █")),
 	["captured shortcut screen"] = full(empty_buffer, assignment("⌘D █")),
-	["assigned shortcut screen"] = full(empty_buffer, initial),
+	["assigned shortcut screen"] = full(empty_buffer, recent),
 	["persisted shortcut screen"] = full(dashboard, initial),
 }

@@ -113,7 +113,8 @@ local function record_shortcut(self, typed)
 		local action = entry.action
 		local active = vim.fn.maparg(entry.lhs, mode, false, true)
 		if
-			active.desc == Registry.description(action)
+			action.id ~= "find_action.open"
+			and active.desc == Registry.description(action)
 			and (not action.ft or matches_filetype(action, vim.bo.filetype))
 		then
 			Context.record(action)

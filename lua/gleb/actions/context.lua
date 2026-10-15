@@ -74,14 +74,19 @@ end
 ---@return function
 function M.invoke(action)
 	return function()
-		M.execute(action, M.capture())
+		local ctx = M.capture()
+		if action.id == "find_action.open" then
+			M.run(action, ctx)
+			return
+		end
+		M.execute(action, ctx)
 	end
 end
 
 ---@param action gleb.Action
 ---@return nil
 function M.record(action)
-	if action.plugin or action.id == "find_action.open" then
+	if action.plugin then
 		return
 	end
 	require("gleb.find_action.items").history():record(action.id)
