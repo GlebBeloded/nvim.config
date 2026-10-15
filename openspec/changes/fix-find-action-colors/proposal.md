@@ -19,7 +19,13 @@ Kind: bug
 - Shortcut labels resolve for every lhs spelling (`<A-…>`, lowercase `<C-…>`), two spaces after the title.
 - The hint row is the in-frame band from the Decision, with the counter.
 - The reference screenshots and their colour masks are regenerated from render.png's colours.
+- No plugin dependency is added, removed or upgraded. Core keymaps do not change.
+- Out of scope: changing action execution, assignment-dialog behaviour, or the default appearance of other shared pickers.
+
+## Capabilities
+- `find-action` (modified): canonical shortcut labels and the approved palette reference screens.
+- `picker` (modified): row highlight separation and an opt-in in-frame hint band with a match counter.
 
 ## Impact
-- Code: `lua/gleb/picker/`, `lua/gleb/find_action/`, `lua/gleb/colors/transparency.lua` (palette floats only).
-- Tests: find-action and picker screen references.
+- Code: `lua/gleb/picker/frame.lua`, `lua/gleb/picker/rows.lua`, `lua/gleb/find_action/palette.lua`, `lua/gleb/find_action/rows.lua`, and `lua/gleb/colors/transparency.lua` (Find Action palette floats only).
+- Tests: `tests/unit/picker/test_rows.lua`, `tests/unit/find-action/test_rows.lua`, `tests/screen/picker/test_frame.lua`, `tests/screen/find-action/test_palette.lua`, and their Find Action reference screenshots.

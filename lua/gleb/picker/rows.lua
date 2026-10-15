@@ -56,31 +56,34 @@ local function render_section(item, width)
 	local remaining = math.max(width - display_width(item.text) - 1, 0)
 	local suffix = remaining > 0 and (" " .. string.rep("─", remaining)) or ""
 	local text = item.text .. suffix
+	local highlights = { { col = 0, end_col = #item.text, group = "PickerSectionLabel" } }
+	if suffix ~= "" then
+		table.insert(highlights, { col = #item.text + 1, end_col = #text, group = "PickerSectionRule" })
+	end
 
 	return {
 		text = text,
-		highlights = { { col = 0, end_col = #text, group = "PmenuExtra" } },
+		highlights = highlights,
 	}
 end
 
 ---@param item gleb.picker.Row
 ---@param width integer
 ---@param opts gleb.picker.RowRenderOpts
----@param selected boolean
+---@param _selected boolean
 ---@return gleb.picker.RenderedRow
-local function render_item(item, width, opts, selected)
+local function render_item(item, width, opts, _selected)
 	local left = item.text
 	local highlights = {}
-	local metadata_group = opts.selected_metadata and (selected and "PmenuExtraSel" or "FloatBorder") or "Comment"
 
 	if item.dim then
 		table.insert(highlights, { col = 0, end_col = #left, group = "Comment" })
 	end
 
 	if opts.show_secondary and item.secondary then
-		local start_col = #left + 1
-		left = left .. " " .. item.secondary
-		table.insert(highlights, { col = start_col, end_col = #left, group = metadata_group })
+		local start_col = #left + 2
+		left = left .. "  " .. item.secondary
+		table.insert(highlights, { col = start_col, end_col = #left, group = "PickerSecondary" })
 	end
 
 	local right = ""
@@ -107,13 +110,12 @@ local function render_item(item, width, opts, selected)
 		table.insert(highlights, {
 			col = right_col,
 			end_col = right_col + #"●",
-			group = glyph and "PmenuKind" or "PmenuExtra",
+			group = glyph and "PickerToggleOn" or "PickerToggleOff",
 		})
 	end
 	if opts.show_category and item.category then
 		local category_col = #text - #item.category
-		local category_group = selected and opts.selected_metadata and "PmenuExtraSel" or "PmenuExtra"
-		table.insert(highlights, { col = category_col, end_col = #text, group = category_group })
+		table.insert(highlights, { col = category_col, end_col = #text, group = "PickerCategory" })
 	end
 
 	return { text = text, highlights = highlights }

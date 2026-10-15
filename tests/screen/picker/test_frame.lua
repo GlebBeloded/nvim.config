@@ -163,4 +163,36 @@ T["picker: Alternate picker views keep the border counter-free"] = function()
 	child.type_keys("<Esc>")
 end
 
+T["picker: Source-specific hint band shows hints and counter"] = function()
+	child.lua_notify(
+		[[require("gleb.picker").start({
+			title = "Hint Band",
+			items = ...,
+			hints = "Open ↵ · Split ⌃S",
+			hint_keys = { "↵", "⌃S" },
+			hint_band = true,
+			match = function(_, inds) return inds end,
+		})]],
+		{ MANY_ITEMS }
+	)
+	assert(child.wait([[require("mini.pick").is_picker_active()]]), "shared picker did not open")
+	child.type_keys("<Down>")
+	assert(
+		child.wait([[require("mini.pick").get_picker_matches().current.text == "second"]]),
+		"second match not focused"
+	)
+
+	local text = table.concat(vim.tbl_map(table.concat, child.get_screenshot().text), "\n")
+	eq(text:find("Open ↵ · Split ⌃S", 1, true) ~= nil, true)
+	eq(text:find("6/6", 1, true) ~= nil, true)
+	eq(
+		child.lua_get(
+			[[vim.api.nvim_win_get_config(require("mini.pick").get_picker_state().windows.main).footer == nil]]
+		),
+		true
+	)
+	H.expect_hl_colors(child, "PickerHintBand", { bg = "#32302f" })
+	H.expect_hl_colors(child, "PickerHintKey", { fg = "#ddc7a1", bg = "#32302f" })
+end
+
 return T

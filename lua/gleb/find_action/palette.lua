@@ -6,6 +6,7 @@ local Items = require("gleb.find_action.items")
 local Rows = require("gleb.find_action.rows")
 local picker = require("gleb.picker")
 local picker_layout = require("gleb.picker.layout")
+local color_palette = require("gleb.colors.gruvbox-material.palette")
 local MiniPick = require("mini.pick")
 
 ---@class gleb.FindActionState
@@ -23,6 +24,22 @@ local M = {
 	---@type gleb.FindActionState
 	state = {},
 }
+
+local function setup_highlights()
+	local colors = color_palette.find_action
+	vim.api.nvim_set_hl(0, "FindActionBody", { fg = colors.text, bg = colors.body })
+	vim.api.nvim_set_hl(0, "FindActionSelected", { fg = colors.text, bg = colors.selected })
+	vim.api.nvim_set_hl(0, "FindActionPrompt", { fg = colors.prompt, bg = colors.body })
+	vim.api.nvim_set_hl(0, "FindActionCaret", { fg = color_palette.foreground.blue, bg = colors.body })
+	vim.api.nvim_set_hl(0, "FindActionBorder", { fg = colors.dim, bg = colors.body })
+	vim.api.nvim_set_hl(0, "FindActionMetadata", { fg = colors.metadata })
+	vim.api.nvim_set_hl(0, "FindActionShortcut", { fg = colors.dim })
+	vim.api.nvim_set_hl(0, "FindActionRule", { fg = colors.dim })
+	vim.api.nvim_set_hl(0, "FindActionToggleOn", { fg = color_palette.foreground.green })
+	vim.api.nvim_set_hl(0, "FindActionToggleOff", { fg = colors.metadata })
+	vim.api.nvim_set_hl(0, "FindActionHint", { fg = colors.metadata, bg = colors.hint })
+	vim.api.nvim_set_hl(0, "FindActionHintKey", { fg = colors.text, bg = colors.hint })
+end
 
 ---@param ctx gleb.ActionContext
 ---@return string
@@ -314,6 +331,7 @@ end
 ---@param ctx? gleb.ActionContext
 ---@return any
 function M.open(ctx)
+	setup_highlights()
 	M.state.context = ctx or Context.capture()
 	M.state.query = nil
 	M.state.show_hidden = false
@@ -322,11 +340,27 @@ function M.open(ctx)
 		title = "Find Action",
 		items = M.state.rows,
 		hints = hints,
+		hint_band = picker_layout.current().kind ~= "narrow",
+		hint_keys = { "⌥↩", "⌘⇧A" },
 		window_config = window_config,
 		highlight_overrides = {
-			FloatBorder = "FloatBorder",
-			MiniPickMatchCurrent = "PmenuSel",
-			NormalFloat = "NormalFloat",
+			FloatBorder = "FindActionBorder",
+			MiniPickBorder = "FindActionBorder",
+			MiniPickNormal = "FindActionBody",
+			MiniPickMatchCurrent = "FindActionSelected",
+			MiniPickPrompt = "FindActionBody",
+			MiniPickPromptCaret = "FindActionCaret",
+			MiniPickPromptPrefix = "FindActionPrompt",
+			NormalFloat = "FindActionBody",
+			PickerCategory = "FindActionMetadata",
+			PickerBandBorder = "FindActionBorder",
+			PickerHintBand = "FindActionHint",
+			PickerHintKey = "FindActionHintKey",
+			PickerSectionLabel = "FindActionMetadata",
+			PickerSectionRule = "FindActionRule",
+			PickerSecondary = "FindActionShortcut",
+			PickerToggleOff = "FindActionToggleOff",
+			PickerToggleOn = "FindActionToggleOn",
 		},
 		selected_category = true,
 		match = match_rows,

@@ -24,7 +24,7 @@ T["picker: Rows expose primary secondary and category text"] = function()
 	]])
 
 	eq(child.lua_get("vim.api.nvim_buf_get_lines(RowsBuffer, 0, -1, false)"), {
-		"Open file.lua                 Config",
+		"Open  file.lua                Config",
 		"Enabled                       ● Flag",
 		"Disabled                      ○ Flag",
 	})
@@ -40,9 +40,9 @@ T["picker: Rows expose primary secondary and category text"] = function()
 		end)()
 	]]),
 		{
-			{ { 5, 13, "Comment" }, { 30, 36, "PmenuExtra" } },
-			{ { 30, 33, "PmenuKind" }, { 34, 38, "PmenuExtra" } },
-			{ { 30, 33, "PmenuExtra" }, { 34, 38, "PmenuExtra" } },
+			{ { 6, 14, "PickerSecondary" }, { 30, 36, "PickerCategory" } },
+			{ { 30, 33, "PickerToggleOn" }, { 34, 38, "PickerCategory" } },
+			{ { 30, 33, "PickerToggleOff" }, { 34, 38, "PickerCategory" } },
 		}
 	)
 end
@@ -53,6 +53,17 @@ T["picker: Section header fills its row with a rule"] = function()
 	eq(child.lua_get("vim.api.nvim_buf_get_lines(RowsBuffer, 0, -1, false)"), {
 		"recently used ──────────",
 	})
+	eq(
+		child.lua_get([[
+		vim.tbl_map(function(mark)
+			return { mark[3], mark[4].end_col, mark[4].hl_group }
+		end, vim.api.nvim_buf_get_extmarks(RowsBuffer, -1, 0, -1, { details = true }))
+	]]),
+		{
+			{ 0, 13, "PickerSectionLabel" },
+			{ 14, 44, "PickerSectionRule" },
+		}
+	)
 end
 
 return T

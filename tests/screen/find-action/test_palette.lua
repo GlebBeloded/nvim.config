@@ -88,6 +88,10 @@ local function screen_text()
 	return table.concat(vim.tbl_map(table.concat, child.get_screenshot().text), "\n")
 end
 
+local function wide_color_mask(content)
+	return string.rep("n", 14) .. "b" .. content .. "b" .. string.rep("n", 14)
+end
+
 local function open_palette(keys)
 	child.type_keys(keys or "<M-A>")
 	assert(child.wait([[require("mini.pick").is_picker_active()]]), "Find Action palette did not open")
@@ -149,7 +153,18 @@ T["find-action: Wide palette matches reference screenshots"] = function()
 	local text = screen_text()
 	eq(text:find("recently used", 1, true) ~= nil, true)
 	eq(text:find("Assign ⌥↩ · Show hidden ⌘⇧A", 1, true) ~= nil, true)
-	eq(text:find("Toggle Git Status Tree ⌘⇧G", 1, true) ~= nil, true)
+	eq(text:find("12/12", 1, true) ~= nil, true)
+	eq(text:find("Remove", 1, true), nil)
+	eq(text:find("Open Differ  ⌘G", 1, true) ~= nil, true)
+	eq(text:find("Toggle Git Status Tree  ⌘⇧G", 1, true) ~= nil, true)
+	H.expect_hl_colors(child, "FindActionBody", { fg = "#d9c8a5", bg = "#45403d" })
+	H.expect_hl_colors(child, "FindActionSelected", { bg = "#59524d" })
+	H.expect_hl_colors(child, "FindActionPrompt", { fg = "#da8f57", bg = "#45403d" })
+	H.expect_hl_colors(child, "FindActionMetadata", { fg = "#a59a86" })
+	H.expect_hl_colors(child, "FindActionShortcut", { fg = "#8f8475" })
+	H.expect_hl_colors(child, "FindActionRule", { fg = "#8f8475" })
+	H.expect_hl_colors(child, "FindActionHint", { fg = "#a59a86", bg = "#32302f" })
+	H.expect_hl_colors(child, "FindActionHintKey", { fg = "#d9c8a5", bg = "#32302f" })
 	H.expect_screenshot(child.get_screenshot())
 
 	child.type_keys("diff")
@@ -199,32 +214,58 @@ T["find-action: Wide palette matches reference screenshots"] = function()
 		[[vim.fn.writefile({ vim.json.encode({ "git.open_differ", "view.soft_wrap", "view.spell_check", "edit.find_files" }) }, require("gleb.find_action.items").history().path)]]
 	)
 	open_palette()
-	H.expect_screen_colors(
-		child,
-		8,
-		{ "nnnnnnnnnnnnnnbSSSSSSSSSSSSSEESSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSEEEEEEEEEESbnnnnnnnnnnnnnn" },
-		{ n = "EndOfBuffer", b = "FloatBorder", S = "PmenuSel", E = "PmenuExtraSel" }
-	)
-	H.expect_screen_colors(
-		child,
-		11,
-		{ "nnnnnnnnnnnnnnbffffffffffffffffffbbbfffffffffffffffffffffffffffffffffffffXXXXXXXXXXXfbnnnnnnnnnnnnnn" },
-		{ n = "EndOfBuffer", b = "FloatBorder", f = "NormalFloat", X = "PmenuExtra" }
-	)
+	H.expect_screen_colors(child, 6, {
+		wide_color_mask(string.rep("p", 15) .. "c" .. string.rep("b", 54)),
+	}, { n = "EndOfBuffer", b = "FindActionBorder", p = "FindActionPrompt", c = "FindActionCaret" })
+	H.expect_screen_colors(child, 7, {
+		wide_color_mask("B" .. string.rep("a", 13) .. "B" .. string.rep("r", 54) .. "B"),
+	}, {
+		n = "EndOfBuffer",
+		b = "FindActionBorder",
+		B = "FindActionBody",
+		a = "FindActionMetadata",
+		r = "FindActionRule",
+	})
+	H.expect_screen_colors(child, 8, {
+		wide_color_mask(string.rep("S", 14) .. string.rep("q", 2) .. string.rep("S", 43) .. string.rep("a", 10) .. "S"),
+	}, {
+		n = "EndOfBuffer",
+		b = "FindActionBorder",
+		S = "FindActionSelected",
+		q = "FindActionShortcut",
+		a = "FindActionMetadata",
+	})
+	H.expect_screen_colors(child, 11, {
+		wide_color_mask(string.rep("B", 19) .. string.rep("q", 3) .. string.rep("B", 36) .. string.rep("a", 11) .. "B"),
+	}, {
+		n = "EndOfBuffer",
+		b = "FindActionBorder",
+		B = "FindActionBody",
+		q = "FindActionShortcut",
+		a = "FindActionMetadata",
+	})
 	H.expect_screen_colors(
 		child,
 		20,
-		{ "nnnnnnnnnnnnnnbffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffXXXfbnnnnnnnnnnnnnn" },
-		{ n = "EndOfBuffer", b = "FloatBorder", f = "NormalFloat", X = "PmenuExtra" }
+		{ wide_color_mask(string.rep("B", 66) .. string.rep("a", 3) .. "B") },
+		{ n = "EndOfBuffer", b = "FindActionBorder", B = "FindActionBody", a = "FindActionMetadata" }
 	)
+	H.expect_screen_colors(child, 21, {
+		wide_color_mask(
+			string.rep("H", 8) .. string.rep("K", 2) .. string.rep("H", 15) .. string.rep("K", 3) .. string.rep("H", 42)
+		),
+	}, { n = "EndOfBuffer", b = "FindActionBorder", H = "FindActionHint", K = "FindActionHintKey" })
 	child.type_keys("diff")
 	assert(child.wait([[table.concat(require("mini.pick").get_picker_query()) == "diff"]]), "query was not rendered")
-	H.expect_screen_colors(
-		child,
-		7,
-		{ "nnnnnnnnnnnnnnbSSSSSSSSSSSSSEESSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSEEEEEEEEEESbnnnnnnnnnnnnnn" },
-		{ n = "EndOfBuffer", b = "FloatBorder", S = "PmenuSel", E = "PmenuExtraSel" }
-	)
+	H.expect_screen_colors(child, 7, {
+		wide_color_mask(string.rep("S", 14) .. string.rep("q", 2) .. string.rep("S", 43) .. string.rep("a", 10) .. "S"),
+	}, {
+		n = "EndOfBuffer",
+		b = "FindActionBorder",
+		S = "FindActionSelected",
+		q = "FindActionShortcut",
+		a = "FindActionMetadata",
+	})
 	close_palette()
 
 	child.o.lines = 14
@@ -233,11 +274,14 @@ T["find-action: Wide palette matches reference screenshots"] = function()
 		child.type_keys("<C-n>")
 	end
 	H.expect_screen_colors(child, selected_screen_row(), {
-		string.rep("n", 14) .. "b" .. string.rep("S", 16) .. string.rep("E", 3) .. string.rep("S", 46) .. string.rep(
-			"E",
-			4
-		) .. "Sb" .. string.rep("n", 14),
-	}, { n = "EndOfBuffer", b = "FloatBorder", S = "PmenuSel", E = "PmenuExtraSel" })
+		wide_color_mask(string.rep("S", 17) .. string.rep("q", 3) .. string.rep("S", 45) .. string.rep("a", 4) .. "S"),
+	}, {
+		n = "EndOfBuffer",
+		b = "FindActionBorder",
+		S = "FindActionSelected",
+		q = "FindActionShortcut",
+		a = "FindActionMetadata",
+	})
 	close_palette()
 end
 
@@ -247,6 +291,7 @@ T["find-action: Compact palette matches reference screenshot"] = function()
 	local text = screen_text()
 	eq(text:find("recently used", 1, true) ~= nil, true)
 	eq(text:find("⌥↩ · ⌘⇧A", 1, true) ~= nil, true)
+	eq(text:find("12/12", 1, true) ~= nil, true)
 	eq(text:find("Git | Diff", 1, true), nil)
 	H.expect_screenshot(child.get_screenshot())
 end
@@ -259,6 +304,7 @@ T["find-action: Narrow palette matches reference screenshot"] = function()
 	eq(text:find("⌘G", 1, true), nil)
 	eq(text:find("Git | Diff", 1, true), nil)
 	eq(text:find("⌥↩", 1, true), nil)
+	eq(text:find("39/39", 1, true), nil)
 	H.expect_screenshot(child.get_screenshot())
 end
 
