@@ -669,7 +669,7 @@ Before the spec step, the work-queue `meta` node (`no_design.py`) SHALL set `sch
 
 #### Scenario: Queue spec prompt keeps the schema and greps one capability
 - **WHEN** `.archon/commands/queue-spec.md` is read
-- **THEN** it says the meta step already set the schema, forbids changing the `schema:` line, reading `openspec/schemas/` and `openspec instructions design`, keeps the `schema:` line when a skip_specs change drops skip_specs, and forbids listing every Requirement or Scenario of all specs, grepping one capability's spec instead
+- **THEN** it says the meta step already set the schema, forbids changing the `schema:` line, reading `openspec/schemas/` and `openspec instructions design`, keeps the `schema:` line when a skip_specs change drops skip_specs, and forbids listing every Requirement or Scenario of all specs, grepping one capability's spec instead, and before an ADDED requirement lists the spec files naming the behaviour's key, command or function (`rg -l`) so a requirement that already owns it gets a MODIFIED delta
 
 #### Scenario: Work queue spec step returns no JSON
 - **WHEN** `.archon/workflows/work-queue/work-queue.yaml` is read
