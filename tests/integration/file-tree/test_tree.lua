@@ -369,6 +369,8 @@ T["file-tree: Tree mappings come from the shortcut file"] = function()
 	child.wait_very_lazy()
 	open_tree("Neotree filesystem", "filesystem")
 	expect_tree_actions(vim.list_extend(vim.deepcopy(COMMON_TREE_ACTIONS), FILESYSTEM_TREE_ACTIONS))
+	eq(child.lua_get([[vim.fn.maparg("d", "x", false, true).buffer]]), 1)
+	eq(child.lua_get([[vim.fn.maparg("x", "x", false, true).buffer]]), 1)
 
 	child.cmd("Neotree git_status")
 	eq(child.wait([[Tree.source(Tree.win()) == "git_status"]], ASYNC_MS), true)

@@ -1,3 +1,4 @@
+-- Entry mappings require the full config, so these cases belong to integration.
 local MiniTest = require("mini.test")
 local H = require("tests.helpers")
 

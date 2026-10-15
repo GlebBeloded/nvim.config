@@ -190,37 +190,7 @@ end
 T["ai: 99 hardcoded mappings are the only exceptions"] = function()
 	child.type_keys("<S-CR>")
 	wait_prompt()
-	assert(
-		child.wait([[(function()
-			local buf = vim.iter(vim.api.nvim_list_bufs()):find(function(candidate)
-				return vim.api.nvim_buf_is_loaded(candidate)
-					and vim.fs.basename(vim.api.nvim_buf_get_name(candidate)) == "99-prompt"
-			end)
-			if not buf then
-				return false
-			end
-			local maps = vim.api.nvim_buf_get_keymap(buf, "i")
-			return vim.iter(maps):any(function(map) return map.lhs == '"' end)
-				and vim.iter(maps):any(function(map) return map.lhs == "<C-Space>" end)
-		end)()]]),
-		"99 prompt and completion mappings did not settle"
-	)
 	child.lua([[
-		local prompt_buf = vim.iter(vim.api.nvim_list_bufs()):find(function(candidate)
-			return vim.api.nvim_buf_is_loaded(candidate)
-				and vim.fs.basename(vim.api.nvim_buf_get_name(candidate)) == "99-prompt"
-		end)
-		local baseline_maps = {}
-		for _, mode in ipairs({ "n", "x", "s", "o", "i", "c", "t" }) do
-			for _, map in ipairs(vim.api.nvim_buf_get_keymap(prompt_buf, mode)) do
-				local key = mode .. ":" .. map.lhs
-				if key ~= "n:q" then
-					baseline_maps[key] = true
-				end
-			end
-		end
-		vim.g.ai_baseline_maps = baseline_maps
-
 		local nn = require("99")
 		require("99.window").clear_active_popups()
 		local state = nn.__get_state()
@@ -233,22 +203,7 @@ T["ai: 99 hardcoded mappings are the only exceptions"] = function()
 	]])
 	child.wait([[vim.fs.basename(vim.api.nvim_buf_get_name(0)) == "99-prompt"]])
 
-	eq(
-		child.lua_get([[(function()
-			local exceptions = {}
-			for _, mode in ipairs({ "n", "x", "s", "o", "i", "c", "t" }) do
-				for _, map in ipairs(vim.api.nvim_buf_get_keymap(0, mode)) do
-					local key = mode .. ":" .. map.lhs
-					if not vim.g.ai_baseline_maps[key] and map.desc ~= "99: Submit prompt" then
-						table.insert(exceptions, key)
-					end
-				end
-			end
-			table.sort(exceptions)
-			return exceptions
-		end)()]]),
-		{ "n:<CR>", "n:q" }
-	)
+	eq(child.lua_get([[require("gleb.actions").audit()]]), {})
 end
 
 T["ai: Menu shows prompt"] = function()

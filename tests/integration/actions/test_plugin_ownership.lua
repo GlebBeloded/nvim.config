@@ -18,35 +18,6 @@ end
 
 local T = H.child_set(child, start)
 
-T["actions: Plugin-window mappings are action-owned"] = function()
-	local ownership = child.lua_get([[(function()
-		local shortcuts = vim.json.decode(table.concat(vim.fn.readfile(vim.fs.joinpath(vim.fn.stdpath("config"), "settings/keymap.json")), "\n"))
-		local catalog = require("gleb.actions").state.applicator.catalog
-		local expected = {
-			{ "neo_tree.open", "o" },
-			{ "dap_ui.expand", "e" },
-			{ "diffview.select_next_entry", "<Tab>" },
-			{ "differ.next_hunk", "]c" },
-			{ "codediff.next_hunk", "]c" },
-			{ "neotest.run", "r" },
-			{ "mason.install_package", "i" },
-			{ "lazy.close", "q" },
-			{ "blink.accept", "<CR>" },
-			{ "copilot.next", "<M-]>" },
-		}
-		local missing = {}
-		for _, item in ipairs(expected) do
-			local id, lhs = item[1], item[2]
-			if not catalog:get(id) or not vim.tbl_contains(shortcuts[id] or {}, lhs) then
-				table.insert(missing, id)
-			end
-		end
-		return missing
-	end)()]])
-
-	eq(ownership, {})
-end
-
 --- Child-side `PluginMapped(filetype, lhs, mode)`: does the loaded `filetype` buffer map `lhs` itself?
 local PLUGIN_MAPPED = [[
 function PluginBuffer(filetype)
@@ -78,6 +49,81 @@ local function plugin_mapped(filetype, lhs, mode)
 	return child.lua_get("PluginMapped(...)", { filetype, lhs, mode or "n" })
 end
 
+local function expect_audit_empty()
+	eq(child.lua_get([[require("gleb.actions").audit()]]), {})
+end
+
+T["actions: Plugin-window mappings are action-owned"] = function()
+	child.lua(PLUGIN_MAPPED)
+	open_surface([[vim.cmd("Neotree filesystem")]], "neo-tree")
+	eq(
+		child.lua_get([[(function()
+			local store = require("gleb.actions").state.store
+			local assigned = store.last_good["neo_tree.delete"]
+			store.last_good["neo_tree.delete"] = nil
+			local report = require("gleb.actions").audit()
+			store.last_good["neo_tree.delete"] = assigned
+			return vim.tbl_contains(report, "neo-tree n d")
+		end)()]]),
+		true
+	)
+	expect_audit_empty()
+	open_surface(
+		[[require("lazy").load({ plugins = { "nvim-dap" } }) require("dapui.windows").layouts[1]:open()]],
+		"dapui_scopes"
+	)
+	expect_audit_empty()
+	open_surface([[vim.cmd("DiffviewOpen")]], "DiffviewFiles")
+	expect_audit_empty()
+	open_surface([[vim.cmd("Differ")]], "differdiff")
+	expect_audit_empty()
+	open_surface([[vim.cmd("CodeDiff")]], "codediff-explorer")
+	expect_audit_empty()
+	open_surface([[require("neotest").summary.open()]], "neotest-summary")
+	expect_audit_empty()
+	open_surface([[vim.cmd("Mason")]], "mason")
+	expect_audit_empty()
+	open_surface([[require("lazy.core.config").headless = function() return false end vim.cmd("Lazy")]], "lazy")
+	expect_audit_empty()
+	child.lua([[
+		vim.api.nvim_list_uis = function()
+			return { { width = vim.o.columns, height = vim.o.lines } }
+		end
+		require("99").open()
+	]])
+	assert(child.wait([[vim.bo.filetype == "99" or vim.bo.filetype == "99prompt"]]), "99 window did not open")
+	expect_audit_empty()
+
+	eq(
+		child.lua_get([[(function()
+			package.loaded["copilot"] = {
+				setup = function(opts) vim.g.copilot_setup_opts = opts end,
+			}
+			package.loaded["copilot.config.suggestion"] = {
+				default = { keymap = {
+					accept = "<M-l>", accept_word = false, accept_line = false,
+					next = "<M-]>", prev = "<M-[>", dismiss = "<C-]>",
+				} },
+			}
+			package.loaded["gleb.copilot"] = nil
+			package.loaded["gleb.copilot.setup"] = nil
+			require("gleb.copilot")
+			return vim.g.copilot_setup_opts.suggestion
+		end)()]]),
+		{
+			auto_trigger = true,
+			keymap = {
+				accept = false,
+				accept_word = false,
+				accept_line = false,
+				next = "<M-]>",
+				prev = "<M-[>",
+				dismiss = "<C-]>",
+			},
+		}
+	)
+end
+
 T["actions: Unconfigured defaults are absent"] = function()
 	child.lua(PLUGIN_MAPPED)
 	local found = {}
@@ -92,7 +138,7 @@ T["actions: Unconfigured defaults are absent"] = function()
 	found.diffview = plugin_mapped("DiffviewFiles", "-")
 	child.lua([[pcall(vim.cmd, "tabclose")]])
 	open_surface([[vim.cmd("Differ")]], "differdiff")
-	found.differ = plugin_mapped("differdiff", "[c")
+	found.differ = plugin_mapped("differdiff", "dl")
 	child.lua([[pcall(vim.cmd, "tabclose")]])
 	open_surface([[vim.cmd("CodeDiff")]], "codediff-explorer")
 	found.codediff = plugin_mapped("codediff-explorer", "<CR>")
@@ -100,19 +146,17 @@ T["actions: Unconfigured defaults are absent"] = function()
 	open_surface([[require("neotest").summary.open()]], "neotest-summary")
 	found.neotest = plugin_mapped("neotest-summary", "<CR>")
 	open_surface([[vim.cmd("Mason")]], "mason")
-	found.mason = plugin_mapped("mason", "<CR>")
+	found.mason = plugin_mapped("mason", "c")
 	-- lazy.nvim opens no window without a UI; the child has none
 	open_surface([[require("lazy.core.config").headless = function() return false end vim.cmd("Lazy")]], "lazy")
 	found.lazy = plugin_mapped("lazy", "<localleader>l")
 	child.lua([[vim.cmd("enew") vim.cmd("startinsert")]])
 	found.blink = child.lua_get([[vim.fn.maparg("<C-y>", "i", false, true).buffer == 1]])
-	found.copilot = child.lua_get([[next(vim.fn.maparg("<M-l>", "i", false, true)) ~= nil]])
 	child.lua([[vim.cmd("stopinsert")]])
 
 	eq(found, {
 		blink = false,
 		codediff = false,
-		copilot = false,
 		dap_ui = false,
 		differ = false,
 		diffview = false,

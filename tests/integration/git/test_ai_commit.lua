@@ -96,20 +96,6 @@ local function commits()
 	return child.lua_get("Commits")
 end
 
----@param description string
-local function press_popup_mapping(description)
-	local lhs = child.lua_get(
-		[[
-		(function(description)
-			return vim.iter(vim.api.nvim_buf_get_keymap(0, "n"))
-				:find(function(mapping) return mapping.desc == description end).lhs
-		end)(...)
-	]],
-		{ description }
-	)
-	child.type_keys(lhs)
-end
-
 local T = H.child_set(child, function()
 	child.start_config()
 	child.wait_very_lazy()
@@ -131,7 +117,7 @@ T["git: Enter drops comment lines"] = function()
 	repo(false)
 	local win = open_popup()
 	set_popup_lines(win, { "feat: x", "# note" })
-	press_popup_mapping("Git: Confirm commit message")
+	child.type_keys("<CR>")
 	eq(child.api.nvim_win_is_valid(win), false)
 	eq(commits(), { "feat: x" })
 end

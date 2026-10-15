@@ -27,9 +27,17 @@ local T = H.child_set(child, start)
 T["ai: submits with Shift+Enter in normal and insert modes"] = function()
 	apply_prompt_keymaps()
 	new_buffer("99")
+	child.api.nvim_buf_set_name(0, vim.fn.tempname() .. ".prompt")
+	child.bo.buftype = "acwrite"
+	child.lua([[
+		vim.api.nvim_create_autocmd("BufWriteCmd", {
+			buffer = 0,
+			callback = function() vim.g.ai_submit_count = (vim.g.ai_submit_count or 0) + 1 end,
+		})
+	]])
+	child.type_keys("<S-CR>i<S-CR>")
 
-	eq(child.lua_get([[vim.fn.maparg("<S-CR>", "n", false, true).desc]]), "99: Submit prompt")
-	eq(child.lua_get([[vim.fn.maparg("<S-CR>", "i", false, true).desc]]), "99: Submit prompt")
+	eq(child.lua_get([[vim.g.ai_submit_count]]), 2)
 end
 
 T["ai: Submit mapping is buffer-local"] = function()

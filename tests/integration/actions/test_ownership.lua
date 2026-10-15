@@ -13,28 +13,12 @@ local T = H.child_set(child, start)
 
 T["actions: Feature actions contain no shortcut keys"] = function()
 	local offenders = child.lua_get([[(function()
-		local modules = {
-			"gleb.keymaps.actions",
-			"gleb.comments.actions",
-			"gleb.folding.actions",
-			"gleb.ai.actions",
-			"gleb.git.actions",
-			"gleb.file_tree.actions",
-			"gleb.autocommands.actions",
-		}
 		local found = {}
-		for _, module in ipairs(modules) do
-			local ok, actions = pcall(require, module)
-			if not ok then
-				table.insert(found, module .. ": missing")
-			else
-				for _, action in ipairs(actions) do
-					if type(action.id) ~= "string" or type(action.run) ~= "function"
-						or action.lhs ~= nil or action.shortcut ~= nil
-					then
-						table.insert(found, module .. ": " .. tostring(action.id))
-					end
-				end
+		for _, action in ipairs(require("gleb.actions").state.applicator.catalog.actions) do
+			if type(action.id) ~= "string" or type(action.run) ~= "function"
+				or action.lhs ~= nil or action.shortcut ~= nil
+			then
+				table.insert(found, tostring(action.id))
 			end
 		end
 		return found

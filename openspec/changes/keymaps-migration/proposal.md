@@ -39,7 +39,7 @@ Depends: action-registry, find-action
 - Code:
   - every feature module that sets keys;
   - `init.lua` (registers every feature action list before shortcut application);
-  - `lua/gleb/plugins/plugins.lua` (plugin wiring uses `cmd`, `event`, or action-time `require`; no `keys`; defaults off);
+  - `lua/gleb/plugins/actions.lua`, `lua/gleb/plugins/init.lua`, and `lua/gleb/plugins/plugins.lua` (plugin wiring uses `cmd`, `event`, or action-time `require`; no `keys`; defaults off);
   - `settings/keymap.json` (every key);
   - `docs/architecture.md` rules 3.x.
 - **Tests:**
