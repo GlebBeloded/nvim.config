@@ -29,8 +29,6 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 
 ## Loop lessons
 
-- When async work runs under rising parallel load, refresh and monotonically extend the load-scaled polling budget instead of fixing it at poll start.
-- Explicitly stop and await a warmed LSP client before restarting its test child so the old server cannot contend with the measured process.
 - Use process-unique names for fixtures in shared global directories so concurrent test invocations cannot delete each other's files.
 - When a global keymap callback is wrapped, stub its external boundary and invoke the active mapping instead of weakening the test to metadata.
 - When a fixed readiness bound overruns once but passes the mandated isolated rerun, treat host contention as the cause and preserve the bound without retries or load scaling.
@@ -44,6 +42,8 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - Neo-tree source-scoped mappings override common mappings on duplicate lhs values, so ownership tests must validate the effective merged table.
 - Mask an unselected row that contains a shortcut hint so metadata-colour drift cannot hide behind selected-row coverage.
 - Inspect resolved multigrid cells for floating-window colour masks because grid 1 shows underlying cells and screen attribute numbers are arbitrary tokens.
+- Place behavior deltas and regression tests in the capability that owns the existing requirement so the change modifies one authoritative SHALL instead of adding a contradictory one.
+- Renaming a regression across capabilities drops its original scenario trace; preserve the original case and scenario when adding ownership-aligned coverage.
 
 ## The loop
 
