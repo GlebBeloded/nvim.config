@@ -32,11 +32,19 @@ The palette SHALL draw each action with its title first, its first shortcut imme
 - **THEN** their rows show green `●` and grey `○` state glyphs respectively and no ON/OFF text
 
 ### Requirement: Action ordering and matching
-With an empty query, the palette SHALL list recently used actions saved across sessions before curated actions, retaining at most the last 20 action ids. With a query, it SHALL fuzzy-match action titles, categories, and aliases. Section rows SHALL be display-only; after opening or replacing results, the first actionable match SHALL be current.
+With an empty query, the palette SHALL list recently used actions saved across sessions before curated actions, retaining at most the last 20 action ids. Recent history SHALL record catalog actions run from the palette or a configured shortcut. With a query, the palette SHALL fuzzy-match action titles, categories, and aliases. Section rows SHALL be display-only; after opening or replacing results, the first actionable match SHALL be current.
 
 #### Scenario: Empty query puts recent actions first
-- **WHEN** the palette opens with no query after actions have been used
-- **THEN** persisted recent actions appear before the curated action section in most-recently-used order
+- **WHEN** catalog actions are run from a configured shortcut and from the palette, then the palette is reopened with no query
+- **THEN** the persisted applicable actions appear before the curated action section in most-recently-used order
+
+#### Scenario: Shortcut and palette use update recent actions
+- **WHEN** one catalog action runs from a configured shortcut and another runs from the palette before reopening it
+- **THEN** both actions appear in the recent section with the last-used action first
+
+#### Scenario: Only executed shortcuts update recent actions
+- **WHEN** configured mapping and plug shortcuts execute, and a colliding configured shortcut key is consumed as input by an open picker
+- **THEN** only actions whose shortcut mappings executed are added to recent history
 
 #### Scenario: Recent history keeps the last 20 actions
 - **WHEN** more than 20 distinct actions are run and the history is loaded in a new session
