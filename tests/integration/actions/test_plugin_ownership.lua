@@ -116,7 +116,6 @@ T["actions: Plugin-window mappings are action-owned"] = function()
 				} },
 			}
 			package.loaded["gleb.copilot"] = nil
-			package.loaded["gleb.copilot.setup"] = nil
 			require("gleb.copilot")
 			return vim.g.copilot_setup_opts.suggestion
 		end)()]]),
