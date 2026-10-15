@@ -76,8 +76,18 @@ local initial = palette("█", {
 	INDENT
 		.. "│ other actions ────────────────────────────────────────────────────── │",
 	INDENT .. "│ Find Action... ⌘⇧A                                              Help │",
-	INDENT .. "│ 99 Search                                                         AI │",
-	INDENT .. "│ 99 Vibe                                                           AI │",
+	INDENT .. "│ Move left <C-h>                                               Window │",
+	INDENT .. "│ Move down <A-j>                                               Window │",
+	INDENT .. "│ Move up <A-k>                                                 Window │",
+	INDENT .. "│ Move right <C-l>                                              Window │",
+	INDENT .. "│ Back gb                                                         Jump │",
+	INDENT .. "│ Forward gB                                                      Jump │",
+	INDENT .. "│ Increase height ⌃↑                                            Window │",
+	INDENT .. "│ Decrease height ⌃↓                                            Window │",
+	INDENT .. "│ Decrease width ⌃←                                             Window │",
+	INDENT .. "│ Increase width ⌃→                                             Window │",
+	INDENT .. "│ Resize left <A-H>                                             Window │",
+	INDENT .. "│ Resize down <A-J>                                             Window │",
 })
 local recent = palette("█", {
 	INDENT
@@ -85,8 +95,17 @@ local recent = palette("█", {
 	INDENT .. "│ Find Action... ⌘⇧A                                              Help │",
 	INDENT
 		.. "│ other actions ────────────────────────────────────────────────────── │",
-	INDENT .. "│ 99 Search                                                         AI │",
-	INDENT .. "│ 99 Vibe                                                           AI │",
+	INDENT .. "│ Move left <C-h>                                               Window │",
+	INDENT .. "│ Move down <A-j>                                               Window │",
+	INDENT .. "│ Move up <A-k>                                                 Window │",
+	INDENT .. "│ Move right <C-l>                                              Window │",
+	INDENT .. "│ Back gb                                                         Jump │",
+	INDENT .. "│ Forward gB                                                      Jump │",
+	INDENT .. "│ Increase height ⌃↑                                            Window │",
+	INDENT .. "│ Decrease height ⌃↓                                            Window │",
+	INDENT .. "│ Decrease width ⌃←                                             Window │",
+	INDENT .. "│ Increase width ⌃→                                             Window │",
+	INDENT .. "│ Resize left <A-H>                                             Window │",
 })
 
 return {

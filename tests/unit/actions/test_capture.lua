@@ -77,6 +77,17 @@ T["actions: Exact and prefix overlaps conflict in one scope"] = function()
 	eq(child.lua_get([[Conflicts]]), {
 		{ action_id = "edit.open", lhs = "g", proposed_lhs = "g" },
 	})
+	child.lua([[
+		Catalog = Registry.new({ {
+			{ id = "edit.target", title = "Target", category = "Edit", run = function() end },
+			{ id = "edit.outdent", title = "Outdent", category = "Edit", run = function() end },
+		} })
+		Conflicts = Capture.conflicts(Catalog, {
+			["edit.outdent"] = { "<" },
+		}, "edit.target", "<D-d>")
+	]])
+
+	eq(child.lua_get([[Conflicts]]), {})
 end
 
 T["actions: Separate scopes do not conflict"] = function()

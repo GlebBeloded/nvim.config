@@ -428,6 +428,25 @@ T["file-tree: Enter opens file and switches to filesystem tree"] = function()
 	eq(child.lua_get("DiffPreview.state.diff_tab"), vim.NIL)
 end
 
+T["file-tree: o and l keep native open in git status tree"] = function()
+	for index, key in ipairs({ "o", "l" }) do
+		if index > 1 then
+			start()
+		end
+		start_repo()
+		eq(preview(repo_path("a/x.lua")), true)
+		local diff_tab = child.lua_get("DiffPreview.state.diff_tab")
+		cursor_on(repo_path("b/y.lua"))
+
+		eq(press_in_tree(key), true)
+
+		eq(child.wait(editing(repo_path("b/y.lua")), ASYNC_MS), true)
+		eq(tree_sources_in_current_tab(), { "git_status" })
+		eq(child.lua_get("DiffPreview.state.diff_tab"), diff_tab)
+		eq(child.api.nvim_tabpage_is_valid(diff_tab), true)
+	end
+end
+
 T["file-tree: q closes preview and tree"] = function()
 	start_repo()
 	local original_tab = child.api.nvim_get_current_tabpage()

@@ -29,7 +29,6 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 
 ## Loop lessons
 
-- Regenerate a screen reference only when the cell diff is limited to UI a merged commit changed; name that commit.
 - When review evidence contradicts a queued task or proposal, preserve the declared scope and remove unverified bug claims before shipping.
 - When consolidating duplicate test names, preserve the original file and case, then split new coverage into a distinct specified scenario.
 - When async work runs under rising parallel load, refresh and monotonically extend the load-scaled polling budget instead of fixing it at poll start.
@@ -44,6 +43,7 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - LuaCATS annotations for string.find-backed predicates must include nil alongside any explicit false return.
 - When a picker source can render into alternate buffers, update window-owned chrome before checking whether the source buffer is visible.
 - When picker item refreshes restore selection, gate scheduled first-match selection on query changes so the callback cannot overwrite the restored row.
+- Neo-tree source-scoped mappings override common mappings on duplicate lhs values, so ownership tests must validate the effective merged table.
 
 ## The loop
 

@@ -21,7 +21,21 @@ local language_configs = {
 	require("gleb.lsp.config.python"), -- python
 }
 
-require("mason").setup()
+local actions = require("gleb.actions")
+local adapters = require("gleb.actions.adapters")
+local store = assert(actions.state.store, "actions are not set up")
+local catalog = assert(actions.state.applicator, "actions are not set up").catalog
+
+require("mason").setup({
+	ui = {
+		-- mason has no "no key" value: an unreachable <Plug> lhs drops each unassigned default
+		keymaps = vim.tbl_extend(
+			"force",
+			adapters.cleared(require("mason.settings").current.ui.keymaps, "<Plug>(gleb-mason-unassigned)"),
+			require("gleb.actions.adapters.mason").mappings(catalog, store:load())
+		),
+	},
+})
 
 local function update()
 	-- list of binaries (dependencies) to install. Stuff like linters, lsp, formatters.

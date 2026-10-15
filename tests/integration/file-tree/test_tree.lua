@@ -298,6 +298,98 @@ end
 
 local T = MiniTest.new_set({ hooks = { post_once = child.stop } })
 
+local COMMON_TREE_ACTIONS = {
+	"neo_tree.open",
+	"neo_tree.close_node",
+	"neo_tree.open_vsplit",
+	"neo_tree.open_split",
+	"neo_tree.open_tab",
+	"neo_tree.add",
+	"neo_tree.delete",
+	"neo_tree.rename",
+	"neo_tree.copy",
+	"neo_tree.cut",
+	"neo_tree.paste",
+	"neo_tree.refresh",
+	"neo_tree.close",
+	"neo_tree.help",
+	"neo_tree.previous_source",
+	"neo_tree.next_source",
+}
+
+local FILESYSTEM_TREE_ACTIONS = { "neo_tree.toggle_hidden" }
+
+local GIT_STATUS_TREE_ACTIONS = {
+	"neo_tree.git_open_file",
+	"neo_tree.navigate_down",
+	"neo_tree.navigate_up",
+	"neo_tree.toggle_stage",
+	"neo_tree.commit",
+	"neo_tree.push",
+	"neo_tree.add_all",
+	"neo_tree.revert",
+}
+
+--- Assert that each action id's configured lhs values are callbacks carrying its action description.
+---@param ids string[]
+local function expect_tree_actions(ids)
+	eq(
+		child.lua_get(
+			[[(function(ids)
+local actions = require("gleb.actions")
+local catalog = actions.state.applicator.catalog
+local shortcuts = actions.state.store.last_good
+local maps = vim.iter(vim.api.nvim_buf_get_keymap(0, "n")):fold({}, function(result, map)
+	result[vim.keycode(map.lhs)] = map
+	return result
+end)
+local failures = {}
+local expected = {}
+for _, id in ipairs(ids) do
+	local action = catalog:get(id)
+	if not action or not shortcuts[id] then
+		table.insert(failures, id .. "=<missing>")
+	end
+	for _, lhs in ipairs(shortcuts[id] or {}) do
+		expected[vim.keycode(lhs)] = { action = action, id = id, lhs = lhs }
+	end
+end
+for key, item in pairs(expected) do
+	local map = maps[key]
+	if not map or not map.callback or map.desc ~= item.action.category .. ": " .. item.action.title then
+		table.insert(failures, item.id .. "=" .. item.lhs)
+	end
+end
+return failures
+end)(...)]],
+			{ ids }
+		),
+		{}
+	)
+end
+
+T["file-tree: Tree mappings come from the shortcut file"] = function()
+	local repo = H.git_repo({ ["a.txt"] = "a\n" })
+	start_in(repo)
+	child.wait_very_lazy()
+	open_tree("Neotree filesystem", "filesystem")
+	expect_tree_actions(vim.list_extend(vim.deepcopy(COMMON_TREE_ACTIONS), FILESYSTEM_TREE_ACTIONS))
+	eq(child.lua_get([[vim.fn.maparg("d", "x", false, true).buffer]]), 1)
+	eq(child.lua_get([[vim.fn.maparg("x", "x", false, true).buffer]]), 1)
+
+	child.cmd("Neotree git_status")
+	eq(child.wait([[Tree.source(Tree.win()) == "git_status"]], ASYNC_MS), true)
+	expect_tree_actions(vim.list_extend(vim.deepcopy(COMMON_TREE_ACTIONS), GIT_STATUS_TREE_ACTIONS))
+end
+
+T["file-tree: Neo-tree defaults stay disabled"] = function()
+	start_in(temp_dir({ ["a.txt"] = "a\n" }))
+	child.wait_very_lazy()
+	open_tree("Neotree filesystem", "filesystem")
+
+	eq(child.fn.maparg("C", "n"), "")
+end
+
 T["file-tree: Filesystem tree opens on the left at width 35"] = function()
 	child.start_config()
 	child.cmd("cd " .. H.root .. " | enew | Neotree filesystem")
@@ -553,7 +645,7 @@ T["file-tree: c is copy in git status tree"] = function()
 	local desc = child.lua_get([[vim.iter(vim.api.nvim_buf_get_keymap(0, "n")):find(function(map)
 		return map.lhs == "c"
 	end).desc]])
-	eq(desc, "copy")
+	eq(desc, "Tree: Copy")
 end
 
 T["file-tree: P pushes successfully"] = function()

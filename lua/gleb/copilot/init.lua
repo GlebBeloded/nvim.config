@@ -4,15 +4,20 @@ if not status_ok then
 	return
 end
 
+local actions = require("gleb.actions")
+local adapter = require("gleb.actions.adapters.copilot")
+local store = assert(actions.state.store, "actions are not set up")
+local catalog = assert(actions.state.applicator, "actions are not set up").catalog
+local keymap = {}
+for name in pairs(require("copilot.config.suggestion").default.keymap) do
+	keymap[name] = false
+end
+keymap = vim.tbl_extend("force", keymap, adapter.mappings(catalog, store:load()).suggestion.keymap)
+
 copilot.setup({
 	suggestion = {
 		auto_trigger = true,
-		keymap = {
-			accept = false,
-			next = "<M-]>",
-			prev = "<M-[>",
-			dismiss = "<C-]>",
-		},
+		keymap = keymap,
 	},
 })
 

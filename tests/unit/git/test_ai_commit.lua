@@ -13,6 +13,10 @@ local repo
 local function start()
 	repo = H.git_repo({ ["a.txt"] = "a\n" })
 	child.start_bare({ "nui.nvim" })
+	child.lua([[
+		require("gleb.actions").setup({ require("gleb.git.actions") })
+		require("gleb.actions").apply()
+	]])
 	child.cmd("cd " .. repo)
 end
 
@@ -82,6 +86,34 @@ local function show_generating()
 end
 
 local T = H.child_set(child, start)
+
+T["git: Commit popup mappings come from git actions"] = function()
+	show_commit_input()
+
+	eq(
+		child.lua_get([[
+		(function()
+			local mappings = {}
+			for _, mapping in ipairs(vim.api.nvim_buf_get_keymap(0, "n")) do
+				mappings[mapping.lhs] = mapping.desc
+			end
+			local shortcuts = require("gleb.actions").state.store.last_good
+			return {
+				shortcuts["git.confirm_commit_popup"],
+				mappings["<CR>"],
+				shortcuts["git.discard_commit_popup"],
+				mappings.q,
+			}
+		end)()
+	]]),
+		{
+			{ "<CR>" },
+			"Git: Confirm commit message",
+			{ "q" },
+			"Git: Discard commit message",
+		}
+	)
+end
 
 T["git: No staged changes"] = function()
 	record_jobstart()
@@ -153,6 +185,15 @@ end
 T["git: Enter on empty buffer does nothing"] = function()
 	show_commit_input()
 	child.api.nvim_buf_set_lines(0, 0, -1, false, {})
+	child.type_keys("<CR>")
+
+	eq(popup_open(), true)
+	eq(commits(), {})
+end
+
+T["git: Popup confirm action ignores the placeholder"] = function()
+	show_commit_input()
+	eq(popup_lines(), { "# No staged changes" })
 	child.type_keys("<CR>")
 
 	eq(popup_open(), true)

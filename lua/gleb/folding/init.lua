@@ -9,13 +9,6 @@ vim.o.foldlevelstart = 99
 vim.o.foldenable = true
 vim.o.foldmethod = "expr"
 
--- Map using the actual key notation Neovim sees
-vim.keymap.set("n", "<S-D-=>", ufo.openAllFolds, { noremap = true, silent = true })
-vim.keymap.set("n", "<S-D-->", ufo.closeAllFolds, { noremap = true, silent = true })
--- Alt combinations for single fold
-vim.keymap.set("n", "<M-=>", "zo", { noremap = true, silent = true })
-vim.keymap.set("n", "<M-->", "zc", { noremap = true, silent = true })
-
 local function provider(_, _, _)
 	return { "treesitter", "indent" }
 end

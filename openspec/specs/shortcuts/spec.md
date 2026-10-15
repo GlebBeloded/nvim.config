@@ -316,45 +316,56 @@ Cmd+Shift+A SHALL open Find Action through a real zellij stack and from a real m
 - **WHEN** Cmd+Shift+A is posted to the sandbox Alacritty process as a real macOS key press
 - **THEN** the Find Action palette opens in Neovim
 
+### Requirement: Shortcut table action identities
+For each Neovim mapping row, the shortcut table's *Mapping* column SHALL name the registered action id, or `none`; `settings/keymap.json` SHALL assign the row's *Neovim receives* lhs to that id. Terminal bytes, zellij routing, received keys, and physical shortcut meanings SHALL remain unchanged.
+
+#### Scenario: Shortcut table names action ids
+- **WHEN** every shortcut-table row with a Neovim received key is inspected
+- **THEN** its *Mapping* value is `none` or a registered action id whose configured lhs is the row's *Neovim receives* value
+
+#### Scenario: Shortcut meanings survive registry migration
+- **WHEN** each passed shortcut is sent through the real zellij stack to a full Neovim config after `VeryLazy`
+- **THEN** invoking the received key produces the behavior of the action id in that row
+
 ## Shortcut table
 Columns of the table the "Shortcut table" requirement refers to:
 - *Source* `chars`: an Alacritty `chars` binding sends the bytes verbatim. `kitty`: no binding; Alacritty's own encoding while zellij has pushed kitty keyboard flag 1 (zellij always does at startup).
 - *zellij*: `pass` (unbound, bytes written to the pane), `navigator <name> <payload>` (vim-zellij-navigator writes its own bytes to the Neovim pane), or the zellij action that consumes the key.
 - *Neovim receives*: the key the Neovim pane decodes, `—` when nothing arrives.
-- *Mapping*: the global normal-mode mapping of that key: `` `rhs` ``, `` fn `<lua expr>` `` (callback identity), `fn` (any Lua callback), `` desc `<desc>` ``, `none` (no mapping), or `—`.
+- *Mapping*: the registered action id assigned to that global normal-mode key, `none` (no mapping), or `—`.
 - Cmd+Shift+Q is the system Log Out shortcut, so it is unreachable from a key press unless Log Out is remapped in System Settings > Keyboard > Shortcuts; its row and binding stay for that case.
 
 | Shortcut | Source | Alacritty sends | zellij | Neovim receives | Mapping |
 |---|---|---|---|---|---|
-| Cmd+E | chars | `\ee` | pass | `<M-e>` | fn |
-| Cmd+G | chars | `\eg` | pass | `<M-g>` | `<Cmd>Differ<CR>` |
+| Cmd+E | chars | `\ee` | pass | `<M-e>` | tree.toggle_filesystem |
+| Cmd+G | chars | `\eg` | pass | `<M-g>` | git.open_differ |
 | Cmd+B | chars | `\eb` | pass | `<M-b>` | none |
 | Cmd+Q | chars | `\eq` | pass | `<M-q>` | none |
 | Cmd+Shift+Q | chars | `\eQ` | pass | `<M-Q>` | none |
-| Cmd+R | chars | `\er` | pass | `<M-r>` | fn `vim.lsp.buf.rename` |
+| Cmd+R | chars | `\er` | pass | `<M-r>` | lsp.rename |
 | Cmd+C | chars | `\ec` | pass | `<M-c>` | none |
-| Cmd+/ | chars | `\e/` | pass | `<M-/>` | `gcc` |
+| Cmd+/ | chars | `\e/` | pass | `<M-/>` | comments.toggle |
 | Cmd+F | chars | `\ef` | ToggleFloatingPanes | — | — |
-| Cmd+Shift+F | chars | `\eF` | pass | `<M-F>` | `<Cmd>Telescope live_grep<CR>` |
-| Cmd+Shift+A | chars | `\eA` | pass | `<M-A>` | fn `require("gleb.find_action").open` |
-| Cmd+W | chars | `\ew` | pass | `<M-w>` | desc `Diagnostics: Next` |
+| Cmd+Shift+F | chars | `\eF` | pass | `<M-F>` | search.live_grep |
+| Cmd+Shift+A | chars | `\eA` | pass | `<M-A>` | find_action.open |
+| Cmd+W | chars | `\ew` | pass | `<M-w>` | diag.next |
 | Cmd+Shift+W | chars | `\eW` | pass | `<M-W>` | none |
-| Cmd+H | chars | `\x08` | navigator move_focus_or_tab left | `<C-H>` | fn `require("smart-splits").move_cursor_left` |
+| Cmd+H | chars | `\x08` | navigator move_focus_or_tab left | `<C-H>` | window.move_left |
 | Cmd+Shift+H | chars | `\eH` | navigator resize left | `<M-h>` | none |
 | Cmd+J | chars | `\ej` | MoveFocus down | — | — |
-| Cmd+Shift+J | chars | `\eJ` | navigator resize down | `<M-j>` | fn `require("smart-splits").move_cursor_down` |
+| Cmd+Shift+J | chars | `\eJ` | navigator resize down | `<M-j>` | window.move_down |
 | Cmd+K | chars | `\ek` | MoveFocus up | — | — |
-| Cmd+Shift+K | chars | `\eK` | navigator resize up | `<M-k>` | fn `require("smart-splits").move_cursor_up` |
-| Cmd+L | chars | `\x0c` | navigator move_focus_or_tab right | `<C-L>` | fn `require("smart-splits").move_cursor_right` |
+| Cmd+Shift+K | chars | `\eK` | navigator resize up | `<M-k>` | window.move_up |
+| Cmd+L | chars | `\x0c` | navigator move_focus_or_tab right | `<C-L>` | window.move_right |
 | Cmd+Shift+L | chars | `\eL` | navigator resize right | `<M-l>` | none |
-| Cmd+- | chars | `\e-` | pass | `<M-->` | `zc` |
-| Cmd+= | chars | `\e=` | pass | `<M-=>` | `zo` |
-| Cmd+Shift+- | kitty | `\e[45;10u` | pass | `<S-D-->` | fn `require("ufo").closeAllFolds` |
-| Cmd+Shift+= | kitty | `\e[61;10u` | pass | `<S-D-=>` | fn `require("ufo").openAllFolds` |
+| Cmd+- | chars | `\e-` | pass | `<M-->` | fold.close_one |
+| Cmd+= | chars | `\e=` | pass | `<M-=>` | fold.open_one |
+| Cmd+Shift+- | kitty | `\e[45;10u` | pass | `<S-D-->` | fold.close_all |
+| Cmd+Shift+= | kitty | `\e[61;10u` | pass | `<S-D-=>` | fold.open_all |
 | Cmd+[ | chars | `\e[` | GoToPreviousTab | — | — |
 | Cmd+] | chars | `\e]` | GoToNextTab | — | — |
-| Cmd+9 | chars | `\e9` | pass | `<M-9>` | desc `99: Menu` |
-| Shift+Return | chars | `\e[13;2u` | pass | `<S-CR>` | desc `99: Vibe` |
+| Cmd+9 | chars | `\e9` | pass | `<M-9>` | none |
+| Shift+Return | chars | `\e[13;2u` | pass | `<S-CR>` | ai.vibe |
 | Option+Return | chars | `\e}` | pass | `<M-}>` | none |
 | Option+Shift+Return | chars | `\e{` | pass | `<M-{>` | none |
 | Option+Q | chars | `\eq` | pass | `<M-q>` | none |
@@ -371,14 +382,14 @@ Columns of the table the "Shortcut table" requirement refers to:
 | Ctrl+Option+J | chars | `\eç` | pass | `<M-ç>` | none |
 | Ctrl+Option+K | chars | `\e∫` | pass | `<M-∫>` | none |
 | Ctrl+Option+L | chars | `\e≈` | pass | `<M-≈>` | none |
-| Ctrl+H | kitty | `\e[104;5u` | navigator move_focus_or_tab left | `<C-H>` | fn `require("smart-splits").move_cursor_left` |
-| Ctrl+L | kitty | `\e[108;5u` | navigator move_focus_or_tab right | `<C-L>` | fn `require("smart-splits").move_cursor_right` |
+| Ctrl+H | kitty | `\e[104;5u` | navigator move_focus_or_tab left | `<C-H>` | window.move_left |
+| Ctrl+L | kitty | `\e[108;5u` | navigator move_focus_or_tab right | `<C-L>` | window.move_right |
 | Ctrl+Q | kitty | `\e[113;5u` | Quit | — | — |
-| Ctrl+Return | kitty | `\e[13;5u` | pass | `<C-CR>` | fn `vim.lsp.buf.code_action` |
-| Ctrl+Up | kitty | `\e[1;5A` | pass | `<C-Up>` | `<Cmd>resize +2<CR>` |
-| Ctrl+Down | kitty | `\e[1;5B` | pass | `<C-Down>` | `<Cmd>resize -2<CR>` |
-| Ctrl+Left | kitty | `\e[1;5D` | pass | `<C-Left>` | `<Cmd>vertical resize -2<CR>` |
-| Ctrl+Right | kitty | `\e[1;5C` | pass | `<C-Right>` | `<Cmd>vertical resize +2<CR>` |
+| Ctrl+Return | kitty | `\e[13;5u` | pass | `<C-CR>` | lsp.code_action |
+| Ctrl+Up | kitty | `\e[1;5A` | pass | `<C-Up>` | window.increase_height |
+| Ctrl+Down | kitty | `\e[1;5B` | pass | `<C-Down>` | window.decrease_height |
+| Ctrl+Left | kitty | `\e[1;5D` | pass | `<C-Left>` | window.decrease_width |
+| Ctrl+Right | kitty | `\e[1;5C` | pass | `<C-Right>` | window.increase_width |
 | Cmd+O | kitty | `\e[111;9u` | pass | `<D-o>` | none |
 | Cmd+I | kitty | `\e[105;9u` | pass | `<D-i>` | none |
 | Cmd+D | kitty | `\e[100;9u` | pass | `<D-d>` | none |

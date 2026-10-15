@@ -5,7 +5,8 @@ if not (has_gitlinker and has_hosts) then
 end
 
 gitlinker.setup({
-	mappings = nil,
+	-- gitlinker always maps a key (nil means <leader>gy); an unreachable <Plug> lhs leaves :Gitlink only
+	mappings = "<Plug>(gleb-gitlinker)",
 	print_url = false,
 	callbacks = {
 		["pgw.dev"] = hosts.get_github_type_url,

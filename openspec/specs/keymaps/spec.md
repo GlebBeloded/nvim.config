@@ -6,15 +6,15 @@ Global editor keymaps defined in `lua/gleb/keymaps.lua`: window navigation and r
 ## Requirements
 
 ### Requirement: Mapping options
-The config SHALL define every keymap in `lua/gleb/keymaps.lua` as non-recursive (`noremap`) and silent, with a `desc` of the form `<Area>: <Action>` (a capitalised area, a colon, a space, then a non-empty action, e.g. `Window: Move left`, `LSP: Rename`).
+Every core action mapping SHALL be silent, have a `<Category>: <Title>` description, and be non-recursive unless its rhs is a registered `<Plug>` target.
 
 #### Scenario: Core mappings are noremap and silent
-- **WHEN** the full config is loaded and `vim.fn.maparg("gb", "n", false, true)` is called
-- **THEN** the returned dict has `noremap == 1` and `silent == 1`
+- **WHEN** the full config has fired `VeryLazy` and the mapping for `gb` is queried
+- **THEN** it has `noremap == 1` and `silent == 1`
 
 #### Scenario: Every core mapping has an area-action desc
-- **WHEN** the full config is loaded and `vim.fn.maparg(lhs, mode, false, true).desc` is read for each of: normal `<C-h>`, `<A-j>`, `<A-k>`, `<C-l>`, `gb`, `gB`, `<C-Up>`, `<C-Down>`, `<C-Left>`, `<C-Right>`, `<A-H>`, `<A-J>`, `<A-K>`, `<A-L>`, `<C-q>`, `<A-e>`, `<A-g>`, `<A-G>`, `<A-F>`, `<C-CR>`, `gD`, `gd`, `K`, `gi`, `gr`, `<A-r>`, `<A-w>`, `[d`, `ge`; insert `jk`; visual (`x`) `<`, `>`, `p`, `J`, `K`, `<A-j>`, `<A-k>`, `<C-CR>`
-- **THEN** every `desc` matches the Lua pattern `^%u[%w ]*: %S.*$`
+- **WHEN** each configured core action mapping is queried after `VeryLazy`
+- **THEN** every description matches the Lua pattern `^%u[%w ]*: %S.*$`
 
 ### Requirement: Leader keys
 The config SHALL set `g:mapleader` to Space (`" "`) and `g:maplocalleader` to `\` in `init.lua` before lazy.nvim is set up, so every `<leader>` map a plugin defines while loading binds to Space.
@@ -119,7 +119,7 @@ The config SHALL map `jk` in insert mode to `<Esc>`.
 - **THEN** the mode is normal and the buffer line is empty
 
 ### Requirement: Visual mode editing helpers
-The config SHALL keep the selection after `<` and `>` in visual mode, SHALL make `p` in visual mode replace the selection without overwriting the unnamed register, and SHALL map `J`/`<A-j>` and `K`/`<A-k>` in visual mode (`x`) to move the selected lines down/up by one line while keeping visual mode. Each of these SHALL be mapped once, in `x` mode only, so that select mode has no mapping from `lua/gleb/keymaps.lua` and typed characters replace the selection.
+The edit action list SHALL keep the selection after `<` and `>`, preserve the unnamed register when visual `p` replaces text, and move selected lines with `J`/`<A-j>` and `K`/`<A-k>`. These actions SHALL be assigned once in `x` mode only, leaving select mode unmapped.
 
 #### Scenario: Indent keeps selection
 - **WHEN** lines 1-2 are selected with `Vj` and `>` is pressed
@@ -131,15 +131,15 @@ The config SHALL keep the selection after `<` and `>` in visual mode, SHALL make
 
 #### Scenario: Paste over selection keeps register
 - **WHEN** the unnamed register contains `foo`, the word `bar` is selected with `viw`, and `p` is pressed
-- **THEN** the buffer contains `foo` in place of `bar` and `getreg('"')` is still `foo`
+- **THEN** the buffer contains `foo` in place of `bar` and the unnamed register is still `foo`
 
 #### Scenario: Move selected lines down
-- **WHEN** a buffer contains lines `a`, `b`, `c`, line 1 is selected with `V`, and `J` is pressed
-- **THEN** the buffer lines are `b`, `a`, `c` and the mode is visual
+- **WHEN** line 1 of `a`, `b`, `c` is selected and `J` or `<A-j>` is pressed
+- **THEN** the lines become `b`, `a`, `c` and the mode is visual
 
 #### Scenario: Move selected lines up
-- **WHEN** a buffer contains lines `a`, `b`, `c`, line 3 is selected with `V`, and `K` is pressed
-- **THEN** the buffer lines are `a`, `c`, `b` and the mode is visual
+- **WHEN** line 3 of `a`, `b`, `c` is selected and `K` or `<A-k>` is pressed
+- **THEN** the lines become `a`, `c`, `b` and the mode is visual
 
 #### Scenario: Alt-j moves selected lines down
 - **WHEN** a buffer contains lines `a`, `b`, `c`, line 1 is selected with `V`, and `<A-j>` is pressed
@@ -150,11 +150,11 @@ The config SHALL keep the selection after `<` and `>` in visual mode, SHALL make
 - **THEN** the buffer lines are `a`, `c`, `b` and the mode is visual
 
 #### Scenario: Visual helpers are not mapped in select mode
-- **WHEN** the full config is loaded and `vim.fn.maparg(lhs, "s")` is read for `<`, `>`, `p`, `<A-j>`, `<A-k>`, `<C-CR>`
-- **THEN** each returns `""`
+- **WHEN** the full config is loaded and each visual-helper lhs is queried in select mode
+- **THEN** each returns no mapping
 
 #### Scenario: Typing p in select mode inserts p
-- **WHEN** the full config is loaded, the unnamed register contains `foo`, the buffer line is `bar baz` with the cursor on column 1, and `v` then `<C-g>` (Select mode) then `p` is typed
+- **WHEN** select mode covers the first character of `bar baz` and `p` is typed while the unnamed register contains `foo`
 - **THEN** the buffer line is `par baz` and the mode is Insert
 
 ### Requirement: File tree and git panel toggles
@@ -249,3 +249,26 @@ The smart neo-tree toggle SHALL preserve the requested close or source switch wh
 #### Scenario: Toggle wins over pending filesystem render
 - **WHEN** the focused neo-tree `filesystem` window still has a pending render and `<A-e>` or `<A-G>` is pressed in normal mode
 - **THEN** after the pending render completes, `<A-e>` leaves no neo-tree window and `<A-G>` leaves the focused neo-tree source as `git_status`
+
+### Requirement: Action-backed core mappings
+Core editor behavior SHALL be exposed from feature action lists and assigned only by `settings/keymap.json`. Registry-created mappings SHALL be silent and non-recursive unless their rhs is a `<Plug>` target, and their descriptions SHALL be `<Category>: <Title>` from action metadata.
+
+#### Scenario: Core mappings resolve through actions
+- **WHEN** the full config has fired `VeryLazy` and each previously configured core lhs is queried in its mode
+- **THEN** its mapping invokes the action assigned by `settings/keymap.json`, is non-recursive and silent, and has the action description
+
+#### Scenario: Unadopted built-in mappings are removed
+- **WHEN** the full config has fired `VeryLazy` and Neovim default mappings including `grn`, `gra`, `grr`, `gri`, `grt`, `gO`, `]d`, `[q`, and `]q` are queried
+- **THEN** each default not assigned to a registered action is absent
+
+#### Scenario: Adopted built-in mappings are registry actions
+- **WHEN** an adopted Neovim default lhs including `[d` is queried after `VeryLazy`
+- **THEN** it resolves to the action assigned by `settings/keymap.json`, not the built-in mapping
+
+#### Scenario: Surround mappings use registered actions
+- **WHEN** nvim-surround is loaded and its configured normal, visual, and operator-pending lhs values are queried
+- **THEN** plugin defaults are disabled and each mapping invokes the registered action's `<Plug>` target
+
+#### Scenario: Counts preserve mapped operations
+- **WHEN** counted visual indent, normal comment, and single-fold shortcuts are pressed through their registered mappings
+- **THEN** each underlying operation receives the count and repeats accordingly

@@ -5,39 +5,39 @@
 04|      gleb                    │               Press <Esc> to cancel.                │            
 05|        file_tree             │                                                     │            
 06|       └     init.lua          │         KEY(S)    COMMAND                           │            
-07|                                 │              < -> prev_source                       │            
-08|                                 │  <2-LeftMouse> -> open                              │            
-09|                                 │          <C-b> -> scroll_preview                    │            
-10|                                 │          <C-f> -> scroll_preview                    │            
-11|                                 │          <C-r> -> clear_clipboard                   │            
-12|                                 │           <bs> -> close_node                        │            
-13|                                 │           <cr> -> <function>                        │            
-14|                                 │          <esc> -> cancel                            │            
-15|                                 │        <space> -> <function>                        │            
-16|                                 │              > -> next_source                       │            
-17|                                 │              ? -> show_help                         │            
-18|                                 │              A -> git_add_all                       │            
-19|                                 │              C -> close_node                        │            
-20|                                 │              P -> <function>                        │            
-21|                                 │              R -> refresh                           │            
-22|                                 │              S -> open_split                        │            
-23|                                 │              X -> git_revert_file                   │            
-24|                                 │              a -> add                               │            
-25|                                 │              b -> rename_basename                   │            
-26|                                 │              c -> copy                              │            
-27|                                 │              d -> delete                            │            
-28|                                 │              e -> toggle_auto_expand_width          │            
-29|                                 │             gU -> git_undo_last_commit              │            
-30|                                 │             ga -> git_add_file                      │            
-31|                                 │             gc -> commit (AI)                       │            
-32|                                 │             gg -> git_commit_and_push               │            
-33|                                 │             gp -> git_push                          │            
-34|                                 │             gt -> git_toggle_file_stage             │            
-35|                                 │             gu -> git_unstage_file                  │            
-36|                                 │              h -> close_node                        │            
-37|                                 │              i -> show_file_details                 │            
-38|                                 │              j -> <function>                        │            
-39|                                 ╰─────────────────────────────────────────────────────╯            
+07|                                 │              < -> Tree: Previous source             │            
+08|                                 │           <BS> -> Tree: Close node                  │            
+09|                                 │           <CR> -> Tree: Open file                   │            
+10|                                 │        <Space> -> Tree: Toggle stage                │            
+11|                                 │              > -> Tree: Next source                 │            
+12|                                 │              ? -> Tree: Help                        │            
+13|                                 │              A -> Tree: Add all                     │            
+14|                                 │              P -> Tree: Push                        │            
+15|                                 │              R -> Tree: Refresh                     │            
+16|                                 │              X -> Tree: Revert                      │            
+17|                                 │              a -> Tree: Add                         │            
+18|                                 │              c -> Tree: Copy                        │            
+19|                                 │              d -> Tree: Delete                      │            
+20|                                 │             gc -> Tree: Commit (AI)                 │            
+21|                                 │              h -> Tree: Close node                  │            
+22|                                 │              j -> Tree: Navigate down               │            
+23|                                 │              k -> Tree: Navigate up                 │            
+24|                                 │              l -> Tree: Open                        │            
+25|                                 │              o -> Tree: Open                        │            
+26|                                 │              p -> Tree: Paste                       │            
+27|                                 │              q -> Tree: Close                       │            
+28|                                 │              r -> Tree: Rename                      │            
+29|                                 │              s -> Tree: Open split                  │            
+30|                                 │              t -> Tree: Open tab                    │            
+31|                                 │              v -> Tree: Open vertical split         │            
+32|                                 │              x -> Tree: Cut                         │            
+33|                                 │                                                     │            
+34|                                 ╰─────────────────────────────────────────────────────╯            
+35|                                   ┃                                                                
+36|                                   ┃                                                                
+37|                                   ┃                                                                
+38|                                   ┃                                                                
+39|                                   ┃                                                                
 40|                                                                                                    
 
 --|---------|---------|---------|---------|---------|---------|---------|---------|---------|---------|
@@ -47,37 +47,37 @@
 04|???;;<<==>>>>????????????????????8@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@AAAAAAAAAAAAAAAA8BBBBBBBBBBBB
 05|?????;;<<==>>>>>>>>>?????????????8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
 06|???????CC<<DDEE<<<<<<<<??????????8FFFFFFFFFFFFFFF8888FFFFFFFAAAAAAAAAAAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
-07|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIIAAAAAAAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
-08|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
-09|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIIIIIAAAAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
-10|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIIIIIAAAAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
-11|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIIIIIIAAAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
+07|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIIIIIIIIIIIIAAAAAAAAAAAAA8BBBBBBBBBBBB
+08|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIIIIIIIAAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
+09|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIIIIIIAAAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
+10|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIIIIIIIIIAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
+11|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIIIIIIIIAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
 12|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIAAAAAAAAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
-13|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIAAAAAAAAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
-14|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIAAAAAAAAAAAAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
-15|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIAAAAAAAAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
-16|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIIAAAAAAAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
+13|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIIIIAAAAAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
+14|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIAAAAAAAAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
+15|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIIIIAAAAAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
+16|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIIIAAAAAAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
 17|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIAAAAAAAAAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
-18|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIIAAAAAAAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
-19|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIAAAAAAAAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
-20|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIAAAAAAAAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
-21|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIAAAAAAAAAAAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
-22|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIAAAAAAAAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
-23|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIIIIIIAAAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
-24|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
-25|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIIIIIIAAAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
-26|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
-27|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIAAAAAAAAAAAAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
-28|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIIIIIIIIIIIIIIIAAAAAAAAAA8BBBBBBBBBBBB
-29|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIIIIIIIIIIIAAAAAAAAAAAAAA8BBBBBBBBBBBB
-30|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIIIAAAAAAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
-31|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIIAAAAAAAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
-32|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIIIIIIIIIIAAAAAAAAAAAAAAA8BBBBBBBBBBBB
-33|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIAAAAAAAAAAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
-34|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIIIIIIIIIIIIAAAAAAAAAAAAA8BBBBBBBBBBBB
-35|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIIIIIIIAAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
-36|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIAAAAAAAAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
-37|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIIIIIIIIAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
-38|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIAAAAAAAAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
-39|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8888888888888888888888888888888888888888888888888888888BBBBBBBBBBBB
-40|JJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJ
+18|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIAAAAAAAAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
+19|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIIIAAAAAAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
+20|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIIIIIIIIAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
+21|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIIIIIIIAAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
+22|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIIIIIIIIIIAAAAAAAAAAAAAAA8BBBBBBBBBBBB
+23|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIIIIIIIIAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
+24|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIAAAAAAAAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
+25|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIAAAAAAAAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
+26|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIIAAAAAAAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
+27|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIIAAAAAAAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
+28|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIIIAAAAAAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
+29|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIIIIIIIAAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
+30|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIIIIIAAAAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
+31|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIIIIIIIIIIIIIIIIAAAAAAAAA8BBBBBBBBBBBB
+32|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIAAAAAAAAAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
+33|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8JJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJ8BBBBBBBBBBBB
+34|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8888888888888888888888888888888888888888888888888888888BBBBBBBBBBBB
+35|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGKBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+36|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGKBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+37|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGKBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+38|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGKBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+39|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGKBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+40|LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL

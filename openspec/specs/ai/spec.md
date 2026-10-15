@@ -71,7 +71,7 @@ The config SHALL register 99 Search and 99 Vibe as actions and leave `<A-9>` unm
 - **THEN** a 99 prompt buffer for the visual selection is focused and the mode is insert
 
 #### Scenario: Entry mappings are silent
-- **WHEN** the 99 entry mappings are registered
+- **WHEN** the full config has fired `VeryLazy` and the registered 99 entry mappings are queried
 - **THEN** `<S-CR>` has a silent normal mapping, `<A-9>` and `<S-CR>` have silent visual mappings, and `<A-9>` has no normal mapping
 
 #### Scenario: Select mode keeps its default behavior
@@ -92,3 +92,18 @@ The config SHALL, on `FileType` `99` (augroup `gleb_ai_prompt_keymaps`, cleared 
 #### Scenario: Setup is idempotent
 - **WHEN** `require("gleb.ai.prompt_keymaps").setup()` is called twice
 - **THEN** `vim.api.nvim_get_autocmds({ group = "gleb_ai_prompt_keymaps" })` returns exactly one autocmd
+
+### Requirement: AI shortcut ownership
+99 entry and prompt-submit mappings SHALL be registered actions assigned through `settings/keymap.json`. Prompt-submit SHALL remain buffer-local to filetype `99`. The plugin's hardcoded `q` and `<CR>` window mappings SHALL remain the only 99 mapping exceptions on the ownership allowlist.
+
+#### Scenario: 99 entry mappings come from AI actions
+- **WHEN** the full config has fired `VeryLazy` and the configured normal and visual 99 entry lhs values are queried
+- **THEN** each mapping invokes the AI action assigned by `settings/keymap.json` with the action description
+
+#### Scenario: Prompt submit comes from a filetype action
+- **WHEN** a buffer enters filetype `99` after `VeryLazy`
+- **THEN** its configured submit lhs is buffer-local in normal and insert modes and invokes the registered submit action
+
+#### Scenario: 99 hardcoded mappings are the only exceptions
+- **WHEN** a populated 99 plugin window's mappings are compared with registry ownership
+- **THEN** only the plugin-hardcoded `q` and `<CR>` mappings may lack action ownership
