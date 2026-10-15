@@ -40,7 +40,7 @@ Root cause:
 - Action ids, shortcuts and the recent history file are unchanged.
 
 ## Impact
-- Code: the action metadata in `lua/gleb/keymaps/actions.lua`, `lua/gleb/folding/actions.lua`, `lua/gleb/comments/actions.lua`, `lua/gleb/file_tree/actions.lua`, `lua/gleb/autocommands/actions.lua`, `lua/gleb/ai/actions.lua`, `lua/gleb/surround/actions.lua`, `lua/gleb/git/actions.lua`, `lua/gleb/plugins/actions.lua`, and `lua/gleb/lsp/actions.lua`; category rendering in `lua/gleb/picker/rows.lua`.
+- Code: the action metadata in `lua/gleb/keymaps/actions.lua`, `lua/gleb/folding/actions.lua`, `lua/gleb/comments/actions.lua`, `lua/gleb/file_tree/actions.lua`, `lua/gleb/autocommands/actions.lua`, `lua/gleb/ai/actions.lua`, `lua/gleb/surround/actions.lua`, `lua/gleb/git/actions.lua`, `lua/gleb/plugins/actions.lua`, `lua/gleb/lsp/actions.lua`, `lua/gleb/testing/actions.lua`, `lua/gleb/alpha/actions.lua`, `lua/gleb/debugging/actions.lua`, `lua/gleb/copilot/actions.lua`, and `lua/gleb/cmp/actions.lua`; category rendering in `lua/gleb/picker/rows.lua`.
 - Tests: real-catalog integration coverage, action-description expectations, Find Action screen coverage, and its reference screenshots.
 - Dependencies: no plugin is added, removed, or upgraded.
 - Core keymaps: unchanged; action ids, shortcut lhs values, and recent-history storage are unchanged.

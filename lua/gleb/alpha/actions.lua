@@ -28,14 +28,14 @@ end
 
 ---@type gleb.Action[]
 local actions = {
-	dashboard_action("alpha.find_file", "Find file", picker("files")),
-	dashboard_action("alpha.new_file", "New file", command("ene | startinsert")),
-	dashboard_action("alpha.recent_files", "Recently used files", picker("recent_files")),
-	dashboard_action("alpha.find_text", "Find text", picker("grep_live")),
+	dashboard_action("alpha.find_file", "Find File", picker("files")),
+	dashboard_action("alpha.new_file", "Create New File", command("ene | startinsert")),
+	dashboard_action("alpha.recent_files", "Find Recent Files", picker("recent_files")),
+	dashboard_action("alpha.find_text", "Find Text", picker("grep_live")),
 	dashboard_action("alpha.configuration", "Configuration", command("e ~/.config/nvim/init.lua")),
 	dashboard_action("alpha.quit", "Quit Neovim", command("qa")),
-	dashboard_action("alpha.press", "Press button", replay("alpha.press")),
-	dashboard_action("alpha.queue_press", "Queue button press", replay("alpha.queue_press")),
+	dashboard_action("alpha.press", "Press Dashboard Button", replay("alpha.press")),
+	dashboard_action("alpha.queue_press", "Queue Dashboard Button Press", replay("alpha.queue_press")),
 }
 
 return actions

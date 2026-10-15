@@ -168,6 +168,34 @@ T["find-action: Catalog rows use standalone Title Case labels"] = function()
 	for id, metadata in pairs(approved) do
 		eq(actual[id], metadata)
 	end
+
+	child.type_keys("<M-A>")
+	assert(
+		child.wait(
+			[[vim.tbl_contains(vim.tbl_map(function(row) return row.text end, MiniPick.get_picker_items()), "More results")]],
+			5000
+		),
+		"More results did not load"
+	)
+	local more_results = {
+		["alpha.find_file"] = { "Find File", "Dashboard" },
+		["blink.show"] = { "Show Completion Menu", "Completion" },
+		["copilot.next"] = { "Next Copilot Suggestion", "Copilot" },
+		["dap_ui.open"] = { "Open Debug Element", "Debug" },
+		["diffview.close"] = { "Close Diffview", "Git | Diff" },
+		["neo_tree.open"] = { "Open Tree Node", "Tree" },
+		["neotest.run"] = { "Run Nearest Test", "Test" },
+	}
+	actual = child.lua_get([[(function()
+		local rows = {}
+		for _, row in ipairs(MiniPick.get_picker_items()) do
+			if row.action then rows[row.action.id] = { row.text, row.category } end
+		end
+		return rows
+	end)()]])
+	for id, metadata in pairs(more_results) do
+		eq(actual[id], metadata)
+	end
 end
 
 T["find-action: Empty query puts recent actions first"] = function()

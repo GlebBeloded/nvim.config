@@ -91,36 +91,41 @@ local actions = {
 	},
 	diffview_action(
 		"select_next_entry",
-		"Select Next Entry",
+		"Select Next Diffview Entry",
 		{ "view", "file_panel" },
 		diffview_run("select_next_entry")
 	),
 	diffview_action(
 		"select_prev_entry",
-		"Select Previous Entry",
+		"Select Previous Diffview Entry",
 		{ "view", "file_panel" },
 		diffview_run("select_prev_entry")
 	),
-	diffview_action("goto_file_edit", "Go to File", { "view" }, diffview_run("goto_file_edit")),
+	diffview_action("goto_file_edit", "Open Diffview File for Editing", { "view" }, diffview_run("goto_file_edit")),
 	diffview_conflict_action("ours"),
 	diffview_conflict_action("theirs"),
 	diffview_conflict_action("base"),
 	diffview_conflict_action("all"),
-	diffview_action("choose_none", "Drop Conflict Sides", { "view" }, function()
+	diffview_action("choose_none", "Drop All Diffview Conflict Sides", { "view" }, function()
 		require("diffview.actions").conflict_choose("none")()
 	end),
-	diffview_action("select_entry", "Select Entry", { "file_panel" }, diffview_run("select_entry")),
-	diffview_action("close_fold", "Close Fold", { "file_panel" }, diffview_run("close_fold")),
-	diffview_action("toggle_stage_entry", "Toggle Stage Entry", { "file_panel" }, diffview_run("toggle_stage_entry")),
-	diffview_action("stage_all", "Stage All", { "file_panel" }, diffview_run("stage_all")),
-	diffview_action("unstage_all", "Unstage All", { "file_panel" }, diffview_run("unstage_all")),
-	diffview_action("refresh_files", "Refresh Files", { "file_panel" }, diffview_run("refresh_files")),
-	diffview_action("close", "Close", { "file_panel" }, function()
+	diffview_action("select_entry", "Select Diffview Entry", { "file_panel" }, diffview_run("select_entry")),
+	diffview_action("close_fold", "Close Diffview Fold", { "file_panel" }, diffview_run("close_fold")),
+	diffview_action(
+		"toggle_stage_entry",
+		"Toggle Diffview Entry Staging",
+		{ "file_panel" },
+		diffview_run("toggle_stage_entry")
+	),
+	diffview_action("stage_all", "Stage All Diffview Files", { "file_panel" }, diffview_run("stage_all")),
+	diffview_action("unstage_all", "Unstage All Diffview Files", { "file_panel" }, diffview_run("unstage_all")),
+	diffview_action("refresh_files", "Refresh Diffview Files", { "file_panel" }, diffview_run("refresh_files")),
+	diffview_action("close", "Close Diffview", { "file_panel" }, function()
 		vim.cmd.DiffviewClose()
 	end),
-	viewer_action("next_file", "Next File", "differ"),
-	viewer_action("next_hunk", "Next Hunk", "differ"),
-	viewer_action("next_hunk", "Next Hunk", "codediff"),
+	viewer_action("next_file", "Select Next Differ File", "differ"),
+	viewer_action("next_hunk", "Select Next Differ Hunk", "differ"),
+	viewer_action("next_hunk", "Select Next Codediff Hunk", "codediff"),
 }
 
 return actions

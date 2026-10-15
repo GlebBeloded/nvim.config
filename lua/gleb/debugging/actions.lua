@@ -13,12 +13,12 @@ end
 
 ---@type gleb.Action[]
 local actions = {
-	dap_ui_action("dap_ui", "open", "Open element"),
-	dap_ui_action("dap_ui", "remove", "Remove element"),
-	dap_ui_action("dap_ui", "expand", "Expand element"),
-	dap_ui_action("dap_ui", "repl", "Send to REPL"),
-	dap_ui_action("dap_ui", "toggle", "Toggle element"),
-	dap_ui_action("dap_float", "close", "Close floating window"),
+	dap_ui_action("dap_ui", "open", "Open Debug Element"),
+	dap_ui_action("dap_ui", "remove", "Remove Debug Element"),
+	dap_ui_action("dap_ui", "expand", "Expand Debug Element"),
+	dap_ui_action("dap_ui", "repl", "Send Debug Element to REPL"),
+	dap_ui_action("dap_ui", "toggle", "Toggle Debug Element"),
+	dap_ui_action("dap_float", "close", "Close Debug Floating Window"),
 }
 
 return actions
