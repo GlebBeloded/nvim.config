@@ -22,3 +22,9 @@ Scenarios: `find-action: Only executed shortcuts update recent actions`
 - Pass highlight and selected-metadata options from Find Action so shared picker sources retain their existing appearance.
 - Restore selection from source-match completion because MiniPick item replacement is asynchronous.
 - Observe configured keys only outside MiniPick's input loop so native callback identity and recursive `<Plug>` resolution remain unchanged.
+
+## Stuck
+
+- Probe: `d<C-h>` reports `<C-H>` with `mode(1) = "no"` and `state("o") = "o"`; `f<C-h>` reports `<C-H>` with `mode(1) = "n"` and `state("oS") = "S"`.
+- Attempt 1 guarded shortcut recording with `state("o")`; the exact regression still recorded `test.mapping` after the pending-key cases because `f<C-h>` has no `o` state.
+- Attempt 2 guarded with `state("oS")`; under the real integration entry points this suppressed all configured shortcut history, leaving the expected mapping, plug, and `find_action.open` records absent.

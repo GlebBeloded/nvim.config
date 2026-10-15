@@ -106,52 +106,6 @@ local function expect_assignment_box(label)
 	eq(lines[5]:find("╰", 1, true) ~= nil, true)
 end
 
-local function expect_color_mask(row, mask, legend)
-	local mismatch = child.lua_get(
-		[=[(function(screen_row, expected_mask, groups)
-		local attrs = {}
-		for letter, group in pairs(groups) do
-			local buf = vim.api.nvim_create_buf(false, true)
-			vim.api.nvim_buf_set_lines(buf, 0, -1, false, { "x" })
-			local win = vim.api.nvim_open_win(buf, false, {
-				relative = "editor",
-				row = 0,
-				col = 0,
-				width = 1,
-				height = 1,
-				style = "minimal",
-				focusable = false,
-				zindex = 250,
-			})
-			vim.wo[win].winhighlight = "Normal:" .. group
-			vim.cmd("redraw!")
-			attrs[letter] = vim.fn.screenattr(1, 1)
-			vim.api.nvim_win_close(win, true)
-		end
-		vim.cmd("redraw!")
-		for col, letter in ipairs(vim.fn.split(expected_mask, [[\zs]])) do
-			local actual = vim.fn.screenattr(screen_row, col)
-			if actual ~= attrs[letter] then
-				return { col = col, letter = letter, actual = actual, expected = attrs[letter] }
-			end
-		end
-	end)(...)]=],
-		{ row, mask, legend }
-	)
-	if mismatch ~= vim.NIL then
-		error(
-			("screen color differs at row %d, column %d: expected %s attr %d, got %d"):format(
-				row,
-				mismatch.col,
-				mismatch.letter,
-				mismatch.expected,
-				mismatch.actual
-			),
-			0
-		)
-	end
-end
-
 T["find-action: Wide palette matches reference screenshots"] = function()
 	set_size(100)
 	open_palette()
@@ -166,27 +120,44 @@ T["find-action: Wide palette matches reference screenshots"] = function()
 	eq(text:find("recently used", 1, true) ~= nil, true)
 	eq(text:find("Assign ⌥↩ · Show hidden ⌘⇧A", 1, true) ~= nil, true)
 	eq(text:find("Toggle Git Status Tree ⌘⇧G", 1, true) ~= nil, true)
-	expect_color_mask(
+	H.expect_screen_colors(
+		child,
 		8,
-		"nnnnnnnnnnnnnnbSSSSSSSSSSSSSEESSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSEEEEEEEEEESbnnnnnnnnnnnnnn",
+		{ "nnnnnnnnnnnnnnbSSSSSSSSSSSSSEESSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSEEEEEEEEEESbnnnnnnnnnnnnnn" },
 		{ n = "EndOfBuffer", b = "FloatBorder", S = "PmenuSel", E = "PmenuExtraSel" }
 	)
-	expect_color_mask(
+	H.expect_screen_colors(
+		child,
 		20,
-		"nnnnnnnnnnnnnnbffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffXXXfbnnnnnnnnnnnnnn",
+		{ "nnnnnnnnnnnnnnbffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffXXXfbnnnnnnnnnnnnnn" },
 		{ n = "EndOfBuffer", b = "FloatBorder", f = "NormalFloat", X = "PmenuExtra" }
 	)
 	H.expect_screenshot(child.get_screenshot())
 
 	child.type_keys("diff")
 	assert(child.wait([[table.concat(require("mini.pick").get_picker_query()) == "diff"]]), "query was not rendered")
-	expect_color_mask(
+	H.expect_screen_colors(
+		child,
 		7,
-		"nnnnnnnnnnnnnnbSSSSSSSSSSSSSEESSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSEEEEEEEEEESbnnnnnnnnnnnnnn",
+		{ "nnnnnnnnnnnnnnbSSSSSSSSSSSSSEESSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSEEEEEEEEEESbnnnnnnnnnnnnnn" },
 		{ n = "EndOfBuffer", b = "FloatBorder", S = "PmenuSel", E = "PmenuExtraSel" }
 	)
 	H.expect_screenshot(child.get_screenshot())
 	close_palette()
+
+	child.o.lines = 20
+	open_palette()
+	for _ = 1, 25 do
+		child.type_keys("<C-n>")
+	end
+	H.expect_screen_colors(
+		child,
+		7,
+		{ "nnnnnnnnnnnnnnbSSSSSSSSSSSSSEESSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSEEEEEEEEEESbnnnnnnnnnnnnnn" },
+		{ n = "EndOfBuffer", b = "FloatBorder", S = "PmenuSel", E = "PmenuExtraSel" }
+	)
+	close_palette()
+	child.o.lines = 30
 
 	open_palette()
 	child.type_keys("spell<CR>")
