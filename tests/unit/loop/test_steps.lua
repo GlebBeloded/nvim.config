@@ -450,6 +450,7 @@ T["loop: Implement and fix self-check like the gate before handing back"] = func
 	for _, needle in ipairs({
 		"edit outside your capability, run `make test FILE=tests/screen/<area>` and `FILE=tests/integration/<area>` too",
 		'for a visible-UI change `make e2e CASE="<capability>:" 2>&1 | tail -40` once before the commit',
+		"each test file you edited whole (no CASE: an edit to a shared local in it breaks its other cases)",
 	}) do
 		eq(implement:find(needle, 1, true) ~= nil, true, { fail_reason = needle })
 	end
