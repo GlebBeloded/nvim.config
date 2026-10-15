@@ -622,7 +622,7 @@ work-queue SHALL skip the queue-spec step when the adopted change's tasks.md has
 
 #### Scenario: Implement and fix self-check like the gate before handing back
 - **WHEN** the Makefile and `.archon/commands/fix.md` and `implement.md` are read
-- **THEN** `make self-check CHANGE=<id>` runs the hard rules (`integrity.py`, `pinned.py --check`), lint, types, trace, strict validation of the change and `spec_trial.py` (no tests, no e2e), both prompts run it before they commit (committing anyway with a `loop:` note when only base or loop tooling is red), and both fix an ordinary bug instead of writing `## Stuck` while an attempt is left
+- **THEN** `make self-check CHANGE=<id>` runs the hard rules (`integrity.py`, `pinned.py --check`), lint, types, trace, strict validation of the change and `spec_trial.py` (no tests, no e2e), both prompts run it before they commit (committing anyway with a `loop:` note when only base or loop tooling is red), implement also reruns the integration tests of each area that requires a module it edited, and both fix an ordinary bug instead of writing `## Stuck` while an attempt is left
 
 #### Scenario: Fix keeps the red regression test and review blocks scope creep
 - **WHEN** `.archon/commands/fix.md` and `review.md` are read

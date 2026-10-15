@@ -422,7 +422,7 @@ T["loop: Implement and fix self-check like the gate before handing back"] = func
 	local makefile = table.concat(vim.fn.readfile(vim.fs.joinpath(H.root, "Makefile")), "\n")
 	local target = makefile:match("\nself%-check:\n(.-)\n\n")
 	eq(target ~= nil, true, { fail_reason = "no self-check target" })
-	local needles = { "integrity.py", 'pinned.py --check "$(CHANGE)"', "lint types", "spec_trial.py" }
+	local needles = { "integrity.py", 'pinned.py --check "$(CHANGE)"', "lint types trace", "spec_trial.py" }
 	for _, needle in ipairs(vim.list_extend(needles, { 'openspec validate "$(CHANGE)" --strict' })) do
 		eq(target:find(needle, 1, true) ~= nil, true, { fail_reason = needle })
 	end
@@ -443,6 +443,10 @@ T["loop: Implement and fix self-check like the gate before handing back"] = func
 			eq(prompt:find(needle, 1, true) ~= nil, true, { fail_reason = name .. ": " .. needle })
 		end
 	end
+	local implement =
+		table.concat(vim.fn.readfile(vim.fs.joinpath(H.root, ".archon/commands/implement.md")), " "):gsub("%s+", " ")
+	local callers = "also run `make test FILE=tests/integration/<area> 2>&1 | tail -40` once for each such area"
+	eq(implement:find(callers, 1, true) ~= nil, true, { fail_reason = callers })
 end
 
 T["loop: Fix keeps the red regression test and review blocks scope creep"] = function()
