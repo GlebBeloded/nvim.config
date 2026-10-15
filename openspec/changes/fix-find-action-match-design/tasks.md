@@ -1,8 +1,8 @@
 ## 1. Record shortcut and palette use in recent history
-Scenarios: `find-action: Empty query puts recent actions first`
-- [x] 1.1 Write the test `find-action: Empty query puts recent actions first` in `tests/integration/find-action/test_run.lua`; drive a populated catalog through a configured shortcut and `<CR>` in the real palette, reopen it with `<M-A>`, and see the missing shortcut action make the MRU assertion fail
+Scenarios: `find-action: Empty query puts recent actions first`, `find-action: Shortcut and palette use update recent actions`
+- [x] 1.1 Write the test `find-action: Shortcut and palette use update recent actions` in `tests/integration/find-action/test_run.lua`; drive a populated catalog through a configured shortcut and `<CR>` in the real palette, reopen it with `<M-A>`, and see the missing shortcut action make the MRU assertion fail
 - [x] 1.2 Route palette and configured-shortcut catalog execution through shared recent-history recording, removing the palette-only recording path
-- [x] 1.3 Run `make test FILE=tests/integration/find-action/test_run.lua CASE="Empty query puts recent actions first"` and see it pass
+- [x] 1.3 Run `make test FILE=tests/integration/find-action/test_run.lua CASE="Shortcut and palette use update recent actions"` and see it pass
 
 ## 2. Match the approved H1 highlights
 Scenarios: `find-action: Wide palette matches reference screenshots`
@@ -12,5 +12,5 @@ Scenarios: `find-action: Wide palette matches reference screenshots`
 
 ## Agent decisions
 
-- Record `find_action.open` when `<M-A>` runs because it is a configured catalog shortcut covered by the same history rule.
+- Exclude `find_action.open` from history because recording the launcher on every open displaces the action the user is trying to reuse.
 - Pass highlight and selected-metadata options from Find Action so shared picker sources retain their existing appearance.

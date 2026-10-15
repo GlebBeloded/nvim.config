@@ -93,7 +93,7 @@ local function open_palette(keys)
 	assert(child.wait("#MiniPick.get_picker_items() > 0", 5000), "Find Action items did not load")
 end
 
-T["find-action: Empty query puts recent actions first"] = function()
+T["find-action: Shortcut and palette use update recent actions"] = function()
 	child.lua([[vim.fn.delete(require("gleb.find_action.items").history().path)]])
 	child.type_keys("gR")
 	assert(child.wait("RegularRun ~= nil", 5000), "Configured shortcut did not run")
@@ -112,11 +112,11 @@ T["find-action: Empty query puts recent actions first"] = function()
 		]]),
 		{
 			"recently used",
-			"find_action.open",
 			"test.toggle_first",
 			"test.regular",
 			"other actions",
 			"test.toggle",
+			"find_action.open",
 		}
 	)
 end
@@ -287,7 +287,7 @@ T["find-action: Visual palette preserves the selection"] = function()
 		child.lua_get([[
 		vim.tbl_map(function(item) return item.text end, MiniPick.get_picker_items())
 	]]),
-		{ "other actions", "Visual Action" }
+		{ "other actions", "Visual Action", "Find Action..." }
 	)
 	child.type_keys("<CR>")
 	assert(child.wait("VisualRun ~= nil", 5000), "Visual action did not run")
