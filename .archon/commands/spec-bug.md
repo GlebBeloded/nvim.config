@@ -17,7 +17,7 @@ If the bug input is an existing change id under openspec/changes/, update that c
 openspec continue-change). Otherwise create one with the `openspec-propose` skill, id `fix-<topic>`
 (kebab-case). Follow openspec/config.yaml rules:
 - spec delta: only when the spec is wrong or missing the behaviour: MODIFIED (the spec describes the buggy behaviour) or ADDED scenario that describes the
-  correct behaviour, verifiable in a headless child Neovim. Never remove or weaken a scenario.
+  correct behaviour, verifiable in a headless child Neovim. Never remove or weaken a scenario. Before an ADDED requirement, find the one that may own the behaviour already: `rg -l '<its key, command or function>' openspec/specs` (file names only); when a requirement there covers it, write a MODIFIED delta of that requirement in its capability instead of adding one elsewhere.
 - proposal: plugin dependency change? core keymap change? out of scope.
 - proposal: an `## Evidence` section listing the root cause's `file:line` refs (repo or installed plugin source) or
   headless probe output, copied from root-cause.md; the context pack hands it to implement and fix.

@@ -215,6 +215,8 @@ T["loop: Queue spec prompt keeps the schema and greps one capability"] = functio
 	has(prompt, "delete only the `skip_specs` line from `.openspec.yaml` (keep its `schema:` line)")
 	eq(prompt:find("set `schema: spec-driven` in", 1, true), nil)
 	has(prompt, "never list every Requirement or Scenario of all specs (no `rg` over `openspec/specs/` as a whole)")
+	has(prompt, "`rg -l '<its key, command or function>' openspec/specs` (file names only)")
+	has(prompt, "write a MODIFIED delta of that requirement in its capability instead of adding one elsewhere")
 	has(prompt, "rg -n '^### Requirement:|^#### Scenario:' openspec/specs/<capability>/spec.md")
 end
 
