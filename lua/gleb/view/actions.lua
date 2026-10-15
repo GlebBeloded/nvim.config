@@ -1,6 +1,14 @@
 -- Editor view actions expose window-local display options to the shared action catalog.
 
-local function no_op() end
+---@param ctx gleb.ActionContext
+local function toggle_soft_wrap(ctx)
+	vim.wo[ctx.win].wrap = not vim.wo[ctx.win].wrap
+end
+
+---@param ctx gleb.ActionContext
+local function toggle_spell_check(ctx)
+	vim.wo[ctx.win].spell = not vim.wo[ctx.win].spell
+end
 
 ---@type gleb.Action[]
 local actions = {
@@ -8,7 +16,7 @@ local actions = {
 		id = "view.soft_wrap",
 		title = "Soft Wrap",
 		category = "View | Editor",
-		run = no_op,
+		run = toggle_soft_wrap,
 		toggle = {
 			get = function(ctx)
 				return vim.wo[ctx.win].wrap
@@ -22,7 +30,7 @@ local actions = {
 		id = "view.spell_check",
 		title = "Spell Check",
 		category = "View | Editor",
-		run = no_op,
+		run = toggle_spell_check,
 		toggle = {
 			get = function(ctx)
 				return vim.wo[ctx.win].spell

@@ -418,7 +418,7 @@ T["find-action: Regular action runs like its shortcut"] = function()
 		RegisteredActions = RealActions
 		local shortcuts = {}
 		for index, action in ipairs(RegisteredActions) do
-			local lhs = ("<F%d>"):format(index + 20)
+			local lhs = ("gz%d;"):format(index)
 			shortcuts[action.id] = { lhs }
 			if not action.toggle then
 				local id = action.id
@@ -469,8 +469,10 @@ T["find-action: Regular action runs like its shortcut"] = function()
 		local shortcut_toggle
 		if action.toggle then
 			initial_toggle = child.lua_get(([[
-				local action = require("gleb.actions").state.applicator.catalog:get(%q)
-				return require("gleb.actions.context").get_toggle(action, require("gleb.actions.context").capture())
+				require("gleb.actions.context").get_toggle(
+					require("gleb.actions").state.applicator.catalog:get(%q),
+					require("gleb.actions.context").capture()
+				)
 			]]):format(action.id))
 		else
 			child.type_keys(action.lhs)
@@ -481,8 +483,10 @@ T["find-action: Regular action runs like its shortcut"] = function()
 		if action.toggle then
 			child.type_keys(action.lhs)
 			shortcut_toggle = child.lua_get(([[
-				local action = require("gleb.actions").state.applicator.catalog:get(%q)
-				return require("gleb.actions.context").get_toggle(action, require("gleb.actions.context").capture())
+				require("gleb.actions.context").get_toggle(
+					require("gleb.actions").state.applicator.catalog:get(%q),
+					require("gleb.actions.context").capture()
+				)
 			]]):format(action.id))
 			child.lua(
 				([[
@@ -504,8 +508,10 @@ T["find-action: Regular action runs like its shortcut"] = function()
 		if action.toggle then
 			eq(
 				child.lua_get(([[
-					local action = require("gleb.actions").state.applicator.catalog:get(%q)
-					return require("gleb.actions.context").get_toggle(action, require("gleb.find_action").state.context)
+					require("gleb.actions.context").get_toggle(
+						require("gleb.actions").state.applicator.catalog:get(%q),
+						require("gleb.find_action").state.context
+					)
 				]]):format(action.id)),
 				shortcut_toggle
 			)
