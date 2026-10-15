@@ -139,7 +139,10 @@ def e2e_infra(body: list[str]) -> str:
     lines = [line.strip() for line in body if line.strip()]
     if failing_cases(lines) or not all(INFRA_LINE.match(line) for line in lines):
         return ""
-    return next((line for line in reversed(lines) if INFRA.search(line)), "")  # the last: sandbox.sh dies on it
+    known = next((line for line in reversed(lines) if INFRA.search(line)), "")  # the last: sandbox.sh dies on it
+    # no case ran and only sandbox lines: still the host's failure, named by its last sandbox line (run 8ce36755:
+    # "has a lume run process while Lume reports it ; waiting for it", then make's error, nothing else)
+    return known or next((line for line in reversed(lines) if line.startswith(("sandbox: ", "Error: VM "))), "")
 
 
 def case_name(file: str, label: str) -> str:
