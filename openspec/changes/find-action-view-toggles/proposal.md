@@ -5,12 +5,18 @@ Kind: feature
 Depends: fix-find-action-colors
 
 ## Evidence
-- No catalog action has `toggle` (0 of about 150), and there are no wrap or spell actions, so no ●/○ can render. `PmenuKind` also carries a bg patch (fixed by fix-find-action-colors).
+- The populated catalog has 136 actions and zero toggles, and there are no wrap or spell actions, so no ●/○ can render. `PmenuKind` also carries a bg patch (fixed by fix-find-action-colors).
 
 ## What Changes
 - New actions "Soft Wrap" (`wrap`) and "Spell Check" (`spell`), category `View | Editor`, each with a toggle state (get/set) so the palette draws ● (green #aab66e, on) or ○ (grey, off) before the category. Choosing one flips the option in the current window and the glyph updates without closing the palette.
 - No default shortcut.
 
+## Capabilities
+- `find-action`: add real window-local Soft Wrap and Spell Check toggle actions to the populated palette.
+
 ## Impact
-- Code: a view/editor actions module, `lua/gleb/find_action/rows.lua` if the glyph path needs it.
-- Tests: integration (toggle flips, glyph updates), screen reference with both states.
+- Architecture: add `lua/gleb/view/actions.lua` and wire it into the action catalog in `init.lua`.
+- Code: the existing Find Action toggle execution and row-rendering paths are reused; no plugin dependency is added, removed, or upgraded.
+- Tests: integration coverage for both window-local options and the live glyph refresh; screen reference coverage with both states.
+- Core keymaps do not change; neither action receives a default shortcut.
+- Out of scope: new toggle styling, global option changes, additional editor toggles, and shortcut assignment defaults.

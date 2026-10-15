@@ -57,20 +57,13 @@ end
 
 T["find-action: Toggle rows show state glyphs"] = function()
 	local rows = child.lua_get([[
-		{
-			FindActionRows.format({
-				id = "view.wrap",
-				title = "Soft Wrap",
-				category = "View | Editor",
-				run = function() end,
-			}, nil, true),
-			FindActionRows.format({
-				id = "view.spell",
-				title = "Spell Check",
-				category = "View | Editor",
-				run = function() end,
-			}, nil, false),
-		}
+		(function()
+			local actions = require("gleb.view.actions")
+			return {
+				FindActionRows.format(actions[1], nil, true),
+				FindActionRows.format(actions[2], nil, false),
+			}
+		end)()
 	]])
 
 	eq(rows, {

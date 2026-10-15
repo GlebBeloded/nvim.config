@@ -522,34 +522,54 @@ T["find-action: Regular action runs like its shortcut"] = function()
 end
 
 T["find-action: Toggle changes without closing the palette"] = function()
-	child.wo.wrap = false
-	local editor_win = child.api.nvim_get_current_win()
-	open_palette()
-	child.type_keys("toggle")
-	child.type_keys("<Down>")
-	local selected = child.lua_get([[MiniPick.get_picker_matches().current_ind]])
-	eq(child.lua_get([[MiniPick.get_picker_matches().current.action.id]]), "test.toggle")
-	child.type_keys("<CR>")
-	assert(child.wait("ToggleWin ~= nil", 5000), "Toggle action did not run")
+	child.lua([[
+		local actions = require("gleb.actions")
+		actions.state.applicator.catalog = RealCatalogForLabels
+		actions.state.store.catalog = RealCatalogForLabels
+		actions.state.store.last_good = vim.deepcopy(RealShortcutsForLabels)
+		actions.state.applicator:apply(actions.state.store.last_good)
 
-	eq(child.lua_get([[MiniPick.is_picker_active()]]), true)
-	eq(child.lua_get([[vim.wo[]] .. editor_win .. [[].wrap]]), true)
-	eq(child.lua_get([[ToggleWin]]), editor_win)
-	eq(child.lua_get([[MiniPick.get_picker_matches().current_ind]]), selected)
-	eq(child.lua_get([[MiniPick.get_picker_matches().current.glyph]]), true)
+		vim.cmd.vsplit()
+		OtherEditorWin = vim.api.nvim_get_current_win()
+		vim.wo[OtherEditorWin].wrap = false
+		vim.wo[OtherEditorWin].spell = true
+		vim.cmd.wincmd("p")
+		EditorWin = vim.api.nvim_get_current_win()
+		vim.wo[EditorWin].wrap = true
+		vim.wo[EditorWin].spell = false
+	]])
 
-	child.type_keys("<Esc>")
-	child.wo.wrap = false
-	open_palette()
-	child.type_keys("<C-n>")
-	local section = child.lua_get([[MiniPick.get_picker_matches().current_ind]])
-	child.type_keys("<CR>")
-	assert(child.wait("vim.wo[require('gleb.find_action').state.context.win].wrap", 5000), "Section toggle did not run")
+	local cases = {
+		{ query = "soft wrap", id = "view.soft_wrap", option = "wrap", before = true, after = false },
+		{ query = "spell check", id = "view.spell_check", option = "spell", before = false, after = true },
+	}
+	for _, case in ipairs(cases) do
+		open_palette()
+		child.type_keys(case.query)
+		assert(
+			child.wait(
+				([[(MiniPick.get_picker_matches().current or {}).action
+					and MiniPick.get_picker_matches().current.action.id == %q]]):format(case.id),
+				5000
+			),
+			case.id .. " did not match"
+		)
+		local selected = child.lua_get([[MiniPick.get_picker_matches().current_ind]])
+		eq(child.lua_get(([[vim.wo[EditorWin].%s]]):format(case.option)), case.before)
+		eq(child.lua_get(([[vim.wo[OtherEditorWin].%s]]):format(case.option)), case.after)
 
-	eq(child.lua_get([[MiniPick.get_picker_matches().current_ind]]), section)
-	eq(child.lua_get([[MiniPick.get_picker_items()[3].text]]), "Toggle Wrap")
-	eq(child.lua_get([[MiniPick.get_picker_items()[3].glyph]]), true)
-	eq(child.lua_get([[MiniPick.get_picker_items()[1].glyph]]), vim.NIL)
+		child.type_keys("<CR>")
+		assert(
+			child.wait(([[vim.wo[EditorWin].%s == %s]]):format(case.option, tostring(case.after)), 5000),
+			case.id .. " did not toggle"
+		)
+
+		eq(child.lua_get([[MiniPick.is_picker_active()]]), true)
+		eq(child.lua_get(([[vim.wo[OtherEditorWin].%s]]):format(case.option)), case.after)
+		eq(child.lua_get([[MiniPick.get_picker_matches().current_ind]]), selected)
+		eq(child.lua_get([[MiniPick.get_picker_matches().current.glyph]]), case.after)
+		child.type_keys("<Esc>")
+	end
 end
 
 T["find-action: Visual palette preserves the selection"] = function()

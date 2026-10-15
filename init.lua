@@ -14,6 +14,7 @@ require("gleb.picker")
 require("gleb.keymaps") -- after plugins: needs smart-splits
 require("gleb.actions").setup({
 	require("gleb.find_action.actions"),
+	require("gleb.view.actions"),
 	require("gleb.keymaps.actions"),
 	require("gleb.comments.actions"),
 	require("gleb.folding.actions"),
