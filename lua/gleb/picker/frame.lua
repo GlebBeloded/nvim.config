@@ -22,6 +22,8 @@ local chrome_windows = {}
 ---@field match? fun(stritems: string[], inds: integer[], query: string[]): integer[]
 ---@field mappings? table<string, string|table>
 ---@field window_config? fun(): table
+---@field highlight_overrides? table<string, string>
+---@field selected_category? boolean
 
 local function setup_highlights()
 	local bg = palette.background
@@ -58,6 +60,17 @@ end
 
 local function schedule_clear_picker_footer()
 	vim.schedule(clear_picker_footer)
+end
+
+---@param win integer
+---@param overrides? table<string, string>
+local function apply_highlight_overrides(win, overrides)
+	for from, to in pairs(overrides or {}) do
+		local entry = from .. ":" .. to
+		local pattern = "(" .. vim.pesc(from) .. ":[^,]*)"
+		local value, count = vim.wo[win].winhighlight:gsub(pattern, entry)
+		vim.wo[win].winhighlight = count == 0 and (value .. "," .. entry) or value
+	end
 end
 
 ---@param hint string
@@ -103,12 +116,28 @@ local function current_hint(hints)
 	return layout.hint()
 end
 
+---@return integer?
+local function selected_match_position()
+	local matches = MiniPick.get_picker_matches()
+	if not matches then
+		return nil
+	end
+	for position, index in ipairs(matches.shown_inds) do
+		if index == matches.current_ind then
+			return position
+		end
+	end
+end
+
 ---@param hints? gleb.picker.Hint
 ---@param on_show? fun(items: any[])
+---@param highlight_overrides? table<string, string>
+---@param selected_category? boolean
 ---@return fun(buf: integer, items: any[], query: string[])
-local function create_show(hints, on_show)
+local function create_show(hints, on_show, highlight_overrides, selected_category)
 	return function(buf, items, query)
 		local picker_win = MiniPick.get_picker_state().windows.main
+		apply_highlight_overrides(picker_win, highlight_overrides)
 		vim.api.nvim_win_set_config(picker_win, { footer = "" })
 		local hint = current_hint(hints)
 		if hint then
@@ -124,7 +153,12 @@ local function create_show(hints, on_show)
 
 		if type(items[1]) == "table" then
 			local width = vim.api.nvim_win_get_width(render_win)
-			rows.render(buf, items, width, vim.tbl_extend("force", layout.row_options(), { padding = 1 }))
+			local row_opts = vim.tbl_extend("force", layout.row_options(), { padding = 1 })
+			if selected_category then
+				row_opts.selected = selected_match_position()
+				row_opts.selected_metadata = true
+			end
+			rows.render(buf, items, width, row_opts)
 		else
 			MiniPick.default_show(buf, items, query)
 		end
@@ -139,11 +173,13 @@ end
 ---@param hints? gleb.picker.Hint
 ---@param window_config? fun(): table
 ---@param on_show? fun(items: gleb.picker.Row[])
+---@param highlight_overrides? table<string, string>
+---@param selected_category? boolean
 ---@return table
-function M.options(title, hints, window_config, on_show)
+function M.options(title, hints, window_config, on_show, highlight_overrides, selected_category)
 	local base_window_config = window_config or layout.window_config
 	return {
-		source = { name = title, show = create_show(hints, on_show) },
+		source = { name = title, show = create_show(hints, on_show, highlight_overrides, selected_category) },
 		window = {
 			prompt_prefix = " " .. title .. " › ",
 			config = function()
@@ -177,7 +213,8 @@ end
 ---@param opts gleb.picker.FrameOpts
 ---@return any
 function M.start(opts)
-	local picker_opts = M.options(opts.title, opts.hints, opts.window_config)
+	local picker_opts =
+		M.options(opts.title, opts.hints, opts.window_config, nil, opts.highlight_overrides, opts.selected_category)
 	picker_opts.source = vim.tbl_extend("force", picker_opts.source, {
 		name = opts.title,
 		items = opts.items,

@@ -69,6 +69,15 @@ local function start()
 					}
 				end,
 			},
+			{
+				id = "neo_tree.open",
+				title = "Open",
+				category = "Tree",
+				plugin = "neo-tree",
+				neo_tree_scope = "common",
+				run = function() NeoTreeOpen = (NeoTreeOpen or 0) + 1 end,
+			},
+			RealCatalog:get("find_action.open"),
 		} })
 		local actions = require("gleb.actions")
 		actions.state.applicator.catalog = catalog
@@ -78,8 +87,10 @@ local function start()
 			["test.toggle_first"] = {},
 			["test.toggle"] = {},
 			["test.visual"] = { "gV" },
+			["neo_tree.open"] = { "<CR>" },
+			["find_action.open"] = { "<M-A>" },
 		}
-		vim.keymap.set("n", "gR", Context.invoke(catalog:get("test.regular")))
+		actions.state.applicator:apply(actions.state.store.last_good)
 	]])
 end
 
@@ -89,6 +100,132 @@ local function open_palette(keys)
 	child.type_keys(keys or "<M-A>")
 	assert(child.wait("MiniPick.is_picker_active()", 5000), "Find Action picker did not open")
 	assert(child.wait("#MiniPick.get_picker_items() > 0", 5000), "Find Action items did not load")
+end
+
+T["find-action: Empty query puts recent actions first"] = function()
+	child.lua([[vim.fn.delete(require("gleb.find_action.items").history().path)]])
+	child.type_keys("gR")
+	assert(child.wait("RegularRun ~= nil", 5000), "Configured shortcut did not run")
+
+	open_palette()
+	child.type_keys("toggle first<CR>")
+	assert(child.wait("ToggleFirst == true", 5000), "Palette action did not run")
+	child.type_keys("<Esc>")
+	open_palette()
+
+	eq(
+		child.lua_get([[
+			vim.tbl_map(function(row)
+				return row.action and row.action.id or row.text
+			end, MiniPick.get_picker_items())
+		]]),
+		{
+			"recently used",
+			"find_action.open",
+			"test.toggle_first",
+			"test.regular",
+			"other actions",
+			"test.toggle",
+		}
+	)
+end
+
+T["find-action: Shortcut and palette use update recent actions"] = function()
+	child.lua([[vim.fn.delete(require("gleb.find_action.items").history().path)]])
+	child.type_keys("gR")
+	assert(child.wait("RegularRun ~= nil", 5000), "Configured shortcut did not run")
+
+	open_palette()
+	child.type_keys("toggle first<CR>")
+	assert(child.wait("ToggleFirst == true", 5000), "Palette action did not run")
+	child.type_keys("<Esc>")
+	child.lua([[
+		local actions = require("gleb.actions")
+		local mappings = require("gleb.actions.adapters.neo_tree").mappings(
+			actions.state.applicator.catalog,
+			actions.state.store.last_good,
+			"common"
+		)
+		vim.keymap.set("n", "<CR>", mappings["<CR>"], { buffer = true })
+	]])
+	child.type_keys("<CR>")
+	assert(child.wait("NeoTreeOpen == 1", 5000), "Neo-tree action did not run")
+	eq(child.lua_get([[require("gleb.find_action.items").history():load()]]), {
+		"test.toggle_first",
+		"find_action.open",
+		"test.regular",
+	})
+
+	open_palette()
+	eq(
+		child.lua_get([[
+			vim.tbl_map(function(row)
+				return row.action and row.action.id or row.text
+			end, MiniPick.get_picker_items())
+		]]),
+		{
+			"recently used",
+			"find_action.open",
+			"test.toggle_first",
+			"test.regular",
+			"other actions",
+			"test.toggle",
+		}
+	)
+end
+
+T["find-action: Only executed shortcuts update recent actions"] = function()
+	child.lua([[
+		local Registry = require("gleb.actions.registry")
+		local mapping_action = {
+			id = "test.mapping",
+			title = "Mapping Action",
+			category = "Test",
+			run = function() MappingRuns = (MappingRuns or 0) + 1 end,
+			mapping = function() MappingRuns = (MappingRuns or 0) + 1 end,
+		}
+		local plug = "<Plug>(TestRecentPlug)"
+		local plug_action = {
+			id = "test.plug",
+			title = "Plug Action",
+			category = "Test",
+			run = function() vim.api.nvim_feedkeys(vim.keycode(plug), "m", false) end,
+			plug = plug,
+		}
+		vim.keymap.set("n", plug, function() PlugRuns = (PlugRuns or 0) + 1 end)
+		local actions = require("gleb.actions")
+		local catalog = Registry.new({ {
+			mapping_action,
+			plug_action,
+			actions.state.applicator.catalog:get("find_action.open"),
+		} })
+		actions.state.applicator.catalog = catalog
+		actions.state.store.catalog = catalog
+		actions.state.store.last_good = {
+			["test.mapping"] = { "<F20>", "<C-h>" },
+			["test.plug"] = { "<F21>" },
+			["find_action.open"] = { "<M-A>" },
+		}
+		actions.state.applicator:apply(actions.state.store.last_good)
+		vim.fn.delete(require("gleb.find_action.items").history().path)
+	]])
+
+	child.type_keys("<F20>")
+	assert(child.wait("MappingRuns == 1", 5000), "Configured mapping shortcut did not run")
+	child.type_keys("<F21>")
+	assert(child.wait("PlugRuns == 1", 5000), "Configured plug shortcut did not run")
+	child.type_keys("d<C-h>")
+	child.type_keys("f<C-h>")
+	eq(child.lua_get([[MappingRuns]]), 1)
+
+	open_palette()
+	child.type_keys("<C-h>")
+	eq(child.lua_get([[MappingRuns]]), 1)
+	eq(child.lua_get([[require("gleb.find_action.items").history():load()]]), {
+		"find_action.open",
+		"test.plug",
+		"test.mapping",
+	})
 end
 
 T["find-action: Regular action runs like its shortcut"] = function()
@@ -236,13 +373,14 @@ T["find-action: Toggle changes without closing the palette"] = function()
 	child.type_keys("<Esc>")
 	child.wo.wrap = false
 	open_palette()
+	child.type_keys("<C-n>")
 	local section = child.lua_get([[MiniPick.get_picker_matches().current_ind]])
 	child.type_keys("<CR>")
 	assert(child.wait("vim.wo[require('gleb.find_action').state.context.win].wrap", 5000), "Section toggle did not run")
 
 	eq(child.lua_get([[MiniPick.get_picker_matches().current_ind]]), section)
-	eq(child.lua_get([[MiniPick.get_picker_items()[2].text]]), "Toggle Wrap")
-	eq(child.lua_get([[MiniPick.get_picker_items()[2].glyph]]), true)
+	eq(child.lua_get([[MiniPick.get_picker_items()[3].text]]), "Toggle Wrap")
+	eq(child.lua_get([[MiniPick.get_picker_items()[3].glyph]]), true)
 	eq(child.lua_get([[MiniPick.get_picker_items()[1].glyph]]), vim.NIL)
 end
 
@@ -256,9 +394,10 @@ T["find-action: Visual palette preserves the selection"] = function()
 	eq(
 		child.lua_get([[
 		vim.tbl_map(function(item) return item.text end, MiniPick.get_picker_items())
-	]]),
-		{ "other actions", "Visual Action" }
+		]]),
+		{ "recently used", "Find Action...", "other actions", "Visual Action" }
 	)
+	child.type_keys("visual")
 	child.type_keys("<CR>")
 	assert(child.wait("VisualRun ~= nil", 5000), "Visual action did not run")
 

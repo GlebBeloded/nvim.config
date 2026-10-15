@@ -19,6 +19,8 @@ local layout = require("gleb.picker.layout")
 ---@field show_category? boolean
 ---@field show_glyph? boolean
 ---@field padding? integer
+---@field selected? integer
+---@field selected_metadata? boolean
 
 ---@class gleb.picker.RowHighlight
 ---@field col integer
@@ -64,10 +66,12 @@ end
 ---@param item gleb.picker.Row
 ---@param width integer
 ---@param opts gleb.picker.RowRenderOpts
+---@param selected boolean
 ---@return gleb.picker.RenderedRow
-local function render_item(item, width, opts)
+local function render_item(item, width, opts, selected)
 	local left = item.text
 	local highlights = {}
+	local metadata_group = opts.selected_metadata and (selected and "PmenuExtraSel" or "FloatBorder") or "Comment"
 
 	if item.dim then
 		table.insert(highlights, { col = 0, end_col = #left, group = "Comment" })
@@ -76,7 +80,7 @@ local function render_item(item, width, opts)
 	if opts.show_secondary and item.secondary then
 		local start_col = #left + 1
 		left = left .. " " .. item.secondary
-		table.insert(highlights, { col = start_col, end_col = #left, group = "Comment" })
+		table.insert(highlights, { col = start_col, end_col = #left, group = metadata_group })
 	end
 
 	local right = ""
@@ -108,7 +112,8 @@ local function render_item(item, width, opts)
 	end
 	if opts.show_category and item.category then
 		local category_col = #text - #item.category
-		table.insert(highlights, { col = category_col, end_col = #text, group = "PmenuExtra" })
+		local category_group = selected and opts.selected_metadata and "PmenuExtraSel" or "PmenuExtra"
+		table.insert(highlights, { col = category_col, end_col = #text, group = category_group })
 	end
 
 	return { text = text, highlights = highlights }
@@ -132,7 +137,9 @@ function M.render(buf, items, width, opts)
 	local rendered = {}
 	local lines = {}
 	for index, item in ipairs(items) do
-		local row = item.section and render_section(item, content_width) or render_item(item, content_width, opts)
+		local selected = opts.selected == index
+		local row = item.section and render_section(item, content_width)
+			or render_item(item, content_width, opts, selected)
 		row.text = string.rep(" ", padding) .. truncate(row.text, content_width)
 		row.highlights = vim.tbl_filter(function(highlight)
 			highlight.col = highlight.col + padding
