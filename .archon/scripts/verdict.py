@@ -84,6 +84,10 @@ scope = artifacts / "fix-scope.md"
 if "review" not in gates and scope.exists():  # the review did not see it: send it to the next pass
     feedback.append(scope.read_text().strip())
 drop_overturned(artifacts, "review" in gates and not gates["review"])  # lessons of a rejected pass are unverified
+REVIEWS = "reviews.md"  # every review's findings, in pass order: the next review reads them (review.md)
+if "review" in gates and value("review_findings", ""):
+    with (artifacts / REVIEWS).open("a") as f:
+        f.write(f"## Pass {passes} review ({'approved' if gates['review'] else 'rejected'})\n\n{value('review_findings', '')}\n\n")
 # the next fix pass starts here: gate.py compares the change's planning files against this snapshot
 (artifacts / "plan-snapshot.json").write_text(json.dumps(plan_files(os.environ.get("INPUTS_CHANGE", ""))))
 (artifacts / CASE_SNAPSHOT).write_text(json.dumps(sorted(tree_case_names())))  # gate.py: a case the next pass drops
