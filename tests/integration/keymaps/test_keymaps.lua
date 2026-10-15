@@ -765,6 +765,16 @@ T["keymaps: Alt-e on URI buffer focuses filesystem"] = function()
 	eq({ child.v.errmsg, child.cmd_capture("messages") }, { "", "" })
 end
 
+T["keymaps: Alt-e tolerates a deleted current file"] = function()
+	local repo = edit_repo_file()
+	vim.fn.delete(vim.fs.joinpath(repo, "foo.lua"))
+	child.cmd("messages clear")
+	child.type_keys("<M-e>")
+
+	eq(wait_tree_focused("filesystem"), true)
+	eq({ child.v.errmsg, child.cmd_capture("messages") }, { "", "" })
+end
+
 T["keymaps: Alt-e closes focused filesystem tree"] = function()
 	edit_repo_file()
 	focus_tree("filesystem")
