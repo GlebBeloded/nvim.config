@@ -173,6 +173,7 @@ local function open_hint_band(hint, hint_keys, parent, highlight_overrides)
 		col = position[2],
 		width = width + 2,
 		height = 1,
+		border = "none",
 		style = "minimal",
 		focusable = false,
 		zindex = vim.api.nvim_win_get_config(parent).zindex + 1,

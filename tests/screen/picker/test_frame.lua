@@ -164,6 +164,7 @@ T["picker: Alternate picker views keep the border counter-free"] = function()
 end
 
 T["picker: Source-specific hint band shows hints and counter"] = function()
+	child.o.winborder = "rounded"
 	child.lua_notify(
 		[[require("gleb.picker").start({
 			title = "Hint Band",
@@ -185,6 +186,7 @@ T["picker: Source-specific hint band shows hints and counter"] = function()
 	local text = table.concat(vim.tbl_map(table.concat, child.get_screenshot().text), "\n")
 	eq(text:find("Open ↵ · Split ⌃S", 1, true) ~= nil, true)
 	eq(text:find("6/6", 1, true) ~= nil, true)
+	eq(text:find("││ Open ↵ · Split ⌃S", 1, true), nil)
 	eq(
 		child.lua_get(
 			[[vim.api.nvim_win_get_config(require("mini.pick").get_picker_state().windows.main).footer == nil]]
