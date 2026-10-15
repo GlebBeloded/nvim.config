@@ -28,6 +28,7 @@ require("gleb.actions").setup({
 	require("gleb.testing.actions"),
 	require("gleb.lsp.actions"),
 	require("gleb.plugins.actions"),
+	require("gleb.alpha.actions"),
 })
 require("gleb.cmp")
 require("gleb.lsp")

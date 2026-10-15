@@ -1,6 +1,7 @@
 -- Applies catalog shortcuts and remembers ownership so reloads can replace them safely.
 
 local Context = require("gleb.actions.context")
+local Registry = require("gleb.actions.registry")
 
 ---@class gleb.AppliedBinding
 ---@field mode string
@@ -27,12 +28,6 @@ local function modes(action)
 end
 
 ---@param action gleb.Action
----@return string
-local function description(action)
-	return action.category .. ": " .. action.title
-end
-
----@param action gleb.Action
 ---@return string|function rhs
 ---@return boolean remap
 local function rhs(action)
@@ -51,7 +46,12 @@ end
 ---@param buf? integer
 local function set_mapping(mode, lhs, action, buf)
 	local target, remap = rhs(action)
-	vim.keymap.set(mode, lhs, target, { buffer = buf, desc = description(action), remap = remap, silent = true })
+	vim.keymap.set(
+		mode,
+		lhs,
+		target,
+		{ buffer = buf, desc = Registry.description(action), remap = remap, silent = true }
+	)
 end
 
 ---@param action gleb.Action

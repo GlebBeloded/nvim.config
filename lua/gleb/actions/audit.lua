@@ -1,4 +1,7 @@
--- Ownership audit: every pressable global mapping is assigned to a registered action or is Neovim grammar.
+-- Ownership audit: every pressable mapping is assigned to a registered action, is Neovim grammar, or is a
+-- plugin-native window key that the plugin offers no way to reassign.
+
+local Registry = require("gleb.actions.registry")
 
 local M = {}
 
@@ -12,6 +15,18 @@ local GRAMMAR = {
 	s = { "<Tab>", "<S-Tab>" },
 	i = { "<C-U>", "<C-W>", "<Tab>", "<S-Tab>" },
 }
+
+-- Hardcoded plugin-window keys by filetype: Mason navigation, codediff mouse selection, 99's `q` and `<CR>`.
+local NATIVE = {
+	mason = { n = { "<Esc>", "1", "2", "3", "4", "5", "q" } },
+	["codediff-explorer"] = { n = { "<2-LeftMouse>" } },
+	["codediff-history"] = { n = { "<2-LeftMouse>" } },
+	["99"] = { n = { "q", "<CR>" } },
+	["99prompt"] = { n = { "q", "<CR>" } },
+}
+
+-- nvim-autopairs marks its insert-mode pair mappings with these descriptions.
+local AUTOPAIRS = { ["autopairs map key"] = true, ["autopairs delete"] = true, ["autopairs fastwrap"] = true }
 
 ---@param keys table<string, true>
 ---@param lhs_list string[]
@@ -32,27 +47,44 @@ end
 
 ---@param catalog gleb.ActionCatalog
 ---@param shortcuts gleb.ShortcutMap
----@return table<string, table<string, true>> keys allowed per mode
-local function allowed_keys(catalog, shortcuts)
-	local allowed = {}
+---@param include fun(action: gleb.Action): boolean
+---@return table<string, table<string, true>> keys assigned per mode to the included actions
+local function assigned_keys(catalog, shortcuts, include)
+	local keys = {}
 	for _, mode in ipairs(MODES) do
-		allowed[mode] = {}
-		add_keys(allowed[mode], GRAMMAR[mode] or {})
+		keys[mode] = {}
 	end
 	for id, lhs_list in pairs(shortcuts) do
-		for _, mode in ipairs(action_modes(catalog:get(id))) do
-			if allowed[mode] then
-				add_keys(allowed[mode], lhs_list)
+		local action = catalog:get(id)
+		for _, mode in ipairs(action and include(action) and action_modes(action) or {}) do
+			if keys[mode] then
+				add_keys(keys[mode], lhs_list)
 			end
 		end
 	end
-	return allowed
+	return keys
+end
+
+---@return boolean
+local function any_action()
+	return true
 end
 
 ---@param action gleb.Action
----@return string
-local function description(action)
-	return action.category .. ": " .. action.title
+---@return boolean
+local function is_plugin_action(action)
+	return action.plugin ~= nil
+end
+
+---@param catalog gleb.ActionCatalog
+---@param shortcuts gleb.ShortcutMap
+---@return table<string, table<string, true>> keys allowed per mode
+local function allowed_keys(catalog, shortcuts)
+	local allowed = assigned_keys(catalog, shortcuts, any_action)
+	for _, mode in ipairs(MODES) do
+		add_keys(allowed[mode], GRAMMAR[mode] or {})
+	end
+	return allowed
 end
 
 ---@param catalog gleb.ActionCatalog
@@ -60,7 +92,7 @@ end
 local function actions_by_description(catalog)
 	local descriptions = {}
 	for _, action in ipairs(catalog.actions) do
-		local desc = description(action)
+		local desc = Registry.description(action)
 		descriptions[desc] = descriptions[desc] or {}
 		table.insert(descriptions[desc], action)
 	end
@@ -91,12 +123,80 @@ local function is_pressable(lhs)
 	return not vim.startswith(lhs, "<Plug>") and not lhs:find("<SNR>", 1, true)
 end
 
+--- lazy.nvim's hardcoded view keys; its close key belongs to the `lazy.close` action.
+---@return table<string, string[]>
+local function lazy_view_keys()
+	local view = require("lazy.view.config")
+	local keys = { n = { "gx" }, x = {} }
+	for name, lhs in pairs(view.keys) do
+		if name ~= "close" then
+			table.insert(keys.n, lhs)
+		end
+	end
+	for _, command in pairs(view.commands) do
+		vim.list_extend(keys.n, { command.key })
+		vim.list_extend(keys.n, { command.key_plugin })
+		vim.list_extend(keys.x, { command.key_plugin })
+	end
+	return keys
+end
+
+---@param filetype string
+---@param mode string
+---@return table<string, true>
+local function native_keys(filetype, mode)
+	local by_mode = filetype == "lazy" and lazy_view_keys() or NATIVE[filetype] or {}
+	local keys = {}
+	add_keys(keys, by_mode[mode] or {})
+	return keys
+end
+
+--- Neovim's runtime files (ftplugins such as Go's section motions) define buffer-local grammar.
+---@param sid? integer
+---@return boolean
+local function from_runtime(sid)
+	if not sid or sid <= 0 then
+		return false
+	end
+	local script = vim.fn.getscriptinfo({ sid = sid })[1]
+	return script ~= nil and vim.startswith(vim.fs.normalize(script.name), vim.fs.normalize(vim.env.VIMRUNTIME) .. "/")
+end
+
+---@class gleb.AuditIndex
+---@field shortcuts gleb.ShortcutMap
+---@field descriptions table<string, gleb.Action[]>
+---@field plugin_keys table<string, table<string, true>>
+
+---@param index gleb.AuditIndex
+---@param buf integer
+---@param mode string
+---@param mapping vim.api.keyset.get_keymap
+---@return boolean
+local function is_owned_buffer_mapping(index, buf, mode, mapping)
+	local actions = index.descriptions[mapping.desc]
+	if actions then
+		return vim.iter(actions):any(function(action)
+			return owns_buffer_mapping(action, index.shortcuts, mode, mapping.lhs)
+		end)
+	end
+	local key = vim.keycode(mapping.lhs)
+	return index.plugin_keys[mode][key] == true
+		or (mode == "i" and AUTOPAIRS[mapping.desc] == true)
+		or from_runtime(mapping.sid)
+		or native_keys(vim.bo[buf].filetype, mode)[key] == true
+end
+
 ---@param catalog gleb.ActionCatalog
 ---@param shortcuts gleb.ShortcutMap
----@return string[] "<mode> <lhs>" of each global mapping no action owns, sorted
+---@return string[] "<mode> <lhs>" of each global and "<filetype> <mode> <lhs>" of each buffer mapping no action owns, sorted
 function M.run(catalog, shortcuts)
 	local allowed = allowed_keys(catalog, shortcuts)
-	local descriptions = actions_by_description(catalog)
+	---@type gleb.AuditIndex
+	local index = {
+		shortcuts = shortcuts,
+		descriptions = actions_by_description(catalog),
+		plugin_keys = assigned_keys(catalog, shortcuts, is_plugin_action),
+	}
 	local unowned = {}
 	for _, mode in ipairs(MODES) do
 		for _, mapping in ipairs(vim.api.nvim_get_keymap(mode)) do
@@ -109,13 +209,7 @@ function M.run(catalog, shortcuts)
 		if vim.api.nvim_buf_is_loaded(buf) then
 			for _, mode in ipairs(MODES) do
 				for _, mapping in ipairs(vim.api.nvim_buf_get_keymap(buf, mode)) do
-					local actions = descriptions[mapping.desc]
-					if
-						actions
-						and not vim.iter(actions):any(function(action)
-							return owns_buffer_mapping(action, shortcuts, mode, mapping.lhs)
-						end)
-					then
+					if is_pressable(mapping.lhs) and not is_owned_buffer_mapping(index, buf, mode, mapping) then
 						table.insert(unowned, vim.bo[buf].filetype .. " " .. mode .. " " .. mapping.lhs)
 					end
 				end

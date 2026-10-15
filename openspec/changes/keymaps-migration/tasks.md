@@ -29,6 +29,11 @@ Scenarios: `actions: Feature actions contain no shortcut keys`, `actions: Every 
 - How should Diffview's retained conflict choices survive disabled defaults? Choose option 1: register `diffview.choose_ours`, `diffview.choose_theirs`, `diffview.choose_base`, and `diffview.choose_all` on their current `<leader>c*` keys and narrowly exempt spec-retained plugin-window defaults from rule 3.8, because this preserves both behavior and registry ownership without inventing shortcuts.
 - The plugin-window audit checks every pressable buffer mapping and uses the spec's exact native-plugin allowlist for unavoidable exceptions.
 - Neo-tree delete and cut use native command metadata so its renderer preserves visual/select mappings while the registry still owns their lhs values.
+- Counted mappings: the action context captures `v:count` and the comment, selection-shift and single-fold actions prefix it to their native keys (`gcc`/`gc`, `>gv`/`<gv`, `zo`/`zc`), as the pre-migration remaps passed the typed count to their rhs.
+- The count regression's `normal! \<Esc>` left Visual mode active, so it now presses `<Esc>`; its comment expectation is native `3gcc` (one block at the minimum indent, as the old `<A-/>` → `gcc` remap did) and its cursor sits inside both folds, since `2zo` only reaches folds containing the cursor line.
+- `Registry.description` drops a title's leading category (`99` + `99 Vibe` → `99: Vibe`), so `ai.vibe` keeps its `99 Vibe` palette title and its pinned `99: Vibe` mapping description; adapters, the audit and the shortcut chain test share it.
+- A buffer mapping without an action description is owned when a plugin action is assigned its lhs in that mode (plugins describe their own maps), when a `$VIMRUNTIME` script defined it (ftplugin grammar such as Go's section motions), or when it is on the native allowlist; lazy.nvim's view keys are read from `lazy.view.config` so lazy updates keep the allowlist exact.
+- The stricter buffer audit exposed alpha's config-defined dashboard keys: they are `alpha.*` plugin actions whose keys an alpha adapter hands to the buttons and to alpha's `opts.keymap` press keys at render, so they still work before `VeryLazy`.
 
 ## 2. Remove unowned built-in and surround defaults
 Scenarios: `actions: Every configured mapping is action-owned`, `keymaps: Unadopted built-in mappings are removed`, `keymaps: Adopted built-in mappings are registry actions`, `keymaps: Surround mappings use registered actions`, `keymaps: [d jumps to previous diagnostic`
@@ -89,11 +94,3 @@ Scenarios: `git: Diffview conflict choices come from git actions`, `git: <leader
 - [x] 11.1 Add the ownership scenario to `tests/integration/git/test_diffview.lua`; open a real populated conflict view, query the four configured lhs values, run `make test FILE=tests/integration/git/test_diffview.lua CASE="git: Diffview conflict choices come from git actions"`, and see it fail
 - [x] 11.2 Register the four view-scoped `conflict_choose` actions, assign their current `<leader>c*` keys in `settings/keymap.json`, feed them through the Diffview adapter with defaults disabled, and narrow architecture rule 3.8 to exempt spec-retained plugin-window defaults
 - [x] 11.3 Run `make test FILE=tests/integration/git/test_diffview.lua` and see all ownership and conflict-choice scenarios pass
-
-## Stuck
-
-Count preservation and full plugin-window ownership remain red after two new production attempts; production edits were reverted while the regressions stay red.
-
-- Probe output: Mason installs nil-description normal maps for `<Esc>`, `1`-`5`, `i`, and `q`; lazy.nvim installs its native normal/visual view maps (including nil-description `gb`/`gx`); 99 installs nil-description normal `q`/`<CR>`; and nvim-autopairs marks its insert maps with `autopairs ...` descriptions. Native `:normal 3gcc` comments all three lines as one range, producing `{ "--     a", "-- b", "-- c" }`, not the regression's per-line indentation.
-- Attempt 1: prefixed counts for visual indent and folds, called `vim._comment.toggle_lines()` once per counted line using ambient `vim.v.count1`, audited every pressable buffer map with per-plugin native exceptions, and restored the `99 Vibe` title. AI passed; count reached the comment assertion but still changed only line 1, while ownership caught the injected `z` and then reported Neovim's Go ftplugin section motions.
-- Attempt 2: captured `vim.v.count1` in `ActionContext`, consumed that captured count in indent/comment/fold actions, and allowlisted the Go ftplugin grammar. Count still produced `{ "    -- a", "b", "c" }`; ownership advanced to duplicate native Differ reports for `]c`/`]f` in `differdiff` and `differpanel`. AI still passed.

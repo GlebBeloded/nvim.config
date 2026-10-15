@@ -1,5 +1,7 @@
 -- Core editor actions keep behavior separate from user-assigned shortcuts.
 
+local Context = require("gleb.actions.context")
+
 ---@param keys string
 local function normal(keys)
 	vim.cmd.normal({ args = { vim.keycode(keys) }, bang = true })
@@ -10,6 +12,15 @@ end
 local function command(ex_command)
 	return function()
 		vim.cmd(ex_command)
+	end
+end
+
+--- Shift the selection `count` times and reselect it.
+---@param keys "<"|">"
+---@return fun(ctx: gleb.ActionContext)
+local function shift_selection(keys)
+	return function(ctx)
+		normal(Context.counted(ctx, keys .. "gv"))
 	end
 end
 
@@ -152,18 +163,14 @@ local actions = {
 		title = "Outdent selection",
 		category = "Edit",
 		modes = { "x" },
-		run = function()
-			normal("<gv")
-		end,
+		run = shift_selection("<"),
 	},
 	{
 		id = "edit.indent_selection",
 		title = "Indent selection",
 		category = "Edit",
 		modes = { "x" },
-		run = function()
-			normal(">gv")
-		end,
+		run = shift_selection(">"),
 	},
 	{
 		id = "edit.paste_without_yanking",

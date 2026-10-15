@@ -5,6 +5,7 @@
 ---@field buf integer
 ---@field cursor integer[]
 ---@field mode string
+---@field count integer Count typed before the mapping (`v:count`), 0 when none
 ---@field selection? gleb.ActionSelection
 
 ---@class gleb.ActionSelection
@@ -45,6 +46,15 @@ Catalog.__index = Catalog
 ---@field complete_commands? fun(): string[]
 
 local M = {}
+
+--- Mapping description `<Category>: <Title>`; a title that starts with its category does not repeat it.
+---@param action gleb.Action
+---@return string
+function M.description(action)
+	local prefix = action.category .. " "
+	local title = vim.startswith(action.title, prefix) and action.title:sub(#prefix + 1) or action.title
+	return action.category .. ": " .. title
+end
 
 ---@param id string
 local function validate_id(id)

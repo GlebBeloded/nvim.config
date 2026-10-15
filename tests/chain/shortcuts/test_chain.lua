@@ -153,7 +153,7 @@ T["shortcuts: Neovim mappings match the table"] = function()
 					[[(function(lhs, id)
 					local action = require("gleb.actions").state.applicator.catalog:get(id)
 					local active = vim.fn.maparg(lhs, "n", false, true)
-					return action ~= nil and active.desc == action.category .. ": " .. action.title
+					return action ~= nil and active.desc == require("gleb.actions.registry").description(action)
 						and type(active.callback) == "function"
 				end)(...)]],
 					{ row.receives, row.mapping }

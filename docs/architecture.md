@@ -208,7 +208,7 @@ relative to `lua/gleb/`.
 
 - 3.1 Shortcut keys live only in `settings/keymap.json`; each feature exposes configurable behavior from its `actions.lua`.
 - 3.2 Use `vim.keymap.set`; no `nvim_set_keymap`, no Vimscript `map`.
-- 3.3 Mapping descriptions are derived from action metadata as `"<Category>: <Title>"`, so `:map` and pickers name them consistently.
+- 3.3 Mapping descriptions are derived from action metadata as `"<Category>: <Title>"` (a title that starts with its category does not repeat it), so `:map` and pickers name them consistently.
 - 3.4 Options are `{ silent = true, desc = … }`; `noremap` is already the default; `remap = true` only when the rhs is a mapping.
 - 3.5 The rhs is a function reference, a named local function or `<Cmd>…<CR>`; no `:…<CR>` strings, no long anonymous functions.
 - 3.6 One mode per behaviour: `x` for visual maps, not both `v` and `x`.

@@ -584,17 +584,19 @@ T["keymaps: Counts preserve mapped operations"] = function()
 	child.type_keys("gg", "V", "2>")
 	eq(get_lines()[1], "    a")
 
-	child.cmd("normal! \\<Esc>")
+	child.type_keys("<Esc>")
 	child.bo.commentstring = "-- %s"
 	child.type_keys("gg", "3<A-/>")
-	eq(get_lines(), { "    -- a", "-- b", "-- c" })
+	-- `3gcc`: one block at the lines' minimum indent, as the pre-migration `<A-/>` → `gcc` remap did
+	eq(get_lines(), { "--     a", "-- b", "-- c" })
 
 	set_lines({ "outer", "inner", "body", "body", "inner end", "outer end" })
 	child.lua([[
 		vim.wo.foldmethod = "manual"
 		vim.cmd("2,5fold")
 		vim.cmd("1,6fold")
-		vim.api.nvim_win_set_cursor(0, { 1, 0 })
+		-- inside both folds: a count reaches only folds that contain the cursor line
+		vim.api.nvim_win_set_cursor(0, { 3, 0 })
 	]])
 	child.type_keys("2<M-=>")
 	eq({ child.fn.foldclosed(1), child.fn.foldclosed(2) }, { -1, -1 })

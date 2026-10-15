@@ -24,8 +24,17 @@ function M.capture()
 		buf = vim.api.nvim_get_current_buf(),
 		cursor = vim.api.nvim_win_get_cursor(0),
 		mode = mode,
+		count = vim.v.count,
 		selection = VISUAL_MODES[mode] and capture_selection() or nil,
 	}
+end
+
+--- Prefix native `keys` with the invocation's count, as a mapping's rhs receives the typed count.
+---@param ctx gleb.ActionContext
+---@param keys string
+---@return string
+function M.counted(ctx, keys)
+	return (ctx.count > 0 and tostring(ctx.count) or "") .. keys
 end
 
 ---@param ctx gleb.ActionContext

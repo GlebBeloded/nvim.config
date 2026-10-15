@@ -1,11 +1,15 @@
 -- Fold actions expose ufo and built-in fold operations without assigning keys.
 
-local function open_one()
-	vim.cmd.normal({ args = { "zo" }, bang = true })
+local Context = require("gleb.actions.context")
+
+---@param ctx gleb.ActionContext
+local function open_one(ctx)
+	vim.cmd.normal({ args = { Context.counted(ctx, "zo") }, bang = true })
 end
 
-local function close_one()
-	vim.cmd.normal({ args = { "zc" }, bang = true })
+---@param ctx gleb.ActionContext
+local function close_one(ctx)
+	vim.cmd.normal({ args = { Context.counted(ctx, "zc") }, bang = true })
 end
 
 ---@type gleb.Action[]

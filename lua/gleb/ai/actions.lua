@@ -12,7 +12,7 @@ local actions = {
 	},
 	{
 		id = "ai.vibe",
-		title = "Vibe",
+		title = "99 Vibe",
 		category = "99",
 		modes = { "n" },
 		run = prompts.vibe_prompt,

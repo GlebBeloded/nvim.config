@@ -1,4 +1,5 @@
 local Context = require("gleb.actions.context")
+local Registry = require("gleb.actions.registry")
 
 local AREAS = { "file_tree", "neo_tree" }
 
@@ -38,7 +39,7 @@ local function command(action)
 	local native_command = action.commands and action.commands[1]
 	return {
 		command = native_command or Context.invoke(action),
-		desc = action.category .. ": " .. action.title,
+		desc = Registry.description(action),
 	}
 end
 

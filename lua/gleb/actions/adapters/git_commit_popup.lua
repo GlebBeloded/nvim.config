@@ -1,4 +1,5 @@
 local Context = require("gleb.actions.context")
+local Registry = require("gleb.actions.registry")
 
 local M = {}
 
@@ -13,7 +14,7 @@ function M.mappings(catalog, shortcuts)
 			for _, lhs in ipairs(lhs_list) do
 				mappings[lhs] = {
 					Context.invoke(action),
-					desc = action.category .. ": " .. action.title,
+					desc = Registry.description(action),
 				}
 			end
 		end

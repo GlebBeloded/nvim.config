@@ -1,4 +1,5 @@
 local Context = require("gleb.actions.context")
+local Registry = require("gleb.actions.registry")
 
 local M = {}
 
@@ -16,7 +17,7 @@ function M.mappings(catalog, shortcuts, scope)
 					action.modes or "n",
 					lhs,
 					Context.invoke(action),
-					{ desc = action.category .. ": " .. action.title },
+					{ desc = Registry.description(action) },
 				})
 			end
 		end
