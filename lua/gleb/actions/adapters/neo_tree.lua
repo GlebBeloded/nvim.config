@@ -35,7 +35,11 @@ end
 ---@param action gleb.Action
 ---@return table
 local function command(action)
-	return { Context.invoke(action), desc = action.category .. ": " .. action.title }
+	local native_command = action.commands and action.commands[1]
+	return {
+		command = native_command or Context.invoke(action),
+		desc = action.category .. ": " .. action.title,
+	}
 end
 
 --- lhs → callback for tree actions, limited to one neo-tree source window when `scope` is given.

@@ -28,6 +28,8 @@ Scenarios: `actions: Feature actions contain no shortcut keys`, `actions: Every 
 - The plugin-default case now queries each plugin's own buffer with an unconfigured default key: it read whichever window was current, and `<CR>` (neo-tree), `o` (dap-ui) and `<C-Space>` (blink) are configured keys; lazy.nvim's headless check is stubbed so its window opens.
 - The unit copy of `git: Enter on placeholder does nothing` became `git: Popup confirm action ignores the placeholder` (integration keeps the original case).
 - How should Diffview's retained conflict choices survive disabled defaults? Choose option 1: register `diffview.choose_ours`, `diffview.choose_theirs`, `diffview.choose_base`, and `diffview.choose_all` on their current `<leader>c*` keys and narrowly exempt spec-retained plugin-window defaults from rule 3.8, because this preserves both behavior and registry ownership without inventing shortcuts.
+- The plugin-window audit identifies configured mappings by registry-derived descriptions so native UI and autopairs maps are not mistaken for migrated shortcuts.
+- Neo-tree delete and cut use native command metadata so its renderer preserves visual/select mappings while the registry still owns their lhs values.
 
 ## 2. Remove unowned built-in and surround defaults
 Scenarios: `actions: Every configured mapping is action-owned`, `keymaps: Unadopted built-in mappings are removed`, `keymaps: Adopted built-in mappings are registry actions`, `keymaps: Surround mappings use registered actions`, `keymaps: [d jumps to previous diagnostic`
@@ -88,11 +90,3 @@ Scenarios: `git: Diffview conflict choices come from git actions`, `git: <leader
 - [x] 11.1 Add the ownership scenario to `tests/integration/git/test_diffview.lua`; open a real populated conflict view, query the four configured lhs values, run `make test FILE=tests/integration/git/test_diffview.lua CASE="git: Diffview conflict choices come from git actions"`, and see it fail
 - [x] 11.2 Register the four view-scoped `conflict_choose` actions, assign their current `<leader>c*` keys in `settings/keymap.json`, feed them through the Diffview adapter with defaults disabled, and narrow architecture rule 3.8 to exempt spec-retained plugin-window defaults
 - [x] 11.3 Run `make test FILE=tests/integration/git/test_diffview.lua` and see all ownership and conflict-choice scenarios pass
-
-## Stuck
-
-Plugin-window ownership remains red after two production attempts.
-
-- Probe: a real populated `99` prompt had registry-owned `<S-CR>`, hardcoded normal `q`/`<CR>`, and insert-mode autopairs maps (`"`, `'`, brackets, braces, backtick, `<BS>`, `<M-e>`).
-- Attempt 1: audited loaded plugin filetypes against plugin/filetype actions and explicit 99, lazy.nvim, and autopairs exceptions. `actions: Plugin-window mappings are action-owned` failed with `neo-tree s d` and `neo-tree s x`; neo-tree installs its native visual commands in both `x` and `s` modes.
-- Attempt 2: allowed native neo-tree commands in both visual/select modes. The same case then failed with `codediff-explorer n <2-LeftMouse>`, a native mouse mapping not represented by the shortcut registry.

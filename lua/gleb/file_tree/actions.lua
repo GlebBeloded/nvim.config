@@ -228,6 +228,18 @@ local function neo_tree_action(id, title, scope, run)
 	}
 end
 
+---@param id string
+---@param title string
+---@param scope "common"|"filesystem"|"git_status"
+---@param command string
+---@return gleb.Action
+local function visual_tree_action(id, title, scope, command)
+	local action = neo_tree_action(id, title, scope, tree_command(command))
+	action.commands = { command }
+	action.modes = { "n", "x", "s" }
+	return action
+end
+
 ---@type gleb.Action[]
 local actions = {
 	{
@@ -260,10 +272,10 @@ local actions = {
 	neo_tree_action("open_split", "Open split", "common", tree_command("open_split")),
 	neo_tree_action("open_tab", "Open tab", "common", tree_command("open_tabnew")),
 	neo_tree_action("add", "Add", "common", tree_command("add", { show_path = "relative" })),
-	neo_tree_action("delete", "Delete", "common", tree_command("delete")),
+	visual_tree_action("delete", "Delete", "common", "delete"),
 	neo_tree_action("rename", "Rename", "common", tree_command("rename")),
 	neo_tree_action("copy", "Copy", "common", tree_command("copy")),
-	neo_tree_action("cut", "Cut", "common", tree_command("cut_to_clipboard")),
+	visual_tree_action("cut", "Cut", "common", "cut_to_clipboard"),
 	neo_tree_action("paste", "Paste", "common", tree_command("paste_from_clipboard")),
 	neo_tree_action("refresh", "Refresh", "common", tree_command("refresh")),
 	neo_tree_action("close", "Close", "common", function(ctx)
