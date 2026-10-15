@@ -474,6 +474,42 @@ T["loop: Review lists every must-fix in one pass"] = function()
 	eq(fix:gsub("%s+", " "):find(shared, 1, true) ~= nil, true)
 end
 
+T["loop: Each review sees the run's earlier reviews"] = function()
+	local repo = branch_repo({})
+	local artifacts = H.tempdir(child)
+	local base = {
+		ARTIFACTS_DIR = artifacts,
+		INPUTS_SPEC_OK = "true",
+		INPUTS_TASKS_DONE = "true",
+		INPUTS_CRITICAL = "0",
+		INPUTS_ATTEMPT = "1",
+	}
+	local passes = {
+		{ INPUTS_GREEN = "true", INPUTS_APPROVE = "false", INPUTS_REVIEW_FINDINGS = "[must-fix] a.lua:1 first" },
+		{ INPUTS_GREEN = "false", INPUTS_FAILURES = "FAIL in t.lua" },
+		{ INPUTS_GREEN = "true", INPUTS_APPROVE = "true", INPUTS_REVIEW_FINDINGS = "[minor] a.lua:2 second" },
+	}
+	for _, env in ipairs(passes) do
+		local result = run("verdict.py", repo, vim.tbl_extend("force", base, env))
+		eq(result.code, 0, { fail_reason = result.stderr })
+	end
+	local reviews = table.concat(vim.fn.readfile(vim.fs.joinpath(artifacts, "reviews.md")), "\n")
+	eq(
+		reviews,
+		"## Pass 1 review (rejected)\n\n[must-fix] a.lua:1 first\n\n## Pass 3 review (approved)\n\n[minor] a.lua:2 second\n"
+	)
+	local review = table.concat(vim.fn.readfile(vim.fs.joinpath(H.root, ".archon/commands/review.md")), " ")
+	review = review:gsub("%s+", " ")
+	for _, needle in ipairs({
+		"`$ARTIFACTS_DIR/reviews.md`",
+		"Do not re-ask for a fix an earlier pass tried and reverted",
+		"agent decisions (check these first)",
+		"narrows, excludes or contradicts a delta SHALL, is `[must-fix]` (never `[minor]`)",
+	}) do
+		eq(review:find(needle, 1, true) ~= nil, true, { fail_reason = needle })
+	end
+end
+
 T["loop: Fix prompt shortens an overlong delta requirement"] = function()
 	local fix = table.concat(vim.fn.readfile(vim.fs.joinpath(H.root, ".archon/commands/fix.md")), "\n")
 	eq(fix:gsub("%s+", " "):find("Requirement text is very long", 1, true) ~= nil, true)

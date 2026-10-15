@@ -622,7 +622,7 @@ work-queue SHALL skip the queue-spec step when the adopted change's tasks.md has
 
 #### Scenario: Implement and fix self-check like the gate before handing back
 - **WHEN** the Makefile and `.archon/commands/fix.md` and `implement.md` are read
-- **THEN** `make self-check CHANGE=<id>` runs the hard rules (`integrity.py`, `pinned.py --check`), lint, types, strict validation of the change and `spec_trial.py` (no tests, no e2e), both prompts run it before they commit (committing anyway with a `loop:` note when only base or loop tooling is red), and both fix an ordinary bug instead of writing `## Stuck` while an attempt is left
+- **THEN** `make self-check CHANGE=<id>` runs the hard rules (`integrity.py`, `pinned.py --check`), lint, types, trace, strict validation of the change and `spec_trial.py` (no tests, no e2e), both prompts run it before they commit (committing anyway with a `loop:` note when only base or loop tooling is red), and both fix an ordinary bug instead of writing `## Stuck` while an attempt is left
 
 #### Scenario: Fix keeps the red regression test and review blocks scope creep
 - **WHEN** `.archon/commands/fix.md` and `review.md` are read
@@ -631,6 +631,10 @@ work-queue SHALL skip the queue-spec step when the adopted change's tasks.md has
 #### Scenario: Review lists every must-fix in one pass
 - **WHEN** `.archon/commands/review.md` and `fix.md` are read
 - **THEN** review checks every unit implementing each delta requirement and scenario, not a sample, lists all must-fix findings at once and says why an earlier pass missed one in code it already reviewed; fix applies a finding about a shared contract to every unit, each against its own native API
+
+#### Scenario: Each review sees the run's earlier reviews
+- **WHEN** verdict.py runs after two reviewed passes (one rejected, one approved) and after a gate-red pass with no review, and `.archon/commands/review.md` is read
+- **THEN** `$ARTIFACTS_DIR/reviews.md` holds both reviews' findings in pass order under their pass number and outcome, nothing for the unreviewed pass, and review reads it, checks agent decisions first (one narrowing a delta SHALL is `[must-fix]`) and never re-asks for a reverted fix
 
 #### Scenario: Adopted change with every task ticked skips the spec step
 - **WHEN** `tasks.py --adopted-state` runs for change `c` with all tasks ticked (with a design.md holding a render section, with a technical design.md, without one, and with a proposal holding a `## Rejected run` section), with one unticked, with no tasks.md and with no change folder

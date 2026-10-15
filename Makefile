@@ -174,13 +174,13 @@ loop-validate:
 	@$(ARCHON) validate workflows
 
 # make self-check CHANGE=<id>: the gate's cheap checks, for implement/fix before they hand back (no tests, no e2e):
-# the hard rules gate.py checks first (integrity.py, pinned.py --check), lint, types, strict validate of the
+# the hard rules gate.py checks first (integrity.py, pinned.py --check), lint, types, trace (case names), strict validate of the
 # change, then of the main specs after a trial archive (gate.py)
 self-check:
 	@test -n "$(CHANGE)" || { echo 'usage: make self-check CHANGE=<change id>' >&2; exit 2; }
 	@python3 .archon/scripts/integrity.py
 	@python3 .archon/scripts/pinned.py --check "$(CHANGE)"
-	@$(MAKE) -s lint types
+	@$(MAKE) -s lint types trace
 	@openspec validate "$(CHANGE)" --strict --no-interactive
 	@python3 .archon/scripts/spec_trial.py "$(CHANGE)"
 
