@@ -94,3 +94,15 @@ Scenarios: `git: Diffview conflict choices come from git actions`, `git: <leader
 - [x] 11.1 Add the ownership scenario to `tests/integration/git/test_diffview.lua`; open a real populated conflict view, query the four configured lhs values, run `make test FILE=tests/integration/git/test_diffview.lua CASE="git: Diffview conflict choices come from git actions"`, and see it fail
 - [x] 11.2 Register the four view-scoped `conflict_choose` actions, assign their current `<leader>c*` keys in `settings/keymap.json`, feed them through the Diffview adapter with defaults disabled, and narrow architecture rule 3.8 to exempt spec-retained plugin-window defaults
 - [x] 11.3 Run `make test FILE=tests/integration/git/test_diffview.lua` and see all ownership and conflict-choice scenarios pass
+
+## 12. Restore Diffview file-panel selection on j and k
+Scenarios: `git: j selects next entry from file panel`, `git: k selects previous entry from file panel`
+- [x] 12.1 Write both scenarios in `tests/integration/git/test_git.lua`; open the real picker with changed `a.txt` and `b.txt`, press `j` and `k` in its populated file panel, run `make test FILE=tests/integration/git/test_git.lua CASE="git: j selects next entry from file panel"` and see it fail
+- [x] 12.2 Assign `j`/`k` to the existing select-next/select-previous actions in `settings/keymap.json` and remove the cursor-only file-panel actions
+- [x] 12.3 Run `make test FILE=tests/integration/git/test_git.lua` and see both scenarios pass
+
+## 13. Keep native o and l behavior in git-status trees
+Scenarios: `file-tree: o and l keep native open in git status tree`
+- [ ] 13.1 Write the scenario in `tests/integration/file-tree/test_diff_preview.lua`; open a real populated `git_status` tree with an active preview, press `o` and `l` in fresh runs, run `make test FILE=tests/integration/file-tree/test_diff_preview.lua CASE="file-tree: o and l keep native open in git status tree"` and see it fail
+- [ ] 13.2 Keep `neo_tree.open` as the native common action for `<CR>`/`o`/`l`, add a `git_status`-scoped action that overrides only `<CR>` with `git_open_file`, and merge source-scoped mappings over common mappings
+- [ ] 13.3 Run `make test FILE=tests/integration/file-tree/test_diff_preview.lua CASE="file-tree: o and l keep native open in git status tree"` and see it pass

@@ -34,6 +34,25 @@ The AI commit popup SHALL install its buffer-local `<CR>` and `q` mappings from 
 
 ## MODIFIED Requirements
 
+### Requirement: Diffview file panel mappings
+In the diffview file panel, normal-mode `j`/`<Tab>` SHALL select and display the next entry, `k`/`<S-Tab>` the previous entry, `<CR>`/`o`/`l` the current entry, `h` close a fold, `s` toggle staging, `S` stage all, `U` unstage all, `R` refresh, and `q` run `:DiffviewClose`.
+
+#### Scenario: j selects next entry from file panel
+- **WHEN** `:DiffviewOpen` shows changed files `a.txt` and `b.txt`, focus is on `a.txt` in the file panel, and `j` is pressed in normal mode
+- **THEN** `b.txt` becomes the selected entry and its diff is displayed
+
+#### Scenario: k selects previous entry from file panel
+- **WHEN** `:DiffviewOpen` shows changed files `a.txt` and `b.txt`, focus is on `b.txt` in the file panel, and `k` is pressed in normal mode
+- **THEN** `a.txt` becomes the selected entry and its diff is displayed
+
+#### Scenario: q closes diffview from file panel
+- **WHEN** `:DiffviewOpen` is open, focus is in the file panel, and `q` is pressed in normal mode
+- **THEN** the diffview tab is closed and the tab page count returns to its previous value
+
+#### Scenario: s stages entry from file panel
+- **WHEN** the cursor is on an unstaged file entry in the diffview file panel and `s` is pressed in normal mode
+- **THEN** the file appears in `git diff --cached --name-only`
+
 ### Requirement: vscode-diff configuration
 When vscode-diff loads, the config SHALL call its setup with the explorer left, 35 columns wide, in tree view mode, with every plugin default diff keymap disabled so registered actions are the sole configured mappings.
 

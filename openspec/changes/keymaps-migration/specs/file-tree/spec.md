@@ -16,6 +16,25 @@ Neo-tree SHALL disable its default mappings and build common, filesystem, and gi
 
 ## MODIFIED Requirements
 
+### Requirement: Common tree open mappings
+In normal mode in any neo-tree window the config SHALL map `<CR>`, `o`, and `l` to native open, `h`/`<BS>` to close node, `v`/`s` to vertical/horizontal split, `t` to new tab, `q` to close, `?` to help, and `<`/`>` to switch source. In `git_status`, only `<CR>` SHALL override native open to close the preview, reveal the file in `filesystem`, move right, and edit it.
+
+#### Scenario: v opens file in vertical split
+- **WHEN** the cursor is on a file node in the `filesystem` tree and `v` is pressed in normal mode
+- **THEN** the file is shown in a new window that is a vertical split of the previous non-tree window
+
+#### Scenario: t opens file in new tab
+- **WHEN** the cursor is on a file node in the `filesystem` tree and `t` is pressed in normal mode
+- **THEN** the tab page count increases by one and the current buffer of the new tab is that file
+
+#### Scenario: Next source switches tree source
+- **WHEN** `>` is pressed in normal mode in the `filesystem` tree
+- **THEN** the tree window shows the `git_status` source
+
+#### Scenario: o and l keep native open in git status tree
+- **WHEN** the cursor is on a file node in the `git_status` tree and `o`, then in a fresh tree `l`, is pressed in normal mode
+- **THEN** each key opens the node without replacing the `git_status` tree with the `filesystem` source or explicitly closing the diff preview
+
 ### Requirement: Git status revert and key ownership
 In the `git_status` tree, normal-mode `X` SHALL ask `Are you sure you want to revert <name>?` and revert the file only when confirmed (`git_revert_file`). The tree SHALL set no buffer-local `gr` mapping, so the global `gr` applies, and `c` SHALL be the common copy action.
 

@@ -383,6 +383,31 @@ T["git: tab moves to next entry"] = function()
 	eq(child.wait(current_b, ASYNC_MS), true)
 end
 
+T["git: j selects next entry from file panel"] = function()
+	use_repo({ ["a.txt"] = "a\n", ["b.txt"] = "b\n" })
+	change({ ["a.txt"] = "a2\n", ["b.txt"] = "b2\n" })
+	open_diffview("a.txt")
+	focus_panel_entry("a.txt")
+	press_in_diffview("j")
+
+	eq(child.wait(("WindowWithFile(%q) ~= nil"):format(path("b.txt")), ASYNC_MS), true)
+	eq(child.lua_get(("WindowWithFile(%q)"):format(path("a.txt"))), vim.NIL)
+end
+
+T["git: k selects previous entry from file panel"] = function()
+	use_repo({ ["a.txt"] = "a\n", ["b.txt"] = "b\n" })
+	change({ ["a.txt"] = "a2\n", ["b.txt"] = "b2\n" })
+	open_diffview("a.txt")
+	focus_diff_window("a.txt", "<Tab>")
+	press_in_diffview("<Tab>")
+	eq(child.wait(("WindowWithFile(%q) ~= nil"):format(path("b.txt")), ASYNC_MS), true)
+	focus_panel_entry("b.txt")
+	press_in_diffview("k")
+
+	eq(child.wait(("WindowWithFile(%q) ~= nil"):format(path("a.txt")), ASYNC_MS), true)
+	eq(child.lua_get(("WindowWithFile(%q)"):format(path("b.txt"))), vim.NIL)
+end
+
 T["git: s stages entry from file panel"] = function()
 	use_repo({ ["a.txt"] = "a\n" })
 	change({ ["a.txt"] = "a2\n" })

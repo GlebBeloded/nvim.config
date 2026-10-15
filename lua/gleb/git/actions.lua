@@ -104,8 +104,6 @@ local actions = {
 	diffview_action("choose_none", "Drop conflict sides", { "view" }, function()
 		require("diffview.actions").conflict_choose("none")()
 	end),
-	diffview_action("next_entry", "Next entry", { "file_panel" }, diffview_run("next_entry")),
-	diffview_action("prev_entry", "Previous entry", { "file_panel" }, diffview_run("prev_entry")),
 	diffview_action("select_entry", "Select entry", { "file_panel" }, diffview_run("select_entry")),
 	diffview_action("close_fold", "Close fold", { "file_panel" }, diffview_run("close_fold")),
 	diffview_action("toggle_stage_entry", "Toggle stage entry", { "file_panel" }, diffview_run("toggle_stage_entry")),
