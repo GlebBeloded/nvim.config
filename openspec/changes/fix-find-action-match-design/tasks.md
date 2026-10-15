@@ -22,3 +22,10 @@ Scenarios: `find-action: Only executed shortcuts update recent actions`
 - Pass highlight and selected-metadata options from Find Action so shared picker sources retain their existing appearance.
 - Restore selection from source-match completion because MiniPick item replacement is asynchronous.
 - Observe configured keys only outside MiniPick's input loop so native callback identity and recursive `<Plug>` resolution remain unchanged.
+
+## Stuck
+
+Probe: with `lines=14` and four `<C-n>` presses, the picker cursor is on screen row 5 but `PmenuExtraSel` is drawn on rows 5 and 8; the regression fails with `Left: { 5, 8 }`, `Right: { 5 }`.
+
+- Attempt 1 used the picker window cursor row in `source.show`; it fixed the scrolled duplicate but the cursor still held the prior row during the initial render, moving the initial selected-category highlight from expected row 8.
+- Attempt 2 subtracted `matches.visible_range.from`; `MiniPick.get_picker_matches()` does not expose `visible_range`, so `source.show` failed and rendered an empty picker body.

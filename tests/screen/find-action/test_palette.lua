@@ -103,9 +103,30 @@ local function selected_screen_row()
 	return child.lua_get([[(function()
 		local pick = require("mini.pick")
 		local state = pick.get_picker_state()
-		local matches = pick.get_picker_matches()
-		return vim.fn.screenpos(state.windows.main, matches.current_ind, 1).row
+		local cursor_row = vim.api.nvim_win_get_cursor(state.windows.main)[1]
+		return vim.fn.screenpos(state.windows.main, cursor_row, 1).row
 	end)()]])
+end
+
+local function selected_category_screen_rows()
+	local selected_row = selected_screen_row()
+	local screen = child.get_screenshot()
+	local selected_category_attr = screen.attr[selected_row][72]
+	local bounds = child.lua_get([[(function()
+		local win = require("mini.pick").get_picker_state().windows.main
+		local position = vim.api.nvim_win_get_position(win)
+		return { position[1] + 1, position[2] + 1, vim.api.nvim_win_get_height(win), vim.api.nvim_win_get_width(win) }
+	end)()]])
+	local rows = {}
+	for row = bounds[1], bounds[1] + bounds[3] - 1 do
+		for col = bounds[2], bounds[2] + bounds[4] - 1 do
+			if screen.attr[row][col] == selected_category_attr then
+				table.insert(rows, row)
+				break
+			end
+		end
+	end
+	return rows
 end
 
 local function expect_assignment_box(label)
@@ -204,16 +225,15 @@ T["find-action: Wide palette matches reference screenshots"] = function()
 	H.expect_screenshot(child.get_screenshot())
 	close_palette()
 
-	child.o.lines = 20
+	child.o.lines = 14
 	open_palette()
-	for _ = 1, 25 do
+	for _ = 1, 4 do
 		child.type_keys("<C-n>")
 	end
-	expect_color_mask(
-		selected_screen_row(),
+	eq(selected_category_screen_rows(), { selected_screen_row() })
+	H.expect_screen_colors(child, selected_screen_row(), {
 		string.rep("n", 14) .. "b" .. string.rep("S", 54) .. "KS" .. string.rep("E", 13) .. "Sb" .. string.rep("n", 14),
-		{ n = "Normal", b = "FloatBorder", S = "PmenuSel", E = "PmenuExtraSel", K = { "PmenuSel", "PmenuKind" } }
-	)
+	}, { n = "Normal", b = "FloatBorder", S = "PmenuSel", E = "PmenuExtraSel", K = "PmenuKind" })
 	close_palette()
 	child.o.lines = 30
 
