@@ -120,7 +120,7 @@ nodes:
     depends_on: [tasks]
     trigger_rule: all_done
     loop_group:
-      max_iterations: 6 # verdict.py ends it: 3 attempts (blocked passes are none), or Blocked left after Claude
+      max_iterations: 10 # verdict.py ends it: 3 reviews, MAX_PASSES, or Blocked left after Claude
       fresh_context: true
       until_bash: test $verdict.output.done = true
       nodes:

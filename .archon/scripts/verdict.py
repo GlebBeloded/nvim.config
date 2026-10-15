@@ -21,7 +21,7 @@ from integrity import CASE_SEEN, CASE_SNAPSHOT, hard_rule_violations, plan_files
 from lessons import drop_overturned
 
 MAX_ATTEMPTS = 3
-MAX_PASSES = 6  # nvim-deliver build max_iterations: blocked passes are no attempts
+MAX_PASSES = 10  # nvim-deliver build max_iterations: Stuck, Blocked and infra passes fit before the 3 reviews (run 8ce36755)
 BLOCKED_PASSES = 3  # settle, unblock, then the end
 FEEDBACK_CHARS = 6000
 

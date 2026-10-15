@@ -91,7 +91,7 @@ input, output and limits). Scripts do everything that needs no judgment:
 | verdict, judge, ship, follow-up | scripts | none | JSON, `escalation.md`, merge commit |
 
 Agents run only their own test case and never `make quick` or `make check`; general instructions about web searches, extra skills and sub-agents do not apply in a step (`codex-loop.sh` also turns off Codex sub-agents, hooks, apps, the skills catalog, GUI and MCP tools, and the global `~/.codex/AGENTS.md`, and caps each tool output at 6000 tokens (`tool_output_token_limit`), and `codex_preflight.py` refuses the call when `codex --version` is outside its tested range or an MCP server or GUI plugin is still enabled; widen the range only after checking the overrides against the new Codex). A failure in loop tooling is never fixed inside a change: the step appends a `loop: …` line to `$ARTIFACTS_DIR/loop-notes.md`, which the judge lists as a note; a `## Blocked` section holding only `loop:` items blocks nothing and is listed the same way. The check/review
-group runs at most 3 attempts (a blocked pass is none; at most 6 passes); a red pass sends only its findings (`verdict.py` `feedback`, which also
+group runs at most 3 attempts (a blocked pass is none; at most 10 passes); a red pass sends only its findings (`verdict.py` `feedback`, which also
 lists hard-rule violations from `integrity.py`) to the next pass's fix step. A fix pass stays on those
 findings: verdict snapshots the change's proposal.md, `.openspec.yaml` and spec deltas, and the next gate
 lists any of them the fix edited in `fix-scope.md`, a finding for the review. Verdict also snapshots the test
