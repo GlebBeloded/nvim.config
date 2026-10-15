@@ -2,6 +2,7 @@
 count against MAX_ATTEMPTS; MAX_PASSES still bounds every pass."""
 
 import json
+import re
 import os
 import pathlib
 import subprocess
@@ -37,8 +38,10 @@ class Verdict(unittest.TestCase):
         self.assertEqual([o["exhausted"] for o in outs], [False, False, True])
 
     def test_max_passes_bounds_red_passes(self) -> None:
-        outs = [self.run_pass(**{**GREEN, "GREEN": "false", "ATTEMPT": str(n)}) for n in range(1, 7)]
-        self.assertEqual([o["exhausted"] for o in outs], [False] * 5 + [True])
+        source = pathlib.Path(__file__).with_name("verdict.py").read_text()
+        MAX_PASSES = int(re.search(r"^MAX_PASSES = (\d+)", source, re.MULTILINE).group(1))  # verdict.py runs on import
+        outs = [self.run_pass(**{**GREEN, "GREEN": "false", "ATTEMPT": str(n)}) for n in range(1, MAX_PASSES + 1)]
+        self.assertEqual([o["exhausted"] for o in outs], [False] * (MAX_PASSES - 1) + [True])
 
 
 if __name__ == "__main__":
