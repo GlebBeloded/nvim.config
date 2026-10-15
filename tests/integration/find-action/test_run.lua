@@ -69,6 +69,15 @@ local function start()
 					}
 				end,
 			},
+			{
+				id = "neo_tree.open",
+				title = "Open",
+				category = "Tree",
+				plugin = "neo-tree",
+				neo_tree_scope = "common",
+				run = function() NeoTreeOpen = (NeoTreeOpen or 0) + 1 end,
+			},
+			RealCatalog:get("find_action.open"),
 		} })
 		local actions = require("gleb.actions")
 		actions.state.applicator.catalog = catalog
@@ -78,8 +87,10 @@ local function start()
 			["test.toggle_first"] = {},
 			["test.toggle"] = {},
 			["test.visual"] = { "gV" },
+			["neo_tree.open"] = { "<CR>" },
+			["find_action.open"] = { "<M-A>" },
 		}
-		vim.keymap.set("n", "gR", Context.invoke(catalog:get("test.regular")))
+		actions.state.applicator:apply(actions.state.store.last_good)
 	]])
 end
 
@@ -89,6 +100,49 @@ local function open_palette(keys)
 	child.type_keys(keys or "<M-A>")
 	assert(child.wait("MiniPick.is_picker_active()", 5000), "Find Action picker did not open")
 	assert(child.wait("#MiniPick.get_picker_items() > 0", 5000), "Find Action items did not load")
+end
+
+T["find-action: Shortcut and palette use update recent actions"] = function()
+	child.lua([[vim.fn.delete(require("gleb.find_action.items").history().path)]])
+	child.type_keys("gR")
+	assert(child.wait("RegularRun ~= nil", 5000), "Configured shortcut did not run")
+
+	open_palette()
+	child.type_keys("toggle first<CR>")
+	assert(child.wait("ToggleFirst == true", 5000), "Palette action did not run")
+	child.type_keys("<Esc>")
+	child.lua([[
+		local actions = require("gleb.actions")
+		local mappings = require("gleb.actions.adapters.neo_tree").mappings(
+			actions.state.applicator.catalog,
+			actions.state.store.last_good,
+			"common"
+		)
+		vim.keymap.set("n", "<CR>", mappings["<CR>"], { buffer = true })
+	]])
+	child.type_keys("<CR>")
+	assert(child.wait("NeoTreeOpen == 1", 5000), "Neo-tree action did not run")
+	eq(child.lua_get([[require("gleb.find_action.items").history():load()]]), {
+		"test.toggle_first",
+		"test.regular",
+	})
+
+	open_palette()
+	eq(
+		child.lua_get([[
+			vim.tbl_map(function(row)
+				return row.action and row.action.id or row.text
+			end, MiniPick.get_picker_items())
+		]]),
+		{
+			"recently used",
+			"test.toggle_first",
+			"test.regular",
+			"other actions",
+			"test.toggle",
+			"find_action.open",
+		}
+	)
 end
 
 T["find-action: Regular action runs like its shortcut"] = function()
@@ -257,7 +311,7 @@ T["find-action: Visual palette preserves the selection"] = function()
 		child.lua_get([[
 		vim.tbl_map(function(item) return item.text end, MiniPick.get_picker_items())
 	]]),
-		{ "other actions", "Visual Action" }
+		{ "other actions", "Visual Action", "Find Action..." }
 	)
 	child.type_keys("<CR>")
 	assert(child.wait("VisualRun ~= nil", 5000), "Visual action did not run")

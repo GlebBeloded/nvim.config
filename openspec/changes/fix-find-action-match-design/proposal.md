@@ -7,18 +7,22 @@ Adopt: loop/fix-find-action-match-design
 ## Evidence
 - `evidence/design.png`: the approved design's palette, with a `recently used` section, the selected row Open Differ, and the category column in plain weight.
 - `evidence/live.png`: the user's live palette (right half). The selected row's `Git | Diff` is bold and brighter than in the design.
-- Sampled colours that match in both images: body `#44403d`, selected row `#59524d`, category `#a59a86`. Find which backgrounds differ by comparing a live render with design.md H1 (row by row, highlight map included) rather than trusting these samples.
-- Recently used: `~/.local/state/nvim/find_action_recent.json` holds one id (`tree.toggle_filesystem`). Only palette runs are recorded (`lua/gleb/find_action/palette.lua:256`), so actions run by shortcut never appear. The section is drawn only when a recent action passes the mode/filetype filter (`palette.lua:62-67`).
-- Highlights: `lua/gleb/picker/frame.lua:29-37`, `lua/gleb/picker/rows.lua:60-111`. The design's selected-row groups are PmenuSel/PmenuExtraSel (design.md H1 highlight map).
+- `lua/gleb/picker/frame.lua:26-37` hard-codes the picker body and selected backgrounds to palette `bg0`/`bg1`; approved H1 instead maps those cells to `NormalFloat`/`PmenuSel`. `lua/gleb/picker/rows.lua:109-112` always applies unselected `PmenuExtra` to a category, while H1 maps the selected category to `PmenuExtraSel`.
+- `~/.local/state/nvim/find_action_recent.json` holds one id (`tree.toggle_filesystem`). `lua/gleb/find_action/palette.lua:256` records only palette choices; shortcut dispatch through `lua/gleb/actions/context.lua:75-90` and direct mappings selected by `lua/gleb/actions/apply.lua:30-40` do not record use. The section is drawn only when a recorded action passes the mode/filetype filter (`palette.lua:62-67`).
+- `tests/screen/find-action/test_palette.lua:65-72` seeds history directly, and its wide case (`test_palette.lua:109-123`) has no H1 color-mask assertion, so it neither exercises real shortcut recording nor catches background and selected-category attribute drift.
 
 ## What Changes
-- The live palette matches design H1: backgrounds, and the category column's weight and colour on selected and unselected rows.
-- "recently used" shows the user's recent actions. Recommendation: record every action run through the registry (shortcut or palette), not only palette runs.
+- The live palette matches approved design H1's background groups and category-column weight and colour on selected and unselected rows.
+- "recently used" records catalog actions run from configured shortcuts as well as from the palette, then shows the applicable actions in most-recently-used order.
 - The reference screenshots compare colours and attributes against the H1 highlight map, so this kind of drift fails a test.
 
 ## Impact
-- Code: `lua/gleb/find_action/`, `lua/gleb/picker/` (highlights), action dispatch in `lua/gleb/actions/` (recording).
-- Tests: find-action screen and e2e references.
+- Runtime: `lua/gleb/find_action/palette.lua`, `lua/gleb/find_action/items.lua`, action dispatch in `lua/gleb/actions/context.lua` and `lua/gleb/actions/apply.lua`, and Find Action highlight support in `lua/gleb/picker/frame.lua` and `lua/gleb/picker/rows.lua`.
+- Tests: `tests/integration/find-action/test_run.lua`, `tests/screen/find-action/test_palette.lua`, and its reference screenshots.
+- Architecture: no module-layout, load-order, or plugin-wiring change.
+- Dependencies: no plugin is added, removed, or upgraded.
+- Core keymaps: unchanged.
+- Out of scope: changing the approved H1 layout, picker breakpoints, action availability filters, shortcut assignment, or other picker sources' appearance.
 
 ## Rejected run
 Run on `loop/fix-find-action-match-design` was rejected by the judge:
