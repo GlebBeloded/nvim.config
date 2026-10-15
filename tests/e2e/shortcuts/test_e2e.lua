@@ -96,6 +96,25 @@ local function row(physical)
 	error("no shortcut table row " .. physical)
 end
 
+---@param s e2e.Stack
+---@param physical string
+---@return string
+local function action_lhs(s, physical)
+	local shortcut = row(physical)
+	return s:lua(
+		[[
+		local id, received = ...
+		local path = vim.fs.joinpath(vim.fn.stdpath("config"), "settings/keymap.json")
+		local shortcuts = vim.json.decode(table.concat(vim.fn.readfile(path), "\n"))
+		for _, lhs in ipairs(assert(shortcuts[id], "shortcut action is not configured: " .. id)) do
+			if vim.fn.keytrans(vim.keycode(lhs)) == received then return lhs end
+		end
+		error(id .. " is not assigned to " .. received)
+	]],
+		{ shortcut.mapping, shortcut.receives }
+	)
+end
+
 --- Press a shortcut and wait until a recorder fires (at most E.NO_HIT_MS);
 --- return the recorded keys.
 ---@param shortcut string
@@ -199,7 +218,7 @@ end
 
 T["shortcuts: Ctrl+Return reaches Neovim as <C-CR> from a real key press"] = function()
 	local s, hits = get(), {}
-	E.record(s, { "<C-CR>", "<CR>" })
+	E.record(s, { action_lhs(s, "Ctrl+Return"), "<CR>" })
 	burst(function()
 		hits = press_and_record("Ctrl+Return")
 	end)

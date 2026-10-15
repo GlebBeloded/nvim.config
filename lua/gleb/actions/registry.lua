@@ -19,14 +19,19 @@
 ---@field id string
 ---@field title string
 ---@field category string
----@field run fun(ctx: gleb.ActionContext)
+---@field run fun(ctx: gleb.ActionContext): boolean? Returns whether a plugin command handled the key
 ---@field mapping? fun() Direct mapping callback for actions that capture their own context
+---@field plug? string `<Plug>` target mapped recursively instead of a callback
+---@field commands? (string|function)[] Native plugin command list an adapter binds instead of `run`
 ---@field modes? string[]
----@field ft? string
+---@field ft? string|string[]
 ---@field when? fun(ctx: gleb.ActionContext): boolean
 ---@field toggle? gleb.ActionToggle
 ---@field aliases? string[]
 ---@field hidden? boolean
+---@field plugin? string Plugin adapter owns this action's mappings
+---@field neo_tree_scope? "common"|"filesystem"|"git_status"
+---@field diffview_scopes? string[]
 
 ---@class gleb.ActionCatalog
 ---@field actions gleb.Action[]
@@ -54,11 +59,22 @@ end
 ---@param ctx gleb.ActionContext
 ---@return boolean
 local function is_available(action, mode, filetype, ctx)
+	-- plugin-window actions run only from the mappings their adapter installs
+	if action.plugin then
+		return false
+	end
 	if not vim.tbl_contains(action.modes or { "n" }, mode) then
 		return false
 	end
-	if action.ft and action.ft ~= filetype then
+	if action.ft and type(action.ft) == "string" and action.ft ~= filetype then
 		return false
+	end
+	if type(action.ft) == "table" then
+		local filetypes = action.ft
+		---@cast filetypes string[]
+		if not vim.tbl_contains(filetypes, filetype) then
+			return false
+		end
 	end
 	return not action.when or action.when(ctx)
 end

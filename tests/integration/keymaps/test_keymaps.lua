@@ -8,6 +8,7 @@ local child = H.new_child()
 --- file (not `:enew`) because auto-save writes modified buffers (E32 otherwise).
 local function start()
 	child.start_config()
+	child.wait_very_lazy()
 	child.cmd("edit " .. vim.fn.tempname() .. ".txt")
 end
 
@@ -201,7 +202,10 @@ local T = H.child_set(child, start)
 -- Mapping options and leaders -------------------------------------------------
 
 T["keymaps: Core mappings are noremap and silent"] = function()
-	local map = child.fn.maparg("gb", "n", false, true)
+	local map = child.lua_get([[(function()
+		local value = vim.fn.maparg("gb", "n", false, true)
+		return { noremap = value.noremap, silent = value.silent }
+	end)()]])
 
 	eq({ map.noremap, map.silent }, { 1, 1 })
 end
@@ -258,6 +262,122 @@ T["keymaps: Every core mapping has an area-action desc"] = function()
 	)
 
 	eq(offenders, {})
+end
+
+T["keymaps: Core mappings resolve through actions"] = function()
+	child.wait_very_lazy()
+	local expected = {
+		{ "window.move_left", "n", "<C-h>", "Window: Move left" },
+		{ "window.move_down", "n", "<A-j>", "Window: Move down" },
+		{ "window.move_up", "n", "<A-k>", "Window: Move up" },
+		{ "window.move_right", "n", "<C-l>", "Window: Move right" },
+		{ "jump.back", "n", "gb", "Jump: Back" },
+		{ "jump.forward", "n", "gB", "Jump: Forward" },
+		{ "window.increase_height", "n", "<C-Up>", "Window: Increase height" },
+		{ "window.decrease_height", "n", "<C-Down>", "Window: Decrease height" },
+		{ "window.decrease_width", "n", "<C-Left>", "Window: Decrease width" },
+		{ "window.increase_width", "n", "<C-Right>", "Window: Increase width" },
+		{ "window.resize_left", "n", "<A-H>", "Window: Resize left" },
+		{ "window.resize_down", "n", "<A-J>", "Window: Resize down" },
+		{ "window.resize_up", "n", "<A-K>", "Window: Resize up" },
+		{ "window.resize_right", "n", "<A-L>", "Window: Resize right" },
+		{ "buffer.close", "n", "<C-q>", "Buffer: Close" },
+		{ "edit.leave_insert", "i", "jk", "Edit: Leave insert mode" },
+		{ "edit.outdent_selection", "x", "<", "Edit: Outdent selection" },
+		{ "edit.indent_selection", "x", ">", "Edit: Indent selection" },
+		{ "edit.paste_without_yanking", "x", "p", "Edit: Paste without yanking" },
+		{ "edit.move_selection_down", "x", "J", "Edit: Move selection down" },
+		{ "edit.move_selection_up", "x", "K", "Edit: Move selection up" },
+		{ "edit.move_selection_down", "x", "<A-j>", "Edit: Move selection down" },
+		{ "edit.move_selection_up", "x", "<A-k>", "Edit: Move selection up" },
+		{ "tree.toggle_filesystem", "n", "<A-e>", "Tree: Toggle filesystem" },
+		{ "git.open_differ", "n", "<A-g>", "Git: Open Differ" },
+		{ "tree.toggle_git_status", "n", "<A-G>", "Tree: Toggle git status" },
+		{ "search.live_grep", "n", "<A-F>", "Search: Live grep" },
+		{ "lsp.code_action", "n", "<C-CR>", "LSP: Code action" },
+		{ "lsp.code_action", "x", "<C-CR>", "LSP: Code action" },
+		{ "lsp.go_to_declaration", "n", "gD", "LSP: Go to declaration" },
+		{ "lsp.go_to_definition", "n", "gd", "LSP: Go to definition" },
+		{ "lsp.hover", "n", "K", "LSP: Hover" },
+		{ "lsp.go_to_implementation", "n", "gi", "LSP: Go to implementation" },
+		{ "lsp.references", "n", "gr", "LSP: References" },
+		{ "lsp.rename", "n", "<A-r>", "LSP: Rename" },
+		{ "diag.next", "n", "<A-w>", "Diagnostics: Next" },
+		{ "diag.next", "n", "ge", "Diagnostics: Next" },
+		{ "diag.previous", "n", "[d", "Diagnostics: Previous" },
+	}
+
+	local offenders = child.lua_get(
+		[[(function(expected)
+		local catalog = require("gleb.actions").state.applicator.catalog
+		local found = {}
+		for _, item in ipairs(expected) do
+			local id, mode, lhs, desc = unpack(item)
+			local action = catalog:get(id)
+			local map = vim.fn.maparg(lhs, mode, false, true)
+			if not action or type(map.callback) ~= "function" or map.desc ~= desc
+				or map.noremap ~= 1 or map.silent ~= 1
+			then
+				table.insert(found, id)
+			elseif action.mapping then
+				if map.callback ~= action.mapping then table.insert(found, id) end
+			else
+				local original = action.run
+				local invoked = false
+				action.run = function() invoked = true end
+				map.callback()
+				action.run = original
+				if not invoked then table.insert(found, id) end
+			end
+		end
+		return found
+	end)(...)]],
+		{ expected }
+	)
+
+	eq(offenders, {})
+end
+
+T["keymaps: Unadopted built-in mappings are removed"] = function()
+	local defaults = { "grn", "gra", "grr", "gri", "grt", "gO", "]d", "[q", "]q" }
+	local mappings = vim.tbl_map(function(lhs)
+		return child.fn.maparg(lhs, "n")
+	end, defaults)
+
+	eq(mappings, { "", "", "", "", "", "", "", "", "" })
+end
+
+T["keymaps: Adopted built-in mappings are registry actions"] = function()
+	local map = child.lua_get([[(function()
+		local value = vim.fn.maparg("[d", "n", false, true)
+		return { desc = value.desc, callback_type = type(value.callback) }
+	end)()]])
+	local action_id = child.lua_get([[require("gleb.actions").state.applicator.catalog:get("diag.previous").id]])
+
+	eq({ map.desc, map.callback_type, action_id }, { "Diagnostics: Previous", "function", "diag.previous" })
+end
+
+T["keymaps: Surround mappings use registered actions"] = function()
+	local expected = {
+		{ "i", "<C-g>s", "<Plug>(nvim-surround-insert)", "Surround: Insert" },
+		{ "i", "<C-g>S", "<Plug>(nvim-surround-insert-line)", "Surround: Insert line" },
+		{ "n", "ys", "<Plug>(nvim-surround-normal)", "Surround: Add" },
+		{ "n", "yss", "<Plug>(nvim-surround-normal-cur)", "Surround: Add line" },
+		{ "n", "yS", "<Plug>(nvim-surround-normal-line)", "Surround: Add on lines" },
+		{ "n", "ySS", "<Plug>(nvim-surround-normal-cur-line)", "Surround: Add current on lines" },
+		{ "n", "ds", "<Plug>(nvim-surround-delete)", "Surround: Delete" },
+		{ "n", "cs", "<Plug>(nvim-surround-change)", "Surround: Change" },
+		{ "n", "cS", "<Plug>(nvim-surround-change-line)", "Surround: Change on lines" },
+		{ "x", "S", "<Plug>(nvim-surround-visual)", "Surround: Visual" },
+		{ "x", "gS", "<Plug>(nvim-surround-visual-line)", "Surround: Visual line" },
+	}
+	local actual = vim.tbl_map(function(item)
+		local map = child.fn.maparg(item[2], item[1], false, true)
+		return { item[1], item[2], map.rhs, map.desc }
+	end, expected)
+
+	eq(actual, expected)
+	eq(child.g.nvim_surround_no_mappings, true)
 end
 
 T["keymaps: Leader values after startup"] = function()

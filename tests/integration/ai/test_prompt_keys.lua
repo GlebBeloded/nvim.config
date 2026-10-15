@@ -24,6 +24,9 @@ local function start()
 	child.lua(FAKE_UI_LUA)
 	child.cmd("edit " .. vim.fn.tempname() .. ".txt")
 	child.wait_very_lazy()
+	assert(child.wait([[package.loaded["gleb.ai"] ~= nil]]), "99 setup did not finish")
+	child.lua([[vim.schedule(function() vim.g.ai_very_lazy_done = true end)]])
+	assert(child.wait([[vim.g.ai_very_lazy_done]]), "VeryLazy callbacks did not finish")
 end
 
 local T = H.child_set(child, start)
@@ -40,7 +43,12 @@ end
 
 --- Wait until a 99 prompt buffer is focused in insert mode.
 local function wait_prompt()
-	child.wait([[vim.fs.basename(vim.api.nvim_buf_get_name(0)) == "99-prompt" and vim.api.nvim_get_mode().mode == "i"]])
+	assert(
+		child.wait(
+			[[vim.fs.basename(vim.api.nvim_buf_get_name(0)) == "99-prompt" and vim.api.nvim_get_mode().mode == "i"]]
+		),
+		"99 prompt did not enter insert mode"
+	)
 end
 
 ---@param title string
@@ -86,6 +94,158 @@ local function mapping_uses(lhs, mode, callback)
 	)
 end
 
+T["ai: 99 entry mappings come from AI actions"] = function()
+	eq(
+		child.lua_get([[(function()
+			local actions = require("gleb.actions").state.applicator.catalog
+			local expected = {
+				{ id = "ai.vibe", lhs = "<S-CR>", mode = "n", desc = "99: Vibe" },
+				{ id = "ai.visual", lhs = "<A-9>", mode = "x", desc = "99: Visual" },
+				{ id = "ai.visual", lhs = "<S-CR>", mode = "x", desc = "99: Visual" },
+			}
+			local result = {}
+			for _, item in ipairs(expected) do
+				local action = actions:get(item.id)
+				local map = vim.fn.maparg(item.lhs, item.mode, false, true)
+				table.insert(result, {
+					id = item.id,
+					desc = map.desc,
+					silent = map.silent == 1,
+					uses_action_mapping = map.callback == action.mapping,
+					mapping_runs_action = action.mapping == action.run,
+				})
+			end
+			return result
+		end)()]]),
+		{
+			{
+				id = "ai.vibe",
+				desc = "99: Vibe",
+				silent = true,
+				uses_action_mapping = true,
+				mapping_runs_action = true,
+			},
+			{
+				id = "ai.visual",
+				desc = "99: Visual",
+				silent = true,
+				uses_action_mapping = true,
+				mapping_runs_action = true,
+			},
+			{
+				id = "ai.visual",
+				desc = "99: Visual",
+				silent = true,
+				uses_action_mapping = true,
+				mapping_runs_action = true,
+			},
+		}
+	)
+end
+
+T["ai: Prompt submit comes from a filetype action"] = function()
+	child.type_keys("<S-CR>")
+	wait_prompt()
+
+	eq(
+		child.lua_get([[(function()
+			local buf = vim.iter(vim.api.nvim_list_bufs()):find(function(candidate)
+				return vim.api.nvim_buf_is_loaded(candidate)
+					and vim.fs.basename(vim.api.nvim_buf_get_name(candidate)) == "99-prompt"
+			end)
+			local result = {}
+			for _, mode in ipairs({ "n", "i" }) do
+				local map = vim.iter(vim.api.nvim_buf_get_keymap(buf, mode)):find(function(item)
+					return item.lhs == "<S-CR>"
+				end)
+				table.insert(result, {
+					buffer = map ~= nil,
+					desc = map and map.desc,
+					silent = map and map.silent == 1,
+				})
+			end
+			return result
+		end)()]]),
+		{
+			{ buffer = true, desc = "99: Submit prompt", silent = true },
+			{ buffer = true, desc = "99: Submit prompt", silent = true },
+		}
+	)
+
+	child.lua([[
+		require("99.window").clear_active_popups()
+		vim.cmd.enew()
+		vim.api.nvim_buf_set_name(0, vim.fn.tempname() .. ".prompt")
+		vim.bo.buftype = "acwrite"
+		vim.api.nvim_create_autocmd("BufWriteCmd", {
+			buffer = 0,
+			callback = function() vim.g.ai_submit_count = (vim.g.ai_submit_count or 0) + 1 end,
+		})
+		vim.bo.filetype = "99"
+	]])
+	child.type_keys("<S-CR>i<S-CR>")
+	eq(child.lua_get([[vim.g.ai_submit_count]]), 2)
+end
+
+T["ai: 99 hardcoded mappings are the only exceptions"] = function()
+	child.type_keys("<S-CR>")
+	wait_prompt()
+	assert(
+		child.wait([[(function()
+			local buf = vim.iter(vim.api.nvim_list_bufs()):find(function(candidate)
+				return vim.api.nvim_buf_is_loaded(candidate)
+					and vim.fs.basename(vim.api.nvim_buf_get_name(candidate)) == "99-prompt"
+			end)
+			return buf and vim.iter(vim.api.nvim_buf_get_keymap(buf, "i")):any(function(map) return map.lhs == '"' end)
+		end)()]]),
+		"99 prompt insert mappings did not settle"
+	)
+	child.lua([[
+		local prompt_buf = vim.iter(vim.api.nvim_list_bufs()):find(function(candidate)
+			return vim.api.nvim_buf_is_loaded(candidate)
+				and vim.fs.basename(vim.api.nvim_buf_get_name(candidate)) == "99-prompt"
+		end)
+		local baseline_maps = {}
+		for _, mode in ipairs({ "n", "x", "s", "o", "i", "c", "t" }) do
+			for _, map in ipairs(vim.api.nvim_buf_get_keymap(prompt_buf, mode)) do
+				local key = mode .. ":" .. map.lhs
+				if key ~= "n:q" then
+					baseline_maps[key] = true
+				end
+			end
+		end
+		vim.g.ai_baseline_maps = baseline_maps
+
+		local nn = require("99")
+		require("99.window").clear_active_popups()
+		local state = nn.__get_state()
+		local prompt = require("99.prompt").deserialize(state, {
+			user_prompt = "find the definition",
+			data = { type = "search", qfix_items = {}, response = "done" },
+		})
+		state.tracking:track(prompt)
+		nn.open()
+	]])
+	child.wait([[vim.fs.basename(vim.api.nvim_buf_get_name(0)) == "99-prompt"]])
+
+	eq(
+		child.lua_get([[(function()
+			local exceptions = {}
+			for _, mode in ipairs({ "n", "x", "s", "o", "i", "c", "t" }) do
+				for _, map in ipairs(vim.api.nvim_buf_get_keymap(0, mode)) do
+					local key = mode .. ":" .. map.lhs
+					if not vim.g.ai_baseline_maps[key] and map.desc ~= "99: Submit prompt" then
+						table.insert(exceptions, key)
+					end
+				end
+			end
+			table.sort(exceptions)
+			return exceptions
+		end)()]]),
+		{ "n:<CR>", "n:q" }
+	)
+end
+
 T["ai: Menu shows prompt"] = function()
 	eq(child.fn.maparg("<A-9>", "n"), "")
 	eq(prompt_buffers(), 0)
@@ -112,7 +272,7 @@ T["ai: Menu s opens search prompt"] = function()
 end
 
 T["ai: Menu v opens vibe prompt"] = function()
-	run_action("ai.vibe", "99 Vibe")
+	run_action("ai.vibe", "Vibe")
 	wait_prompt()
 
 	eq(focused_prompt(), expected_prompt("Vibe"))

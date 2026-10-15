@@ -6,7 +6,14 @@ local child = H.new_child()
 
 local function start()
 	child.start_bare()
-	child.lua([[PromptKeymaps = require("gleb.ai.prompt_keymaps")]])
+	child.lua([[
+		local catalog = require("gleb.actions").catalog({ require("gleb.ai.actions") })
+		PromptKeymaps = require("gleb.actions.apply").new(catalog)
+	]])
+end
+
+local function apply_prompt_keymaps()
+	child.lua([[PromptKeymaps:apply({ ["ai.submit_prompt"] = { "<S-CR>" } })]])
 end
 
 ---@param filetype string
@@ -18,15 +25,15 @@ end
 local T = H.child_set(child, start)
 
 T["ai: submits with Shift+Enter in normal and insert modes"] = function()
-	child.lua("PromptKeymaps.setup()")
+	apply_prompt_keymaps()
 	new_buffer("99")
 
-	eq(child.fn.maparg("<S-CR>", "n"), "<Cmd>write<CR>")
-	eq(child.fn.maparg("<S-CR>", "i"), "<Cmd>write<CR>")
+	eq(child.lua_get([[vim.fn.maparg("<S-CR>", "n", false, true).desc]]), "99: Submit prompt")
+	eq(child.lua_get([[vim.fn.maparg("<S-CR>", "i", false, true).desc]]), "99: Submit prompt")
 end
 
 T["ai: Submit mapping is buffer-local"] = function()
-	child.lua("PromptKeymaps.setup()")
+	apply_prompt_keymaps()
 	new_buffer("99")
 	new_buffer("lua")
 
@@ -35,9 +42,10 @@ T["ai: Submit mapping is buffer-local"] = function()
 end
 
 T["ai: Setup is idempotent"] = function()
-	child.lua("PromptKeymaps.setup(); PromptKeymaps.setup()")
+	apply_prompt_keymaps()
+	apply_prompt_keymaps()
 
-	eq(child.lua_get([[#vim.api.nvim_get_autocmds({ group = "gleb_ai_prompt_keymaps" })]]), 1)
+	eq(child.lua_get([[#vim.api.nvim_get_autocmds({ group = "gleb_actions_bindings", event = "FileType" })]]), 1)
 end
 
 return T

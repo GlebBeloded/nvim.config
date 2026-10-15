@@ -13,6 +13,10 @@ local repo
 local function start()
 	repo = H.git_repo({ ["a.txt"] = "a\n" })
 	child.start_bare({ "nui.nvim" })
+	child.lua([[
+		require("gleb.actions").setup({ require("gleb.git.actions") })
+		require("gleb.actions").apply()
+	]])
 	child.cmd("cd " .. repo)
 end
 
@@ -67,6 +71,20 @@ local function commits()
 	return child.lua_get("Commits")
 end
 
+---@param description string
+local function press_popup_mapping(description)
+	local lhs = child.lua_get(
+		[[
+		(function(description)
+			return vim.iter(vim.api.nvim_buf_get_keymap(0, "n"))
+				:find(function(mapping) return mapping.desc == description end).lhs
+		end)(...)
+	]],
+		{ description }
+	)
+	child.type_keys(lhs)
+end
+
 --- Replay the job's stdout `text` and exit `code`.
 ---@param text string
 ---@param code integer
@@ -82,6 +100,34 @@ local function show_generating()
 end
 
 local T = H.child_set(child, start)
+
+T["git: Commit popup mappings come from git actions"] = function()
+	show_commit_input()
+
+	eq(
+		child.lua_get([[
+		(function()
+			local mappings = {}
+			for _, mapping in ipairs(vim.api.nvim_buf_get_keymap(0, "n")) do
+				mappings[mapping.lhs] = mapping.desc
+			end
+			local shortcuts = require("gleb.actions").state.store.last_good
+			return {
+				shortcuts["git.confirm_commit_popup"],
+				mappings["<CR>"],
+				shortcuts["git.discard_commit_popup"],
+				mappings.q,
+			}
+		end)()
+	]]),
+		{
+			{ "<CR>" },
+			"Git: Confirm commit message",
+			{ "q" },
+			"Git: Discard commit message",
+		}
+	)
+end
 
 T["git: No staged changes"] = function()
 	record_jobstart()
@@ -159,9 +205,18 @@ T["git: Enter on empty buffer does nothing"] = function()
 	eq(commits(), {})
 end
 
+T["git: Popup confirm action ignores the placeholder"] = function()
+	show_commit_input()
+	eq(popup_lines(), { "# No staged changes" })
+	press_popup_mapping("Git: Confirm commit message")
+
+	eq(popup_open(), true)
+	eq(commits(), {})
+end
+
 T["git: q discards popup"] = function()
 	show_generating()
-	child.type_keys("q")
+	press_popup_mapping("Git: Discard commit message")
 
 	eq(popup_open(), false)
 	eq(jobs()[1].stopped, true)

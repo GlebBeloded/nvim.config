@@ -33,9 +33,37 @@ local function description(action)
 end
 
 ---@param action gleb.Action
----@return function
-local function callback(action)
-	return action.mapping or Context.invoke(action)
+---@return string|function rhs
+---@return boolean remap
+local function rhs(action)
+	if action.mapping then
+		return action.mapping, false
+	end
+	if action.plug then
+		return action.plug, true
+	end
+	return Context.invoke(action), false
+end
+
+---@param mode string
+---@param lhs string
+---@param action gleb.Action
+---@param buf? integer
+local function set_mapping(mode, lhs, action, buf)
+	local target, remap = rhs(action)
+	vim.keymap.set(mode, lhs, target, { buffer = buf, desc = description(action), remap = remap, silent = true })
+end
+
+---@param action gleb.Action
+---@param filetype string
+---@return boolean
+local function matches_filetype(action, filetype)
+	if type(action.ft) == "table" then
+		local filetypes = action.ft
+		---@cast filetypes string[]
+		return vim.tbl_contains(filetypes, filetype)
+	end
+	return action.ft == filetype
 end
 
 ---@param binding gleb.AppliedBinding
@@ -65,12 +93,8 @@ local function apply_buffer(self, buf)
 	local filetype = vim.bo[buf].filetype
 	local applied = {}
 	for _, binding in ipairs(self.scoped_bindings) do
-		if binding.action.ft == filetype then
-			vim.keymap.set(binding.mode, binding.lhs, callback(binding.action), {
-				buffer = buf,
-				desc = description(binding.action),
-				silent = true,
-			})
+		if matches_filetype(binding.action, filetype) then
+			set_mapping(binding.mode, binding.lhs, binding.action, buf)
 			table.insert(applied, { mode = binding.mode, lhs = binding.lhs })
 		end
 	end
@@ -100,13 +124,13 @@ function Applicator:apply(shortcuts)
 	clear(self)
 	for id, lhs_list in pairs(shortcuts) do
 		local action = self.catalog:get(id)
-		if action then
+		if action and not action.plugin then
 			for _, mode in ipairs(modes(action)) do
 				for _, lhs in ipairs(lhs_list) do
 					if action.ft then
 						table.insert(self.scoped_bindings, { action = action, mode = mode, lhs = lhs })
 					else
-						vim.keymap.set(mode, lhs, callback(action), { desc = description(action), silent = true })
+						set_mapping(mode, lhs, action)
 						table.insert(self.global_bindings, { mode = mode, lhs = lhs })
 					end
 				end

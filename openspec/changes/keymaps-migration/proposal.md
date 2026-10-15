@@ -19,7 +19,7 @@ Depends: action-registry, find-action
   - nvim-surround: `vim.g.nvim_surround_no_mappings = true`, with its `<Plug>` maps bound as actions.
 - **lazy.nvim:** no plugin spec uses `keys` any more. Loading is triggered by `cmd`, `event`, or `require` inside an action's `run`.
 - **Ownership check:** after `VeryLazy`, every mapping in modes `n x s o i c t` (global and plugin-window buffers) must be owned by an action through `keymap.json`, or appear on a short allowlist (Neovim's built-in grammar and the 99 exception).
-- **BREAKING (docs):** keymap rules 3.1, 3.3 and 3.8 in `docs/architecture.md` are rewritten. Keys live only in `settings/keymap.json`, and a feature exposes actions in `actions.lua`.
+- **BREAKING (docs):** keymap rules 3.1, 3.3 and 3.8 in `docs/architecture.md` are rewritten. Keys live only in `settings/keymap.json`, and a feature exposes actions in `actions.lua`. Rule 3.8 forbids new `<leader>` mappings but exempts plugin-window mappings that preserve a spec-retained plugin default.
 
 ## Capabilities
 
@@ -32,12 +32,14 @@ Depends: action-registry, find-action
 - `file-tree`: neo-tree window keys come from the registry, with defaults off.
 - `git`: differ, diffview and codediff keys come from the registry, with defaults off.
 - `folding`, `ai`, `autocommands`: their keys move into actions.
+- `actions`: shortcut application becomes the exclusive owner of configured mappings and audits global and plugin-window ownership.
 
 ## Impact
 
 - Code:
   - every feature module that sets keys;
-  - `lua/gleb/plugins/plugins.lua` (no `keys`, defaults off);
+  - `init.lua` (registers every feature action list before shortcut application);
+  - `lua/gleb/plugins/plugins.lua` (plugin wiring uses `cmd`, `event`, or action-time `require`; no `keys`; defaults off);
   - `settings/keymap.json` (every key);
   - `docs/architecture.md` rules 3.x.
 - **Tests:**
@@ -46,7 +48,21 @@ Depends: action-registry, find-action
     - the ownership check (integration, full config);
     - an adapter round-trip for each plugin (the key in the file appears in the plugin's buffer maps);
     - stack and e2e reruns of the whole shortcut table.
-- Plugins: none added or removed. Core keymaps: **no key changes meaning**. Plugin default keys we never configured disappear, and only re-registered ones remain. That list is in design.md and needs user review.
+- Plugins: none added or removed. Core keymaps: **no key changes meaning**. Plugin default keys we never configured disappear, and only re-registered ones remain.
+- Pinned behavior remains unchanged while ownership moves:
+  - `actions: Global bindings exist after VeryLazy` still holds because the registry remains applied on `VeryLazy`.
+  - `ai: Keymaps exist after VeryLazy` still holds because the same 99 actions are registered before registry application.
+  - `file-tree: q closes preview and tree` still holds because the neo-tree adapter invokes the existing close action.
+  - `git: q closes diffview from file panel` still holds because the diffview adapter invokes `DiffviewClose`.
+  - `git: Enter confirms message` still holds because the popup-local action invokes the existing confirm callback.
+  - `git: Enter on empty buffer does nothing` still holds because migration does not change popup validation.
+  - `git: Enter on placeholder does nothing` still holds because migration does not change placeholder filtering.
+  - `git: Enter drops comment lines` still holds because migration does not change message cleanup.
+  - `git: q discards popup` still holds because the popup-local action invokes the existing discard callback.
+  - `keymaps: [d jumps to previous diagnostic` still holds because `diag.previous` invokes the existing `vim.diagnostic.jump` callback.
+  - `keymaps: Diagnostic jump is not deprecated` still holds because the action retains `vim.diagnostic.jump`.
+  - `shortcuts: Neovim mappings match the table` still holds because each table row resolves its action id through `settings/keymap.json`.
+  - `shortcuts: Ctrl+Return reaches Neovim as <C-CR> from a real key press` still holds because terminal routing is unchanged and `<C-CR>` remains assigned to the code-action id.
 - Out of scope:
   - new shortcuts;
   - the shortcuts editor screen;

@@ -2,6 +2,7 @@
 
 local Registry = require("gleb.actions.registry")
 local Apply = require("gleb.actions.apply")
+local Audit = require("gleb.actions.audit")
 local Store = require("gleb.actions.store")
 
 ---@class gleb.ActionsState
@@ -28,6 +29,12 @@ function M.apply()
 	end
 	assert(M.state.applicator, "actions are not set up"):apply(shortcuts)
 	return true
+end
+
+---@return string[] "<mode> <lhs>" of global mappings no action owns
+function M.audit()
+	local store = assert(M.state.store, "actions are not set up")
+	return Audit.run(assert(M.state.applicator, "actions are not set up").catalog, store.last_good)
 end
 
 ---@param feature_actions gleb.Action[][]

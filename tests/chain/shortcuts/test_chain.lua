@@ -6,6 +6,7 @@ local C = require("tests.shortcuts.chain")
 
 local child = H.new_child()
 local MAP_MODES = { "n", "x", "s", "o", "i", "c", "t" }
+local SHORTCUTS = vim.json.decode(table.concat(vim.fn.readfile(vim.fs.joinpath(C.root, "settings/keymap.json")), "\n"))
 
 --- maparg() in the child without the callback (functions do not cross RPC).
 local MAPARG = [[local map = vim.fn.maparg(...)
@@ -41,35 +42,6 @@ end
 ---@return string
 local function label(row)
 	return string.format("%-20s %-12s", row.shortcut, C.escape(row.bytes))
-end
-
---- Does the normal-mode mapping of `lhs` match a *Mapping* cell of the spec?
----@param lhs string
----@param cell string
----@return boolean ok, string actual
-local function mapping_matches(lhs, cell)
-	local map = maparg(lhs, "n")
-	local actual = vim.tbl_isempty(map) and "none" or (map.callback and "fn") or ("`" .. map.rhs .. "`")
-	if map.desc then
-		actual = actual .. " desc `" .. map.desc .. "`"
-	end
-	local expr = cell:match("^fn `(.+)`$")
-	if expr then
-		local same = child.lua_get(string.format("vim.fn.maparg(..., 'n', false, true).callback == %s", expr), { lhs })
-		return same, actual
-	end
-	local desc = cell:match("^desc `(.+)`$")
-	if desc then
-		return map.desc == desc, actual
-	end
-	if cell == "fn" then
-		return map.callback == true, actual
-	end
-	if cell == "none" then
-		return vim.tbl_isempty(map), actual
-	end
-	local rhs = cell:match("^`(.+)`$")
-	return rhs ~= nil and map.rhs ~= nil and map.rhs:lower() == rhs:lower(), actual
 end
 
 T["shortcuts: Alacritty bindings match the shortcut table"] = function()
@@ -144,21 +116,83 @@ T["shortcuts: Neovim receives the key in the table"] = function()
 	expect_none(problems)
 end
 
+T["shortcuts: Shortcut table names action ids"] = function()
+	local problems = {}
+	for _, row in ipairs(C.shortcut_rows()) do
+		if row.receives then
+			local configured = SHORTCUTS[row.mapping]
+			local registered = row.mapping == "none"
+				or child.lua_get([[require("gleb.actions").state.applicator.catalog:get(...) ~= nil]], { row.mapping })
+			local assigned = configured
+				and vim.iter(configured):any(function(lhs)
+					return C.norm(lhs) == row.receives
+				end)
+			if row.mapping ~= "none" and (not registered or not assigned) then
+				table.insert(
+					problems,
+					string.format(
+						"%s %s action %s is not registered and assigned",
+						label(row),
+						row.receives,
+						row.mapping
+					)
+				)
+			end
+		end
+	end
+	expect_none(problems)
+end
+
+T["shortcuts: Shortcut meanings survive registry migration"] = function()
+	for _, row in ipairs(C.shortcut_rows()) do
+		if row.receives and row.mapping ~= "none" then
+			child.lua(
+				[[
+				local actions = require("gleb.actions")
+				local action = assert(actions.state.applicator.catalog:get(...))
+				_G.shortcut_action_original = { action = action, run = action.run, mapping = action.mapping }
+				action.run = function() _G.shortcut_action_hit = action.id end
+				action.mapping = nil
+				_G.shortcut_action_hit = nil
+				assert(actions.apply())
+			]],
+				{ row.mapping }
+			)
+
+			child.type_keys(row.receives)
+			MiniTest.expect.equality(child.lua_get([[_G.shortcut_action_hit]]), row.mapping)
+
+			child.lua([[
+				local original = assert(_G.shortcut_action_original)
+				original.action.run = original.run
+				original.action.mapping = original.mapping
+				_G.shortcut_action_original = nil
+				_G.shortcut_action_hit = nil
+				assert(require("gleb.actions").apply())
+			]])
+		end
+	end
+end
+
 T["shortcuts: Neovim mappings match the table"] = function()
 	local problems = {}
 	for _, row in ipairs(C.shortcut_rows()) do
 		if row.receives then
-			local callback_mappings = {
-				["Cmd+9"] = "none",
-				["Cmd+Shift+F"] = 'fn `require("gleb.picker").grep_live`',
-				["Cmd+Shift+A"] = 'fn `require("gleb.find_action").open`',
-			}
-			local mapping = callback_mappings[row.shortcut] or row.mapping
-			local ok, actual = mapping_matches(row.receives, mapping)
-			if not ok then
+			local map = maparg(row.receives, "n")
+			local expected = row.mapping == "none" and vim.tbl_isempty(map)
+				or child.lua_get(
+					[[(function(lhs, id)
+					local action = require("gleb.actions").state.applicator.catalog:get(id)
+					local active = vim.fn.maparg(lhs, "n", false, true)
+					return action ~= nil and active.desc == action.category .. ": " .. action.title
+						and type(active.callback) == "function"
+				end)(...)]],
+					{ row.receives, row.mapping }
+				)
+			if not expected then
 				table.insert(
 					problems,
-					string.format("%s %s spec %s, config %s", label(row), row.receives, mapping, actual)
+					string.format("%s %s does not map action %s", label(row), row.receives, row.mapping)
 				)
 			end
 		end

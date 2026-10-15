@@ -96,6 +96,7 @@ function TopLeftWindow()
 	local win = layout[2]
 	local buf = vim.api.nvim_win_get_buf(win)
 	return {
+		win = win,
 		filetype = vim.bo[buf].filetype,
 		width = vim.api.nvim_win_get_width(win),
 		lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false),
@@ -172,6 +173,26 @@ local function focus_panel_entry(name)
 		end
 	end
 	error("no file panel entry for " .. name .. ":\n" .. table.concat(lines, "\n"))
+end
+
+---@param id string
+---@param lhs string
+local function expect_action_shortcut(id, lhs)
+	eq(
+		child.lua_get(([[require("gleb.actions").state.applicator.catalog:get(%q) ~= nil
+				and vim.tbl_contains(require("gleb.actions").state.store.last_good[%q] or {}, %q)]]):format(id, id, lhs)),
+		true
+	)
+end
+
+---@param win integer
+---@param lhs string
+---@return table
+local function window_mapping(win, lhs)
+	return child.lua_get(([[(function()
+			local map = vim.api.nvim_win_call(%d, function() return vim.fn.maparg(%q, "n", false, true) end)
+			return { mapped = next(map) ~= nil, buffer = map.buffer == 1, desc = map.desc }
+		end)()]]):format(win, lhs))
 end
 
 ---@return string[] files in the index that differ from HEAD
@@ -293,6 +314,58 @@ T["git: Diffview file panel on the left"] = function()
 	eq(tab_count(), tabs + 1)
 	local panel = child.lua_get("TopLeftWindow()")
 	eq({ panel.filetype, panel.width }, { "DiffviewFiles", 35 })
+end
+
+T["git: Diffview mappings come from git actions"] = function()
+	use_repo({ ["a.txt"] = "a\n" })
+	change({ ["a.txt"] = "a2\n" })
+	open_diffview("a.txt")
+	local win = focus_diff_window("a.txt", "<Tab>")
+
+	expect_action_shortcut("diffview.select_next_entry", "<Tab>")
+	eq(window_mapping(win, "<Tab>").desc, "Git: Select next entry")
+	eq(window_mapping(win, "g<C-x>").mapped, false)
+end
+
+T["git: Differ mappings come from git actions"] = function()
+	use_repo({ ["a.txt"] = "a\n" })
+	change({ ["a.txt"] = "a2\n" })
+	child.lua(WINDOW_PROBES_LUA)
+	child.cmd("Differ")
+	eq(child.wait("TopLeftWindow().filetype == 'differpanel'", ASYNC_MS), true)
+	local win = child.lua_get("TopLeftWindow().win")
+
+	expect_action_shortcut("differ.next_hunk", "]c")
+	eq(window_mapping(win, "]c").buffer, true)
+	eq(window_mapping(win, "[c").mapped, false)
+end
+
+T["git: Codediff mappings come from git actions"] = function()
+	use_repo({ ["a.txt"] = "a\n" })
+	change({ ["a.txt"] = "a2\n" })
+	child.lua(WINDOW_PROBES_LUA)
+	child.cmd("CodeDiff")
+	eq(child.wait("WindowWithFt('codediff-explorer') ~= nil", ASYNC_MS), true)
+	eq(
+		child.wait(
+			[[vim.iter(vim.api.nvim_tabpage_list_wins(0)):any(function(candidate)
+		return vim.api.nvim_win_call(candidate, function()
+			return next(vim.fn.maparg("]c", "n", false, true)) ~= nil
+		end)
+	end)]],
+			ASYNC_MS
+		),
+		true
+	)
+	local win = child.lua_get([[vim.iter(vim.api.nvim_tabpage_list_wins(0)):find(function(candidate)
+		return vim.api.nvim_win_call(candidate, function()
+			return next(vim.fn.maparg("]c", "n", false, true)) ~= nil
+		end)
+	end)]])
+
+	expect_action_shortcut("codediff.next_hunk", "]c")
+	eq(window_mapping(win, "]c").buffer, true)
+	eq(window_mapping(win, "[c").mapped, false)
 end
 
 T["git: tab moves to next entry"] = function()
