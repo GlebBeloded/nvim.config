@@ -10,7 +10,8 @@ local function start()
 	child.start_bare({ "gruvbox-material", "neo-tree.nvim", "smart-splits.nvim" })
 	child.cmd("colorscheme gruvbox-material")
 	child.lua([[
-		ToggleState = { wrap = true, spell = false }
+		vim.wo.wrap = true
+		vim.wo.spell = false
 		local function registered(module, id)
 			return assert(vim.iter(require(module)):find(function(item) return item.id == id end))
 		end
@@ -26,18 +27,8 @@ local function start()
 
 		FixtureActions = {
 			registered("gleb.git.actions", "git.open_differ"),
-			action("view.soft_wrap", "Soft Wrap", "View | Editor", {
-				toggle = {
-					get = function() return ToggleState.wrap end,
-					set = function(_, value) ToggleState.wrap = value end,
-				},
-			}),
-			action("view.spell_check", "Spell Check", "View | Editor", {
-				toggle = {
-					get = function() return ToggleState.spell end,
-					set = function(_, value) ToggleState.spell = value end,
-				},
-			}),
+			registered("gleb.view.actions", "view.soft_wrap"),
+			registered("gleb.view.actions", "view.spell_check"),
 			registered("gleb.keymaps.actions", "search.live_grep"),
 			registered("gleb.find_action.actions", "find_action.open"),
 			action("navigate.find_file", "Find File...", "Navigate"),
@@ -187,7 +178,7 @@ T["find-action: Wide palette matches reference screenshots"] = function()
 
 	open_palette()
 	child.type_keys("spell<CR>")
-	assert(child.wait([[ToggleState.spell]]), "toggle did not change")
+	assert(child.wait([[vim.wo[require("gleb.find_action").state.context.win].spell]]), "toggle did not change")
 	H.expect_screenshot(child.get_screenshot())
 	close_palette()
 
