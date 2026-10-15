@@ -63,7 +63,7 @@ local function smart_toggle(source)
 		end
 	elseif source == "filesystem" then
 		local current_file = vim.fn.expand("%:p")
-		if current_file ~= "" and not current_file:match("^%w+://") then
+		if current_file ~= "" and not current_file:match("^%w+://") and vim.fn.filereadable(current_file) == 1 then
 			vim.cmd("Neotree reveal_file=" .. vim.fn.fnameescape(current_file) .. " filesystem")
 		else
 			require("neo-tree.command").execute({ source = "filesystem", action = "focus", reveal = false })
