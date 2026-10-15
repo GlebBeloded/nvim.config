@@ -99,6 +99,36 @@ T["picker: Focused match remains above the hint row"] = function()
 	eq(vim.tbl_contains(lines, " fifth"), true)
 	eq(#lines, 4)
 	child.type_keys("<Esc>")
+
+	child.o.lines = 30
+	child.o.columns = 100
+	child.cmd("doautocmd VimResized")
+	local items = {}
+	for index = 1, 42 do
+		table.insert(items, { text = "match " .. index })
+	end
+	table.insert(items, { text = "last match" })
+	child.lua_notify(
+		[[require("gleb.picker").start({
+			title = "Hint Band Matches",
+			items = ...,
+			hints = "Open ↵ · Split ⌃S",
+			hint_keys = { "↵", "⌃S" },
+			hint_band = true,
+			match = function(_, inds) return inds end,
+		})]],
+		{ items }
+	)
+	assert(child.wait([[require("mini.pick").is_picker_active()]]), "hint-band picker did not open")
+	child.type_keys(string.rep("<C-n>", 42))
+	assert(
+		child.wait([[require("mini.pick").get_picker_matches().current.text == "last match"]]),
+		"last match not focused"
+	)
+
+	local text = table.concat(vim.tbl_map(table.concat, child.get_screenshot().text), "\n")
+	eq(text:find("last match", 1, true) ~= nil, true)
+	child.type_keys("<Esc>")
 end
 
 T["picker: Alternate picker views keep the border counter-free"] = function()
@@ -161,6 +191,40 @@ T["picker: Alternate picker views keep the border counter-free"] = function()
 	eq(info_config.footer, nil)
 	expect_hint_tracks_picker()
 	child.type_keys("<Esc>")
+end
+
+T["picker: Source-specific hint band shows hints and counter"] = function()
+	child.o.winborder = "rounded"
+	child.lua_notify(
+		[[require("gleb.picker").start({
+			title = "Hint Band",
+			items = ...,
+			hints = "Open ↵ · Split ⌃S",
+			hint_keys = { "↵", "⌃S" },
+			hint_band = true,
+			match = function(_, inds) return inds end,
+		})]],
+		{ MANY_ITEMS }
+	)
+	assert(child.wait([[require("mini.pick").is_picker_active()]]), "shared picker did not open")
+	child.type_keys("<Down>")
+	assert(
+		child.wait([[require("mini.pick").get_picker_matches().current.text == "second"]]),
+		"second match not focused"
+	)
+
+	local text = table.concat(vim.tbl_map(table.concat, child.get_screenshot().text), "\n")
+	eq(text:find("Open ↵ · Split ⌃S", 1, true) ~= nil, true)
+	eq(text:find("6/6", 1, true) ~= nil, true)
+	eq(text:find("││ Open ↵ · Split ⌃S", 1, true), nil)
+	eq(
+		child.lua_get(
+			[[vim.api.nvim_win_get_config(require("mini.pick").get_picker_state().windows.main).footer == nil]]
+		),
+		true
+	)
+	H.expect_hl_colors(child, "PickerHintBand", { bg = "#32302f" })
+	H.expect_hl_colors(child, "PickerHintKey", { fg = "#ddc7a1", bg = "#32302f" })
 end
 
 return T

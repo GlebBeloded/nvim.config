@@ -17,19 +17,23 @@ The config SHALL expose the palette as action `find_action.open` titled `Find Ac
 - **THEN** it returns an action titled `Find Action...` that opens the palette
 
 ### Requirement: Action rows
-The palette SHALL draw each action with its title first, its first shortcut immediately after it, and its category right-aligned, with no icon column. A shortcut SHALL use its physical label when known and Vim notation otherwise. Toggle rows SHALL show a green `●` when on or a grey `○` when off before the category, without ON/OFF text.
+The palette SHALL draw each action with its title first, two spaces before its first shortcut, and its category right-aligned, with no icon column. Equivalent Alt/Meta and control-key spellings SHALL resolve to the same physical label; an unknown shortcut SHALL use canonical Vim notation. Toggle rows SHALL show a green `●` when on or a grey `○` when off before the category, without ON/OFF text.
 
 #### Scenario: Rows show action metadata
 - **WHEN** an action with multiple shortcuts and a known physical label is listed
-- **THEN** its row shows the title, only the first shortcut's physical label, and the right-aligned category without an icon
+- **THEN** its row shows the title, two spaces, only the first shortcut's physical label, and the right-aligned category without an icon
 
 #### Scenario: Rows fall back to Vim notation
 - **WHEN** an action's first shortcut has no physical label
-- **THEN** its row shows that shortcut in Vim notation immediately after the title
+- **THEN** its row shows that shortcut in canonical Vim notation two spaces after the title
 
 #### Scenario: Toggle rows show state glyphs
 - **WHEN** available toggle actions in on and off states are listed
 - **THEN** their rows show green `●` and grey `○` state glyphs respectively and no ON/OFF text
+
+#### Scenario: Rows normalize shortcut spellings
+- **WHEN** listed actions use equivalent Alt/Meta or control-key spellings such as `<A-F>`, `<C-h>`, `<M-H>`, or `<C-S>`
+- **THEN** every known shortcut shows its corresponding physical label instead of raw Vim notation
 
 ### Requirement: Action ordering and matching
 With an empty query, the palette SHALL list recently used actions saved across sessions before curated actions, retaining at most the last 20 action ids. Recent history SHALL record catalog actions run from the palette or a configured shortcut. With a query, the palette SHALL fuzzy-match action titles, categories, and aliases. Section rows SHALL be display-only; after opening or replacing results, the first actionable match SHALL be current.
@@ -112,19 +116,19 @@ Pressing `<M-}>` on an eligible action SHALL open a modal capture float for chor
 - **THEN** the palette reports `applies when <plugin> reopens`
 
 ### Requirement: Find Action reference screens
-The palette SHALL use the shared picker breakpoints and match the approved design renders for its empty, queried, toggle, hidden, assignment, and visual states. At widths below 48 columns it SHALL show titles only. Its wide and compact hint rows SHALL read `Assign ⌥↩ · Show hidden ⌘⇧A`, reduced according to the shared breakpoint.
+The palette SHALL match the approved renders for its empty, queried, toggle, hidden, assignment, and visual states. Wide and compact layouts SHALL show an in-frame darker hint band with dim words, bright keys, applicable hints on the left, and the match counter on the right; they SHALL omit a standalone Remove hint. Below 48 columns it SHALL show titles only and no hint band.
 
 #### Scenario: Wide palette matches reference screenshots
 - **WHEN** the palette is shown at 100 columns in empty, queried, toggle, hidden, or visual state
-- **THEN** its screen content and highlights match the corresponding approved reference render
+- **THEN** its body, selected row, prompt, section labels and rules, metadata, hint band, applicable hints, match counter, screen content, and highlights match the approved wide reference render
 
 #### Scenario: Compact palette matches reference screenshot
 - **WHEN** the palette is shown at 60 columns
-- **THEN** categories are absent, hints are reduced to keys, and the screen matches the approved compact render
+- **THEN** categories are absent, hints are reduced to bright keys on the left, the match counter remains on the right, and the screen matches the approved compact render
 
 #### Scenario: Narrow palette matches reference screenshot
 - **WHEN** the palette is shown at 40 columns
-- **THEN** only titles are shown, the hint row is absent, and the screen matches the approved narrow render
+- **THEN** only titles are shown, the hint band and match counter are absent, and the screen matches the approved narrow render
 
 #### Scenario: Conflict assignment matches reference screenshot
 - **WHEN** the assign float shows a shortcut conflict

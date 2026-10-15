@@ -9,6 +9,14 @@ transparent.setup({
 		"NormalFloat",
 		"FloatBorder",
 	},
+	exclude_groups = {
+		"FindActionBody",
+		"FindActionSelected",
+		"FindActionPrompt",
+		"FindActionBorder",
+		"FindActionHint",
+		"FindActionHintKey",
+	},
 })
 
 -- keep lualine section backgrounds (the colored mode/position blocks);

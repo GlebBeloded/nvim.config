@@ -3,13 +3,16 @@ local EMPTY_ROW = INDENT .. "│                                                
 local QUERY_DASHES = { ["█"] = 54, ["find█"] = 50 }
 local KEY_PADDING = { [" █"] = 44, ["⌘D █"] = 42 }
 
-local function full(background, palette)
+local function full(background, palette, statusline, below)
 	local lines = vim.list_extend(vim.deepcopy(background), palette)
-	vim.list_extend(lines, { "", "", "", "", "", "", "" })
+	vim.list_extend(lines, { below or "", "", "", "", "", "", "", "" })
+	if statusline then
+		lines[#lines] = statusline
+	end
 	return table.concat(lines, "\n") .. "\n"
 end
 
-local function palette(query, rows)
+local function palette(query, rows, count)
 	local body = vim.deepcopy(rows)
 	while #body < 14 do
 		table.insert(body, EMPTY_ROW)
@@ -22,9 +25,7 @@ local function palette(query, rows)
 			) .. "╮",
 		},
 		vim.list_extend(body, {
-			INDENT
-				.. "├──────────────────────────────────────────────────────────────────────┤",
-			INDENT .. "│                                          Assign ⌥↩ · Show hidden ⌘⇧A │",
+			INDENT .. "│ Assign ⌥↩ · Show hidden ⌘⇧A" .. string.rep(" ", 41 - #count) .. count .. " │",
 			INDENT
 				.. "╰──────────────────────────────────────────────────────────────────────╯",
 		})
@@ -33,38 +34,37 @@ end
 
 local function assignment(key)
 	return {
+		"",
+		"",
+		"",
+		"",
+		"",
 		INDENT
-			.. "╭ Find Action › find█──────────────────────────────────────────────────╮",
-		INDENT .. "│ Find Action... ⌘⇧A                                              Help │",
-		EMPTY_ROW,
-		EMPTY_ROW,
-		EMPTY_ROW,
+			.. "        ╭─────────── Assign Shortcut · Find Action... ───────────╮",
+		INDENT .. "        │ Press keys, Enter to save, Esc to cancel               │",
+		INDENT .. "        │                                                        │",
 		INDENT
-			.. "│       ╭─────────── Assign Shortcut · Find Action... ───────────╮     │",
-		INDENT .. "│       │ Press keys, Enter to save, Esc to cancel               │     │",
-		INDENT .. "│       │                                                        │     │",
+			.. "        │  ╭────────────────────────────────────────────────╮    │",
 		INDENT
-			.. "│       │  ╭────────────────────────────────────────────────╮    │     │",
-		INDENT
-			.. "│       │  │ "
+			.. "        │  │ "
 			.. key
 			.. string.rep(" ", (assert(KEY_PADDING[key], "unknown approved key")))
-			.. " │    │     │",
+			.. " │    │",
 		INDENT
-			.. "│       │  ╰────────────────────────────────────────────────╯    │     │",
-		INDENT .. "│       │                                                        │     │",
-		INDENT .. "│       │ No conflicts                                           │     │",
-		INDENT .. "│       │                                                        │     │",
-		INDENT .. "│       │ [ Save ]  [ Cancel ]                                   │     │",
+			.. "        │  ╰────────────────────────────────────────────────╯    │",
+		INDENT .. "        │                                                        │",
+		INDENT .. "        │ No conflicts                                           │",
+		INDENT .. "        │                                                        │",
+		INDENT .. "        │ [ Save ]  [ Cancel ]                                   │",
 		INDENT
-			.. "├───────╰─────────────────────────────────── Tab next   ↩ choose ╯─────┤",
-		INDENT .. "│                                          Assign ⌥↩ · Show hidden ⌘⇧A │",
-		INDENT
-			.. "╰──────────────────────────────────────────────────────────────────────╯",
+			.. "        ╰─────────────────────────────────── Tab next   ↩ choose ╯",
+		"",
 	}
 end
 
 local empty_buffer = { "       [No Name]", "  1", "", "", "" }
+local captured_buffer = { "▎      [No Name]", "  1", "", "", "" }
+local statusline = " NORMAL" .. string.rep(" ", 85) .. " 0  0"
 local dashboard = {
 	"",
 	"",
@@ -75,33 +75,38 @@ local dashboard = {
 local recent = palette("█", {
 	INDENT
 		.. "│ recently used ────────────────────────────────────────────────────── │",
-	INDENT .. "│ Find Action... ⌘⇧A                                              Help │",
+	INDENT .. "│ Find Action...  ⌘⇧A                                             Help │",
 	INDENT
 		.. "│ other actions ────────────────────────────────────────────────────── │",
-	INDENT .. "│ Move left <C-h>                                               Window │",
-	INDENT .. "│ Move down <A-j>                                               Window │",
-	INDENT .. "│ Move up <A-k>                                                 Window │",
-	INDENT .. "│ Move right <C-l>                                              Window │",
-	INDENT .. "│ Back gb                                                         Jump │",
-	INDENT .. "│ Forward gB                                                      Jump │",
-	INDENT .. "│ Increase height ⌃↑                                            Window │",
-	INDENT .. "│ Decrease height ⌃↓                                            Window │",
-	INDENT .. "│ Decrease width ⌃←                                             Window │",
-	INDENT .. "│ Increase width ⌃→                                             Window │",
-	INDENT .. "│ Resize left <A-H>                                             Window │",
-})
+	INDENT .. "│ Move left  ⌘H                                                 Window │",
+	INDENT .. "│ Move down  ⌘⇧J                                                Window │",
+	INDENT .. "│ Move up  ⌘⇧K                                                  Window │",
+	INDENT .. "│ Move right  ⌘L                                                Window │",
+	INDENT .. "│ Back  gb                                                        Jump │",
+	INDENT .. "│ Forward  gB                                                     Jump │",
+	INDENT .. "│ Increase height  ⌃↑                                           Window │",
+	INDENT .. "│ Decrease height  ⌃↓                                           Window │",
+	INDENT .. "│ Decrease width  ⌃←                                            Window │",
+	INDENT .. "│ Increase width  ⌃→                                            Window │",
+	INDENT .. "│ Resize left  ⌘⇧H                                              Window │",
+}, "43/43")
 
 return {
 	["opened palette screen"] = full(empty_buffer, recent),
 	["searched palette screen"] = full(
 		empty_buffer,
 		palette("find█", {
-			INDENT .. "│ Find Action... ⌘⇧A                                              Help │",
-		})
+			INDENT .. "│ Find Action...  ⌘⇧A                                             Help │",
+		}, "1/43")
 	),
 	["run action screen"] = full(empty_buffer, recent),
 	["shortcut capture screen"] = full(empty_buffer, assignment(" █")),
-	["captured shortcut screen"] = full(empty_buffer, assignment("⌘D █")),
+	["captured shortcut screen"] = full(captured_buffer, assignment("⌘D █"), statusline),
 	["assigned shortcut screen"] = full(empty_buffer, recent),
-	["persisted shortcut screen"] = full(dashboard, recent),
+	["persisted shortcut screen"] = full(
+		dashboard,
+		recent,
+		nil,
+		string.rep(" ", 35) .. "https://github.com/GlebBeloded"
+	),
 }

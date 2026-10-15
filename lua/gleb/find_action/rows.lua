@@ -17,6 +17,8 @@ local PHYSICAL_LABELS = {
 	["<M-w>"] = "⌘W",
 	["<M-W>"] = "⌘⇧W",
 	["<C-H>"] = "⌘H",
+	["<C-S>"] = "⌃S",
+	["<M-H>"] = "⌘⇧H",
 	["<M-h>"] = "⌘⇧H",
 	["<M-j>"] = "⌘⇧J",
 	["<M-k>"] = "⌘⇧K",
@@ -59,7 +61,8 @@ local PHYSICAL_LABELS = {
 ---@param lhs string
 ---@return string
 function M.physical_label(lhs)
-	return PHYSICAL_LABELS[lhs] or lhs
+	local canonical = vim.fn.keytrans(vim.keycode(lhs))
+	return PHYSICAL_LABELS[canonical] or canonical
 end
 
 ---@param action gleb.Action

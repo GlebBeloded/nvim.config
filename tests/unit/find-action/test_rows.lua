@@ -39,6 +39,22 @@ T["find-action: Rows fall back to Vim notation"] = function()
 	)
 end
 
+T["find-action: Rows normalize shortcut spellings"] = function()
+	eq(
+		child.lua_get([[
+			vim.tbl_map(function(lhs)
+				return FindActionRows.format({
+					id = "test." .. lhs,
+					title = "Action",
+					category = "Test",
+					run = function() end,
+				}, { lhs }).secondary
+			end, { "<A-F>", "<C-h>", "<M-H>", "<C-S>", "<A-z>" })
+		]]),
+		{ "⌘⇧F", "⌘H", "⌘⇧H", "⌃S", "<M-z>" }
+	)
+end
+
 T["find-action: Toggle rows show state glyphs"] = function()
 	local rows = child.lua_get([[
 		{
