@@ -11,6 +11,8 @@ local function start()
 		vim.api.nvim_set_current_buf(vim.api.nvim_create_buf(true, false))
 		local Context = require("gleb.actions.context")
 		local RealCatalog = require("gleb.actions").state.applicator.catalog
+		RealCatalogForLabels = RealCatalog
+		RealShortcutsForLabels = vim.deepcopy(require("gleb.actions").state.store.last_good)
 		RealActions = RealCatalog:filter("n", vim.bo.filetype, Context.capture())
 		local Registry = require("gleb.actions.registry")
 		local catalog = Registry.new({ {
@@ -100,6 +102,72 @@ local function open_palette(keys)
 	child.type_keys(keys or "<M-A>")
 	assert(child.wait("MiniPick.is_picker_active()", 5000), "Find Action picker did not open")
 	assert(child.wait("#MiniPick.get_picker_items() > 0", 5000), "Find Action items did not load")
+end
+
+T["find-action: Catalog rows use standalone Title Case labels"] = function()
+	child.lua([[
+		local actions = require("gleb.actions")
+		actions.state.applicator.catalog = RealCatalogForLabels
+		actions.state.store.catalog = RealCatalogForLabels
+		actions.state.store.last_good = RealShortcutsForLabels
+		actions.state.applicator:apply(RealShortcutsForLabels)
+	]])
+	open_palette()
+
+	local approved = {
+		["ai.search"] = { "AI Search", "AI" },
+		["ai.vibe"] = { "AI Vibe", "AI" },
+		["buffer.close"] = { "Close Buffer", "Buffer" },
+		["comments.toggle"] = { "Toggle Comment", "Comments" },
+		["diag.next"] = { "Next Diagnostic", "Diagnostics" },
+		["diag.previous"] = { "Previous Diagnostic", "Diagnostics" },
+		["fold.close_all"] = { "Collapse All Folds", "Fold" },
+		["fold.close_one"] = { "Collapse Fold", "Fold" },
+		["fold.open_all"] = { "Expand All Folds", "Fold" },
+		["fold.open_one"] = { "Expand Fold", "Fold" },
+		["git.open_differ"] = { "Open Differ", "Git | Diff" },
+		["jump.back"] = { "Navigate Back", "Jump" },
+		["jump.forward"] = { "Navigate Forward", "Jump" },
+		["lsp.code_action"] = { "Show Code Actions...", "LSP" },
+		["lsp.go_to_declaration"] = { "Go to Declaration", "LSP" },
+		["lsp.go_to_definition"] = { "Go to Definition", "LSP" },
+		["lsp.go_to_implementation"] = { "Go to Implementation", "LSP" },
+		["lsp.hover"] = { "Show Hover Info", "LSP" },
+		["lsp.references"] = { "Find References", "LSP" },
+		["lsp.rename"] = { "Rename Symbol...", "LSP" },
+		["search.live_grep"] = { "Find in Files...", "Edit | Find" },
+		["surround.add"] = { "Add Surrounding", "Surround" },
+		["surround.add_line"] = { "Add Surrounding on Current Line", "Surround" },
+		["surround.add_on_lines"] = { "Add Surrounding on Lines", "Surround" },
+		["surround.add_current_on_lines"] = { "Add Surrounding on Current Lines", "Surround" },
+		["surround.change"] = { "Change Surrounding...", "Surround" },
+		["surround.change_on_lines"] = { "Change Surrounding on Lines...", "Surround" },
+		["surround.delete"] = { "Delete Surrounding", "Surround" },
+		["tree.toggle_filesystem"] = { "Toggle File Tree", "View | Tool Windows" },
+		["tree.toggle_git_status"] = { "Toggle Git Status Tree", "View | Tool Windows" },
+		["window.decrease_height"] = { "Decrease Window Height", "Window" },
+		["window.decrease_width"] = { "Decrease Window Width", "Window" },
+		["window.increase_height"] = { "Increase Window Height", "Window" },
+		["window.increase_width"] = { "Increase Window Width", "Window" },
+		["window.move_down"] = { "Focus Down Window", "Window" },
+		["window.move_left"] = { "Focus Left Window", "Window" },
+		["window.move_right"] = { "Focus Right Window", "Window" },
+		["window.move_up"] = { "Focus Up Window", "Window" },
+		["window.resize_down"] = { "Resize Window Down", "Window" },
+		["window.resize_left"] = { "Resize Window Left", "Window" },
+		["window.resize_right"] = { "Resize Window Right", "Window" },
+		["window.resize_up"] = { "Resize Window Up", "Window" },
+	}
+	local actual = child.lua_get([[(function()
+		local rows = {}
+		for _, row in ipairs(MiniPick.get_picker_items()) do
+			if row.action then rows[row.action.id] = { row.text, row.category } end
+		end
+		return rows
+	end)()]])
+	for id, metadata in pairs(approved) do
+		eq(actual[id], metadata)
+	end
 end
 
 T["find-action: Empty query puts recent actions first"] = function()

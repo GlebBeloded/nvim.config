@@ -6,30 +6,30 @@ local prompts = require("gleb.ai.entry_keymaps")
 local actions = {
 	{
 		id = "ai.search",
-		title = "99 Search",
+		title = "AI Search",
 		category = "AI",
 		run = prompts.search_prompt,
 	},
 	{
 		id = "ai.vibe",
-		title = "99 Vibe",
-		category = "99",
+		title = "AI Vibe",
+		category = "AI",
 		modes = { "n" },
 		run = prompts.vibe_prompt,
 		mapping = prompts.vibe_prompt,
 	},
 	{
 		id = "ai.visual",
-		title = "Visual",
-		category = "99",
+		title = "AI Edit Selection",
+		category = "AI",
 		modes = { "x" },
 		run = prompts.visual_prompt,
 		mapping = prompts.visual_prompt,
 	},
 	{
 		id = "ai.submit_prompt",
-		title = "Submit prompt",
-		category = "99",
+		title = "Submit AI Prompt",
+		category = "AI",
 		modes = { "n", "i" },
 		ft = { "99", "99prompt" },
 		run = function()

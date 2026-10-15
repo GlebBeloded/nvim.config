@@ -9,7 +9,7 @@ end
 
 ---@type gleb.Action[]
 local actions = {
-	{ id = "lazy.close", title = "Close", category = "Lazy", ft = "lazy", run = close_lazy },
+	{ id = "lazy.close", title = "Close Lazy", category = "Lazy", ft = "lazy", run = close_lazy },
 }
 
 return actions

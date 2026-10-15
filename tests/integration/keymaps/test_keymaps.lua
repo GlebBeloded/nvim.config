@@ -256,7 +256,7 @@ T["keymaps: Every core mapping has an area-action desc"] = function()
 	local offenders = child.lua_get(
 		[[vim.iter(...):filter(function(m)
             local desc = vim.fn.maparg(m[2], m[1], false, true).desc
-            return desc == nil or not desc:match("^%u[%w ]*: %S.*$")
+			return desc == nil or not desc:match("^%u[%w |]*: %S.*$")
         end):totable()]],
 		{ core_maps }
 	)
@@ -267,44 +267,44 @@ end
 T["keymaps: Core mappings resolve through actions"] = function()
 	child.wait_very_lazy()
 	local expected = {
-		{ "window.move_left", "n", "<C-h>", "Window: Move left" },
-		{ "window.move_down", "n", "<A-j>", "Window: Move down" },
-		{ "window.move_up", "n", "<A-k>", "Window: Move up" },
-		{ "window.move_right", "n", "<C-l>", "Window: Move right" },
-		{ "jump.back", "n", "gb", "Jump: Back" },
-		{ "jump.forward", "n", "gB", "Jump: Forward" },
-		{ "window.increase_height", "n", "<C-Up>", "Window: Increase height" },
-		{ "window.decrease_height", "n", "<C-Down>", "Window: Decrease height" },
-		{ "window.decrease_width", "n", "<C-Left>", "Window: Decrease width" },
-		{ "window.increase_width", "n", "<C-Right>", "Window: Increase width" },
-		{ "window.resize_left", "n", "<A-H>", "Window: Resize left" },
-		{ "window.resize_down", "n", "<A-J>", "Window: Resize down" },
-		{ "window.resize_up", "n", "<A-K>", "Window: Resize up" },
-		{ "window.resize_right", "n", "<A-L>", "Window: Resize right" },
-		{ "buffer.close", "n", "<C-q>", "Buffer: Close" },
-		{ "edit.leave_insert", "i", "jk", "Edit: Leave insert mode" },
-		{ "edit.outdent_selection", "x", "<", "Edit: Outdent selection" },
-		{ "edit.indent_selection", "x", ">", "Edit: Indent selection" },
-		{ "edit.paste_without_yanking", "x", "p", "Edit: Paste without yanking" },
-		{ "edit.move_selection_down", "x", "J", "Edit: Move selection down" },
-		{ "edit.move_selection_up", "x", "K", "Edit: Move selection up" },
-		{ "edit.move_selection_down", "x", "<A-j>", "Edit: Move selection down" },
-		{ "edit.move_selection_up", "x", "<A-k>", "Edit: Move selection up" },
-		{ "tree.toggle_filesystem", "n", "<A-e>", "Tree: Toggle filesystem" },
-		{ "git.open_differ", "n", "<A-g>", "Git: Open Differ" },
-		{ "tree.toggle_git_status", "n", "<A-G>", "Tree: Toggle git status" },
-		{ "search.live_grep", "n", "<A-F>", "Search: Live grep" },
-		{ "lsp.code_action", "n", "<C-CR>", "LSP: Code action" },
-		{ "lsp.code_action", "x", "<C-CR>", "LSP: Code action" },
-		{ "lsp.go_to_declaration", "n", "gD", "LSP: Go to declaration" },
-		{ "lsp.go_to_definition", "n", "gd", "LSP: Go to definition" },
-		{ "lsp.hover", "n", "K", "LSP: Hover" },
-		{ "lsp.go_to_implementation", "n", "gi", "LSP: Go to implementation" },
-		{ "lsp.references", "n", "gr", "LSP: References" },
-		{ "lsp.rename", "n", "<A-r>", "LSP: Rename" },
-		{ "diag.next", "n", "<A-w>", "Diagnostics: Next" },
-		{ "diag.next", "n", "ge", "Diagnostics: Next" },
-		{ "diag.previous", "n", "[d", "Diagnostics: Previous" },
+		{ "window.move_left", "n", "<C-h>", "Window: Focus Left Window" },
+		{ "window.move_down", "n", "<A-j>", "Window: Focus Down Window" },
+		{ "window.move_up", "n", "<A-k>", "Window: Focus Up Window" },
+		{ "window.move_right", "n", "<C-l>", "Window: Focus Right Window" },
+		{ "jump.back", "n", "gb", "Jump: Navigate Back" },
+		{ "jump.forward", "n", "gB", "Jump: Navigate Forward" },
+		{ "window.increase_height", "n", "<C-Up>", "Window: Increase Window Height" },
+		{ "window.decrease_height", "n", "<C-Down>", "Window: Decrease Window Height" },
+		{ "window.decrease_width", "n", "<C-Left>", "Window: Decrease Window Width" },
+		{ "window.increase_width", "n", "<C-Right>", "Window: Increase Window Width" },
+		{ "window.resize_left", "n", "<A-H>", "Window: Resize Window Left" },
+		{ "window.resize_down", "n", "<A-J>", "Window: Resize Window Down" },
+		{ "window.resize_up", "n", "<A-K>", "Window: Resize Window Up" },
+		{ "window.resize_right", "n", "<A-L>", "Window: Resize Window Right" },
+		{ "buffer.close", "n", "<C-q>", "Buffer: Close Buffer" },
+		{ "edit.leave_insert", "i", "jk", "Edit: Leave Insert Mode" },
+		{ "edit.outdent_selection", "x", "<", "Edit: Outdent Selection" },
+		{ "edit.indent_selection", "x", ">", "Edit: Indent Selection" },
+		{ "edit.paste_without_yanking", "x", "p", "Edit: Paste Without Yanking" },
+		{ "edit.move_selection_down", "x", "J", "Edit: Move Selection Down" },
+		{ "edit.move_selection_up", "x", "K", "Edit: Move Selection Up" },
+		{ "edit.move_selection_down", "x", "<A-j>", "Edit: Move Selection Down" },
+		{ "edit.move_selection_up", "x", "<A-k>", "Edit: Move Selection Up" },
+		{ "tree.toggle_filesystem", "n", "<A-e>", "View | Tool Windows: Toggle File Tree" },
+		{ "git.open_differ", "n", "<A-g>", "Git | Diff: Open Differ" },
+		{ "tree.toggle_git_status", "n", "<A-G>", "View | Tool Windows: Toggle Git Status Tree" },
+		{ "search.live_grep", "n", "<A-F>", "Edit | Find: Find in Files..." },
+		{ "lsp.code_action", "n", "<C-CR>", "LSP: Show Code Actions..." },
+		{ "lsp.code_action", "x", "<C-CR>", "LSP: Show Code Actions..." },
+		{ "lsp.go_to_declaration", "n", "gD", "LSP: Go to Declaration" },
+		{ "lsp.go_to_definition", "n", "gd", "LSP: Go to Definition" },
+		{ "lsp.hover", "n", "K", "LSP: Show Hover Info" },
+		{ "lsp.go_to_implementation", "n", "gi", "LSP: Go to Implementation" },
+		{ "lsp.references", "n", "gr", "LSP: Find References" },
+		{ "lsp.rename", "n", "<A-r>", "LSP: Rename Symbol..." },
+		{ "diag.next", "n", "<A-w>", "Diagnostics: Next Diagnostic" },
+		{ "diag.next", "n", "ge", "Diagnostics: Next Diagnostic" },
+		{ "diag.previous", "n", "[d", "Diagnostics: Previous Diagnostic" },
 	}
 
 	local offenders = child.lua_get(
@@ -354,22 +354,22 @@ T["keymaps: Adopted built-in mappings are registry actions"] = function()
 	end)()]])
 	local action_id = child.lua_get([[require("gleb.actions").state.applicator.catalog:get("diag.previous").id]])
 
-	eq({ map.desc, map.callback_type, action_id }, { "Diagnostics: Previous", "function", "diag.previous" })
+	eq({ map.desc, map.callback_type, action_id }, { "Diagnostics: Previous Diagnostic", "function", "diag.previous" })
 end
 
 T["keymaps: Surround mappings use registered actions"] = function()
 	local expected = {
-		{ "i", "<C-g>s", "<Plug>(nvim-surround-insert)", "Surround: Insert" },
-		{ "i", "<C-g>S", "<Plug>(nvim-surround-insert-line)", "Surround: Insert line" },
-		{ "n", "ys", "<Plug>(nvim-surround-normal)", "Surround: Add" },
-		{ "n", "yss", "<Plug>(nvim-surround-normal-cur)", "Surround: Add line" },
-		{ "n", "yS", "<Plug>(nvim-surround-normal-line)", "Surround: Add on lines" },
-		{ "n", "ySS", "<Plug>(nvim-surround-normal-cur-line)", "Surround: Add current on lines" },
-		{ "n", "ds", "<Plug>(nvim-surround-delete)", "Surround: Delete" },
-		{ "n", "cs", "<Plug>(nvim-surround-change)", "Surround: Change" },
-		{ "n", "cS", "<Plug>(nvim-surround-change-line)", "Surround: Change on lines" },
-		{ "x", "S", "<Plug>(nvim-surround-visual)", "Surround: Visual" },
-		{ "x", "gS", "<Plug>(nvim-surround-visual-line)", "Surround: Visual line" },
+		{ "i", "<C-g>s", "<Plug>(nvim-surround-insert)", "Surround: Insert Surrounding" },
+		{ "i", "<C-g>S", "<Plug>(nvim-surround-insert-line)", "Surround: Insert Surrounding on Line" },
+		{ "n", "ys", "<Plug>(nvim-surround-normal)", "Surround: Add Surrounding" },
+		{ "n", "yss", "<Plug>(nvim-surround-normal-cur)", "Surround: Add Surrounding on Current Line" },
+		{ "n", "yS", "<Plug>(nvim-surround-normal-line)", "Surround: Add Surrounding on Lines" },
+		{ "n", "ySS", "<Plug>(nvim-surround-normal-cur-line)", "Surround: Add Surrounding on Current Lines" },
+		{ "n", "ds", "<Plug>(nvim-surround-delete)", "Surround: Delete Surrounding" },
+		{ "n", "cs", "<Plug>(nvim-surround-change)", "Surround: Change Surrounding..." },
+		{ "n", "cS", "<Plug>(nvim-surround-change-line)", "Surround: Change Surrounding on Lines..." },
+		{ "x", "S", "<Plug>(nvim-surround-visual)", "Surround: Add Surrounding to Selection" },
+		{ "x", "gS", "<Plug>(nvim-surround-visual-line)", "Surround: Add Surrounding to Selected Lines" },
 	}
 	local actual = vim.tbl_map(function(item)
 		local map = child.fn.maparg(item[2], item[1], false, true)

@@ -6,7 +6,7 @@ local replay = require("gleb.actions.adapters").replay
 local actions = {
 	{
 		id = "mason.install_package",
-		title = "Install package",
+		title = "Install Package",
 		category = "Mason",
 		plugin = "mason",
 		run = replay("mason.install_package"),

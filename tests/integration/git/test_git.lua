@@ -323,7 +323,7 @@ T["git: Diffview mappings come from git actions"] = function()
 	local win = focus_diff_window("a.txt", "<Tab>")
 
 	expect_action_shortcut("diffview.select_next_entry", "<Tab>")
-	eq(window_mapping(win, "<Tab>").desc, "Git: Select next entry")
+	eq(window_mapping(win, "<Tab>").desc, "Git | Diff: Select Next Entry")
 	eq(window_mapping(win, "g<C-x>").mapped, false)
 end
 

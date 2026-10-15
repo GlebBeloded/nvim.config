@@ -27,17 +27,17 @@ end
 
 ---@type gleb.Action[]
 local actions = {
-	surround_action("insert", "Insert", "i", "insert"),
-	surround_action("insert_line", "Insert line", "i", "insert-line"),
-	surround_action("add", "Add", "n", "normal"),
-	surround_action("add_line", "Add line", "n", "normal-cur"),
-	surround_action("add_on_lines", "Add on lines", "n", "normal-line"),
-	surround_action("add_current_on_lines", "Add current on lines", "n", "normal-cur-line"),
-	surround_action("delete", "Delete", "n", "delete"),
-	surround_action("change", "Change", "n", "change"),
-	surround_action("change_on_lines", "Change on lines", "n", "change-line"),
-	surround_action("visual", "Visual", "x", "visual"),
-	surround_action("visual_line", "Visual line", "x", "visual-line"),
+	surround_action("insert", "Insert Surrounding", "i", "insert"),
+	surround_action("insert_line", "Insert Surrounding on Line", "i", "insert-line"),
+	surround_action("add", "Add Surrounding", "n", "normal"),
+	surround_action("add_line", "Add Surrounding on Current Line", "n", "normal-cur"),
+	surround_action("add_on_lines", "Add Surrounding on Lines", "n", "normal-line"),
+	surround_action("add_current_on_lines", "Add Surrounding on Current Lines", "n", "normal-cur-line"),
+	surround_action("delete", "Delete Surrounding", "n", "delete"),
+	surround_action("change", "Change Surrounding...", "n", "change"),
+	surround_action("change_on_lines", "Change Surrounding on Lines...", "n", "change-line"),
+	surround_action("visual", "Add Surrounding to Selection", "x", "visual"),
+	surround_action("visual_line", "Add Surrounding to Selected Lines", "x", "visual-line"),
 }
 
 return actions

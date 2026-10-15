@@ -5,13 +5,13 @@
 04|      gleb                    │               Press <Esc> to cancel.                │            
 05|        file_tree             │                                                     │            
 06|       └     init.lua          │         KEY(S)    COMMAND                           │            
-07|                                 │              < -> Tree: Previous source             │            
-08|                                 │           <BS> -> Tree: Close node                  │            
-09|                                 │           <CR> -> Tree: Open file                   │            
-10|                                 │        <Space> -> Tree: Toggle stage                │            
-11|                                 │              > -> Tree: Next source                 │            
+07|                                 │              < -> Tree: Previous Source             │            
+08|                                 │           <BS> -> Tree: Close Node                  │            
+09|                                 │           <CR> -> Tree: Open File                   │            
+10|                                 │        <Space> -> Tree: Toggle Staged               │            
+11|                                 │              > -> Tree: Next Source                 │            
 12|                                 │              ? -> Tree: Help                        │            
-13|                                 │              A -> Tree: Add all                     │            
+13|                                 │              A -> Tree: Add All                     │            
 14|                                 │              P -> Tree: Push                        │            
 15|                                 │              R -> Tree: Refresh                     │            
 16|                                 │              X -> Tree: Revert                      │            
@@ -19,17 +19,17 @@
 18|                                 │              c -> Tree: Copy                        │            
 19|                                 │              d -> Tree: Delete                      │            
 20|                                 │             gc -> Tree: Commit (AI)                 │            
-21|                                 │              h -> Tree: Close node                  │            
-22|                                 │              j -> Tree: Navigate down               │            
-23|                                 │              k -> Tree: Navigate up                 │            
+21|                                 │              h -> Tree: Close Node                  │            
+22|                                 │              j -> Tree: Navigate Down               │            
+23|                                 │              k -> Tree: Navigate Up                 │            
 24|                                 │              l -> Tree: Open                        │            
 25|                                 │              o -> Tree: Open                        │            
 26|                                 │              p -> Tree: Paste                       │            
 27|                                 │              q -> Tree: Close                       │            
 28|                                 │              r -> Tree: Rename                      │            
-29|                                 │              s -> Tree: Open split                  │            
-30|                                 │              t -> Tree: Open tab                    │            
-31|                                 │              v -> Tree: Open vertical split         │            
+29|                                 │              s -> Tree: Open Split                  │            
+30|                                 │              t -> Tree: Open Tab                    │            
+31|                                 │              v -> Tree: Open Vertical Split         │            
 32|                                 │              x -> Tree: Cut                         │            
 33|                                 │                                                     │            
 34|                                 ╰─────────────────────────────────────────────────────╯            
@@ -50,7 +50,7 @@
 07|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIIIIIIIIIIIIAAAAAAAAAAAAA8BBBBBBBBBBBB
 08|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIIIIIIIAAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
 09|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIIIIIIAAAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
-10|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIIIIIIIIIAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
+10|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIIIIIIIIIIAAAAAAAAAAAAAAA8BBBBBBBBBBBB
 11|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIIIIIIIIAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
 12|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIAAAAAAAAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
 13|GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG8HHHHHHHHHHHHHHH8888IIIIIIIIIIIIIAAAAAAAAAAAAAAAAAAAAA8BBBBBBBBBBBB
