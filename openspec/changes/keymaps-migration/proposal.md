@@ -3,6 +3,7 @@
 The user decided the action registry is the only source of shortcuts. Today keys are still set in `keymaps.lua`, in feature modules (`comments`, `folding`, `ai`, `autocommands`), in plugin `mappings` tables (neo-tree, dap-ui, diffview, blink, copilot), and by plugin defaults (differ, codediff, neotest, mason, lazy, nvim-surround, Neovim's built-in `gr*`, `[d`, …). Each of these bypasses the palette and the keymap file.
 
 Kind: feature
+Adopt: loop/keymaps-migration-20261015-001832
 Depends: action-registry, find-action
 
 ## What Changes
@@ -55,3 +56,24 @@ Depends: action-registry, find-action
 
 - "Only source of shortcuts. Not sure why this is a question."
 - Plugin-window keys are included.
+
+## Rejected run
+Run on `loop/keymaps-migration-20261015-001832` was rejected by the judge:
+- fix loop exhausted with gates still red: tests
+- last failures:
+  make check is red:
+  full log: /Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/8ce36755-81d7-44e4-8501-3688b4a7a23b/check-5.log
+  ok   lint             0.2 s
+  ok   specs            0.3 s
+  ok   trace            0.4 s
+  ok   types            1.1 s
+  ok   chain            5.5 s
+  FAIL smoke-health    14.6 s
+  ok   stack           20.8 s
+  ok   test           124.4 s
+  FAIL e2e            258.9 s
+  ok   smoke-startup    1.8 s
+- note: loop: vim/_core/system:324: ENOENT: no such file or directory (cmd): '/Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/worktrees/loop/keymaps-migration-20261015-001832/.tests/venv/bin/python'
+- note: loop: trace: 610 scenarios, 610 tested, 0 missing, 0 orphan, 1 duplicate
+- note: loop: sandbox: lume ssh did not answer (rc=1): [2026-10-14T23:14:18Z] INFO: Could not verify VNC-disabled session marker; preserving it name=nvim-e2e
+- note: loop: sandbox: nvim-e2e has a lume run process while Lume reports it ; waiting for it
