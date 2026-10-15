@@ -3,7 +3,7 @@
 The user decided the action registry is the only source of shortcuts. Today keys are still set in `keymaps.lua`, in feature modules (`comments`, `folding`, `ai`, `autocommands`), in plugin `mappings` tables (neo-tree, dap-ui, diffview, blink, copilot), and by plugin defaults (differ, codediff, neotest, mason, lazy, nvim-surround, Neovim's built-in `gr*`, `[d`, …). Each of these bypasses the palette and the keymap file.
 
 Kind: feature
-Adopt: loop/keymaps-migration-20261015-001832
+Adopt: loop/keymaps-migration
 Depends: action-registry, find-action
 
 ## What Changes
@@ -58,22 +58,10 @@ Depends: action-registry, find-action
 - Plugin-window keys are included.
 
 ## Rejected run
-Run on `loop/keymaps-migration-20261015-001832` was rejected by the judge:
-- fix loop exhausted with gates still red: tests
-- last failures:
-  make check is red:
-  full log: /Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/8ce36755-81d7-44e4-8501-3688b4a7a23b/check-5.log
-  ok   lint             0.2 s
-  ok   specs            0.3 s
-  ok   trace            0.4 s
-  ok   types            1.1 s
-  ok   chain            5.5 s
-  FAIL smoke-health    14.6 s
-  ok   stack           20.8 s
-  ok   test           124.4 s
-  FAIL e2e            258.9 s
-  ok   smoke-startup    1.8 s
-- note: loop: vim/_core/system:324: ENOENT: no such file or directory (cmd): '/Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/worktrees/loop/keymaps-migration-20261015-001832/.tests/venv/bin/python'
-- note: loop: trace: 610 scenarios, 610 tested, 0 missing, 0 orphan, 1 duplicate
-- note: loop: sandbox: lume ssh did not answer (rc=1): [2026-10-14T23:14:18Z] INFO: Could not verify VNC-disabled session marker; preserving it name=nvim-e2e
-- note: loop: sandbox: nvim-e2e has a lume run process while Lume reports it ; waiting for it
+Run on `loop/keymaps-migration` was rejected by the judge:
+- fix loop exhausted with gates still red: review
+- review findings:
+  [must-fix] Diffview file-panel `j`/`k` no longer do what they did before the migration. Before, the config mapped `j`/`k` to `actions.select_next_entry`/`select_prev_entry`, which open the next or previous file's diff. Now settings/keymap.json:51-52 assign them to `diffview.next_entry`/`prev_entry` (lua/gleb/git/actions.lua:107-108), which only move the cursor. This breaks the proposal's rule that no key changes meaning. Probe: in `:DiffviewOpen` with a.txt and b.txt changed, pressing `j` in the file panel leaves `cur_entry` on a.txt; before the migration it switched to b.txt. Fix: assign `j` to `diffview.select_next_entry` and `k` to `diffview.select_prev_entry`, and drop the cursor-only actions. Earlier passes missed this because the ownership tests only check desc/action identity, and spec "Diffview file panel mappings" says "next entry", which reads like diffview's `next_entry`.
+  
+  [must-fix] In the git_status tree, `o` and `l` changed meaning. Before, only `<cr>` was overridden to `git_open_file`; `o` and `l` stayed neo-tree's native `open` (spec file-tree:28: git_status overrides only "where they collide", and its override list at line 84 names only `<cr>`). Now `neo_tree.open` gets all three keys (settings/keymap.json:98), and its run sends every key in git_status to `git_open_file` (lua/gleb/file_tree/actions.lua:261-264). So `o` and `l` now close diffs and switch to the filesystem tree. Probe: in `Neotree git_status`, `<CR>`, `o` and `l` all resolve to `Tree: Open`. Fi
+- note: flaky test cases (failed, then passed on rerun): e2e: sandbox: lume ssh did not answer (rc=1): [2026-10-15T01:44:19Z] INFO: Could not verify VNC-disabled session marker; preserving it name=nvim-e2e
