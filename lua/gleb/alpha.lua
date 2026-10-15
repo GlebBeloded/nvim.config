@@ -4,6 +4,11 @@ if not status_ok then
 end
 
 local dashboard = require("alpha.themes.dashboard")
+local actions = require("gleb.actions")
+local adapter = require("gleb.actions.adapters.alpha")
+local shortcuts = assert(actions.state.store, "actions are not set up"):load()
+local catalog = assert(actions.state.applicator, "actions are not set up").catalog
+
 dashboard.section.header.val = {
 	[[                               __                ]],
 	[[  ___     ___    ___   __  __ /\_\    ___ ___    ]],
@@ -12,14 +17,14 @@ dashboard.section.header.val = {
 	[[\ \_\ \_\ \____\ \____/\ \___/  \ \_\ \_\ \_\ \_\]],
 	[[ \/_/\/_/\/____/\/___/  \/__/    \/_/\/_/\/_/\/_/]],
 }
-dashboard.section.buttons.val = {
-	dashboard.button("f", "  Find file", '<Cmd>lua require("gleb.picker").files()<CR>'),
-	dashboard.button("e", "  New file", "<Cmd>ene | startinsert<CR>"),
-	dashboard.button("r", "  Recently used files", '<Cmd>lua require("gleb.picker").recent_files()<CR>'),
-	dashboard.button("t", "  Find text", '<Cmd>lua require("gleb.picker").grep_live()<CR>'),
-	dashboard.button("c", "  Configuration", "<Cmd>e ~/.config/nvim/init.lua<CR>"),
-	dashboard.button("q", "  Quit Neovim", "<Cmd>qa<CR>"),
-}
+dashboard.section.buttons.val = adapter.buttons(catalog, shortcuts, dashboard, {
+	{ id = "alpha.find_file", label = "  Find file" },
+	{ id = "alpha.new_file", label = "  New file" },
+	{ id = "alpha.recent_files", label = "  Recently used files" },
+	{ id = "alpha.find_text", label = "  Find text" },
+	{ id = "alpha.configuration", label = "  Configuration" },
+	{ id = "alpha.quit", label = "  Quit Neovim" },
+})
 
 local function footer()
 	-- NOTE: requires the fortune-mod package to work
@@ -37,4 +42,5 @@ dashboard.section.header.opts.hl = "Include"
 dashboard.section.buttons.opts.hl = "Keyword"
 
 dashboard.opts.opts.noautocmd = true
+dashboard.opts.opts.keymap = adapter.press_keys(shortcuts)
 alpha.setup(dashboard.opts)

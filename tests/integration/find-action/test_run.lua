@@ -9,8 +9,9 @@ local function start()
 	child.wait_very_lazy()
 	child.lua([[
 		vim.api.nvim_set_current_buf(vim.api.nvim_create_buf(true, false))
-		RealActions = require("gleb.actions").state.applicator.catalog.actions
 		local Context = require("gleb.actions.context")
+		local RealCatalog = require("gleb.actions").state.applicator.catalog
+		RealActions = RealCatalog:filter("n", vim.bo.filetype, Context.capture())
 		local Registry = require("gleb.actions.registry")
 		local catalog = Registry.new({ {
 			{

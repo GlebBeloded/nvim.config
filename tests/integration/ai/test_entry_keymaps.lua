@@ -1,25 +1,13 @@
+-- Entry mappings require the full config, so these cases belong to integration.
 local MiniTest = require("mini.test")
 local H = require("tests.helpers")
 
 local eq = MiniTest.expect.equality
 local child = H.new_child()
 
--- Stub 99: each action records its name and opens a 99 prompt buffer.
-local STUB_99 = [[
-	local function action(name)
-		return function()
-			Opened = name
-			vim.cmd("enew")
-			vim.bo.filetype = "99"
-		end
-	end
-	Stub = { search = action("search"), vibe = action("vibe"), visual = action("visual") }
-	require("gleb.ai.entry_keymaps").setup(Stub)
-]]
-
 local function start()
-	child.start_bare()
-	child.lua(STUB_99)
+	child.start_config()
+	child.wait_very_lazy()
 end
 
 local T = H.child_set(child, start)

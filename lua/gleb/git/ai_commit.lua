@@ -1,6 +1,13 @@
 -- AI-assisted commit message generation
 local M = {}
 
+---@class gleb.CommitPopupSession
+---@field close fun()
+---@field on_commit fun(message: string)
+
+---@type table<integer, gleb.CommitPopupSession>
+local sessions = {}
+
 -- Get staged diff
 local function get_staged_diff()
 	local diff = vim.fn.system("git diff --cached")
@@ -90,6 +97,27 @@ local function get_text(bufnr)
 	return vim.trim(table.concat(lines, "\n"))
 end
 
+---@param bufnr integer
+function M.confirm(bufnr)
+	local session = sessions[bufnr]
+	if not session then
+		return
+	end
+	local text = get_text(bufnr)
+	if text ~= "" then
+		session.close()
+		session.on_commit(text)
+	end
+end
+
+---@param bufnr integer
+function M.discard(bufnr)
+	local session = sessions[bufnr]
+	if session then
+		session.close()
+	end
+end
+
 --- Show commit popup with auto-generated AI message.
 ---@param on_commit fun(message: string) called with the confirmed message
 ---@return nil
@@ -139,6 +167,7 @@ function M.show_commit_input(on_commit)
 		if active_job then
 			vim.fn.jobstop(active_job)
 		end
+		sessions[bufnr] = nil
 		popup:unmount()
 	end
 
@@ -172,17 +201,15 @@ function M.show_commit_input(on_commit)
 		})
 	end
 
-	-- Enter in normal mode = commit
-	popup:map("n", "<CR>", function()
-		local text = get_text(bufnr)
-		if text ~= "" then
-			close()
-			on_commit(text)
-		end
-	end, { noremap = true })
-
-	-- q in normal mode = discard
-	popup:map("n", "q", close, { noremap = true })
+	sessions[bufnr] = { close = close, on_commit = on_commit }
+	local action_state = require("gleb.actions").state
+	local mappings = require("gleb.actions.adapters.git_commit_popup").mappings(
+		assert(action_state.applicator, "actions are not set up").catalog,
+		assert(action_state.store, "actions are not set up").last_good
+	)
+	for lhs, mapping in pairs(mappings) do
+		popup:map("n", lhs, mapping[1], { noremap = true, silent = true, desc = mapping.desc })
+	end
 
 	popup:on(event.BufLeave, close)
 

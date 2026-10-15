@@ -4,16 +4,20 @@ if not (has_dap and has_dapui) then
 	return
 end
 
+local actions = require("gleb.actions")
+local adapters = require("gleb.actions.adapters")
+local store = assert(actions.state.store, "actions are not set up")
+local catalog = assert(actions.state.applicator, "actions are not set up").catalog
+local shortcuts = store:load()
+local defaults = require("dapui.config")
+
 dapui.setup({
 	icons = { expanded = "▾", collapsed = "▸" },
-	mappings = {
-		-- Use a table to apply multiple mappings
-		open = "o",
-		remove = "d",
-		expand = "e",
-		repl = "r",
-		toggle = "t",
-	},
+	mappings = vim.tbl_extend(
+		"force",
+		adapters.cleared(defaults.mappings, {}),
+		require("gleb.actions.adapters.dap_ui").mappings(catalog, shortcuts)
+	),
 	-- Expand lines larger than the window
 	-- Requires >= 0.7
 	expand_lines = vim.fn.has("nvim-0.7"),
@@ -37,9 +41,11 @@ dapui.setup({
 		max_height = nil, -- These can be integers or a float between 0 and 1.
 		max_width = nil, -- Floats will be treated as percentage of your screen.
 		border = "single", -- Border style. Can be "single", "double" or "rounded"
-		mappings = {
-			close = { "q", "<Esc>" },
-		},
+		mappings = vim.tbl_extend(
+			"force",
+			adapters.cleared(defaults.floating.mappings, {}),
+			require("gleb.actions.adapters.dap_float").mappings(catalog, shortcuts)
+		),
 	},
 	windows = { indent = 1 },
 	render = {

@@ -108,6 +108,41 @@ T["shortcuts: Every passed shortcut reaches its Neovim key through zellij"] = fu
 	end
 end
 
+T["shortcuts: Shortcut meanings survive registry migration"] = function()
+	local s = get()
+	for _, r in ipairs(C.shortcut_rows()) do
+		if r.receives and r.mapping ~= "none" then
+			s:lua(
+				[[
+				local id = ...
+				local actions = require("gleb.actions")
+				local action = assert(actions.state.applicator.catalog:get(id))
+				_G.shortcut_action_original = { action = action, run = action.run, mapping = action.mapping }
+				action.run = function() _G.shortcut_action_hit = id end
+				action.mapping = nil
+				_G.shortcut_action_hit = nil
+				assert(actions.apply())
+			]],
+				{ r.mapping }
+			)
+
+			s:send(r.bytes)
+			S.wait_for(function()
+				return s:lua("return _G.shortcut_action_hit") == r.mapping
+			end, r.shortcut .. " action", 3000)
+
+			s:lua([[
+				local original = assert(_G.shortcut_action_original)
+				original.action.run = original.run
+				original.action.mapping = original.mapping
+				_G.shortcut_action_original = nil
+				_G.shortcut_action_hit = nil
+				assert(require("gleb.actions").apply())
+			]])
+		end
+	end
+end
+
 T["shortcuts: Consumed shortcuts never reach Neovim"] = function()
 	local s = get()
 	local sent = vim.tbl_map(function(physical)

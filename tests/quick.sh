@@ -44,9 +44,9 @@ for f in $changed; do
 	*.lua | .luarc.jsonc | tests/luarc.types.jsonc) types=1 ;;
 	esac
 	case "$f" in
-	init.lua | lazy-lock.json | lua/gleb/plugins/* | lua/gleb/options.lua | lua/gleb/autocommands.lua)
+	init.lua | lazy-lock.json | lua/gleb/plugins/* | lua/gleb/options.lua | lua/gleb/autocommands/init.lua)
 		all=1 smoke=1 ;;
-	lua/gleb/keymaps.lua) add_cap keymaps && chain=1 e2e=1 ;;
+	lua/gleb/keymaps/init.lua) add_cap keymaps && chain=1 e2e=1 ;;
 	lua/gleb/lsp/* | lua/gleb/git/*) d=${f#lua/gleb/} && cap_or_all "${d%%/*}" && e2e=1 ;;
 	lua/gleb/*/*) d=${f#lua/gleb/} && d=${d%%/*} && cap_or_all "$(echo "$d" | tr _ -)" ;;
 	lua/*) all=1 ;;

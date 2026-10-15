@@ -39,6 +39,8 @@ end
 ---@param right string
 ---@return boolean
 local function lhs_overlaps(left, right)
+	left = vim.keycode(left)
+	right = vim.keycode(right)
 	return left:sub(1, #right) == right or right:sub(1, #left) == left
 end
 

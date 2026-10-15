@@ -37,14 +37,11 @@ function M.visual_prompt()
 	enter_prompt(actions().visual)
 end
 
----Map the direct 99 entry keys: Shift-Enter vibe and the visual prompts.
+---Provide the loaded 99 module to action callbacks.
 ---@param ninety_nine gleb.ai.Actions the 99 module (or a stub with the same actions)
 ---@return nil
 function M.setup(ninety_nine)
 	nn = ninety_nine
-	vim.keymap.set("n", "<S-CR>", M.vibe_prompt, { silent = true, desc = "99: Vibe" })
-	vim.keymap.set("x", "<A-9>", M.visual_prompt, { silent = true, desc = "99: Visual" })
-	vim.keymap.set("x", "<S-CR>", M.visual_prompt, { silent = true, desc = "99: Visual" })
 end
 
 return M
