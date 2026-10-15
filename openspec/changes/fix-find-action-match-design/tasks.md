@@ -21,4 +21,4 @@ Scenarios: `find-action: Only executed shortcuts update recent actions`
 - Skip `find_action.open` only when its configured shortcut opens the palette, so palette runs still enter history without every open displacing the reused action.
 - Pass highlight and selected-metadata options from Find Action so shared picker sources retain their existing appearance.
 - Restore selection from source-match completion because MiniPick item replacement is asynchronous.
-- Return plug targets from expression callbacks with remapping enabled so recording wraps execution without changing recursive `<Plug>` resolution.
+- Observe configured keys only outside MiniPick's input loop so native callback identity and recursive `<Plug>` resolution remain unchanged.
