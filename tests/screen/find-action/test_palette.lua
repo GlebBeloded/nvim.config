@@ -180,6 +180,11 @@ T["find-action: Wide palette matches reference screenshots"] = function()
 
 	child.type_keys("diff")
 	assert(child.wait([[table.concat(require("mini.pick").get_picker_query()) == "diff"]]), "query was not rendered")
+	expect_color_mask(
+		7,
+		"nnnnnnnnnnnnnnbSSSSSSSSSSSSSEESSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSEEEEEEEEEESbnnnnnnnnnnnnnn",
+		{ n = "EndOfBuffer", b = "FloatBorder", S = "PmenuSel", E = "PmenuExtraSel" }
+	)
 	H.expect_screenshot(child.get_screenshot())
 	close_palette()
 

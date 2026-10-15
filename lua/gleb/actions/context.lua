@@ -81,6 +81,9 @@ end
 ---@param action gleb.Action
 ---@return nil
 function M.record(action)
+	if action.plugin or action.id == "find_action.open" then
+		return
+	end
 	require("gleb.find_action.items").history():record(action.id)
 end
 

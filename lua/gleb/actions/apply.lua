@@ -87,7 +87,7 @@ local function index_shortcuts(self, shortcuts)
 	self.shortcut_actions = {}
 	for id, lhs_list in pairs(shortcuts) do
 		local action = self.catalog:get(id)
-		if action and not action.plugin and action.id ~= "find_action.open" then
+		if action then
 			for _, mode in ipairs(modes(action)) do
 				local by_key = self.shortcut_actions[mode] or {}
 				self.shortcut_actions[mode] = by_key

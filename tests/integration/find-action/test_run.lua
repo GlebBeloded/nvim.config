@@ -69,6 +69,14 @@ local function start()
 					}
 				end,
 			},
+			{
+				id = "neo_tree.open",
+				title = "Open",
+				category = "Tree",
+				plugin = "neo-tree",
+				neo_tree_scope = "common",
+				run = function() NeoTreeOpen = (NeoTreeOpen or 0) + 1 end,
+			},
 			RealCatalog:get("find_action.open"),
 		} })
 		local actions = require("gleb.actions")
@@ -79,6 +87,7 @@ local function start()
 			["test.toggle_first"] = {},
 			["test.toggle"] = {},
 			["test.visual"] = { "gV" },
+			["neo_tree.open"] = { "<CR>" },
 			["find_action.open"] = { "<M-A>" },
 		}
 		actions.state.applicator:apply(actions.state.store.last_good)
@@ -102,6 +111,21 @@ T["find-action: Shortcut and palette use update recent actions"] = function()
 	child.type_keys("toggle first<CR>")
 	assert(child.wait("ToggleFirst == true", 5000), "Palette action did not run")
 	child.type_keys("<Esc>")
+	child.lua([[
+		local actions = require("gleb.actions")
+		local mappings = require("gleb.actions.adapters.neo_tree").mappings(
+			actions.state.applicator.catalog,
+			actions.state.store.last_good,
+			"common"
+		)
+		vim.keymap.set("n", "<CR>", mappings["<CR>"], { buffer = true })
+	]])
+	child.type_keys("<CR>")
+	assert(child.wait("NeoTreeOpen == 1", 5000), "Neo-tree action did not run")
+	eq(child.lua_get([[require("gleb.find_action.items").history():load()]]), {
+		"test.toggle_first",
+		"test.regular",
+	})
 
 	open_palette()
 	eq(

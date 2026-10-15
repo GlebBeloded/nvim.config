@@ -116,6 +116,19 @@ local function current_hint(hints)
 	return layout.hint()
 end
 
+---@return integer?
+local function selected_match_position()
+	local matches = MiniPick.get_picker_matches()
+	if not matches then
+		return nil
+	end
+	for position, index in ipairs(matches.all_inds) do
+		if index == matches.current_ind then
+			return position
+		end
+	end
+end
+
 ---@param hints? gleb.picker.Hint
 ---@param on_show? fun(items: any[])
 ---@param highlight_overrides? table<string, string>
@@ -142,8 +155,7 @@ local function create_show(hints, on_show, highlight_overrides, selected_categor
 			local width = vim.api.nvim_win_get_width(render_win)
 			local row_opts = vim.tbl_extend("force", layout.row_options(), { padding = 1 })
 			if selected_category then
-				local matches = MiniPick.get_picker_matches()
-				row_opts.selected = matches and matches.current_ind or nil
+				row_opts.selected = selected_match_position()
 				row_opts.selected_metadata = true
 			end
 			rows.render(buf, items, width, row_opts)
