@@ -69,6 +69,7 @@ local function start()
 					}
 				end,
 			},
+			RealCatalog:get("find_action.open"),
 		} })
 		local actions = require("gleb.actions")
 		actions.state.applicator.catalog = catalog
@@ -78,8 +79,9 @@ local function start()
 			["test.toggle_first"] = {},
 			["test.toggle"] = {},
 			["test.visual"] = { "gV" },
+			["find_action.open"] = { "<M-A>" },
 		}
-		vim.keymap.set("n", "gR", Context.invoke(catalog:get("test.regular")))
+		actions.state.applicator:apply(actions.state.store.last_good)
 	]])
 end
 
@@ -89,6 +91,34 @@ local function open_palette(keys)
 	child.type_keys(keys or "<M-A>")
 	assert(child.wait("MiniPick.is_picker_active()", 5000), "Find Action picker did not open")
 	assert(child.wait("#MiniPick.get_picker_items() > 0", 5000), "Find Action items did not load")
+end
+
+T["find-action: Empty query puts recent actions first"] = function()
+	child.lua([[vim.fn.delete(require("gleb.find_action.items").history().path)]])
+	child.type_keys("gR")
+	assert(child.wait("RegularRun ~= nil", 5000), "Configured shortcut did not run")
+
+	open_palette()
+	child.type_keys("toggle first<CR>")
+	assert(child.wait("ToggleFirst == true", 5000), "Palette action did not run")
+	child.type_keys("<Esc>")
+
+	open_palette()
+	eq(
+		child.lua_get([[
+			vim.tbl_map(function(row)
+				return row.action and row.action.id or row.text
+			end, MiniPick.get_picker_items())
+		]]),
+		{
+			"recently used",
+			"find_action.open",
+			"test.toggle_first",
+			"test.regular",
+			"other actions",
+			"test.toggle",
+		}
+	)
 end
 
 T["find-action: Regular action runs like its shortcut"] = function()

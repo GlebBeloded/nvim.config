@@ -32,10 +32,18 @@ end
 ---@return boolean remap
 local function rhs(action)
 	if action.mapping then
-		return action.mapping, false
+		return function()
+			Context.record(action)
+			action.mapping()
+		end, false
 	end
 	if action.plug then
-		return action.plug, true
+		return function()
+			local ctx = Context.capture()
+			Context.record(action)
+			vim.api.nvim_feedkeys(vim.keycode(Context.counted(ctx, action.plug)), "m", false)
+		end,
+			false
 	end
 	return Context.invoke(action), false
 end

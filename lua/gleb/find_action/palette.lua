@@ -253,8 +253,8 @@ local function choose_action(row)
 		return true
 	end
 	local ctx = assert(M.state.context, "Find Action context is missing")
-	Items.history():record(action.id)
 	if action.toggle then
+		Context.record(action)
 		local rows = assert(M.state.rows, "Find Action rows are missing")
 		vim.api.nvim_win_call(ctx.win, function()
 			local value = not Context.get_toggle(action, ctx)
@@ -271,7 +271,7 @@ local function choose_action(row)
 	end
 
 	vim.schedule(function()
-		Context.run(action, ctx)
+		Context.execute(action, ctx)
 	end)
 	return false
 end
@@ -306,6 +306,12 @@ function M.open(ctx)
 		items = M.state.rows,
 		hints = hints,
 		window_config = window_config,
+		highlight_overrides = {
+			FloatBorder = "FloatBorder",
+			MiniPickMatchCurrent = "PmenuSel",
+			NormalFloat = "NormalFloat",
+		},
+		selected_category = true,
 		match = match_rows,
 		choose = choose_action,
 		mappings = {

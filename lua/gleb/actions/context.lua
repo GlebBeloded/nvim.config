@@ -74,8 +74,22 @@ end
 ---@return function
 function M.invoke(action)
 	return function()
-		M.run(action, M.capture())
+		M.execute(action, M.capture())
 	end
+end
+
+---@param action gleb.Action
+---@return nil
+function M.record(action)
+	require("gleb.find_action.items").history():record(action.id)
+end
+
+---@param action gleb.Action
+---@param ctx gleb.ActionContext
+---@return boolean
+function M.execute(action, ctx)
+	M.record(action)
+	return M.run(action, ctx)
 end
 
 ---@param action gleb.Action
