@@ -89,6 +89,7 @@
   "neo_tree.copy": ["c"],
   "neo_tree.cut": ["x"],
   "neo_tree.delete": ["d"],
+  "neo_tree.git_open_file": ["<CR>"],
   "neo_tree.help": ["?"],
   "neo_tree.navigate_down": ["j"],
   "neo_tree.navigate_up": ["k"],

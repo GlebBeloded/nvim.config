@@ -34,6 +34,7 @@ Scenarios: `actions: Feature actions contain no shortcut keys`, `actions: Every 
 - `Registry.description` drops a title's leading category (`99` + `99 Vibe` → `99: Vibe`), so `ai.vibe` keeps its `99 Vibe` palette title and its pinned `99: Vibe` mapping description; adapters, the audit and the shortcut chain test share it.
 - A buffer mapping without an action description is owned when a plugin action is assigned its lhs in that mode (plugins describe their own maps), when a `$VIMRUNTIME` script defined it (ftplugin grammar such as Go's section motions), or when it is on the native allowlist; lazy.nvim's view keys are read from `lazy.view.config` so lazy updates keep the allowlist exact.
 - The stricter buffer audit exposed alpha's config-defined dashboard keys: they are `alpha.*` plugin actions whose keys an alpha adapter hands to the buttons and to alpha's `opts.keymap` press keys at render, so they still work before `VeryLazy`.
+- The git-status-only `<CR>` action is `neo_tree.git_open_file`, distinguishing its source override from native common `neo_tree.open`.
 
 ## 2. Remove unowned built-in and surround defaults
 Scenarios: `actions: Every configured mapping is action-owned`, `keymaps: Unadopted built-in mappings are removed`, `keymaps: Adopted built-in mappings are registry actions`, `keymaps: Surround mappings use registered actions`, `keymaps: [d jumps to previous diagnostic`
@@ -103,6 +104,6 @@ Scenarios: `git: j selects next entry from file panel`, `git: k selects previous
 
 ## 13. Keep native o and l behavior in git-status trees
 Scenarios: `file-tree: o and l keep native open in git status tree`
-- [ ] 13.1 Write the scenario in `tests/integration/file-tree/test_diff_preview.lua`; open a real populated `git_status` tree with an active preview, press `o` and `l` in fresh runs, run `make test FILE=tests/integration/file-tree/test_diff_preview.lua CASE="file-tree: o and l keep native open in git status tree"` and see it fail
-- [ ] 13.2 Keep `neo_tree.open` as the native common action for `<CR>`/`o`/`l`, add a `git_status`-scoped action that overrides only `<CR>` with `git_open_file`, and merge source-scoped mappings over common mappings
-- [ ] 13.3 Run `make test FILE=tests/integration/file-tree/test_diff_preview.lua CASE="file-tree: o and l keep native open in git status tree"` and see it pass
+- [x] 13.1 Write the scenario in `tests/integration/file-tree/test_diff_preview.lua`; open a real populated `git_status` tree with an active preview, press `o` and `l` in fresh runs, run `make test FILE=tests/integration/file-tree/test_diff_preview.lua CASE="file-tree: o and l keep native open in git status tree"` and see it fail
+- [x] 13.2 Keep `neo_tree.open` as the native common action for `<CR>`/`o`/`l`, add a `git_status`-scoped action that overrides only `<CR>` with `git_open_file`, and merge source-scoped mappings over common mappings
+- [x] 13.3 Run `make test FILE=tests/integration/file-tree/test_diff_preview.lua CASE="file-tree: o and l keep native open in git status tree"` and see it pass

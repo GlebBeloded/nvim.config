@@ -258,14 +258,9 @@ local actions = {
 			smart_toggle("git_status")
 		end,
 	},
-	neo_tree_action("open", "Open", "common", function(ctx)
-		local state = tree_state(ctx)
-		if state.name == "git_status" then
-			git_open_file(state)
-		else
-			state.config = {}
-			state.commands.open(state)
-		end
+	neo_tree_action("open", "Open", "common", tree_command("open")),
+	neo_tree_action("git_open_file", "Open file", "git_status", function(ctx)
+		git_open_file(tree_state(ctx))
 	end),
 	neo_tree_action("close_node", "Close node", "common", tree_command("close_node")),
 	neo_tree_action("open_vsplit", "Open vertical split", "common", tree_command("open_vsplit")),

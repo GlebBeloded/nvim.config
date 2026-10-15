@@ -9,8 +9,10 @@ local store = assert(actions.state.store, "actions are not set up")
 local catalog = assert(actions.state.applicator, "actions are not set up").catalog
 local shortcuts = store:load()
 local common_mappings = adapter.window_mappings(catalog, shortcuts, "common")
-local filesystem_mappings = adapter.window_mappings(catalog, shortcuts, "filesystem")
-local git_status_mappings = adapter.window_mappings(catalog, shortcuts, "git_status")
+local filesystem_mappings =
+	vim.tbl_extend("force", common_mappings, adapter.window_mappings(catalog, shortcuts, "filesystem"))
+local git_status_mappings =
+	vim.tbl_extend("force", common_mappings, adapter.window_mappings(catalog, shortcuts, "git_status"))
 
 neo_tree.setup({
 	sources = { "filesystem", "git_status" },
