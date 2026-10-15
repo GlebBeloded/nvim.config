@@ -29,7 +29,9 @@ tasks.md, run `make fmt` and `make self-check CHANGE=$INPUTS.change` (the gate's
 `make test FILE=tests/<layer>/<capability>/test_x.lua CASE="…" 2>&1 | tail -40`. When you edit a module another area requires
 (`rg -l '<module.name>' lua` lists a file outside your capability, e.g. `gleb.actions` from ai or keymaps), also run
 `make test FILE=tests/integration/<area> 2>&1 | tail -40` once for each such area before the commit; likewise for a
-`tests/helpers.lua` function you edit, run every test file `rg -l '<function>' tests` lists. Never run
+`tests/helpers.lua` function you edit, run every test file `rg -l '<function>' tests` lists. For each `lua/gleb/<area>/` you
+edit outside your capability, run `make test FILE=tests/screen/<area>` and `FILE=tests/integration/<area>` too, and
+for a visible-UI change `make e2e CASE="<capability>:" 2>&1 | tail -40` once before the commit (its approved screens). Never run
 `make quick` or `make check` (the gate after the task loop runs it once). Keep tool output short: read
 file ranges, not whole files; no full logs. Follow the conventions in docs/architecture.md: the pack inlines its
 `## Conventions` and an index of tests/helpers.lua, so do not re-read either whole (read a helper's range when you call it).

@@ -447,6 +447,12 @@ T["loop: Implement and fix self-check like the gate before handing back"] = func
 		table.concat(vim.fn.readfile(vim.fs.joinpath(H.root, ".archon/commands/implement.md")), " "):gsub("%s+", " ")
 	local callers = "also run `make test FILE=tests/integration/<area> 2>&1 | tail -40` once for each such area"
 	eq(implement:find(callers, 1, true) ~= nil, true, { fail_reason = callers })
+	for _, needle in ipairs({
+		"edit outside your capability, run `make test FILE=tests/screen/<area>` and `FILE=tests/integration/<area>` too",
+		'for a visible-UI change `make e2e CASE="<capability>:" 2>&1 | tail -40` once before the commit',
+	}) do
+		eq(implement:find(needle, 1, true) ~= nil, true, { fail_reason = needle })
+	end
 end
 
 T["loop: Fix keeps the red regression test and review blocks scope creep"] = function()
