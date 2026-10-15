@@ -39,19 +39,19 @@ end
 T["folding: Fold keys invoke registered actions"] = function()
 	eq(fold_state(), { 1, 4 })
 
-	expect_action_mapping("<M-=>", "Fold: Open one")
+	expect_action_mapping("<M-=>", "Fold: Expand Fold")
 	child.type_keys("<M-=>")
 	eq(fold_state(), { -1, 4 })
 
-	expect_action_mapping("<M-->", "Fold: Close one")
+	expect_action_mapping("<M-->", "Fold: Collapse Fold")
 	child.type_keys("<M-->")
 	eq(fold_state(), { 1, 4 })
 
-	expect_action_mapping("<S-D-=>", "Fold: Open all")
+	expect_action_mapping("<S-D-=>", "Fold: Expand All Folds")
 	child.type_keys("<S-D-=>")
 	eq(fold_state(), { -1, -1 })
 
-	expect_action_mapping("<S-D-->", "Fold: Close all")
+	expect_action_mapping("<S-D-->", "Fold: Collapse All Folds")
 	child.type_keys("<S-D-->")
 	eq(fold_state(), { 1, 4 })
 end

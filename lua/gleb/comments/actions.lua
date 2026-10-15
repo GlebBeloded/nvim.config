@@ -12,7 +12,7 @@ end
 local actions = {
 	{
 		id = "comments.toggle",
-		title = "Toggle",
+		title = "Toggle Comment",
 		category = "Comments",
 		modes = { "n", "x" },
 		run = toggle,

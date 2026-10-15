@@ -19,9 +19,9 @@ end
 
 ---@type gleb.Action[]
 local actions = {
-	suggestion_action("next", "Next suggestion", "next"),
-	suggestion_action("prev", "Previous suggestion", "prev"),
-	suggestion_action("dismiss", "Dismiss suggestion", "dismiss"),
+	suggestion_action("next", "Next Copilot Suggestion", "next"),
+	suggestion_action("prev", "Previous Copilot Suggestion", "prev"),
+	suggestion_action("dismiss", "Dismiss Copilot Suggestion", "dismiss"),
 }
 
 return actions

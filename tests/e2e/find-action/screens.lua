@@ -78,17 +78,17 @@ local recent = palette("█", {
 	INDENT .. "│ Find Action...  ⌘⇧A                                             Help │",
 	INDENT
 		.. "│ other actions ────────────────────────────────────────────────────── │",
-	INDENT .. "│ Move left  ⌘H                                                 Window │",
-	INDENT .. "│ Move down  ⌘⇧J                                                Window │",
-	INDENT .. "│ Move up  ⌘⇧K                                                  Window │",
-	INDENT .. "│ Move right  ⌘L                                                Window │",
-	INDENT .. "│ Back  gb                                                        Jump │",
-	INDENT .. "│ Forward  gB                                                     Jump │",
-	INDENT .. "│ Increase height  ⌃↑                                           Window │",
-	INDENT .. "│ Decrease height  ⌃↓                                           Window │",
-	INDENT .. "│ Decrease width  ⌃←                                            Window │",
-	INDENT .. "│ Increase width  ⌃→                                            Window │",
-	INDENT .. "│ Resize left  ⌘⇧H                                              Window │",
+	INDENT .. "│ Focus Left Window  ⌘H                                         Window │",
+	INDENT .. "│ Focus Down Window  ⌘⇧J                                        Window │",
+	INDENT .. "│ Focus Up Window  ⌘⇧K                                          Window │",
+	INDENT .. "│ Focus Right Window  ⌘L                                        Window │",
+	INDENT .. "│ Navigate Back  gb                                               Jump │",
+	INDENT .. "│ Navigate Forward  gB                                            Jump │",
+	INDENT .. "│ Increase Window Height  ⌃↑                                    Window │",
+	INDENT .. "│ Decrease Window Height  ⌃↓                                    Window │",
+	INDENT .. "│ Decrease Window Width  ⌃←                                     Window │",
+	INDENT .. "│ Increase Window Width  ⌃→                                     Window │",
+	INDENT .. "│ Resize Window Left  ⌘⇧H                                       Window │",
 }, "43/43")
 
 return {
@@ -97,7 +97,13 @@ return {
 		empty_buffer,
 		palette("find█", {
 			INDENT .. "│ Find Action...  ⌘⇧A                                             Help │",
-		}, "1/43")
+			INDENT .. "│ Focus Left Window  ⌘H                                         Window │",
+			INDENT .. "│ Focus Down Window  ⌘⇧J                                        Window │",
+			INDENT .. "│ Focus Up Window  ⌘⇧K                                          Window │",
+			INDENT .. "│ Focus Right Window  ⌘L                                        Window │",
+			INDENT .. "│ Find in Files...  ⌘⇧F                                    Edit | Find │",
+			INDENT .. "│ Find References  gr                                              LSP │",
+		}, "7/43")
 	),
 	["run action screen"] = full(empty_buffer, recent),
 	["shortcut capture screen"] = full(empty_buffer, assignment(" █")),

@@ -244,63 +244,63 @@ end
 local actions = {
 	{
 		id = "tree.toggle_filesystem",
-		title = "Toggle filesystem",
-		category = "Tree",
+		title = "Toggle File Tree",
+		category = "View | Tool Windows",
 		run = function()
 			smart_toggle("filesystem")
 		end,
 	},
 	{
 		id = "tree.toggle_git_status",
-		title = "Toggle git status",
-		category = "Tree",
+		title = "Toggle Git Status Tree",
+		category = "View | Tool Windows",
 		run = function()
 			smart_toggle("git_status")
 		end,
 	},
-	neo_tree_action("open", "Open", "common", tree_command("open")),
-	neo_tree_action("git_open_file", "Open file", "git_status", function(ctx)
+	neo_tree_action("open", "Open Tree Node", "common", tree_command("open")),
+	neo_tree_action("git_open_file", "Open Git Tree File", "git_status", function(ctx)
 		git_open_file(tree_state(ctx))
 	end),
-	neo_tree_action("close_node", "Close node", "common", tree_command("close_node")),
-	neo_tree_action("open_vsplit", "Open vertical split", "common", tree_command("open_vsplit")),
-	neo_tree_action("open_split", "Open split", "common", tree_command("open_split")),
-	neo_tree_action("open_tab", "Open tab", "common", tree_command("open_tabnew")),
-	neo_tree_action("add", "Add", "common", tree_command("add", { show_path = "relative" })),
-	visual_tree_action("delete", "Delete", "common", "delete"),
-	neo_tree_action("rename", "Rename", "common", tree_command("rename")),
-	neo_tree_action("copy", "Copy", "common", tree_command("copy")),
-	visual_tree_action("cut", "Cut", "common", "cut_to_clipboard"),
-	neo_tree_action("paste", "Paste", "common", tree_command("paste_from_clipboard")),
-	neo_tree_action("refresh", "Refresh", "common", tree_command("refresh")),
-	neo_tree_action("close", "Close", "common", function(ctx)
+	neo_tree_action("close_node", "Close Tree Node", "common", tree_command("close_node")),
+	neo_tree_action("open_vsplit", "Open Tree Node in Vertical Split", "common", tree_command("open_vsplit")),
+	neo_tree_action("open_split", "Open Tree Node in Horizontal Split", "common", tree_command("open_split")),
+	neo_tree_action("open_tab", "Open Tree Node in New Tab", "common", tree_command("open_tabnew")),
+	neo_tree_action("add", "Add Tree Node", "common", tree_command("add", { show_path = "relative" })),
+	visual_tree_action("delete", "Delete Tree Node", "common", "delete"),
+	neo_tree_action("rename", "Rename Tree Node", "common", tree_command("rename")),
+	neo_tree_action("copy", "Copy Tree Node", "common", tree_command("copy")),
+	visual_tree_action("cut", "Cut Tree Node", "common", "cut_to_clipboard"),
+	neo_tree_action("paste", "Paste Tree Node", "common", tree_command("paste_from_clipboard")),
+	neo_tree_action("refresh", "Refresh Tree", "common", tree_command("refresh")),
+	neo_tree_action("close", "Close Tree", "common", function(ctx)
 		if tree_state(ctx).name == "git_status" then
 			git_close()
 		else
 			tree_command("close_window")(ctx)
 		end
 	end),
-	neo_tree_action("help", "Help", "common", tree_command("show_help")),
-	neo_tree_action("previous_source", "Previous source", "common", tree_command("prev_source")),
-	neo_tree_action("next_source", "Next source", "common", tree_command("next_source")),
-	neo_tree_action("toggle_hidden", "Toggle hidden", "filesystem", tree_command("toggle_hidden")),
-	neo_tree_action("navigate_down", "Navigate down", "git_status", function(ctx)
+	neo_tree_action("help", "Show Tree Help", "common", tree_command("show_help")),
+	neo_tree_action("previous_source", "Show Previous Tree Source", "common", tree_command("prev_source")),
+	neo_tree_action("next_source", "Show Next Tree Source", "common", tree_command("next_source")),
+	neo_tree_action("toggle_hidden", "Toggle Hidden Tree Files", "filesystem", tree_command("toggle_hidden")),
+	neo_tree_action("navigate_down", "Navigate Down Git Status Tree", "git_status", function(ctx)
 		git_nav_down(tree_state(ctx))
 	end),
-	neo_tree_action("navigate_up", "Navigate up", "git_status", function(ctx)
+	neo_tree_action("navigate_up", "Navigate Up Git Status Tree", "git_status", function(ctx)
 		git_nav_up(tree_state(ctx))
 	end),
-	neo_tree_action("toggle_stage", "Toggle stage", "git_status", function(ctx)
+	neo_tree_action("toggle_stage", "Toggle Git Tree Node Staging", "git_status", function(ctx)
 		git_toggle_stage(tree_state(ctx))
 	end),
-	neo_tree_action("commit", "Commit (AI)", "git_status", function()
+	neo_tree_action("commit", "Commit Git Changes with AI", "git_status", function()
 		git_commit()
 	end),
-	neo_tree_action("push", "Push", "git_status", function()
+	neo_tree_action("push", "Push Git Changes", "git_status", function()
 		git_push()
 	end),
-	neo_tree_action("add_all", "Add all", "git_status", tree_command("git_add_all")),
-	neo_tree_action("revert", "Revert", "git_status", tree_command("git_revert_file")),
+	neo_tree_action("add_all", "Stage All Git Changes", "git_status", tree_command("git_add_all")),
+	neo_tree_action("revert", "Revert Git Tree File", "git_status", tree_command("git_revert_file")),
 }
 
 return actions

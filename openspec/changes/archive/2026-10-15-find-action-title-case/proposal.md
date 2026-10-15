@@ -28,11 +28,21 @@ About 45 palette-visible titles:
 
 These names are a suggestion; follow the render's style. Categories are flat strings today (`category = "Git"`).
 
+Root cause:
+- `lua/gleb/keymaps/actions.lua:69-256`, `lua/gleb/folding/actions.lua:17-20`, and the other action files listed above define the sentence-case, context-dependent titles and flat categories in the catalog.
+- `lua/gleb/find_action/rows.lua:72-77` copies each catalog title and category into a palette row unchanged.
+- `lua/gleb/picker/rows.lua:97-118` renders and highlights the category as one span, so a hierarchy separator cannot be dimmed independently.
+- `tests/screen/find-action/test_palette.lua:14-51` uses a hand-built catalog that already contains the approved labels, so its reference screenshots do not exercise the live catalog values shown in `evidence/impl.png`.
+
 ## What Changes
 - Every palette-visible action title is Title Case and unambiguous without its category (IntelliJ style, as in render.png).
 - Categories gain a second level where the render shows one (`Git | Diff`, `View | Editor`, `View | Tool Windows`, `Edit | Find`), drawn with a dim ` | ` separator.
 - Action ids, shortcuts and the recent history file are unchanged.
 
 ## Impact
-- Code: the `actions.lua` files above, `lua/gleb/find_action/rows.lua` (separator).
-- Tests: cases asserting old titles, and screen references.
+- Code: the action metadata in `lua/gleb/keymaps/actions.lua`, `lua/gleb/folding/actions.lua`, `lua/gleb/comments/actions.lua`, `lua/gleb/file_tree/actions.lua`, `lua/gleb/autocommands/actions.lua`, `lua/gleb/ai/actions.lua`, `lua/gleb/surround/actions.lua`, `lua/gleb/git/actions.lua`, `lua/gleb/plugins/actions.lua`, `lua/gleb/lsp/actions.lua`, `lua/gleb/testing/actions.lua`, `lua/gleb/alpha/actions.lua`, `lua/gleb/debugging/actions.lua`, `lua/gleb/copilot/actions.lua`, and `lua/gleb/cmp/actions.lua`; category rendering in `lua/gleb/picker/rows.lua`.
+- Tests: real-catalog integration coverage, action-description expectations, Find Action screen coverage, and its reference screenshots.
+- Dependencies: no plugin is added, removed, or upgraded.
+- Core keymaps: unchanged; action ids, shortcut lhs values, and recent-history storage are unchanged.
+- Architecture: none; module layout, load order, and plugin wiring stay unchanged (`lua/gleb/plugins/actions.lua` changes action metadata only).
+- Out of scope: changing action behavior, responsive layout, picker ordering, matching, shortcut assignment, or history migration.

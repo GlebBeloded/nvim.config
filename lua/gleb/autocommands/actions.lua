@@ -4,7 +4,7 @@
 local actions = {
 	{
 		id = "window.close_special",
-		title = "Close",
+		title = "Close Window",
 		category = "Window",
 		ft = { "qf", "help", "man", "lspinfo" },
 		run = function()

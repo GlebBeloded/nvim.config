@@ -17,7 +17,11 @@ The config SHALL expose the palette as action `find_action.open` titled `Find Ac
 - **THEN** it returns an action titled `Find Action...` that opens the palette
 
 ### Requirement: Action rows
-The palette SHALL draw each action with its title first, two spaces before its first shortcut, and its category right-aligned, with no icon column. Equivalent Alt/Meta and control-key spellings SHALL resolve to the same physical label; an unknown shortcut SHALL use canonical Vim notation. Toggle rows SHALL show a green `●` when on or a grey `○` when off before the category, without ON/OFF text.
+Each catalog action row SHALL show a standalone Title Case title, two spaces before its first shortcut, and a right-aligned category, with no icon column. Approved two-level categories SHALL use `Parent | Child`, with the separator dimmer than both names. Equivalent Alt/Meta and control-key spellings SHALL share a physical label; unknown shortcuts SHALL use canonical Vim notation. Toggles SHALL show green `●` when on or grey `○` when off before the category, without ON/OFF text.
+
+#### Scenario: Catalog rows use standalone Title Case labels
+- **WHEN** `<M-A>` opens Find Action with the real populated action catalog
+- **THEN** every palette-visible action has its approved standalone Title Case title and approved flat or two-level category while its action id and shortcuts remain unchanged
 
 #### Scenario: Rows show action metadata
 - **WHEN** an action with multiple shortcuts and a known physical label is listed

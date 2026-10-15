@@ -99,9 +99,9 @@ T["ai: 99 entry mappings come from AI actions"] = function()
 		child.lua_get([[(function()
 			local actions = require("gleb.actions").state.applicator.catalog
 			local expected = {
-				{ id = "ai.vibe", lhs = "<S-CR>", mode = "n", desc = "99: Vibe" },
-				{ id = "ai.visual", lhs = "<A-9>", mode = "x", desc = "99: Visual" },
-				{ id = "ai.visual", lhs = "<S-CR>", mode = "x", desc = "99: Visual" },
+				{ id = "ai.vibe", lhs = "<S-CR>", mode = "n", desc = "AI: Vibe" },
+				{ id = "ai.visual", lhs = "<A-9>", mode = "x", desc = "AI: Edit Selection" },
+				{ id = "ai.visual", lhs = "<S-CR>", mode = "x", desc = "AI: Edit Selection" },
 			}
 			local result = {}
 			for _, item in ipairs(expected) do
@@ -120,21 +120,21 @@ T["ai: 99 entry mappings come from AI actions"] = function()
 		{
 			{
 				id = "ai.vibe",
-				desc = "99: Vibe",
+				desc = "AI: Vibe",
 				silent = true,
 				uses_action_mapping = true,
 				mapping_runs_action = true,
 			},
 			{
 				id = "ai.visual",
-				desc = "99: Visual",
+				desc = "AI: Edit Selection",
 				silent = true,
 				uses_action_mapping = true,
 				mapping_runs_action = true,
 			},
 			{
 				id = "ai.visual",
-				desc = "99: Visual",
+				desc = "AI: Edit Selection",
 				silent = true,
 				uses_action_mapping = true,
 				mapping_runs_action = true,
@@ -167,8 +167,8 @@ T["ai: Prompt submit comes from a filetype action"] = function()
 			return result
 		end)()]]),
 		{
-			{ buffer = true, desc = "99: Submit prompt", silent = true },
-			{ buffer = true, desc = "99: Submit prompt", silent = true },
+			{ buffer = true, desc = "AI: Submit AI Prompt", silent = true },
+			{ buffer = true, desc = "AI: Submit AI Prompt", silent = true },
 		}
 	)
 
@@ -239,7 +239,7 @@ T["ai: 99 hardcoded mappings are the only exceptions"] = function()
 			for _, mode in ipairs({ "n", "x", "s", "o", "i", "c", "t" }) do
 				for _, map in ipairs(vim.api.nvim_buf_get_keymap(0, mode)) do
 					local key = mode .. ":" .. map.lhs
-					if not vim.g.ai_baseline_maps[key] and map.desc ~= "99: Submit prompt" then
+					if not vim.g.ai_baseline_maps[key] and map.desc ~= "AI: Submit AI Prompt" then
 						table.insert(exceptions, key)
 					end
 				end
@@ -270,19 +270,19 @@ local function run_action(id, title)
 end
 
 T["ai: Menu s opens search prompt"] = function()
-	run_action("ai.search", "99 Search")
+	run_action("ai.search", "AI Search")
 	wait_prompt()
 
 	eq(focused_prompt(), expected_prompt("Search"))
 end
 
 T["ai: Menu v opens vibe prompt"] = function()
-	run_action("ai.vibe", "99 Vibe")
+	run_action("ai.vibe", "AI Vibe")
 	eq(
 		child.lua_get([[(function()
 			local matches = require("gleb.find_action.items").match(
 				require("gleb.actions").state.applicator.catalog.actions,
-				"99 vibe"
+				"ai vibe"
 			)
 			return vim.tbl_map(function(action) return action.id end, matches)
 		end)()]]),

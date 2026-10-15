@@ -50,33 +50,48 @@ end
 
 ---@type gleb.Action[]
 local actions = {
-	blink_action("show", "Show menu", "i", { "show" }),
-	blink_action("select_next_or_accept_copilot", "Next item or accept Copilot", "i", {
+	blink_action("show", "Show Completion Menu", "i", { "show" }),
+	blink_action("select_next_or_accept_copilot", "Select Next Completion Item or Accept Copilot Suggestion", "i", {
 		select_next_or_accept_copilot,
 		"fallback",
 	}),
-	blink_action("select_prev", "Previous item", "i", { "select_prev", "fallback" }),
-	blink_action("select_next", "Next item", "i", { "select_next", "fallback" }),
-	blink_action("accept", "Accept", "i", { "accept", "fallback" }),
-	blink_action("cancel", "Cancel", "i", { "cancel", "fallback" }),
-	blink_action("scroll_documentation_up", "Scroll documentation up", "i", { "scroll_documentation_up", "fallback" }),
+	blink_action("select_prev", "Select Previous Completion Item", "i", { "select_prev", "fallback" }),
+	blink_action("select_next", "Select Next Completion Item", "i", { "select_next", "fallback" }),
+	blink_action("accept", "Accept Completion", "i", { "accept", "fallback" }),
+	blink_action("cancel", "Cancel Completion", "i", { "cancel", "fallback" }),
+	blink_action(
+		"scroll_documentation_up",
+		"Scroll Completion Documentation Up",
+		"i",
+		{ "scroll_documentation_up", "fallback" }
+	),
 	blink_action(
 		"scroll_documentation_down",
-		"Scroll documentation down",
+		"Scroll Completion Documentation Down",
 		"i",
 		{ "scroll_documentation_down", "fallback" }
 	),
-	blink_action("cmdline_show_next", "Command line: show or next item", "c", { "show", "select_next", "fallback" }),
+	blink_action(
+		"cmdline_show_next",
+		"Show or Select Next Command-Line Completion Item",
+		"c",
+		{ "show", "select_next", "fallback" }
+	),
 	blink_action(
 		"cmdline_show_prev",
-		"Command line: show or previous item",
+		"Show or Select Previous Command-Line Completion Item",
 		"c",
 		{ "show", "select_prev", "fallback" }
 	),
-	blink_action("cmdline_select_next", "Command line: next item", "c", { "select_next", "fallback" }),
-	blink_action("cmdline_select_prev", "Command line: previous item", "c", { "select_prev", "fallback" }),
-	blink_action("cmdline_accept", "Command line: accept", "c", { "accept", "fallback" }),
-	blink_action("cmdline_cancel", "Command line: cancel", "c", { "cancel", "fallback" }),
+	blink_action("cmdline_select_next", "Select Next Command-Line Completion Item", "c", { "select_next", "fallback" }),
+	blink_action(
+		"cmdline_select_prev",
+		"Select Previous Command-Line Completion Item",
+		"c",
+		{ "select_prev", "fallback" }
+	),
+	blink_action("cmdline_accept", "Accept Command-Line Completion", "c", { "accept", "fallback" }),
+	blink_action("cmdline_cancel", "Cancel Command-Line Completion", "c", { "cancel", "fallback" }),
 }
 
 return actions

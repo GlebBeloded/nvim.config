@@ -41,6 +41,7 @@ local function setup_highlights()
 	vim.api.nvim_set_hl(0, "FindActionCaret", { fg = color_palette.foreground.blue, bg = colors.body })
 	vim.api.nvim_set_hl(0, "FindActionBorder", { fg = colors.dim, bg = colors.body })
 	vim.api.nvim_set_hl(0, "FindActionMetadata", { fg = colors.metadata })
+	vim.api.nvim_set_hl(0, "FindActionSeparator", { fg = colors.dim })
 	vim.api.nvim_set_hl(0, "FindActionShortcut", { fg = colors.dim })
 	vim.api.nvim_set_hl(0, "FindActionRule", { fg = colors.dim })
 	vim.api.nvim_set_hl(0, "FindActionToggleOn", { fg = color_palette.foreground.green })
@@ -361,6 +362,7 @@ function M.open(ctx)
 			MiniPickPromptPrefix = "FindActionPrompt",
 			NormalFloat = "FindActionBody",
 			PickerCategory = "FindActionMetadata",
+			PickerCategorySeparator = "FindActionSeparator",
 			PickerBandBorder = "FindActionBorder",
 			PickerHintBand = "FindActionHint",
 			PickerHintKey = "FindActionHintKey",

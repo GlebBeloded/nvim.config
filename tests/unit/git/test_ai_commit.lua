@@ -108,9 +108,9 @@ T["git: Commit popup mappings come from git actions"] = function()
 	]]),
 		{
 			{ "<CR>" },
-			"Git: Confirm commit message",
+			"Git: Confirm Commit Message",
 			{ "q" },
-			"Git: Discard commit message",
+			"Git: Discard Commit Message",
 		}
 	)
 end

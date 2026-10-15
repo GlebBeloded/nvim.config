@@ -23,7 +23,7 @@ T["autocommands: q closes special buffers through an action"] = function()
 			local map = vim.fn.maparg("q", "n", false, true)
 			return { buffer = map.buffer, desc = map.desc, callback = type(map.callback) }
 		end)()]])
-		eq(mapping, { buffer = 1, desc = "Window: Close", callback = "function" })
+		eq(mapping, { buffer = 1, desc = "Window: Close Window", callback = "function" })
 		child.type_keys("q")
 
 		eq(#child.api.nvim_list_wins(), window_count - 1)

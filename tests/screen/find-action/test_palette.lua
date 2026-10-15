@@ -7,10 +7,13 @@ local child = H.new_child()
 local eq = MiniTest.expect.equality
 
 local function start()
-	child.start_bare({ "gruvbox-material" })
+	child.start_bare({ "gruvbox-material", "neo-tree.nvim", "smart-splits.nvim" })
 	child.cmd("colorscheme gruvbox-material")
 	child.lua([[
 		ToggleState = { wrap = true, spell = false }
+		local function registered(module, id)
+			return assert(vim.iter(require(module)):find(function(item) return item.id == id end))
+		end
 		local function action(id, title, category, extra)
 			return vim.tbl_extend("force", {
 				id = id,
@@ -22,7 +25,7 @@ local function start()
 		end
 
 		FixtureActions = {
-			action("git.open_differ", "Open Differ", "Git | Diff"),
+			registered("gleb.git.actions", "git.open_differ"),
 			action("view.soft_wrap", "Soft Wrap", "View | Editor", {
 				toggle = {
 					get = function() return ToggleState.wrap end,
@@ -35,12 +38,12 @@ local function start()
 					set = function(_, value) ToggleState.spell = value end,
 				},
 			}),
-			action("edit.find_files", "Find in Files...", "Edit | Find"),
-			action("help.find_action", "Find Action...", "Help"),
+			registered("gleb.keymaps.actions", "search.live_grep"),
+			registered("gleb.find_action.actions", "find_action.open"),
 			action("navigate.find_file", "Find File...", "Navigate"),
 			action("edit.find_buffer", "Find in Buffer", "Edit | Find"),
-			action("view.file_tree", "Toggle File Tree", "View | Tool Windows"),
-			action("view.git_status", "Toggle Git Status Tree", "View | Tool Windows"),
+			registered("gleb.file_tree.actions", "tree.toggle_filesystem"),
+			registered("gleb.file_tree.actions", "tree.toggle_git_status"),
 			action("git.open_diffview", "Open Diffview", "Git | Diff"),
 			action("git.blame_line", "Blame Line", "Git"),
 			action("git.copy_permalink", "Copy Permalink", "Git"),
@@ -54,12 +57,12 @@ local function start()
 		Actions.state.applicator.catalog.complete_commands = function() return { "SecretCommand" } end
 		Actions.state.store:save({
 			["git.open_differ"] = { "<M-g>" },
-			["edit.find_files"] = { "<M-F>" },
-			["help.find_action"] = { "<M-A>" },
+			["search.live_grep"] = { "<M-F>" },
+			["find_action.open"] = { "<M-A>" },
 			["navigate.find_file"] = { "<D-o>" },
 			["edit.find_buffer"] = { "/" },
-			["view.file_tree"] = { "<M-e>" },
-			["view.git_status"] = { "<M-G>" },
+			["tree.toggle_filesystem"] = { "<M-e>" },
+			["tree.toggle_git_status"] = { "<M-G>" },
 		})
 		Actions.state.applicator:apply(Actions.state.store.last_good)
 		local history = require("gleb.find_action.items").history()
@@ -68,7 +71,7 @@ local function start()
 			"git.open_differ",
 			"view.soft_wrap",
 			"view.spell_check",
-			"edit.find_files",
+			"search.live_grep",
 		}) }, history.path)
 
 		vim.keymap.set("n", "<M-A>", require("gleb.find_action").open)
@@ -161,6 +164,7 @@ T["find-action: Wide palette matches reference screenshots"] = function()
 	H.expect_hl_colors(child, "FindActionSelected", { bg = "#59524d" })
 	H.expect_hl_colors(child, "FindActionPrompt", { fg = "#da8f57", bg = "#45403d" })
 	H.expect_hl_colors(child, "FindActionMetadata", { fg = "#a59a86" })
+	H.expect_hl_colors(child, "FindActionSeparator", { fg = "#8f8475" })
 	H.expect_hl_colors(child, "FindActionShortcut", { fg = "#8f8475" })
 	H.expect_hl_colors(child, "FindActionRule", { fg = "#8f8475" })
 	H.expect_hl_colors(child, "FindActionHint", { fg = "#a59a86", bg = "#32302f" })
@@ -211,7 +215,7 @@ T["find-action: Wide palette matches reference screenshots"] = function()
 	close_palette()
 
 	child.lua(
-		[[vim.fn.writefile({ vim.json.encode({ "git.open_differ", "view.soft_wrap", "view.spell_check", "edit.find_files" }) }, require("gleb.find_action.items").history().path)]]
+		[[vim.fn.writefile({ vim.json.encode({ "git.open_differ", "view.soft_wrap", "view.spell_check", "search.live_grep" }) }, require("gleb.find_action.items").history().path)]]
 	)
 	open_palette()
 	H.expect_screen_colors(child, 6, {
@@ -227,22 +231,40 @@ T["find-action: Wide palette matches reference screenshots"] = function()
 		r = "FindActionRule",
 	})
 	H.expect_screen_colors(child, 8, {
-		wide_color_mask(string.rep("S", 14) .. string.rep("q", 2) .. string.rep("S", 43) .. string.rep("a", 10) .. "S"),
+		wide_color_mask(
+			string.rep("S", 14)
+				.. string.rep("q", 2)
+				.. string.rep("S", 43)
+				.. string.rep("a", 3)
+				.. string.rep("d", 3)
+				.. string.rep("a", 4)
+				.. "S"
+		),
 	}, {
 		n = "EndOfBuffer",
 		b = "FindActionBorder",
 		S = "FindActionSelected",
 		q = "FindActionShortcut",
 		a = "FindActionMetadata",
+		d = "FindActionSeparator",
 	})
 	H.expect_screen_colors(child, 11, {
-		wide_color_mask(string.rep("B", 19) .. string.rep("q", 3) .. string.rep("B", 36) .. string.rep("a", 11) .. "B"),
+		wide_color_mask(
+			string.rep("B", 19)
+				.. string.rep("q", 3)
+				.. string.rep("B", 36)
+				.. string.rep("a", 4)
+				.. string.rep("d", 3)
+				.. string.rep("a", 4)
+				.. "B"
+		),
 	}, {
 		n = "EndOfBuffer",
 		b = "FindActionBorder",
 		B = "FindActionBody",
 		q = "FindActionShortcut",
 		a = "FindActionMetadata",
+		d = "FindActionSeparator",
 	})
 	H.expect_screen_colors(
 		child,
@@ -258,13 +280,22 @@ T["find-action: Wide palette matches reference screenshots"] = function()
 	child.type_keys("diff")
 	assert(child.wait([[table.concat(require("mini.pick").get_picker_query()) == "diff"]]), "query was not rendered")
 	H.expect_screen_colors(child, 7, {
-		wide_color_mask(string.rep("S", 14) .. string.rep("q", 2) .. string.rep("S", 43) .. string.rep("a", 10) .. "S"),
+		wide_color_mask(
+			string.rep("S", 14)
+				.. string.rep("q", 2)
+				.. string.rep("S", 43)
+				.. string.rep("a", 3)
+				.. string.rep("d", 3)
+				.. string.rep("a", 4)
+				.. "S"
+		),
 	}, {
 		n = "EndOfBuffer",
 		b = "FindActionBorder",
 		S = "FindActionSelected",
 		q = "FindActionShortcut",
 		a = "FindActionMetadata",
+		d = "FindActionSeparator",
 	})
 	close_palette()
 

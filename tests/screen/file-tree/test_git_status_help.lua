@@ -51,7 +51,11 @@ T["file-tree: Help lists the moved git status keys"] = function()
 
 	local screenshot = child.get_screenshot()
 	local text = screen_text(screenshot)
-	for _, row in ipairs({ "X -> Tree: Revert", "c -> Tree: Copy", "gc -> Tree: Commit (AI)" }) do
+	for _, row in ipairs({
+		"X -> Tree: Revert Git Tree File",
+		"c -> Tree: Copy Tree Node",
+		"gc -> Tree: Commit Git Changes with AI",
+	}) do
 		eq({ row, text:find(" " .. row, 1, true) ~= nil }, { row, true })
 	end
 	eq(text:find(" gr -> ", 1, true), nil)

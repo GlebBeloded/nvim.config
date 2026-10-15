@@ -659,7 +659,7 @@ T["file-tree: c is copy in git status tree"] = function()
 	local desc = child.lua_get([[vim.iter(vim.api.nvim_buf_get_keymap(0, "n")):find(function(map)
 		return map.lhs == "c"
 	end).desc]])
-	eq(desc, "Tree: Copy")
+	eq(desc, "Tree: Copy Tree Node")
 end
 
 T["file-tree: P pushes successfully"] = function()

@@ -115,7 +115,23 @@ local function render_item(item, width, opts, _selected)
 	end
 	if opts.show_category and item.category then
 		local category_col = #text - #item.category
-		table.insert(highlights, { col = category_col, end_col = #text, group = "PickerCategory" })
+		local separator_col = item.category:find(" | ", 1, true)
+		if separator_col then
+			local separator_start = category_col + separator_col - 1
+			table.insert(highlights, { col = category_col, end_col = separator_start, group = "PickerCategory" })
+			table.insert(highlights, {
+				col = separator_start,
+				end_col = separator_start + #" | ",
+				group = "PickerCategorySeparator",
+			})
+			table.insert(highlights, {
+				col = separator_start + #" | ",
+				end_col = #text,
+				group = "PickerCategory",
+			})
+		else
+			table.insert(highlights, { col = category_col, end_col = #text, group = "PickerCategory" })
+		end
 	end
 
 	return { text = text, highlights = highlights }

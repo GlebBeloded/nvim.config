@@ -16,8 +16,8 @@ end
 T["ai: Keymaps exist after VeryLazy"] = function()
 	child.wait_very_lazy()
 
-	eq({ map_desc("<A-9>"), map_desc("<S-CR>") }, { vim.NIL, "99: Vibe" })
-	eq({ map_desc("<A-9>", "v"), map_desc("<S-CR>", "v") }, { "99: Visual", "99: Visual" })
+	eq({ map_desc("<A-9>"), map_desc("<S-CR>") }, { vim.NIL, "AI: Vibe" })
+	eq({ map_desc("<A-9>", "v"), map_desc("<S-CR>", "v") }, { "AI: Edit Selection", "AI: Edit Selection" })
 	eq(child.lua_get([[package.loaded["gleb.ai"] ~= nil]]), true)
 end
 
