@@ -94,7 +94,13 @@ if "review" in gates and value("review_findings", ""):
 (artifacts / CASE_SEEN).unlink(missing_ok=True)  # the snapshot holds them now; the next pass's runs start afresh
 feedback += [f"verify: {value('verify_findings', '')}" if int(value("critical", -1)) > 0 and value("verify_findings", "") else ""]
 # only blocking findings go to the fix pass; minor ones stay in review_findings (the judge lists them on ship)
-feedback += [f"review: {blocking_findings(value('review_findings', ''))}" if value("approve", False) is not True and value("review_findings", "") else ""]
+OPEN_REVIEW = artifacts / "open-review.md"  # the last rejecting review's blocking findings, until a later review runs
+if "review" in gates:
+    blocking = blocking_findings(value("review_findings", "")) if not gates["review"] and value("review_findings", "") else ""
+    OPEN_REVIEW.write_text(blocking) if blocking else OPEN_REVIEW.unlink(missing_ok=True)
+    feedback += [f"review: {blocking}" if blocking else ""]
+elif OPEN_REVIEW.exists():  # a red pass skipped the review: its findings still need fixing (run 3bc4065f)
+    feedback.append(f"review (last review, still open): {OPEN_REVIEW.read_text().strip()}")
 flaky = value("flaky", []) or []
 notes = "flaky test cases (failed, then passed on rerun): " + ", ".join(map(str, flaky)) if isinstance(flaky, list) and flaky else ""
 print(

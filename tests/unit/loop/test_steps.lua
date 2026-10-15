@@ -520,6 +520,29 @@ T["loop: Each review sees the run's earlier reviews"] = function()
 	end
 end
 
+T["loop: A red pass keeps the last review's open findings"] = function()
+	local repo = branch_repo({})
+	local base = {
+		ARTIFACTS_DIR = H.tempdir(child),
+		INPUTS_SPEC_OK = "true",
+		INPUTS_TASKS_DONE = "true",
+		INPUTS_CRITICAL = "0",
+		INPUTS_ATTEMPT = "1",
+	}
+	local function pass(env)
+		local result = run("verdict.py", repo, vim.tbl_extend("force", base, env))
+		eq(result.code, 0, { fail_reason = result.stderr })
+		return vim.json.decode(result.stdout).feedback
+	end
+	local finding = "[must-fix] palette.lua:35 out of scope"
+	pass({ INPUTS_GREEN = "true", INPUTS_APPROVE = "false", INPUTS_REVIEW_FINDINGS = finding })
+	local red = pass({ INPUTS_GREEN = "false", INPUTS_FAILURES = "FAIL in t.lua" })
+	eq(red:find("review (last review, still open): " .. finding, 1, true) ~= nil, true, { fail_reason = red })
+	pass({ INPUTS_GREEN = "true", INPUTS_APPROVE = "true", INPUTS_REVIEW_FINDINGS = "" })
+	local after = pass({ INPUTS_GREEN = "false", INPUTS_FAILURES = "FAIL in t.lua" })
+	eq(after:find("still open", 1, true), nil)
+end
+
 T["loop: Fix prompt shortens an overlong delta requirement"] = function()
 	local fix = table.concat(vim.fn.readfile(vim.fs.joinpath(H.root, ".archon/commands/fix.md")), "\n")
 	eq(fix:gsub("%s+", " "):find("Requirement text is very long", 1, true) ~= nil, true)
