@@ -346,6 +346,7 @@ nodes:
           depends_on: [resolve]
           with:
             change: $INPUTS.change
+            sync_base: "false" # resolve just merged auto
           output_format:
             type: object
             properties:
