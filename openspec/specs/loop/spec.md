@@ -518,6 +518,13 @@ With `ARTIFACTS_DIR` set, tests/parallel.lua SHALL add each collected case (file
 - **WHEN** verdict.py snapshots a branch holding base case `a: old`, case-seen.json then lists `a: old` and `a: tmp`, and gate.py, verdict.py and gate.py run
 - **THEN** the first gate is red naming `hard rule: test added then removed during build: a: tmp` and not `a: old`, verdict removes case-seen.json, and the second gate does not repeat it
 
+### Requirement: Gate merges a moved auto first
+The build loop's gate SHALL first merge `auto` into the run's branch when `auto` has commits the branch lacks, the worktree has no tracked edits and the merge is clean (`.archon/scripts/sync_base.py`); a conflicting merge SHALL be aborted and the gate SHALL run on the branch as it is.
+
+#### Scenario: Gate merges a moved auto first
+- **WHEN** the nvim-deliver gate node and `.archon/scripts/gate.py` are read, and `sync_base.py` runs in a repo whose `auto` moved after the branch forked: once clean, once with a tracked edit, once with a conflicting commit
+- **THEN** the gate passes `sync_base: "true"` and gate.py calls `sync()` before any check; the clean branch then contains `auto`'s commit, the edited one is left unmerged, and the conflicting merge is aborted with a clean worktree
+
 ### Requirement: Gate skips a Blocked change
 gate.py SHALL check for a blocking `## Blocked` section (blocked.py) before anything else and then print a red verdict with `blocked` true and the Blocked text as failures, with no `make check` and without counting the pass as an attempt; nvim-deliver's review node SHALL run only when the gate's `blocked` is false.
 
@@ -526,11 +533,11 @@ gate.py SHALL check for a blocking `## Blocked` section (blocked.py) before anyt
 - **THEN** `green` is false, `blocked` is true, failures quote the Blocked section, make never ran, a second run reports the same `attempt`, and the review node's `when:` requires `$gate.output.blocked == false`
 
 ### Requirement: Stuck attempts keep the red test
-The fix and implement commands SHALL run one headless probe before editing for a non-obvious failure and cap attempts at 2; when the second fails they SHALL revert only non-test edits, write `## Stuck` with the probe output and both attempts, and commit the failing test with it.
+The fix and implement commands SHALL run one headless probe before editing for a non-obvious failure and cap attempts at 2; when the second fails they SHALL save its non-test diff to `$ARTIFACTS_DIR/stuck-attempt.diff` for the next pass, revert only non-test edits, write `## Stuck` with the probe output and both attempts, and commit the failing test with it.
 
 #### Scenario: Stuck attempts keep the red test
 - **WHEN** `.archon/commands/fix.md` and `implement.md` are read
-- **THEN** each asks for the probe first, caps attempts at 2, reverts only non-test edits, writes `## Stuck` with the probe output and both attempts, commits the failing test with tasks.md, and no longer says to revert the uncommitted edits
+- **THEN** each asks for the probe first, caps attempts at 2, saves the second attempt to `stuck-attempt.diff` (fix may `git apply` it), reverts only non-test edits, writes `## Stuck` with the probe output and both attempts, commits the failing test with tasks.md, and no longer says to revert the uncommitted edits
 
 ### Requirement: Fix pass probes before it edits
 The fix command SHALL run one headless scratch-file probe logging the relevant state before editing code for a non-obvious failure, allow at most 2 implementation attempts per pass and then write `## Stuck` with the probe evidence, and forbid production timers or sleeps that race a plugin's internals unless the proposal's `## Decision` allows them.
@@ -962,6 +969,10 @@ The context pack SHALL hold only what the next task needs, and the prompts and t
 #### Scenario: Trace orphan message names the remedy
 - **WHEN** `tests/trace.lua` runs on a test case named after no scenario
 - **THEN** it exits 1 and the ORPHAN heading says to name it after a scenario or add that scenario to `openspec/changes/<change>/specs`, never delete it
+
+#### Scenario: Trace links a nested case to its scenario
+- **WHEN** `tests/trace.lua` runs on a case `T["x: base"]["hidden mode"]` nested in the set of scenario `base`
+- **THEN** it counts the case as testing `x: base` and reports no orphan
 
 #### Scenario: Fix prompt names regression tests after scenarios
 - **WHEN** `.archon/commands/fix.md` is read

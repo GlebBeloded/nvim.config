@@ -1,7 +1,7 @@
 # references Specification
 
 ## Purpose
-Classify reference locations as production or test code across every configured language so later Find Usages features can group or exclude tests consistently.
+Shows every usage of the symbol under the cursor in a grouped, previewable Find Usages view, for any language whose attached LSP client supports references.
 
 ## Requirements
 
