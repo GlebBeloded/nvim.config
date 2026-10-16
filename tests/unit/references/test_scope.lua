@@ -61,6 +61,8 @@ end
 T["references: Generic and inferred test paths"] = function()
 	eq(child.lua_get([[require("gleb.references.scope").is_test("app/spec/models/user.rb", "ruby")]]), true)
 	eq(child.lua_get([[require("gleb.references.scope").is_test("app/models/user.rb", "ruby")]]), false)
+	eq(child.lua_get([[require("gleb.references.scope").is_test("src/test/widget.go", "go")]]), true)
+	eq(child.lua_get([[require("gleb.references.scope").is_test("src/spec/a.ts", "typescript")]]), true)
 	eq(child.lua_get([[require("gleb.references.scope").is_test("pkg/widget_test.go")]]), true)
 	eq(child.lua_get([[require("gleb.references.scope").is_test("src/widget.spec.ts")]]), true)
 	eq(child.lua_get([[require("gleb.references.scope").is_test("pkg/test_widget.py")]]), true)
@@ -87,6 +89,14 @@ T["references: Project pattern extends one filetype"] = function()
 end
 
 T["references: Position inside Rust cfg test module"] = function()
+	local parser_available = child.lua_get([[(function()
+		local ok, parser = pcall(vim.treesitter.get_string_parser, "", "rust")
+		return ok and pcall(function() parser:parse() end)
+	end)()]])
+	if not parser_available then
+		MiniTest.skip("Rust Tree-sitter parser unavailable")
+	end
+
 	local actual = child.lua_get([[(function()
 		local source = table.concat({
 			"fn production() {}",
@@ -96,32 +106,11 @@ T["references: Position inside Rust cfg test module"] = function()
 			"    fn helper() {}",
 			"}",
 		}, "\n")
-		local original = vim.treesitter.get_string_parser
-		local root = {}
-		local module = { parent_node = root }
-		local inside = { parent_node = module }
-		local outside = { parent_node = root }
-		function root:type() return "source_file" end
-		function root:parent() return nil end
-		function root:descendant_for_range(row) return row == 4 and inside or outside end
-		function module:type() return "mod_item" end
-		function module:parent() return root end
-		function module:range() return 2, 0, 6, 0 end
-		function inside:type() return "function_item" end
-		function inside:parent() return module end
-		function outside:type() return "function_item" end
-		function outside:parent() return root end
-		vim.treesitter.get_string_parser = function()
-			return { parse = function() return { { root = function() return root end } } end }
-		end
-		package.loaded["gleb.references.scope"] = nil
 		local scope = require("gleb.references.scope")
-		local result = {
+		return {
 			scope.is_test_at("src/lib.rs", 5, source),
 			scope.is_test_at("src/lib.rs", 1, source),
 		}
-		vim.treesitter.get_string_parser = original
-		return result
 	end)()]])
 
 	eq(actual, { true, false })

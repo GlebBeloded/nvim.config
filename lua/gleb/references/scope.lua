@@ -69,15 +69,22 @@ end
 ---@param text string
 ---@return boolean
 local function is_cfg_test_module(node, text)
-	local start_row, _, end_row, end_col = node:range()
 	local lines = vim.split(text, "\n", { plain = true })
-	local fragments = {}
-	local last_line = end_row + (end_col > 0 and 1 or 0)
-	for index = start_row + 1, last_line do
-		table.insert(fragments, lines[index])
+	local attribute = node:prev_named_sibling()
+	while attribute and attribute:type() == "attribute_item" do
+		local start_row, _, end_row, end_col = attribute:range()
+		local fragments = {}
+		local last_line = end_row + (end_col > 0 and 1 or 0)
+		for index = start_row + 1, last_line do
+			table.insert(fragments, lines[index])
+		end
+		local attribute_text = table.concat(fragments, "\n")
+		if attribute_text:find("^%s*#%s*%[%s*cfg%s*%(%s*test%s*%)%s*%]") then
+			return true
+		end
+		attribute = attribute:prev_named_sibling()
 	end
-	local module_text = table.concat(fragments, "\n")
-	return module_text:find("^%s*#%s*%[%s*cfg%s*%(%s*test%s*%)%s*%]") ~= nil
+	return false
 end
 
 ---@param text string
