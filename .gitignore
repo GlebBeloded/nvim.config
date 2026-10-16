@@ -58,7 +58,7 @@ claude-obsidian.db
 .tests/
 
 # make render output (tests/render)
-renders/
+/renders/
 
 # local AI loop (docs/workflow.md)
 .archon/.env
