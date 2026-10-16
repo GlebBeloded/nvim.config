@@ -150,11 +150,25 @@ nodes:
         design: { type: boolean }
       required: [skip_specs, design]
 
+  - id: ready # the user's folder already has tasks and passes the spec gate (spec_ready.py): skip the AI spec step
+    script: spec_ready
+    runtime: uv
+    depends_on: [pick, adopted-state, blocked, pinned, meta]
+    when: "$pick.output.found == true && $adopted-state.output.archived == false && $adopted-state.output.tasks_done == false"
+    with:
+      change: $pick.output.change
+    output_format: &gate_output
+      type: object
+      properties:
+        ok: { type: boolean }
+        log: { type: string }
+      required: [ok, log]
+
   - id: complete # no output_format for any change: a forced schema made the agent print the JSON every turn
     command: queue-spec
     context: fresh # reads its input artifact; no carried-over session
-    depends_on: [pick, skills-check, adopted-state, blocked, pinned, meta]
-    when: "$pick.output.found == true && $adopted-state.output.archived == false && $adopted-state.output.tasks_done == false"
+    depends_on: [pick, skills-check, adopted-state, blocked, pinned, meta, ready]
+    when: "$pick.output.found == true && $adopted-state.output.archived == false && $adopted-state.output.tasks_done == false && $ready.output.ok == false"
     with:
       change: $pick.output.change
       adopted: $adopt.output.summary
@@ -165,7 +179,8 @@ nodes:
   - id: classify # visible_ui (design.md has a render) and architecture (Impact/tasks name wiring files) from the written change (no AI)
     script: classify
     runtime: uv
-    depends_on: [complete]
+    depends_on: [complete, ready]
+    trigger_rule: none_failed_min_one_success # complete is skipped when ready is green
     with:
       change: $pick.output.change
     output_format:
@@ -184,12 +199,7 @@ nodes:
     with:
       change: $pick.output.change
       failed_log: ""
-    output_format: &gate_output
-      type: object
-      properties:
-        ok: { type: boolean }
-        log: { type: string }
-      required: [ok, log]
+    output_format: *gate_output
 
   - id: spec-retry # one more spec pass with the red gate's log; a second red gate fails the run
     command: queue-spec
