@@ -18,3 +18,7 @@ Scenarios: `references: Lua usages in production and spec files`, `references: P
 - Generate each manifest from the fixture source so its line and byte-column locations cannot drift from edits.
 - Use JavaScript-compatible TypeScript syntax so `node --check` remains a valid fallback when `tsc` is unavailable.
 - Preserve the first client response for duplicate URI/range locations so merge order and offset encoding stay deterministic.
+
+## Blocked
+
+- Question: may task 3 fix the completed fixtures and LSP configuration, although 3.2 limits fixes to `request.lua` and `scope.lua`? The TypeScript fixture has no ESLint config, so nvim-lspconfig deliberately does not attach eslint; bashls receives the configured root-only `*@(.sh|.inc|.bash|.command)` glob and returns zero references for the fixture's nested scripts. Options: (1) allow an ESLint config in `tsproj` and configure bashls with its recursive upstream glob, or (2) weaken the scenarios by not requiring eslint attachment and by overriding bashls only in the test. Recommendation: option 1, because it tests the real configured behavior and preserves both scenarios without test-only exceptions.
