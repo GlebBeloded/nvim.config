@@ -72,6 +72,6 @@ Scenarios: `references: Wide view matches reference screenshot`, `references: Na
 
 ## Stuck
 
-- Task 6: the wide screen and real-key e2e regressions are red. Probe output showed the tree window has `Normal:MiniPickNormal,FloatBorder:PickerBorder,CursorLine:MiniPickMatchCurrent`; resolved `FloatTitle` is orange/bold (`fg=15174222`, `bg=5919308`) while `MiniPickBorderText` is `fg=14534561`, `bg=2631720`.
-- Attempt 1 preserved the LSP server's `includeDeclaration=false` result, added tree/hint extmark colours, corrected frame geometry and added the preview heading; the screen advanced to the approved structure but failed its screenshot/mask.
-- Attempt 2 corrected preview tab width, number width and centring; the screenshot then matched the intended text, but the semantic mask still failed because the tree float does not map `FloatTitle` to `MiniPickBorderText`. Production edits were reverted and the failing tests retained.
+- Task 6: the wide screen and real-key e2e regressions remain red. The earlier probe showed the tree window lacked `FloatTitle:MiniPickBorderText`; resolved `FloatTitle` was orange/bold (`fg=15174222`, `bg=5919308`) while `MiniPickBorderText` was `fg=14534561`, `bg=2631720`.
+- Attempt 1 added that missing mapping while restoring the request result, semantic extmarks, frame padding and preview heading. The narrow screenshot and mask passed, but the wide view used a 41/52 split and showed line 5 first instead of line 4.
+- Attempt 2 used the approved 42/51 split, four-cell tabs and a last-full-page viewport. The wide frame then matched, but its preview gutter remained one cell too narrow (`│  4` versus `│   4`) and clipped `cent` rather than `cen`; the screenshot failed at `tests/screen/references/test_view.lua:164`. Production edits and the unapproved generated narrow screenshot were reverted; the red regressions remain.
