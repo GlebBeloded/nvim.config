@@ -39,6 +39,43 @@ T["references: Lua test paths"] = function()
 	eq(child.lua_get([[require("gleb.references.scope").is_test("lua/gleb/widget.lua", "lua")]]), false)
 end
 
+T["references: Language conventions classify paths"] = function()
+	local paths = {
+		{ "a/b_test.go", "go" },
+		{ "src/x.test.ts", "typescript" },
+		{ "src/y.spec.js", "javascript" },
+		{ "src/__tests__/z.js", "javascript" },
+		{ "pkg/test_a.py", "python" },
+		{ "pkg/b_test.py", "python" },
+		{ "pkg/conftest.py", "python" },
+		{ "lua/m_spec.lua", "lua" },
+		{ "tests/unit/test_rows.lua", "lua" },
+		{ "crates/core/tests/api.rs", "rust" },
+		{ "t/run.bats", "bash" },
+		{ "main.tftest.hcl", "terraform" },
+		{ "infra/tests/plan.tftest.hcl", "terraform" },
+	}
+	for _, path in ipairs(paths) do
+		eq(child.lua_get(string.format([[require("gleb.references.scope").is_test(%q, %q)]], path[1], path[2])), true)
+	end
+end
+
+T["references: Production paths are not test code"] = function()
+	local paths = {
+		{ "cmd/main.go", "go" },
+		{ "src/x.ts", "typescript" },
+		{ "src/testing_utils.ts", "typescript" },
+		{ "pkg/contest.py", "python" },
+		{ "lua/gleb/references/scope.lua", "lua" },
+		{ "src/lib.rs", "rust" },
+		{ "bin/run.sh", "sh" },
+		{ "main.tf", "terraform" },
+	}
+	for _, path in ipairs(paths) do
+		eq(child.lua_get(string.format([[require("gleb.references.scope").is_test(%q, %q)]], path[1], path[2])), false)
+	end
+end
+
 T["references: Rust test paths"] = function()
 	eq(child.lua_get([[require("gleb.references.scope").is_test("crates/core/tests/api.rs", "rust")]]), true)
 	eq(child.lua_get([[require("gleb.references.scope").is_test("crates/core/src/lib.rs", "rust")]]), false)
@@ -70,6 +107,11 @@ T["references: Generic and inferred test paths"] = function()
 	eq(child.lua_get([[require("gleb.references.scope").is_test("src/widget.ts")]]), false)
 end
 
+T["references: Unknown languages use the generic segments"] = function()
+	eq(child.lua_get([[require("gleb.references.scope").is_test("app/spec/models/user.rb", "ruby")]]), true)
+	eq(child.lua_get([[require("gleb.references.scope").is_test("app/models/user.rb", "ruby")]]), false)
+end
+
 T["references: Project pattern extends one filetype"] = function()
 	local actual = child.lua_get([[(function()
 		local scope = require("gleb.references.scope")
@@ -86,6 +128,19 @@ T["references: Project pattern extends one filetype"] = function()
 	end)()]])
 
 	eq(actual, { true, true, false, false })
+end
+
+T["references: A project adds its own test pattern"] = function()
+	local actual = child.lua_get([[(function()
+		local scope = require("gleb.references.scope")
+		vim.g.gleb_test_patterns = { go = { "/e2e/" } }
+		return {
+			scope.is_test("svc/e2e/flow.go", "go"),
+			scope.is_test("svc/flow_test.go", "go"),
+		}
+	end)()]])
+
+	eq(actual, { true, true })
 end
 
 T["references: Position inside Rust cfg test module"] = function()
