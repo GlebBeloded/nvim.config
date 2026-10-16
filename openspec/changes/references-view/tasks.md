@@ -16,6 +16,12 @@ Scenarios: `references: Go usages are grouped by scope and folder`, `references:
 - Icon resolution accepts tree nodes and returns glyph plus icon and label groups, so the later view can apply extmarks without duplicating palette or devicon logic.
 - Preview scratch buffers retain source line coordinates (with disk reads capped at 10,000 lines), so syntax captures, usage marks and line numbers match regular buffers directly.
 - Missing or invalid persisted grouping falls back to grouped tests with folders on, preserving the documented first-use defaults.
+- The client-side declaration filter is dropped: `includeDeclaration = false` already excludes it, and the filter removed the usage under the cursor when `gr` ran on a call site (V1 counts 4).
+- The tree's left padding is a one-cell status column, so tree buffer lines stay the row labels that tests and selection read.
+- Preview tabs are 4 cells wide, as in render V1, whatever the source buffer's `tabstop`.
+- A clipped preview line ends in a `…` overlay with `hl_mode = "combine"`, so the cell keeps its syntax colour (render V1 clipping and mask).
+- The preview's topline is computed (centred, window `scrolloff` 0): the global `scrolloff = 15` moved a `zz` view.
+- Both status columns pick their groups per line by expression, with no `CursorLineNr`/`LineNr` remap: `nvim_get_hl` resolves legend groups through the current window's `winhighlight`.
 
 ## 2. Icons and label shades
 Scenarios: `references: Icons and label shades match the palette`
@@ -61,17 +67,17 @@ Scenarios: `references: Tests key cycles grouped, hidden and mixed`, `references
 
 ## 6. Screens and the real-key workflow
 Scenarios: `references: Wide view matches reference screenshot`, `references: Narrow view fits its content`, `lsp: References of a Go function list call sites across packages`, `lsp: Selecting a reference opens its file at the call site`
-- [ ] 6.1 Write the screen scenarios in tests/screen/references/test_view.lua with Proposed V1–V4 as references, and see them fail. The screenshot text uses the real glyphs where the render shows stand-ins; the attribute blocks must match the mask groups.
-- [ ] 6.2 Update tests/e2e/lsp/test_go_references.lua to the view:
+- [x] 6.1 Write the screen scenarios in tests/screen/references/test_view.lua with Proposed V1–V4 as references, and see them fail. The screenshot text uses the real glyphs where the render shows stand-ins; the attribute blocks must match the mask groups.
+- [x] 6.2 Update tests/e2e/lsp/test_go_references.lua to the view:
   1. a real `gr`;
   2. then `t`;
   3. then move to `summary.go:7` and press Return.
   Compare each step's zellij dump with its render.
 - [ ] 6.3 Make `make test-screen` and `make e2e` (sandbox VM) pass, then `make check`. Compare `make render` of the view with `renders/view_v*.ansi`.
-- [ ] 6.4 Add `references` to the module map in `docs/architecture.md`
+- [x] 6.4 Add `references` to the module map in `docs/architecture.md`
 
-## Stuck
+## Blocked
 
-- Task 6: the wide screen and real-key e2e regressions remain red. The earlier probe showed the tree window lacked `FloatTitle:MiniPickBorderText`; resolved `FloatTitle` was orange/bold (`fg=15174222`, `bg=5919308`) while `MiniPickBorderText` was `fg=14534561`, `bg=2631720`.
-- Attempt 1 added that missing mapping while restoring the request result, semantic extmarks, frame padding and preview heading. The narrow screenshot and mask passed, but the wide view used a 41/52 split and showed line 5 first instead of line 4.
-- Attempt 2 used the approved 42/51 split, four-cell tabs and a last-full-page viewport. The wide frame then matched, but its preview gutter remained one cell too narrow (`│  4` versus `│   4`) and clipped `cent` rather than `cen`; the screenshot failed at `tests/screen/references/test_view.lua:164`. Production edits and the unapproved generated narrow screenshot were reverted; the red regressions remain.
+- Question: the preview code colours of render V1's mask (design.md, `WIDE_DEFAULT_MASK` in tests/screen/references/test_view.lua) contradict the preview using the same highlighting as a regular Go buffer (Requirement "Usage preview", scenario "Preview highlighting matches a regular buffer", and the user's Decision "should reuse same syntax highlighting as regular buffer of that file type"). The mask marks `{`, `(`, `[]`, `+=` and the parameter `i` as plain [MiniPickNormal], `Due`/`Rendered` as [@function.call] and the parameter type `Invoice` as plain. The real Go captures are `@punctuation.bracket` and `@variable.parameter` fg0 `#d4be98`, `@operator` red, `@function.method` blue `#7daea3`, `@type` green. First failure: `mask row 5, column 73 "{": expected f [MiniPickNormal] { fg=#ddc7a1 bg=#282828 }, drawn { fg=#d4be98 bg=#282828 }`. With only the code cells (columns 53–97 of rows 4–25) set to the real groups, the whole mask passes: frame, title, tree icons, labels and counts, gutter with [CursorLineNr], heading, `…` clip and hint all match. The screenshots match renders V1–V4.
+- Options: (A) regenerate the preview code cells of the V1–V3 masks in design.md and of `WIDE_DEFAULT_MASK` from the real Go captures, adding legend letters for `@punctuation.bracket`, `@variable.parameter`, `@operator`, `@type`, `@function.method` and `@function.builtin`; (B) override capture colours in the preview to fit the hand-made mask, which breaks regular-buffer highlighting; (C) stop masking the code cells and check only the frame.
+- Recommendation: A. It keeps the Decision and the SHALL, and the mask still pins every colour, from the same highlighter the integration test compares with a regular buffer.

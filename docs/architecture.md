@@ -37,6 +37,7 @@ Feature code lives in `lua/gleb/<feature>/`; the capability name is the kebab-ca
 | `lsp/`, `cmp.lua`, `select/`, editing modules | LSP, completion, treesitter, folding, comments | |
 | `git/` | Signs, diff viewers, permalinks, AI commit popup | [git](../openspec/specs/git/spec.md) |
 | `file_tree/` | neo-tree, git status tree with live diff preview | [file-tree](../openspec/specs/file-tree/spec.md) |
+| `references/` | Find Usages: usages grouped by test scope and folder beside a side-effect-free preview | [references](../openspec/specs/references/spec.md) |
 | `session/` | zellij-aware session save and restore | [session](../openspec/specs/session/spec.md) |
 | `statusline/`, `bufferline.lua` | Global statusline and tabline from one palette | [statusline](../openspec/specs/statusline/spec.md) |
 | `ai/` | 99 prompts backed by the `pi` CLI | [ai](../openspec/specs/ai/spec.md) |
@@ -152,7 +153,7 @@ flowchart LR
 ## Key decisions
 
 - **keymaps**: `<A-g>` opens Differ and `<A-G>` the neo-tree git status, kept side by side to compare both
-  flows. `gr` opens shared mini.pick references. Buffers with URI names (`vscodediff://…`) are not revealed in
+  flows. `gr` opens the Find Usages view. Buffers with URI names (`vscodediff://…`) are not revealed in
   neo-tree, which cannot parse them.
 - **ai**: 99 loads on `VeryLazy` to stay out of startup. `pi` runs with `--no-session --thinking low`, so
   each prompt is stateless and cheap. 99 prompts submit on write (`acwrite`), so `<S-CR>` maps to

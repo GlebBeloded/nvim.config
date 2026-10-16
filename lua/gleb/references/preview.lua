@@ -3,7 +3,11 @@ local M = {}
 
 local MAX_DISK_LINES = 10000
 local MAX_HIGHLIGHT_BYTES = 1024 * 1024
+local MIN_NUMBER_WIDTH = 3
+local TABSTOP = 4
+local CLIPPED = "…"
 local namespace = vim.api.nvim_create_namespace("gleb_references_preview")
+local clipped_namespace = vim.api.nvim_create_namespace("gleb_references_preview_clipped")
 
 ---@param filename string
 ---@return integer?
@@ -55,6 +59,7 @@ function M.render(buf, usage, usages, symbol)
 	vim.bo[buf].modifiable = true
 	vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
 	vim.bo[buf].modifiable = false
+	vim.bo[buf].tabstop = TABSTOP
 
 	vim.api.nvim_buf_clear_namespace(buf, namespace, 0, -1)
 	for _, item in ipairs(usages) do
@@ -71,6 +76,46 @@ function M.render(buf, usage, usages, symbol)
 	start_highlighting(buf, filetype, #table.concat(lines, "\n"))
 end
 
+---@param usage gleb.references.TreeNode
+---@return string
+local function heading(usage)
+	local label = string.format("%s:%d", assert(usage.path, "selected reference has no path"), usage.lnum)
+	return "%#MiniPickNormal# %#PickerSecondary#" .. (label:gsub("%%", "%%%%")) .. "%#MiniPickNormal#"
+end
+
+---@param line_count integer
+---@param lnum integer the usage's line, numbered in [CursorLineNr]
+---@return string format
+---@return integer width cells, known before the first redraw measures it
+local function number_column(line_count, lnum)
+	local width = math.max(#tostring(line_count), MIN_NUMBER_WIDTH)
+	local number_group = string.format("%%{%%v:lnum == %d ? '%%#CursorLineNr#' : '%%#PickerSecondary#'%%}", lnum)
+	return string.format("%%#MiniPickNormal# %s%%%dl%%#MiniPickNormal#  ", number_group, width), width + 3
+end
+
+--- Mark lines cut by the window edge, keeping the clipped cell's own highlight.
+---@param win integer
+---@param topline integer
+---@param text_width integer
+local function mark_clipped(win, topline, text_width)
+	local buf = vim.api.nvim_win_get_buf(win)
+	local last = math.min(topline + vim.fn.getwininfo(win)[1].height - 1, vim.api.nvim_buf_line_count(buf))
+	vim.api.nvim_buf_clear_namespace(buf, clipped_namespace, 0, -1)
+	for lnum = topline, last do
+		local line = vim.api.nvim_buf_get_lines(buf, lnum - 1, lnum, false)[1]
+		local width = vim.api.nvim_win_call(win, function()
+			return vim.fn.strdisplaywidth(line)
+		end)
+		if width > text_width then
+			vim.api.nvim_buf_set_extmark(buf, clipped_namespace, lnum - 1, 0, {
+				virt_text = { { CLIPPED } },
+				virt_text_win_col = text_width - 1,
+				hl_mode = "combine",
+			})
+		end
+	end
+end
+
 ---@param win integer
 ---@param usage gleb.references.TreeNode
 ---@return nil
@@ -78,13 +123,20 @@ function M.center(win, usage)
 	local buf = vim.api.nvim_win_get_buf(win)
 	local line_count = vim.api.nvim_buf_line_count(buf)
 	local lnum = math.min(assert(usage.lnum, "selected reference has no line"), line_count)
+	vim.wo[win].winbar = heading(usage)
 	vim.wo[win].number = true
+	local number_format, number_width = number_column(line_count, lnum)
+	vim.wo[win].statuscolumn = number_format
 	vim.wo[win].cursorline = true
 	vim.wo[win].cursorlineopt = "number"
-	vim.api.nvim_win_set_cursor(win, { lnum, 0 })
+	vim.wo[win].wrap = false
+	vim.wo[win].scrolloff = 0
+	local rows = vim.fn.getwininfo(win)[1].height
+	local topline = math.max(lnum - math.floor((rows - 1) / 2), 1)
 	vim.api.nvim_win_call(win, function()
-		vim.cmd("normal! zz")
+		vim.fn.winrestview({ lnum = lnum, col = 0, topline = topline })
 	end)
+	mark_clipped(win, topline, vim.api.nvim_win_get_width(win) - number_width)
 end
 
 return M

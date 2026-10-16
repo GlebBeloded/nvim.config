@@ -462,10 +462,12 @@ for _, name in ipairs(groups) do
 	hls[name] = vim.fn.hlexists(name) == 1 and vim.api.nvim_get_hl(0, { name = name, link = false }) or vim.NIL
 end
 
+-- A copy: one float row can match several screen rows, and its attrs table is shared.
 local function normalize(attrs)
-	attrs.fg, attrs.bg, attrs.sp = attrs.foreground, attrs.background, attrs.special
-	attrs.foreground, attrs.background, attrs.special = nil, nil, nil
-	return attrs
+	local result = vim.deepcopy(attrs)
+	result.fg, result.bg, result.sp = attrs.foreground, attrs.background, attrs.special
+	result.foreground, result.background, result.special = nil, nil, nil
+	return result
 end
 
 vim.api.nvim__inspect_cell(1, 0, 0)

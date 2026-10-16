@@ -3,26 +3,10 @@ local M = {
 	request_id = 0,
 }
 
----@param location lsp.Location
----@param origin_uri string
----@param origin_position lsp.Position
----@return boolean
-local function is_declaration(location, origin_uri, origin_position)
-	if location.uri ~= origin_uri then
-		return false
-	end
-	local range = location.range
-	return range.start.line == origin_position.line
-		and range.start.character <= origin_position.character
-		and range["end"].character >= origin_position.character
-end
-
 ---@param locations lsp.Location[]
 ---@param cwd string
----@param origin_uri string
----@param origin_position lsp.Position
 ---@return gleb.references.Usage[]
-local function normalize(locations, cwd, origin_uri, origin_position)
+local function normalize(locations, cwd)
 	local usages = {}
 	local seen = {}
 	for _, location in ipairs(locations) do
@@ -35,7 +19,7 @@ local function normalize(locations, cwd, origin_uri, origin_position)
 			range["end"].line,
 			range["end"].character
 		)
-		if not seen[key] and not is_declaration(location, origin_uri, origin_position) then
+		if not seen[key] then
 			seen[key] = true
 			local filename = vim.uri_to_fname(location.uri)
 			table.insert(usages, {
@@ -66,7 +50,6 @@ function M.start(callback)
 	M.request_id = M.request_id + 1
 	local request_id = M.request_id
 	local cwd = vim.fn.getcwd()
-	local origin_uri = vim.uri_from_bufnr(bufnr)
 	local position_params = vim.lsp.util.make_position_params(0, clients[1].offset_encoding)
 	---@type lsp.ReferenceParams
 	local params = {
@@ -91,7 +74,7 @@ function M.start(callback)
 			if request_id ~= M.request_id then
 				return
 			end
-			local usages = normalize(locations, cwd, origin_uri, params.position)
+			local usages = normalize(locations, cwd)
 			if #usages == 0 then
 				vim.notify("No usages found", vim.log.levels.INFO)
 				return

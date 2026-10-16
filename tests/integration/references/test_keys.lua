@@ -81,7 +81,7 @@ T["references: Mixed tests without folders is a flat list"] = function()
 	eq(tree_lines(), {
 		" billing/invoice.go:16",
 		" billing/invoice.go:23",
-		" internal/money/money_test.go:6    test",
+		" internal/money/money_test.go:6   test",
 		" report/summary.go:7",
 	})
 	eq(hint_line():find("Tests: mixed t · ○ Folders f", 1, true) ~= nil, true)

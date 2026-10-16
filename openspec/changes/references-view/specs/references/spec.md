@@ -48,6 +48,10 @@ Production rows SHALL show the oct-rocket glyph (U+F427) in aqua, Test rows the 
 - **WHEN** the view is open for `Format` and the extmarks of the `Production 3`, `Test 1`, `billing 2` and `invoice.go:16` rows are read
 - **THEN** each icon cell uses its icon group (aqua, yellow, grey, the Go devicon colour) and each label uses a group whose foreground equals the 0.7 mix of that icon colour and the palette foreground
 
+#### Scenario: Label shade is the 0.7 mix of icon and foreground
+- **WHEN** the label colour is computed for icon colour `#000000` and foreground `#646464`
+- **THEN** it is `#464646`, 70% of the way from the icon colour to the foreground
+
 ### Requirement: Grouping controls
 `t` SHALL cycle the tests mode: grouped (`Production`/`Test` level), hidden (test usages removed), mixed (no scope level; test usages carry a right-aligned beaker `test` tag). `f` SHALL toggle `Folders` (off: usage rows show the path relative to the working directory). Each change SHALL rebuild the tree in place, keep the selected usage when still listed, update counts and the title, show its state in the hint row (`Tests: <mode> t`, `●`/`○ Folders f`), and persist across sessions.
 
