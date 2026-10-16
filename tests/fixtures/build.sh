@@ -172,10 +172,22 @@ gomod | dirty) ;;
 	;;
 esac
 dir="$out/$name-$(key_input | shasum | cut -c1-12)"
+# parallel test workers in a fresh worktree all miss the cache at once: one builds, the others wait
+lock="$out/$name.lock"
 if [ ! -f "$dir/manifest.json" ]; then
-	rm -rf "$out/$name"-*
-	mkdir -p "$dir.tmp/repo"
-	(cd "$dir.tmp/repo" && "$name")
-	mv "$dir.tmp" "$dir"
+	mkdir -p "$out"
+	waited=0
+	until mkdir "$lock" 2>/dev/null; do
+		[ "$waited" -ge 3000 ] && rm -rf "$lock" # a killed builder's lock, after 5 min
+		sleep 0.1
+		waited=$((waited + 1))
+	done
+	trap 'rmdir "$lock" 2>/dev/null' EXIT
+	if [ ! -f "$dir/manifest.json" ]; then
+		find "$out" -maxdepth 1 -name "$name-*" -exec rm -rf {} +
+		mkdir -p "$dir.tmp/repo"
+		(cd "$dir.tmp/repo" && "$name")
+		mv "$dir.tmp" "$dir"
+	fi
 fi
 echo "$dir"

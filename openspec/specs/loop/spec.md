@@ -970,6 +970,10 @@ The context pack SHALL hold only what the next task needs, and the prompts and t
 - **WHEN** `tests/trace.lua` runs on a test case named after no scenario
 - **THEN** it exits 1 and the ORPHAN heading says to name it after a scenario or add that scenario to `openspec/changes/<change>/specs`, never delete it
 
+#### Scenario: Implement and fix probe UI edge cells
+- **WHEN** `.archon/commands/implement.md` and `fix.md` are read
+- **THEN** each requires a headless probe of an empty result (also after a filter), a multibyte line, `VimResized` across the breakpoint and an external `:quit`/`:close` before a UI task is done, with autocmds tied to the buffer or torn down on `WinClosed`
+
 #### Scenario: Trace links a nested case to its scenario
 - **WHEN** `tests/trace.lua` runs on a case `T["x: base"]["hidden mode"]` nested in the set of scenario `base`
 - **THEN** it counts the case as testing `x: base` and reports no orphan

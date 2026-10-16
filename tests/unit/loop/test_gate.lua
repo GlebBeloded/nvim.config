@@ -670,6 +670,17 @@ T["loop: Gate merges a moved auto first"] = function()
 	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
 end
 
+T["loop: Implement and fix probe UI edge cells"] = function()
+	for _, name in ipairs({ "fix.md", "implement.md" }) do
+		local prompt = read(vim.fs.joinpath(H.root, ".archon/commands", name)):gsub("%s+", " ")
+		has(
+			prompt,
+			"an empty result (also empty after a filter or toggle), a multibyte line, `VimResized` across the layout breakpoint"
+		)
+		has(prompt, "torn down on `WinClosed`")
+	end
+end
+
 T["loop: Stuck attempts keep the red test"] = function()
 	for _, name in ipairs({ "fix.md", "implement.md" }) do
 		local prompt = read(vim.fs.joinpath(H.root, ".archon/commands", name)):gsub("%s+", " ")
@@ -681,7 +692,10 @@ T["loop: Stuck attempts keep the red test"] = function()
 		has(prompt, "`## Stuck` in tasks.md with the probe output and both attempts")
 		eq(prompt:find("revert the uncommitted edits", 1, true), nil)
 	end
-	has(read(vim.fs.joinpath(H.root, ".archon/commands/fix.md")), "git apply $ARTIFACTS_DIR/stuck-attempt.diff")
+	has(
+		read(vim.fs.joinpath(H.root, ".archon/commands/fix.md")),
+		"when `$ARTIFACTS_DIR/stuck-attempt.diff` exists, first `git apply` it"
+	)
 end
 
 T["loop: Test run records the cases it collected"] = function()
