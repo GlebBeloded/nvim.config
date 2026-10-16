@@ -1,14 +1,18 @@
 ## 1. Build the usage tree
 Scenarios: `references: Go usages are grouped by scope and folder`, `references: Nested folders become one row`, `references: Regrouping keeps the selected usage`
-- [ ] 1.1 Write the three scenarios in tests/unit/references/test_tree.lua against fixture-shaped usage records, plus unit cases for the hidden and mixed tests modes and folders off, and see them fail
-- [ ] 1.2 Add the pure `lua/gleb/references/tree.lua`:
+- [x] 1.1 Write the three scenarios in tests/unit/references/test_tree.lua against fixture-shaped usage records, plus unit cases for the hidden and mixed tests modes and folders off, and see them fail
+- [x] 1.2 Add the pure `lua/gleb/references/tree.lua`:
   - scope from `references.scope`;
   - the tests modes grouped, hidden and mixed (mixed tags test usages);
   - one folder node per full relative directory, or relative-path rows when folders are off;
   - `<file>:<line>` usage nodes;
   - counts and stable node ids;
   - selection carry-over by uri, line and column.
-- [ ] 1.3 Run `make test FILE=tests/unit/references/test_tree.lua` and see them pass
+- [x] 1.3 Run `make test FILE=tests/unit/references/test_tree.lua` and see them pass
+
+## Agent decisions
+
+- Tree output is a flat preorder node list with `parent_id` and `selected_id`; usage ids contain uri, line and column but no grouping state, so rendering and selection survive regrouping.
 
 ## 2. Icons and label shades
 Scenarios: `references: Icons and label shades match the palette`
