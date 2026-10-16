@@ -168,6 +168,19 @@ T["loop: Trace counts scenarios an active change adds"] = function()
 	)
 end
 
+T["loop: Trace links a nested case to its scenario"] = function()
+	local repo = H.tempdir(child)
+	write(repo, {
+		["openspec/specs/x/spec.md"] = "#### Scenario: base",
+		["tests/unit/x/test_x.lua"] = 'local T = MiniTest.new_set()\nT["x: base"] = MiniTest.new_set()\nT["x: base"]["hidden mode"] = function() end\nreturn T',
+	})
+	local nvim = { vim.v.progpath, "--clean", "--headless", "-u", vim.fs.joinpath(H.root, "tests/minimal_init.lua") }
+	local result = H.system(child, vim.list_extend(nvim, { "-l", vim.fs.joinpath(H.root, "tests/trace.lua") }), repo)
+	local output = result.stdout .. result.stderr
+	eq(result.code, 0, { fail_reason = output })
+	eq(output:find("1 scenarios, 1 tested, 0 missing, 0 orphan, 0 duplicate", 1, true) ~= nil, true)
+end
+
 T["loop: Trace orphan message names the remedy"] = function()
 	local repo = H.tempdir(child)
 	write(repo, {
