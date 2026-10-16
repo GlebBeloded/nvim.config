@@ -10,7 +10,7 @@ Scenarios: `references: Treesitter fallback classifies writes where a parser exi
 
 ## 3. Server classification sources
 Scenarios: `references: gopls kinds classify a Go variable`, `references: lua_ls kinds classify a Lua local`, `references: basedpyright kinds classify a Python variable`, `references: tsserver kinds classify a TypeScript variable`, `references: rust-analyzer kinds classify a Rust variable`
-- [ ] 3.1 Write the five scenarios in tests/integration/references/test_kind.lua (the gomod fixture, plus temporary Lua, Python, TypeScript and Cargo projects). A missing server is skipped with its reason. See them fail.
+- [ ] 3.1 Write the five scenarios in tests/integration/references/test_kind.lua (the gomod fixture, plus temporary Lua, Python, TypeScript and Cargo projects). A missing server is skipped with its reason. This file is the one per-language read/write suite: each case asserts the exact kind (write or read) of every usage line, not only counts. See them fail.
 - [ ] 3.2 Add `lua/gleb/references/kind.lua`:
   - the vtsls tsserver path;
   - per-file documentHighlight with range matching;
@@ -33,7 +33,7 @@ Scenarios: `references: Function usages have no read/write level or hint`, `refe
 
 ## 5. Screens and the real-key workflow
 Scenarios: `references: Variable usages are grouped by write and read`, `references: w turns the level into row tags`
-- [ ] 5.1 Add K1 and K2 to tests/screen/references/test_view.lua, using real glyphs in the screenshot text, and see them fail. Check that the V1–V4 references are unchanged.
+- [ ] 5.1 Add K1 and K2 to tests/screen/references/test_view.lua (the one screenshot suite for the view; no other screen file), using real glyphs in the screenshot text, and see them fail. Check that the V1–V4 references are unchanged.
 - [ ] 5.2 Add an e2e case to tests/e2e/lsp/test_go_references.lua:
   1. a real `gr` on `Calls`;
   2. wait for classification;
