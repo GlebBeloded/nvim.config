@@ -128,6 +128,10 @@ The view's keys SHALL be registry actions scoped to the view, bound from `settin
 - **WHEN** the view was opened from `internal/money/money.go` and Escape is pressed
 - **THEN** no view window remains and the current window shows `internal/money/money.go` with the cursor where `gr` was pressed
 
+#### Scenario: Built-in close returns to the origin window
+- **WHEN** the view was opened from `internal/money/money.go` and the tree window is closed with `:quit`
+- **THEN** no view window remains, resize handling is removed, and the current window shows `internal/money/money.go` with the cursor where `gr` was pressed
+
 #### Scenario: View keys come from the keymap file
 - **WHEN** the view buffer is current and its buffer-local normal-mode mappings are read
 - **THEN** each of `<CR>`, `za`, `t`, `f`, `P`, `q` and `<Esc>` has a `desc` naming a registered `references.*` action, and `settings/keymap.json` lists that action with that key

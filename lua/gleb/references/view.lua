@@ -548,6 +548,7 @@ function M.open(title, usages)
 	}
 	local group = vim.api.nvim_create_augroup("gleb_references_view", { clear = true })
 	vim.api.nvim_create_autocmd("CursorMoved", { group = group, buffer = tree_buf, callback = update_preview })
+	vim.api.nvim_create_autocmd("WinClosed", { group = group, pattern = tostring(tree_win), callback = M.close })
 	vim.api.nvim_create_autocmd("VimResized", {
 		group = group,
 		callback = function()

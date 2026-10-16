@@ -218,6 +218,24 @@ end, vim.api.nvim_list_wins())]]),
 	)
 end
 
+T["references: Built-in close returns to the origin window"] = function()
+	local declaration = manifest.references.Format[1]
+	open_format()
+	child.cmd("quit")
+	child.o.columns = 120
+	child.cmd("doautocmd VimResized")
+
+	eq(child.fn.expand("%:p"), vim.uv.fs_realpath(vim.fs.joinpath(root, declaration.path)))
+	eq(child.api.nvim_win_get_cursor(0), { declaration.line, declaration.col - 1 })
+	eq(child.lua_get([[next(require("gleb.references.view").state) == nil]]), true)
+	eq(
+		child.lua_get([[#vim.tbl_filter(function(win)
+	return vim.bo[vim.api.nvim_win_get_buf(win)].filetype:match("^gleb%-references") ~= nil
+end, vim.api.nvim_list_wins())]]),
+		0
+	)
+end
+
 T["references: View keys come from the keymap file"] = function()
 	open_format()
 	local actual = child.lua_get([[

@@ -57,7 +57,7 @@ Scenarios: `references: Preview follows the selection`, `references: Preview hig
 - [x] 4.3 Run `make test FILE=tests/integration/references/test_preview.lua` and see all six pass
 
 ## 5. Grouping controls, keys and persistence
-Scenarios: `references: Tests key cycles grouped, hidden and mixed`, `references: Mixed tests without folders is a flat list`, `references: Grouping persists across sessions`, `references: Return opens a usage at its position`, `references: za folds a group`, `references: Escape returns to the origin window`, `references: View keys come from the keymap file`
+Scenarios: `references: Tests key cycles grouped, hidden and mixed`, `references: Mixed tests without folders is a flat list`, `references: Grouping persists across sessions`, `references: Return opens a usage at its position`, `references: za folds a group`, `references: Escape returns to the origin window`, `references: Built-in close returns to the origin window`, `references: View keys come from the keymap file`
 - [x] 5.1 Write the scenarios in tests/integration/references/test_keys.lua and see them fail
 - [x] 5.2 Add:
   - the `t` (tests-mode cycle) and `f` (folders) actions, rebuilding in place;
