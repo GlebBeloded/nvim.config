@@ -144,14 +144,6 @@ T["references: A project adds its own test pattern"] = function()
 end
 
 T["references: Position inside Rust cfg test module"] = function()
-	local parser_available = child.lua_get([[(function()
-		local ok, parser = pcall(vim.treesitter.get_string_parser, "", "rust")
-		return ok and pcall(function() parser:parse() end)
-	end)()]])
-	if not parser_available then
-		MiniTest.skip("Rust Tree-sitter parser unavailable")
-	end
-
 	local actual = child.lua_get([[(function()
 		local source = table.concat({
 			"fn production() {}",
@@ -161,11 +153,33 @@ T["references: Position inside Rust cfg test module"] = function()
 			"    fn helper() {}",
 			"}",
 		}, "\n")
+		local function node(kind, range, parent, previous)
+			return {
+				type = function() return kind end,
+				range = function() return unpack(range) end,
+				parent = function() return parent end,
+				prev_named_sibling = function() return previous end,
+			}
+		end
+		local root = node("source_file", { 0, 0, 5, 1 })
+		local production = node("function_item", { 0, 0, 0, 19 }, root)
+		local attribute = node("attribute_item", { 2, 0, 2, 12 }, root, production)
+		local test_module = node("mod_item", { 3, 0, 5, 1 }, root, attribute)
+		root.descendant_for_range = function(_, start_row)
+			if start_row >= 3 then return test_module end
+			return production
+		end
+		local original = vim.treesitter.get_string_parser
+		vim.treesitter.get_string_parser = function()
+			return { parse = function() return { { root = function() return root end } } end }
+		end
 		local scope = require("gleb.references.scope")
-		return {
+		local result = {
 			scope.is_test_at("src/lib.rs", 5, source),
 			scope.is_test_at("src/lib.rs", 1, source),
 		}
+		vim.treesitter.get_string_parser = original
+		return result
 	end)()]])
 
 	eq(actual, { true, false })
