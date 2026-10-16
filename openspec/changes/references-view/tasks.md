@@ -22,6 +22,7 @@ Scenarios: `references: Go usages are grouped by scope and folder`, `references:
 - A clipped preview line ends in a `…` overlay with `hl_mode = "combine"`, so the cell keeps its syntax colour (render V1 clipping and mask).
 - The preview's topline is computed (centred, window `scrolloff` 0): the global `scrolloff = 15` moved a `zz` view.
 - Both status columns pick their groups per line by expression, with no `CursorLineNr`/`LineNr` remap: `nvim_get_hl` resolves legend groups through the current window's `winhighlight`.
+- Preview mask colours: choose option A—regenerate the V1–V3 preview code cells and `WIDE_DEFAULT_MASK` from the real Go captures, with legend entries for `@punctuation.bracket`, `@variable.parameter`, `@operator`, `@type`, `@function.method` and `@function.builtin`, because this preserves the user's regular-buffer-highlighting decision and the Usage preview requirement while retaining full colour coverage.
 
 ## 2. Icons and label shades
 Scenarios: `references: Icons and label shades match the palette`
@@ -75,9 +76,3 @@ Scenarios: `references: Wide view matches reference screenshot`, `references: Na
   Compare each step's zellij dump with its render.
 - [ ] 6.3 Make `make test-screen` and `make e2e` (sandbox VM) pass, then `make check`. Compare `make render` of the view with `renders/view_v*.ansi`.
 - [x] 6.4 Add `references` to the module map in `docs/architecture.md`
-
-## Blocked
-
-- Question: the preview code colours of render V1's mask (design.md, `WIDE_DEFAULT_MASK` in tests/screen/references/test_view.lua) contradict the preview using the same highlighting as a regular Go buffer (Requirement "Usage preview", scenario "Preview highlighting matches a regular buffer", and the user's Decision "should reuse same syntax highlighting as regular buffer of that file type"). The mask marks `{`, `(`, `[]`, `+=` and the parameter `i` as plain [MiniPickNormal], `Due`/`Rendered` as [@function.call] and the parameter type `Invoice` as plain. The real Go captures are `@punctuation.bracket` and `@variable.parameter` fg0 `#d4be98`, `@operator` red, `@function.method` blue `#7daea3`, `@type` green. First failure: `mask row 5, column 73 "{": expected f [MiniPickNormal] { fg=#ddc7a1 bg=#282828 }, drawn { fg=#d4be98 bg=#282828 }`. With only the code cells (columns 53–97 of rows 4–25) set to the real groups, the whole mask passes: frame, title, tree icons, labels and counts, gutter with [CursorLineNr], heading, `…` clip and hint all match. The screenshots match renders V1–V4.
-- Options: (A) regenerate the preview code cells of the V1–V3 masks in design.md and of `WIDE_DEFAULT_MASK` from the real Go captures, adding legend letters for `@punctuation.bracket`, `@variable.parameter`, `@operator`, `@type`, `@function.method` and `@function.builtin`; (B) override capture colours in the preview to fit the hand-made mask, which breaks regular-buffer highlighting; (C) stop masking the code cells and check only the frame.
-- Recommendation: A. It keeps the Decision and the SHALL, and the mask still pins every colour, from the same highlighter the integration test compares with a regular buffer.
