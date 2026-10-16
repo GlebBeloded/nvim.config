@@ -4,8 +4,8 @@ Scenarios: `references: Lua usages in production and spec files`, `references: P
 
 ## 2. De-duplicate across clients
 Scenarios: `references: Two attached clients list each usage once`
-- [ ] 2.1 Write the scenario in tests/unit/references/test_request.lua against the pure merge function, and see it fail if `references-view` did not already cover it
-- [ ] 2.2 Make the merge de-duplicate by uri and range, and ask only clients that advertise `referencesProvider`. Run the file and see it pass.
+- [x] 2.1 Write the scenario in tests/unit/references/test_request.lua against the pure merge function, and see it fail if `references-view` did not already cover it
+- [x] 2.2 Make the merge de-duplicate by uri and range, and ask only clients that advertise `referencesProvider`. Run the file and see it pass.
 
 ## 3. One end-to-end case per language
 Scenarios: `references: Lua usages in production and spec files`, `references: Python usages in production and test files`, `references: TypeScript usages in production and test files`, `references: Rust usages in production and test code`, `references: Bash usages in production and test scripts`, `references: Terraform variable usages`
@@ -17,3 +17,4 @@ Scenarios: `references: Lua usages in production and spec files`, `references: P
 
 - Generate each manifest from the fixture source so its line and byte-column locations cannot drift from edits.
 - Use JavaScript-compatible TypeScript syntax so `node --check` remains a valid fallback when `tsc` is unavailable.
+- Preserve the first client response for duplicate URI/range locations so merge order and offset encoding stay deterministic.
