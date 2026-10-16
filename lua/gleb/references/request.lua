@@ -3,30 +3,39 @@ local M = {
 	request_id = 0,
 }
 
+---@param filename string
+---@param lnum integer 0-based
+---@return string
+local function source_line(filename, lnum)
+	local normalized = vim.fs.normalize(filename)
+	for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+		if vim.api.nvim_buf_is_loaded(buf) and vim.fs.normalize(vim.api.nvim_buf_get_name(buf)) == normalized then
+			return vim.api.nvim_buf_get_lines(buf, lnum, lnum + 1, false)[1] or ""
+		end
+	end
+	return vim.fn.readfile(filename, "", lnum + 1)[lnum + 1] or ""
+end
+
 ---@param locations lsp.Location[]
 ---@param cwd string
+---@param offset_encoding 'utf-8'|'utf-16'|'utf-32'
+---@param seen table<string, boolean>
 ---@return gleb.references.Usage[]
-local function normalize(locations, cwd)
+local function normalize(locations, cwd, offset_encoding, seen)
 	local usages = {}
-	local seen = {}
 	for _, location in ipairs(locations) do
 		local range = location.range
-		local key = string.format(
-			"%s:%d:%d:%d:%d",
-			location.uri,
-			range.start.line,
-			range.start.character,
-			range["end"].line,
-			range["end"].character
-		)
+		local filename = vim.uri_to_fname(location.uri)
+		local line = source_line(filename, range.start.line)
+		local col = vim.str_byteindex(line, offset_encoding, range.start.character, false) + 1
+		local key = string.format("%s:%d:%d", location.uri, range.start.line, col)
 		if not seen[key] then
 			seen[key] = true
-			local filename = vim.uri_to_fname(location.uri)
 			table.insert(usages, {
 				uri = location.uri,
 				path = vim.fs.relpath(cwd, filename) or filename,
 				lnum = range.start.line + 1,
-				col = range.start.character + 1,
+				col = col,
 				filetype = vim.filetype.match({ filename = filename }),
 			})
 		end
@@ -58,14 +67,16 @@ function M.start(callback)
 		context = { includeDeclaration = false },
 	}
 	local pending = #clients
-	local locations = {}
+	local usages = {}
+	local seen = {}
 
 	---@param result lsp.Location[]?
-	local function finish(result)
+	---@param offset_encoding 'utf-8'|'utf-16'|'utf-32'
+	local function finish(result, offset_encoding)
 		if request_id ~= M.request_id then
 			return
 		end
-		vim.list_extend(locations, result or {})
+		vim.list_extend(usages, normalize(result or {}, cwd, offset_encoding, seen))
 		pending = pending - 1
 		if pending > 0 then
 			return
@@ -74,7 +85,6 @@ function M.start(callback)
 			if request_id ~= M.request_id then
 				return
 			end
-			local usages = normalize(locations, cwd)
 			if #usages == 0 then
 				vim.notify("No usages found", vim.log.levels.INFO)
 				return
@@ -85,9 +95,10 @@ function M.start(callback)
 
 	for _, client in ipairs(clients) do
 		local client_params = vim.deepcopy(params)
-		client_params.position = vim.lsp.util.make_position_params(0, client.offset_encoding).position
+		local offset_encoding = client.offset_encoding
+		client_params.position = vim.lsp.util.make_position_params(0, offset_encoding).position
 		client:request("textDocument/references", client_params, function(_, result)
-			finish(result)
+			finish(result, offset_encoding)
 		end, bufnr)
 	end
 end

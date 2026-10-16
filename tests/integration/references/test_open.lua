@@ -93,4 +93,20 @@ end)()
 	eq(child.lua_get([[vim.api.nvim_win_get_cursor(require("gleb.references.view").state.preview_win)]]), { 16, 0 })
 end
 
+T["references: View reflows when the editor resizes"] = function()
+	child.o.lines, child.o.columns = 30, 100
+	open_format()
+	eq(child.lua_get([[vim.api.nvim_win_get_width(require("gleb.references.view").state.tree_win)]]), 42)
+
+	child.o.columns = 140
+	child.cmd("doautocmd VimResized")
+	eq(child.lua_get([[vim.api.nvim_win_get_width(require("gleb.references.view").state.tree_win)]]), 60)
+	eq(child.lua_get([[vim.api.nvim_win_get_config(require("gleb.references.view").state.tree_win).col]]), 2)
+
+	child.o.columns = 70
+	child.cmd("doautocmd VimResized")
+	eq(child.lua_get([[require("gleb.references.view").state.preview_win == nil]]), true)
+	eq(child.lua_get([[vim.api.nvim_win_get_config(require("gleb.references.view").state.tree_win).col]]), 18)
+end
+
 return T

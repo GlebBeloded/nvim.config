@@ -23,6 +23,7 @@ Scenarios: `references: Go usages are grouped by scope and folder`, `references:
 - The preview's topline is computed (centred, window `scrolloff` 0): the global `scrolloff = 15` moved a `zz` view.
 - Both status columns pick their groups per line by expression, with no `CursorLineNr`/`LineNr` remap: `nvim_get_hl` resolves legend groups through the current window's `winhighlight`.
 - Preview mask colours: choose option A—regenerate the V1–V3 preview code cells and `WIDE_DEFAULT_MASK` from the real Go captures, with legend entries for `@punctuation.bracket`, `@variable.parameter`, `@operator`, `@type`, `@function.method` and `@function.builtin`, because this preserves the user's regular-buffer-highlighting decision and the Usage preview requirement while retaining full colour coverage.
+- A filter that removes every usage keeps the view open with a one-row empty tree and cleared preview, so the persisted state and in-view toggle behave consistently.
 
 ## 2. Icons and label shades
 Scenarios: `references: Icons and label shades match the palette`
@@ -74,5 +75,5 @@ Scenarios: `references: Wide view matches reference screenshot`, `references: Na
   2. then `t`;
   3. then move to `summary.go:7` and press Return.
   Compare each step's zellij dump with its render.
-- [ ] 6.3 Make `make test-screen` and `make e2e` (sandbox VM) pass, then `make check`. Compare `make render` of the view with `renders/view_v*.ansi`.
+- [x] 6.3 Make `make test-screen` and `make e2e` (sandbox VM) pass, then `make check`. Compare `make render` of the view with `renders/view_v*.ansi`.
 - [x] 6.4 Add `references` to the module map in `docs/architecture.md`

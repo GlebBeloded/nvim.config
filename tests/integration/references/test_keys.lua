@@ -53,6 +53,15 @@ end)(...)]],
 	child.api.nvim_win_set_cursor(0, { row, 0 })
 end
 
+local function add_test_only_reference()
+	vim.fn.writefile({ "", 'func OnlyInTests() string { return "only" }' }, root .. "/internal/money/money.go", "a")
+	vim.fn.writefile(
+		{ "", "func TestOnlyInTests(t *testing.T) {", "\t_ = OnlyInTests()", "}" },
+		root .. "/internal/money/money_test.go",
+		"a"
+	)
+end
+
 T["references: Tests key cycles grouped, hidden and mixed"] = function()
 	open_format()
 	local default = tree_lines()
@@ -72,6 +81,49 @@ T["references: Tests key cycles grouped, hidden and mixed"] = function()
 
 	child.type_keys("t")
 	eq(tree_lines(), default)
+end
+
+T["references: Tests filter can leave the tree empty"] = function()
+	add_test_only_reference()
+	child.o.lines, child.o.columns = 30, 100
+	child.cmd("edit " .. vim.fn.fnameescape(root .. "/internal/money/money.go"))
+	child.api.nvim_win_set_cursor(0, { 10, 6 })
+	eq(child.wait([[#vim.lsp.get_clients({ bufnr = 0, name = "gopls" }) > 0]], TIMEOUT_MS), true)
+	child.type_keys("gr")
+	eq(child.wait([[vim.bo.filetype == "gleb-references"]], TIMEOUT_MS), true)
+
+	child.type_keys("t")
+	local empty = child.lua_get([[
+(function()
+	local state = require("gleb.references.view").state
+	return {
+		count = state.tree.count,
+		title = vim.api.nvim_win_get_config(state.tree_win).title[1][1],
+		height = vim.api.nvim_win_get_height(state.tree_win),
+		lines = vim.api.nvim_buf_get_lines(state.preview_buf, 0, -1, false),
+		empty_selection = state.preview_usage == nil,
+	}
+end)()
+]])
+	eq(empty.count, 0)
+	eq(empty.title, " Usages of OnlyInTests · 0 ")
+	eq(empty.height, 24)
+	eq(empty.lines, { "" })
+	eq(empty.empty_selection, true)
+
+	child.type_keys("PP")
+	child.o.columns = 70
+	child.cmd("doautocmd VimResized")
+	eq(child.lua_get([[require("gleb.references.view").state.preview_win == nil]]), true)
+	eq(child.lua_get([[vim.api.nvim_win_get_height(require("gleb.references.view").state.tree_win)]]), 1)
+
+	child.o.columns = 140
+	child.cmd("doautocmd VimResized")
+	eq(child.lua_get([[vim.api.nvim_win_get_width(require("gleb.references.view").state.tree_win)]]), 60)
+
+	child.type_keys("qgr")
+	eq(child.wait([[vim.bo.filetype == "gleb-references"]], TIMEOUT_MS), true)
+	eq(child.lua_get([[require("gleb.references.view").state.tree.count]]), 0)
 end
 
 T["references: Mixed tests without folders is a flat list"] = function()
@@ -112,6 +164,29 @@ T["references: Return opens a usage at its position"] = function()
 	eq(child.fn.expand("%:p"), vim.uv.fs_realpath(vim.fs.joinpath(root, "report/summary.go")))
 	eq(child.api.nvim_win_get_cursor(0), { summary.line, summary.col - 1 })
 	eq(child.lua_get([[next(require("gleb.references.view").state) == nil]]), true)
+end
+
+T["references: UTF-16 usage columns are converted to byte columns"] = function()
+	local summary_path = root .. "/report/summary.go"
+	local lines = vim.fn.readfile(summary_path)
+	lines[7] = '\treturn "total: \u{20ac}" + money.Format(total)'
+	vim.fn.writefile(lines, summary_path)
+	open_format()
+	select_row("summary.go:7")
+	eq(child.wait([[require("gleb.references.view").state.preview_usage.path == "report/summary.go"]]), true)
+	local expected_col = assert(lines[7]:find("Format", 1, true))
+
+	local marked_col = child.lua_get([[
+(function()
+	local state = require("gleb.references.view").state
+	for _, mark in ipairs(vim.api.nvim_buf_get_extmarks(state.preview_buf, -1, { 6, 0 }, { 6, -1 }, { details = true })) do
+		if mark[4].hl_group == "Search" then return mark[3] + 1 end
+	end
+end)()
+]])
+	eq(marked_col, expected_col)
+	child.type_keys("<CR>")
+	eq(child.api.nvim_win_get_cursor(0), { 7, expected_col - 1 })
 end
 
 T["references: za folds a group"] = function()

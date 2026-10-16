@@ -76,6 +76,25 @@ function M.render(buf, usage, usages, symbol)
 	start_highlighting(buf, filetype, #table.concat(lines, "\n"))
 end
 
+---@param buf integer
+---@param win integer?
+---@return nil
+function M.clear(buf, win)
+	pcall(vim.treesitter.stop, buf)
+	vim.bo[buf].syntax = ""
+	vim.bo[buf].modifiable = true
+	vim.api.nvim_buf_set_lines(buf, 0, -1, false, { "" })
+	vim.bo[buf].modifiable = false
+	vim.api.nvim_buf_clear_namespace(buf, namespace, 0, -1)
+	vim.api.nvim_buf_clear_namespace(buf, clipped_namespace, 0, -1)
+	if win and vim.api.nvim_win_is_valid(win) then
+		vim.wo[win].winbar = ""
+		vim.wo[win].number = false
+		vim.wo[win].statuscolumn = ""
+		vim.wo[win].cursorline = false
+	end
+end
+
 ---@param usage gleb.references.TreeNode
 ---@return string
 local function heading(usage)

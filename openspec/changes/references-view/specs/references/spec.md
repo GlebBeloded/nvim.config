@@ -26,6 +26,10 @@ With the preview shown, the view SHALL be a centred rounded float covering the e
 - **WHEN** `gr` is pressed on `Format` in the `gomod` fixture with the editor at 70x24
 - **THEN** the view has no preview pane, is only as wide and tall as its rows and hints need, is centred, and the screen matches the approved render "Proposed V4 — no preview"
 
+#### Scenario: View reflows when the editor resizes
+- **WHEN** an open wide view is resized wider and then below 80 editor columns
+- **THEN** its frame is recentered at each size and it switches to the fitted layout without a preview below 80 columns
+
 ### Requirement: Usage tree grouping
 The tree SHALL group usages by test scope (`Production` before `Test`, from test-file detection), then by folder, with one row per folder showing its full path relative to the working directory (no nested folder rows), ordering rows by path then line. Group rows SHALL show their usage count. Usage rows SHALL show only `<file name>:<line>`.
 
@@ -71,12 +75,20 @@ Production rows SHALL show the oct-rocket glyph (U+F427) in aqua, Test rows the 
 - **WHEN** the cursor is on the `summary.go:7` row and `f` is pressed
 - **THEN** the cursor is on the `report/summary.go:7` row in the rebuilt tree
 
+#### Scenario: Tests filter can leave the tree empty
+- **WHEN** every usage is in a test file and the tests mode becomes or is persisted as hidden
+- **THEN** the view remains open with count zero, a one-row tree, and no stale preview
+
 ### Requirement: Usage preview
 The preview SHALL show the selected usage's file around its line, centred, with line numbers and the same syntax highlighting a regular buffer of that filetype gets (treesitter when its parser is installed, else the Vim syntax file). The usage's line number SHALL use the current-line-number highlight and every listed usage in the file SHALL be marked.
 
 #### Scenario: Preview follows the selection
 - **WHEN** the view is open for `Format` and the cursor moves to the `summary.go:7` row
 - **THEN** the preview shows `report/summary.go` centred on line 7 with its line number highlighted and `Format` marked on it
+
+#### Scenario: UTF-16 usage columns are converted to byte columns
+- **WHEN** a usage follows a multibyte character and its LSP client reports UTF-16 positions
+- **THEN** the preview mark and Return cursor are on the first byte of the usage
 
 #### Scenario: Preview highlighting matches a regular buffer
 - **WHEN** the preview shows `billing/invoice.go` around line 16

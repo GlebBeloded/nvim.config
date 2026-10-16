@@ -187,6 +187,11 @@ local function update_preview()
 	local state = M.state
 	local usage = usage_under_cursor()
 	if not usage then
+		state.preview_usage = nil
+		state.tree.selected_id = nil
+		if state.preview_buf then
+			preview.clear(state.preview_buf, state.preview_win)
+		end
 		return
 	end
 	state.preview_usage = usage
@@ -227,7 +232,7 @@ local function geometry(visible)
 		tree_width = math.floor(inner_width * TREE_SHARE)
 	else
 		inner_width = math.min(fitted_width(), columns - 6)
-		body_height = math.min(#M.state.visible_nodes, lines - 6)
+		body_height = math.max(1, math.min(#M.state.visible_nodes, lines - 6))
 		tree_width = inner_width
 	end
 	return {
@@ -347,6 +352,10 @@ end
 ---@return nil
 local function place_cursor(selected_id)
 	local state = M.state
+	if #state.visible_nodes == 0 then
+		vim.api.nvim_win_set_cursor(state.tree_win, { 1, 0 })
+		return
+	end
 	for index, node in ipairs(state.visible_nodes) do
 		if node.id == selected_id then
 			vim.api.nvim_win_set_cursor(state.tree_win, { index, 0 })
@@ -457,14 +466,13 @@ local function rebuild()
 end
 
 ---@param built gleb.references.Tree
----@return gleb.references.TreeNode
+---@return gleb.references.TreeNode?
 local function selected_usage(built)
 	for _, node in ipairs(built.nodes) do
 		if node.id == built.selected_id then
 			return node
 		end
 	end
-	error("references tree has no selected usage")
 end
 
 ---@param title string
@@ -540,6 +548,12 @@ function M.open(title, usages)
 	}
 	local group = vim.api.nvim_create_augroup("gleb_references_view", { clear = true })
 	vim.api.nvim_create_autocmd("CursorMoved", { group = group, buffer = tree_buf, callback = update_preview })
+	vim.api.nvim_create_autocmd("VimResized", {
+		group = group,
+		callback = function()
+			apply_layout()
+		end,
+	})
 	apply_layout()
 end
 
@@ -596,6 +610,7 @@ end
 
 ---@return nil
 function M.close()
+	pcall(vim.api.nvim_del_augroup_by_name, "gleb_references_view")
 	local origin_win = M.state.origin_win
 	local origin_cursor = M.state.origin_cursor
 	for _, win in ipairs(M.state.windows or {}) do
