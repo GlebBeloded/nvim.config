@@ -29,8 +29,6 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 
 ## Loop lessons
 
-- Use boolean true for vim.fn.shellescape's special flag so LuaLS accepts the call while preserving special-character escaping.
-- LuaCATS annotations for string.find-backed predicates must include nil alongside any explicit false return.
 - When a picker source can render into alternate buffers, update window-owned chrome before checking whether the source buffer is visible.
 - When picker item refreshes restore selection, gate scheduled first-match selection on query changes so the callback cannot overwrite the restored row.
 - Neo-tree source-scoped mappings override common mappings on duplicate lhs values, so ownership tests must validate the effective merged table.
@@ -44,6 +42,8 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - Give toggle actions a real `run` implementation so assigned shortcuts and palette selection have the same effect.
 - Keep generic test-directory segments additive after language-specific patterns so configured filetypes retain shared conventions.
 - Stub optional parsers with grammar-shaped nodes so parser-dependent regressions execute on every configured host.
+- Screen-mask legend groups resolve through the current window's winhighlight, so a float must not remap a legend group (CursorLineNr, LineNr) it draws; pick status-column groups per line by expression instead.
+- When a view owns companion floats and global autocmds, observe closure of its primary window and route it through the view's complete cleanup path.
 
 ## The loop
 

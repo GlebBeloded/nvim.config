@@ -36,15 +36,15 @@ The config SHALL make lua_ls answer its first `textDocument/documentSymbol` requ
 - **THEN** the `vtsls` client attached to the buffer answers `textDocument/documentSymbol` without error within the readiness bound of the `:edit`
 
 ### Requirement: Go references workflow
-In a Go module, `gr` in Normal mode SHALL open the shared references picker for the symbol under the cursor, listing the declaration and every reference reported by gopls across all packages of the module, including reported locations on the cursor's current line, and selecting an entry SHALL open its file with the cursor on the reference.
+In a Go module, `gr` in Normal mode SHALL open the Find Usages view for the symbol under the cursor, listing every reference reported by gopls across all packages of the module except the declaration, and opening a usage SHALL open its file with the cursor on the reference.
 
 #### Scenario: References of a Go function list call sites across packages
 - **WHEN** Neovim runs in a fresh copy of the `gomod` fixture with `internal/money/money.go` open, the cursor on the `Format` declaration and gopls attached, and `g` `r` is pressed as a real key press
-- **THEN** the shared references picker is open and its entries are exactly the fixture manifest's locations of `Format`: the declaration under the cursor plus the call sites in `internal/money/money_test.go`, `billing/invoice.go` (two) and `report/summary.go`
+- **THEN** the Find Usages view is open and its usage rows are exactly the fixture manifest's locations of `Format` except the declaration: the call sites in `internal/money/money_test.go`, `billing/invoice.go` (two) and `report/summary.go`
 
 #### Scenario: Selecting a reference opens its file at the call site
-- **WHEN** in that picker `summary` is typed into the prompt and Return is pressed as real key presses
-- **THEN** the picker is closed, the current buffer is `report/summary.go` of the fixture copy, and the cursor is at the manifest's line and column of the `Format` call in that file
+- **WHEN** in that view the cursor is moved to the usage row in `report/summary.go` and Return is pressed as real key presses
+- **THEN** the view is closed, the current buffer is `report/summary.go` of the fixture copy, and the cursor is at the manifest's line and column of the `Format` call in that file
 
 ### Requirement: Terraform language server registration
 The config SHALL register and enable the nvim-lspconfig server named `terraformls` for Terraform buffers, using the installed `terraform-ls` executable definition.
