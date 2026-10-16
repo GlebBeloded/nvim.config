@@ -1,0 +1,63 @@
+--|---------|---------|---------|---------|---------|---------|---------|---------|---------|---------|
+01|       invoice.go                                                                                  
+02|  ╭ Usages of Format · 3 ────────────────────┬───────────────────────────────────────────────────╮  
+03|  │ ▾  Production  3                        │ billing/invoice.go:16                             │  
+04|  │   ▾ 󰉖 billing  2                         │   4                                               │  
+05|  │        invoice.go:16                    │   5 // Invoice is a list of line amounts in cents.│  
+06|  │        invoice.go:23                    │   6 type Invoice struct {                         │  
+07|  │   ▾ 󰉖 report  1                          │   7     Lines []int                               │  
+08|  │        summary.go:7                     │   8 }                                             │  
+09|  │                                          │   9                                               │  
+10|  │                                          │  10 // Due renders the sum of the lines.          │  
+11|  │                                          │  11 func (i Invoice) Due() string {               │  
+12|  │                                          │  12     total := 0                                │  
+13|  │                                          │  13     for _, cents := range i.Lines {           │  
+14|  │                                          │  14         total += cents                        │  
+15|  │                                          │  15     }                                         │  
+16|  │                                          │  16     return money.Format(total)                │  
+17|  │                                          │  17 }                                             │  
+18|  │                                          │  18                                               │  
+19|  │                                          │  19 // Rendered renders every line.               │  
+20|  │                                          │  20 func (i Invoice) Rendered() []string {        │  
+21|  │                                          │  21     lines := []string{}                       │  
+22|  │                                          │  22     for _, cents := range i.Lines {           │  
+23|  │                                          │  23         lines = append(lines, money.Format(cen│  
+24|  │                                          │  24     }                                         │  
+25|  │                                          │  25     return lines                              │  
+26|  │                                          │  26 }                                             │  
+27|  ├──────────────────────────────────────────┴───────────────────────────────────────────────────┤  
+28|  │                                           Tests: hidden t · ● Folders f · Preview P · Open ↩ │  
+29|  ╰──────────────────────────────────────────────────────────────────────────────────────────────╯  
+30|                                                                                                    
+
+--|---------|---------|---------|---------|---------|---------|---------|---------|---------|---------|
+01|0111112211111111111111113333333333333333333333333333333333333333333333333333333333333333333333333333
+02|4456666666666666666666666555555555555555555555555555555555555555555555555555555555555555555555555544
+03|44577787999999999977:7777777777777777777777775;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;544
+04|44577777:7<<<<<<<77:77777777777777777777777775=====>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>544
+05|445???????@?AAAAAAAAAABBB????????????????????5=====CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC544
+06|4457777777D7EEEEEEEEEE:::777777777777777777775=====FFFF>>>>>>>>>FFFFFF>4>>>>>>>>>>>>>>>>>>>>>>>>>544
+07|44577777:7<<<<<<77:777777777777777777777777775=====>>>>>>>>>>44GGG>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>544
+08|4457777777D7EEEEEEEEEE::7777777777777777777775=====4>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>544
+09|445HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH5=====>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>544
+10|445HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH5=====CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC>>>>>>>>>>544
+11|445HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH5=====IIII>44>GGGGGGG4>JJJ44>GGGGGG>4>>>>>>>>>>>>>>>544
+12|445HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH5=====>>>>>>>>>>FF>K>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>544
+13|445HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH5=====>>>>III>>L>>>>>>>FF>FFFFF>>LMMMMM>4>>>>>>>>>>>544
+14|445HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH5=====>>>>>>>>>>>>>>FF>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>544
+15|445HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH5=====>>>>4>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>544
+16|445HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH5NNNNN>>>>FFFFFF>>>>>>LOOOOOO4>>>>>4>>>>>>>>>>>>>>>>544
+17|445HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH5=====4>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>544
+18|445HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH5=====>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>544
+19|445HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH5=====CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC>>>>>>>>>>>>>>>544
+20|445HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH5=====IIII>44>GGGGGGG4>JJJJJJJJ44>44GGGGGG>4>>>>>>>>544
+21|445HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH5=====>>>>>>>>>>FF>44GGGGGG44>>>>>>>>>>>>>>>>>>>>>>>544
+22|445HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH5=====>>>>III>>L>>>>>>>FF>FFFFF>>LMMMMM>4>>>>>>>>>>>544
+23|445HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH5=====>>>>>>>>>>>>>>F>PPPPPP4>>>>>L>>>>>>LOOOOOO4>>>544
+24|445HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH5=====>>>>4>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>544
+25|445HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH5=====>>>>FFFFFF>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>544
+26|445HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH5=====4>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>544
+27|4455555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555544
+28|==5QQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQGQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQ5==
+29|==555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555==
+30|RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR

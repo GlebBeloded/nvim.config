@@ -69,3 +69,9 @@ Scenarios: `references: Wide view matches reference screenshot`, `references: Na
   Compare each step's zellij dump with its render.
 - [ ] 6.3 Make `make test-screen` and `make e2e` (sandbox VM) pass, then `make check`. Compare `make render` of the view with `renders/view_v*.ansi`.
 - [ ] 6.4 Add `references` to the module map in `docs/architecture.md`
+
+## Stuck
+
+- Task 6: the wide screen and real-key e2e regressions are red. Probe output showed the tree window has `Normal:MiniPickNormal,FloatBorder:PickerBorder,CursorLine:MiniPickMatchCurrent`; resolved `FloatTitle` is orange/bold (`fg=15174222`, `bg=5919308`) while `MiniPickBorderText` is `fg=14534561`, `bg=2631720`.
+- Attempt 1 preserved the LSP server's `includeDeclaration=false` result, added tree/hint extmark colours, corrected frame geometry and added the preview heading; the screen advanced to the approved structure but failed its screenshot/mask.
+- Attempt 2 corrected preview tab width, number width and centring; the screenshot then matched the intended text, but the semantic mask still failed because the tree float does not map `FloatTitle` to `MiniPickBorderText`. Production edits were reverted and the failing tests retained.

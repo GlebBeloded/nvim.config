@@ -1,0 +1,63 @@
+--|---------|---------|---------|---------|---------|---------|---------|---------|---------|---------|
+01|       invoice.go                                                                                  
+02|  ╭ Usages of Format · 4 ────────────────────┬───────────────────────────────────────────────────╮  
+03|  │  billing/invoice.go:16                  │ internal/money/money_test.go:6                    │  
+04|  │  billing/invoice.go:23                  │   1 package money                                 │  
+05|  │  internal/money/money_test.go:6    test│   2                                               │  
+06|  │  report/summary.go:7                    │   3 import "testing"                              │  
+07|  │                                          │   4                                               │  
+08|  │                                          │   5 func TestDollars(t *testing.T) {              │  
+09|  │                                          │   6     if got := Format(1999); got != "$19.99" { │  
+10|  │                                          │   7         t.Fatalf("got %q", got)               │  
+11|  │                                          │   8     }                                         │  
+12|  │                                          │   9 }                                             │  
+13|  │                                          │                                                   │  
+14|  │                                          │                                                   │  
+15|  │                                          │                                                   │  
+16|  │                                          │                                                   │  
+17|  │                                          │                                                   │  
+18|  │                                          │                                                   │  
+19|  │                                          │                                                   │  
+20|  │                                          │                                                   │  
+21|  │                                          │                                                   │  
+22|  │                                          │                                                   │  
+23|  │                                          │                                                   │  
+24|  │                                          │                                                   │  
+25|  │                                          │                                                   │  
+26|  │                                          │                                                   │  
+27|  ├──────────────────────────────────────────┴───────────────────────────────────────────────────┤  
+28|  │                                            Tests: mixed t · ○ Folders f · Preview P · Open ↩ │  
+29|  ╰──────────────────────────────────────────────────────────────────────────────────────────────╯  
+30|                                                                                                    
+
+--|---------|---------|---------|---------|---------|---------|---------|---------|---------|---------|
+01|0111112211111111111111113333333333333333333333333333333333333333333333333333333333333333333333333333
+02|4456666666666666666666666555555555555555555555555555555555555555555555555555555555555555555555555544
+03|445787999999999999999999:::7777777777777777775;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;544
+04|445787999999999999999999:::7777777777777777775<<<<<=======>44444>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>544
+05|445?@?AAAAAAAAAAAAAAAAAAAAAAAAAAAABB???C?DDDD5<<<<<>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>544
+06|44578799999999999999999::777777777777777777775<<<<<======>EEEEEEEEE>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>544
+07|445FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5<<<<<>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>544
+08|445FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5<<<<<====>GGGGGGGGGGG44>H4444444EI4>4>>>>>>>>>>>>>>544
+09|445FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5JJJJJ>>>>==>>>>>HH>KKKKKK4LLLL4E>>>>>HH>EEEEEEEE>4>544
+10|445FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5<<<<<>>>>>>>>>EGGGGGG4EEEEEEEEE>>>>4>>>>>>>>>>>>>>>544
+11|445FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5<<<<<>>>>4>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>544
+12|445FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5<<<<<4>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>544
+13|445FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<544
+14|445FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<544
+15|445FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<544
+16|445FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<544
+17|445FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<544
+18|445FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<544
+19|445FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<544
+20|445FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<544
+21|445FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<544
+22|445FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<544
+23|445FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<544
+24|445FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<544
+25|445FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<544
+26|445FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<544
+27|4455555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555544
+28|<<5MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM5<<
+29|<<555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555<<
+30|NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN
