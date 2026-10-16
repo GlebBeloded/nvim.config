@@ -1,0 +1,42 @@
+## 1. Extend the Go fixture
+Scenarios: `references: gopls kinds classify a Go variable`
+- [ ] 1.1 Add `report/calls.go` and `report/calls_test.go` (contents as in Proposed K1's preview and design.md) to `gomod` in `tests/fixtures/build.sh`, plus the `Calls` manifest entries. Verify that `go build ./...` and `go vet ./...` pass and that the existing `Format` entries are unchanged.
+
+## 2. Treesitter fallback
+Scenarios: `references: Treesitter fallback classifies writes where a parser exists`, `references: Without kinds or a parser a usage is other`
+- [ ] 2.1 Write both scenarios in tests/unit/references/test_kind_ts.lua and see them fail
+- [ ] 2.2 Add `lua/gleb/references/kind_ts.lua`: pure write-target queries for go, lua and bash, applied only when `pcall(vim.treesitter.language.add, lang)` succeeds
+- [ ] 2.3 Run the file and see both pass
+
+## 3. Server classification sources
+Scenarios: `references: gopls kinds classify a Go variable`, `references: lua_ls kinds classify a Lua local`, `references: basedpyright kinds classify a Python variable`, `references: tsserver kinds classify a TypeScript variable`, `references: rust-analyzer kinds classify a Rust variable`
+- [ ] 3.1 Write the five scenarios in tests/integration/references/test_kind.lua (the gomod fixture, plus temporary Lua, Python, TypeScript and Cargo projects). A missing server is skipped with its reason. See them fail.
+- [ ] 3.2 Add `lua/gleb/references/kind.lua`:
+  - the vtsls tsserver path;
+  - per-file documentHighlight with range matching;
+  - the fallback fill;
+  - a cache keyed by uri and changedtick/mtime;
+  - `CLASSIFY_TIMEOUT_MS = 3000`.
+- [ ] 3.3 Run the file and see all five pass or skip with a reason
+
+## 4. Level, toggle and async view
+Scenarios: `references: Function usages have no read/write level or hint`, `references: Read/write state persists across sessions`, `references: The read/write key comes from the keymap file`, `references: The view opens before classification finishes`, `references: Classification gives up after the timeout`
+- [ ] 4.1 Write the scenarios in tests/unit/references/test_tree.lua and tests/integration/references/test_kind_view.lua and see them fail
+- [ ] 4.2 Add:
+  - the conditional read/write level and the row tags to `tree.lua`;
+  - the `ReferencesWrite[Label]` and `ReferencesRead[Label]` groups to `icons.lua`;
+  - the `references.toggle_read_write` action, with `w` in `settings/keymap.json`;
+  - the conditional `Read/write` hint and the `· classifying` title state;
+  - persistence;
+  - a rebuild on classification that keeps the selection.
+- [ ] 4.3 Run both files and see every listed scenario pass
+
+## 5. Screens and the real-key workflow
+Scenarios: `references: Variable usages are grouped by write and read`, `references: w turns the level into row tags`
+- [ ] 5.1 Add K1 and K2 to tests/screen/references/test_view.lua, using real glyphs in the screenshot text, and see them fail. Check that the V1–V4 references are unchanged.
+- [ ] 5.2 Add an e2e case to tests/e2e/lsp/test_go_references.lua:
+  1. a real `gr` on `Calls`;
+  2. wait for classification;
+  3. compare with K1;
+  4. press `w` and compare with K2.
+- [ ] 5.3 Make `make test-screen` and `make e2e` (sandbox VM) pass, then `make check`. Compare `make render` with `renders/kind_*.ansi`.
