@@ -518,6 +518,13 @@ With `ARTIFACTS_DIR` set, tests/parallel.lua SHALL add each collected case (file
 - **WHEN** verdict.py snapshots a branch holding base case `a: old`, case-seen.json then lists `a: old` and `a: tmp`, and gate.py, verdict.py and gate.py run
 - **THEN** the first gate is red naming `hard rule: test added then removed during build: a: tmp` and not `a: old`, verdict removes case-seen.json, and the second gate does not repeat it
 
+### Requirement: Gate merges a moved auto first
+The build loop's gate SHALL first merge `auto` into the run's branch when `auto` has commits the branch lacks, the worktree has no tracked edits and the merge is clean (`.archon/scripts/sync_base.py`); a conflicting merge SHALL be aborted and the gate SHALL run on the branch as it is.
+
+#### Scenario: Gate merges a moved auto first
+- **WHEN** the nvim-deliver gate node and `.archon/scripts/gate.py` are read, and `sync_base.py` runs in a repo whose `auto` moved after the branch forked: once clean, once with a tracked edit, once with a conflicting commit
+- **THEN** the gate passes `sync_base: "true"` and gate.py calls `sync()` before any check; the clean branch then contains `auto`'s commit, the edited one is left unmerged, and the conflicting merge is aborted with a clean worktree
+
 ### Requirement: Gate skips a Blocked change
 gate.py SHALL check for a blocking `## Blocked` section (blocked.py) before anything else and then print a red verdict with `blocked` true and the Blocked text as failures, with no `make check` and without counting the pass as an attempt; nvim-deliver's review node SHALL run only when the gate's `blocked` is false.
 

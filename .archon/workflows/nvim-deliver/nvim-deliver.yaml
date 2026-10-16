@@ -166,6 +166,7 @@ nodes:
           trigger_rule: all_done
           with:
             change: $INPUTS.change
+            sync_base: "true" # sync_base.py: merge a moved auto first when clean
           output_format:
             type: object
             properties:

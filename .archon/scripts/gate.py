@@ -26,6 +26,7 @@ from integrity import BASE, CASE_CHAIN, CASE_KEY, case_names, git, hard_rule_vio
 from pinned import pinned
 from scenarios import covered, untested
 from spec_trial import archived_specs_ok as trial_archive
+from sync_base import sync
 from tasks import tick_gate_items, unchecked
 
 
@@ -120,6 +121,8 @@ def red(failures: str, blocked: bool = False, infra: str = "") -> None:
     sys.exit(0)
 
 
+if os.environ.get("INPUTS_SYNC_BASE") == "true":  # the base moved since the fork (its fixes, approved renders)
+    print(sync() or "sync: base already merged", file=sys.stderr)
 blocked = blocked_text(change)
 if blocked:  # the next pass settles it (unblock.md), so checking or reviewing it is wasted; no attempt either
     counter.write_text(str(attempt - 1))

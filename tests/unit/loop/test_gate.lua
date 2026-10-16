@@ -656,6 +656,20 @@ T["loop: Fix prompt probes first and caps attempts"] = function()
 	has(fix, "unless the proposal's `## Decision` allows it")
 end
 
+T["loop: Gate merges a moved auto first"] = function()
+	local deliver = read(vim.fs.joinpath(H.root, ".archon/workflows/nvim-deliver/nvim-deliver.yaml"))
+	has(deliver, 'sync_base: "true" # sync_base.py')
+	local gate = read(vim.fs.joinpath(H.root, ".archon/scripts/gate.py"))
+	has(gate, 'if os.environ.get("INPUTS_SYNC_BASE") == "true":')
+	eq(gate:find("INPUTS_SYNC_BASE", 1, true) < gate:find("blocked = blocked_text(change)", 1, true), true)
+	local result = H.system(
+		child,
+		{ "python3", "-m", "unittest", "-q", "test_sync_base" },
+		vim.fs.joinpath(H.root, ".archon/scripts")
+	)
+	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
+end
+
 T["loop: Stuck attempts keep the red test"] = function()
 	for _, name in ipairs({ "fix.md", "implement.md" }) do
 		local prompt = read(vim.fs.joinpath(H.root, ".archon/commands", name)):gsub("%s+", " ")
