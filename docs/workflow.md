@@ -29,8 +29,6 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 
 ## Loop lessons
 
-- When passing `string.gsub()` directly to a one-argument RPC method, parenthesize it so Lua drops the replacement-count return value.
-- Sort enabled LSP config names before asserting exact membership because `vim.lsp.get_configs()` ordering is not stable.
 - Use boolean true for vim.fn.shellescape's special flag so LuaLS accepts the call while preserving special-character escaping.
 - LuaCATS annotations for string.find-backed predicates must include nil alongside any explicit false return.
 - When a picker source can render into alternate buffers, update window-owned chrome before checking whether the source buffer is visible.
@@ -44,6 +42,8 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - When a palette's secondary reveal bypasses the initial visibility filter, exercise that reveal key in the catalog-label regression and validate its plugin-owned rows.
 - When action metadata supplies mapping descriptions, update the native integration expectation with the approved title change.
 - Give toggle actions a real `run` implementation so assigned shortcuts and palette selection have the same effect.
+- Keep generic test-directory segments additive after language-specific patterns so configured filetypes retain shared conventions.
+- Stub optional parsers with grammar-shaped nodes so parser-dependent regressions execute on every configured host.
 
 ## The loop
 
