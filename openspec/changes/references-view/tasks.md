@@ -13,16 +13,17 @@ Scenarios: `references: Go usages are grouped by scope and folder`, `references:
 ## Agent decisions
 
 - Tree output is a flat preorder node list with `parent_id` and `selected_id`; usage ids contain uri, line and column but no grouping state, so rendering and selection survive regrouping.
+- Icon resolution accepts tree nodes and returns glyph plus icon and label groups, so the later view can apply extmarks without duplicating palette or devicon logic.
 
 ## 2. Icons and label shades
 Scenarios: `references: Icons and label shades match the palette`
-- [ ] 2.1 Write the scenario in tests/integration/references/test_icons.lua, plus a unit test for the palette mix in tests/unit/references/test_icons.lua, and see them fail
-- [ ] 2.2 Add `lua/gleb/references/icons.lua`:
+- [x] 2.1 Write the scenario in tests/integration/references/test_icons.lua, plus a unit test for the palette mix in tests/unit/references/test_icons.lua, and see them fail
+- [x] 2.2 Add `lua/gleb/references/icons.lua`:
   - glyphs U+F427, U+F499 and U+F0256, plus the devicon lookup;
   - the `ReferencesProduction`, `ReferencesTest` and `ReferencesFolder` groups and their `…Label` groups;
   - a `ReferencesFileLabel<DevIconGroup>` group per devicon;
   - `LABEL_PALENESS = 0.7`, computed from the gruvbox-material palette helpers and recomputed on `ColorScheme`.
-- [ ] 2.3 Run both test files and see them pass
+- [x] 2.3 Run both test files and see them pass
 
 ## 3. Request references and open the view
 Scenarios: `references: gr opens the view in a Go module`, `references: gr with no usages notifies and opens nothing`, `references: gr without a references-capable client notifies`, `references: The first usage is selected and previewed`, `keymaps: gr bound to Telescope references`, `file-tree: gr keeps its global meaning in git status tree`
