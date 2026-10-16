@@ -692,7 +692,10 @@ T["loop: Stuck attempts keep the red test"] = function()
 		has(prompt, "`## Stuck` in tasks.md with the probe output and both attempts")
 		eq(prompt:find("revert the uncommitted edits", 1, true), nil)
 	end
-	has(read(vim.fs.joinpath(H.root, ".archon/commands/fix.md")), "when `$ARTIFACTS_DIR/stuck-attempt.diff` exists, first `git apply` it")
+	has(
+		read(vim.fs.joinpath(H.root, ".archon/commands/fix.md")),
+		"when `$ARTIFACTS_DIR/stuck-attempt.diff` exists, first `git apply` it"
+	)
 end
 
 T["loop: Test run records the cases it collected"] = function()
