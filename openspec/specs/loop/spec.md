@@ -963,6 +963,10 @@ The context pack SHALL hold only what the next task needs, and the prompts and t
 - **WHEN** `tests/trace.lua` runs on a test case named after no scenario
 - **THEN** it exits 1 and the ORPHAN heading says to name it after a scenario or add that scenario to `openspec/changes/<change>/specs`, never delete it
 
+#### Scenario: Trace links a nested case to its scenario
+- **WHEN** `tests/trace.lua` runs on a case `T["x: base"]["hidden mode"]` nested in the set of scenario `base`
+- **THEN** it counts the case as testing `x: base` and reports no orphan
+
 #### Scenario: Fix prompt names regression tests after scenarios
 - **WHEN** `.archon/commands/fix.md` is read
 - **THEN** it names each new regression test `<capability>: <scenario title>`, reusing a scenario's case or adding a same-titled scenario to the change's spec delta, and forbids inventing a case name or folding or renaming a case an earlier pass added

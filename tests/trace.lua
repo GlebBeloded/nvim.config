@@ -1,6 +1,7 @@
 -- `make trace`: traceability matrix between OpenSpec scenarios and mini.test
 -- cases. A case is linked to a scenario when its name is exactly
--- "<capability>: <scenario title>" (capability = openspec/specs/<capability>). Scenarios that an
+-- "<capability>: <scenario title>" (capability = openspec/specs/<capability>), or when it is nested in a
+-- set of that name (`T["<capability>: <title>"]["<detail>"]`: extra cases of one scenario). Scenarios that an
 -- active change adds or modifies (openspec/changes/<id>/specs/, not archive/) count too, so a
 -- change's new tests trace while it is being built.
 --   tested  - scenario has at least one case
@@ -78,11 +79,23 @@ local function test_files()
 	return files
 end
 
+--- A case nested in a scenario's set (`T["<capability>: <title>"]["<detail>"]`) is named by that set.
+---@param desc string[]
+---@return string
+local function case_name(desc)
+	for i = 2, #desc do
+		if desc[i]:match("^[%w%-]+: .+$") then
+			return desc[i]
+		end
+	end
+	return desc[#desc]
+end
+
 ---@return { name: string, file: string }[]
 local function collect_cases()
 	local cases = MiniTest.collect({ find_files = test_files })
 	return vim.tbl_map(function(case)
-		return { name = case.desc[#case.desc], file = case.desc[1] }
+		return { name = case_name(case.desc), file = case.desc[1] }
 	end, cases)
 end
 
