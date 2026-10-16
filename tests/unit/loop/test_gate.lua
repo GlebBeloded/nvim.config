@@ -662,10 +662,12 @@ T["loop: Stuck attempts keep the red test"] = function()
 		has(prompt, "run one headless probe first (the scratch-file probe rule below) that logs the relevant state")
 		has(prompt, "At most 2 implementation attempts per")
 		has(prompt, "revert only the non-test edits (`lua/` and other code; keep the new red")
+		has(prompt, "git diff -- . ':!tests' > $ARTIFACTS_DIR/stuck-attempt.diff")
 		has(prompt, "commit the failing test together with tasks.md")
 		has(prompt, "`## Stuck` in tasks.md with the probe output and both attempts")
 		eq(prompt:find("revert the uncommitted edits", 1, true), nil)
 	end
+	has(read(vim.fs.joinpath(H.root, ".archon/commands/fix.md")), "git apply $ARTIFACTS_DIR/stuck-attempt.diff")
 end
 
 T["loop: Test run records the cases it collected"] = function()
