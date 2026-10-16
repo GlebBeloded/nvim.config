@@ -14,6 +14,7 @@ Scenarios: `references: Go usages are grouped by scope and folder`, `references:
 
 - Tree output is a flat preorder node list with `parent_id` and `selected_id`; usage ids contain uri, line and column but no grouping state, so rendering and selection survive regrouping.
 - Icon resolution accepts tree nodes and returns glyph plus icon and label groups, so the later view can apply extmarks without duplicating palette or devicon logic.
+- Preview scratch buffers retain source line coordinates (with disk reads capped at 10,000 lines), so syntax captures, usage marks and line numbers match regular buffers directly.
 
 ## 2. Icons and label shades
 Scenarios: `references: Icons and label shades match the palette`
@@ -37,14 +38,14 @@ Scenarios: `references: gr opens the view in a Go module`, `references: gr with 
 
 ## 4. Preview
 Scenarios: `references: Preview follows the selection`, `references: Preview highlighting matches a regular buffer`, `references: Preview falls back to Vim syntax without a parser`, `references: Preview leaves no buffer or client behind`, `references: Preview shows unsaved edits`, `references: P toggles the preview pane`
-- [ ] 4.1 Write the six scenarios in tests/integration/references/test_preview.lua and see them fail
-- [ ] 4.2 Add `preview.lua`:
+- [x] 4.1 Write the six scenarios in tests/integration/references/test_preview.lua and see them fail
+- [x] 4.2 Add `preview.lua`:
   - a scratch buffer;
   - `vim.treesitter.start` when the parser exists, else `syntax = <filetype>`;
   - text from the loaded buffer, else a bounded `readfile`;
   - [CursorLineNr] on the usage's line number, and every usage marked [Search];
   - `P` switching between the wide and fitted geometries.
-- [ ] 4.3 Run `make test FILE=tests/integration/references/test_preview.lua` and see all six pass
+- [x] 4.3 Run `make test FILE=tests/integration/references/test_preview.lua` and see all six pass
 
 ## 5. Grouping controls, keys and persistence
 Scenarios: `references: Tests key cycles grouped, hidden and mixed`, `references: Mixed tests without folders is a flat list`, `references: Grouping persists across sessions`, `references: Return opens a usage at its position`, `references: za folds a group`, `references: Escape returns to the origin window`, `references: View keys come from the keymap file`

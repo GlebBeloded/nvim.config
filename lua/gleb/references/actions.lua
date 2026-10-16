@@ -9,6 +9,10 @@ local function pending_control()
 	return false
 end
 
+local function toggle_preview()
+	view.toggle_preview()
+end
+
 ---@type gleb.Action[]
 return {
 	{
@@ -44,7 +48,7 @@ return {
 		title = "Toggle Preview",
 		category = "References",
 		ft = "gleb-references",
-		run = pending_control,
+		run = toggle_preview,
 	},
 	{ id = "references.close", title = "Close", category = "References", ft = "gleb-references", run = close },
 }

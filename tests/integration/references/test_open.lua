@@ -89,8 +89,8 @@ T["references: The first usage is selected and previewed"] = function()
 	end
 end)()
 ]])
-	eq(preview[1], "billing/invoice.go:16")
-	eq(vim.tbl_contains(preview, "  16  \treturn money.Format(total)"), true)
+	eq(preview[16], "\treturn money.Format(total)")
+	eq(child.lua_get([[vim.api.nvim_win_get_cursor(require("gleb.references.view").state.preview_win)]]), { 16, 0 })
 end
 
 return T

@@ -25,6 +25,7 @@ local scope = require("gleb.references.scope")
 ---@field path? string
 ---@field lnum? integer
 ---@field col? integer
+---@field filetype? string
 ---@field test? boolean
 ---@field test_tag? boolean
 
@@ -110,6 +111,7 @@ local function usage_node(usage, depth, parent_id, show_path, mixed)
 		path = usage.path,
 		lnum = usage.lnum,
 		col = usage.col,
+		filetype = usage.filetype,
 		test = usage.test,
 	}
 	if mixed then
