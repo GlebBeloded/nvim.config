@@ -5,8 +5,20 @@ local function close()
 	view.close()
 end
 
-local function pending_control()
-	return false
+local function open()
+	view.open_selected()
+end
+
+local function fold()
+	view.fold()
+end
+
+local function cycle_tests()
+	view.cycle_tests()
+end
+
+local function toggle_folders()
+	view.toggle_folders()
 end
 
 local function toggle_preview()
@@ -20,28 +32,28 @@ return {
 		title = "Open Usage",
 		category = "References",
 		ft = "gleb-references",
-		run = pending_control,
+		run = open,
 	},
 	{
 		id = "references.fold",
 		title = "Fold Group",
 		category = "References",
 		ft = "gleb-references",
-		run = pending_control,
+		run = fold,
 	},
 	{
 		id = "references.cycle_tests",
 		title = "Cycle Tests",
 		category = "References",
 		ft = "gleb-references",
-		run = pending_control,
+		run = cycle_tests,
 	},
 	{
 		id = "references.toggle_folders",
 		title = "Toggle Folders",
 		category = "References",
 		ft = "gleb-references",
-		run = pending_control,
+		run = toggle_folders,
 	},
 	{
 		id = "references.toggle_preview",

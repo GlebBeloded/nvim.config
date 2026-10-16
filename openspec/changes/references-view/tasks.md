@@ -15,6 +15,7 @@ Scenarios: `references: Go usages are grouped by scope and folder`, `references:
 - Tree output is a flat preorder node list with `parent_id` and `selected_id`; usage ids contain uri, line and column but no grouping state, so rendering and selection survive regrouping.
 - Icon resolution accepts tree nodes and returns glyph plus icon and label groups, so the later view can apply extmarks without duplicating palette or devicon logic.
 - Preview scratch buffers retain source line coordinates (with disk reads capped at 10,000 lines), so syntax captures, usage marks and line numbers match regular buffers directly.
+- Missing or invalid persisted grouping falls back to grouped tests with folders on, preserving the documented first-use defaults.
 
 ## 2. Icons and label shades
 Scenarios: `references: Icons and label shades match the palette`
@@ -49,14 +50,14 @@ Scenarios: `references: Preview follows the selection`, `references: Preview hig
 
 ## 5. Grouping controls, keys and persistence
 Scenarios: `references: Tests key cycles grouped, hidden and mixed`, `references: Mixed tests without folders is a flat list`, `references: Grouping persists across sessions`, `references: Return opens a usage at its position`, `references: za folds a group`, `references: Escape returns to the origin window`, `references: View keys come from the keymap file`
-- [ ] 5.1 Write the scenarios in tests/integration/references/test_keys.lua and see them fail
-- [ ] 5.2 Add:
+- [x] 5.1 Write the scenarios in tests/integration/references/test_keys.lua and see them fail
+- [x] 5.2 Add:
   - the `t` (tests-mode cycle) and `f` (folders) actions, rebuilding in place;
   - the hint-row states, with key labels from the keymap file;
   - fold state per node id;
   - open and close behaviour;
   - persistence in `state.lua`.
-- [ ] 5.3 Run `make test FILE=tests/integration/references/test_keys.lua` and see them pass
+- [x] 5.3 Run `make test FILE=tests/integration/references/test_keys.lua` and see them pass
 
 ## 6. Screens and the real-key workflow
 Scenarios: `references: Wide view matches reference screenshot`, `references: Narrow view fits its content`, `lsp: References of a Go function list call sites across packages`, `lsp: Selecting a reference opens its file at the call site`
