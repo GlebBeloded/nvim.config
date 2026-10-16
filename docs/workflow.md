@@ -40,6 +40,7 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - When a palette's secondary reveal bypasses the initial visibility filter, exercise that reveal key in the catalog-label regression and validate its plugin-owned rows.
 - When action metadata supplies mapping descriptions, update the native integration expectation with the approved title change.
 - Give toggle actions a real `run` implementation so assigned shortcuts and palette selection have the same effect.
+- LSP positions count `character` in the client's `offset_encoding` (UTF-16 by default): convert with `vim.str_byteindex(line, client.offset_encoding, character)` before using it as a byte column.
 - Keep generic test-directory segments additive after language-specific patterns so configured filetypes retain shared conventions.
 - Stub optional parsers with grammar-shaped nodes so parser-dependent regressions execute on every configured host.
 - Screen-mask legend groups resolve through the current window's winhighlight, so a float must not remap a legend group (CursorLineNr, LineNr) it draws; pick status-column groups per line by expression instead.
