@@ -1,7 +1,7 @@
 -- E2E workflow: `gr` on a Go function in a fresh copy of the gomod fixture
--- (tests/fixtures/build.sh) lists its references through gopls in the shared picker,
--- and Return on one opens it. Real key presses, state read over RPC; expected
--- locations come from the fixture's manifest.
+-- opens Find Usages, `t` hides tests, and Return on a selected usage opens it.
+-- Real key presses drive every transition; fixture facts and approved render rows
+-- are independent expectations.
 local MiniTest = require("mini.test")
 local E = require("tests.e2e.alacritty")
 local F = require("tests.fixtures")
@@ -78,29 +78,20 @@ local GOPLS_READY = [[local client = vim.lsp.get_clients({ bufnr = 0, name = "go
 	local reply = client:request_sync("textDocument/references", params, 2000, 0)
 	return reply ~= nil and reply.result ~= nil and #reply.result > 0]]
 
-local PICKER_COUNT = [[local pick = require("mini.pick")
-	if not pick.is_picker_active() then return -1 end
-	local matches = pick.get_picker_matches()
-	return matches and #(matches.all or {}) or 0]]
-
-local PICKER_ENTRIES = [[local root = vim.uv.fs_realpath(...) .. "/"
+local VIEW_ENTRIES = [[local root = vim.uv.fs_realpath(...) .. "/"
 	local entries = {}
-	for _, entry in ipairs(require("mini.pick").get_picker_items() or {}) do
-		local path = vim.uv.fs_realpath(entry.path) or entry.path
+	for _, entry in ipairs(require("gleb.references.view").state.usages or {}) do
+		local path = vim.uv.fs_realpath(vim.uri_to_fname(entry.uri)) or vim.uri_to_fname(entry.uri)
 		table.insert(entries, { path = path:sub(#root + 1), line = entry.lnum, col = entry.col })
 	end
 	return entries]]
 
 ---@param s e2e.Stack
----@param n integer
-local function wait_picker(s, n)
-	local count ---@type integer?
-	local ok, err = pcall(S.wait_for, function()
-		count = s:lua(PICKER_COUNT)
-		return count == n
-	end, string.format("shared picker with %d entries", n))
-	if not ok then
-		error(string.format("%s (last count %s), screen:\n%s", err, count, s:zellij("dump-screen")), 0)
+---@param rows string[]
+local function expect_render_rows(s, rows)
+	local dump = s:zellij("dump-screen")
+	for _, row in ipairs(rows) do
+		assert(dump:find(row, 1, true), "approved render row missing: " .. row .. "\nscreen:\n" .. dump)
 	end
 end
 
@@ -123,15 +114,15 @@ local function open_references(s)
 	E.burst(s, function()
 		E.press(s, { "g", "r" })
 		S.wait_for(function()
-			return s:lua(PICKER_COUNT) > 0
-		end, "shared references picker with entries")
+			return s:lua([[return require("gleb.references.view").state.tree_win ~= nil]])
+		end, "Find Usages view")
 	end)
 end
 
---- The references picker of `Format`, opened unless the previous case left it open.
+--- The references view of `Format`, opened unless the previous case left it open.
 ---@param s e2e.Stack
 local function ensure_references(s)
-	if not s:lua([[return require("mini.pick").is_picker_active()]]) then
+	if not s:lua([[return require("gleb.references.view").state.tree_win ~= nil]]) then
 		open_references(s)
 	end
 end
@@ -152,14 +143,34 @@ local CURRENT_FILE = [[local name = vim.api.nvim_buf_get_name(0)
 T["lsp: References of a Go function list call sites across packages"] = function()
 	local s = get()
 	open_references(s)
-	wait_picker(s, #manifest.references.Format)
-	eq(sorted(s:lua(PICKER_ENTRIES, { root })), sorted(manifest.references.Format))
-	eq(paths(manifest.references.Format), {
+	local expected = vim.list_slice(manifest.references.Format, 2)
+	eq(sorted(s:lua(VIEW_ENTRIES, { root })), sorted(expected))
+	eq(paths(expected), {
 		"billing/invoice.go",
 		"billing/invoice.go",
-		"internal/money/money.go",
 		"internal/money/money_test.go",
 		"report/summary.go",
+	})
+	expect_render_rows(s, {
+		"╭ Usages of Format · 4",
+		"│ ▾  Production  3",
+		"│        invoice.go:16",
+		"│        summary.go:7",
+		"│ ▾  Test  1",
+		"Tests: grouped t · ● Folders f · Preview P · Open ↩",
+	})
+
+	E.burst(s, function()
+		E.press(s, "t")
+		S.wait_for(function()
+			return s:lua([[return require("gleb.references.view").state.tree.count == 3]])
+		end, "test usages hidden")
+	end)
+	expect_render_rows(s, {
+		"╭ Usages of Format · 3",
+		"│ ▾  Production  3",
+		"│        summary.go:7",
+		"Tests: hidden t · ● Folders f · Preview P · Open ↩",
 	})
 end
 
@@ -168,12 +179,17 @@ T["lsp: Selecting a reference opens its file at the call site"] = function()
 	ensure_references(s)
 	local call = reference_in("report/summary.go")
 	E.burst(s, function()
-		E.press(s, { "s", "u", "m", "m", "a", "r", "y" })
-		wait_picker(s, 1)
+		if s:lua([[return require("gleb.references.view").state.options.tests == "grouped"]]) then
+			E.press(s, "t")
+		end
+		E.press(s, { "j", "j", "j" })
+		S.wait_for(function()
+			return s:lua([[return vim.fn.getline("."):find("summary.go:7", 1, true) ~= nil]])
+		end, "summary.go usage selected")
 		E.press(s, "return")
 		S.wait_for(function()
-			return not s:lua([[return require("mini.pick").is_picker_active()]])
-		end, "shared picker closed")
+			return not s:lua([[return require("gleb.references.view").state.tree_win ~= nil]])
+		end, "Find Usages view closed")
 	end)
 	eq(s:lua(CURRENT_FILE), {
 		path = vim.uv.fs_realpath(root .. "/" .. call.path),

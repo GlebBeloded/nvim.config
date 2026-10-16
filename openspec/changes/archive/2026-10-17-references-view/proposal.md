@@ -74,6 +74,7 @@ Depends: references-test-scope
 - Unchanged scenarios. The view's `q`, `<CR>`, `<Esc>`, `f` and `t` are buffer-local to the view filetype, so these still hold:
   - `ai: Menu ignores other keys`
   - `autocommands: q closes special buffers through an action`
+  - `find-action: Find Action is registered as an action`
   - `git: q closes diffview from file panel`
   - `git: Enter confirms message`
   - `git: Enter on empty buffer does nothing`
@@ -81,6 +82,7 @@ Depends: references-test-scope
   - `git: Enter drops comment lines`
   - `git: q discards popup`
   - `git: ]f steps to the next changed file in differ`
+  - `shortcuts: Neovim mappings match the table`
   - `shortcuts: Ctrl+Return reaches Neovim as <C-CR> from a real key press` (`<C-CR>` is untouched)
 - Out of scope: read/write grouping (`references-usage-kind`), per-language server checks (`references-languages`), code rows, a function level, typing a filter, and call hierarchy.
 

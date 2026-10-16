@@ -1,0 +1,63 @@
+--|---------|---------|---------|---------|---------|---------|---------|---------|---------|---------|
+01|       invoice.go                                                                                  
+02|  ╭ Usages of Format · 4 ────────────────────┬───────────────────────────────────────────────────╮  
+03|  │  billing/invoice.go:16                  │ billing/invoice.go:16                             │  
+04|  │  billing/invoice.go:23                  │   5  // Invoice is a list of line amounts in cent…│  
+05|  │  internal/money/money_test.go:6   test │   6  type Invoice struct {                        │  
+06|  │  report/summary.go:7                    │   7      Lines []int                              │  
+07|  │                                          │   8  }                                            │  
+08|  │                                          │   9                                               │  
+09|  │                                          │  10  // Due renders the sum of the lines.         │  
+10|  │                                          │  11  func (i Invoice) Due() string {              │  
+11|  │                                          │  12      total := 0                               │  
+12|  │                                          │  13      for _, cents := range i.Lines {          │  
+13|  │                                          │  14          total += cents                       │  
+14|  │                                          │  15      }                                        │  
+15|  │                                          │  16      return money.Format(total)               │  
+16|  │                                          │  17  }                                            │  
+17|  │                                          │  18                                               │  
+18|  │                                          │  19  // Rendered renders every line.              │  
+19|  │                                          │  20  func (i Invoice) Rendered() []string {       │  
+20|  │                                          │  21      lines := []string{}                      │  
+21|  │                                          │  22      for _, cents := range i.Lines {          │  
+22|  │                                          │  23          lines = append(lines, money.Format(c…│  
+23|  │                                          │  24      }                                        │  
+24|  │                                          │  25      return lines                             │  
+25|  │                                          │  26  }                                            │  
+26|  │                                          │                                                   │  
+27|  ├──────────────────────────────────────────┴───────────────────────────────────────────────────┤  
+28|  │                                            Tests: mixed t · ○ Folders f · Preview P · Open ↩ │  
+29|  ╰──────────────────────────────────────────────────────────────────────────────────────────────╯  
+30|                                                                                                    
+
+--|---------|---------|---------|---------|---------|---------|---------|---------|---------|---------|
+01|0111112211111111111111113333333333333333333333333333333333333333333333333333333333333333333333333333
+02|4456666666666666666666666555555555555555555555555555555555555555555555555555555555555555555555555544
+03|445789::::::::::::::::::;;;99999999999999999956<<<<<<<<<<<<<<<<<<<<<66666666666666666666666666666544
+04|445=>6??????????????????<<<6666666666666666665@AAA@@BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB544
+05|445=>6????????????????????????????<<66C6DDDD65@AAA@@EEEEFFFFFFFFFEEEEEEF4FFFFFFFFFFFFFFFFFFFFFFFF544
+06|445=>6?????????????????<<666666666666666666665@AAA@@FFFFFFFFFF44GGGFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF544
+07|4456666666666666666666666666666666666666666665@AAA@@4FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF544
+08|4456666666666666666666666666666666666666666665@AAA@@FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF544
+09|4456666666666666666666666666666666666666666665@AAA@@BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBFFFFFFFFF544
+10|4456666666666666666666666666666666666666666665@AAA@@HHHHF44FGGGGGGG4FIII44FGGGGGGF4FFFFFFFFFFFFFF544
+11|4456666666666666666666666666666666666666666665@AAA@@FFFFFFFFFFEEFJFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF544
+12|4456666666666666666666666666666666666666666665@AAA@@FFFFHHHFFKFFFFFFFEEFEEEEEFFKLLLLLF4FFFFFFFFFF544
+13|4456666666666666666666666666666666666666666665@AAA@@FFFFFFFFFFFFFFEEFFFFFFFFFFFFFFFFFFFFFFFFFFFFF544
+14|4456666666666666666666666666666666666666666665@AAA@@FFFF4FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF544
+15|4456666666666666666666666666666666666666666665MNNNMMFFFFEEEEEEFFFFFFKOOOOOO4FFFFF4FFFFFFFFFFFFFFF544
+16|4456666666666666666666666666666666666666666665@AAA@@4FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF544
+17|4456666666666666666666666666666666666666666665@AAA@@FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF544
+18|4456666666666666666666666666666666666666666665@AAA@@BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBFFFFFFFFFFFFFF544
+19|4456666666666666666666666666666666666666666665@AAA@@HHHHF44FGGGGGGG4FIIIIIIII44F44GGGGGGF4FFFFFFF544
+20|4456666666666666666666666666666666666666666665@AAA@@FFFFFFFFFFEEF44GGGGGG44FFFFFFFFFFFFFFFFFFFFFF544
+21|4456666666666666666666666666666666666666666665@AAA@@FFFFHHHFFKFFFFFFFEEFEEEEEFFKLLLLLF4FFFFFFFFFF544
+22|4456666666666666666666666666666666666666666665@AAA@@FFFFFFFFFFFFFFEFPPPPPP4FFFFFKFFFFFFKOOOOOO4FF544
+23|4456666666666666666666666666666666666666666665@AAA@@FFFF4FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF544
+24|4456666666666666666666666666666666666666666665@AAA@@FFFFEEEEEEFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF544
+25|4456666666666666666666666666666666666666666665@AAA@@4FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF544
+26|4456666666666666666666666666666666666666666665FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF544
+27|4455555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555544
+28|AA5FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQ5AA
+29|AA555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555555AA
+30|RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR

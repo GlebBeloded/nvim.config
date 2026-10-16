@@ -45,24 +45,20 @@ local function callback_is(lhs, mode, expr)
 	return child.lua_get(string.format("vim.fn.maparg(%q, %q, false, true).callback == %s", lhs, mode, expr))
 end
 
---- Does `gr` open the shared LSP references picker?
+--- Does `gr` start the Find Usages request?
 ---@return boolean
-local function gr_opens_shared_references()
+local function gr_opens_references_view()
 	child.lua([[
-local mini_extra = require("mini.extra")
-local original = mini_extra.pickers.lsp
-local call
-mini_extra.pickers.lsp = function(local_opts, opts)
-	call = { local_opts = local_opts, opts = opts }
-end
+local references = require("gleb.references")
+local original = references.open
+local called = false
+references.open = function() called = true end
 local ok, err = pcall(vim.fn.maparg("gr", "n", false, true).callback)
-mini_extra.pickers.lsp = original
+references.open = original
 if not ok then error(err) end
-GrOpensSharedReferences = call ~= nil
-	and call.local_opts.scope == "references"
-	and call.opts.source.name == "References"
+GrOpensReferencesView = called
 ]])
-	return child.lua_get("GrOpensSharedReferences")
+	return child.lua_get("GrOpensReferencesView")
 end
 
 --- Wait budget for async plugins (neo-tree, telescope, differ).
@@ -678,7 +674,7 @@ T["keymaps: Code action in visual mode"] = function()
 end
 
 T["keymaps: gr bound to Telescope references"] = function()
-	eq(gr_opens_shared_references(), true)
+	eq(gr_opens_references_view(), true)
 
 	local gr_maps = child.lua_get([[
 vim.tbl_map(function(mapping)

@@ -462,10 +462,12 @@ for _, name in ipairs(groups) do
 	hls[name] = vim.fn.hlexists(name) == 1 and vim.api.nvim_get_hl(0, { name = name, link = false }) or vim.NIL
 end
 
+-- A copy: one float row can match several screen rows, and its attrs table is shared.
 local function normalize(attrs)
-	attrs.fg, attrs.bg, attrs.sp = attrs.foreground, attrs.background, attrs.special
-	attrs.foreground, attrs.background, attrs.special = nil, nil, nil
-	return attrs
+	local result = vim.deepcopy(attrs)
+	result.fg, result.bg, result.sp = attrs.foreground, attrs.background, attrs.special
+	result.foreground, result.background, result.special = nil, nil, nil
+	return result
 end
 
 vim.api.nvim__inspect_cell(1, 0, 0)
@@ -493,6 +495,24 @@ local function row_matches(grid_line, screen_line, start)
 end
 
 if include_floats then
+	local float_sizes = {}
+	for _, win in ipairs(vim.api.nvim_list_wins()) do
+		local config = vim.api.nvim_win_get_config(win)
+		if config.relative ~= "" then
+			local border = config.border or {}
+			local function occupied(...)
+				for _, index in ipairs({ ... }) do
+					if border[index] and border[index] ~= "" then
+						return 1
+					end
+				end
+				return 0
+			end
+			local width = config.width + occupied(1, 8, 7) + occupied(3, 4, 5)
+			local height = config.height + occupied(1, 2, 3) + occupied(5, 6, 7)
+			float_sizes[width .. "x" .. height] = true
+		end
+	end
 	local grid = 2
 	while grid <= 512 do
 		local ok, top_left = pcall(vim.api.nvim__inspect_cell, grid, 0, 0)
@@ -501,7 +521,11 @@ if include_floats then
 			while width < vim.o.columns and not vim.tbl_isempty(vim.api.nvim__inspect_cell(grid, 0, width)) do
 				width = width + 1
 			end
-			for grid_row = 0, vim.o.lines - 1 do
+			local height = 0
+			while height < vim.o.lines and not vim.tbl_isempty(vim.api.nvim__inspect_cell(grid, height, 0)) do
+				height = height + 1
+			end
+			for grid_row = 0, float_sizes[width .. "x" .. height] and height - 1 or -1 do
 				local first_cell = vim.api.nvim__inspect_cell(grid, grid_row, 0)
 				if vim.tbl_isempty(first_cell) then
 					break
