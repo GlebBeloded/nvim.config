@@ -46,6 +46,10 @@ local function signature_help()
 	vim.lsp.buf.signature_help()
 end
 
+local function references()
+	return require("gleb.references").open()
+end
+
 ---@param diagnostic vim.Diagnostic?
 ---@param bufnr integer
 local function open_float_on_jump(diagnostic, bufnr)
@@ -256,8 +260,8 @@ local actions = {
 		id = "lsp.references",
 		title = "Find References",
 		category = "LSP",
-		run = require("gleb.picker").lsp_references,
-		mapping = require("gleb.picker").lsp_references,
+		run = references,
+		mapping = references,
 	},
 	{
 		id = "lsp.rename",

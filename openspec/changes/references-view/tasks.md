@@ -27,13 +27,13 @@ Scenarios: `references: Icons and label shades match the palette`
 
 ## 3. Request references and open the view
 Scenarios: `references: gr opens the view in a Go module`, `references: gr with no usages notifies and opens nothing`, `references: gr without a references-capable client notifies`, `references: The first usage is selected and previewed`, `keymaps: gr bound to Telescope references`, `file-tree: gr keeps its global meaning in git status tree`
-- [ ] 3.1 Write the scenarios in tests/integration/references/test_open.lua (gomod fixture via `F.copy`, gopls). Update the keymaps and file-tree tests to expect the view. See them fail.
-- [ ] 3.2 Add:
+- [x] 3.1 Write the scenarios in tests/integration/references/test_open.lua (gomod fixture via `F.copy`, gopls). Update the keymaps and file-tree tests to expect the view. See them fail.
+- [x] 3.2 Add:
   - `request.lua`: async; only clients with `referencesProvider`; de-duplicated; declaration excluded.
   - The frame, tree and preview windows in `view.lua`, including both geometries.
   - The `references.*` actions, with keys in `settings/keymap.json`.
   - Point `lsp.references` at the view, and remove the old source from `lua/gleb/picker/actions.lua`.
-- [ ] 3.3 Run the scenarios and see them pass
+- [x] 3.3 Run the scenarios and see them pass
 
 ## 4. Preview
 Scenarios: `references: Preview follows the selection`, `references: Preview highlighting matches a regular buffer`, `references: Preview falls back to Vim syntax without a parser`, `references: Preview leaves no buffer or client behind`, `references: Preview shows unsaved edits`, `references: P toggles the preview pane`

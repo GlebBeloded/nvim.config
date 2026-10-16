@@ -1,0 +1,96 @@
+local MiniTest = require("mini.test")
+local F = require("tests.fixtures")
+local H = require("tests.helpers")
+
+local eq = MiniTest.expect.equality
+local child = H.new_child()
+local TIMEOUT_MS = H.lsp_timeout(10000)
+
+local root
+local manifest
+
+local function start()
+	root, manifest = F.copy("gomod", vim.fn.tempname())
+	child.start_config({ env = F.go_env() })
+	child.wait_very_lazy()
+	child.lua([[require("null-ls").disable({ name = "golangci_lint" })]])
+end
+
+local T = H.child_set(child, start)
+
+---@param path string
+---@param line integer
+---@param col integer
+local function edit(path, line, col)
+	child.cmd("cd " .. vim.fn.fnameescape(root) .. " | edit " .. vim.fn.fnameescape(path))
+	child.api.nvim_win_set_cursor(0, { line, col - 1 })
+	eq(child.wait([[#vim.lsp.get_clients({ bufnr = 0, name = "gopls" }) > 0]], TIMEOUT_MS), true)
+end
+
+local function view_windows()
+	return child.lua_get([[
+vim.tbl_filter(function(win)
+	return vim.bo[vim.api.nvim_win_get_buf(win)].filetype:match("^gleb%-references") ~= nil
+end, vim.api.nvim_list_wins())
+]])
+end
+
+local function open_format()
+	local declaration = manifest.references.Format[1]
+	edit(declaration.path, declaration.line, declaration.col)
+	child.type_keys("gr")
+	eq(child.wait([[vim.bo.filetype == "gleb-references"]], TIMEOUT_MS), true)
+end
+
+T["references: gr opens the view in a Go module"] = function()
+	open_format()
+
+	local title = child.lua_get("vim.api.nvim_win_get_config(0).title[1][1]")
+	eq(title, " Usages of Format · 4 ")
+	eq(#view_windows(), 3)
+end
+
+T["references: gr with no usages notifies and opens nothing"] = function()
+	local due = { path = "billing/invoice.go", line = 11, col = 18 }
+	edit(due.path, due.line, due.col)
+	local notifications = H.record_notify(child)
+	local before = #child.api.nvim_list_wins()
+
+	child.type_keys("gr")
+	eq(child.wait([[#Notifications > 0]], TIMEOUT_MS), true)
+
+	eq(notifications(), { { msg = "No usages found", level = vim.log.levels.INFO } })
+	eq(#child.api.nvim_list_wins(), before)
+end
+
+T["references: gr without a references-capable client notifies"] = function()
+	child.cmd("enew")
+	local notifications = H.record_notify(child)
+	local before = #child.api.nvim_list_wins()
+
+	child.type_keys("gr")
+	eq(child.wait([[#Notifications > 0]], TIMEOUT_MS), true)
+
+	eq(notifications(), { { msg = "No LSP references support", level = vim.log.levels.INFO } })
+	eq(#child.api.nvim_list_wins(), before)
+end
+
+T["references: The first usage is selected and previewed"] = function()
+	open_format()
+
+	eq(child.fn.getline("."), "       invoice.go:16")
+	local preview = child.lua_get([[
+(function()
+	for _, win in ipairs(vim.api.nvim_list_wins()) do
+		local buf = vim.api.nvim_win_get_buf(win)
+		if vim.bo[buf].filetype == "gleb-references-preview" then
+			return vim.api.nvim_buf_get_lines(buf, 0, -1, false)
+		end
+	end
+end)()
+]])
+	eq(preview[1], "billing/invoice.go:16")
+	eq(vim.tbl_contains(preview, "  16  \treturn money.Format(total)"), true)
+end
+
+return T

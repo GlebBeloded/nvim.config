@@ -38,22 +38,20 @@ local function open_git_status(dir)
 	child.lua([[vim.fn.search("a.txt")]])
 end
 
---- Does the current `gr` mapping open the shared LSP references source?
+--- Does the current `gr` mapping open the Find Usages view?
 ---@return boolean
-local function gr_opens_shared_references()
+local function gr_opens_references_view()
 	child.lua([[
-local mini_extra = require("mini.extra")
-local original = mini_extra.pickers.lsp
-local call
-mini_extra.pickers.lsp = function(local_opts, opts) call = { local_opts = local_opts, opts = opts } end
+local references = require("gleb.references")
+local original = references.open
+local called = false
+references.open = function() called = true end
 local ok, err = pcall(vim.fn.maparg("gr", "n", false, true).callback)
-mini_extra.pickers.lsp = original
+references.open = original
 if not ok then error(err) end
-GrOpensSharedReferences = call ~= nil
-	and call.local_opts.scope == "references"
-	and call.opts.source.name == "References"
+GrOpensReferencesView = called
 ]])
-	return child.lua_get("GrOpensSharedReferences")
+	return child.lua_get("GrOpensReferencesView")
 end
 
 --- Press X on the cursor node and answer the neo-tree confirm popup.
@@ -650,7 +648,7 @@ KeymapsReloaded = pcall(require, "gleb.keymaps")
 	eq(child.lua_get("KeymapsReloaded"), true)
 	eq(child.lua_get([[vim.fn.maparg("grz", "n")]]), "")
 	eq(child.lua_get([[vim.fn.maparg("gr", "n", false, true).buffer]]), 0)
-	eq(gr_opens_shared_references(), true)
+	eq(gr_opens_references_view(), true)
 end
 
 T["file-tree: c is copy in git status tree"] = function()
