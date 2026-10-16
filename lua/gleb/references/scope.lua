@@ -1,6 +1,9 @@
 -- Classify reference paths consistently so consumers can separate production and test usages.
 local M = {}
 
+---@type string[]
+local TERRAFORM_PATTERNS = { "%.tftest%.hcl$", "/tests/" }
+
 ---@type table<string, string[]>
 local PATTERNS = {
 	go = { "_test%.go$" },
@@ -13,7 +16,9 @@ local PATTERNS = {
 	rust = { "/tests/" },
 	sh = { "%.bats$", "/test/", "/tests/" },
 	bash = { "%.bats$", "/test/", "/tests/" },
-	terraform = { "%.tftest%.hcl$", "/tests/" },
+	terraform = TERRAFORM_PATTERNS,
+	tf = TERRAFORM_PATTERNS,
+	hcl = TERRAFORM_PATTERNS,
 }
 
 ---@type table<string, boolean>
