@@ -33,7 +33,7 @@ The references scope module SHALL classify Go files ending `_test.go`, TypeScrip
 - **THEN** none of them is test code
 
 ### Requirement: Remaining and generic test paths
-The references scope module SHALL classify Rust paths under `tests`, Bash files ending `.bats` or under `test` or `tests`, and Terraform files ending `.tftest.hcl` or under `tests` as test code. For any language, a `test`, `tests`, `spec`, or `__tests__` path segment SHALL be test code. It SHALL infer the applicable language from the path when no filetype is supplied.
+The references scope module SHALL classify Rust paths under `tests`, Bash files ending `.bats` or under `test` or `tests`, and Terraform files ending `.tftest.hcl` or under `tests` as test code for explicit or inferred `terraform`, `tf`, and `hcl` filetypes. For any language, a `test`, `tests`, `spec`, or `__tests__` path segment SHALL be test code. It SHALL infer the applicable language from the path when no filetype is supplied.
 
 #### Scenario: Rust test paths
 - **WHEN** `is_test` is called with the Rust filetype for paths inside and outside a `tests` segment

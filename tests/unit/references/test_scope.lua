@@ -104,6 +104,8 @@ T["references: Generic and inferred test paths"] = function()
 	eq(child.lua_get([[require("gleb.references.scope").is_test("src/widget.spec.ts")]]), true)
 	eq(child.lua_get([[require("gleb.references.scope").is_test("pkg/test_widget.py")]]), true)
 	eq(child.lua_get([[require("gleb.references.scope").is_test("lua/widget_spec.lua")]]), true)
+	eq(child.lua_get([[require("gleb.references.scope").is_test("main.tftest.hcl")]]), true)
+	eq(child.lua_get([[require("gleb.references.scope").is_test("main.tf")]]), false)
 	eq(child.lua_get([[require("gleb.references.scope").is_test("src/widget.ts")]]), false)
 end
 
