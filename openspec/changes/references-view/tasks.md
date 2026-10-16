@@ -1,0 +1,64 @@
+## 1. Build the usage tree
+Scenarios: `references: Go usages are grouped by scope and folder`, `references: Nested folders become one row`, `references: Regrouping keeps the selected usage`
+- [ ] 1.1 Write the three scenarios in tests/unit/references/test_tree.lua against fixture-shaped usage records, plus unit cases for the hidden and mixed tests modes and folders off, and see them fail
+- [ ] 1.2 Add the pure `lua/gleb/references/tree.lua`:
+  - scope from `references.scope`;
+  - the tests modes grouped, hidden and mixed (mixed tags test usages);
+  - one folder node per full relative directory, or relative-path rows when folders are off;
+  - `<file>:<line>` usage nodes;
+  - counts and stable node ids;
+  - selection carry-over by uri, line and column.
+- [ ] 1.3 Run `make test FILE=tests/unit/references/test_tree.lua` and see them pass
+
+## 2. Icons and label shades
+Scenarios: `references: Icons and label shades match the palette`
+- [ ] 2.1 Write the scenario in tests/integration/references/test_icons.lua, plus a unit test for the palette mix in tests/unit/references/test_icons.lua, and see them fail
+- [ ] 2.2 Add `lua/gleb/references/icons.lua`:
+  - glyphs U+F427, U+F499 and U+F0256, plus the devicon lookup;
+  - the `ReferencesProduction`, `ReferencesTest` and `ReferencesFolder` groups and their `…Label` groups;
+  - a `ReferencesFileLabel<DevIconGroup>` group per devicon;
+  - `LABEL_PALENESS = 0.7`, computed from the gruvbox-material palette helpers and recomputed on `ColorScheme`.
+- [ ] 2.3 Run both test files and see them pass
+
+## 3. Request references and open the view
+Scenarios: `references: gr opens the view in a Go module`, `references: gr with no usages notifies and opens nothing`, `references: gr without a references-capable client notifies`, `references: The first usage is selected and previewed`, `keymaps: gr bound to Telescope references`, `file-tree: gr keeps its global meaning in git status tree`
+- [ ] 3.1 Write the scenarios in tests/integration/references/test_open.lua (gomod fixture via `F.copy`, gopls). Update the keymaps and file-tree tests to expect the view. See them fail.
+- [ ] 3.2 Add:
+  - `request.lua`: async; only clients with `referencesProvider`; de-duplicated; declaration excluded.
+  - The frame, tree and preview windows in `view.lua`, including both geometries.
+  - The `references.*` actions, with keys in `settings/keymap.json`.
+  - Point `lsp.references` at the view, and remove the old source from `lua/gleb/picker/actions.lua`.
+- [ ] 3.3 Run the scenarios and see them pass
+
+## 4. Preview
+Scenarios: `references: Preview follows the selection`, `references: Preview highlighting matches a regular buffer`, `references: Preview falls back to Vim syntax without a parser`, `references: Preview leaves no buffer or client behind`, `references: Preview shows unsaved edits`, `references: P toggles the preview pane`
+- [ ] 4.1 Write the six scenarios in tests/integration/references/test_preview.lua and see them fail
+- [ ] 4.2 Add `preview.lua`:
+  - a scratch buffer;
+  - `vim.treesitter.start` when the parser exists, else `syntax = <filetype>`;
+  - text from the loaded buffer, else a bounded `readfile`;
+  - [CursorLineNr] on the usage's line number, and every usage marked [Search];
+  - `P` switching between the wide and fitted geometries.
+- [ ] 4.3 Run `make test FILE=tests/integration/references/test_preview.lua` and see all six pass
+
+## 5. Grouping controls, keys and persistence
+Scenarios: `references: Tests key cycles grouped, hidden and mixed`, `references: Mixed tests without folders is a flat list`, `references: Grouping persists across sessions`, `references: Return opens a usage at its position`, `references: za folds a group`, `references: Escape returns to the origin window`, `references: View keys come from the keymap file`
+- [ ] 5.1 Write the scenarios in tests/integration/references/test_keys.lua and see them fail
+- [ ] 5.2 Add:
+  - the `t` (tests-mode cycle) and `f` (folders) actions, rebuilding in place;
+  - the hint-row states, with key labels from the keymap file;
+  - fold state per node id;
+  - open and close behaviour;
+  - persistence in `state.lua`.
+- [ ] 5.3 Run `make test FILE=tests/integration/references/test_keys.lua` and see them pass
+
+## 6. Screens and the real-key workflow
+Scenarios: `references: Wide view matches reference screenshot`, `references: Narrow view fits its content`, `lsp: References of a Go function list call sites across packages`, `lsp: Selecting a reference opens its file at the call site`
+- [ ] 6.1 Write the screen scenarios in tests/screen/references/test_view.lua with Proposed V1–V4 as references, and see them fail. The screenshot text uses the real glyphs where the render shows stand-ins; the attribute blocks must match the mask groups.
+- [ ] 6.2 Update tests/e2e/lsp/test_go_references.lua to the view:
+  1. a real `gr`;
+  2. then `t`;
+  3. then move to `summary.go:7` and press Return.
+  Compare each step's zellij dump with its render.
+- [ ] 6.3 Make `make test-screen` and `make e2e` (sandbox VM) pass, then `make check`. Compare `make render` of the view with `renders/view_v*.ansi`.
+- [ ] 6.4 Add `references` to the module map in `docs/architecture.md`
