@@ -107,6 +107,7 @@ end
 ---@param parent_id string?
 ---@param show_path boolean
 ---@param mixed boolean
+---@param tagged boolean
 ---@return gleb.references.TreeNode
 local function usage_node(usage, depth, parent_id, show_path, mixed, tagged)
 	local path = show_path and usage.path or basename(usage.path)
@@ -139,6 +140,7 @@ end
 ---@param depth integer
 ---@param parent_id string?
 ---@param mixed boolean
+---@param tagged boolean
 local function append_folders(nodes, usages, scope_name, depth, parent_id, mixed, tagged)
 	local index = 1
 	while index <= #usages do
@@ -170,6 +172,7 @@ end
 ---@param depth integer
 ---@param parent_id string?
 ---@param options gleb.references.TreeOptions
+---@param tagged boolean
 local function append_flat_usages(nodes, usages, scope_name, depth, parent_id, options, tagged)
 	if options.folders then
 		append_folders(nodes, usages, scope_name, depth, parent_id, options.tests == "mixed", tagged)
@@ -222,6 +225,7 @@ end
 ---@param usages gleb.references.ClassifiedUsage[]
 ---@param is_test boolean
 ---@param options gleb.references.TreeOptions
+---@param has_kinds boolean
 local function append_scope(nodes, usages, is_test, options, has_kinds)
 	local scoped = {}
 	for _, usage in ipairs(usages) do

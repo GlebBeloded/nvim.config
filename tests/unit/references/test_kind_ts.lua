@@ -20,7 +20,7 @@ T["references: Treesitter fallback classifies writes where a parser exists"]["Go
 		})
 	end)()]])
 
-	eq(actual, { "write", "write", "other" })
+	eq(actual, { "write", "write", "read" })
 end
 
 T["references: Treesitter fallback classifies writes where a parser exists"]["Lua assignments"] = function()
@@ -32,7 +32,7 @@ T["references: Treesitter fallback classifies writes where a parser exists"]["Lu
 		})
 	end)()]])
 
-	eq(actual, { "write", "other" })
+	eq(actual, { "write", "read" })
 end
 
 T["references: Treesitter fallback classifies writes where a parser exists"]["Bash assignments"] = function()
@@ -44,7 +44,7 @@ T["references: Treesitter fallback classifies writes where a parser exists"]["Ba
 		})
 	end)()]])
 
-	eq(actual, { "write", "other" })
+	eq(actual, { "write", "read" })
 end
 
 T["references: Treesitter fallback classifies writes where a parser exists"]["Bash filetype resolves parser language"] = function()

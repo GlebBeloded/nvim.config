@@ -32,9 +32,9 @@ Scenarios: `references: gr classifies every Rust variable usage`
 
 ## 6. Classify Bash variable reads
 Scenarios: `references: gr classifies every Bash variable usage`, `references: Treesitter fallback classifies writes where a parser exists`
-- [ ] 6.1 Write the test `references: gr classifies every Bash variable usage` in `tests/integration/references/test_kind.lua` and tighten `references: Treesitter fallback classifies writes where a parser exists` in `tests/unit/references/test_kind_ts.lua`; press the real normal-mode `gr` on populated Bash data and see non-target variables remain `other`
-- [ ] 6.2 Make the treesitter fallback return `read` for matched variable uses that are not write targets, while callable-symbol handling still forces function usages to `other`; add the missing `tagged` and `has_kinds` LuaCATS annotations in `lua/gleb/references/tree.lua`
-- [ ] 6.3 Run `make test FILE=tests/integration/references/test_kind.lua CASE="gr classifies every Bash variable usage"` and `make test FILE=tests/unit/references/test_kind_ts.lua CASE="Treesitter fallback classifies writes where a parser exists"`, and see both pass
+- [x] 6.1 Write the test `references: gr classifies every Bash variable usage` in `tests/integration/references/test_kind.lua` and tighten `references: Treesitter fallback classifies writes where a parser exists` in `tests/unit/references/test_kind_ts.lua`; press the real normal-mode `gr` on populated Bash data and see non-target variables remain `other`
+- [x] 6.2 Make the treesitter fallback return `read` for matched variable uses that are not write targets, while callable-symbol handling still forces function usages to `other`; add the missing `tagged` and `has_kinds` LuaCATS annotations in `lua/gleb/references/tree.lua`
+- [x] 6.3 Run `make test FILE=tests/integration/references/test_kind.lua CASE="gr classifies every Bash variable usage"` and `make test FILE=tests/unit/references/test_kind_ts.lua CASE="Treesitter fallback classifies writes where a parser exists"`, and see both pass
 
 ## 7. Classify Terraform traversals through gr
 Scenarios: `references: gr classifies every Terraform variable usage`

@@ -50,7 +50,7 @@ end
 ---@param source string
 ---@param language string
 ---@param positions ReferencesSourcePosition[]
----@return ("write"|"other")[]
+---@return ("write"|"read"|"other")[]
 function M.classify(source, language, positions)
 	local kinds = {}
 	local by_position = {}
@@ -62,6 +62,9 @@ function M.classify(source, language, positions)
 	local query, tree = parse(source, language)
 	if not query or not tree then
 		return kinds
+	end
+	for index in ipairs(positions) do
+		kinds[index] = "read"
 	end
 
 	for capture, node in query:iter_captures(tree:root(), source, 0, -1) do

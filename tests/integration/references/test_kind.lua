@@ -322,4 +322,18 @@ T[rust_scenario]["renders every usage kind"] = function()
 	})
 end
 
+local bash_scenario = "references: gr classifies every Bash variable usage"
+T[bash_scenario] = MiniTest.new_set()
+T[bash_scenario]["renders every usage kind"] = function()
+	local root = H.git_repo({
+		["main.sh"] = "count=0\ncount=$((count + 1))\nprintf '%s\\n' \"$count\"\n",
+	})
+	local actual = open_references(root, "main.sh", 1, 1, "bashls", nil, nil, "bash")
+	eq(actual, {
+		{ "main.sh", 2, 1, "write" },
+		{ "main.sh", 2, 10, "read" },
+		{ "main.sh", 3, 17, "read" },
+	})
+end
+
 return T
