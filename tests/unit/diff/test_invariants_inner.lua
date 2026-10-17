@@ -44,12 +44,16 @@ T["diff: Random texts keep IntelliJ's inner invariants"] = function()
 			return table.concat(chars)
 		end
 
-		local function normalize(text, policy_name)
+		local function normalize_gap(text, policy_name)
 			if policy_name == "default" then
 				return text
+			end
+			return text:gsub("[ \t\n]", "")
 		end
-			if policy_name == "trim_whitespaces" then
-				return text:gsub("^[ \t\n]+", ""):gsub("[ \t\n]+$", "")
+
+		local function normalize_changed(text, policy_name)
+			if policy_name == "default" or policy_name == "trim_whitespaces" then
+				return text
 			end
 			return text:gsub("[ \t\n]", "")
 		end
@@ -83,12 +87,12 @@ T["diff: Random texts keep IntelliJ's inner invariants"] = function()
 				end
 				local gap1 = text1:sub(previous1 + 1, fragment.start1)
 				local gap2 = text2:sub(previous2 + 1, fragment.start2)
-				if normalize(gap1, policy_name) ~= normalize(gap2, policy_name) then
+				if normalize_gap(gap1, policy_name) ~= normalize_gap(gap2, policy_name) then
 					return ("gap before range %d differs"):format(index)
 				end
 				local changed1 = text1:sub(fragment.start1 + 1, fragment.end1)
 				local changed2 = text2:sub(fragment.start2 + 1, fragment.end2)
-				if normalize(changed1, policy_name) == normalize(changed2, policy_name) then
+				if normalize_changed(changed1, policy_name) == normalize_changed(changed2, policy_name) then
 					return ("range %d is equal"):format(index)
 				end
 				previous1 = fragment.end1
@@ -96,7 +100,7 @@ T["diff: Random texts keep IntelliJ's inner invariants"] = function()
 			end
 			local suffix1 = text1:sub(previous1 + 1)
 			local suffix2 = text2:sub(previous2 + 1)
-			if normalize(suffix1, policy_name) ~= normalize(suffix2, policy_name) then
+			if normalize_gap(suffix1, policy_name) ~= normalize_gap(suffix2, policy_name) then
 				return "suffix gap differs"
 			end
 		end
@@ -109,17 +113,25 @@ T["diff: Random texts keep IntelliJ's inner invariants"] = function()
 			return table.concat(lines, "\n", start_index + 1, end_index)
 		end
 
+		local function comparison_text(lines, start_index, end_index)
+			local text = fragment_text(lines, start_index, end_index)
+			if start_index < end_index and end_index < #lines then
+				return text .. "\n"
+			end
+			return text
+		end
+
 		local function line_gap_equal(lines1, start1, end1, lines2, start2, end2, policy_name)
 			if policy_name == "ignore_whitespaces_chunks" then
-				return normalize(fragment_text(lines1, start1, end1), policy_name)
-					== normalize(fragment_text(lines2, start2, end2), policy_name)
+				return normalize_gap(fragment_text(lines1, start1, end1), policy_name)
+					== normalize_gap(fragment_text(lines2, start2, end2), policy_name)
 			end
 			if end1 - start1 ~= end2 - start2 then
 				return false
 			end
 			for offset = 0, end1 - start1 - 1 do
-				if normalize(lines1[start1 + offset + 1], policy_name)
-					~= normalize(lines2[start2 + offset + 1], policy_name)
+				if normalize_gap(lines1[start1 + offset + 1], policy_name)
+					~= normalize_gap(lines2[start2 + offset + 1], policy_name)
 				then
 					return false
 				end
@@ -141,8 +153,8 @@ T["diff: Random texts keep IntelliJ's inner invariants"] = function()
 					return ("gap before line range %d differs"):format(index)
 				end
 				if fragment.inner ~= nil then
-					local text1 = fragment_text(lines1, fragment.start1, fragment.end1)
-					local text2 = fragment_text(lines2, fragment.start2, fragment.end2)
+					local text1 = comparison_text(lines1, fragment.start1, fragment.end1)
+					local text2 = comparison_text(lines2, fragment.start2, fragment.end2)
 					local message = validate(text1, text2, policy_name, fragment.inner)
 					if message then
 						return ("line range %d inner %s"):format(index, message)
