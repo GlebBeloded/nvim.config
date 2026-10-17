@@ -50,6 +50,40 @@ local function default_clock()
 	return vim.uv.hrtime() / 1e6
 end
 
+local function normalize_inner_text(text, comparison_policy)
+	if comparison_policy == "default" then
+		return text
+	end
+	if comparison_policy == "trim_whitespaces" then
+		return text:gsub("^[ \t\n]+", ""):gsub("[ \t\n]+$", "")
+	end
+	return text:gsub("[ \t\n]", "")
+end
+
+local function compare_whole_text(text1, text2, opts)
+	local comparison_policy = (opts and opts.policy) or "default"
+	if normalize_inner_text(text1, comparison_policy) == normalize_inner_text(text2, comparison_policy) then
+		return {}
+	end
+	return { { start1 = 0, end1 = #text1, start2 = 0, end2 = #text2 } }
+end
+
+---@param text1 string
+---@param text2 string
+---@param opts? gleb.diff.Options
+---@return gleb.diff.InnerFragment[]
+function M.compare_words(text1, text2, opts)
+	return compare_whole_text(text1, text2, opts)
+end
+
+---@param text1 string
+---@param text2 string
+---@param opts? gleb.diff.Options
+---@return gleb.diff.InnerFragment[]
+function M.compare_chars(text1, text2, opts)
+	return compare_whole_text(text1, text2, opts)
+end
+
 local function fallback(lines1, lines2)
 	local text1 = table.concat(lines1, "\n") .. "\n"
 	local text2 = table.concat(lines2, "\n") .. "\n"

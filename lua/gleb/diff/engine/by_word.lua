@@ -9,11 +9,19 @@ local function timed_out(context)
 	return context.clock() > context.deadline
 end
 
+local function is_utf8_boundary(text, offset)
+	local byte = text:byte(offset + 1)
+	return byte == nil or byte < 0x80 or byte >= 0xC0
+end
+
 local function common_prefix(text1, text2)
 	local limit = math.min(#text1, #text2)
 	local index = 0
 	while index < limit and text1:byte(index + 1) == text2:byte(index + 1) do
 		index = index + 1
+	end
+	while index > 0 and (not is_utf8_boundary(text1, index) or not is_utf8_boundary(text2, index)) do
+		index = index - 1
 	end
 	return index
 end
@@ -23,6 +31,9 @@ local function common_suffix(text1, text2, prefix)
 	local count = 0
 	while count < limit and text1:byte(#text1 - count) == text2:byte(#text2 - count) do
 		count = count + 1
+	end
+	while count > 0 and (not is_utf8_boundary(text1, #text1 - count) or not is_utf8_boundary(text2, #text2 - count)) do
+		count = count - 1
 	end
 	return count
 end

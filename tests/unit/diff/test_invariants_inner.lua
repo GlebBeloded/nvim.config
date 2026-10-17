@@ -55,9 +55,9 @@ T["diff: Random texts keep IntelliJ's inner invariants"] = function()
 		end
 
 		local function boundaries(text)
-			local result = { [0] = true, [#text] = true }
-			for byte_index in utf8.codes(text) do
-				result[byte_index - 1] = true
+			local result = {}
+			for character_index = 0, vim.str_utfindex(text) do
+				result[vim.str_byteindex(text, character_index)] = true
 			end
 			return result
 		end
