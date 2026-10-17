@@ -9,7 +9,7 @@ read-only or permission-denied `site/queries` makes every Neovim start fail with
 
 ## Evidence
 
-- lua/gleb/treesitter/repair.lua:52-53 (`assert(vim.uv.fs_unlink(...))`, `assert(vim.uv.fs_symlink(...))`), run from
+- lua/gleb/treesitter/repair.lua:51-52 (`assert(vim.uv.fs_unlink(...))`, `assert(vim.uv.fs_symlink(...))`), run from
   the treesitter setup on start (review minor of run fix-treesitter-site-links)
 
 ## What Changes
@@ -22,3 +22,7 @@ read-only or permission-denied `site/queries` makes every Neovim start fail with
 
 - lua/gleb/treesitter/repair.lua
 - tests/unit/languages/test_site_repair.lua
+- No plugin dependency is added, removed, or upgraded.
+- Core keymaps are unchanged.
+- Out of scope: changing which query links qualify for repair or how successful repairs are reported.
+- `nvim-debug-log: captures vim.notify` still holds because repair failures are reported through `vim.notify`.

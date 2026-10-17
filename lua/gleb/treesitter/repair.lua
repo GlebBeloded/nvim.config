@@ -21,6 +21,25 @@ local function link_target(link)
 	return vim.fs.normalize(target)
 end
 
+---@param link string
+---@param replacement string
+---@return boolean
+local function repair_link(link, replacement)
+	local unlinked, unlink_error = vim.uv.fs_unlink(link)
+	if not unlinked then
+		vim.notify("Treesitter query link repair failed for " .. link .. ": " .. unlink_error, vim.log.levels.WARN)
+		return false
+	end
+
+	local linked, link_error = vim.uv.fs_symlink(replacement, link)
+	if not linked then
+		vim.notify("Treesitter query link repair failed for " .. link .. ": " .. link_error, vim.log.levels.WARN)
+		return false
+	end
+
+	return true
+end
+
 ---@param site string
 ---@param plugin string
 function M.repair(site, plugin)
@@ -48,9 +67,9 @@ function M.repair(site, plugin)
 			and (not target or not resolved or not is_below(target, plugin_queries))
 			and vim.uv.fs_stat(replacement)
 		then
-			assert(vim.uv.fs_unlink(link))
-			assert(vim.uv.fs_symlink(replacement, link))
-			table.insert(repaired, name)
+			if repair_link(link, replacement) then
+				table.insert(repaired, name)
+			end
 		end
 	end
 
