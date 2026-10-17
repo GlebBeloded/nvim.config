@@ -26,7 +26,7 @@ gate lists such edits for the review), or a failing test pins a main-spec scenar
 contradicts: then add a MODIFIED delta restating that scenario to the new behaviour and update the test to the new THEN.
 Name each new regression test `<capability>: <scenario title>`: put it in the existing case of that scenario, or add a
 same-titled scenario (ADDED, or MODIFIED restating a main-spec one) to openspec/changes/$INPUTS.change/specs; never invent a case name
-the specs lack, and never fold or rename a case an earlier pass added (add its scenario instead: the gate counts a vanished case as dropped).
+the specs lack, and never fold or rename a case an earlier pass added (add its scenario instead: the gate counts a vanished case as dropped). A trace DUPLICATE (one case name in two test files) is yours to resolve even when an earlier pass made it: keep the name in one file and rename the other copy after a scenario you ADD to the change's delta for it; never record it as inherited.
 An edited assertion must still prove its scenario's THEN; replacing a behaviour/callback check with metadata (desc, buffer) is weakening.
 A regression test replays the finding's exact trigger through the real entry point (the real mapping or `<CR>`, the real picker, populated data), never a hand-built stand-in. It asserts the observable effect (the buffer, cursor, window or file state after the key), never only which action or desc a key resolves to.
 A UI task (a window, float or view) is done only after one headless probe per edge cell: an empty result (also empty after a filter or toggle), a multibyte line, `VimResized` across the layout breakpoint, and its window closed by `:quit`/`:close`; each autocmd it adds is tied to its buffer or torn down on `WinClosed`.
