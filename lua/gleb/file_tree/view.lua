@@ -20,6 +20,7 @@ local EXPANSION_MAX_ROWS = 5000
 ---@field rows FileTreeRow[]
 ---@field autocmds integer[]
 ---@field watching boolean
+---@field directory_hijacks table<integer, boolean>
 
 ---@class FileTreeViewState
 ---@field by_tab table<integer, FileTreeView>
@@ -382,9 +383,16 @@ function M.fold_all()
 	if not view then
 		return
 	end
-	local row = selected_row(view)
+	local path = view.root
+	for index = vim.api.nvim_win_get_cursor(view.win)[1], 2, -1 do
+		local row = view.rows[index]
+		if row.depth == 0 then
+			path = row.path
+			break
+		end
+	end
 	view.expanded = {}
-	redraw_at(view, row and row.path or view.root)
+	redraw_at(view, path)
 end
 
 ---@param rows FileTreeRow[]
@@ -489,11 +497,25 @@ local function protect_tree_buffer(view)
 end
 
 ---@param view FileTreeView
-local function follow_current_buffer(view)
-	if vim.api.nvim_get_current_tabpage() ~= view.tab or vim.api.nvim_get_current_buf() == view.buf then
+---@param buf integer
+local function follow_buffer(view, buf)
+	if vim.api.nvim_get_current_tabpage() ~= view.tab or buf == view.buf then
 		return
 	end
-	reveal_path(view, vim.api.nvim_buf_get_name(0), false)
+	local win = vim.api.nvim_get_current_win()
+	local path = vim.api.nvim_buf_get_name(buf)
+	local stat = path ~= "" and vim.uv.fs_stat(path) or nil
+	if stat and stat.type == "directory" then
+		view.directory_hijacks[win] = true
+		return
+	end
+	if view.directory_hijacks[win] then
+		view.directory_hijacks[win] = nil
+		return
+	end
+	if vim.bo[buf].buftype == "" then
+		reveal_path(view, path, false)
+	end
 end
 
 ---@param view FileTreeView
@@ -524,9 +546,9 @@ local function add_teardown_autocmds(view)
 		}),
 		vim.api.nvim_create_autocmd("BufEnter", {
 			group = view_group,
-			callback = function()
+			callback = function(args)
 				protect_tree_buffer(view)
-				follow_current_buffer(view)
+				follow_buffer(view, args.buf)
 			end,
 		}),
 		vim.api.nvim_create_autocmd("WinClosed", {
@@ -571,6 +593,7 @@ local function open_view(path)
 		rows = {},
 		autocmds = {},
 		watching = true,
+		directory_hijacks = {},
 	}
 	M.state.by_tab[tab] = view
 	watch.start_root(root, tab)

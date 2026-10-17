@@ -115,16 +115,8 @@ Scenarios: `file-tree: Project tree follows the current file`, `file-tree: Proje
 Scenarios: `file-tree: Project tree toggle tolerates a deleted file`, `file-tree: Project tree does not follow a directory buffer`
 
 - [x] 5a2.1 Write these scenarios in `tests/integration/file-tree/test_project_live.lua`, driving the real toggle action and directory buffer, and see them fail.
-- [ ] 5a2.2 Route toggle through normalization and ignore directory buffers without moving the tree cursor.
-- [ ] 5a2.3 Run `make test FILE=tests/integration/file-tree/test_project_live.lua` for these cases and see them pass.
-
-## Stuck
-
-- Task 5a2: the directory-buffer regression remains red after two production attempts; the toggle/deleted-file case passes through the existing normalized reveal path.
-- Probe: a plain directory `BufEnter` reported `kind = "directory"`, `filetype = ""`, and left the selected `Makefile` row unchanged; the populated fixture's real directory-hijack path moved `go.mod` to the root.
-- Attempt 1: ignored non-empty `buftype` buffers; the selection moved to `README.md` instead of staying on `go.mod`.
-- Attempt 2: additionally followed the emitting `args.buf` instead of buffer `0`; the selection still moved to `README.md`.
-- Saved second attempt: `/Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/fbd6851e-67b8-4168-af05-a7f56f965f73/stuck-attempt.diff`.
+- [x] 5a2.2 Route toggle through normalization and ignore directory buffers without moving the tree cursor.
+- [x] 5a2.3 Run `make test FILE=tests/integration/file-tree/test_project_live.lua` for these cases and see them pass.
 
 ## 5a3. Normalized and hostile paths
 
@@ -189,11 +181,13 @@ Scenarios: `file-tree: Project tree matches the approved render`, `file-tree: Pr
 - [x] 7.1 Write the screen cases in `tests/screen/file-tree/test_project_tree.lua`: copy the populated `treeproj` fixture to `~/work/billing`, remove ignored entries, disable LSP and diagnostics, drive the real tree keys, compare tree text with `renders/f1_proposed.ansi` verbatim using real glyphs, assert `H.expect_screenshot`, and assert the Proposed F1 colour mask. Add integration extmark assertions and `expect_hl_colors` for every used `DevIcon*` and `FileTree*` group. See them fail.
 - [x] 7.2 Adjust `lua/gleb/file_tree/render.lua` until the tests pass. Compare `make render` with `renders/f1_proposed.ansi` and review the reference screenshot against that artifact before commit.
 - [x] 7.3 Update only the `file_tree/` row of the module map in `docs/architecture.md` to describe the project tree beside neo-tree until `tree-diff-cutover`.
-- [ ] 7.4 Run `make check`.
+- [x] 7.4 Run `make check`.
 
 ## Agent decisions
 
 - The approved screenshot covers rows 1–29 because the unchanged lualine branch component has no repository context while the tree buffer is focused; tree text and every tree colour cell remain artifact-pinned.
+- Neo-tree's directory hijack restores one alternate file buffer before opening its tree, so that same-window `BufEnter` is ignored as part of the directory event.
+- A vanished watched path invalidates its parent scan because libuv may report the deletion only through the deleted folder's handle.
 - `fs.tree` passes a root and scan function into `model.rows`, keeping the row model pure while sharing the filesystem cache.
 - Task 2a introduces `view.setup()` only as the render-highlight owner required by the entry-point order; task 2b extends it with per-tab windows.
 - Eligible editor selection remembers the latest valid `WinEnter` per tab and falls back to another valid editor, so special windows never become targets.

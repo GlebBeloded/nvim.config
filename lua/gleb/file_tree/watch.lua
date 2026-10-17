@@ -47,6 +47,9 @@ local function queue_redraw(root, path)
 		vim.schedule_wrap(function()
 			if M.state.roots[root] == state then
 				fs.invalidate(path)
+				if not vim.uv.fs_stat(path) then
+					fs.invalidate(vim.fs.dirname(path))
+				end
 				local refresh_git
 				for _, client in pairs(state.clients) do
 					client.redraw(path)
