@@ -13,12 +13,12 @@ Scenarios: `diff: Every IntelliJ line case passes`, `diff: IntelliJ trim equalit
 
 Scenarios: `diff: Changed lines become fragments`, `diff: Identical lines have no fragments`, `diff: Lines added after an empty line`, `diff: The engine loads without plugins`, `diff: Patience takes over when Myers exceeds its threshold`
 
-- [ ] 2.1 Write these scenarios in `tests/unit/diff/test_lines.lua` and `test_limits.lua` (bare child), and see them fail
-- [ ] 2.2 Add `lua/gleb/diff/engine/ranges.lua` (Range, change builders, iteration) and `lcs.lua`:
+- [x] 2.1 Write these scenarios in `tests/unit/diff/test_lines.lua` and `test_limits.lua` (bare child), and see them fail
+- [x] 2.2 Add `lua/gleb/diff/engine/ranges.lua` (Range, change builders, iteration) and `lcs.lua`:
   - Port `Diff.buildChanges`, `Reindexer` and `MyersLCS` from IntelliJ, seeded from diffbandit's `myers_lcs.lua`.
   - Port `PatienceIntLCS` and `UniqueLCS` fresh.
   - Too-big is a returned status, not an `error()`.
-- [ ] 2.3 Add `init.lua` with `compare_lines`, typed as in design Decision 2, and make the scenarios pass
+- [x] 2.3 Add `init.lua` with `compare_lines`, typed as in design Decision 2, and make the scenarios pass
 
 ## 3. ByLine and policies
 
