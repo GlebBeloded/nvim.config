@@ -19,6 +19,9 @@ local M = {}
 ---@field references? table<string, fixtures.Location[]> by identifier, declaration first
 ---@field files? fixtures.Entry[] one entry per changed-file listing (staged and unstaged apart)
 ---@field hunks? table<string, integer[]> worktree start lines of unstaged hunks, by path
+---@field head? string short HEAD hash
+---@field controller? string repo-relative controller path
+---@field ids? string repo-relative ids path
 
 --- Offline Go env with caches that outlive the stack's temp HOME (warm gopls).
 ---@return table<string, string>

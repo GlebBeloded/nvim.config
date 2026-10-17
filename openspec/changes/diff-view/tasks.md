@@ -2,15 +2,15 @@
 
 Scenarios: `diff: Diff view pads the side without lines`, `diff: Diff view folds unchanged lines with context 4`, `diff: Diff view maps the cursor across changes`, `diff: Diff view gutter shows both line numbers`
 
-- [ ] 1.1 Add the `diffgo` function (design Decision 12, verbatim) to `tests/fixtures/build.sh`, its name to the header and the `case` list, and the manifest keys to `fixtures.Manifest` in `tests/fixtures.lua`.
-- [ ] 1.2 Write `tests/unit/diff/test_layout.lua`, and see it fail. It covers:
+- [x] 1.1 Add the `diffgo` function (design Decision 12, verbatim) to `tests/fixtures/build.sh`, its name to the header and the `case` list, and the manifest keys to `fixtures.Manifest` in `tests/fixtures.lua`.
+- [x] 1.2 Write `tests/unit/diff/test_layout.lua`, and see it fail. It covers:
   - rows, pads and folds for the three `controller.go` fragments;
   - `transferLine` for lines 58, 59 and left 65;
   - the gutter strings of rows 52, 53 and 58;
   - a change at line 1 (pad above the first line);
   - a file absent from `HEAD` (no checkbox).
-- [ ] 1.3 Add `lua/gleb/diff/view/layout.lua` (pure: no `vim.api`, typed), following design Decisions 4, 5 and 8.
-- [ ] 1.4 Run `make test FILE=tests/unit/diff/test_layout.lua` and see it pass
+- [x] 1.3 Add `lua/gleb/diff/view/layout.lua` (pure: no `vim.api`, typed), following design Decisions 4, 5 and 8.
+- [x] 1.4 Run `make test FILE=tests/unit/diff/test_layout.lua` and see it pass
 
 ## 2. Open, windows and rendering
 
@@ -58,3 +58,8 @@ Scenarios: `diff: Diff view matches the approved render`
   - add a key-decisions line: the right pane is the real buffer, with window-scoped decorations.
 
   Then run `make check`.
+
+## Agent decisions
+
+- Layout rows carry optional 1-based `left` and `right` lines, with fold metadata in the same ordered list, so rendering and synchronization can consume one model.
+- Public helpers use snake-case names (`transfer_line`, `change_at_line`) to follow the repository's Lua naming convention.
