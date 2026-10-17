@@ -205,6 +205,56 @@ T["file-tree: Project tree closes with the last window"] = function()
 	eq(vim.fn.jobwait({ job }, 5000)[1], 0)
 end
 
+T["file-tree: Project tree closes before last editor with close"] = function()
+	edit("README.md")
+	child.cmd("tabnew")
+	edit("Makefile")
+	local closing_tab = child.api.nvim_get_current_tabpage()
+	run_toggle()
+	child.cmd("wincmd l")
+
+	child.api_notify.nvim_command("close")
+
+	assert(child.wait([[#vim.api.nvim_list_tabpages() == 1]]), "tree tab did not close")
+	eq(#child.api.nvim_list_tabpages(), 1)
+	assert(child.api.nvim_get_current_tabpage() ~= closing_tab, "tree tab remained open")
+	eq(project_tree_windows(), {})
+end
+
+T["file-tree: Project and neo-tree close before the last editor"] = function()
+	edit("README.md")
+	run_toggle()
+	child.cmd("wincmd l")
+	child.cmd("Neotree filesystem dir=" .. vim.fn.fnameescape(assert(vim.uv.fs_realpath(root))))
+	assert(
+		child.wait(
+			[[(function()
+				for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+					if vim.bo[vim.api.nvim_win_get_buf(win)].filetype == "neo-tree" then
+						return true
+					end
+				end
+				return false
+			end)()]],
+			10000
+		),
+		"neo-tree did not open"
+	)
+	child.lua([[(function()
+		for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+			if vim.bo[vim.api.nvim_win_get_buf(win)].filetype == "markdown" then
+				vim.api.nvim_set_current_win(win)
+				return
+			end
+		end
+		error("editor window not found")
+	end)()]])
+
+	local job = child.job.id
+	child.api_notify.nvim_command("q")
+	eq(vim.fn.jobwait({ job }, 5000)[1], 0)
+end
+
 T["file-tree: Project tree opening skips non-editor windows"] = function()
 	child.cmd("cd " .. vim.fn.fnameescape(root))
 	child.cmd("DiffviewOpen")
