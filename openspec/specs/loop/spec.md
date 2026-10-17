@@ -970,6 +970,10 @@ The context pack SHALL hold only what the next task needs, and the prompts and t
 - **WHEN** `tests/trace.lua` runs on a test case named after no scenario
 - **THEN** it exits 1 and the ORPHAN heading says to name it after a scenario or add that scenario to `openspec/changes/<change>/specs`, never delete it
 
+#### Scenario: Review treats a narrowed screen check as weakened
+- **WHEN** `.archon/commands/review.md` is read
+- **THEN** its test-integrity rule calls a screen case that checks fewer mask rows, or replaces a screenshot comparison with text checks, a weakened test
+
 #### Scenario: A stuck fix pass fixes the other gate failures too
 - **WHEN** `.archon/commands/fix.md` is read
 - **THEN** a `stuck` finding is the first finding, not the only one: the pass also fixes every other `FAIL in` line of the gate log
