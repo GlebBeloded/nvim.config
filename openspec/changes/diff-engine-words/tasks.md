@@ -18,12 +18,12 @@ Scenarios: `diff: Every IntelliJ word case passes`, `diff: Every IntelliJ char c
 
 Scenarios: `diff: CJK characters are words of their own`, `diff: An emoji change spans its whole character`, `diff: Punctuation separates words`, `diff: Changed words inside a line`, `diff: A deleted word leaves an insertion point`, `diff: A pure insertion has no inner list`, `diff: A whitespace-only insertion has an empty inner list`, `diff: Split mode keeps unrelated lines apart`, `diff: Char mode marks single characters`, `diff: Line mode and no highlighting`
 
-- [ ] 2.1 Write the scenarios in `tests/unit/diff/test_words.lua`, `test_chars.lua`, `test_inner.lua` and `test_split.lua`, and see them fail
-- [ ] 2.2 Add `by_word.lua`, `split.lua`, the word chunk optimizer in `optimizer.lua`, and `by_char.lua`:
+- [x] 2.1 Write the scenarios in `tests/unit/diff/test_words.lua`, `test_chars.lua`, `test_inner.lua` and `test_split.lua`, and see them fail
+- [x] 2.2 Add `by_word.lua`, `split.lua`, the word chunk optimizer in `optimizer.lua`, and `by_char.lua`:
   - Seed them from diffbandit's `word_diff.lua` (design Decision 1).
   - Port fresh: the TRIM and IGNORE matchers and the char comparisons.
-- [ ] 2.3 Add `highlight`, `inner`, `compare_words` and `compare_chars` to `init.lua`, and squash and chunk trimming with `inner = {}` to `policy.lua` (design Decisions 2, 3 and 6)
-- [ ] 2.4 Make the four files and `test_goldens_inner.lua` pass
+- [x] 2.3 Add `highlight`, `inner`, `compare_words` and `compare_chars` to `init.lua`, and squash and chunk trimming with `inner = {}` to `policy.lua` (design Decisions 2, 3 and 6)
+- [x] 2.4 Make the four files and `test_goldens_inner.lua` pass
 
 ## 3. Limits and columns
 
@@ -37,14 +37,16 @@ Scenarios: `diff: Inner comparison stops after three failures`, `diff: Small fra
 
 Scenarios: `diff: Random texts keep IntelliJ's inner invariants`
 
-- [x] 4.1 Write the scenario in `tests/unit/diff/test_invariants_inner.lua` (design Decision 7) and see it fail if anything breaks; fix the engine, never the invariant
+- [ ] 4.1 Write the scenario in `tests/unit/diff/test_invariants_inner.lua` (design Decision 7) and see it fail if anything breaks; fix the engine, never the invariant
 - [x] 4.2 Add the Unicode Character Database line to `NOTICE` and headers to the new files. `diff: Ported files carry their attribution` (from `diff-engine-lines`) must still pass.
 - [ ] 4.3 Run `make check`
 
-## Stuck
+## Blocked
 
-- Task: 2. Words, chars and splitting.
-- Probe output: whole-text word ranges matched the four failing fixtures, while the line path either shifted the trailing-newline range or lost `inner` after `refine_edge_lines` introduced a pure sub-block that squash propagated as `inner = nil`.
-- Attempt 1: restored the missing UTF-8 word, char and splitter modules from the upstream algorithms and merged the saved squash/optimizer work with inner limits. All 27 split goldens passed, as did the prior exact char TRIM/IGNORE examples, but eight `lines_inner` word rows failed because the restored edge-refinement heuristic rewrote native splitter blocks.
-- Attempt 2: removed edge refinement and used the splitter's native blocks. The line-inner cause was removed, but split goldens `SplitComparisonUtilTest.kt:67` and `:72` collapsed expected `{ 1, 2, 0, 1 }` plus `{ 2, 3, 1, 1 }` blocks into `{ 1, 3, 0, 1 }`.
-- Saved implementation: `/Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/b5f3c5b8-bb9a-46d3-a147-dc84204666ea/stuck-attempt.diff`.
+- Question: the spec contradicts itself on what an inner range may cover, so `diff: Random texts keep IntelliJ's inner invariants` cannot pass alongside `diff: Every IntelliJ word case passes` and `diff: Every IntelliJ split case passes`.
+  - Fragment text. Requirement "Inner fragments" and design Decision 2 index ranges into the fragment's lines joined with `"\n"`, with no newline after the last line. IntelliJ compares a fragment with the newline that ends its last line (`ComparisonManagerImpl.getOffsets`, `getLineEnd(line, true)`). The splitter needs that matched newline (`SplitComparisonUtilTest.kt:67` and `:72`), and row `WordComparisonUtilTest.kt:409` expects right byte 10, the newline after `" };"`, in its `lines_inner` fragment. A split block's range then ends one byte past its joined lines, and the test's bound fails: `alphabet 1 run 1 policy default highlight by_word_split: line range 1 inner range 1 is out of bounds`.
+  - TRIM checks. The test trims both gaps and changed chunks under `trim_whitespaces`. IntelliJ's `ComparisonUtilAutoTest.checkValidRanges` compares gaps without whitespace under every non-DEFAULT policy, and changed chunks without whitespace only under IGNORE (design Decision 7 says the same for changed chunks). IntelliJ's output fails the trimmed checks: in `"j l"` vs `"j\nl"` the space is a real TRIM change but trims to `""` (`run 2 policy trim_whitespaces words: range 12 is equal`), and the gap `"l\t.\n "` vs `"\nl\t\n  \t."` is equal only without whitespace (`run 2 policy trim_whitespaces chars: gap before range 24 differs`).
+- Options:
+  - A: follow IntelliJ. A fragment's text is its lines joined with `"\n"`, plus the `"\n"` that ends its last line when another line follows. A range may cover that newline, and `inner_columns` already drops it. Restate requirement "Inner fragments" and design Decision 2 that way. `test_invariants_inner.lua` builds that text and applies `checkValidRanges`' TRIM rules. A probe with exactly these test changes passed every run, alphabet, policy and mode, and every golden passes.
+  - B: keep the joined-text bound and the trimmed checks. Clipping ranges at the joined text fails row `WordComparisonUtilTest.kt:409`. No range set satisfies both trimmed checks for `"j l"` vs `"j\nl"` without marking the unchanged words `j` and `l`, so the engine would leave IntelliJ's TRIM output.
+- Recommendation: A.

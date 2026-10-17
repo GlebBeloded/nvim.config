@@ -5,6 +5,7 @@
 -- Lines are interned before the integer LCS and exposed as half-open ranges.
 
 local by_line = require("gleb.diff.engine.by_line")
+local by_char = require("gleb.diff.engine.by_char")
 local by_word = require("gleb.diff.engine.by_word")
 local policy = require("gleb.diff.engine.policy")
 
@@ -50,40 +51,6 @@ local function default_clock()
 	return vim.uv.hrtime() / 1e6
 end
 
-local function normalize_inner_text(text, comparison_policy)
-	if comparison_policy == "default" then
-		return text
-	end
-	if comparison_policy == "trim_whitespaces" then
-		return text:gsub("^[ \t\n]+", ""):gsub("[ \t\n]+$", "")
-	end
-	return text:gsub("[ \t\n]", "")
-end
-
-local function compare_whole_text(text1, text2, opts)
-	local comparison_policy = (opts and opts.policy) or "default"
-	if normalize_inner_text(text1, comparison_policy) == normalize_inner_text(text2, comparison_policy) then
-		return {}
-	end
-	return { { start1 = 0, end1 = #text1, start2 = 0, end2 = #text2 } }
-end
-
----@param text1 string
----@param text2 string
----@param opts? gleb.diff.Options
----@return gleb.diff.InnerFragment[]
-function M.compare_words(text1, text2, opts)
-	return compare_whole_text(text1, text2, opts)
-end
-
----@param text1 string
----@param text2 string
----@param opts? gleb.diff.Options
----@return gleb.diff.InnerFragment[]
-function M.compare_chars(text1, text2, opts)
-	return compare_whole_text(text1, text2, opts)
-end
-
 local function fallback(lines1, lines2)
 	local text1 = table.concat(lines1, "\n") .. "\n"
 	local text2 = table.concat(lines2, "\n") .. "\n"
@@ -108,78 +75,57 @@ local function fragment_text(lines, start_index, end_index)
 	return table.concat(lines, "\n", start_index + 1, end_index)
 end
 
-local function side_text_length(fragment, side, lines)
-	local start_index = fragment["start" .. side]
-	local end_index = fragment["end" .. side]
-	if start_index == end_index then
-		return 0
+-- IntelliJ compares a fragment with the newline that ends its last line (getLineEnd(line, true)).
+local function terminated_text(lines, start_index, end_index)
+	local text = fragment_text(lines, start_index, end_index)
+	if start_index < end_index and end_index < #lines then
+		return text .. "\n"
 	end
-	return #fragment_text(lines, start_index, end_index)
+	return text
 end
 
-local function append_inner(target, source, shift1, shift2)
-	if target.inner == nil or source.inner == nil then
-		target.inner = nil
-		return
-	end
-	for _, inner in ipairs(source.inner) do
-		target.inner[#target.inner + 1] = {
-			start1 = inner.start1 + shift1,
-			end1 = inner.end1 + shift1,
-			start2 = inner.start2 + shift2,
-			end2 = inner.end2 + shift2,
-		}
-	end
+local function equal_under_policy(text1, text2, comparison_policy)
+	return policy.key(text1, comparison_policy) == policy.key(text2, comparison_policy)
 end
 
-local function squash(fragments, lines1, lines2)
-	local result = {}
-	for _, fragment in ipairs(fragments) do
-		local previous = result[#result]
-		if previous and previous.end1 == fragment.start1 and previous.end2 == fragment.start2 then
-			local shift1 = side_text_length(previous, 1, lines1)
-			local shift2 = side_text_length(previous, 2, lines2)
-			if previous.start1 ~= previous.end1 and fragment.start1 ~= fragment.end1 then
-				shift1 = shift1 + 1
-			end
-			if previous.start2 ~= previous.end2 and fragment.start2 ~= fragment.end2 then
-				shift2 = shift2 + 1
-			end
-			append_inner(previous, fragment, shift1, shift2)
-			previous.end1 = fragment.end1
-			previous.end2 = fragment.end2
-		else
-			result[#result + 1] = vim.deepcopy(fragment)
-		end
-	end
-	return result
-end
-
-local function add_line_offsets(block, fragment)
+local function add_line_offset(block, fragment)
 	block.start1 = block.start1 + fragment.start1
 	block.end1 = block.end1 + fragment.start1
 	block.start2 = block.start2 + fragment.start2
 	block.end2 = block.end2 + fragment.start2
+	block.offset1 = nil
+	block.offset2 = nil
 	return block
 end
 
-local function create_inner(fragments, lines1, lines2, comparison_policy, context, max_inner_bytes)
+local function create_inner(fragments, lines1, lines2, highlight, comparison_policy, context, max_inner_bytes)
 	local result = {}
 	local failures = 0
 	local timed_out = false
 	for _, fragment in ipairs(fragments) do
-		local text1 = fragment_text(lines1, fragment.start1, fragment.end1)
-		local text2 = fragment_text(lines2, fragment.start2, fragment.end2)
+		local text1 = terminated_text(lines1, fragment.start1, fragment.end1)
+		local text2 = terminated_text(lines2, fragment.start2, fragment.end2)
 		local deadline_passed = context.clock() > context.deadline
 		if failures >= MAX_BAD_LINES or deadline_passed then
 			timed_out = timed_out or deadline_passed
+			result[#result + 1] = fragment
+		elseif highlight == "by_line" then
+			if
+				(fragment.start1 == fragment.end1 or fragment.start2 == fragment.end2)
+				and equal_under_policy(text1, text2, comparison_policy)
+			then
+				fragment.inner = {}
+			end
 			result[#result + 1] = fragment
 		elseif #text1 > max_inner_bytes or #text2 > max_inner_bytes then
 			failures = failures + 1
 			result[#result + 1] = fragment
 		elseif fragment.start1 == fragment.end1 or fragment.start2 == fragment.end2 then
+			if equal_under_policy(text1, text2, comparison_policy) then
+				fragment.inner = {}
+			end
 			result[#result + 1] = fragment
-		else
+		elseif highlight == "by_word" or highlight == "by_word_split" then
 			local blocks, status = by_word.compare_and_split(
 				text1,
 				text2,
@@ -188,18 +134,59 @@ local function create_inner(fragments, lines1, lines2, comparison_policy, contex
 				comparison_policy,
 				context
 			)
-			if status == "ok" then
-				for _, block in ipairs(blocks) do
-					result[#result + 1] = add_line_offsets(block, fragment)
-				end
-			else
+			if status ~= "ok" then
 				failures = failures + 1
 				timed_out = timed_out or status == "timed_out"
 				result[#result + 1] = fragment
+			else
+				for _, block in ipairs(blocks) do
+					result[#result + 1] = add_line_offset(block, fragment)
+				end
 			end
+		elseif highlight == "by_char" then
+			local inner, status = by_char.compare_policy(text1, text2, comparison_policy, context)
+			if status == "ok" then
+				fragment.inner = inner
+			else
+				failures = failures + 1
+				timed_out = timed_out or status == "timed_out"
+			end
+			result[#result + 1] = fragment
+		else
+			result[#result + 1] = fragment
 		end
 	end
 	return result, timed_out
+end
+
+local function context_from_options(opts)
+	local limits = opts.limits or {}
+	local clock = limits.clock or default_clock
+	return {
+		clock = clock,
+		deadline = clock() + (limits.timeout_ms or TIMEOUT_MS),
+		myers_threshold = limits.myers_threshold or DELTA_THRESHOLD_SIZE,
+	}
+end
+
+---@param text1 string
+---@param text2 string
+---@param opts? gleb.diff.Options
+---@return gleb.diff.InnerFragment[]
+function M.compare_words(text1, text2, opts)
+	opts = opts or {}
+	local fragments = by_word.compare(text1, text2, opts.policy or "default", context_from_options(opts))
+	return fragments
+end
+
+---@param text1 string
+---@param text2 string
+---@param opts? gleb.diff.Options
+---@return gleb.diff.InnerFragment[]
+function M.compare_chars(text1, text2, opts)
+	opts = opts or {}
+	local fragments = by_char.compare_policy(text1, text2, opts.policy or "default", context_from_options(opts))
+	return fragments
 end
 
 ---@param lines1 string[]
@@ -227,17 +214,18 @@ function M.compare_lines(lines1, lines2, opts)
 		fragments = fallback(lines1, lines2)
 	end
 	local inner_timed_out = false
-	if status == "ok" and highlight ~= "by_line" then
+	if status == "ok" then
 		fragments, inner_timed_out = create_inner(
 			fragments,
 			lines1,
 			lines2,
+			highlight,
 			comparison_policy,
 			context,
 			limits.max_inner_bytes or MAX_INNER_BYTES
 		)
 		if highlight ~= "by_word_split" then
-			fragments = squash(fragments, lines1, lines2)
+			fragments = policy.squash(fragments, lines1, lines2)
 		end
 	end
 	if status == "ok" and comparison_policy == "ignore_whitespaces_chunks" then
