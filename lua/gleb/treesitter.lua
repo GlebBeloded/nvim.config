@@ -21,6 +21,16 @@ for _, facet in ipairs(languages.facet("treesitter")) do
 	vim.list_extend(parsers, facet.config.parsers)
 end
 
+---@return string?
+local function installed_plugin()
+	local files = vim.api.nvim_get_runtime_file("lua/nvim-treesitter/init.lua", false)
+	local file = files[1] and vim.uv.fs_realpath(files[1])
+	if not file then
+		return nil
+	end
+	return vim.fs.dirname(vim.fs.dirname(vim.fs.dirname(file)))
+end
+
 if vim.env.GLEB_TEST_SANDBOX then
 	local missing = vim.tbl_filter(function(parser)
 		local ok, loaded = pcall(vim.treesitter.language.add, parser)
@@ -30,8 +40,14 @@ if vim.env.GLEB_TEST_SANDBOX then
 		vim.notify("Missing Treesitter parsers: " .. table.concat(missing, ", "), vim.log.levels.WARN)
 	end
 else
+	local treesitter = require("nvim-treesitter")
+	local plugin = installed_plugin()
+	if plugin then
+		require("gleb.treesitter.repair").repair(vim.fs.joinpath(vim.fn.stdpath("data"), "site"), plugin)
+	end
+
 	-- skips anything already built, so this is cheap on every startup
-	require("nvim-treesitter").install(parsers)
+	treesitter.install(parsers)
 end
 
 -- Enable treesitter highlighting for all filetypes

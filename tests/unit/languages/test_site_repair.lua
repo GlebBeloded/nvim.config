@@ -55,6 +55,7 @@ T[dangling_scenario]["runs repair before the installer"] = function()
 	child.lua(
 		[[
 			local plugin = ...
+			vim.env.GLEB_TEST_SANDBOX = nil
 			RepairOrder = {}
 			package.loaded["gleb.treesitter.repair"] = {
 				repair = function()
