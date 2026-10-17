@@ -700,6 +700,15 @@ T["loop: Review treats a narrowed screen check as weakened"] = function()
 	)
 end
 
+T["loop: Fix resolves a trace duplicate"] = function()
+	local fix = read(vim.fs.joinpath(H.root, ".archon/commands/fix.md")):gsub("%s+", " ")
+	has(
+		fix,
+		"A trace DUPLICATE (one case name in two test files) is yours to resolve even when an earlier pass made it"
+	)
+	has(fix, "never record it as inherited")
+end
+
 T["loop: A stuck fix pass fixes the other gate failures too"] = function()
 	local fix = read(vim.fs.joinpath(H.root, ".archon/commands/fix.md")):gsub("%s+", " ")
 	has(

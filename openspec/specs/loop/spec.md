@@ -986,6 +986,10 @@ The context pack SHALL hold only what the next task needs, and the prompts and t
 - **WHEN** `.archon/commands/review.md` is read
 - **THEN** its test-integrity rule calls a screen case that checks fewer mask rows, or replaces a screenshot comparison with text checks, a weakened test
 
+#### Scenario: Fix resolves a trace duplicate
+- **WHEN** `.archon/commands/fix.md` is read
+- **THEN** it makes a trace DUPLICATE the pass's to resolve, by renaming one copy after a scenario it adds to the delta, and forbids recording it as inherited
+
 #### Scenario: A stuck fix pass fixes the other gate failures too
 - **WHEN** `.archon/commands/fix.md` is read
 - **THEN** a `stuck` finding is the first finding, not the only one: the pass also fixes every other `FAIL in` line of the gate log
