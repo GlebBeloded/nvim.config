@@ -146,9 +146,9 @@ Scenarios: `file-tree: A compact chain splits when a folder gains an entry`, `fi
 
 Scenarios: `file-tree: Project tree watchers stop when the tree closes`, `file-tree: Project tree prunes a deleted expanded folder`, `file-tree: Project tree caps watched folders`
 
-- [ ] 5b2.1 Write these scenarios in `tests/integration/file-tree/test_project_live.lua`, deleting an expanded real folder and lowering the production cap through its test seam; see them fail.
-- [ ] 5b2.2 Reference-count handles by normalized root, prune deleted entries and expansion state, clamp the cursor, close obsolete handles, and enforce `MAX_WATCH_HANDLES` without hiding rows.
-- [ ] 5b2.3 Run `make test FILE=tests/integration/file-tree/test_project_live.lua` for these cases and see them pass.
+- [x] 5b2.1 Write these scenarios in `tests/integration/file-tree/test_project_live.lua`, deleting an expanded real folder and lowering the production cap through its test seam; see them fail.
+- [x] 5b2.2 Reference-count handles by normalized root, prune deleted entries and expansion state, clamp the cursor, close obsolete handles, and enforce `MAX_WATCH_HANDLES` without hiding rows.
+- [x] 5b2.3 Run `make test FILE=tests/integration/file-tree/test_project_live.lua` for these cases and see them pass.
 
 ## 5b3. Two-tab root and view isolation
 
@@ -201,3 +201,4 @@ Scenarios: `file-tree: Project tree matches the approved render`, `file-tree: Pr
 - Unfold-all queues displayed directory rows breadth-first and rolls back the first expansion over 5000 rows, preserving a bounded visible tree.
 - A tree scan assigns each real directory to its first lexical path while allowing that same path to be rescanned, so compact-row construction can reuse scans without traversing aliases or loops.
 - Live-update tests inspect rendered extmark groups; a small async Git snapshot module supplies watcher-triggered colours, while throttling and exhaustive porcelain parsing remain in task 6.
+- Folder-watch admission keeps the normalized root first and then uses lexical path order, making the cap deterministic while preserving every rendered row.

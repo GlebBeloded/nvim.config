@@ -48,6 +48,17 @@ function M.invalidate(path)
 	M.state.cache[path] = nil
 end
 
+--- Remove cached scans below one normalized root.
+---@param root string
+---@return nil
+function M.invalidate_root(root)
+	for path in pairs(M.state.cache) do
+		if path == root or vim.startswith(path, root .. "/") then
+			M.state.cache[path] = nil
+		end
+	end
+end
+
 --- Scan a directory, returning an empty list when it cannot be read.
 ---@param path string
 ---@return FileTreeEntry[]

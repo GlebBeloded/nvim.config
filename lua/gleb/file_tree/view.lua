@@ -18,6 +18,7 @@ local EXPANSION_MAX_ROWS = 5000
 ---@field expanded table<string, boolean>
 ---@field rows FileTreeRow[]
 ---@field autocmds integer[]
+---@field watching boolean
 
 ---@class FileTreeViewState
 ---@field by_tab table<integer, FileTreeView>
@@ -97,6 +98,10 @@ local function forget(view)
 	if M.state.by_tab[view.tab] == view then
 		M.state.by_tab[view.tab] = nil
 	end
+	if view.watching then
+		view.watching = false
+		watch.stop_root(view.root)
+	end
 	for _, autocmd in ipairs(view.autocmds) do
 		pcall(vim.api.nvim_del_autocmd, autocmd)
 	end
@@ -111,7 +116,8 @@ local function close_view(view)
 	forget(view)
 	if vim.api.nvim_win_is_valid(view.win) then
 		vim.api.nvim_win_close(view.win, true)
-	elseif vim.api.nvim_buf_is_valid(view.buf) then
+	end
+	if vim.api.nvim_buf_is_valid(view.buf) then
 		vim.api.nvim_buf_delete(view.buf, { force = true })
 	end
 end
@@ -163,6 +169,12 @@ end
 ---@param path string
 local function draw(view, path)
 	expand_to(view, path)
+	for relative in pairs(view.expanded) do
+		local stat = vim.uv.fs_stat(vim.fs.joinpath(view.root, relative))
+		if not stat or stat.type ~= "directory" then
+			view.expanded[relative] = nil
+		end
+	end
 	local watched = {}
 	view.rows = model.rows(
 		fs.tree(view.root, function(scan_path)
@@ -172,6 +184,8 @@ local function draw(view, path)
 		git.status(view.root)
 	)
 	render.draw(view.buf, view.rows)
+	local cursor = vim.api.nvim_win_get_cursor(view.win)
+	vim.api.nvim_win_set_cursor(view.win, { math.min(cursor[1], math.max(#view.rows, 1)), cursor[2] })
 	for index, row in ipairs(view.rows) do
 		if row.path == path then
 			vim.api.nvim_win_set_cursor(view.win, { index, 0 })
@@ -556,8 +570,10 @@ local function open_view(path)
 		expanded = {},
 		rows = {},
 		autocmds = {},
+		watching = true,
 	}
 	M.state.by_tab[tab] = view
+	watch.start_root(root)
 	add_teardown_autocmds(view)
 	reveal_path(view, path, true)
 	git.request(root, function()

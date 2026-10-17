@@ -386,4 +386,97 @@ T["file-tree: Project tree recolours after staging outside Neovim"] = function()
 	eq(wait_for_tree_highlight("notes.md", "FileTreeGitAdded"), true)
 end
 
+T["file-tree: Project tree watchers stop when the tree closes"] = function()
+	edit("README.md")
+	run_action("file_tree.toggle")
+
+	local handle_count = child.lua_get(
+		[[(function(root)
+		root = require("gleb.file_tree.fs").normalize(root)
+		local state = assert(require("gleb.file_tree.watch").state.roots[root])
+		_G.file_tree_closed_handles = vim.tbl_values(state.handles)
+		return #_G.file_tree_closed_handles
+	end)(...)]],
+		{ root }
+	)
+	assert(handle_count > 0, "expected the open tree to own folder watchers")
+
+	child.type_keys("q")
+	local stopped = child.lua_get(
+		[[(function(root)
+		root = require("gleb.file_tree.fs").normalize(root)
+		return vim.wait(1000, function()
+			local watch = require("gleb.file_tree.watch")
+			return watch.state.roots[root] == nil
+				and vim.iter(_G.file_tree_closed_handles):all(function(handle)
+					return handle:is_closing()
+				end)
+		end, 20)
+	end)(...)]],
+		{ root }
+	)
+	eq(stopped, true)
+
+	local result = H.system(child, { "touch", vim.fs.joinpath(root, "żółć.lua") }, root)
+	eq(result.code, 0)
+	run_action("file_tree.toggle")
+	eq(wait_for_tree_row("żółć.lua"), true)
+end
+
+T["file-tree: Project tree prunes a deleted expanded folder"] = function()
+	open_billing_folder()
+	focus_tree_path("internal/billing/invoice_test.go")
+	child.lua(
+		[[(function(root)
+		root = require("gleb.file_tree.fs").normalize(root)
+		_G.file_tree_deleted_handle = assert(
+			require("gleb.file_tree.watch").state.roots[root].handles[root .. "/internal/billing"]
+		)
+	end)(...)]],
+		{ root }
+	)
+
+	local result = H.system(child, { "rm", "-r", vim.fs.joinpath(root, "internal/billing") }, root)
+	eq(result.code, 0)
+
+	local pruned = child.lua_get([[(function()
+		return vim.wait(1000, function()
+			local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+			local cursor = vim.api.nvim_win_get_cursor(view.win)[1]
+			return view.expanded["internal/billing"] == nil
+				and vim.iter(view.rows):all(function(row)
+					return not row.path:find("/internal/billing", 1, true)
+				end)
+				and cursor <= #view.rows
+				and _G.file_tree_deleted_handle:is_closing()
+		end, 20)
+	end)()]])
+	eq(pruned, true)
+end
+
+T["file-tree: Project tree caps watched folders"] = function()
+	child.lua([[require("gleb.file_tree.watch").MAX_WATCH_HANDLES = 2]])
+	edit("README.md")
+	run_action("file_tree.toggle")
+
+	local watched = child.lua_get(
+		[[(function(root)
+		root = require("gleb.file_tree.fs").normalize(root)
+		local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+		local handles = assert(require("gleb.file_tree.watch").state.roots[root]).handles
+		return {
+			handle_count = vim.tbl_count(handles),
+			has_compact_row = vim.iter(view.rows):any(function(row)
+				return row.label == "cmd/server"
+			end),
+			has_unwatched_row = vim.iter(view.rows):any(function(row)
+				return row.label == "internal"
+			end),
+		}
+	end)(...)]],
+		{ root }
+	)
+	eq(watched, { handle_count = 2, has_compact_row = true, has_unwatched_row = true })
+end
+
 return T

@@ -6,10 +6,13 @@ local fs = require("gleb.file_tree.fs")
 
 local WATCH_DEBOUNCE_MS = 100
 
+M.MAX_WATCH_HANDLES = 256
+
 ---@class FileTreeWatchRoot
 ---@field handles table<string, uv.uv_fs_event_t>
 ---@field timers table<string, uv.uv_timer_t>
 ---@field git_handle? uv.uv_fs_event_t
+---@field refs integer
 ---@field redraw fun(path: string)
 ---@field refresh_git fun()
 
@@ -86,6 +89,36 @@ local function watch_git_dir(root, state)
 	end)
 end
 
+---@param state FileTreeWatchRoot
+---@param path string
+local function close_folder(state, path)
+	local handle = state.handles[path]
+	if handle then
+		handle:stop()
+		handle:close()
+		state.handles[path] = nil
+	end
+	local timer = state.timers[path]
+	if timer then
+		timer:stop()
+		timer:close()
+		state.timers[path] = nil
+	end
+end
+
+---@param root string
+---@return nil
+function M.start_root(root)
+	local state = M.state.roots[root]
+	if state then
+		state.refs = state.refs + 1
+		return
+	end
+	state = { handles = {}, timers = {}, refs = 1, redraw = function() end, refresh_git = function() end }
+	M.state.roots[root] = state
+	watch_git_dir(root, state)
+end
+
 --- Watch every directory scan currently feeding visible rows.
 ---@param root string
 ---@param paths table<string, boolean>
@@ -93,38 +126,65 @@ end
 ---@param refresh_git fun()
 ---@return nil
 function M.sync(root, paths, redraw, refresh_git)
-	local state = M.state.roots[root]
-	if not state then
-		state = { handles = {}, timers = {}, redraw = redraw, refresh_git = refresh_git }
-		M.state.roots[root] = state
-		watch_git_dir(root, state)
-	else
-		state.redraw = redraw
-		state.refresh_git = refresh_git
+	local state = assert(M.state.roots[root], "watch root was not started")
+	state.redraw = redraw
+	state.refresh_git = refresh_git
+
+	local ordered = vim.tbl_keys(paths)
+	table.sort(ordered, function(left, right)
+		if left == root then
+			return true
+		end
+		if right == root then
+			return false
+		end
+		return left < right
+	end)
+	local wanted = {}
+	for index = 1, math.min(#ordered, M.MAX_WATCH_HANDLES) do
+		wanted[ordered[index]] = true
 	end
-	for path in pairs(paths) do
+	for path in pairs(state.handles) do
+		if not wanted[path] then
+			close_folder(state, path)
+		end
+	end
+	for path in pairs(wanted) do
 		if not state.handles[path] then
 			watch_folder(root, path, state)
 		end
 	end
 end
 
+--- Release one tree's ownership of a normalized root.
+---@param root string
+---@return nil
+function M.stop_root(root)
+	local state = M.state.roots[root]
+	if not state then
+		return
+	end
+	state.refs = state.refs - 1
+	if state.refs > 0 then
+		return
+	end
+	for path in pairs(state.handles) do
+		close_folder(state, path)
+	end
+	if state.git_handle then
+		state.git_handle:stop()
+		state.git_handle:close()
+	end
+	M.state.roots[root] = nil
+	fs.invalidate_root(root)
+end
+
 --- Stop and remove every watch.
 ---@return nil
 function M.reset()
-	for _, state in pairs(M.state.roots) do
-		for _, handle in pairs(state.handles) do
-			handle:stop()
-			handle:close()
-		end
-		for _, timer in pairs(state.timers) do
-			timer:stop()
-			timer:close()
-		end
-		if state.git_handle then
-			state.git_handle:stop()
-			state.git_handle:close()
-		end
+	for root, state in pairs(M.state.roots) do
+		state.refs = 1
+		M.stop_root(root)
 	end
 	M.state = { roots = {} }
 end
