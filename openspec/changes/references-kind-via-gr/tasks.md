@@ -52,7 +52,8 @@ Scenarios: `references: HCL fallback classifies variable labels and traversals`
 
 - The real-`gr` helper reads usage metadata from visible view nodes and verifies each node's label is rendered, preserving exact path, line, column and kind assertions without coupling to icons or indentation.
 - The queued behavior requires non-target variable uses to become `read`, so the existing fallback scenario's conflicting `other` expectation is changed while its title, WHEN inputs, paths and numeric values remain intact.
-- Write highlights join the request fan-out so the view receives one URI-and-range-deduplicated usage list before classification.
+- Write highlights join the classification fan-out so omitted writes are merged before the time-bounded rebuild without delaying the initial view.
 - The real-`gr` helper requires two consecutive populated reference responses so rust-analyzer has reached a stable indexed state without an arbitrary sleep.
 - Unresolved terraform-ls references beginning at `var.` are reads because Terraform input variables are immutable and terraform-ls does not provide document-highlight kinds.
 - Terraform, tf and HCL filetypes resolve explicitly to the HCL parser because Neovim's filetype-to-parser mapping is not guaranteed to register those aliases.
+- Callable detection checks document symbols at the origin when a server returns no definition target, as bashls does at a function declaration.

@@ -3,8 +3,6 @@ local M = {
 	request_id = 0,
 }
 
-local DOCUMENT_HIGHLIGHT_WRITE = 3
-
 ---@param location lsp.Location
 ---@return string
 local function location_key(location)
@@ -73,22 +71,6 @@ local function normalize(locations, cwd, offset_encoding, client_id)
 	return usages
 end
 
----@param highlights lsp.DocumentHighlight[]?
----@param uri string
----@param origin lsp.Position
----@return lsp.Location[]
-local function write_locations(highlights, uri, origin)
-	local locations = {}
-	for _, highlight in ipairs(highlights or {}) do
-		local start = highlight.range.start
-		local is_origin = start.line == origin.line and start.character == origin.character
-		if highlight.kind == DOCUMENT_HIGHLIGHT_WRITE and not is_origin then
-			table.insert(locations, { uri = uri, range = highlight.range })
-		end
-	end
-	return locations
-end
-
 ---@param callback fun(usages: gleb.references.Usage[])
 ---@return nil
 function M.start(callback)
@@ -112,10 +94,7 @@ function M.start(callback)
 		position = position_params.position,
 		context = { includeDeclaration = false },
 	}
-	local highlight_clients = vim.tbl_filter(function(client)
-		return client:supports_method("textDocument/documentHighlight", bufnr)
-	end, clients)
-	local pending = #clients + #highlight_clients
+	local pending = #clients
 	local location_batches = {}
 	local offset_encodings = {}
 	local client_ids = {}
@@ -166,22 +145,6 @@ function M.start(callback)
 		client_params.position = vim.lsp.util.make_position_params(0, offset_encoding).position
 		local sent = client:request("textDocument/references", client_params, function(_, result)
 			finish(result, offset_encoding, client.id)
-		end, bufnr)
-		if not sent then
-			finish(nil, offset_encoding, client.id)
-		end
-	end
-
-	for _, client in ipairs(highlight_clients) do
-		local client_params = vim.deepcopy(position_params)
-		local offset_encoding = client.offset_encoding
-		client_params.position = vim.lsp.util.make_position_params(0, offset_encoding).position
-		local sent = client:request("textDocument/documentHighlight", client_params, function(_, result)
-			finish(
-				write_locations(result, client_params.textDocument.uri, client_params.position),
-				offset_encoding,
-				client.id
-			)
 		end, bufnr)
 		if not sent then
 			finish(nil, offset_encoding, client.id)
