@@ -32,6 +32,24 @@ TASKS = """## 1. Done
 """
 
 
+SPLIT = """## 3a. Eligible targets
+- [x] 3a.1 a
+
+## 3b. Hygiene
+- [ ] 3b.1 b
+
+## Stuck
+
+- Attempt 1 failed.
+
+## 3c. Close
+- [ ] 3c.1 c
+
+## 7. Render
+- [ ] 7.1 d
+"""
+
+
 class StuckTasks(unittest.TestCase):
     def test_each_stuck_section_holds_the_task_above_it(self) -> None:
         artifacts = pathlib.Path(tempfile.mkdtemp())
@@ -44,6 +62,13 @@ class StuckTasks(unittest.TestCase):
         text = "## 1. One\n- [ ] 1.1 a\n\n## Stuck\n\n## 2. Two\n- [ ] 2.1 b\n"
         self.assertEqual(tasks.stuck_tasks(text, pathlib.Path(tempfile.mkdtemp())), [])
 
+
+    def test_split_task_headings_hold_their_stuck(self):
+        with tempfile.TemporaryDirectory() as root:
+            path = pathlib.Path(root, "tasks.md")
+            path.write_text(SPLIT)
+            self.assertEqual(tasks.stuck_tasks(SPLIT, pathlib.Path(root)), ["## 3b. Hygiene"])
+            self.assertTrue(tasks.next_task(path, pathlib.Path(root)).startswith("## 3c. Close"))
 
 if __name__ == "__main__":
     unittest.main()
