@@ -3,6 +3,12 @@
 # (repo/ + manifest.json with the facts the tests assert), cached by the hash of
 # this script (plus `go version` for gomod). Prints the cache dir.
 #   build.sh gomod   stdlib-only Go module, money.Format referenced across packages
+#   build.sh luaproj Lua module with production and spec usages
+#   build.sh pyproj  Python package with production and test usages
+#   build.sh tsproj  TypeScript project with production and test usages
+#   build.sh rustproj Rust crate with production, integration and inline test usages
+#   build.sh bashproj Bash project with production and test-script usages
+#   build.sh tfproj  Terraform module with variable usages
 #   build.sh dirty   repo with staged, unstaged and untracked changes (differ review)
 # Git is hermetic: no user or system config, fixed author, committer and dates.
 set -eu
@@ -34,6 +40,236 @@ format_locations() {
 			printf "%s{\"path\":\"%s\",\"line\":%d,\"col\":%d}", sep, file, line, col
 			sep = ","
 		}'
+}
+
+# $1 identifier, $@ files: JSON locations of each identifier, in file order
+identifier_locations() {
+	identifier=$1
+	shift
+	grep -nE "(^|[^A-Za-z0-9_])$identifier([^A-Za-z0-9_]|$)" "$@" | awk -v identifier="$identifier" '
+		{
+			file = $0; sub(/:.*/, "", file)
+			rest = substr($0, length(file) + 2); line = rest; sub(/:.*/, "", line)
+			text = substr(rest, length(line) + 2)
+			col = index(text, identifier)
+			printf "%s{\"path\":\"%s\",\"line\":%d,\"col\":%d}", sep, file, line, col
+			sep = ","
+		}'
+}
+
+luaproj() {
+	mkdir -p lua/shop spec
+	cat >.luarc.json <<'EOF'
+{
+  "runtime.path": ["lua/?.lua", "lua/?/init.lua"]
+}
+EOF
+	cat >lua/shop/price.lua <<'EOF'
+local M = {}
+
+function M.total(price, quantity)
+	return price * quantity
+end
+
+return M
+EOF
+	cat >lua/shop/cart.lua <<'EOF'
+local price = require("shop.price")
+
+return price.total(10, 2)
+EOF
+	cat >spec/price_spec.lua <<'EOF'
+local price = require("shop.price")
+
+assert(price.total(10, 2) == 20)
+EOF
+	git init -q
+	commit "Lua references fixture"
+	printf '{"references":{"total":[%s]}}\n' \
+		"$(identifier_locations total lua/shop/price.lua lua/shop/cart.lua spec/price_spec.lua)" >../manifest.json
+}
+
+pyproj() {
+	mkdir -p shop tests
+	cat >pyproject.toml <<'EOF'
+[project]
+name = "fixture-shop"
+version = "0.0.0"
+requires-python = ">=3.10"
+EOF
+	: >shop/__init__.py
+	cat >shop/price.py <<'EOF'
+def total(price: int, quantity: int) -> int:
+    return price * quantity
+EOF
+	cat >shop/cart.py <<'EOF'
+from shop import price
+
+
+def cart_total() -> int:
+    return price.total(10, 2)
+EOF
+	cat >tests/test_price.py <<'EOF'
+from shop import price
+
+
+def test_total() -> None:
+    assert price.total(10, 2) == 20
+EOF
+	python3 -m py_compile shop/__init__.py shop/price.py shop/cart.py tests/test_price.py
+	rm -rf shop/__pycache__ tests/__pycache__
+	git init -q
+	commit "Python references fixture"
+	printf '{"references":{"total":[%s]}}\n' \
+		"$(identifier_locations total shop/price.py shop/cart.py tests/test_price.py)" >../manifest.json
+}
+
+tsproj() {
+	mkdir -p src
+	cat >package.json <<'EOF'
+{
+  "name": "fixture-shop",
+  "private": true,
+  "type": "module"
+}
+EOF
+	cat >eslint.config.js <<'EOF'
+export default [];
+EOF
+	cat >tsconfig.json <<'EOF'
+{
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "noEmit": true,
+    "target": "ES2022"
+  },
+  "include": ["src/**/*.ts"]
+}
+EOF
+	cat >src/price.ts <<'EOF'
+export function total(price, quantity) {
+  return price * quantity;
+}
+EOF
+	cat >src/cart.ts <<'EOF'
+import * as price from "./price";
+
+export function cartTotal() {
+  return price.total(10, 2);
+}
+EOF
+	cat >src/price.test.ts <<'EOF'
+import * as price from "./price";
+
+export const expected = price.total(10, 2);
+EOF
+	if command -v tsc >/dev/null 2>&1; then
+		tsc --noEmit
+	else
+		for file in eslint.config.js src/price.ts src/cart.ts src/price.test.ts; do
+			node --check --input-type=module <"$file"
+		done
+	fi
+	git init -q
+	commit "TypeScript references fixture"
+	printf '{"references":{"total":[%s]}}\n' \
+		"$(identifier_locations total src/price.ts src/cart.ts src/price.test.ts)" >../manifest.json
+}
+
+rustproj() {
+	mkdir -p src tests
+	cat >Cargo.toml <<'EOF'
+[package]
+name = "rustproj"
+version = "0.1.0"
+edition = "2021"
+EOF
+	cat >src/lib.rs <<'EOF'
+pub mod price;
+EOF
+	cat >src/price.rs <<'EOF'
+pub fn total(price: i32, quantity: i32) -> i32 {
+    price * quantity
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn totals_a_cart() {
+        assert_eq!(super::total(10, 2), 20);
+    }
+}
+EOF
+	cat >src/main.rs <<'EOF'
+use rustproj::price;
+
+fn main() {
+    println!("{}", price::total(10, 2));
+}
+EOF
+	cat >tests/price.rs <<'EOF'
+use rustproj::price;
+
+#[test]
+fn totals_a_cart() {
+    assert_eq!(price::total(10, 2), 20);
+}
+EOF
+	cargo check --all-targets >&2
+	git init -q
+	commit "Rust references fixture"
+	printf '{"references":{"total":[%s]}}\n' \
+		"$(identifier_locations total src/price.rs src/main.rs tests/price.rs)" >../manifest.json
+}
+
+bashproj() {
+	mkdir -p lib bin test
+	cat >lib/price.sh <<'EOF'
+#!/usr/bin/env bash
+total() {
+	printf '%s\n' "$(($1 * $2))"
+}
+EOF
+	cat >bin/run.sh <<'EOF'
+#!/usr/bin/env bash
+source "$(dirname "$0")/../lib/price.sh"
+
+total 10 2
+EOF
+	cat >test/price_test.sh <<'EOF'
+#!/usr/bin/env bash
+source "$(dirname "$0")/../lib/price.sh"
+
+test "$(total 10 2)" = 20
+EOF
+	bash -n lib/price.sh bin/run.sh test/price_test.sh
+	git init -q
+	commit "Bash references fixture"
+	printf '{"references":{"total":[%s]}}\n' \
+		"$(identifier_locations total lib/price.sh bin/run.sh test/price_test.sh)" >../manifest.json
+}
+
+tfproj() {
+	cat >variables.tf <<'EOF'
+variable "region" {
+  type = string
+}
+EOF
+	cat >main.tf <<'EOF'
+locals {
+  selected_region = var.region
+}
+EOF
+	cat >outputs.tf <<'EOF'
+output "selected_region" {
+  value = var.region
+}
+EOF
+	git init -q
+	commit "Terraform references fixture"
+	printf '{"references":{"region":[%s]}}\n' \
+		"$(identifier_locations region variables.tf main.tf outputs.tf)" >../manifest.json
 }
 
 gomod() {
@@ -165,7 +401,7 @@ key_input() {
 }
 
 case "$name" in
-gomod | dirty) ;;
+gomod | luaproj | pyproj | tsproj | rustproj | bashproj | tfproj | dirty) ;;
 *)
 	echo "build.sh: unknown fixture '$name'" >&2
 	exit 2

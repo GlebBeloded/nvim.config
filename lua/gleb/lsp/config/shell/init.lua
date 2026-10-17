@@ -4,7 +4,13 @@ local M = {}
 M.lsp_name = "bashls"
 
 -- native lsp config
-M.lsp_config = {}
+M.lsp_config = {
+	settings = {
+		bashIde = {
+			globPattern = "**/*@(.sh|.inc|.bash|.command)",
+		},
+	},
+}
 
 -- table returned by this function is passed to null_ls(linter) setup
 -- table should contain list of diagnostics to use

@@ -32,6 +32,7 @@ Depends: references-view
 
 - Code:
   - `tests/fixtures/build.sh` gains the six fixtures;
+  - `lua/gleb/lsp/config/shell/init.lua` keeps bashls background analysis recursive so nested shell scripts participate in references;
   - `lua/gleb/references/request.lua` gets whatever server-specific handling the scenarios show is needed;
   - `lua/gleb/references/scope.lua` gets pattern additions if a fixture exposes a gap.
 - Tests: tests/integration/references/test_languages.lua, one case per language. Each case waits for its server through the existing readiness helpers. A case for a server the host does not have is skipped with its reason, not failed (the same policy as the readiness layer).

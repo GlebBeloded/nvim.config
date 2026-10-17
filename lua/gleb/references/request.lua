@@ -3,6 +3,36 @@ local M = {
 	request_id = 0,
 }
 
+---@param location lsp.Location
+---@return string
+local function location_key(location)
+	local range = location.range
+	return table.concat({
+		location.uri,
+		range.start.line,
+		range.start.character,
+		range["end"].line,
+		range["end"].character,
+	}, ":")
+end
+
+---@param batches lsp.Location[][]
+---@return lsp.Location[]
+function M.merge(batches)
+	local merged = {}
+	local seen = {}
+	for _, locations in ipairs(batches) do
+		for _, location in ipairs(locations) do
+			local key = location_key(location)
+			if not seen[key] then
+				seen[key] = true
+				table.insert(merged, location)
+			end
+		end
+	end
+	return merged
+end
+
 ---@param filename string
 ---@param lnum integer 0-based
 ---@return string
@@ -19,26 +49,21 @@ end
 ---@param locations lsp.Location[]
 ---@param cwd string
 ---@param offset_encoding 'utf-8'|'utf-16'|'utf-32'
----@param seen table<string, boolean>
 ---@return gleb.references.Usage[]
-local function normalize(locations, cwd, offset_encoding, seen)
+local function normalize(locations, cwd, offset_encoding)
 	local usages = {}
 	for _, location in ipairs(locations) do
 		local range = location.range
 		local filename = vim.uri_to_fname(location.uri)
 		local line = source_line(filename, range.start.line)
 		local col = vim.str_byteindex(line, offset_encoding, range.start.character, false) + 1
-		local key = string.format("%s:%d:%d", location.uri, range.start.line, col)
-		if not seen[key] then
-			seen[key] = true
-			table.insert(usages, {
-				uri = location.uri,
-				path = vim.fs.relpath(cwd, filename) or filename,
-				lnum = range.start.line + 1,
-				col = col,
-				filetype = vim.filetype.match({ filename = filename }),
-			})
-		end
+		table.insert(usages, {
+			uri = location.uri,
+			path = vim.fs.relpath(cwd, filename) or filename,
+			lnum = range.start.line + 1,
+			col = col,
+			filetype = vim.filetype.match({ filename = filename }),
+		})
 	end
 	return usages
 end
@@ -67,8 +92,8 @@ function M.start(callback)
 		context = { includeDeclaration = false },
 	}
 	local pending = #clients
-	local usages = {}
-	local seen = {}
+	local location_batches = {}
+	local offset_encodings = {}
 
 	---@param result lsp.Location[]?
 	---@param offset_encoding 'utf-8'|'utf-16'|'utf-32'
@@ -76,10 +101,18 @@ function M.start(callback)
 		if request_id ~= M.request_id then
 			return
 		end
-		vim.list_extend(usages, normalize(result or {}, cwd, offset_encoding, seen))
+		local locations = result or {}
+		for _, location in ipairs(locations) do
+			offset_encodings[location_key(location)] = offset_encodings[location_key(location)] or offset_encoding
+		end
+		table.insert(location_batches, locations)
 		pending = pending - 1
 		if pending > 0 then
 			return
+		end
+		local usages = {}
+		for _, location in ipairs(M.merge(location_batches)) do
+			vim.list_extend(usages, normalize({ location }, cwd, offset_encodings[location_key(location)]))
 		end
 		vim.schedule(function()
 			if request_id ~= M.request_id then

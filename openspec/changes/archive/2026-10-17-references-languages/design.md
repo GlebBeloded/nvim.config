@@ -20,7 +20,7 @@ See proposal.md (Why). Facts checked on the host (2026-10-16):
    |---|---|---|---|---|
    | `luaproj` | `lua/shop/price.lua` `M.total` | `lua/shop/cart.lua` | `spec/price_spec.lua` | `.luarc.json` |
    | `pyproj` | `shop/price.py` `total` | `shop/cart.py` | `tests/test_price.py` | `pyproject.toml` |
-   | `tsproj` | `src/price.ts` `export function total` | `src/cart.ts` | `src/price.test.ts` | `package.json` and `tsconfig.json` |
+   | `tsproj` | `src/price.ts` `export function total` | `src/cart.ts` | `src/price.test.ts` | `package.json`, `tsconfig.json` and `eslint.config.js` |
    | `rustproj` | `src/price.rs` `pub fn total` (lib crate) | `src/main.rs` | `tests/price.rs` and a `#[cfg(test)] mod tests` in `src/price.rs` | `Cargo.toml` |
    | `bashproj` | `lib/price.sh` `total()` | `bin/run.sh` (sources lib) | `test/price_test.sh` | `.git` |
    | `tfproj` | `variables.tf` `variable "region"` | `main.tf`, `outputs.tf` | none | `.terraform.lock.hcl`-free module dir |
@@ -32,5 +32,5 @@ See proposal.md (Why). Facts checked on the host (2026-10-16):
 ## Risks / Trade-offs
 
 - [rust-analyzer is slow to index on a cold start] → the fixture is tiny, has no dependencies, and the bound for this case is longer.
-- [bashls only finds cross-file references inside its glob (`**/*@(.sh|.inc|.bash|.command)`)] → the fixture uses `.sh` files only.
+- [bashls only finds cross-file references inside its glob (`**/*@(.sh|.inc|.bash|.command)`)] → the fixture uses `.sh` files only and the server keeps that recursive upstream glob.
 - [terraform-ls without the CLI] → module references come from parsed HCL; the scenario pins that.
