@@ -1,0 +1,21 @@
+# i2. ship reports a conflict and every regate is red: reship still runs (until_bash reads its `merged`),
+# reports not merged, and the loop resolves and regates again instead of failing on a skipped reship.
+fixture:
+  expect: failed
+  fail-node: shipped
+  inputs: { change: demo-change }
+  reached: [ship, resolve, regate, reship, reconcile]
+exec-code: true
+skills-check: "skills ok"
+plan-check: { needed: false, has_change: true }
+plan-gate: "change demo-change is valid"
+pack: { has_task: true, context: context.md }
+implement: "task 1 done"
+gate: { green: true, spec_ok: true, tasks_done: true, untested: 0, attempt: 1, failures: "", blocked: false }
+review: { approve: true, findings: "", weakened_scenario: false, weakened_test: false }
+escalation: { decision: ship, escalate: false, reasons: "- none" }
+ship: { merged: false, conflict: true, branch: loop/demo-change, commit: "", files: [lua/gleb/keymaps.lua] }
+resolve: "conflict resolved"
+regate: { green: false, spec_ok: true, tasks_done: true, attempt: 1, failures: "stack: timed out" }
+reship: { merged: false, conflict: true, gate_failed: true, branch: loop/demo-change, commit: "", files: [], log: "regate red" }
+followup: "MUST-NOT-RUN"
