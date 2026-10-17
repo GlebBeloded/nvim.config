@@ -51,6 +51,87 @@ local LEGEND = {
 	z = "ReferencesMaskBackground",
 }
 
+local TYPESCRIPT_LEGEND = vim.tbl_extend("force", LEGEND, {
+	["."] = "Normal",
+	G = "DevIconTypeScript",
+	g = "ReferencesFileLabelDevIconTypeScript",
+	I = "ReferencesUsageTypeFieldDeclaration",
+	i = "ReferencesUsageTypeFieldDeclarationLabel",
+	A = "ReferencesUsageTypeImport",
+	a = "ReferencesUsageTypeImportLabel",
+	W = "ReferencesUsageTypeNew",
+	w = "ReferencesUsageTypeNewLabel",
+	J = "ReferencesUsageTypeParameterDeclaration",
+	j = "ReferencesUsageTypeParameterDeclarationLabel",
+	U = "ReferencesUsageTypeReturnType",
+	u = "ReferencesUsageTypeReturnTypeLabel",
+	Y = "ReferencesUsageTypeStaticMember",
+	y = "ReferencesUsageTypeStaticMemberLabel",
+	V = "ReferencesUsageTypeExtends",
+	v = "ReferencesUsageTypeExtendsLabel",
+	L = "ReferencesUsageTypeCast",
+	l = "ReferencesUsageTypeCastLabel",
+	K = "ReferencesUsageTypeInstanceof",
+	["1"] = "ReferencesUsageTypeInstanceofLabel",
+	H = "ReferencesUsageTypeTypeInstantiation",
+	["2"] = "ReferencesUsageTypeTypeInstantiationLabel",
+	R = "ReferencesUsageTypeVariableDeclaration",
+	["3"] = "ReferencesUsageTypeVariableDeclarationLabel",
+})
+
+local TYPESCRIPT_GROUPED_MASK = {
+	"......................................................................",
+	".........bttttttttttttttttttttttbbbbbbbbbbbbbbbbbbbbbbbbbbbb..........",
+	".........bfffPfppppppppppffssffffffffffffffffffffffffffffffb..........",
+	".........bfffffIfiiiiiiiiiiiiiiiiiffsffffffffffffffffffffffb..........",
+	".........bfffffffDfdddffsffffffffffffffffffffffffffffffffffb..........",
+	".........bcccccccccGcgggggggggcccccccccccccccccccccccccccccb..........",
+	".........bfffffAfaaaaaaffsfffffffffffffffffffffffffffffffffb..........",
+	".........bfffffffDfdddffsffffffffffffffffffffffffffffffffffb..........",
+	".........bfffffffffGfgggggggggssfffffffffffffffffffffffffffb..........",
+	".........bfffffWfwwwwwwwwwwwwwwwwwwwwwffsffffffffffffffffffb..........",
+	".........bfffffffDfdddffsffffffffffffffffffffffffffffffffffb..........",
+	".........bfffffffffGfggggggggsssfffffffffffffffffffffffffffb..........",
+	".........bfffffJfjjjjjjjjjjjjjjjjjjjjjffsffffffffffffffffffb..........",
+	".........bfffffffDfdddffsffffffffffffffffffffffffffffffffffb..........",
+	".........bfffffffffGfgggggggggssfffffffffffffffffffffffffffb..........",
+	".........bfffffUfuuuuuuuuuuuffsffffffffffffffffffffffffffffb..........",
+	".........bfffffffDfdddffsffffffffffffffffffffffffffffffffffb..........",
+	".........bfffffffffGfggggggggsssfffffffffffffffffffffffffffb..........",
+	".........bfffffffffGfgggggggggsssffffffffffffffffffffffffffb..........",
+	".........bfffffYfyyyyyyyyyyyyyyyyyyyyffsfffffffffffffffffffb..........",
+	".........bfffffffDfdddffsffffffffffffffffffffffffffffffffffb..........",
+	".........bfffffffffGfgggggggggsssffffffffffffffffffffffffffb..........",
+	".........bfffffVfvvvvvvvvvffsffffffffffffffffffffffffffffffb..........",
+	".........bfffffffDfdddffsffffffffffffffffffffffffffffffffffb..........",
+	".........bfffffffffGfgggggggggssfffffffffffffffffffffffffffb..........",
+	".........bfffffLflllllllllffsffffffffffffffffffffffffffffffb..........",
+	".........bfffffffDfdddffsffffffffffffffffffffffffffffffffffb..........",
+	".........bfffffffffGfgggggggggsssffffffffffffffffffffffffffb..........",
+	".........bfffffKf1111111111ffsfffffffffffffffffffffffffffffb..........",
+	".........bfffffffDfdddffsffffffffffffffffffffffffffffffffffb..........",
+	".........bfffffffffGfggggggggsssfffffffffffffffffffffffffffb..........",
+	".........bfffffffffGfggggggggsssfffffffffffffffffffffffffffb..........",
+	".........bfffffRf33333333333333333333ffsfffffffffffffffffffb..........",
+	".........bfffffffDfdddffsffffffffffffffffffffffffffffffffffb..........",
+	".........bfffffffffGfgggggggggsssffffffffffffffffffffffffffb..........",
+	".........bfffEfeeeeffsfffffffffffffffffffffffffffffffffffffb..........",
+	".........bfffffAfaaaaaaffsfffffffffffffffffffffffffffffffffb..........",
+	".........bfffffffDfdddffsffffffffffffffffffffffffffffffffffb..........",
+	".........bfffffffffGfgggggggggggggssfffffffffffffffffffffffb..........",
+	".........bfffffYfyyyyyyyyyyyyyyyyyyyyffsfffffffffffffffffffb..........",
+	".........bfffffffDfdddffsffffffffffffffffffffffffffffffffffb..........",
+	".........bfffffffffGfgggggggggggggssfffffffffffffffffffffffb..........",
+	".........bfffffHf222222222222222222ffsfffffffffffffffffffffb..........",
+	".........bfffffffDfdddffsffffffffffffffffffffffffffffffffffb..........",
+	".........bfffffffffGfgggggggggggggssfffffffffffffffffffffffb..........",
+	".........bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb..........",
+	".........bfxxxxxxxxxxxxxxxxxxxoxxxxxxxxxxxxxoxxxxxxxxxxxxxxb..........",
+	".........bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb..........",
+	"......................................................................",
+	"......................................................................",
+}
+
 local KIND_GROUPED_MASK = {
 	"VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV",
 	"BBbVVVVVVVVVVVVVVVVVVVVVbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbBB",
@@ -297,6 +378,13 @@ local function open_money()
 	local typescript_root, typescript_manifest = F.copy("tsproj", vim.fn.tempname())
 	local declaration = typescript_manifest.references.Money[1]
 	child.cmd("cd " .. vim.fn.fnameescape(typescript_root) .. " | edit " .. vim.fn.fnameescape(declaration.path))
+	child.wo.number = true
+	child.wo.relativenumber = false
+	child.wo.numberwidth = 3
+	child.lua([[require("ibl").setup_buffer(0, { enabled = false })]])
+	child.o.showtabline = 0
+	child.o.laststatus = 2
+	child.wo.winbar = "%#Normal#▎ money.ts"
 	child.api.nvim_win_set_cursor(0, { declaration.line, declaration.col - 1 })
 	eq(child.wait([[#vim.lsp.get_clients({ bufnr = 0, name = "vtsls" }) > 0]], TIMEOUT_MS), true)
 	child.lua(
@@ -327,6 +415,19 @@ request()
 	child.type_keys("gr")
 	eq(child.wait([[vim.bo.filetype == "gleb-references"]], TIMEOUT_MS), true)
 	eq(child.wait([[not require("gleb.references.view").state.classifying]], TIMEOUT_MS), true)
+	child.lua([[
+local state = require("gleb.references.view").state
+for index, node in ipairs(state.visible_nodes) do
+	if node.kind == "usage" then
+		vim.api.nvim_win_set_cursor(state.tree_win, { index, 0 })
+		break
+	end
+end
+local win = state.origin_win
+require("lualine").hide({ place = { "statusline" } })
+vim.o.statusline = "%#Normal# NORMAL  ⎇ main%=typescript "
+vim.wo[win].statusline = "%#Normal# NORMAL  ⎇ main%=typescript "
+]])
 	child.cmd("redraw")
 end
 
@@ -374,6 +475,17 @@ end
 local function with_cleared_background(mask)
 	local result = vim.deepcopy(mask)
 	for index = 2, #result do
+		result[index] = result[index]:gsub("%.", "z")
+	end
+	return result
+end
+
+---@param mask string[]
+---@return string[]
+local function with_cleared_typescript_background(mask)
+	local result = vim.deepcopy(mask)
+	result[1] = result[1]:gsub("%.", "z")
+	for index = 3, #result do
 		result[index] = result[index]:gsub("%.", "z")
 	end
 	return result
@@ -480,6 +592,8 @@ T["references: TypeScript class usages are grouped by usage type"] = function()
 	eq(require("tests.render.cases").ts_p1_class ~= nil, true)
 	open_money()
 	H.expect_screenshot(child.get_screenshot())
+	clear_background_for_mask()
+	H.expect_screen_colors(child, 1, with_cleared_typescript_background(TYPESCRIPT_GROUPED_MASK), TYPESCRIPT_LEGEND)
 end
 
 return T

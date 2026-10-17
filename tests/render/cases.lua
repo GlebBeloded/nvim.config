@@ -47,6 +47,15 @@ local function ts_p1_class(driver)
 	local root, manifest = F.copy("tsproj", vim.fn.tempname())
 	local declaration = manifest.references.Money[1]
 	driver.cmd("cd " .. vim.fn.fnameescape(root) .. " | edit " .. vim.fn.fnameescape(declaration.path))
+	driver.lua([[
+vim.wo.number = true
+vim.wo.relativenumber = false
+vim.wo.numberwidth = 3
+require("ibl").setup_buffer(0, { enabled = false })
+vim.o.showtabline = 0
+vim.o.laststatus = 2
+vim.wo.winbar = "%#Normal#▎ money.ts"
+]])
 	driver.lua([[vim.api.nvim_win_set_cursor(0, ...)]], { { declaration.line, declaration.col - 1 } })
 	assert(driver.wait([[#vim.lsp.get_clients({ bufnr = 0, name = "vtsls" }) > 0]], H.lsp_timeout(10000)))
 	driver.lua(
@@ -77,6 +86,19 @@ request()
 	driver.type_keys("gr")
 	assert(driver.wait([[vim.bo.filetype == "gleb-references"]], H.lsp_timeout(10000)))
 	assert(driver.wait([[not require("gleb.references.view").state.classifying]], H.lsp_timeout(10000)))
+	driver.lua([[
+local state = require("gleb.references.view").state
+for index, node in ipairs(state.visible_nodes) do
+	if node.kind == "usage" then
+		vim.api.nvim_win_set_cursor(state.tree_win, { index, 0 })
+		break
+	end
+end
+local win = state.origin_win
+require("lualine").hide({ place = { "statusline" } })
+vim.o.statusline = "%#Normal# NORMAL  ⎇ main%=typescript "
+vim.wo[win].statusline = "%#Normal# NORMAL  ⎇ main%=typescript "
+]])
 end
 
 --- `<C-q>` on `sample.lua` shown in two `:vsplit` windows, `init.lua` the other listed buffer (no LSP).

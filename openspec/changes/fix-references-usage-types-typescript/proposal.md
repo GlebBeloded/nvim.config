@@ -40,7 +40,7 @@ Find Usages has GoLand's usage types for Go only. TypeScript and JavaScript have
 - none
 
 ### Modified Capabilities
-- `references`: extend usage type classification and grouping to TypeScript, TSX and JavaScript syntax while preserving every existing scenario.
+- `references`: added 'TypeScript usage types'.
 
 ## Impact
 
