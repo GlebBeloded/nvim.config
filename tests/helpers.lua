@@ -57,6 +57,7 @@ end
 --- config symlink and cache per run, fresh data/state per call.
 ---@return string sandbox directory
 function M.isolate()
+	vim.env.GLEB_TEST_SANDBOX = "1"
 	if not sandbox then
 		sandbox = vim.fn.tempname()
 		symlink(M.root, vim.fs.joinpath(sandbox, "config/nvim"))

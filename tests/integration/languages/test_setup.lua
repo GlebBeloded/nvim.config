@@ -37,12 +37,17 @@ T["languages: Installed parsers are unchanged"] = function()
 	child.lua([[
 		local treesitter = require("nvim-treesitter")
 		local install = treesitter.install
-		treesitter.install = function(parsers, ...)
+		treesitter.install = function(parsers)
 			vim.g.gleb_treesitter_install = vim.deepcopy(parsers)
-			return install(parsers, ...)
 		end
+		local sandbox = vim.env.GLEB_TEST_SANDBOX
+		vim.env.GLEB_TEST_SANDBOX = nil
+		local repair = package.loaded["gleb.treesitter.repair"]
+		package.loaded["gleb.treesitter.repair"] = { repair = function() end }
 		package.loaded["gleb.treesitter"] = nil
 		require("gleb.treesitter")
+		package.loaded["gleb.treesitter.repair"] = repair
+		vim.env.GLEB_TEST_SANDBOX = sandbox
 		treesitter.install = install
 	]])
 	eq(child.lua_get([[vim.tbl_contains(require("gleb.languages").facet_names(), "treesitter")]]), true)
