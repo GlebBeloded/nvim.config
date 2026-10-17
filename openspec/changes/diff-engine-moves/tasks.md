@@ -9,11 +9,11 @@ Scenarios: `diff: Every VS Code move fixture passes`
 
 Scenarios: `diff: Every VS Code move fixture passes`, `diff: Short moves are ignored`, `diff: Two-line moves are ignored`
 
-- [ ] 2.1 Write the two threshold scenarios in `tests/unit/diff/test_moves.lua` and see them fail
-- [ ] 2.2 Add `lua/gleb/diff/engine/moves.lua`:
+- [x] 2.1 Write the two threshold scenarios in `tests/unit/diff/test_moves.lua` and see them fail
+- [x] 2.2 Add `lua/gleb/diff/engine/moves.lua`:
   - Port `computeMovedLines.ts` and `LineRangeFragment` function by function, with the constants of design Decision 2 and the `countNonWsChars` quirk.
   - Use `lcs.lua` for `lines_similar`.
-- [ ] 2.3 Make `test_moves_goldens.lua` and the two scenarios pass. If a golden fails only on a borderline `lines_similar` decision, port VS Code's Myers tie-breaking for that function (design, Risks). Never drop or edit a golden.
+- [x] 2.3 Make `test_moves_goldens.lua` and the two scenarios pass. If a golden fails only on a borderline `lines_similar` decision, port VS Code's Myers tie-breaking for that function (design, Risks). Never drop or edit a golden.
 
 ## 3. Engine integration
 
