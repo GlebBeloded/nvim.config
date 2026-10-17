@@ -40,9 +40,9 @@ Scenarios: `languages: Every configured language meets the contract`, `languages
 
 Scenarios: `references: gr classifies Lua function calls and redefinitions`
 
-- [ ] 5.1 Write the scenario in `tests/integration/references/test_kind.lua`, driving `gr` through the real picker on `apply` with lua_ls and populated fixture data, and see it fail
-- [ ] 5.2 Add the `luaproj` files and `apply` manifest entry from design.md Decision 7 to `tests/fixtures/build.sh`, and make appended current-file write highlights pass through the same query-first classification as listed usages if the template does not already
-- [ ] 5.3 Run `make test FILE=tests/integration/references/test_kind.lua CASE="gr classifies Lua function calls and redefinitions"` and see it pass; run the existing Lua language and local-usage scenarios in `tests/integration/references/{test_languages,test_kind}.lua`
+- [x] 5.1 Write the scenario in `tests/integration/references/test_kind.lua`, driving `gr` through the real picker on `apply` with lua_ls and populated fixture data, and see it fail
+- [x] 5.2 Add the `luaproj` files and `apply` manifest entry from design.md Decision 7 to `tests/fixtures/build.sh`, and make appended current-file write highlights pass through the same query-first classification as listed usages if the template does not already
+- [x] 5.3 Run `make test FILE=tests/integration/references/test_kind.lua CASE="gr classifies Lua function calls and redefinitions"` and see it pass; run the existing Lua language and local-usage scenarios in `tests/integration/references/{test_languages,test_kind}.lua`
 
 ## 6. Bash references through the real picker
 

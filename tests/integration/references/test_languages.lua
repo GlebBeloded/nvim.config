@@ -168,9 +168,11 @@ T[lua_scenario]["gr opens usages"] = function()
 	local _, manifest = open_references("luaproj", "total", "lua_ls", { "lua_ls" })
 	expect_tree_rows({
 		"scope:Production",
+		"type:Call",
 		"folder:lua/shop",
 		"usage:" .. usage_label(manifest, "total", "lua/shop/cart.lua"),
 		"scope:Test",
+		"type:Call",
 		"folder:spec",
 		"usage:" .. usage_label(manifest, "total", "spec/price_spec.lua"),
 	})
@@ -265,9 +267,11 @@ T[bash_scenario]["gr opens usages"] = function()
 	local _, manifest = open_references("bashproj", "total", "bashls", { "bashls" })
 	expect_tree_rows({
 		"scope:Production",
+		"type:Call",
 		"folder:bin",
 		"usage:" .. usage_label(manifest, "total", "bin/run.sh"),
 		"scope:Test",
+		"type:Call",
 		"folder:test",
 		"usage:" .. usage_label(manifest, "total", "test/price_test.sh"),
 	})

@@ -371,6 +371,19 @@ T[lua_gr_scenario]["renders every usage kind"] = function()
 	})
 end
 
+local lua_function_scenario = "references: gr classifies Lua function calls and redefinitions"
+T[lua_function_scenario] = MiniTest.new_set()
+T[lua_function_scenario]["renders calls and the current-file redefinition"] = function()
+	local root, manifest = F.copy("luaproj", vim.fn.tempname())
+	local declaration = manifest.references.apply[1]
+	local actual = open_references(root, declaration.path, declaration.line, declaration.col, "lua_ls", nil, nil, "lua")
+	eq(actual, {
+		{ "lua/shop/checkout.lua", 3, 17, "call" },
+		{ "lua/shop/discount.lua", 9, 3, "function_declaration" },
+		{ "spec/discount_spec.lua", 3, 17, "call" },
+	})
+end
+
 local python_scenario = "references: gr classifies every Python variable usage"
 T[python_scenario] = MiniTest.new_set()
 T[python_scenario]["renders every usage kind"] = function()

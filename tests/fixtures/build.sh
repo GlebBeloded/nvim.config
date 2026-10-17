@@ -90,10 +90,36 @@ local price = require("shop.price")
 
 assert(price.total(10, 2) == 20)
 EOF
+	cat >lua/shop/discount.lua <<'EOF'
+local M = { rate = 0.1 }
+
+---@param amount number
+function M.apply(amount)
+	return amount * (1 - M.rate)
+end
+
+-- Flat-rate shops override the percentage.
+M.apply = function(amount)
+	return amount - M.rate
+end
+
+return M
+EOF
+	cat >lua/shop/checkout.lua <<'EOF'
+local discount = require("shop.discount")
+
+return discount.apply(100)
+EOF
+	cat >spec/discount_spec.lua <<'EOF'
+local discount = require("shop.discount")
+
+assert(discount.apply(100) == 99.9)
+EOF
 	git init -q
 	commit "Lua references fixture"
-	printf '{"references":{"total":[%s]}}\n' \
-		"$(identifier_locations total lua/shop/price.lua lua/shop/cart.lua spec/price_spec.lua)" >../manifest.json
+	printf '{"references":{"total":[%s],"apply":[%s]}}\n' \
+		"$(identifier_locations total lua/shop/price.lua lua/shop/cart.lua spec/price_spec.lua)" \
+		"$(identifier_locations apply lua/shop/discount.lua lua/shop/checkout.lua spec/discount_spec.lua)" >../manifest.json
 }
 
 pyproj() {
