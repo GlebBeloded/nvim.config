@@ -17,11 +17,52 @@ local render = require("gleb.file_tree.render")
 
 ---@class FileTreeViewState
 ---@field by_tab table<integer, FileTreeView>
+---@field last_editor_by_tab table<integer, integer>
 
 ---@type FileTreeViewState
-M.state = { by_tab = {} }
+M.state = { by_tab = {}, last_editor_by_tab = {} }
 
 local view_group
+
+---@param win integer
+---@return boolean
+local function is_eligible_editor(win)
+	if not vim.api.nvim_win_is_valid(win) or vim.api.nvim_win_get_config(win).relative ~= "" then
+		return false
+	end
+	local buf = vim.api.nvim_win_get_buf(win)
+	local filetype = vim.bo[buf].filetype
+	local name = vim.api.nvim_buf_get_name(buf)
+	return vim.bo[buf].buftype == ""
+		and filetype ~= "neo-tree"
+		and filetype ~= "gleb-file-tree"
+		and not vim.startswith(filetype, "Diffview")
+		and not vim.startswith(name, "diffview://")
+		and not vim.wo[win].diff
+end
+
+local function remember_editor()
+	local win = vim.api.nvim_get_current_win()
+	if is_eligible_editor(win) then
+		M.state.last_editor_by_tab[vim.api.nvim_get_current_tabpage()] = win
+	end
+end
+
+---@param view FileTreeView
+---@return integer
+local function eligible_editor(view)
+	local remembered = M.state.last_editor_by_tab[view.tab]
+	if remembered and remembered ~= view.win and is_eligible_editor(remembered) then
+		return remembered
+	end
+	for _, win in ipairs(vim.api.nvim_tabpage_list_wins(view.tab)) do
+		if win ~= view.win and is_eligible_editor(win) then
+			M.state.last_editor_by_tab[view.tab] = win
+			return win
+		end
+	end
+	error("project tree requires an editor window")
+end
 
 ---@param view FileTreeView
 local function forget(view)
@@ -107,8 +148,118 @@ local function configure_window(win)
 end
 
 ---@param view FileTreeView
+---@return FileTreeRow?
+local function selected_row(view)
+	return view.rows[vim.api.nvim_win_get_cursor(view.win)[1]]
+end
+
+---@param view FileTreeView
+---@param command string
+local function open_selected(view, command)
+	local row = selected_row(view)
+	if not row or row.kind ~= "file" then
+		return
+	end
+	vim.api.nvim_set_current_win(eligible_editor(view))
+	vim.cmd(command .. " " .. vim.fn.fnameescape(row.path))
+end
+
+--- Open the selected project-tree file in the most recent editor window.
+---@return nil
+function M.open()
+	local view = M.state.by_tab[vim.api.nvim_get_current_tabpage()]
+	if view then
+		open_selected(view, "edit")
+	end
+end
+
+--- Open the selected project-tree file in a vertical editor split.
+---@return nil
+function M.open_vsplit()
+	local view = M.state.by_tab[vim.api.nvim_get_current_tabpage()]
+	if view then
+		open_selected(view, "vsplit")
+	end
+end
+
+--- Open the selected project-tree file in a horizontal editor split.
+---@return nil
+function M.open_split()
+	local view = M.state.by_tab[vim.api.nvim_get_current_tabpage()]
+	if view then
+		open_selected(view, "split")
+	end
+end
+
+--- Open the selected project-tree file in a new tab.
+---@return nil
+function M.open_tab()
+	local view = M.state.by_tab[vim.api.nvim_get_current_tabpage()]
+	if view then
+		open_selected(view, "tabnew")
+	end
+end
+
+---@param view FileTreeView
+local function protect_tree_buffer(view)
+	if not vim.api.nvim_win_is_valid(view.win) or vim.api.nvim_get_current_win() ~= view.win then
+		return
+	end
+	local replacement = vim.api.nvim_win_get_buf(view.win)
+	if replacement == view.buf then
+		return
+	end
+	local editor = eligible_editor(view)
+	vim.api.nvim_win_set_buf(view.win, view.buf)
+	vim.bo[view.buf].bufhidden = "wipe"
+	vim.api.nvim_win_set_buf(editor, replacement)
+	vim.api.nvim_set_current_win(editor)
+end
+
+---@param view FileTreeView
+local function configure_mappings(view)
+	local options = { buffer = view.buf, silent = true }
+	vim.keymap.set("n", "<CR>", M.open, vim.tbl_extend("force", options, { desc = "Project: Open" }))
+	vim.keymap.set(
+		"n",
+		"v",
+		M.open_vsplit,
+		vim.tbl_extend("force", options, { desc = "Project: Open in Vertical Split" })
+	)
+	vim.keymap.set(
+		"n",
+		"s",
+		M.open_split,
+		vim.tbl_extend("force", options, { desc = "Project: Open in Horizontal Split" })
+	)
+	vim.keymap.set("n", "t", M.open_tab, vim.tbl_extend("force", options, { desc = "Project: Open in New Tab" }))
+end
+
+---@param view FileTreeView
 local function add_teardown_autocmds(view)
 	view.autocmds = {
+		vim.api.nvim_create_autocmd("BufLeave", {
+			group = view_group,
+			buffer = view.buf,
+			callback = function()
+				vim.bo[view.buf].bufhidden = "hide"
+			end,
+		}),
+		vim.api.nvim_create_autocmd("WinLeave", {
+			group = view_group,
+			pattern = tostring(view.win),
+			callback = function()
+				if vim.api.nvim_buf_is_valid(view.buf) then
+					vim.bo[view.buf].bufhidden = "wipe"
+				end
+			end,
+		}),
+		vim.api.nvim_create_autocmd("BufEnter", {
+			group = view_group,
+			callback = function()
+				protect_tree_buffer(view)
+			end,
+		}),
 		vim.api.nvim_create_autocmd("WinClosed", {
 			group = view_group,
 			pattern = tostring(view.win),
@@ -152,6 +303,7 @@ local function open_view(path)
 	}
 	M.state.by_tab[tab] = view
 	add_teardown_autocmds(view)
+	configure_mappings(view)
 	draw(view, path)
 	return view
 end
@@ -208,7 +360,7 @@ function M.reset()
 	for _, view in pairs(M.state.by_tab) do
 		close_view(view)
 	end
-	M.state = { by_tab = {} }
+	M.state = { by_tab = {}, last_editor_by_tab = {} }
 end
 
 --- Set up project-tree rendering and lifecycle hooks.
@@ -216,6 +368,8 @@ end
 function M.setup()
 	render.setup()
 	view_group = vim.api.nvim_create_augroup("gleb_file_tree_view", { clear = true })
+	remember_editor()
+	vim.api.nvim_create_autocmd("WinEnter", { group = view_group, callback = remember_editor })
 	vim.api.nvim_create_autocmd("QuitPre", { group = view_group, callback = on_quit_pre })
 end
 

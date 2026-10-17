@@ -221,6 +221,24 @@ T["file-tree: Project tree opening skips non-editor windows"] = function()
 	local editor = child.api.nvim_get_current_win()
 	child.wo.number = true
 	child.cmd("Neotree filesystem")
+	assert(
+		child.wait(
+			[[vim.iter(vim.api.nvim_list_wins()):any(function(win)
+			return vim.bo[vim.api.nvim_win_get_buf(win)].filetype == "neo-tree"
+		end)]],
+			10000
+		),
+		"neo-tree did not open"
+	)
+	assert(
+		child.wait(
+			[[vim.iter(vim.api.nvim_list_wins()):all(function(win)
+			return vim.api.nvim_buf_get_name(vim.api.nvim_win_get_buf(win)) ~= "diffview://null"
+		end)]],
+			10000
+		),
+		"Diffview did not finish rendering"
+	)
 	child.cmd("copen")
 	child.cmd("botright split | terminal")
 	child.lua([[(function()

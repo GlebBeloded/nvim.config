@@ -42,9 +42,9 @@ Scenarios: `file-tree: Project tree actions start unbound`, `bufferline: tabs st
 
 Scenarios: `file-tree: Project tree opening skips non-editor windows`, `file-tree: A file cannot replace the project tree buffer`, `file-tree: Project tree split windows keep editor options`, `file-tree: Project tree tab windows keep editor options`
 
-- [ ] 3a.1 Write these scenarios in `tests/integration/file-tree/test_project_tree.lua`, creating real neo-tree, quickfix, terminal, floating and diff-view windows before driving `<CR>`, `v`, `s`, `t` and `:edit`; see them fail.
-- [ ] 3a.2 Implement the named eligible-editor selector in `lua/gleb/file_tree/view.lua`, run opens from that window, restore a replaced tree buffer, and keep tree-only options out of new editor windows.
-- [ ] 3a.3 Run `make test FILE=tests/integration/file-tree/test_project_tree.lua` for these cases and see them pass.
+- [x] 3a.1 Write these scenarios in `tests/integration/file-tree/test_project_tree.lua`, creating real neo-tree, quickfix, terminal, floating and diff-view windows before driving `<CR>`, `v`, `s`, `t` and `:edit`; see them fail.
+- [x] 3a.2 Implement the named eligible-editor selector in `lua/gleb/file_tree/view.lua`, run opens from that window, restore a replaced tree buffer, and keep tree-only options out of new editor windows.
+- [x] 3a.3 Run `make test FILE=tests/integration/file-tree/test_project_tree.lua` for these cases and see them pass.
 
 ## 3b. Tree-window hygiene
 
@@ -187,10 +187,4 @@ Scenarios: `file-tree: Project tree matches the approved render`, `file-tree: Pr
 
 - `fs.tree` passes a root and scan function into `model.rows`, keeping the row model pure while sharing the filesystem cache.
 - Task 2a introduces `view.setup()` only as the render-highlight owner required by the entry-point order; task 2b extends it with per-tab windows.
-
-## Stuck
-
-- Task: 3a, eligible editor targets. The second production attempt is saved in `artifacts/runs/3bb4a2e3-33e2-4151-9e62-67300da1da6a/stuck-attempt.diff`.
-- Probe: direct `:edit` emitted `BufLeave` with `bufhidden=hide`; after scheduling, the tree buffer and window were valid, the tree buffer was restored to its window, and view state remained registered.
-- Attempt 1: added the eligible-editor selector, open entry points and a buffer-local replacement guard. Split/tab opens passed, and the direct-edit probe showed restoration worked, but special-window target history was not stable.
-- Attempt 2: retained the editor target per view so `<CR>` reached the intended normal editor. The full skipped-window assertion still failed because opening the project tree replaced a real Diffview `diffview://null` pane (buffer 3 became buffer 9), violating the scenario before the file open.
+- Eligible editor selection remembers the latest valid `WinEnter` per tab and falls back to another valid editor, so special windows never become targets.
