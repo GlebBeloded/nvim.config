@@ -13,7 +13,6 @@ local ADAPTER_PLUGINS = {
 	copilot = "copilot",
 	dap_ui = "dap-ui",
 	differ = "differ",
-	file_tree = "neo-tree",
 	lazy = "lazy",
 	mason = "mason",
 	neo_tree = "neo-tree",

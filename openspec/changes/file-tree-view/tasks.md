@@ -90,9 +90,9 @@ Scenarios: `file-tree: Project tree za on a file collapses its folder`, `file-tr
 
 Scenarios: `file-tree: Project tree keys come from the keymap file`
 
-- [ ] 4d.1 Write the scenario in `tests/integration/file-tree/test_project_tree.lua` against the real buffer mappings and see it fail.
-- [ ] 4d.2 Remove `file_tree = "neo-tree"` from `ADAPTER_PLUGINS` in `lua/gleb/find_action/assign.lua`. Move the adapter fixture action in `tests/integration/find-action/test_assign.lua` from `file_tree.open` to a `neo_tree.` id, keeping every assertion.
-- [ ] 4d.3 Run `make test FILE=tests/integration/file-tree/test_project_tree.lua` for this case and `make test CAPS=find-action`; see them pass.
+- [x] 4d.1 Write the scenario in `tests/integration/file-tree/test_project_tree.lua` against the real buffer mappings and see it fail.
+- [x] 4d.2 Remove `file_tree = "neo-tree"` from `ADAPTER_PLUGINS` in `lua/gleb/find_action/assign.lua`. Move the adapter fixture action in `tests/integration/find-action/test_assign.lua` from `file_tree.open` to a `neo_tree.` id, keeping every assertion.
+- [x] 4d.3 Run `make test FILE=tests/integration/file-tree/test_project_tree.lua` for this case and `make test CAPS=find-action`; see them pass.
 
 ## 4e. Manual expansion limit
 

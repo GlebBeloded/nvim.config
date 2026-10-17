@@ -550,6 +550,64 @@ T["file-tree: Project tree t opens a new tab"] = function()
 	assert_registered_action("file_tree.open_tab")
 end
 
+T["file-tree: Project tree keys come from the keymap file"] = function()
+	edit("README.md")
+	run_toggle()
+	local actual = child.lua_get([[
+(function()
+	local maps = {}
+	for _, map in ipairs(vim.api.nvim_buf_get_keymap(0, "n")) do
+		maps[map.lhs] = map.desc
+	end
+	local shortcuts = vim.json.decode(table.concat(vim.fn.readfile(
+		vim.fs.joinpath(vim.fn.stdpath("config"), "settings/keymap.json")), "\n"))
+	return { maps = maps, keys = shortcuts["file_tree.open"] }
+end)()
+]])
+	eq(actual.keys, { "<CR>", "o", "l" })
+	for _, lhs in ipairs(actual.keys) do
+		eq(actual.maps[lhs] or actual.maps[vim.keycode(lhs)], "Project: Open")
+	end
+
+	child.type_keys("<M-A>")
+	assert(child.wait([[MiniPick.is_picker_active()]], 5000), "Find Action picker did not open")
+	child.type_keys("project open")
+	assert(
+		child.wait(
+			[[
+(function()
+	local matches = MiniPick.get_picker_matches()
+	local row = matches and require("gleb.find_action.palette").state.rows[matches.current_ind]
+	return row and row.action and row.action.id == "file_tree.open"
+end)()
+]],
+			5000
+		),
+		"Project Open action did not match"
+	)
+	child.lua([[
+		local actions = require("gleb.actions")
+		local shortcut_path = vim.fn.tempname()
+		vim.fn.writefile({ vim.json.encode(actions.state.store.last_good) }, shortcut_path)
+		actions.state.store.path = shortcut_path
+		vim.schedule(function()
+			vim.api.nvim_feedkeys(vim.keycode("<F23><CR>"), "t", false)
+		end)
+		local catalog = actions.state.applicator.catalog
+		require("gleb.find_action.assign").open(assert(catalog:get("file_tree.open")))
+	]])
+	assert(
+		child.wait([[require("gleb.actions").state.store.last_good["file_tree.open"][4] == "<F23>"]], 5000),
+		"Project Open shortcut was not saved"
+	)
+	child.type_keys("<Esc>")
+
+	eq(child.lua_get([[vim.fn.maparg("<F23>", "n", false, true).desc]]), "Project: Open")
+	focus_tree_row("internal")
+	child.type_keys("<F23>")
+	eq(child.lua_get([[vim.api.nvim_get_current_line():find("", 1, true) ~= nil]]), true)
+end
+
 T["file-tree: Project tree za on a file collapses its folder"] = function()
 	edit("README.md")
 	run_toggle()
