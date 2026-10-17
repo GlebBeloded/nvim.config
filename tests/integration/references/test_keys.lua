@@ -73,6 +73,7 @@ T["references: Tests filter can leave the tree empty"] = function()
 	eq(child.wait([[vim.bo.filetype == "gleb-references"]], TIMEOUT_MS), true)
 
 	child.type_keys("t")
+	eq(child.wait([[not require("gleb.references.view").state.classifying]], TIMEOUT_MS), true)
 	local empty = child.lua_get([[
 (function()
 	local state = require("gleb.references.view").state
