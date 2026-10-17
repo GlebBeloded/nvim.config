@@ -11,6 +11,7 @@ Scenarios: `languages: Every configured language meets the contract`
 - The JavaScript case module exposes TypeScript as its contract-compatible top-level suite and all three parser suites under `suites`, preserving the existing contract shape while covering each configured parser.
 - Target-kind refinement is opt-in on query positions, so the populated case table exercises refinement while existing raw-query callers keep their capture-only contract.
 - The catalogue test resolves `ecma` through `javascript` and `ts_angle_cast` through `typescript`, their direct real-parser inheritors, so Neovim compiles each pseudo-language capture without a nonexistent parser.
+- The fixture manifest generator records every identifier occurrence on a line, so the two `Money` static-member lines retain both the annotation and member-object locations; the real references exposed no query gap.
 
 ## 2. Classify TypeScript, TSX and JavaScript syntax
 
@@ -32,9 +33,9 @@ Scenarios: `references: Every query capture is in the catalogue`
 
 Scenarios: `references: gr classifies TypeScript class usages`, `references: gr classifies TypeScript method usages as calls`
 
-- [ ] 4.1 Extend the populated `tsproj` fixture and manifest with the exact files and locations from design Decision 6, write both scenarios in `tests/integration/references/test_kind.lua`, drive the real `gr` mapping after vtsls returns all manifest locations, and run `make test FILE=tests/integration/references/test_kind.lua CASE="gr classifies TypeScript"` and see them fail
-- [ ] 4.2 Fix only query pattern or precedence gaps exposed by the real references, preserving all unit cases
-- [ ] 4.3 Run `make test FILE=tests/integration/references/test_kind.lua CASE="gr classifies TypeScript"` and see both scenarios pass
+- [x] 4.1 Extend the populated `tsproj` fixture and manifest with the exact files and locations from design Decision 6, write both scenarios in `tests/integration/references/test_kind.lua`, drive the real `gr` mapping after vtsls returns all manifest locations, and run `make test FILE=tests/integration/references/test_kind.lua CASE="gr classifies TypeScript"` and see them fail
+- [x] 4.2 Fix only query pattern or precedence gaps exposed by the real references, preserving all unit cases
+- [x] 4.3 Run `make test FILE=tests/integration/references/test_kind.lua CASE="gr classifies TypeScript"` and see both scenarios pass
 
 ## 5. Group TypeScript class usages on screen
 
