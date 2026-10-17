@@ -77,6 +77,13 @@ This change is the first of three engine changes. It ports the line level of Int
 - "is diffbanding perfect? I want to own ui 100%".
 - "I'm used to Idea", "I like IDEA IDE diff more".
 
+## Decision (auditor, 2026-10-17, performance and fidelity)
+
+- The engine is linear in the common prefix/suffix and checks its deadline inside every loop: no front-inserts (`table.insert(t, 1, …)`) on hot paths; a one-line change at the end of a 100k-line file finishes well under the 1 s deadline without `timed_out`, and a test pins that.
+- Myers runs in linear space (IntelliJ's `MyersLCS` divide-and-conquer), never a vector copy per step.
+- Patience's reduction check follows `PatienceIntLCS.kt` at the pinned commit: fail without anchors only when the sub-problem is at least half of the original counts, measure against the original counts, keep its depth counter, check the tail too; a test pins a case where the two readings differ.
+- Every perf, golden and invariants test asserts `too_big == false` and `timed_out == false`, so an xdiff fallback can never pass for the IntelliJ path.
+
 ## Agent decisions
 
 - **Fallback when the comparison is too big or too slow.** IntelliJ only shows "too big" in that case. Here the result falls back to xdiff histogram line ranges, flagged `too_big` or `timed_out`, because a viewer is more useful with a coarse diff than with none. The deadline (1000 ms, in `limits`) is new: IntelliJ runs comparisons in a cancellable background task, and Lua blocks the editor while it compares.
