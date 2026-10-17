@@ -78,8 +78,15 @@ def run(change: str) -> tuple[str, str]:
     return run_id, status if status in ("completed", "failed", "cancelled") else "paused"
 
 
+def requeued(change: str) -> bool:
+    """The judge rejected the run and followup.py re-queued the change (a `## Rejected run` section in its proposal)."""
+    proposal = pathlib.Path("openspec/changes") / change / "proposal.md"
+    return proposal.is_file() and "## Rejected run" in proposal.read_text()
+
+
 def drain(limit: int | None) -> int:
     skip: set[str] = set()
+    retried: set[str] = set()
     runs = 0
     while limit is None or runs < limit:
         change = pick(skip)
@@ -91,6 +98,9 @@ def drain(limit: int | None) -> int:
         runs += 1
         run_id, status = run(change)
         print(f"drain: {change} {status}", flush=True)
+        if status == "cancelled" and change not in retried and requeued(change):  # one more run adopts its branch
+            retried.add(change)
+            skip.discard(change)
         if status == "paused":
             print(f"drain: stopped, {change} paused (no node should pause: a loop bug): archon workflow status (run {run_id})")
             return 0
