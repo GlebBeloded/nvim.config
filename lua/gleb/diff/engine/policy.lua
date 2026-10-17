@@ -74,13 +74,14 @@ function M.trim_ignored_chunks(fragments, lines1, lines2)
 	return result
 end
 
-local function side_text_length(fragment, side, lines)
+local function comparison_text_length(fragment, side, lines)
 	local start_index = fragment["start" .. side]
 	local end_index = fragment["end" .. side]
 	if start_index == end_index then
 		return 0
 	end
-	return #table.concat(lines, "\n", start_index + 1, end_index)
+	local length = #table.concat(lines, "\n", start_index + 1, end_index)
+	return end_index < #lines and length + 1 or length
 end
 
 local function append_inner(target, source, shift1, shift2)
@@ -111,23 +112,21 @@ end
 ---@return gleb.diff.LineFragment[]
 function M.squash(fragments, lines1, lines2)
 	local result = {}
+	local length1 = 0
+	local length2 = 0
 	for _, fragment in ipairs(fragments) do
 		local previous = result[#result]
 		if previous and previous.end1 == fragment.start1 and previous.end2 == fragment.start2 then
-			local shift1 = side_text_length(previous, 1, lines1)
-			local shift2 = side_text_length(previous, 2, lines2)
-			if previous.start1 ~= previous.end1 and previous.end1 < #lines1 then
-				shift1 = shift1 + 1
-			end
-			if previous.start2 ~= previous.end2 and previous.end2 < #lines2 then
-				shift2 = shift2 + 1
-			end
-			append_inner(previous, fragment, shift1, shift2)
+			append_inner(previous, fragment, length1, length2)
+			length1 = length1 + comparison_text_length(fragment, 1, lines1)
+			length2 = length2 + comparison_text_length(fragment, 2, lines2)
 			previous.end1 = fragment.end1
 			previous.end2 = fragment.end2
 		else
 			local copy = vim.deepcopy(fragment)
 			result[#result + 1] = copy
+			length1 = comparison_text_length(fragment, 1, lines1)
+			length2 = comparison_text_length(fragment, 2, lines2)
 		end
 	end
 	return result

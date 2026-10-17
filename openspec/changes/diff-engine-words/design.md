@@ -96,7 +96,7 @@ It also reads `platform/diff-impl/src/com/intellij/diff/comparison/ComparisonMan
    function M.inner_columns(fragment, side, lines) end
    ```
 
-   - A fragment's text is `table.concat(lines, "\n", start + 1, end_)` for its side. Inner offsets index into it.
+   - A fragment's comparison text is its lines joined with `"\n"`, plus a trailing `"\n"` when another line follows on that side. Inner offsets index into it.
    - `inner_columns` splits a range that spans a newline into one column range per row, and drops the newline byte itself.
    - `compare_words` and `compare_chars` return `{}` for equal texts. Whole-text results are not squashed, as in IntelliJ's `compareWords` and `compareChars`.
 3. **Highlight modes and the pipeline.**
@@ -127,7 +127,7 @@ It also reads `platform/diff-impl/src/com/intellij/diff/comparison/ComparisonMan
    - UTF-16 offsets become byte offsets through the row's text. For example, `("汉语漢語" - "語汉语漢")` with changed chars `{3}` and `{0}` becomes bytes `{9,10,11}` and `{0,1,2}`.
    - **Property test.** `ComparisonUtilAutoTest`'s word, char and inner invariants, with the LCG and both alphabets of `diff-engine-lines`:
      - ranges are ordered and in bounds;
-     - gaps are equal under the policy, and changed chunks are unequal (IGNORE compares them without whitespace);
+     - gaps are equal byte-for-byte under DEFAULT and without whitespace under the other policies; changed chunks are unequal byte-for-byte under DEFAULT and TRIM, and without whitespace under IGNORE;
      - no range splits a UTF-8 sequence;
      - inner ranges stay inside their parent's texts.
 8. **Attribution.**

@@ -43,6 +43,10 @@ local function start()
 			return vim.split(text, "\n", { plain = true })
 		end
 
+		local function covers_all_lines(end_index, lines_)
+			return end_index == #lines_ or (lines_[#lines_] == "" and end_index == #lines_ - 1)
+		end
+
 		function CheckWordGoldens(rows)
 			local failures = {}
 			for _, row in ipairs(rows) do
@@ -56,12 +60,31 @@ local function start()
 						failures[#failures + 1] = { source = row.source, policy = policy, expected = expected, actual = actual }
 					end
 					if row.kind == "lines_inner" then
-						local result = engine.compare_lines(lines(row.text1), lines(row.text2), { policy = policy })
-						local inner = #result.fragments == 1 and result.fragments[1].inner or {}
+						local lines1 = lines(row.text1)
+						local lines2 = lines(row.text2)
+						local result = engine.compare_lines(lines1, lines2, { policy = policy })
+						local fragment = result.fragments[1]
+						local valid_fragment = #result.fragments == 1
+							and fragment.start1 == 0 and covers_all_lines(fragment.end1, lines1)
+							and fragment.start2 == 0 and covers_all_lines(fragment.end2, lines2)
+							and fragment.inner ~= nil
+						if not valid_fragment then
+							failures[#failures + 1] = {
+								source = row.source .. " lines",
+								policy = policy,
+								expected = expected,
+								actual = {
+									error = "expected one full-text fragment with inner ranges",
+									fragments = tuple_fragments(result.fragments),
+								},
+							}
+							goto continue_policy
+						end
+						local inner = fragment.inner
 						local line_actual = {}
-						if expected.changed1 then line_actual.changed1 = changed_bytes(inner or {}, 1) end
-						if expected.changed2 then line_actual.changed2 = changed_bytes(inner or {}, 2) end
-						if expected.fragments then line_actual.fragments = tuple_fragments(inner or {}) end
+						if expected.changed1 then line_actual.changed1 = changed_bytes(inner, 1) end
+						if expected.changed2 then line_actual.changed2 = changed_bytes(inner, 2) end
+						if expected.fragments then line_actual.fragments = tuple_fragments(inner) end
 						if not vim.deep_equal(line_actual, expected) then
 							failures[#failures + 1] = {
 								source = row.source .. " lines",
@@ -71,6 +94,7 @@ local function start()
 							}
 						end
 					end
+					::continue_policy::
 				end
 			end
 			return failures

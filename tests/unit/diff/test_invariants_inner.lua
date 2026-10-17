@@ -16,6 +16,7 @@ local T = H.child_set(child, start)
 T["diff: Random texts keep IntelliJ's inner invariants"] = function()
 	local failure = child.lua_get([[(function()
 		local engine = require("gleb.diff.engine")
+		local by_word = require("gleb.diff.engine.by_word")
 		if type(engine.compare_words) ~= "function" then
 			return "compare_words is missing"
 		end
@@ -66,6 +67,21 @@ T["diff: Random texts keep IntelliJ's inner invariants"] = function()
 			return result
 		end
 
+		local function has_common_word(text1, text2)
+			local keys = {}
+			for _, word in ipairs(by_word.inline_chunks(text1)) do
+				if not word.newline then
+					keys[word.key] = true
+				end
+			end
+			for _, word in ipairs(by_word.inline_chunks(text2)) do
+				if not word.newline and keys[word.key] then
+					return true
+				end
+			end
+			return false
+		end
+
 		local function validate(text1, text2, policy_name, fragments)
 			local valid1 = boundaries(text1)
 			local valid2 = boundaries(text2)
@@ -94,6 +110,9 @@ T["diff: Random texts keep IntelliJ's inner invariants"] = function()
 				local changed2 = text2:sub(fragment.start2 + 1, fragment.end2)
 				if normalize_changed(changed1, policy_name) == normalize_changed(changed2, policy_name) then
 					return ("range %d is equal"):format(index)
+				end
+				if policy_name == "default" and has_common_word(changed1, changed2) then
+					return ("range %d spans an unchanged word"):format(index)
 				end
 				previous1 = fragment.end1
 				previous2 = fragment.end2
