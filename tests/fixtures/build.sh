@@ -447,6 +447,7 @@ EOF
 }
 
 tfproj() {
+	mkdir -p net
 	cat >variables.tf <<'EOF'
 variable "region" {
   type = string
@@ -462,10 +463,44 @@ output "selected_region" {
   value = var.region
 }
 EOF
+	cat >network.tf <<'EOF'
+variable "vpc_cidr" {
+  type = string
+}
+
+module "vpc" {
+  source = "./net"
+  cidr   = var.vpc_cidr
+}
+
+resource "aws_s3_bucket" "logs" {
+  bucket     = module.vpc.id
+  depends_on = [module.vpc]
+}
+
+output "vpc_id" {
+  value = module.vpc.id
+}
+EOF
+	cat >net/main.tf <<'EOF'
+variable "cidr" {
+  type = string
+}
+
+locals {
+  name = "subnet-${var.cidr}"
+}
+
+output "id" {
+  value = var.cidr
+}
+EOF
 	git init -q
 	commit "Terraform references fixture"
-	printf '{"references":{"region":[%s]}}\n' \
-		"$(identifier_locations region variables.tf main.tf outputs.tf)" >../manifest.json
+	printf '{"references":{"region":[%s],"cidr":[%s],"vpc":[%s]}}\n' \
+		"$(identifier_locations region variables.tf main.tf outputs.tf)" \
+		"$(identifier_locations cidr net/main.tf network.tf)" \
+		"$(identifier_locations vpc network.tf net/main.tf)" >../manifest.json
 }
 
 gomod() {

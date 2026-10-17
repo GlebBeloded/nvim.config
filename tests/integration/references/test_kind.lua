@@ -733,6 +733,72 @@ T[terraform_scenario]["renders every usage kind"] = function()
 	})
 end
 
+local terraform_module_variable_scenario = "references: gr classifies Terraform module variable usages"
+T[terraform_module_variable_scenario] = MiniTest.new_set()
+T[terraform_module_variable_scenario]["renders module inputs and variable reads"] = function()
+	local root, manifest = F.copy("tfproj", vim.fn.tempname())
+	eq(manifest.references.cidr, {
+		{ path = "net/main.tf", line = 1, col = 11 },
+		{ path = "net/main.tf", line = 6, col = 24 },
+		{ path = "net/main.tf", line = 10, col = 15 },
+		{ path = "network.tf", line = 7, col = 3 },
+	})
+	require_server("terraformls")
+	child.cmd("cd " .. vim.fn.fnameescape(root) .. " | edit network.tf")
+	assert(
+		child.wait([[#vim.lsp.get_clients({ bufnr = 0, name = "terraformls" }) > 0]], TIMEOUT_MS),
+		"terraformls did not index the parent module"
+	)
+	local declaration = manifest.references.cidr[1]
+	local actual = open_references(
+		root,
+		declaration.path,
+		declaration.line,
+		declaration.col,
+		"terraformls",
+		nil,
+		nil,
+		"hcl",
+		nil,
+		3
+	)
+	eq(actual, {
+		{ "net/main.tf", 6, 20, "read" },
+		{ "net/main.tf", 10, 11, "read" },
+		{ "network.tf", 7, 3, "attribute_assignment" },
+	})
+end
+
+local terraform_module_scenario = "references: gr classifies Terraform module usages"
+T[terraform_module_scenario] = MiniTest.new_set()
+T[terraform_module_scenario]["renders every module usage type"] = function()
+	local root, manifest = F.copy("tfproj", vim.fn.tempname())
+	eq(manifest.references.vpc, {
+		{ path = "network.tf", line = 5, col = 9 },
+		{ path = "network.tf", line = 11, col = 23 },
+		{ path = "network.tf", line = 12, col = 24 },
+		{ path = "network.tf", line = 16, col = 18 },
+	})
+	local declaration = manifest.references.vpc[1]
+	local actual = open_references(
+		root,
+		declaration.path,
+		declaration.line,
+		declaration.col,
+		"terraformls",
+		nil,
+		nil,
+		"hcl",
+		nil,
+		3
+	)
+	eq(actual, {
+		{ "network.tf", 11, 16, "module_reference" },
+		{ "network.tf", 12, 17, "depends_on" },
+		{ "network.tf", 16, 11, "output" },
+	})
+end
+
 local python_class_scenario = "references: gr classifies Python class usages"
 T[python_class_scenario] = MiniTest.new_set()
 T[python_class_scenario]["classifies every class usage through the picker"] = function()

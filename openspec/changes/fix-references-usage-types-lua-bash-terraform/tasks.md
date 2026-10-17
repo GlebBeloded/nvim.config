@@ -58,9 +58,9 @@ Scenarios: `references: gr classifies Bash exports, writes and reads`, `referenc
 
 Scenarios: `references: gr classifies Terraform module variable usages`, `references: gr classifies Terraform module usages`
 
-- [ ] 7.1 Write both scenarios in `tests/integration/references/test_kind.lua`, driving `gr` through the real picker on `cidr` and `vpc` with terraform-ls and populated fixture data; open `network.tf` before `net/main.tf` for `cidr`, wait for the indexed module argument, and see the tests fail
-- [ ] 7.2 Add the `tfproj` files and `cidr`/`vpc` manifest entries from design.md Decision 7 to `tests/fixtures/build.sh`, changing no existing fixture line
-- [ ] 7.3 Run `make test FILE=tests/integration/references/test_kind.lua CASE="gr classifies Terraform module variable usages"` and `make test FILE=tests/integration/references/test_kind.lua CASE="gr classifies Terraform module usages"` and see both pass; run the existing Terraform language, variable-usage and block-target scenarios
+- [x] 7.1 Write both scenarios in `tests/integration/references/test_kind.lua`, driving `gr` through the real picker on `cidr` and `vpc` with terraform-ls and populated fixture data; open `network.tf` before `net/main.tf` for `cidr`, wait for the indexed module argument, and see the tests fail
+- [x] 7.2 Add the `tfproj` files and `cidr`/`vpc` manifest entries from design.md Decision 7 to `tests/fixtures/build.sh`, changing no existing fixture line
+- [x] 7.3 Run `make test FILE=tests/integration/references/test_kind.lua CASE="gr classifies Terraform module variable usages"` and `make test FILE=tests/integration/references/test_kind.lua CASE="gr classifies Terraform module usages"` and see both pass; run the existing Terraform language, variable-usage and block-target scenarios
 
 ## 8. Lua approved render
 
