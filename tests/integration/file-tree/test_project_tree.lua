@@ -36,6 +36,12 @@ local function edit(relative)
 	child.cmd("edit " .. vim.fn.fnameescape(vim.fs.joinpath(root, relative)))
 end
 
+---@param relative string
+---@return string
+local function real_path(relative)
+	return vim.fs.joinpath(assert(vim.uv.fs_realpath(root)), relative)
+end
+
 local function run_toggle()
 	child.lua([[
 		local catalog = require("gleb.actions").state.applicator.catalog
@@ -55,6 +61,29 @@ end
 
 local function lines()
 	return child.lua_get([[vim.api.nvim_buf_get_lines(ProjectTreeBuf, 0, -1, false)]])
+end
+
+---@param name string
+local function focus_tree_row(name)
+	local found = child.lua_get(
+		[[(function(name)
+			for row, line in ipairs(vim.api.nvim_buf_get_lines(0, 0, -1, false)) do
+				if line:find(name, 1, true) then
+					vim.api.nvim_win_set_cursor(0, { row, 0 })
+					return true
+				end
+			end
+			return false
+		end)(...)]],
+		{ name }
+	)
+	assert(found, "tree row not found: " .. name)
+end
+
+local function open_tree_on_makefile()
+	edit("README.md")
+	run_toggle()
+	focus_tree_row("Makefile")
 end
 
 ---@param needle string
@@ -174,6 +203,103 @@ T["file-tree: Project tree closes with the last window"] = function()
 	local job = child.job.id
 	child.api_notify.nvim_command("q")
 	eq(vim.fn.jobwait({ job }, 5000)[1], 0)
+end
+
+T["file-tree: Project tree opening skips non-editor windows"] = function()
+	child.cmd("cd " .. vim.fn.fnameescape(root))
+	child.cmd("DiffviewOpen")
+	assert(
+		child.wait(
+			[[vim.iter(vim.api.nvim_list_wins()):any(function(win)
+		return vim.bo[vim.api.nvim_win_get_buf(win)].filetype == "DiffviewFiles"
+	end)]],
+			10000
+		),
+		"Diffview did not open"
+	)
+	child.cmd("vnew | edit " .. vim.fn.fnameescape(real_path("README.md")))
+	local editor = child.api.nvim_get_current_win()
+	child.wo.number = true
+	child.cmd("Neotree filesystem")
+	child.cmd("copen")
+	child.cmd("botright split | terminal")
+	child.lua([[(function()
+		local buf = vim.api.nvim_create_buf(false, true)
+		vim.api.nvim_open_win(buf, true, {
+			relative = "editor",
+			row = 1,
+			col = 1,
+			width = 20,
+			height = 2,
+			style = "minimal",
+		})
+	end)()]])
+	local skipped = child.lua_get([[(function()
+		return vim.iter(vim.api.nvim_tabpage_list_wins(0)):filter(function(win)
+			local buf = vim.api.nvim_win_get_buf(win)
+			local name = vim.api.nvim_buf_get_name(buf)
+			return vim.bo[buf].filetype == "neo-tree"
+				or vim.bo[buf].filetype == "DiffviewFiles"
+				or vim.bo[buf].buftype == "quickfix"
+				or vim.bo[buf].buftype == "terminal"
+				or vim.api.nvim_win_get_config(win).relative ~= ""
+				or vim.wo[win].diff
+				or vim.startswith(name, "diffview://")
+		end):map(function(win)
+			local buf = vim.api.nvim_win_get_buf(win)
+			return { win, buf, vim.bo[buf].filetype .. ":" .. vim.api.nvim_buf_get_name(buf) }
+		end):totable()
+	end)()]])
+	run_toggle()
+	focus_tree_row("Makefile")
+
+	child.api.nvim_input(vim.keycode("<CR>"))
+
+	assert(child.wait(("vim.api.nvim_get_current_win() == %d"):format(editor)), "editor window was not focused")
+	eq(child.api.nvim_buf_get_name(0), real_path("Makefile"))
+	for _, special in ipairs(skipped) do
+		assert(child.api.nvim_win_get_buf(special[1]) == special[2], "special window replaced: " .. special[3])
+	end
+	eq(#project_tree_windows(), 1)
+end
+
+T["file-tree: A file cannot replace the project tree buffer"] = function()
+	open_tree_on_makefile()
+	local tree_win = child.api.nvim_get_current_win()
+	local tree_buf = child.api.nvim_get_current_buf()
+
+	child.cmd("edit " .. vim.fn.fnameescape(real_path("Makefile")))
+
+	eq(child.api.nvim_buf_get_name(0), real_path("Makefile"))
+	eq(child.bo.filetype, "make")
+	eq(child.api.nvim_win_get_buf(tree_win), tree_buf)
+	eq(child.lua_get([[vim.bo[...].filetype]], { tree_buf }), "gleb-file-tree")
+end
+
+T["file-tree: Project tree split windows keep editor options"] = MiniTest.new_set()
+
+for _, case in ipairs({ { key = "v", title = "vertical split" }, { key = "s", title = "horizontal split" } }) do
+	T["file-tree: Project tree split windows keep editor options"][case.title] = function()
+		open_tree_on_makefile()
+
+		child.type_keys(case.key)
+
+		eq(child.api.nvim_buf_get_name(0), real_path("Makefile"))
+		eq(child.wo.number, true)
+		eq(child.wo.winfixwidth, false)
+	end
+end
+
+T["file-tree: Project tree tab windows keep editor options"] = function()
+	open_tree_on_makefile()
+	local tabs = #child.api.nvim_list_tabpages()
+
+	child.type_keys("t")
+
+	eq(#child.api.nvim_list_tabpages(), tabs + 1)
+	eq(child.api.nvim_buf_get_name(0), real_path("Makefile"))
+	eq(child.wo.number, true)
+	eq(child.wo.winfixwidth, false)
 end
 
 return T
