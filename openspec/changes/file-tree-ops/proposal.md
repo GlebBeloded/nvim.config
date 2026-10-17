@@ -1,0 +1,96 @@
+## Why
+
+Kind: feature
+Depends: file-tree-view
+
+The project tree from `file-tree-view` can only browse. The user edits files from the tree every day: add, rename, delete, copy and move. They use neo-tree's operations today (the `file-tree` spec's "Common tree edit mappings"). neo-tree's prompts are nui inputs at the cursor row, outside the shared picker frame (Current renders in design.md). Its renames never tell the language servers, so imports are not updated the way IntelliJ's rename updates them.
+
+## What Changes
+
+- **Operations** in `lua/gleb/file_tree/ops.lua`, as actions in `file_tree/actions.lua` (category `Project`, filetype `gleb-file-tree`), with keys in `settings/keymap.json`:
+  - `file_tree.add` `a`: create a file, or a folder when the name ends in `/`. Missing parent folders are created. A new file opens in the editor window.
+  - `file_tree.rename` `r`: rename a file or folder. Loaded buffers follow, through Neovim's `vim.lsp.util.rename`.
+  - `file_tree.delete` `d` (also Visual): confirm, then move to the macOS Trash with `trash -s`. Without that command, the entries are deleted permanently after the same confirmation. Unmodified buffers of deleted files are closed, and their windows stay.
+  - `file_tree.copy` `c`, `file_tree.cut` `x` (both also Visual), `file_tree.paste` `p`:
+    - Paste goes into the folder under the cursor.
+    - A copy whose name already exists asks for a new name (`invoice_copy.go`).
+    - A cut moves like a rename.
+  - `file_tree.refresh` `R`: rescan the expanded folders and rerun git status.
+- **Language servers:**
+  - A rename or move first sends `workspace/willRenameFiles` to every client whose `workspace.fileOperations.willRename` filters match. Their workspace edits are applied (for example, imports), waiting at most 1000 ms.
+  - Then the files move.
+  - Then `workspace/didRenameFiles` goes to the matching `didRename` clients.
+- **Prompts** use the shared picker frame (rule 8.9) through a new `lua/gleb/picker/input.lua`:
+  - the title and query in the top border;
+  - one preview row with the resulting path;
+  - hints right-aligned below the joined rule.
+
+  Delete confirms through `vim.ui.select` (our picker).
+- **Errors** are notified at ERROR (rule 8.1):
+  - `Already exists: <path>`
+  - `Cannot paste <path> into itself`
+  - `Create failed: <err>`, `Rename failed: <err>`, `Delete failed: <stderr>`, `Paste failed: <err>`
+- **Renders:** Current and Proposed for the add and rename prompts (design.md).
+
+## Capabilities
+
+### New Capabilities
+- none
+
+### Modified Capabilities
+- `file-tree`: added requirements for project tree create, rename (with LSP file operations), delete, copy/cut/paste, refresh and their keys and prompts. neo-tree's "Common tree edit mappings" stays until `tree-diff-cutover`.
+- `picker`: added "Picker input prompt".
+
+## Impact
+
+- Code:
+  - New: `lua/gleb/file_tree/ops.lua`, `lua/gleb/file_tree/paths.lua` (pure helpers), `lua/gleb/file_tree/lsp_files.lua` (will/did rename), `lua/gleb/picker/input.lua`.
+  - Changed: `lua/gleb/file_tree/actions.lua`, `settings/keymap.json` (view-scoped keys only), `lua/gleb/file_tree/view.lua` (select a created or pasted entry).
+- Tests:
+  - unit: `tests/unit/file-tree/test_ops.lua` (target folder, copy names, self-paste check, filter matching).
+  - integration: `tests/integration/file-tree/test_project_ops.lua`, `test_project_lsp_rename.lua` (an in-process fake language server: `vim.lsp.start` with a `cmd` function), `tests/integration/picker/test_input.lua`.
+  - screen: `tests/screen/file-tree/test_project_ops.lua` (G1, G2).
+- Plugins: none. Alternatives considered for the LSP file operations:
+  - antosha417/nvim-lsp-file-operations (440 stars, pushed 2026-10-12) hooks into nvim-tree, neo-tree and oil events, not our tree.
+  - folke/snacks.nvim `rename` (8.1k stars, pushed 2026-05-25) is a large suite for one helper.
+
+  Neovim's own `vim.lsp.util.rename` already moves files, undo files and buffers. The will/did requests are about 40 lines.
+- Core keymaps: none. All keys are buffer-local to `gleb-file-tree`.
+- Unchanged scenarios:
+  - `file-tree: a creates a file` and `file-tree: r renames a file` still hold: neo-tree's edit mappings are untouched.
+  - `ai: Menu ignores other keys` still holds: the AI menu and its keys are untouched; the new keys exist only in `gleb-file-tree` buffers and the input prompt.
+  - `git: ]c steps to the next hunk in differ` still holds: differ and its keys are untouched.
+  - `keymaps: Close buffer keeps split layout` still holds: `buffer.close` is untouched; delete only reuses its idea of keeping windows.
+  - `keymaps: Paste over selection keeps register` still holds: the global Visual `p` is untouched; the tree's `p` is buffer-local and normal-mode only.
+  - `keymaps: Move selected lines down` still holds: the global Visual `J` mapping is untouched.
+  - `keymaps: Move selected lines up` still holds: the global Visual `K` mapping is untouched.
+  - `keymaps: Alt-j moves selected lines down` still holds: `<A-j>` is untouched.
+  - `keymaps: Alt-k moves selected lines up` still holds: `<A-k>` is untouched.
+  - `keymaps: Typing p in select mode inserts p` still holds: the tree's Visual keys are `x`-mode only and never Select mode.
+  - `lsp: References of a Go function list call sites across packages` still holds: no LSP configuration or client capability changes; only tree renames send file-operation messages.
+  - `references: Real key presses switch Calls usages from the level to row tags` still holds: Find Usages keys are untouched.
+  - `select: Selection accepts omitted options` still holds: delete calls `vim.ui.select` with items and a prompt, through the unchanged override.
+  - `select: Cancelling a code action completes selection` still holds: the `vim.ui.select` override is unchanged.
+  - `select: Selection previews the current item` still holds: the `vim.ui.select` override is unchanged.
+  - `select: Omitted options open shared selection` still holds: the `vim.ui.select` override is unchanged.
+  - `shortcuts: The stack harness shows the screen that blocks Neovim` still holds: no terminal or global shortcut changes.
+- Out of scope:
+  - `workspace/willCreateFiles`, `didCreateFiles`, `willDeleteFiles` and `didDeleteFiles`.
+  - Undo of file operations, drag and drop, and operations from outside the tree (Find Action on an editor buffer).
+  - Replacing `vim.ui.input` globally: LSP rename (`<A-r>`) keeps its prompt.
+
+## Decision (user, 2026-10-17)
+
+- "I'm used to Idea".
+- File tree: the IntelliJ project view, with add/delete/rename/copy/cut/paste/refresh ("file-tree-ops: add/delete/rename/copy/cut/paste/refresh with buffer renames and LSP workspace/willRenameFiles", the approved plan).
+
+## Agent decisions
+
+- **Trash:** macOS 15+ ships `/usr/bin/trash` (checked: present here, `-s` stops on the first error), so delete is recoverable. Without the command, the same confirmation leads to a permanent delete.
+- **Confirmation** always asks, even for one file, as IntelliJ does. The choices are `Move to Trash` (or `Delete` without the command) and `Cancel`.
+- **New file opens** in the editor window and takes focus (IntelliJ). A new folder stays selected in the tree.
+- **Rename** takes a name relative to the entry's folder. A `/` in it moves the entry into a sub-folder, created when missing.
+- **Copy name conflict** asks for a name, prefilled with `<stem>_copy<ext>`, instead of overwriting.
+- **The tree clipboard** is the tree's own state, not a register. A cut is cleared after its paste. A copy can be pasted many times.
+- **A compact row** (`cmd/server`) stands for its last folder in every operation.
+- **Modified buffers** of deleted files stay open, so unsaved text is never lost. Renamed modified buffers are written to the new path by `vim.lsp.util.rename` (`:saveas!`), and auto-save writes them anyway.
