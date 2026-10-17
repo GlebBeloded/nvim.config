@@ -27,12 +27,12 @@ Scenarios: `diff: Diff view do reverts a changed line`, `diff: Diff view dp reve
 
 Scenarios: `diff: Diff view marks both ends of a moved block`, `diff: Diff view gm jumps between the ends of a move`, `diff: Diff view gm off a move does nothing`, `diff: Diff view move colours`
 
-- [ ] 3.1 Write these scenarios in `tests/integration/diff/test_moves.lua` (`diffgo`, `internal/user/ids.go`), and see them fail
-- [ ] 3.2 Compare with `moves = true` and add:
+- [x] 3.1 Write these scenarios in `tests/integration/diff/test_moves.lua` (`diffgo`, `internal/user/ids.go`), and see them fail
+- [x] 3.2 Compare with `moves = true` and add:
   - the `Moved` rows and markers (Decision 6);
   - `diff.jump_move` on `gm`;
   - the three groups (Decision 9).
-- [ ] 3.3 Run the file and see it pass
+- [x] 3.3 Run the file and see it pass
 
 ## 4. Whitespace policy and highlight mode
 
@@ -56,3 +56,4 @@ Scenarios: `diff: Diff view staged change matches the approved render`, `diff: D
 
 - Expose `state`, `update_index(..., include)` and `make_patch(..., final-newline flags)` so index math and serialization stay independently testable.
 - Keep the index snapshot and its final-newline bit on each view so redraws stay synchronous and toggles can refresh it explicitly.
+- Keep each moved row's original change kind separately so its arrow retains the add/delete colour while the row uses the moved tint.

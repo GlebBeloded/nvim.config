@@ -73,6 +73,14 @@ local function toggle_include(ctx)
 end
 
 ---@param ctx gleb.ActionContext
+local function jump_move(ctx)
+	local view = current(ctx)
+	if view then
+		require("gleb.diff.view").jump_move(view, ctx.win)
+	end
+end
+
+---@param ctx gleb.ActionContext
 local function open_file(ctx)
 	local path = vim.api.nvim_buf_get_name(ctx.buf)
 	local view = require("gleb.diff.view")
@@ -140,6 +148,13 @@ local actions = {
 		category = "Git | Diff",
 		plugin = "gleb-diff",
 		run = toggle_include,
+	},
+	{
+		id = "diff.jump_move",
+		title = "Jump to Other End of Move",
+		category = "Git | Diff",
+		plugin = "gleb-diff",
+		run = jump_move,
 	},
 	{
 		id = "diff.next_file",

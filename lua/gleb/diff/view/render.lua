@@ -32,6 +32,7 @@ local function gutter(row)
 	end
 	local kind = row.kind
 	local arrow = row.first and "»" or " "
+	local arrow_kind = row.arrow_kind or kind
 	local left = row.left and string.format("%3d ", row.left) or "╱╱╱╱"
 	local right = row.right and string.format("%3d ", row.right) or "╱╱╱╱"
 	local checkbox = row.first and row.checkbox and (type(row.checkbox) == "string" and row.checkbox or "󰄱") or " "
@@ -43,9 +44,11 @@ local function gutter(row)
 			.. highlighted(checkbox .. " ", "Normal")
 	end
 	local suffix = kind
-	return highlighted(arrow, row.first and ("DiffViewArrow" .. suffix) or ("DiffViewGutter" .. suffix))
+	local strip = row.move_marker and highlighted(row.move_marker, "DiffViewMovedMarker")
+		or highlighted("     ", "DiffView" .. suffix)
+	return highlighted(arrow, row.first and ("DiffViewArrow" .. arrow_kind) or ("DiffViewGutter" .. suffix))
 		.. highlighted(left, row.left and ("DiffViewGutter" .. suffix) or "DiffViewPadding")
-		.. highlighted("     ", "DiffView" .. suffix)
+		.. strip
 		.. highlighted(right, row.right and ("DiffViewGutter" .. suffix) or "DiffViewPadding")
 		.. highlighted(checkbox .. " ", "DiffViewGutter" .. suffix)
 end
@@ -55,14 +58,15 @@ end
 local function padding_gutter(row)
 	local kind = assert(row.kind, "padding gutter requires a diff row")
 	local suffix = "DiffView" .. kind
+	local arrow_kind = row.arrow_kind or kind
 	local checkbox_group = row.right and ("DiffViewGutter" .. kind) or "DiffViewCheckbox"
 	return {
-		{ row.first and "»" or " ", row.first and ("DiffViewArrow" .. kind) or ("DiffViewGutter" .. kind) },
+		{ row.first and "»" or " ", row.first and ("DiffViewArrow" .. arrow_kind) or ("DiffViewGutter" .. kind) },
 		{
 			row.left and string.format("%3d ", row.left) or "╱╱╱╱",
 			row.left and ("DiffViewGutter" .. kind) or "DiffViewPadding",
 		},
-		{ "     ", suffix },
+		{ row.move_marker or "     ", row.move_marker and "DiffViewMovedMarker" or suffix },
 		{
 			row.right and string.format("%3d ", row.right) or "╱╱╱╱",
 			row.right and ("DiffViewGutter" .. kind) or "DiffViewPadding",

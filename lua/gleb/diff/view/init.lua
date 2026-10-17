@@ -50,6 +50,7 @@ local M = {
 ---@field augroup integer
 ---@field ns integer
 ---@field fragments gleb.diff.LineFragment[]
+---@field moves gleb.diff.Move[]
 ---@field layout gleb.diff.view.Layout
 ---@field on_next_file? function
 ---@field owns_tab boolean
@@ -134,6 +135,7 @@ local function compare(left, right)
 	return engine.compare_lines(left, right, {
 		policy = "default",
 		highlight = "by_word",
+		moves = true,
 		limits = { timeout_ms = M.config.timeout_ms },
 	})
 end
@@ -180,12 +182,14 @@ local function redraw(view)
 	local comparison = compare(view.left, right)
 	view.right = right
 	view.fragments = comparison.fragments
+	view.moves = comparison.moves
 	view.layout = layout.build(
 		comparison.fragments,
 		#view.left,
 		#right,
 		M.config.context,
-		checkbox_states(view, comparison.fragments, right)
+		checkbox_states(view, comparison.fragments, right),
+		comparison.moves
 	)
 	view.approximate = comparison.too_big or comparison.timed_out
 	render.draw(view)
@@ -394,6 +398,7 @@ local function build(spec)
 		on_next_file = spec.on_next_file,
 		ns = vim.api.nvim_create_namespace(""),
 		fragments = comparison.fragments,
+		moves = comparison.moves,
 		index = index,
 		approximate = comparison.too_big or comparison.timed_out,
 		syncing = false,
@@ -403,9 +408,28 @@ local function build(spec)
 		#spec.left,
 		#spec.right,
 		M.config.context,
-		checkbox_states(view, comparison.fragments, spec.right)
+		checkbox_states(view, comparison.fragments, spec.right),
+		comparison.moves
 	)
 	return view
+end
+
+---@param view gleb.diff.view.View
+---@param win integer
+function M.jump_move(view, win)
+	local side = win == view.left_win and "left" or "right"
+	local line = vim.api.nvim_win_get_cursor(win)[1] - 1
+	local start_key = side == "left" and "start1" or "start2"
+	local end_key = side == "left" and "end1" or "end2"
+	local target_key = side == "left" and "start2" or "start1"
+	local target_win = side == "left" and view.right_win or view.left_win
+	for _, move in ipairs(view.moves) do
+		if line >= move[start_key] and line < move[end_key] then
+			vim.api.nvim_set_current_win(target_win)
+			vim.api.nvim_win_set_cursor(target_win, { move[target_key] + 1, 0 })
+			return
+		end
+	end
 end
 
 ---@param view gleb.diff.view.View

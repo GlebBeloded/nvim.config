@@ -3,15 +3,17 @@
 
 local M = {}
 
----@alias gleb.diff.view.Kind "Add"|"Change"|"Delete"
+---@alias gleb.diff.view.Kind "Add"|"Change"|"Delete"|"Moved"
 
 ---@class gleb.diff.view.Row
 ---@field left? integer
 ---@field right? integer
 ---@field change? integer
 ---@field kind? gleb.diff.view.Kind
+---@field arrow_kind? "Add"|"Change"|"Delete"
 ---@field first? boolean
 ---@field checkbox? boolean|string
+---@field move_marker? string
 ---@field fold? integer
 ---@field count? integer
 
@@ -27,6 +29,7 @@ local M = {}
 ---@field rows gleb.diff.view.Row[]
 ---@field folds gleb.diff.view.Fold[]
 ---@field fragments gleb.diff.LineFragment[]
+---@field moves gleb.diff.Move[]
 ---@field line_count1 integer
 ---@field line_count2 integer
 
@@ -95,7 +98,7 @@ local function add_change(rows, fragment, index, checkbox)
 	local kind = change_kind(fragment)
 	for offset = 0, count - 1 do
 		---@type gleb.diff.view.Row
-		local row = { change = index, kind = kind }
+		local row = { change = index, kind = kind, arrow_kind = kind }
 		if offset < count1 then
 			row.left = fragment.start1 + offset + 1
 		end
@@ -110,13 +113,43 @@ local function add_change(rows, fragment, index, checkbox)
 	end
 end
 
+---@param text string
+---@return string
+local function move_marker(text)
+	text = vim.fn.strcharpart(text, 0, 5)
+	return text .. string.rep(" ", math.max(5 - vim.fn.strdisplaywidth(text), 0))
+end
+
+---@param rows gleb.diff.view.Row[]
+---@param moves gleb.diff.Move[]
+local function mark_moves(rows, moves)
+	for _, move in ipairs(moves) do
+		for _, row in ipairs(rows) do
+			local left = row.left and row.left - 1 or nil
+			local right = row.right and row.right - 1 or nil
+			if left and left >= move.start1 and left < move.end1 then
+				row.kind = "Moved"
+				if left == move.start1 then
+					row.move_marker = move_marker("→" .. (move.start2 + 1))
+				end
+			elseif right and right >= move.start2 and right < move.end2 then
+				row.kind = "Moved"
+				if right == move.start2 then
+					row.move_marker = move_marker("←" .. (move.start1 + 1))
+				end
+			end
+		end
+	end
+end
+
 ---@param fragments gleb.diff.LineFragment[] ordered, non-overlapping half-open ranges
 ---@param line_count1 integer
 ---@param line_count2 integer
 ---@param context integer
 ---@param states? string[]
+---@param moves? gleb.diff.Move[]
 ---@return gleb.diff.view.Layout
-function M.build(fragments, line_count1, line_count2, context, states)
+function M.build(fragments, line_count1, line_count2, context, states, moves)
 	local rows = {}
 	local folds = {}
 	local previous1, previous2 = 0, 0
@@ -126,10 +159,12 @@ function M.build(fragments, line_count1, line_count2, context, states)
 		previous1, previous2 = fragment.end1, fragment.end2
 	end
 	add_unchanged(rows, folds, previous1, line_count1, previous2, context, #fragments > 0, false)
+	mark_moves(rows, moves or {})
 	return {
 		rows = rows,
 		folds = folds,
 		fragments = fragments,
+		moves = moves or {},
 		line_count1 = line_count1,
 		line_count2 = line_count2,
 	}
@@ -197,7 +232,7 @@ function M.gutter(row)
 	local left = row.left and string.format("%3d ", row.left) or "╱╱╱╱"
 	local right = row.right and string.format("%3d ", row.right) or "╱╱╱╱"
 	local checkbox = row.first and row.checkbox and (type(row.checkbox) == "string" and row.checkbox or "󰄱") or " "
-	return arrow .. left .. "     " .. right .. checkbox .. " "
+	return arrow .. left .. (row.move_marker or "     ") .. right .. checkbox .. " "
 end
 
 return M

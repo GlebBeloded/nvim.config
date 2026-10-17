@@ -41,6 +41,7 @@
   "diff.apply": ["do", "dp"],
   "diff.close": ["q"],
   "diff.expand_fold": ["zo"],
+  "diff.jump_move": ["gm"],
   "diff.next_change": ["]c"],
   "diff.next_file": ["]f"],
   "diff.prev_change": ["[c"],
