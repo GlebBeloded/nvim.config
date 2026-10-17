@@ -101,6 +101,10 @@ Depends: fix-references-usage-types
   - `references: gr classifies every Rust variable usage` still holds: the references flow is unchanged; scope and kind read the same per-language values from the registry instead of filetype tables.
   - `references: gr classifies every Bash variable usage` still holds: the references flow is unchanged; scope and kind read the same per-language values from the registry instead of filetype tables.
   - `references: gr classifies every Terraform variable usage` still holds: the references flow is unchanged; scope and kind read the same per-language values from the registry instead of filetype tables.
+  - `references: gr classifies struct usages` still holds: the Go query and classification pipeline are unchanged; only their per-language configuration source moves to the registry.
+  - `references: gr classifies function usages as calls` still holds: the Go query and classification pipeline are unchanged; only their per-language configuration source moves to the registry.
+  - `references: Composite literal keys are field writes` still holds: the Go query and write-access classification are unchanged; only their per-language configuration source moves to the registry.
+  - `references: Struct usages are grouped by usage type` still holds: grouping and rendering are unchanged; only classification configuration moves to the registry.
   - `references: The view opens before classification finishes` still holds: the references flow is unchanged; scope and kind read the same per-language values from the registry instead of filetype tables.
   - `references: Classification gives up after the timeout` still holds: the references flow is unchanged; scope and kind read the same per-language values from the registry instead of filetype tables.
 - Out of scope:
