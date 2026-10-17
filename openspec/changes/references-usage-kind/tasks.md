@@ -48,3 +48,11 @@ Scenarios: `references: Variable usages are grouped by write and read`, `referen
 - Cache each server result below its URI/version by client and anchor range so classifications for different symbols cannot collide.
 - Populate the lua_ls scenario from document highlights because that server omits assignment targets from its references response.
 - Use the file-document glyph and the existing neutral usage colour for the uncommon `Usage` group because the approved renders only prescribe glyphs and colours for read and write.
+
+## Stuck
+
+- Task 5 is left red for the fix pass. The real-key e2e case passes, but both screen cases differ from the approved K1/K2 colour masks.
+- Probe: the K1 `report` cell is Treesitter capture `@module.go` linked to `Fg`; `Count` is both `@variable.go` and `@function.go`, with `@function.go` linked to `TSFunction`.
+- Attempt 1: remapped `@module.go` to `MiniPickNormal` in the preview window. That fixed `report`, then exposed `Count` as blue instead of the approved `@function.call` green and the selected K2 tag separator inheriting `CursorLine` background.
+- Attempt 2: also remapped `@function.go` to `@function.call` and gave the kind-tag separator `MiniPickNormal`. `Count` matched, but its `(` remained `Fg` instead of `MiniPickNormal`, while the separator still combined with the `CursorLine` background.
+- The preserved second production attempt is `/Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/f1714f29-d709-4cc9-a69c-c10182a4e30b/stuck-attempt.diff`; production edits were reverted and the red tests remain.

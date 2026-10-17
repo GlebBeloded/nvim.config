@@ -119,6 +119,27 @@ local function open_references(s)
 	end)
 end
 
+--- Open the references picker of `Calls` from its declaration through `gr`.
+---@param s e2e.Stack
+local function open_calls(s)
+	local declaration = manifest.references.Calls[1]
+	s:lua([[require("null-ls").disable({ name = "golangci_lint" })]])
+	s:lua("vim.cmd.edit({ ..., mods = { silent = true } })", { declaration.path })
+	s:lua("vim.api.nvim_win_set_cursor(0, { ... })", { declaration.line, declaration.col - 1 })
+	S.wait_for(function()
+		return s:lua([[return #vim.lsp.get_clients({ bufnr = 0, name = "gopls" }) > 0]])
+	end, "gopls attached to " .. declaration.path)
+	E.burst(s, function()
+		E.press(s, { "g", "r" })
+		S.wait_for(function()
+			return s:lua([[return require("gleb.references.view").state.tree_win ~= nil]])
+		end, "Find Usages view for Calls")
+	end)
+	S.wait_for(function()
+		return not s:lua([[return require("gleb.references.view").state.classifying]])
+	end, "Calls usage classification")
+end
+
 --- The references view of `Format`, opened unless the previous case left it open.
 ---@param s e2e.Stack
 local function ensure_references(s)
@@ -195,6 +216,40 @@ T["lsp: Selecting a reference opens its file at the call site"] = function()
 		path = vim.uv.fs_realpath(root .. "/" .. call.path),
 		line = call.line,
 		col = call.col,
+	})
+end
+
+local kinds_scenario = "references: Variable usages are grouped by write and read"
+T[kinds_scenario] = MiniTest.new_set()
+T[kinds_scenario]["w turns the level into row tags"] = function()
+	local s = get()
+	open_calls(s)
+	expect_render_rows(s, {
+		"╭ Usages of Calls · 4",
+		"│ ▾  Production  1",
+		"│   ▾ 󰏫 Value write  1",
+		"│          calls.go:8",
+		"│ ▾  Test  3",
+		"│   ▾ 󰏫 Value write  1",
+		"│          calls_test.go:6",
+		"│   ▾ 󰈈 Value read  2",
+		"│          calls_test.go:8",
+		"│          calls_test.go:9",
+		"Tests: grouped t · ● Folders f · ● Read/write w · Preview P · Open ↩",
+	})
+
+	E.burst(s, function()
+		E.press(s, "w")
+		S.wait_for(function()
+			return s:lua([[return not require("gleb.references.view").state.options.read_write]])
+		end, "read/write level disabled")
+	end)
+	expect_render_rows(s, {
+		"│        calls.go:8               󰏫 write",
+		"│        calls_test.go:6          󰏫 write",
+		"│        calls_test.go:8           󰈈 read",
+		"│        calls_test.go:9           󰈈 read",
+		"Tests: grouped t · ● Folders f · ○ Read/write w · Preview P · Open ↩",
 	})
 end
 
