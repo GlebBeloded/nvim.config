@@ -670,6 +670,14 @@ T["loop: Gate merges a moved auto first"] = function()
 	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
 end
 
+T["loop: A stuck fix pass fixes the other gate failures too"] = function()
+	local fix = read(vim.fs.joinpath(H.root, ".archon/commands/fix.md")):gsub("%s+", " ")
+	has(
+		fix,
+		"it is your first finding, not your only one (fix every other `FAIL in` line of the gate log in the same pass"
+	)
+end
+
 T["loop: Implement and fix probe UI edge cells"] = function()
 	for _, name in ipairs({ "fix.md", "implement.md" }) do
 		local prompt = read(vim.fs.joinpath(H.root, ".archon/commands", name)):gsub("%s+", " ")
