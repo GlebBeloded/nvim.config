@@ -3,15 +3,18 @@
 
 local M = {}
 
----@alias gleb.diff.view.Kind "Add"|"Change"|"Delete"
+---@alias gleb.diff.view.ChangeKind "Add"|"Change"|"Delete"
+---@alias gleb.diff.view.Kind gleb.diff.view.ChangeKind|"Moved"
 
 ---@class gleb.diff.view.Row
 ---@field left? integer
 ---@field right? integer
 ---@field change? integer
 ---@field kind? gleb.diff.view.Kind
+---@field arrow_kind? gleb.diff.view.ChangeKind
 ---@field first? boolean
----@field checkbox? boolean
+---@field checkbox? boolean|string
+---@field move_marker? string
 ---@field fold? integer
 ---@field count? integer
 
@@ -27,11 +30,12 @@ local M = {}
 ---@field rows gleb.diff.view.Row[]
 ---@field folds gleb.diff.view.Fold[]
 ---@field fragments gleb.diff.LineFragment[]
+---@field moves gleb.diff.Move[]
 ---@field line_count1 integer
 ---@field line_count2 integer
 
 ---@param fragment gleb.diff.LineFragment
----@return gleb.diff.view.Kind
+---@return gleb.diff.view.ChangeKind
 local function change_kind(fragment)
 	if fragment.start1 == fragment.end1 then
 		return "Add"
@@ -87,7 +91,7 @@ end
 ---@param rows gleb.diff.view.Row[]
 ---@param fragment gleb.diff.LineFragment
 ---@param index integer
----@param checkbox boolean
+---@param checkbox boolean|string
 local function add_change(rows, fragment, index, checkbox)
 	local count1 = fragment.end1 - fragment.start1
 	local count2 = fragment.end2 - fragment.start2
@@ -110,28 +114,115 @@ local function add_change(rows, fragment, index, checkbox)
 	end
 end
 
+---@param text string
+---@return string
+local function move_marker(text)
+	text = vim.fn.strcharpart(text, 0, 5)
+	return text .. string.rep(" ", math.max(5 - vim.fn.strdisplaywidth(text), 0))
+end
+
+--- Tints a changed row as moved while its arrow keeps the original change colour.
+---@param row gleb.diff.view.Row
+local function mark_moved(row)
+	if row.kind ~= "Moved" then
+		row.arrow_kind = row.kind --[[@as gleb.diff.view.ChangeKind?]]
+		row.kind = "Moved"
+	end
+end
+
+---@param rows gleb.diff.view.Row[]
+---@param moves gleb.diff.Move[]
+local function mark_moves(rows, moves)
+	local left_rows = {}
+	local right_rows = {}
+	for _, row in ipairs(rows) do
+		if row.left then
+			left_rows[row.left - 1] = row
+		end
+		if row.right then
+			right_rows[row.right - 1] = row
+		end
+	end
+	for _, move in ipairs(moves) do
+		for left = move.start1, move.end1 - 1 do
+			local row = left_rows[left]
+			if row then
+				mark_moved(row)
+				if left == move.start1 then
+					row.move_marker = move_marker("→" .. (move.start2 + 1))
+				end
+			end
+		end
+		for right = move.start2, move.end2 - 1 do
+			local row = right_rows[right]
+			if row then
+				mark_moved(row)
+				if right == move.start2 then
+					row.move_marker = move_marker("←" .. (move.start1 + 1))
+				end
+			end
+		end
+	end
+end
+
 ---@param fragments gleb.diff.LineFragment[] ordered, non-overlapping half-open ranges
 ---@param line_count1 integer
 ---@param line_count2 integer
 ---@param context integer
+---@param states? string[]
+---@param moves? gleb.diff.Move[]
 ---@return gleb.diff.view.Layout
-function M.build(fragments, line_count1, line_count2, context)
+function M.build(fragments, line_count1, line_count2, context, states, moves)
 	local rows = {}
 	local folds = {}
+	if #fragments == 0 then
+		for line = 1, math.max(line_count1, line_count2) do
+			rows[#rows + 1] = {
+				left = line <= line_count1 and line or nil,
+				right = line <= line_count2 and line or nil,
+			}
+		end
+		return {
+			rows = rows,
+			folds = folds,
+			fragments = fragments,
+			moves = moves or {},
+			line_count1 = line_count1,
+			line_count2 = line_count2,
+		}
+	end
 	local previous1, previous2 = 0, 0
 	for index, fragment in ipairs(fragments) do
 		add_unchanged(rows, folds, previous1, fragment.start1, previous2, context, index > 1, true)
-		add_change(rows, fragment, index, line_count1 > 0)
+		add_change(rows, fragment, index, line_count1 > 0 and (states and states[index] or true))
 		previous1, previous2 = fragment.end1, fragment.end2
 	end
 	add_unchanged(rows, folds, previous1, line_count1, previous2, context, #fragments > 0, false)
+	mark_moves(rows, moves or {})
 	return {
 		rows = rows,
 		folds = folds,
 		fragments = fragments,
+		moves = moves or {},
 		line_count1 = line_count1,
 		line_count2 = line_count2,
 	}
+end
+
+---@param fragments gleb.diff.LineFragment[]
+---@param side "left"|"right"
+---@param line integer 1-based line
+---@return integer? change 1-based fragment index
+function M.change_at_fragments(fragments, side, line)
+	local start_key = side == "left" and "start1" or "start2"
+	local end_key = side == "left" and "end1" or "end2"
+	for index, fragment in ipairs(fragments) do
+		local start_line = fragment[start_key]
+		local end_line = fragment[end_key]
+		if (start_line == end_line and line == start_line + 1) or (line > start_line and line <= end_line) then
+			return index
+		end
+	end
 end
 
 ---@param layout gleb.diff.view.Layout
@@ -139,15 +230,15 @@ end
 ---@param line integer 1-based line
 ---@return integer? change 1-based fragment index
 function M.change_at_line(layout, side, line)
-	local start_key = side == "left" and "start1" or "start2"
-	local end_key = side == "left" and "end1" or "end2"
-	for index, fragment in ipairs(layout.fragments) do
-		local start_line = fragment[start_key]
-		local end_line = fragment[end_key]
-		if (start_line == end_line and line == start_line + 1) or (line > start_line and line <= end_line) then
-			return index
-		end
-	end
+	return M.change_at_fragments(layout.fragments, side, line)
+end
+
+---@param model gleb.diff.view.Layout
+---@param side "left"|"right"
+---@param line integer 1-based line
+---@return integer? change 1-based fragment index
+function M.change_at(model, side, line)
+	return M.change_at_line(model, side, line)
 end
 
 ---@param layout gleb.diff.view.Layout
@@ -187,8 +278,8 @@ function M.gutter(row)
 	local arrow = row.first and "»" or " "
 	local left = row.left and string.format("%3d ", row.left) or "╱╱╱╱"
 	local right = row.right and string.format("%3d ", row.right) or "╱╱╱╱"
-	local checkbox = row.first and row.checkbox and "󰄱" or " "
-	return arrow .. left .. "     " .. right .. checkbox .. " "
+	local checkbox = row.first and row.checkbox and (type(row.checkbox) == "string" and row.checkbox or "󰄱") or " "
+	return arrow .. left .. (row.move_marker or "     ") .. right .. checkbox .. " "
 end
 
 return M

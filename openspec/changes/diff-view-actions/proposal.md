@@ -60,6 +60,9 @@ The user also wanted move detection ("only if IDEA doesn't have it"; IntelliJ ha
   - `diff: Diff view gutter shows both line numbers` still holds: unstaged changes keep `☐`.
   - `git: s stages entry from file panel` still holds: diffview's staging is untouched.
   - `file-tree: Space reports a staging failure` still holds: the neo-tree staging action is untouched; only its error wording is reused.
+  - `file-tree: Diff preview opening` still holds: this change does not alter the neo-tree diff preview.
+  - `references: gr classifies Lua function calls and redefinitions` still holds: this change does not alter Lua usage classification.
+  - `references: Lua usage types match the approved render` still holds: this change does not alter the references view.
 - Out of scope:
   - Staging a file absent from `HEAD` (no checkbox is drawn) and staging from Visual mode.
   - Appending (IntelliJ's Ctrl-click), and differences inside a moved block.
