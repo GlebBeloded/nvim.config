@@ -43,6 +43,10 @@ Move detection and the inner diffs of moves SHALL share the call's deadline and 
 - **WHEN** the first move scenario's lines are compared with `moves = true` and a clock that returns 0 until `require("gleb.diff.engine.moves").compute` is entered and 5000 after it
 - **THEN** `moves` is empty, `timed_out` is true and `fragments` is `{ { 0, 3, 0, 0 }, { 7, 7, 4, 7 } }` as `{ start1, end1, start2, end2 }`
 
+#### Scenario: Reindented blocks respect the move deadline
+- **WHEN** 2000 lines containing `}` are compared with 2000 lines containing `  }` using `moves = true`
+- **THEN** the call takes under 150 ms times the load factor, or returns near the shared deadline with empty `moves`, `timed_out` true and `too_big` false
+
 #### Scenario: Move detection on a 5000-line file stays within budget
 - **WHEN** the design's 5000-line input and its copy with 40 lines moved to the end are compared with `moves = true`, once to warm up and then 3 times
 - **THEN** the median call takes under 150 ms times the load factor, and `moves` holds exactly one move of 40 lines on each side whose `fragments` are empty
@@ -57,3 +61,12 @@ Move detection and the inner diffs of moves SHALL share the call's deadline and 
 #### Scenario: NOTICE credits VS Code
 - **WHEN** `lua/gleb/diff/engine/NOTICE` and `moves.lua` are read
 - **THEN** `NOTICE` contains `Visual Studio Code`, `Microsoft Corporation` and `Permission is hereby granted, free of charge`, and the first comment of `moves.lua` names `computeMovedLines.ts` and the MIT license
+
+## MODIFIED Requirements
+
+### Requirement: Engine attribution
+`lua/gleb/diff/engine/` SHALL hold a `NOTICE` that credits IntelliJ IDEA (© JetBrains s.r.o.) and diffbandit.nvim (© Corey Kaylor) under the Apache License 2.0, plus that license's text. Every ported Lua file and every fixture table translated from upstream tests SHALL start with a header naming its upstream file, project and license, and saying it was modified. `moves.lua` and `fixtures/vscode_moves/*` SHALL name the MIT license; the other ported files SHALL name Apache-2.0.
+
+#### Scenario: Ported files carry their attribution
+- **WHEN** `NOTICE`, every `.lua` file under `lua/gleb/diff/engine/` and every file recursively under `tests/unit/diff/fixtures/` are read
+- **THEN** `NOTICE` names `IntelliJ IDEA`, `JetBrains s.r.o.`, `diffbandit.nvim`, `Corey Kaylor` and `Apache License`, `LICENSE-APACHE-2.0` exists, and each Lua file's first comment names its upstream path, modification and applicable Apache-2.0 or MIT license

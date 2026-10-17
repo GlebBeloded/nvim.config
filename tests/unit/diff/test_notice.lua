@@ -12,8 +12,11 @@ end
 local function lua_files(path)
 	local files = {}
 	for name, kind in vim.fs.dir(path) do
-		if kind == "file" and vim.endswith(name, ".lua") then
-			table.insert(files, path .. "/" .. name)
+		local child = path .. "/" .. name
+		if kind == "directory" then
+			vim.list_extend(files, lua_files(child))
+		elseif kind == "file" and vim.endswith(name, ".lua") then
+			table.insert(files, child)
 		end
 	end
 	table.sort(files)
@@ -56,7 +59,11 @@ T["diff: Ported files carry their attribution"] = function()
 	local files = vim.list_extend(lua_files(ENGINE_DIR), lua_files(FIXTURE_DIR))
 	for _, path in ipairs(files) do
 		local header = table.concat(vim.fn.readfile(path, "", 3), "\n")
-		eq(header:find("Apache%-2%.0") ~= nil, true, { fail_reason = path .. " lacks an Apache-2.0 header" })
+		local is_vscode = path == ENGINE_DIR .. "/moves.lua" or path:find("/vscode_moves/", 1, true) ~= nil
+		local expected_license = is_vscode and "MIT" or "Apache-2.0"
+		eq(header:find(expected_license, 1, true) ~= nil, true, {
+			fail_reason = path .. " lacks a " .. expected_license .. " header",
+		})
 		eq(header:find("Modified:", 1, true) ~= nil, true, { fail_reason = path .. " lacks a modification notice" })
 	end
 end

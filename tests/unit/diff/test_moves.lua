@@ -46,6 +46,18 @@ T["diff: Short moves are ignored"] = function()
 		),
 		{}
 	)
+
+	local positive = { "x=100", "y=20", "z=30" }
+	eq(
+		child.lua_get("ComputeMoves(...)", {
+			{
+				changes = { { 0, 3, 0, 0 }, { 7, 7, 4, 7 } },
+				lines1 = vim.list_extend(vim.deepcopy(positive), stable),
+				lines2 = vim.list_extend(vim.deepcopy(stable), positive),
+			},
+		}),
+		{ { 0, 3, 4, 7 } }
+	)
 end
 
 T["diff: Two-line moves are ignored"] = function()
@@ -64,6 +76,18 @@ T["diff: Two-line moves are ignored"] = function()
 			} }
 		),
 		{}
+	)
+
+	local positive = { "x=100", "y=20", "z=30" }
+	eq(
+		child.lua_get("ComputeMoves(...)", {
+			{
+				changes = { { 0, 3, 0, 0 }, { 7, 7, 4, 7 } },
+				lines1 = vim.list_extend(vim.deepcopy(positive), stable),
+				lines2 = vim.list_extend(vim.deepcopy(stable), positive),
+			},
+		}),
+		{ { 0, 3, 4, 7 } }
 	)
 end
 

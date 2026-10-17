@@ -1,6 +1,6 @@
 -- Lua port of microsoft/vscode src/vs/editor/common/diff/defaultLinesDiffComputer/computeMovedLines.ts
 -- and LineRangeFragment in utils.ts (MIT, © Microsoft Corporation). Modified: rewritten in Lua,
--- 0-based ranges, code-point counts; modifications licensed Apache-2.0; see NOTICE.
+-- 0-based ranges, code-point counts; see NOTICE.
 -- Detects moved line ranges on top of an existing line diff while preserving VS Code's thresholds.
 
 local lcs = require("gleb.diff.engine.lcs")
@@ -217,7 +217,20 @@ local function is_space(char)
 	return char == " " or char == "\t"
 end
 
+local function similar_line_sequence(chars, line)
+	local leading_whitespace = #(line:match("^[ \t\n\r\v\f]*") or "")
+	local maximum = #chars - 1 - leading_whitespace
+	local result = codepoints(trim(line))
+	for index = #result, maximum + 1, -1 do
+		result[index] = nil
+	end
+	return result
+end
+
 local function lines_similar(line1, line2, context)
+	if timed_out(context) then
+		return false
+	end
 	if trim(line1) == trim(line2) then
 		return true
 	end
@@ -227,18 +240,20 @@ local function lines_similar(line1, line2, context)
 		return false
 	end
 
+	local sequence1 = similar_line_sequence(chars1, line1)
+	local sequence2 = similar_line_sequence(chars2, line2)
 	local values1 = {}
 	local values2 = {}
 	local keys = {}
 	local next_key = 1
-	for index, char in ipairs(chars1) do
+	for index, char in ipairs(sequence1) do
 		if not keys[char] then
 			keys[char] = next_key
 			next_key = next_key + 1
 		end
 		values1[index] = keys[char]
 	end
-	for index, char in ipairs(chars2) do
+	for index, char in ipairs(sequence2) do
 		if not keys[char] then
 			keys[char] = next_key
 			next_key = next_key + 1
@@ -249,9 +264,18 @@ local function lines_similar(line1, line2, context)
 	if result.status ~= "ok" then
 		return false
 	end
-	local common_non_space = 0
+	local matched = {}
 	for _, match in ipairs(result.matches) do
-		if not is_space(chars1[match[1] + 1]) then
+		matched[match[1]] = true
+	end
+	local common_non_space = 0
+	-- VS Code inverts the sequence diffs up to the raw line length, then reads raw line1
+	-- at the trimmed sequence offsets. The tail beyond the truncated sequence is therefore common.
+	for index = 0, #chars1 - 1 do
+		if timed_out(context) then
+			return false
+		end
+		if (index >= #sequence1 or matched[index]) and not is_space(chars1[index + 1]) then
 			common_non_space = common_non_space + 1
 		end
 	end
@@ -260,6 +284,9 @@ local function lines_similar(line1, line2, context)
 	local longer_length = 0
 	-- VS Code's countNonWsChars intentionally iterates using line1's length for either string.
 	for index = 1, #chars1 do
+		if timed_out(context) then
+			return false
+		end
 		if not is_space(longer[index]) then
 			longer_length = longer_length + 1
 		end
@@ -289,25 +316,23 @@ local function unchanged_moves(changes, lines1, lines2, context)
 	for _, change in ipairs(ordered_changes) do
 		local last_mappings = {}
 		for start_line = change[3], change[4] - MIN_MOVE_LINES do
+			if timed_out(context) then
+				return {}
+			end
 			local key = table.concat({ hashes2[start_line + 1], hashes2[start_line + 2], hashes2[start_line + 3] }, ":")
 			local current = { start_line, start_line + MIN_MOVE_LINES }
 			local next_mappings = {}
 			for _, original in ipairs(windows[key] or {}) do
-				local extended
-				for _, previous in ipairs(last_mappings) do
-					if previous.original[2] + 1 == original[2] and previous.modified[2] + 1 == current[2] then
-						previous.original[2] = original[2]
-						previous.modified[2] = current[2]
-						next_mappings[#next_mappings + 1] = previous
-						extended = true
-						break
-					end
-				end
-				if not extended then
+				local previous = last_mappings[original[2] - 1]
+				if previous and previous.modified[2] + 1 == current[2] then
+					previous.original[2] = original[2]
+					previous.modified[2] = current[2]
+					next_mappings[original[2]] = previous
+				else
 					order = order + 1
 					local mapping = { original = { original[1], original[2] }, modified = current, order = order }
 					possible[#possible + 1] = mapping
-					next_mappings[#next_mappings + 1] = mapping
+					next_mappings[original[2]] = mapping
 				end
 			end
 			last_mappings = next_mappings
@@ -326,6 +351,9 @@ local function unchanged_moves(changes, lines1, lines2, context)
 	local claimed2 = {}
 	local moves = {}
 	for _, mapping in ipairs(possible) do
+		if timed_out(context) then
+			return {}
+		end
 		local delta = mapping.modified[1] - mapping.original[1]
 		local available2 = subtract(mapping.modified, claimed2)
 		local available1 = subtract(mapping.original, claimed1)
