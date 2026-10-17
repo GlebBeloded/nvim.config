@@ -25,6 +25,9 @@ local TYPE_POSITION_KINDS = {
 ---@param filetype string
 ---@return string?
 function M.refine_query_kind(kind, target, filetype)
+	if kind == "call" and target == "type" and filetype == "python" then
+		return "new"
+	end
 	if kind == "call" and target == "type" and filetype == "go" then
 		return "type_conversion"
 	end
