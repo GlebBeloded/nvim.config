@@ -1,0 +1,5 @@
+(short_var_declaration left: (expression_list (identifier) @usage.write))
+(assignment_statement left: (expression_list (identifier) @usage.write))
+(var_spec name: (identifier) @usage.write)
+(const_spec name: (identifier) @usage.write)
+(inc_statement (identifier) @usage.write)

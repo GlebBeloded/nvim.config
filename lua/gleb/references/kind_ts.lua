@@ -1,33 +1,5 @@
--- Classify write targets from source text when a supported Treesitter parser is available.
+-- Classify usage positions through each parser language's runtime usages query.
 local M = {}
-
----@type table<string, string>
-local KIND_QUERIES = {
-	go = [[
-		(short_var_declaration left: (expression_list (identifier) @write))
-		(assignment_statement left: (expression_list (identifier) @write))
-		(var_spec name: (identifier) @write)
-		(const_spec name: (identifier) @write)
-		(inc_statement (identifier) @write)
-	]],
-	lua = [[
-		(assignment_statement (variable_list (identifier) @write))
-		(variable_declaration (variable_list (identifier) @write))
-	]],
-	bash = [[
-		(variable_assignment name: (variable_name) @write)
-	]],
-	hcl = [[
-		(block
-			(identifier) @_block_type
-			(string_lit (template_literal) @write)
-			(#eq? @_block_type "variable"))
-		(expression
-			(variable_expr (identifier) @_root)
-			(get_attr (identifier) @read)
-			(#eq? @_root "var"))
-	]],
-}
 
 ---@class ReferencesSourcePosition
 ---@field line integer Zero-based row
@@ -37,14 +9,14 @@ local KIND_QUERIES = {
 ---@param language string
 ---@return vim.treesitter.Query?, TSTree?
 local function parse(source, language)
-	local query_text = KIND_QUERIES[language]
-	if not query_text or not pcall(vim.treesitter.language.add, language) then
+	local language_ok, loaded = pcall(vim.treesitter.language.add, language)
+	if not language_ok or not loaded then
 		return nil, nil
 	end
 
-	local query_ok, query = pcall(vim.treesitter.query.parse, language, query_text)
+	local query_ok, query = pcall(vim.treesitter.query.get, language, "usages")
 	local parser_ok, parser = pcall(vim.treesitter.get_string_parser, source, language)
-	if not query_ok or not parser_ok then
+	if not query_ok or not query or not parser_ok then
 		return nil, nil
 	end
 
@@ -60,30 +32,35 @@ end
 ---@param source string
 ---@param language string
 ---@param positions ReferencesSourcePosition[]
----@return ("write"|"read"|"other")[]
+---@return string[]
 function M.classify(source, language, positions)
 	local kinds = {}
-	local by_position = {}
-	for index, position in ipairs(positions) do
-		kinds[index] = "other"
-		by_position[position.line .. ":" .. position.character] = index
+	for index in ipairs(positions) do
+		kinds[index] = "unclassified"
 	end
 
 	local query, tree = parse(source, language)
 	if not query or not tree then
 		return kinds
 	end
-	for index in ipairs(positions) do
+	local root = tree:root()
+	for index, position in ipairs(positions) do
 		kinds[index] = "read"
-	end
-
-	for capture, node in query:iter_captures(tree:root(), source, 0, -1) do
-		local kind = query.captures[capture]
-		if kind == "write" or kind == "read" then
-			local row, column = node:range()
-			local index = by_position[row .. ":" .. column]
-			if index then
-				kinds[index] = kind
+		local best_pattern
+		for pattern, match in query:iter_matches(root, source, position.line, position.line + 1) do
+			for capture, nodes in pairs(match) do
+				local kind = query.captures[capture]:match("^usage%.(.+)$")
+				for _, node in ipairs(kind and nodes or {}) do
+					local row, column = node:start()
+					if
+						row == position.line
+						and column == position.character
+						and (best_pattern == nil or pattern < best_pattern)
+					then
+						best_pattern = pattern
+						kinds[index] = kind
+					end
+				end
 			end
 		end
 	end

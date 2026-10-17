@@ -92,7 +92,7 @@ T["references: Without kinds or a parser a usage is other"] = function()
 		})
 	end)()]])
 
-	eq(actual, { "other" })
+	eq(actual, { "unclassified" })
 end
 
 return T

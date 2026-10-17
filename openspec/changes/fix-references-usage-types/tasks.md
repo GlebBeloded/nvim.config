@@ -2,11 +2,17 @@
 
 Scenarios: `references: Every query capture is in the catalogue`, `references: Go types carry GoLand labels`, `references: Treesitter fallback classifies writes where a parser exists`, `references: HCL fallback classifies variable labels and traversals`, `references: Without kinds or a parser a usage is other`
 
-- [ ] 1.1 Write the scenarios in tests/unit/references/test_usage_types.lua and adapt tests/unit/references/test_kind_ts.lua to the query runner, and see them fail
-- [ ] 1.2 Add `lua/gleb/references/usage_types.lua`: the typed catalogue from design.md (Catalogue), with `label`, `icon`, `colour`, `tag` and `order` by label.
-- [ ] 1.3 Move the inline queries from `kind_ts.lua` into `queries/{lua,bash,hcl}/usages.scm` as `@usage.write`/`@usage.read`, and add `queries/terraform/usages.scm` (`; inherits: hcl`).
-- [ ] 1.4 Make `kind_ts.lua` the generic runner (design Decisions 1 and 4).
-- [ ] 1.5 Run `make test FILE=tests/unit/references/test_usage_types.lua` and `make test FILE=tests/unit/references/test_kind_ts.lua` and see them pass
+- [x] 1.1 Write the scenarios in tests/unit/references/test_usage_types.lua and adapt tests/unit/references/test_kind_ts.lua to the query runner, and see them fail
+- [x] 1.2 Add `lua/gleb/references/usage_types.lua`: the typed catalogue from design.md (Catalogue), with `label`, `icon`, `colour`, `tag` and `order` by label.
+- [x] 1.3 Move the inline queries from `kind_ts.lua` into `queries/{lua,bash,hcl}/usages.scm` as `@usage.write`/`@usage.read`, and add `queries/terraform/usages.scm` (`; inherits: hcl`).
+- [x] 1.4 Make `kind_ts.lua` the generic runner (design Decisions 1 and 4).
+- [x] 1.5 Run `make test FILE=tests/unit/references/test_usage_types.lua` and `make test FILE=tests/unit/references/test_kind_ts.lua` and see them pass
+
+## Agent decisions
+
+- The catalogue exports entries keyed directly by usage id so query validation and later consumers use the same lookup.
+- `unclassified` has an empty tag because unclassified rows do not display a type tag.
+- A minimal Go fallback query preserves the existing Go scenario until task 2 replaces it with the full Go catalogue query.
 
 ## 2. Go query and target kind
 
