@@ -212,3 +212,10 @@
 ; syntax cannot tell a function value from a variable (kind-gate: function/method only)
 (argument_list (identifier) @usage.function_argument)
 (argument_list (selector_expression field: (field_identifier) @usage.function_argument))
+
+; ---- Value writes retained from the parser fallback ---------------------------
+(short_var_declaration left: (expression_list (identifier) @usage.write))
+(assignment_statement left: (expression_list (identifier) @usage.write))
+(var_spec name: (identifier) @usage.write)
+(const_spec name: (identifier) @usage.write)
+(inc_statement (identifier) @usage.write)

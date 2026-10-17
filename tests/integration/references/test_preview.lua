@@ -194,9 +194,13 @@ end)()]])
 	eq(child.wait([[require("gleb.references.view").state.preview_win == nil]]), true)
 	local fitted = child.lua_get([[(function()
 local win = vim.api.nvim_get_current_win()
-return { vim.api.nvim_win_get_width(win), vim.api.nvim_win_get_config(win).col }
+local widest = vim.fn.strdisplaywidth(require("gleb.references.view").hint(false))
+for _, line in ipairs(vim.api.nvim_buf_get_lines(0, 0, -1, false)) do
+	widest = math.max(widest, vim.fn.strdisplaywidth(line))
+end
+return { vim.api.nvim_win_get_width(win), vim.api.nvim_win_get_config(win).col, widest + 2 }
 end)()]])
-	eq(fitted[1] < initial[1] + initial[3] + 1, true)
+	eq(fitted[1], fitted[3])
 	eq(fitted[2], math.floor((100 - fitted[1] - 2) / 2))
 
 	child.type_keys("P")

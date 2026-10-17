@@ -48,7 +48,7 @@ T["references: Usage type icons and label shades match the palette"] = function(
 (function()
 	local root = vim.fn.tempname()
 	vim.fn.mkdir(root, "p")
-	for _, name in ipairs({ "a.go", "b.go", "c.go", "d.go", "e.go" }) do
+	for _, name in ipairs({ "a.go", "b.go", "c.go", "d.go", "e.go", "f.go" }) do
 		vim.fn.writefile({ "package fixture" }, vim.fs.joinpath(root, name))
 	end
 	local function usage(name, kind)
@@ -61,6 +61,7 @@ T["references: Usage type icons and label shades match the palette"] = function(
 		usage("c.go", "receiver"),
 		usage("d.go", "receiver"),
 		usage("e.go", "struct_initialization"),
+		usage("f.go", "unclassified"),
 	}
 	local state = require("gleb.references.state")
 	state.save({ tests = "mixed", folders = false, usage_type = true })
@@ -68,7 +69,7 @@ T["references: Usage type icons and label shades match the palette"] = function(
 	view.open("Invoice", usages)
 	local result = {}
 	for row, line in ipairs(vim.api.nvim_buf_get_lines(view.state.tree_buf, 0, -1, false)) do
-		for _, label in ipairs({ "Field declaration", "Receiver", "Struct initialization" }) do
+		for _, label in ipairs({ "Field declaration", "Receiver", "Struct initialization", "Unclassified" }) do
 			if line:find(label, 1, true) then
 				local marks = vim.api.nvim_buf_get_extmarks(
 					view.state.tree_buf,
@@ -88,13 +89,14 @@ end)()
 		["Field declaration"] = "FieldDeclaration",
 		Receiver = "Receiver",
 		["Struct initialization"] = "StructInitialization",
+		Unclassified = "Unclassified",
 	}
 	for label, suffix in pairs(expected) do
 		local icon_group = "ReferencesUsageType" .. suffix
 		local label_group = icon_group .. "Label"
 		eq(actual[label] and vim.tbl_contains(actual[label], icon_group), true)
 		eq(actual[label] and vim.tbl_contains(actual[label], label_group), true)
-		local colour = label == "Struct initialization" and 0xD3869B or 0x89B482
+		local colour = label == "Struct initialization" and 0xD3869B or label == "Unclassified" and 0xA89984 or 0x89B482
 		eq(foreground(icon_group), colour)
 		eq(
 			foreground(label_group),

@@ -28,6 +28,7 @@ local colors = {
 		aqua = "#89b482",
 		blue = "#7daea3",
 		purple = "#d3869b",
+		grey2 = "#a89984",
 		bg_red = "#ea6962",
 		bg_green = "#a9b665",
 		bg_yellow = "#d8a657",
