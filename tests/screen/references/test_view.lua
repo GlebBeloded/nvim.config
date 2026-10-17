@@ -42,10 +42,12 @@ local LEGEND = {
 	d = "ReferencesFolderLabel",
 	G = "DevIconGo",
 	g = "ReferencesFileLabelDevIconGo",
-	W = "ReferencesWrite",
-	w = "ReferencesWriteLabel",
-	Y = "ReferencesRead",
-	y = "ReferencesReadLabel",
+	C = "ReferencesUsageTypeCall",
+	a = "ReferencesUsageTypeCallLabel",
+	W = "ReferencesUsageTypeWrite",
+	w = "ReferencesUsageTypeWriteLabel",
+	Y = "ReferencesUsageTypeRead",
+	y = "ReferencesUsageTypeReadLabel",
 	z = "ReferencesMaskBackground",
 }
 
@@ -175,6 +177,51 @@ local NARROW_MASK = {
 	"......................................................................",
 }
 
+-- Pin each usage-type colour family and the state hint against the proposed
+-- renders. The screenshots above these masks pin every cell and attribute.
+WIDE_DEFAULT_MASK[4] =
+	"BBbVVVVVCVaaaaVVDVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVDDDVVmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmbBB"
+WIDE_DEFAULT_MASK[28] =
+	"..bfffffffffffffffffffffffffxxxxxxxxxxxxxxxxxxxoxxxxxxxxxxxxxoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxb.."
+NARROW_MASK[7] = "BBBBBBBBBbVVVVVCVaaaaVVDVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBBBBBBBBBB"
+
+KIND_GROUPED_MASK[4] =
+	"BBbVVVVVHVwwwwwwwwwwwVVDVVVVVVVVVVVVVVVVVVVVVbVDDDVVjjjjjjjVBBBBBBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB"
+KIND_GROUPED_MASK[8] =
+	"..bfffffYfyyyyyyyyyyffsffffffffffffffffffffffbfsssfffffffffffffffffffffffffffffffffffffffffffffffb.."
+KIND_GROUPED_MASK[12] =
+	"..bfffffWfwwwwwwwwwwwffsfffffffffffffffffffffbfsssfffffffffffffffffffffffffffffffffffffffffffffffb.."
+KIND_GROUPED_MASK[28] = WIDE_DEFAULT_MASK[28]
+
+KIND_TAGGED_MASK[8] =
+	"..bfffffffGfgggggggggggggssffffffffffWfwwwwwfbfsssfffffffffffffffffffffffffffffffffffffffffffffffb.."
+KIND_TAGGED_MASK[9] =
+	"BBbVVVVVVVGVgggggggggggggDDVVVVVVVVVVVEVeeeeVbVDDDVVmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmVVVVVVVbBB"
+KIND_TAGGED_MASK[10] =
+	"..bfffffffGfgggggggggggggssfffffffffffYfyyyyfbfsssffkkkkfooooofffffffffffffffffffffffffffffffffffb.."
+
+local STRUCT_GROUPED_MASK = {
+	"BBbVVVVVJVpppppppppppppppppVVDVVVVVVVVVVVVVVVbVDDDVVjjjjjjjVBBBBBBBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"..bfffffPfpppppppppppppppppppppffsfffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
+	"..bfffffPfppppppppffsffffffffffffffffffffffffbfsssfffffffffffffffffffffffffffffffffffffffffffffffb..",
+	"..bfffffPfpppppppppppffsfffffffffffffffffffffbfsssfffffffffffffffffffffffffffffffffffffffffffffffb..",
+	"..bfffffCfaaaaaaaaaaaaaaaaaaaaaffsfffffffffffbfsssffffffffffffffffffoooooofffffffffffffffffffffffb..",
+	"..bfffffCfaaaaaaaaaaaaaaaaaaaaaffsfffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
+}
+
+local STRUCT_TAGGED_MASK = {
+	"BBbVVVVVVVGVggggggggDDVVVVVVVVVVVVVVVJVpppppVbVDDDVVmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmbBB",
+	"..bfffffffGfggggggggsssfffffffffffffPfppppppfbfsssffkkkkfffffffkkkkkkffffffffffffffffffffffffffffb..",
+	"..bfffffffGfggggggggsssfffffffffffffffCfaaaafbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
+	"..bfffffffGfggggggggsssffffffffffffffPfpppppfbfsssfffffffffffffffffffffffffffffffffffffffffffffffb..",
+	"..bfffffffGfggggggggsssfffffffffffffPfppppppfbfsssfffffffffffffffffffffffffffffffffffffffffffffffb..",
+	"..bfffffffGfggggggggggsssfffffffffPfppppppppfbfsssfffffffffffffffffffffffffffffffffffffffffffffffb..",
+	"..bfffffffGfggggggggggsssfffffffffPfppppppppfbfsssffsssssssssssssssssssssssssssssssssssssssssssssb..",
+	"..bfffYfyyyyffsffffffffffffffffffffffffffffffbfsssffkkkkfoooffffffffffffffPPPffffffffffffffffffffb..",
+	"..bfffffDfdddddddffsfffffffffffffffffffffffffbfsssffffffkkkkkkfffffffffffffffffffPPPfffffffffffffb..",
+	"..bfffffffGfgggggggggggggggssfffffffffCfaaaafbfsssfffffffffffffffffffffffffffffffffffffffffffffffb..",
+}
+
 local function start()
 	root, manifest = F.copy("gomod", vim.fn.tempname())
 	child.start_config({ env = F.go_env() })
@@ -203,6 +250,18 @@ end
 local function open_calls()
 	child.o.columns, child.o.lines = 100, 30
 	local declaration = manifest.references.Calls[1]
+	child.cmd("cd " .. vim.fn.fnameescape(root) .. " | edit " .. vim.fn.fnameescape(declaration.path))
+	child.api.nvim_win_set_cursor(0, { declaration.line, declaration.col - 1 })
+	eq(child.wait([[#vim.lsp.get_clients({ bufnr = 0, name = "gopls" }) > 0]], TIMEOUT_MS), true)
+	child.type_keys("gr")
+	eq(child.wait([[vim.bo.filetype == "gleb-references"]], TIMEOUT_MS), true)
+	eq(child.wait([[not require("gleb.references.view").state.classifying]], TIMEOUT_MS), true)
+	child.cmd("redraw")
+end
+
+local function open_invoice()
+	child.o.columns, child.o.lines = 100, 30
+	local declaration = manifest.references.Invoice[1]
 	child.cmd("cd " .. vim.fn.fnameescape(root) .. " | edit " .. vim.fn.fnameescape(declaration.path))
 	child.api.nvim_win_set_cursor(0, { declaration.line, declaration.col - 1 })
 	eq(child.wait([[#vim.lsp.get_clients({ bufnr = 0, name = "gopls" }) > 0]], TIMEOUT_MS), true)
@@ -245,7 +304,7 @@ end
 ---@return string[]
 local function with_cleared_background(mask)
 	local result = vim.deepcopy(mask)
-	for index = 2, #result do
+	for index = 1, #result do
 		result[index] = result[index]:gsub("%.", "z")
 	end
 	return result
@@ -254,26 +313,52 @@ end
 T["references: Wide view matches reference screenshot"] = function()
 	open_format(100, 30)
 	H.expect_screenshot(child.get_screenshot())
+	clear_background_for_mask()
+	H.expect_screen_colors(child, 4, with_cleared_background({ WIDE_DEFAULT_MASK[4] }), LEGEND)
+	H.expect_screen_colors(child, 28, with_cleared_background({ WIDE_DEFAULT_MASK[28] }), LEGEND)
+end
 
+T["references: Tests key cycles grouped, hidden and mixed"] = function()
+	open_format(100, 30)
 	child.type_keys("t")
 	child.cmd("redraw")
 	H.expect_screenshot(child.get_screenshot())
 
-	child.type_keys("tf")
+	child.type_keys("t")
+	eq(
+		child.lua_get([[(function()
+		local text = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
+		return {
+			text:find("Production", 1, true) == nil,
+			text:find("Test  ", 1, true) == nil,
+			text:find("money_test.go:6", 1, true) ~= nil,
+			text:find(" test", 1, true) ~= nil,
+		}
+	end)()]]),
+		{ true, true, true, true }
+	)
+
+	child.type_keys("t")
+	eq(
+		child.lua_get(
+			[[table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n"):find("Production  3", 1, true) ~= nil]]
+		),
+		true
+	)
+end
+
+T["references: Mixed tests without folders is a flat list"] = function()
+	open_format(100, 30)
+	child.type_keys("ttf")
 	child.cmd("redraw")
 	H.expect_screenshot(child.get_screenshot())
-
-	child.type_keys("tf")
-	child.cmd("redraw")
-	clear_background_for_mask()
-	H.expect_screen_colors(child, 1, with_cleared_background(WIDE_DEFAULT_MASK), LEGEND)
 end
 
 T["references: Narrow view fits its content"] = function()
 	open_format(70, 24)
 	H.expect_screenshot(child.get_screenshot())
 	clear_background_for_mask()
-	H.expect_screen_colors(child, 1, with_cleared_background(NARROW_MASK), LEGEND)
+	H.expect_screen_colors(child, 7, with_cleared_background({ NARROW_MASK[7] }), LEGEND)
 end
 
 local grouped_scenario = "references: Variable usages are grouped by write and read"
@@ -282,18 +367,34 @@ T[grouped_scenario]["matches approved K1"] = function()
 	open_calls()
 	H.expect_screenshot(child.get_screenshot())
 	clear_background_for_mask()
-	H.expect_screen_colors(child, 1, with_cleared_background(KIND_GROUPED_MASK), LEGEND)
+	H.expect_screen_colors(child, 4, with_cleared_background({ KIND_GROUPED_MASK[4] }), LEGEND)
 end
 
-local tagged_scenario = "references: w turns the level into row tags"
+local tagged_scenario = "references: u turns the level into row tags"
 T[tagged_scenario] = MiniTest.new_set()
 T[tagged_scenario]["matches approved K2 through the real key"] = function()
 	open_calls()
-	child.type_keys("w")
+	child.type_keys("u")
 	child.cmd("redraw")
 	H.expect_screenshot(child.get_screenshot())
 	clear_background_for_mask()
-	H.expect_screen_colors(child, 1, with_cleared_background(KIND_TAGGED_MASK), LEGEND)
+	H.expect_screen_colors(child, 8, with_cleared_background({ KIND_TAGGED_MASK[8] }), LEGEND)
+end
+
+T["references: Struct usages are grouped by usage type"] = function()
+	open_invoice()
+	H.expect_screenshot(child.get_screenshot())
+	clear_background_for_mask()
+	H.expect_screen_colors(child, 4, with_cleared_background({ STRUCT_GROUPED_MASK[1] }), LEGEND)
+end
+
+T["references: u turns struct usage types into row tags"] = function()
+	open_invoice()
+	child.type_keys("u")
+	child.cmd("redraw")
+	H.expect_screenshot(child.get_screenshot())
+	clear_background_for_mask()
+	H.expect_screen_colors(child, 6, with_cleared_background({ STRUCT_TAGGED_MASK[1] }), LEGEND)
 end
 
 return T

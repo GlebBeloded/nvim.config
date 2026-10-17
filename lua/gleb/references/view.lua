@@ -74,8 +74,9 @@ end
 local function usage_segments(node)
 	local icon = icons.for_node(node)
 	local file, line = node.label:match("^(.*)(:%d+)$")
+	local indent = node.flat_path and node.depth * 2 or node.depth * 2 + 2
 	return {
-		{ text = node.depth == 0 and "" or string.rep(" ", node.depth * 2 + 2) },
+		{ text = node.depth == 0 and "" or string.rep(" ", indent) },
 		{ text = icon.icon, group = icon.icon_group },
 		{ text = " " },
 		{ text = file or node.label, group = icon.label_group },
@@ -89,20 +90,6 @@ local function segments_text(segments)
 	return table.concat(vim.tbl_map(function(segment)
 		return segment.text
 	end, segments))
-end
-
----@param segments gleb.references.Segment[]
----@param width? integer text width the test tag is right-aligned to
-local function add_test_tag(segments, width)
-	local icon = icons.for_node({ kind = "scope", id = "scope:test", label = "Test", depth = 0 })
-	local tag_width = vim.fn.strdisplaywidth(icon.icon .. " test")
-	local line_width = vim.fn.strdisplaywidth(segments_text(segments))
-	vim.list_extend(segments, {
-		{ text = string.rep(" ", math.max((width or 0) - line_width - tag_width, 2)) },
-		{ text = icon.icon, group = icon.icon_group },
-		{ text = " " },
-		{ text = "test", group = icon.label_group },
-	})
 end
 
 ---@param text string
@@ -120,6 +107,24 @@ local function shorten_left(text, width)
 		suffix = vim.fn.strcharpart(suffix, 1)
 	end
 	return "…" .. suffix
+end
+
+---@param segments gleb.references.Segment[]
+---@param width? integer text width the test tag is right-aligned to
+local function add_test_tag(segments, width)
+	local icon = icons.for_node({ kind = "scope", id = "scope:test", label = "Test", depth = 0 })
+	local tag_width = vim.fn.strdisplaywidth(icon.icon .. " test")
+	if width then
+		local fixed_width = vim.fn.strdisplaywidth(segments_text(segments)) - vim.fn.strdisplaywidth(segments[4].text)
+		segments[4].text = shorten_left(segments[4].text, math.max(width - fixed_width - tag_width - 1, 1))
+	end
+	local line_width = vim.fn.strdisplaywidth(segments_text(segments))
+	vim.list_extend(segments, {
+		{ text = string.rep(" ", math.max((width or 0) - line_width - tag_width, 1)) },
+		{ text = icon.icon, group = icon.icon_group },
+		{ text = " " },
+		{ text = "test", group = icon.label_group },
+	})
 end
 
 ---@param segments gleb.references.Segment[]

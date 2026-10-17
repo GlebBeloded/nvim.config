@@ -35,6 +35,7 @@ local usage_types = require("gleb.references.usage_types")
 ---@field test_tag? boolean
 ---@field usage_type? string
 ---@field type_tag? string
+---@field flat_path? boolean
 
 ---@class gleb.references.Tree
 ---@field nodes gleb.references.TreeNode[]
@@ -149,6 +150,9 @@ local function usage_node(usage, depth, parent_id, show_path, mixed, tagged)
 		test = usage.test,
 		usage_type = usage.usage_type,
 	}
+	if show_path then
+		node.flat_path = true
+	end
 	if mixed then
 		node.test_tag = usage.test
 	end

@@ -185,10 +185,11 @@ T["lsp: References of a Go function list call sites across packages"] = function
 	expect_render_rows(s, {
 		"╭ Usages of Format · 4",
 		"│ ▾  Production  3",
-		"│        invoice.go:16",
-		"│        summary.go:7",
+		"│   ▾  Call  3",
+		"│          invoice.go:16",
+		"│          summary.go:7",
 		"│ ▾  Test  1",
-		"Tests: grouped t · ● Folders f · Preview P · Open ↩",
+		"Tests: grouped t · ● Folders f · ● Usage type u · Preview P · Open ↩",
 	})
 
 	E.burst(s, function()
@@ -200,8 +201,9 @@ T["lsp: References of a Go function list call sites across packages"] = function
 	expect_render_rows(s, {
 		"╭ Usages of Format · 3",
 		"│ ▾  Production  3",
-		"│        summary.go:7",
-		"Tests: hidden t · ● Folders f · Preview P · Open ↩",
+		"│   ▾  Call  3",
+		"│          summary.go:7",
+		"Tests: hidden t · ● Folders f · ● Usage type u · Preview P · Open ↩",
 	})
 end
 
@@ -238,26 +240,26 @@ T["references: Real key presses switch Calls usages from the level to row tags"]
 		"│   ▾ 󰏫 Value write  1",
 		"│          calls.go:8",
 		"│ ▾  Test  3",
-		"│   ▾ 󰏫 Value write  1",
-		"│          calls_test.go:6",
 		"│   ▾ 󰈈 Value read  2",
 		"│          calls_test.go:8",
 		"│          calls_test.go:9",
-		"Tests: grouped t · ● Folders f · ● Read/write w · Preview P · Open ↩",
+		"│   ▾ 󰏫 Value write  1",
+		"│          calls_test.go:6",
+		"Tests: grouped t · ● Folders f · ● Usage type u · Preview P · Open ↩",
 	})
 
 	E.burst(s, function()
-		E.press(s, "w")
+		E.press(s, "u")
 		S.wait_for(function()
-			return s:lua([[return not require("gleb.references.view").state.options.read_write]])
-		end, "read/write level disabled")
+			return s:lua([[return not require("gleb.references.view").state.options.usage_type]])
+		end, "usage type level disabled")
 	end)
 	expect_render_rows(s, {
 		"│        calls.go:8               󰏫 write",
 		"│        calls_test.go:6          󰏫 write",
 		"│        calls_test.go:8           󰈈 read",
 		"│        calls_test.go:9           󰈈 read",
-		"Tests: grouped t · ● Folders f · ○ Read/write w · Preview P · Open ↩",
+		"Tests: grouped t · ● Folders f · ○ Usage type u · Preview P · Open ↩",
 	})
 end
 

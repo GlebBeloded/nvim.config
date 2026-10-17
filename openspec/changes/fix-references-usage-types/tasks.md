@@ -13,6 +13,7 @@ Scenarios: `references: Every query capture is in the catalogue`, `references: G
 - The catalogue exports entries keyed directly by usage id so query validation and later consumers use the same lookup.
 - `unclassified` has an empty tag because unclassified rows do not display a type tag.
 - A minimal Go fallback query preserves the existing Go scenario until task 2 replaces it with the full Go catalogue query.
+- Folderless usage rows carry a `flat_path` marker so rendering follows only the visible hierarchy and leaves room for right-aligned tags.
 
 ## 2. Go query and target kind
 
@@ -48,7 +49,7 @@ Scenarios: `references: Unclassified usages add no level`, `references: Usage ty
 
 Scenarios: `references: Wide view matches reference screenshot`, `references: Narrow view fits its content`, `references: Tests key cycles grouped, hidden and mixed`, `references: Mixed tests without folders is a flat list`, `references: Variable usages are grouped by write and read`, `references: Struct usages are grouped by usage type`, `references: u turns the level into row tags`, `references: u turns struct usage types into row tags`, `references: Real key presses switch Calls usages from the level to row tags`
 
-- [ ] 5.1 Update tests/screen/references/test_view.lua and its screenshots to Proposed V1–V4, K1, K2, T1 and T2 (real glyphs where the render has stand-ins; attribute blocks per the mask groups), and see them fail
-- [ ] 5.2 Update the e2e Calls test to press `u`, and compare each step's zellij dump with K1/K2
-- [ ] 5.3 Make `make test-screen` and `make e2e` (sandbox VM) pass, then `make check`. Compare `make render` with `renders/*.ansi`.
-- [ ] 5.4 Update `references` in the module map of `docs/architecture.md`: the usage type catalogue and the `queries/<lang>/usages.scm` convention
+- [x] 5.1 Update tests/screen/references/test_view.lua and its screenshots to Proposed V1–V4, K1, K2, T1 and T2 (real glyphs where the render has stand-ins; attribute blocks per the mask groups), and see them fail
+- [x] 5.2 Update the e2e Calls test to press `u`, and compare each step's zellij dump with K1/K2
+- [x] 5.3 Make `make test-screen` and `make e2e` (sandbox VM) pass, then `make check`. Compare `make render` with `renders/*.ansi`.
+- [x] 5.4 Update `references` in the module map of `docs/architecture.md`: the usage type catalogue and the `queries/<lang>/usages.scm` convention
