@@ -248,6 +248,20 @@ T[go_scenario]["renders every usage kind"] = function()
 	})
 end
 
+local go_direct_scenario = "references: gopls kinds classify a Go variable"
+T[go_direct_scenario] = MiniTest.new_set()
+T[go_direct_scenario]["classifies every usage"] = function()
+	require_server("gopls")
+	local root, manifest = F.copy("gomod", vim.fn.tempname())
+	local declaration = manifest.references.Calls[1]
+	eq(classify(root, declaration.path, declaration.line, declaration.col, "gopls"), {
+		{ "report/calls.go", 8, 2, "write" },
+		{ "report/calls_test.go", 6, 2, "write" },
+		{ "report/calls_test.go", 8, 5, "read" },
+		{ "report/calls_test.go", 9, 34, "read" },
+	})
+end
+
 local lua_scenario = "references: lua_ls kinds classify a Lua local"
 T[lua_scenario] = MiniTest.new_set()
 T[lua_scenario]["classifies every usage"] = function()
@@ -292,6 +306,20 @@ T[python_scenario]["renders every usage kind"] = function()
 	})
 end
 
+local python_direct_scenario = "references: basedpyright kinds classify a Python variable"
+T[python_direct_scenario] = MiniTest.new_set()
+T[python_direct_scenario]["classifies every usage"] = function()
+	require_server("basedpyright")
+	local root = H.git_repo({
+		["pyproject.toml"] = '[project]\nname = "usage-kinds"\nversion = "0.1.0"\n',
+		["main.py"] = "total = 0\ntotal += 1\nprint(total)\n",
+	})
+	eq(classify(root, "main.py", 1, 1, "basedpyright"), {
+		{ "main.py", 2, 1, "write" },
+		{ "main.py", 3, 7, "read" },
+	})
+end
+
 local typescript_scenario = "references: gr classifies every TypeScript variable usage"
 T[typescript_scenario] = MiniTest.new_set()
 T[typescript_scenario]["renders every usage kind"] = function()
@@ -307,6 +335,21 @@ T[typescript_scenario]["renders every usage kind"] = function()
 	})
 end
 
+local typescript_direct_scenario = "references: tsserver kinds classify a TypeScript variable"
+T[typescript_direct_scenario] = MiniTest.new_set()
+T[typescript_direct_scenario]["classifies every usage"] = function()
+	require_server("vtsls")
+	local root = H.git_repo({
+		["package.json"] = [[{"private":true}]],
+		["tsconfig.json"] = [[{"compilerOptions":{"strict":true}}]],
+		["main.ts"] = "let hits = 0;\nhits++;\nconsole.log(hits);\n",
+	})
+	eq(classify(root, "main.ts", 1, 5, "vtsls"), {
+		{ "main.ts", 2, 1, "write" },
+		{ "main.ts", 3, 13, "read" },
+	})
+end
+
 local rust_scenario = "references: gr classifies every Rust variable usage"
 T[rust_scenario] = MiniTest.new_set()
 T[rust_scenario]["renders every usage kind"] = function()
@@ -317,6 +360,20 @@ T[rust_scenario]["renders every usage kind"] = function()
 	local actual =
 		open_references(root, "src/main.rs", 1, 21, "rust_analyzer", "rust-analyzer", RUST_TIMEOUT_MS, "rust")
 	eq(actual, {
+		{ "src/main.rs", 2, 5, "write" },
+		{ "src/main.rs", 3, 16, "read" },
+	})
+end
+
+local rust_direct_scenario = "references: rust-analyzer kinds classify a Rust variable"
+T[rust_direct_scenario] = MiniTest.new_set()
+T[rust_direct_scenario]["classifies every usage"] = function()
+	require_server("rust_analyzer", "rust-analyzer")
+	local root = H.git_repo({
+		["Cargo.toml"] = '[package]\nname = "usage-kinds"\nversion = "0.1.0"\nedition = "2024"\n',
+		["src/main.rs"] = 'fn main() { let mut n = 0;\n    n += 1;\n    println!("{n}");\n}\n',
+	})
+	eq(classify(root, "src/main.rs", 1, 21, "rust_analyzer", "rust-analyzer", RUST_TIMEOUT_MS, 2), {
 		{ "src/main.rs", 2, 5, "write" },
 		{ "src/main.rs", 3, 16, "read" },
 	})
@@ -341,7 +398,8 @@ T[terraform_scenario] = MiniTest.new_set()
 T[terraform_scenario]["renders every usage kind"] = function()
 	local root, manifest = F.copy("tfproj", vim.fn.tempname())
 	local declaration = manifest.references.region[1]
-	local actual = open_references(root, declaration.path, declaration.line, declaration.col, "terraformls")
+	local actual =
+		open_references(root, declaration.path, declaration.line, declaration.col, "terraformls", nil, nil, "hcl")
 	eq(actual, {
 		{ "main.tf", 2, 21, "read" },
 		{ "outputs.tf", 2, 11, "read" },

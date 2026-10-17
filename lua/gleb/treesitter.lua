@@ -6,6 +6,7 @@ local parsers = {
 	"bash",
 	"go",
 	"gomod",
+	"hcl",
 	"json",
 	"lua",
 	"markdown",
