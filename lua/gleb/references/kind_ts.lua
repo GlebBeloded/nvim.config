@@ -6,6 +6,47 @@ local languages = require("gleb.languages")
 ---@class ReferencesSourcePosition
 ---@field line integer Zero-based row
 ---@field character integer Zero-based byte column
+---@field target_kind? gleb.references.TargetKind
+
+local TYPE_POSITION_KINDS = {
+	field_declaration = true,
+	parameter_declaration = true,
+	return_type = true,
+	receiver = true,
+	variable_declaration = true,
+	const_declaration = true,
+	type_alias = true,
+	type_assertion = true,
+	type_conversion = true,
+	type_instantiation = true,
+	type_constraint = true,
+	type_parameter_declaration = true,
+	cast = true,
+	instanceof = true,
+	extends = true,
+	impl = true,
+	catch = true,
+}
+
+---@param kind string
+---@param target gleb.references.TargetKind
+---@param filetype string
+---@return string?
+local function refine(kind, target, filetype)
+	if kind == "call" and target == "type" and filetype == "go" then
+		return "type_conversion"
+	end
+	if kind == "function_argument" and target ~= "function" then
+		return nil
+	end
+	if kind == "static_member" and target ~= "type" then
+		return nil
+	end
+	if target ~= "unknown" and target ~= "type" and TYPE_POSITION_KINDS[kind] then
+		return nil
+	end
+	return kind
+end
 
 ---@param source string
 ---@param language string
@@ -74,7 +115,11 @@ function M.classify(source, filetype, positions)
 						and (best_pattern == nil or pattern < best_pattern)
 					then
 						best_pattern = pattern
-						kinds[index] = kind
+						local refined = kind
+						if position.target_kind then
+							refined = refine(kind, position.target_kind, filetype)
+						end
+						kinds[index] = refined or "read"
 					end
 				end
 			end

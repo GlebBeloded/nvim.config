@@ -9,14 +9,15 @@ Scenarios: `languages: Every configured language meets the contract`
 ## Agent decisions
 
 - The JavaScript case module exposes TypeScript as its contract-compatible top-level suite and all three parser suites under `suites`, preserving the existing contract shape while covering each configured parser.
+- Target-kind refinement is opt-in on query positions, so the populated case table exercises refinement while existing raw-query callers keep their capture-only contract.
 
 ## 2. Classify TypeScript, TSX and JavaScript syntax
 
 Scenarios: `references: TypeScript query classifies every usage type`, `references: TSX and TypeScript buffers use their own parser`, `references: TypeScript type alias targets keep their usage types`
 
-- [ ] 2.1 Write `references: TypeScript query classifies every usage type` in `tests/unit/languages/test_contract.lua`, `references: TSX and TypeScript buffers use their own parser` in `tests/unit/references/test_kind_ts.lua`, and `references: TypeScript type alias targets keep their usage types` in `tests/integration/references/test_kind.lua`; drive the populated case table and real `gr` mapping, then run `make test FILE=tests/unit/languages/test_contract.lua CASE="TypeScript query classifies every usage type"`, `make test FILE=tests/unit/references/test_kind_ts.lua CASE="TSX and TypeScript buffers use their own parser"`, and `make test FILE=tests/integration/references/test_kind.lua CASE="TypeScript type alias targets keep their usage types"` and see them fail
-- [ ] 2.2 Keep parser selection through `vim.treesitter.language.get_lang`, and apply the existing `type_identifier` target-kind upgrade to vtsls type aliases; change the classifier only if either scenario exposes a gap
-- [ ] 2.3 Run the three focused commands from 2.1 and see them pass
+- [x] 2.1 Write `references: TypeScript query classifies every usage type` in `tests/unit/languages/test_contract.lua`, `references: TSX and TypeScript buffers use their own parser` in `tests/unit/references/test_kind_ts.lua`, and `references: TypeScript type alias targets keep their usage types` in `tests/integration/references/test_kind.lua`; drive the populated case table and real `gr` mapping, then run `make test FILE=tests/unit/languages/test_contract.lua CASE="TypeScript query classifies every usage type"`, `make test FILE=tests/unit/references/test_kind_ts.lua CASE="TSX and TypeScript buffers use their own parser"`, and `make test FILE=tests/integration/references/test_kind.lua CASE="TypeScript type alias targets keep their usage types"` and see them fail
+- [x] 2.2 Keep parser selection through `vim.treesitter.language.get_lang`, and apply the existing `type_identifier` target-kind upgrade to vtsls type aliases; change the classifier only if either scenario exposes a gap
+- [x] 2.3 Run the three focused commands from 2.1 and see them pass
 
 ## 3. Validate every query capture
 

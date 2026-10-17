@@ -425,6 +425,8 @@ local provider = assert(client.server_capabilities.executeCommandProvider)
 provider.commands = vim.tbl_filter(function(command)
 	return command ~= "typescript.tsserverRequest"
 end, provider.commands)
+vim.treesitter.query.set("ecma", "usages", "")
+vim.treesitter.query.set("javascript", "usages", "")
 vim.treesitter.query.set("typescript", "usages", "")
 ]])
 	end)
@@ -446,6 +448,29 @@ T[typescript_direct_scenario]["classifies every usage"] = function()
 	eq(classify(root, "main.ts", 1, 5, "vtsls"), {
 		{ "main.ts", 2, 1, "write" },
 		{ "main.ts", 3, 13, "read" },
+	})
+end
+
+local typescript_alias_scenario = "references: TypeScript type alias targets keep their usage types"
+T[typescript_alias_scenario] = MiniTest.new_set()
+T[typescript_alias_scenario]["classifies alias annotations through gr"] = function()
+	local root = H.git_repo({
+		["package.json"] = [[{"private":true}]],
+		["tsconfig.json"] = [[{"compilerOptions":{"strict":true}}]],
+		["main.ts"] = table.concat({
+			"type Amount = number;",
+			"const rate: Amount = 1;",
+			"function convert(a: Amount): Amount {",
+			"  return a * rate;",
+			"}",
+			"convert(2);",
+		}, "\n"),
+	})
+	local actual = open_references(root, "main.ts", 1, 6, "vtsls", nil, nil, "typescript")
+	eq(actual, {
+		{ "main.ts", 2, 13, "variable_declaration" },
+		{ "main.ts", 3, 21, "parameter_declaration" },
+		{ "main.ts", 3, 30, "return_type" },
 	})
 end
 
