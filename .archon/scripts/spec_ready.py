@@ -13,6 +13,7 @@ from spec_gate import gate
 
 TASK = re.compile(r"^- \[[ x]\] \d", re.MULTILINE)
 UNSETTLED = re.compile(r"^## (Blocked|Unblocked)\b", re.MULTILINE)
+AUDITOR = re.compile(r"^## Decision \(auditor\b", re.MULTILINE)
 
 
 def ready(change: str) -> dict:
@@ -23,6 +24,9 @@ def ready(change: str) -> dict:
         return {"ok": False, "log": "no tasks.md tasks"}
     if UNSETTLED.search(text):
         return {"ok": False, "log": "tasks.md has a Blocked or Unblocked section to settle"}
+    proposal = folder / "proposal.md"
+    if proposal.is_file() and AUDITOR.search(proposal.read_text()):  # its task splits and scenarios go into the artifacts
+        return {"ok": False, "log": "proposal.md has an auditor Decision for the spec step to apply"}
     return gate(change)
 
 

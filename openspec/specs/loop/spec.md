@@ -521,6 +521,10 @@ With `ARTIFACTS_DIR` set, tests/parallel.lua SHALL add each collected case (file
 ### Requirement: Gate merges a moved auto first
 The build loop's gate SHALL first merge `auto` into the run's branch when `auto` has commits the branch lacks, the worktree has no tracked edits and the merge is clean (`.archon/scripts/sync_base.py`); a conflicting merge SHALL be aborted and the gate SHALL run on the branch as it is.
 
+#### Scenario: An auditor Decision runs the spec step
+- **WHEN** `spec_ready.py` runs on a finished folder whose proposal.md has a `## Decision (auditor, …)` section, and `.archon/commands/queue-spec.md` is read
+- **THEN** the folder is not ready (the spec step runs) and queue-spec applies the Decision's scenarios to the delta and its task splits, tests and gates to tasks.md without dropping any
+
 #### Scenario: Each task's context pack merges a moved auto first
 - **WHEN** the nvim-deliver `pack` node and `.archon/scripts/context_pack.py` are read
 - **THEN** the pack passes `sync_base: "true"` and context_pack.py calls `sync()` before it reads the change

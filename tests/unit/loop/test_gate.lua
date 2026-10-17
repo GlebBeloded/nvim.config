@@ -670,6 +670,24 @@ T["loop: Fix prompt probes first and caps attempts"] = function()
 	has(fix, "unless the proposal's `## Decision` allows it")
 end
 
+T["loop: An auditor Decision runs the spec step"] = function()
+	local spec = read(vim.fs.joinpath(H.root, ".archon/commands/queue-spec.md")):gsub("%s+", " ")
+	has(
+		spec,
+		"An auditor `## Decision` in proposal.md is part of that contract and is applied here, in an existing folder too"
+	)
+	local result = H.system(
+		child,
+		{ "python3", "-m", "unittest", "-q", "test_spec_ready" },
+		vim.fs.joinpath(H.root, ".archon/scripts")
+	)
+	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
+	has(
+		read(vim.fs.joinpath(H.root, ".archon/scripts/spec_ready.py")),
+		'AUDITOR = re.compile(r"^## Decision \\(auditor\\b"'
+	)
+end
+
 T["loop: Each task's context pack merges a moved auto first"] = function()
 	local deliver = read(vim.fs.joinpath(H.root, ".archon/workflows/nvim-deliver/nvim-deliver.yaml"))
 	has(deliver, 'sync_base: "true" # sync_base.py: an auditor Decision on auto reaches the next task')
