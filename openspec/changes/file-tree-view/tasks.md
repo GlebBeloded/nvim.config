@@ -130,9 +130,9 @@ Scenarios: `file-tree: Project tree toggle tolerates a deleted file`, `file-tree
 
 Scenarios: `file-tree: Project tree normalizes a symlinked root`, `file-tree: Project tree cuts a symlink loop`, `file-tree: Project tree tolerates an unreadable folder`
 
-- [ ] 5a3.1 Write these scenarios in `tests/integration/file-tree/test_project_live.lua`, using real symlinks and `chmod 000`, and see them fail.
-- [ ] 5a3.2 Add the single nearest-existing-parent `normalize(path)` implementation and realpath seen-set; degrade unreadable scans to empty rows.
-- [ ] 5a3.3 Run `make test FILE=tests/integration/file-tree/test_project_live.lua` for these cases and see it pass.
+- [x] 5a3.1 Write these scenarios in `tests/integration/file-tree/test_project_live.lua`, using real symlinks and `chmod 000`, and see them fail.
+- [x] 5a3.2 Add the single nearest-existing-parent `normalize(path)` implementation and realpath seen-set; degrade unreadable scans to empty rows.
+- [x] 5a3.3 Run `make test FILE=tests/integration/file-tree/test_project_live.lua` for these cases and see it pass.
 
 ## 5b1. Watched filesystem updates and compact chains
 
@@ -199,3 +199,4 @@ Scenarios: `file-tree: Project tree matches the approved render`, `file-tree: Pr
 - Cursor hiding queries the current mode and keeps one original `guicursor`; per-view window and mode events restore it whenever the tree is not focused in normal or visual mode.
 - `:q` closes both tree types in `QuitPre`; `:close` schedules the same guarded cleanup from `WinClosed` because Neovim has no pre-close event and rejects closing the final tree inside that autocmd.
 - Unfold-all queues displayed directory rows breadth-first and rolls back the first expansion over 5000 rows, preserving a bounded visible tree.
+- A tree scan assigns each real directory to its first lexical path while allowing that same path to be rescanned, so compact-row construction can reuse scans without traversing aliases or loops.

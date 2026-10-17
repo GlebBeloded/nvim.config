@@ -173,4 +173,75 @@ T["file-tree: Project tree does not follow a directory buffer"] = function()
 	eq(notifications(), {})
 end
 
+T["file-tree: Project tree normalizes a symlinked root"] = function()
+	local linked_home = vim.fn.tempname()
+	child.lua([[assert(vim.uv.fs_symlink(...))]], { vim.fs.dirname(root), linked_home })
+	child.lua([[vim.env.HOME = ...]], { linked_home })
+	local linked_root = vim.fs.joinpath(linked_home, vim.fs.basename(root))
+	child.cmd("cd " .. vim.fn.fnameescape(linked_root))
+	child.cmd("edit " .. vim.fn.fnameescape(vim.fs.joinpath(linked_root, "internal/money/money.go")))
+	local notifications = H.record_notify(child)
+
+	run_action("file_tree.toggle")
+
+	local actual = child.lua_get([[(function()
+		local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+		return {
+			root = view.root,
+			root_line = vim.api.nvim_buf_get_lines(view.buf, 0, 1, false)[1],
+		}
+	end)()]])
+	eq(actual.root, assert(vim.uv.fs_realpath(root)))
+	eq(actual.root_line:sub(-#("~/" .. vim.fs.basename(root))), "~/" .. vim.fs.basename(root))
+	eq(selected_tree_line():match("[^ ]+$"), "money.go")
+	eq(notifications(), {})
+end
+
+T["file-tree: Project tree cuts a symlink loop"] = function()
+	child.lua([[assert(vim.uv.fs_symlink(".", ...))]], { vim.fs.joinpath(root, "loop") })
+	child.lua([[require("gleb.file_tree.fs").reset()]])
+	local notifications = H.record_notify(child)
+	edit("README.md")
+	run_action("file_tree.toggle")
+
+	child.type_keys("zR")
+
+	local loop_rows = child.lua_get([[(function()
+		local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+		return vim.iter(view.rows):filter(function(row)
+			return row.label == "loop"
+		end):totable()
+	end)()]])
+	eq(#loop_rows, 1)
+	eq(loop_rows[1].kind, "directory")
+	eq(loop_rows[1].empty, true)
+	eq(notifications(), {})
+end
+
+T["file-tree: Project tree tolerates an unreadable folder"] = function()
+	local locked = vim.fs.joinpath(root, "locked")
+	vim.fn.mkdir(locked, "p")
+	vim.fn.writefile({ "secret" }, vim.fs.joinpath(locked, "secret.txt"))
+	assert(vim.uv.fs_chmod(locked, 0))
+	child.lua([[require("gleb.file_tree.fs").reset()]])
+	local notifications = H.record_notify(child)
+	edit("README.md")
+	run_action("file_tree.toggle")
+
+	focus_tree_row("locked")
+	child.type_keys("<CR>")
+
+	local locked_rows = child.lua_get([[(function()
+		local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+		return vim.iter(view.rows):filter(function(row)
+			return row.path:find("/locked", 1, true) ~= nil
+		end):totable()
+	end)()]])
+	eq(#locked_rows, 1)
+	eq(locked_rows[1].kind, "directory")
+	eq(locked_rows[1].empty, true)
+	eq(notifications(), {})
+	assert(vim.uv.fs_chmod(locked, 448))
+end
+
 return T
