@@ -16,6 +16,8 @@ local M = {
 		context = 4,
 		debounce_ms = 150,
 		timeout_ms = 1000,
+		policy = "default",
+		highlight = "by_word",
 	},
 	state = {
 		by_path = {},
@@ -133,8 +135,8 @@ end
 ---@return gleb.diff.Result
 local function compare(left, right)
 	return engine.compare_lines(left, right, {
-		policy = "default",
-		highlight = "by_word",
+		policy = M.config.policy,
+		highlight = M.config.highlight,
 		moves = true,
 		limits = { timeout_ms = M.config.timeout_ms },
 	})
@@ -378,7 +380,7 @@ end
 ---@return gleb.diff.view.View?
 local function build(spec)
 	local comparison = compare(spec.left, spec.right)
-	if #comparison.fragments == 0 then
+	if #comparison.fragments == 0 and M.config.highlight ~= "none" then
 		return nil
 	end
 	local path = vim.fs.normalize(spec.path)
@@ -560,8 +562,10 @@ function M.open(spec)
 	windows.open(view)
 	register(view)
 	local first = view.fragments[1]
-	local line = math.min(first.start2 + 1, math.max(#spec.right, 1))
-	vim.api.nvim_win_set_cursor(view.right_win, { line, 0 })
+	if first then
+		local line = math.min(first.start2 + 1, math.max(#spec.right, 1))
+		vim.api.nvim_win_set_cursor(view.right_win, { line, 0 })
+	end
 	return view
 end
 
@@ -636,6 +640,12 @@ end
 ---@return gleb.diff.view.View?
 function M.current()
 	return M.state.by_win[vim.api.nvim_get_current_win()]
+end
+
+function M.recompare_all()
+	for _, view in pairs(M.state.by_path) do
+		redraw_now(view)
+	end
 end
 
 function M.reset()

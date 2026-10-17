@@ -38,9 +38,9 @@ Scenarios: `diff: Diff view marks both ends of a moved block`, `diff: Diff view 
 
 Scenarios: `diff: Diff view trim policy hides a trailing space`, `diff: Diff view whitespace policy persists`, `diff: Diff view line mode drops word highlights`, `diff: Diff view no-highlight mode shows plain texts`, `diff: Diff view highlight mode persists`
 
-- [ ] 4.1 Write these scenarios in `tests/integration/diff/test_settings.lua` and the `diff.json` validation in `tests/unit/diff/test_settings.lua`, and see them fail
-- [ ] 4.2 Add `lua/gleb/diff/settings.lua` and the nine radio actions (Decisions 7 and 8), and re-compare open views on change.
-- [ ] 4.3 Run both files and see them pass
+- [x] 4.1 Write these scenarios in `tests/integration/diff/test_settings.lua` and the `diff.json` validation in `tests/unit/diff/test_settings.lua`, and see them fail
+- [x] 4.2 Add `lua/gleb/diff/settings.lua` and the nine radio actions (Decisions 7 and 8), and re-compare open views on change.
+- [x] 4.3 Run both files and see them pass
 
 ## 5. Screens
 
@@ -57,3 +57,4 @@ Scenarios: `diff: Diff view staged change matches the approved render`, `diff: D
 - Expose `state`, `update_index(..., include)` and `make_patch(..., final-newline flags)` so index math and serialization stay independently testable.
 - Keep the index snapshot and its final-newline bit on each view so redraws stay synchronous and toggles can refresh it explicitly.
 - Keep each moved row's original change kind separately so its arrow retains the add/delete colour while the row uses the moved tint.
+- Pair no-highlight rows through the longer side and leave unmatched cells plain, preserving both complete texts without diff padding.

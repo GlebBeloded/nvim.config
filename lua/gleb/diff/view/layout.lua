@@ -152,6 +152,22 @@ end
 function M.build(fragments, line_count1, line_count2, context, states, moves)
 	local rows = {}
 	local folds = {}
+	if #fragments == 0 then
+		for line = 1, math.max(line_count1, line_count2) do
+			rows[#rows + 1] = {
+				left = line <= line_count1 and line or nil,
+				right = line <= line_count2 and line or nil,
+			}
+		end
+		return {
+			rows = rows,
+			folds = folds,
+			fragments = fragments,
+			moves = moves or {},
+			line_count1 = line_count1,
+			line_count2 = line_count2,
+		}
+	end
 	local previous1, previous2 = 0, 0
 	for index, fragment in ipairs(fragments) do
 		add_unchanged(rows, folds, previous1, fragment.start1, previous2, context, index > 1, true)
