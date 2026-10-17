@@ -48,6 +48,10 @@ The lsp feature SHALL enable servers, install mason packages (`:MasonSync`) and 
 - **WHEN** the full config is loaded and the parser list passed to the treesitter installer is read
 - **THEN** it holds exactly bash, go, gomod, hcl, javascript, json, lua, markdown, markdown_inline, python, rust, terraform, tsx, typescript, vim, vimdoc and yaml
 
+#### Scenario: Lua settings are module-relative
+- **WHEN** the Lua language module loads while `NVIM_APPNAME` names another config directory
+- **THEN** it reads `settings.json` beside its own module
+
 ### Requirement: References facet
 Test-file detection and usage classification SHALL take a language's test patterns, write-access source and symbol-kind overrides only from its enabled `references` facet, and the query parser language from the buffer filetype; a filetype without one SHALL use the generic test segments and server kinds only. A language with `usage_types = true` SHALL ship a `usages` query for each of its filetypes' parser languages and its own query case table.
 
@@ -58,6 +62,10 @@ Test-file detection and usage classification SHALL take a language's test patter
 #### Scenario: Terraform queries inherit the HCL query
 - **WHEN** usages in a `terraform` buffer are classified
 - **THEN** the `terraform` parser language's `usages` query is used, and its patterns are the `hcl` query's through `; inherits: hcl`
+
+#### Scenario: Filetypes without an enabled references facet use server kinds
+- **WHEN** document highlights classify usages for an unregistered filetype or one with a disabled `references` facet
+- **THEN** their server read and write kinds are retained
 
 ### Requirement: Language contract
 A unit test SHALL check every registered language against the contract: each enabled facet passes its validator, its parsers are installed, and its `usages` query compiles and captures only catalogue ids. Its case table SHALL exist, and its fixture project and manifest symbol SHALL exist in the fixture builder. A disabled reason `queued: <id>` SHALL name an existing change. The references integration suite SHALL run `gr` once per enabled `references` facet on its fixture.

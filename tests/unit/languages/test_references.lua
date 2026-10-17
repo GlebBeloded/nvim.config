@@ -59,4 +59,54 @@ T["languages: Terraform queries inherit the HCL query"] = function()
 	eq(child.lua_get("_G.terraform_kinds"), { "write", "read" })
 end
 
+local server_kinds_scenario = "languages: Filetypes without an enabled references facet use server kinds"
+T[server_kinds_scenario] = MiniTest.new_set()
+
+local function expect_server_write(filetype, disable_facet)
+	child.lua(
+		[[
+		local filetype, disable_facet = ...
+		if disable_facet then
+			require("gleb.languages").for_filetype(filetype).references = { disabled = "not configured" }
+		end
+		local path = vim.fn.tempname()
+		vim.fn.writefile({ "value" }, path)
+		local position = { line = 0, character = 0 }
+		local range = { start = position, ["end"] = position }
+		local client = { id = 991, name = "server-kinds-test", offset_encoding = "utf-8" }
+		function client:supports_method(method)
+			return method == "textDocument/documentHighlight"
+		end
+		function client:request(_, _, callback)
+			vim.schedule(function() callback(nil, { { kind = 3, range = range } }) end)
+			return true
+		end
+		vim.lsp.get_client_by_id = function(id) return id == client.id and client or nil end
+		_G.server_kinds = nil
+		require("gleb.references.kind").classify({ {
+			uri = vim.uri_from_fname(path),
+			path = path,
+			lnum = 1,
+			col = 1,
+			filetype = filetype,
+			range = range,
+			client_id = client.id,
+		} }, function(usages)
+			_G.server_kinds = { usages[1].kind or vim.NIL }
+		end)
+	]],
+		{ filetype, disable_facet }
+	)
+	eq(child.wait("_G.server_kinds ~= nil", 1000), true)
+	eq(child.lua_get("_G.server_kinds"), { "write" })
+end
+
+T[server_kinds_scenario]["unregistered filetype"] = function()
+	expect_server_write("unregistered", false)
+end
+
+T[server_kinds_scenario]["disabled facet"] = function()
+	expect_server_write("css", true)
+end
+
 return T

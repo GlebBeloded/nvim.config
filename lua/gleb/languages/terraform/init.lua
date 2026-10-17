@@ -17,7 +17,7 @@ return {
 	references = {
 		test_patterns = { "%.tftest%.hcl$", "/tests/" },
 		usage_types = { disabled = "queued: fix-references-usage-types-lua-bash-terraform" },
-		write_access = false,
+		write_access = "documentHighlight",
 		target_kinds = { Class = "unknown" },
 		fixture = { project = "tfproj", symbol = "region" },
 	},

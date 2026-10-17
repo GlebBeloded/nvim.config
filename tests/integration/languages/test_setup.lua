@@ -67,4 +67,14 @@ T["languages: Installed parsers are unchanged"] = function()
 	})
 end
 
+T["languages: Lua settings are module-relative"] = function()
+	child.lua([[
+		vim.env.NVIM_APPNAME = "module-relative-settings-test"
+		package.loaded["gleb.languages.lua"] = nil
+		_G.lua_language_module = require("gleb.languages.lua")
+	]])
+
+	eq(child.lua_get([[_G.lua_language_module.lsp.config.settings.Lua.completion.callSnippet]]), "Replace")
+end
+
 return T

@@ -18,7 +18,7 @@ return {
 	references = {
 		test_patterns = { "%.bats$", "/test/", "/tests/" },
 		usage_types = { disabled = "queued: fix-references-usage-types-lua-bash-terraform" },
-		write_access = false,
+		write_access = "documentHighlight",
 		target_kinds = {},
 		fixture = { project = "bashproj", symbol = "total" },
 	},
