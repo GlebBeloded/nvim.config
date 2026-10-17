@@ -75,6 +75,37 @@ T["references: gr without a references-capable client notifies"] = function()
 	eq(#child.api.nvim_list_wins(), before)
 end
 
+T["references: gr continues when one client refuses the request"] = function()
+	local declaration = manifest.references.Format[1]
+	edit(declaration.path, declaration.line, declaration.col)
+	child.lua([[
+		local function server()
+			return {
+				request = function(method, _, callback)
+					callback(nil, method == "initialize" and { capabilities = { referencesProvider = true } } or {})
+					return true, 1
+				end,
+				notify = function() return true end,
+				is_closing = function() return false end,
+				terminate = function() end,
+			}
+		end
+		vim.lsp.start({ name = "refusing-references", cmd = server, root_dir = vim.fn.getcwd() })
+		vim.wait(1000, function()
+			return #vim.lsp.get_clients({ bufnr = 0, name = "refusing-references" }) == 1
+		end)
+		vim.lsp.get_clients({ bufnr = 0, name = "refusing-references" })[1].request = function()
+			return false
+		end
+	]])
+
+	child.type_keys("gr")
+	eq(child.wait([[vim.bo.filetype == "gleb-references"]], TIMEOUT_MS), true)
+
+	local title = child.lua_get("vim.api.nvim_win_get_config(0).title[1][1]")
+	eq(title, " Usages of Format · 4 ")
+end
+
 T["references: The first usage is selected and previewed"] = function()
 	open_format()
 

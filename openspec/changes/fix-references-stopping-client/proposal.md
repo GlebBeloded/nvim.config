@@ -8,8 +8,12 @@ neither the view nor "No usages found" appears. Raised as a minor in three revie
 
 ## Evidence
 
-- lua/gleb/references/request.lua:99-101 ignores the boolean `client:request` returns
-- `:h Client:request()`: returns false when the client has shut down or the request could not be sent
+- `lua/gleb/references/request.lua:94,109-110,133-135` initializes `pending` from every capable client, but
+  decrements it only from the response handler and ignores the boolean returned by `client:request`.
+- `/opt/homebrew/Cellar/neovim/0.12.5_1/share/nvim/runtime/lua/vim/lsp/client.lua:742-764` forwards the RPC
+  request status to the caller without invoking the response handler itself when sending fails.
+- `/opt/homebrew/Cellar/neovim/0.12.5_1/share/nvim/runtime/lua/vim/lsp/rpc.lua:266-267,313-324` returns false
+  while the transport is closing and registers the response callback only after a successful send.
 
 ## What Changes
 
@@ -22,3 +26,6 @@ neither the view nor "No usages found" appears. Raised as a minor in three revie
 
 - lua/gleb/references/request.lua
 - tests/integration/references/
+- No plugin dependency is added, removed, or upgraded.
+- Core keymaps do not change.
+- Out of scope: changing the Find Usages layout, grouping, preview, or navigation behavior.
