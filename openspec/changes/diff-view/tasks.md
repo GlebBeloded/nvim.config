@@ -48,12 +48,12 @@ Scenarios: `diff: Diff view q closes the tab page`, `diff: Diff view closes with
 
 Scenarios: `diff: Diff view matches the approved render`
 
-- [ ] 5.1 Write `tests/screen/diff/test_view.lua`, and see it fail:
+- [x] 5.1 Write `tests/screen/diff/test_view.lua`, and see it fail:
   - a `100x30` child on `diffgo`;
   - `H.expect_screenshot` of rows 2–29;
   - `H.expect_screen_colors` from row 2 with the mask and legend of "Proposed D", with the syntax-coloured code cells masked from the real capture.
-- [ ] 5.2 Make it pass. Compare `make render` (add a `diff-view` case to `tests/render/cases.lua`) with `renders/proposed_view.ansi`.
-- [ ] 5.3 Update `docs/architecture.md`:
+- [x] 5.2 Make it pass. Compare `make render` (add a `diff-view` case to `tests/render/cases.lua`) with `renders/proposed_view.ansi`.
+- [x] 5.3 Update `docs/architecture.md`:
   - add or extend the module-map row for `diff/` (engine and viewer, spec `diff`);
   - add a key-decisions line: the right pane is the real buffer, with window-scoped decorations.
 
@@ -67,6 +67,9 @@ Scenarios: `diff: Diff view matches the approved render`
 - Diff windows detach nvim-ufo before creating manual folds, because its asynchronous provider otherwise replaces the paired ranges on the real file buffer.
 - Embedded views save the host buffer and window-local options, so their one cleanup path restores the hosting area exactly.
 - Shadowed mappings are restored with their full `maparg()` dictionaries, preserving callbacks and mapping options.
+- The left scratch buffer inherits the real buffer's tab width so identical source stays visually aligned.
+- The rendered checkbox uses the approved U+F0131 Nerd Font glyph; prose keeps `☐` as its stand-in.
+- A virtual delete gutter draws `╱` in its last cell so the approved padding row remains continuous.
 
 ## Stuck
 
@@ -81,12 +84,3 @@ right = { cursor = 62, topline = 52 }
 - Attempt 2 transferred the peer cursor before `winrestview` and consumed one deferred peer `WinScrolled` event. The same assertion still reported right topline 52 instead of 62.
 
 The complete second production attempt is saved in `artifacts/runs/20817010-c87a-4cc5-95db-e0c0d18840d7/stuck-attempt.diff`; production edits were reverted and the red test remains.
-
-### Task 5
-
-Task 5 is left unticked with its failing screen scenario. The word-highlight probe printed a changed-line extmark at priority 100, `DiffViewWord` ranges at priority 110, `DiffViewChange` background `4148554`, and `DiffViewWord` background `5401445`.
-
-- Attempt 1 offset both winbars, reset leaking statuscolumn highlights, filled padding rows, and normalized end-of-buffer cells. The approved text appeared, but normal gutter cells and the virtual delete gutter still had the wrong colours.
-- Attempt 2 gave normal gutter cells and each virtual-gutter segment explicit groups. The screen then reached the word assertion, where `wrap` was drawn with background `#3f4d4a` instead of `DiffViewWord` background `#526b65`, despite the higher-priority word extmark.
-
-The complete second production attempt is saved in `artifacts/runs/20817010-c87a-4cc5-95db-e0c0d18840d7/stuck-attempt.diff`; production edits were reverted and the red test remains without a self-generated reference screenshot.

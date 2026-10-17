@@ -135,7 +135,7 @@ T[opens_scenario]["renders the centre gutter"] = function()
 		end
 		return result
 	end)()]])
-	eq(gutters, { "  52       52   ", "» 53       53 ☐ ", "»╱╱╱╱      58 ☐ " })
+	eq(gutters, { "  52       52   ", "» 53       53 󰄱 ", "»╱╱╱╱      58 󰄱 " })
 	eq(
 		child.lua_get(
 			[[(function(...)
@@ -146,7 +146,7 @@ T[opens_scenario]["renders the centre gutter"] = function()
 	end)(...)]],
 			{ view.right_win }
 		),
-		"» 53       53 ☐ "
+		"» 53       53 󰄱 "
 	)
 end
 

@@ -48,7 +48,7 @@ local function configure_window(win)
 	wo.foldlevel = 0
 	wo.foldtext = FOLDTEXT
 	wo.fillchars = "fold:~,vert: ,eob: "
-	wo.winhighlight = "WinBar:DiffViewHeader,WinBarNC:DiffViewHeader,Folded:DiffViewFold"
+	wo.winhighlight = "WinBar:DiffViewHeader,WinBarNC:DiffViewHeader,Folded:DiffViewFold,EndOfBuffer:Normal"
 	wo.statuscolumn = STATUSCOLUMN
 end
 
@@ -127,13 +127,14 @@ end
 ---@param width integer
 local function finish(view, width)
 	view.left_buf = left_buffer(view.relpath, view.left, view.filetype)
+	vim.bo[view.left_buf].tabstop = vim.bo[view.right_buf].tabstop
 	vim.api.nvim_win_set_buf(view.left_win, view.left_buf)
 	vim.api.nvim_win_set_width(view.left_win, math.floor(width * 0.4))
 
 	configure_window(view.left_win)
 	configure_window(view.right_win)
-	vim.wo[view.left_win].winbar = view.labels.left
-	vim.wo[view.right_win].winbar = view.labels.right
+	vim.wo[view.left_win].winbar = " " .. view.labels.left
+	vim.wo[view.right_win].winbar = string.rep(" ", 16) .. view.labels.right
 	add_folds(view)
 	create_autocmds(view)
 end

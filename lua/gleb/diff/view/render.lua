@@ -2,7 +2,6 @@
 -- Extmarks tint real lines and insert padding while statuscolumn draws the centre gutter.
 
 local engine = require("gleb.diff.engine")
-local layout = require("gleb.diff.view.layout")
 
 local M = {}
 
@@ -22,7 +21,7 @@ end
 ---@param group string
 ---@return string
 local function highlighted(text, group)
-	return "%#" .. group .. "#" .. text
+	return "%#" .. group .. "#" .. text .. "%*"
 end
 
 ---@param row gleb.diff.view.Row
@@ -35,14 +34,13 @@ local function gutter(row)
 	local arrow = row.first and "»" or " "
 	local left = row.left and string.format("%3d ", row.left) or "╱╱╱╱"
 	local right = row.right and string.format("%3d ", row.right) or "╱╱╱╱"
-	local checkbox = row.first and row.checkbox and "☐" or " "
+	local checkbox = row.first and row.checkbox and "󰄱" or " "
 	if not kind then
-		return arrow
+		return highlighted(arrow, "Normal")
 			.. highlighted(left, "DiffViewLineNr")
-			.. "     "
+			.. highlighted("     ", "Normal")
 			.. highlighted(right, "DiffViewLineNr")
-			.. checkbox
-			.. " "
+			.. highlighted(checkbox .. " ", "Normal")
 	end
 	local suffix = kind
 	return highlighted(arrow, row.first and ("DiffViewArrow" .. suffix) or ("DiffViewGutter" .. suffix))
@@ -50,6 +48,28 @@ local function gutter(row)
 		.. highlighted("     ", "DiffView" .. suffix)
 		.. highlighted(right, row.right and ("DiffViewGutter" .. suffix) or "DiffViewPadding")
 		.. highlighted(checkbox .. " ", "DiffViewGutter" .. suffix)
+end
+
+---@param row gleb.diff.view.Row
+---@return table[]
+local function padding_gutter(row)
+	local kind = assert(row.kind)
+	local suffix = "DiffView" .. kind
+	local checkbox_group = row.right and ("DiffViewGutter" .. kind) or "DiffViewCheckbox"
+	return {
+		{ row.first and "»" or " ", row.first and ("DiffViewArrow" .. kind) or ("DiffViewGutter" .. kind) },
+		{
+			row.left and string.format("%3d ", row.left) or "╱╱╱╱",
+			row.left and ("DiffViewGutter" .. kind) or "DiffViewPadding",
+		},
+		{ "     ", suffix },
+		{
+			row.right and string.format("%3d ", row.right) or "╱╱╱╱",
+			row.right and ("DiffViewGutter" .. kind) or "DiffViewPadding",
+		},
+		{ row.first and row.checkbox and "󰄱" or " ", checkbox_group },
+		{ row.right and " " or "╱", row.right and ("DiffViewGutter" .. kind) or "DiffViewPadding" },
+	}
 end
 
 ---@return string
@@ -88,6 +108,7 @@ end
 ---@param row gleb.diff.view.Row
 local function add_padding(view, side, row)
 	local buf = side == "left" and view.left_buf or view.right_buf
+	local win = side == "left" and view.left_win or view.right_win
 	local next_line
 	local found = false
 	for _, candidate in ipairs(view.layout.rows) do
@@ -100,8 +121,12 @@ local function add_padding(view, side, row)
 	end
 	local line_count = vim.api.nvim_buf_line_count(buf)
 	local at = next_line and next_line - 1 or math.max(line_count - 1, 0)
-	local content = side == "right" and { { layout.gutter(row), "Normal" }, { "╱", "DiffViewPadding" } }
-		or { { "╱", "DiffViewPadding" } }
+	local width = vim.api.nvim_win_get_width(win)
+	local content = { { string.rep("╱", width), "DiffViewPadding" } }
+	if side == "right" then
+		content = padding_gutter(row)
+		table.insert(content, { string.rep("╱", width - 16), "DiffViewPadding" })
+	end
 	vim.api.nvim_buf_set_extmark(buf, view.ns, at, 0, {
 		virt_lines = { content },
 		virt_lines_above = next_line ~= nil,
@@ -109,31 +134,63 @@ local function add_padding(view, side, row)
 	})
 end
 
+---@param buf integer
+---@param ns integer
+---@param row integer
+---@param group string
+---@param start_col integer
+---@param end_col integer
+local function add_range(buf, ns, row, group, start_col, end_col)
+	vim.api.nvim_buf_set_extmark(buf, ns, row, start_col, {
+		end_col = end_col == -1 and 0 or end_col,
+		end_row = end_col == -1 and row + 1 or nil,
+		hl_eol = end_col == -1,
+		hl_group = group,
+		priority = 100,
+		strict = false,
+	})
+end
+
+---@param buf integer
+---@param ns integer
+---@param row integer
+---@param kind string
+---@param words table[]
+local function decorate_line(buf, ns, row, kind, words)
+	table.sort(words, function(left, right)
+		return left.col_start < right.col_start
+	end)
+	local col = 0
+	for _, word in ipairs(words) do
+		if col < word.col_start then
+			add_range(buf, ns, row, "DiffView" .. kind, col, word.col_start)
+		end
+		add_range(buf, ns, row, "DiffViewWord", word.col_start, word.col_end)
+		col = math.max(col, word.col_end)
+	end
+	add_range(buf, ns, row, "DiffView" .. kind, col, -1)
+end
+
 ---@param view gleb.diff.view.View
 ---@param side "left"|"right"
 ---@param lines string[]
 local function decorate_side(view, side, lines)
 	local buf = side == "left" and view.left_buf or view.right_buf
-	for _, row in ipairs(view.layout.rows) do
-		local line = row[side]
-		if line and row.kind then
-			vim.api.nvim_buf_set_extmark(buf, view.ns, line - 1, 0, {
-				line_hl_group = "DiffView" .. row.kind,
-				priority = 100,
-			})
-		elseif not line and row.change then
-			add_padding(view, side, row)
-		end
-	end
+	local words_by_row = {}
 	for _, fragment in ipairs(view.fragments) do
 		for _, column in ipairs(engine.inner_columns(fragment, side == "left" and 1 or 2, lines) or {}) do
 			if column.col_start < column.col_end then
-				vim.api.nvim_buf_set_extmark(buf, view.ns, column.row, column.col_start, {
-					end_col = column.col_end,
-					hl_group = "DiffViewWord",
-					priority = 110,
-				})
+				words_by_row[column.row] = words_by_row[column.row] or {}
+				table.insert(words_by_row[column.row], column)
 			end
+		end
+	end
+	for _, row in ipairs(view.layout.rows) do
+		local line = row[side]
+		if line and row.kind then
+			decorate_line(buf, view.ns, line - 1, row.kind, words_by_row[line - 1] or {})
+		elseif not line and row.change then
+			add_padding(view, side, row)
 		end
 	end
 end

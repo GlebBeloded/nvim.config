@@ -187,7 +187,7 @@ function M.gutter(row)
 	local arrow = row.first and "»" or " "
 	local left = row.left and string.format("%3d ", row.left) or "╱╱╱╱"
 	local right = row.right and string.format("%3d ", row.right) or "╱╱╱╱"
-	local checkbox = row.first and row.checkbox and "☐" or " "
+	local checkbox = row.first and row.checkbox and "󰄱" or " "
 	return arrow .. left .. "     " .. right .. checkbox .. " "
 end
 

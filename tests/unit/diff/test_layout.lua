@@ -73,8 +73,8 @@ T["diff: Diff view gutter shows both line numbers"] = MiniTest.new_set()
 T["diff: Diff view gutter shows both line numbers"]["formats unchanged, changed and padded rows"] = function()
 	local result = controller_layout()
 	eq(layout.gutter(result.rows[5]), "  52       52   ")
-	eq(layout.gutter(result.rows[6]), "» 53       53 ☐ ")
-	eq(layout.gutter(result.rows[11]), "»╱╱╱╱      58 ☐ ")
+	eq(layout.gutter(result.rows[6]), "» 53       53 󰄱 ")
+	eq(layout.gutter(result.rows[11]), "»╱╱╱╱      58 󰄱 ")
 end
 
 T["diff: Diff view gutter shows both line numbers"]["omits the checkbox for a file absent from HEAD"] = function()
