@@ -29,7 +29,6 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 
 ## Loop lessons
 
-- Keep source-specific sampled colours beside the source highlight setup so shared theme palettes expose only reusable colours.
 - When a palette's secondary reveal bypasses the initial visibility filter, exercise that reveal key in the catalog-label regression and validate its plugin-owned rows.
 - When action metadata supplies mapping descriptions, update the native integration expectation with the approved title change.
 - Give toggle actions a real `run` implementation so assigned shortcuts and palette selection have the same effect.
@@ -44,6 +43,7 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - When grouping Rust references, pass source text and line positions to the cfg-test classifier instead of relying only on paths.
 - When a newly installed parser invalidates a no-parser fallback fixture, switch the fixture to a real Vim-syntax-only filetype.
 - Replacing whole-screen colour assertions with selected rows hid additional changed highlight families; recapture and assert every screen row from row 1.
+- Treat a preferred write-access source as additive: only an explicit false may suppress an available documentHighlight fallback.
 
 ## The loop
 
