@@ -38,7 +38,7 @@ Scenarios: `diff: Inner comparison stops after three failures`, `diff: Small fra
 Scenarios: `diff: Random texts keep IntelliJ's inner invariants`
 
 - [ ] 4.1 Write the scenario in `tests/unit/diff/test_invariants_inner.lua` (design Decision 7) and see it fail if anything breaks; fix the engine, never the invariant
-- [ ] 4.2 Add the Unicode Character Database line to `NOTICE` and headers to the new files. `diff: Ported files carry their attribution` (from `diff-engine-lines`) must still pass.
+- [x] 4.2 Add the Unicode Character Database line to `NOTICE` and headers to the new files. `diff: Ported files carry their attribution` (from `diff-engine-lines`) must still pass.
 - [ ] 4.3 Run `make check`
 
 ## Stuck
