@@ -1,6 +1,7 @@
 ## Why
 
 Kind: feature
+Adopt: loop/diff-view-actions
 Depends: diff-view
 
 `diff-view` draws IntelliJ's chrome, but its `»` arrows and `☐` checkboxes do nothing yet. The user picked the aligned look for what those controls do in IntelliJ:
@@ -91,3 +92,16 @@ The user also wanted move detection ("only if IDEA doesn't have it"; IntelliJ ha
 - **`◪` for a change that the index holds neither way.** `<Space>` on it stages the right lines, like a click on IntelliJ's mixed checkbox.
 - **Settings are radio actions without keys.** IntelliJ has none for them either. They persist globally, not per file.
 - **Move markers** `→n` / `←n` sit in the 5-cell strip, so no column is added. Aqua is the palette's free accent here.
+
+## Rejected run
+Run on `loop/diff-view-actions` was rejected by the judge:
+- fix loop exhausted with gates still red: review
+- review findings:
+  [must-fix] Unstaging a change that touches the last line gives the index the buffer's final newline, not HEAD's, so the line stays staged. The faulty line is lua/gleb/diff/view/init.lua:548-549: when `fragment.end2 == #view.right`, it sets `new_final_newline = right_final_newline` for both stage and unstage. The auditor Decision applies the buffer's 'eol' to the new side only when that side holds the buffer's lines. On unstage the new side holds HEAD's lines, and the "Diff view hunk staging" requirement says unstage returns the index to them.
+  - Probe (`make probe`): a repo with d.txt "first\nsecond\nthird\n" committed; line 3 edited to THIRD; the buffer set to `noeol nofixeol`; `toggle_include` run twice on line 3. After the second toggle, `git diff --cached` still holds `-third` / `+third` with `\ No newline at end of file`, while the checkbox shows ☐. The index never returns to HEAD.
+  - Fix: when `include` is false, take HEAD's final newline. source.lua:58 drops it, so record it from `left_result.stdout` (for example `head_final_newline` on the source and view). When the change touches the last line, also use it for the patch's new side.
+  - Test: extend "Diff view stages a final line without a newline" (tests/integration/diff/test_actions.lua:214), or add a scenario: press `<Space>` twice, then expect `git diff --cached` empty and ☐.
+  - Why pass 4 missed it: its finding looked only at the `and/or` fallthrough on the stage path. The same line already ignored HEAD's newline on u
+- note: loop: No test cases matched
+- note: loop: lua/gleb/diff/view/init.lua:472:77 [Warning] Cannot assign `gleb.diff.LineFragment` to parameter `gleb.diff.PatchChange`.
+- note: loop: pinned scenarios with no delta and no Impact line (each needs a MODIFIED delta restated to the new behaviour, or one line in proposal.md `## Impact` naming it in backticks and why it still holds):
