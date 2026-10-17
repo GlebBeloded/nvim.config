@@ -102,6 +102,7 @@ T["references: gr continues when one client refuses the request"] = function()
 
 	child.type_keys("gr")
 	eq(child.wait([[vim.bo.filetype == "gleb-references"]], TIMEOUT_MS), true)
+	eq(child.wait([[not require("gleb.references.view").state.classifying]], TIMEOUT_MS), true)
 
 	local title = child.lua_get("vim.api.nvim_win_get_config(0).title[1][1]")
 	eq(title, " Usages of Format · 4 ")
