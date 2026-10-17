@@ -358,15 +358,16 @@ nodes:
             required: [green, spec_ok, tasks_done, attempt, failures]
 
         - id: reship
-          script: ship
+          script: reship_gate
           runtime: uv
           timeout: 900000
-          depends_on: [regate]
-          when: "$regate.output.green == true && $regate.output.spec_ok == true"
+          depends_on: [regate] # always runs: until_bash reads its `merged` (ship.py reports a red regate as not merged)
           with:
             change: $INPUTS.change
             message: $INPUTS.message
             on_conflict: report
+            regate_green: $regate.output.green
+            regate_spec_ok: $regate.output.spec_ok
           output_format: *ship_output
 
   - id: shipped # returns can name one node only: ship, or the reconcile loop's reship
