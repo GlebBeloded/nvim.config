@@ -6,7 +6,7 @@ local fs = require("gleb.file_tree.fs")
 local model = require("gleb.file_tree.model")
 local render = require("gleb.file_tree.render")
 
-local UNFOLD_ALL_MAX_ROWS = 5000
+local EXPANSION_MAX_ROWS = 5000
 
 ---@class FileTreeView
 ---@field tab integer
@@ -205,12 +205,32 @@ end
 
 ---@param view FileTreeView
 ---@param row FileTreeRow
+---@param warning string
+---@return FileTreeRow[]?
+local function expand_directory(view, row, warning)
+	local relative = row.path:sub(#view.root + 2)
+	view.expanded[relative] = true
+	local rows = model.rows(fs.tree(view.root), view.expanded, {})
+	if #rows > EXPANSION_MAX_ROWS then
+		view.expanded[relative] = nil
+		vim.notify(warning, vim.log.levels.WARN)
+		return nil
+	end
+	return rows
+end
+
+---@param view FileTreeView
+---@param row FileTreeRow
 local function toggle_directory(view, row)
 	if row.kind == "root" or row.empty then
 		return
 	end
 	local relative = row.path:sub(#view.root + 2)
-	view.expanded[relative] = not row.expanded or nil
+	if row.expanded then
+		view.expanded[relative] = nil
+	elseif not expand_directory(view, row, "Expansion stopped at 5000 rows") then
+		return
+	end
 	draw(view, row.path)
 end
 
@@ -332,12 +352,8 @@ function M.unfold_all()
 		local row = queue[queue_index]
 		queue_index = queue_index + 1
 		if not row.empty then
-			local relative = row.path:sub(#view.root + 2)
-			view.expanded[relative] = true
-			local expanded_rows = model.rows(fs.tree(view.root), view.expanded, {})
-			if #expanded_rows > UNFOLD_ALL_MAX_ROWS then
-				view.expanded[relative] = nil
-				vim.notify("Unfold all stopped at 5000 rows", vim.log.levels.WARN)
+			local expanded_rows = expand_directory(view, row, "Unfold all stopped at 5000 rows")
+			if not expanded_rows then
 				break
 			end
 			rows = expanded_rows

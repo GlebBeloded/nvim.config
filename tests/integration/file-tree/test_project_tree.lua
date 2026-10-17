@@ -680,4 +680,28 @@ T["file-tree: Project tree unfold all stops at the row limit"] = function()
 	eq(expanded["oversized/b"], nil)
 end
 
+T["file-tree: Project tree manual expansion stops at the row limit"] = function()
+	local oversized = vim.fs.joinpath(root, "oversized")
+	vim.fn.mkdir(oversized, "p")
+	for index = 1, 5000 do
+		local file = assert(vim.uv.fs_open(vim.fs.joinpath(oversized, ("file-%04d"):format(index)), "w", 420))
+		assert(vim.uv.fs_close(file))
+	end
+	child.lua([[require("gleb.file_tree.fs").reset()]])
+	local notifications = H.record_notify(child)
+	edit("README.md")
+	run_toggle()
+	focus_tree_row("oversized")
+
+	child.type_keys("<CR>")
+
+	assert(#child.api.nvim_buf_get_lines(0, 0, -1, false) <= 5001, "manual expansion exceeded the row limit")
+	eq(notifications(), {
+		{ msg = "Expansion stopped at 5000 rows", level = vim.log.levels.WARN },
+	})
+	local expanded =
+		child.lua_get([[require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()].expanded]])
+	eq(expanded.oversized, nil)
+end
+
 return T

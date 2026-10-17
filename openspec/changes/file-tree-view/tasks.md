@@ -98,9 +98,9 @@ Scenarios: `file-tree: Project tree keys come from the keymap file`
 
 Scenarios: `file-tree: Project tree manual expansion stops at the row limit`
 
-- [ ] 4e.1 Write the scenario in `tests/integration/file-tree/test_project_tree.lua`, pressing `<CR>` on a populated oversized folder, and see it fail.
-- [ ] 4e.2 Apply the shared 5000-row safety check to manual folder expansion and emit the specified WARN.
-- [ ] 4e.3 Run `make test FILE=tests/integration/file-tree/test_project_tree.lua` for this case and see it pass.
+- [x] 4e.1 Write the scenario in `tests/integration/file-tree/test_project_tree.lua`, pressing `<CR>` on a populated oversized folder, and see it fail.
+- [x] 4e.2 Apply the shared 5000-row safety check to manual folder expansion and emit the specified WARN.
+- [x] 4e.3 Run `make test FILE=tests/integration/file-tree/test_project_tree.lua` for this case and see it pass.
 
 ## 5a1. Follow and reveal
 

@@ -42,7 +42,7 @@ This change adds the new tree beside neo-tree. It opens only from new, unbound a
 
 ### Modified Capabilities
 - `file-tree`: added requirements for the project tree: window and toggle, rows, compact chains, opening, folds, git colours, following, live updates, persistence, keys and the approved render. The neo-tree requirements stay until `tree-diff-cutover`.
-- `bufferline`: added "Tabline offset for the project tree".
+- `bufferline`: modified "Tabline offset for the file tree" to cover the project tree while preserving neo-tree.
 
 ## Impact
 
