@@ -7,6 +7,7 @@
 local by_line = require("gleb.diff.engine.by_line")
 local by_char = require("gleb.diff.engine.by_char")
 local by_word = require("gleb.diff.engine.by_word")
+local moves = require("gleb.diff.engine.moves")
 local policy = require("gleb.diff.engine.policy")
 
 local M = {}
@@ -36,9 +37,18 @@ local TIMEOUT_MS = 1000
 ---@field policy? gleb.diff.Policy
 ---@field highlight? gleb.diff.Highlight
 ---@field limits? gleb.diff.Limits
+---@field moves? boolean
+
+---@class gleb.diff.Move
+---@field start1 integer
+---@field end1 integer
+---@field start2 integer
+---@field end2 integer
+---@field fragments gleb.diff.LineFragment[]
 
 ---@class gleb.diff.Result
 ---@field fragments gleb.diff.LineFragment[]
+---@field moves gleb.diff.Move[]
 ---@field too_big boolean
 ---@field timed_out boolean
 
@@ -169,6 +179,86 @@ local function context_from_options(opts)
 	}
 end
 
+local function compare_lines_with_context(lines1, lines2, highlight, comparison_policy, context, max_inner_bytes)
+	local fragments, status = by_line.compare(lines1, lines2, comparison_policy, context)
+	if status ~= "ok" then
+		fragments = fallback(lines1, lines2)
+	end
+	local inner_timed_out = false
+	if status == "ok" then
+		fragments, inner_timed_out =
+			create_inner(fragments, lines1, lines2, highlight, comparison_policy, context, max_inner_bytes)
+		if highlight ~= "by_word_split" then
+			fragments = policy.squash(fragments, lines1, lines2)
+		end
+	end
+	if status == "ok" and comparison_policy == "ignore_whitespaces_chunks" then
+		fragments = policy.trim_ignored_chunks(fragments, lines1, lines2)
+	end
+	return {
+		fragments = fragments,
+		moves = {},
+		too_big = status == "too_big",
+		timed_out = status == "timed_out" or inner_timed_out,
+	}
+end
+
+local function fragment_ranges(fragments)
+	local ranges = {}
+	for _, fragment in ipairs(fragments) do
+		ranges[#ranges + 1] = { fragment.start1, fragment.end1, fragment.start2, fragment.end2 }
+	end
+	return ranges
+end
+
+local function line_slice(lines, start_index, end_index)
+	local result = {}
+	for index = start_index + 1, end_index do
+		result[#result + 1] = lines[index]
+	end
+	return result
+end
+
+local function shift_fragments(fragments, start1, start2)
+	for _, fragment in ipairs(fragments) do
+		fragment.start1 = fragment.start1 + start1
+		fragment.end1 = fragment.end1 + start1
+		fragment.start2 = fragment.start2 + start2
+		fragment.end2 = fragment.end2 + start2
+	end
+end
+
+local function compute_moves(result, lines1, lines2, highlight, comparison_policy, context, max_inner_bytes)
+	local detected = moves.compute(fragment_ranges(result.fragments), lines1, lines2, context)
+	if context.clock() > context.deadline then
+		result.timed_out = true
+		return
+	end
+	for _, moved_range in ipairs(detected) do
+		local moved_comparison = compare_lines_with_context(
+			line_slice(lines1, moved_range[1], moved_range[2]),
+			line_slice(lines2, moved_range[3], moved_range[4]),
+			highlight,
+			comparison_policy,
+			context,
+			max_inner_bytes
+		)
+		if moved_comparison.timed_out or context.clock() > context.deadline then
+			result.moves = {}
+			result.timed_out = true
+			return
+		end
+		shift_fragments(moved_comparison.fragments, moved_range[1], moved_range[3])
+		result.moves[#result.moves + 1] = {
+			start1 = moved_range[1],
+			end1 = moved_range[2],
+			start2 = moved_range[3],
+			end2 = moved_range[4],
+			fragments = moved_comparison.fragments,
+		}
+	end
+end
+
 ---@param text1 string
 ---@param text2 string
 ---@param opts? gleb.diff.Options
@@ -197,7 +287,7 @@ function M.compare_lines(lines1, lines2, opts)
 	opts = opts or {}
 	local highlight = opts.highlight or "by_word"
 	if highlight == "none" then
-		return { fragments = {}, too_big = false, timed_out = false }
+		return { fragments = {}, moves = {}, too_big = false, timed_out = false }
 	end
 	local limits = opts.limits or {}
 	local comparison_policy = opts.policy or "default"
@@ -209,33 +299,12 @@ function M.compare_lines(lines1, lines2, opts)
 		deadline = clock() + (limits.timeout_ms or TIMEOUT_MS),
 		myers_threshold = threshold,
 	}
-	local fragments, status = by_line.compare(lines1, lines2, comparison_policy, context)
-	if status ~= "ok" then
-		fragments = fallback(lines1, lines2)
+	local max_inner_bytes = limits.max_inner_bytes or MAX_INNER_BYTES
+	local result = compare_lines_with_context(lines1, lines2, highlight, comparison_policy, context, max_inner_bytes)
+	if opts.moves and not result.timed_out then
+		compute_moves(result, lines1, lines2, highlight, comparison_policy, context, max_inner_bytes)
 	end
-	local inner_timed_out = false
-	if status == "ok" then
-		fragments, inner_timed_out = create_inner(
-			fragments,
-			lines1,
-			lines2,
-			highlight,
-			comparison_policy,
-			context,
-			limits.max_inner_bytes or MAX_INNER_BYTES
-		)
-		if highlight ~= "by_word_split" then
-			fragments = policy.squash(fragments, lines1, lines2)
-		end
-	end
-	if status == "ok" and comparison_policy == "ignore_whitespaces_chunks" then
-		fragments = policy.trim_ignored_chunks(fragments, lines1, lines2)
-	end
-	return {
-		fragments = fragments,
-		too_big = status == "too_big",
-		timed_out = status == "timed_out" or inner_timed_out,
-	}
+	return result
 end
 
 ---@class gleb.diff.Column
