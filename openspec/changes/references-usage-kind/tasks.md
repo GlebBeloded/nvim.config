@@ -4,9 +4,9 @@ Scenarios: `references: gopls kinds classify a Go variable`
 
 ## 2. Treesitter fallback
 Scenarios: `references: Treesitter fallback classifies writes where a parser exists`, `references: Without kinds or a parser a usage is other`
-- [ ] 2.1 Write both scenarios in tests/unit/references/test_kind_ts.lua and see them fail
-- [ ] 2.2 Add `lua/gleb/references/kind_ts.lua`: pure write-target queries for go, lua and bash, applied only when `pcall(vim.treesitter.language.add, lang)` succeeds
-- [ ] 2.3 Run the file and see both pass
+- [x] 2.1 Write both scenarios in tests/unit/references/test_kind_ts.lua and see them fail
+- [x] 2.2 Add `lua/gleb/references/kind_ts.lua`: pure write-target queries for go, lua and bash, applied only when `pcall(vim.treesitter.language.add, lang)` succeeds
+- [x] 2.3 Run the file and see both pass
 
 ## 3. Server classification sources
 Scenarios: `references: gopls kinds classify a Go variable`, `references: lua_ls kinds classify a Lua local`, `references: basedpyright kinds classify a Python variable`, `references: tsserver kinds classify a TypeScript variable`, `references: rust-analyzer kinds classify a Rust variable`
@@ -44,3 +44,4 @@ Scenarios: `references: Variable usages are grouped by write and read`, `referen
 ## Agent decisions
 
 - Keep the `Calls` manifest locations explicit because comments and the failure string also contain the identifier, so the fixture's lexical helper would report non-symbol occurrences.
+- Let the Treesitter fallback accept zero-based source positions and return an ordered kind list, matching the LSP data shape without mutating usages.
