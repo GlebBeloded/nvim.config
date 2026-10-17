@@ -1,6 +1,8 @@
 -- Classify usage positions through each parser language's runtime usages query.
 local M = {}
 
+local languages = require("gleb.languages")
+
 ---@class ReferencesSourcePosition
 ---@field line integer Zero-based row
 ---@field character integer Zero-based byte column
@@ -30,16 +32,30 @@ local function parse(source, language)
 end
 
 ---@param source string
----@param language string
+---@param filetype string
 ---@param positions ReferencesSourcePosition[]
 ---@return string[]
-function M.classify(source, language, positions)
+function M.classify(source, filetype, positions)
 	local kinds = {}
 	for index in ipairs(positions) do
 		kinds[index] = "unclassified"
 	end
 
-	local query, tree = parse(source, language)
+	local language = languages.for_filetype(filetype)
+	if not language or language.references.disabled ~= nil then
+		return kinds
+	end
+	local parser_language = vim.treesitter.language.get_lang(filetype)
+	local query, tree
+	if parser_language then
+		query, tree = parse(source, parser_language)
+	end
+	if not query and language.name ~= filetype then
+		parser_language = vim.treesitter.language.get_lang(language.name)
+		if parser_language then
+			query, tree = parse(source, parser_language)
+		end
+	end
 	if not query or not tree then
 		return kinds
 	end
