@@ -65,3 +65,17 @@ Scenarios: `diff: Diff view matches the approved render`
 - Public helpers use snake-case names (`transfer_line`, `change_at_line`) to follow the repository's Lua naming convention.
 - Untracked files derive their repository-relative path after the required `ls-files` call returns empty, so `git show` can represent an absent HEAD side.
 - Diff windows detach nvim-ufo before creating manual folds, because its asynchronous provider otherwise replaces the paired ranges on the real file buffer.
+
+## Stuck
+
+Task 3 is left unticked with its failing integration scenarios. The scroll-sync probe printed:
+
+```text
+left = { cursor = 61, topline = 52 }
+right = { cursor = 62, topline = 52 }
+```
+
+- Attempt 1 added paired fold actions, cursor and scroll autocmds, navigation mappings, debounced re-diff, fallback labeling and the `gleb-diff` adapter. Eight scenarios passed, but `62zt` left the right topline at 52 instead of 62 because the peer viewport was clamped around its old cursor and echoed back.
+- Attempt 2 transferred the peer cursor before `winrestview` and consumed one deferred peer `WinScrolled` event. The same assertion still reported right topline 52 instead of 62.
+
+The complete second production attempt is saved in `artifacts/runs/20817010-c87a-4cc5-95db-e0c0d18840d7/stuck-attempt.diff`; production edits were reverted and the red test remains.
