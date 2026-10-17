@@ -50,6 +50,7 @@ local function start()
 					end
 				end
 			end
+			return true
 		end
 
 		function RunIntellijEquality()
@@ -58,12 +59,18 @@ local function start()
 				if load_error then return load_error end
 				local policy = row.kind == "trim_equality" and "trim_whitespaces" or "default"
 				local actual = fragments(engine.compare_lines(row.lines1, row.lines2, { policy = policy }))
-				local expected = row.kind == "trim_equality" and row.equal or row.fragments
-				if row.kind == "trim_equality" then actual = #actual == 0 end
+				local expected
+				if row.kind == "trim_equality" then
+					actual = #actual == 0
+					expected = row.equal
+				else
+					expected = row.fragments
+				end
 				if not vim.deep_equal(actual, expected) then
 					return row.source .. ": " .. vim.inspect(actual)
 				end
 			end
+			return true
 		end
 
 		function RunDiffbanditOracle()
@@ -75,6 +82,7 @@ local function start()
 					return row.source .. ": " .. vim.inspect(actual)
 				end
 			end
+			return true
 		end
 	]])
 end
@@ -83,17 +91,17 @@ local T = H.child_set(child, start)
 
 T["diff: Every IntelliJ line case passes"] = function()
 	eq(child.lua_get("#IntellijLines"), 69)
-	eq(child.lua_get("RunIntellijLines()"), nil)
+	eq(child.lua_get("RunIntellijLines()"), true)
 end
 
 T["diff: IntelliJ trim equality and line fragments hold"] = function()
 	eq(child.lua_get("#IntellijEquality"), 45)
-	eq(child.lua_get("RunIntellijEquality()"), nil)
+	eq(child.lua_get("RunIntellijEquality()"), true)
 end
 
 T["diff: diffbandit oracle goldens pass"] = function()
 	eq(child.lua_get("#DiffbanditOracle"), 5)
-	eq(child.lua_get("RunDiffbanditOracle()"), nil)
+	eq(child.lua_get("RunDiffbanditOracle()"), true)
 end
 
 return T

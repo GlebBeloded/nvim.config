@@ -8,6 +8,7 @@ Scenarios: `diff: Every IntelliJ line case passes`, `diff: IntelliJ trim equalit
 ## Agent decisions
 
 - Equality fixtures use a `kind` discriminator so one 45-row table can exercise trim equality and line-fragment ranges without inventing separate files.
+- Line records cache policy and ignore-whitespace keys so every pipeline stage shares one normalization without repeated string allocation.
 
 ## 2. LCS core
 
@@ -24,12 +25,12 @@ Scenarios: `diff: Changed lines become fragments`, `diff: Identical lines have n
 
 Scenarios: `diff: Brace lines do not anchor a match`, `diff: Shifted indentation realigns exactly`, `diff: An inserted function slides to the empty line`, `diff: Trim and ignore policies differ on inner spaces`, `diff: Trailing whitespace line under trim`, `diff: Empty lines count unless chunks are ignored`, `diff: Carriage return is not whitespace`
 
-- [ ] 3.1 Write the scenarios in `test_lines.lua` and `test_policies.lua`, and see them fail
-- [ ] 3.2 Add `trim.lua`, `optimizer.lua` (`LineChunkOptimizer`), `by_line.lua` (`compareSmart`, `SmartLineChangeCorrector`, `correctChangesSecondStep`, `expandRanges`) and `policy.lua`:
+- [x] 3.1 Write the scenarios in `test_lines.lua` and `test_policies.lua`, and see them fail
+- [x] 3.2 Add `trim.lua`, `optimizer.lua` (`LineChunkOptimizer`), `by_line.lua` (`compareSmart`, `SmartLineChangeCorrector`, `correctChangesSecondStep`, `expandRanges`) and `policy.lua`:
   - Seed them from diffbandit's `smart_align.lua`.
   - Fix the whitespace set and the code-point counts.
   - Add `trim_whitespaces` and `ignore_whitespaces_chunks` (design Decision 3).
-- [ ] 3.3 Make tasks 1 and 3 green: `make test FILE=tests/unit/diff/test_goldens.lua`, `test_lines.lua`, `test_policies.lua`
+- [x] 3.3 Make tasks 1 and 3 green: `make test FILE=tests/unit/diff/test_goldens.lua`, `test_lines.lua`, `test_policies.lua`
 
 ## 4. Limits, invariants and speed
 

@@ -66,4 +66,35 @@ T["diff: The engine loads without plugins"] = function()
 	})
 end
 
+T["diff: Brace lines do not anchor a match"] = function()
+	eq(child.lua_get([[CompareLines({ "{", "}" }, { "{", " {", " }", "}", "x" }).fragments]]), {
+		{ start1 = 1, end1 = 1, start2 = 1, end2 = 3 },
+		{ start1 = 2, end1 = 2, start2 = 4, end2 = 5 },
+	})
+end
+
+T["diff: Shifted indentation realigns exactly"] = function()
+	eq(child.lua_get([[CompareLines({ ".{", "..{", "...{" }, { "..{", "...{" }).fragments]]), {
+		{ start1 = 0, end1 = 1, start2 = 0, end2 = 0 },
+	})
+end
+
+T["diff: An inserted function slides to the empty line"] = function()
+	eq(
+		child.lua_get([[
+			CompareLines(
+				{ "fun a() {", "    body", "}", "", "fun c() {", "    body", "}" },
+				{
+					"fun a() {", "    body", "}", "",
+					"fun b() {", "    body", "}", "",
+					"fun c() {", "    body", "}"
+				}
+			).fragments
+		]]),
+		{
+			{ start1 = 4, end1 = 4, start2 = 4, end2 = 8 },
+		}
+	)
+end
+
 return T

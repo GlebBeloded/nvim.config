@@ -230,7 +230,26 @@ end
 ---@param threshold integer
 ---@return gleb.diff.LcsResult
 function M.diff(values1, values2, threshold)
-	local reduced1, reduced2, indexes1, indexes2 = discard_unique(values1, values2)
+	local prefix = 0
+	while prefix < math.min(#values1, #values2) and values1[prefix + 1] == values2[prefix + 1] do
+		prefix = prefix + 1
+	end
+	local suffix = 0
+	local remaining = math.min(#values1, #values2) - prefix
+	while suffix < remaining and values1[#values1 - suffix] == values2[#values2 - suffix] do
+		suffix = suffix + 1
+	end
+
+	local middle1 = {}
+	local middle2 = {}
+	for index = prefix + 1, #values1 - suffix do
+		middle1[#middle1 + 1] = values1[index]
+	end
+	for index = prefix + 1, #values2 - suffix do
+		middle2[#middle2 + 1] = values2[index]
+	end
+
+	local reduced1, reduced2, indexes1, indexes2 = discard_unique(middle1, middle2)
 	local matches = myers(reduced1, reduced2, threshold)
 	if not matches then
 		local ok
@@ -240,8 +259,17 @@ function M.diff(values1, values2, threshold)
 		end
 	end
 	for _, match in ipairs(matches) do
-		match[1] = indexes1[match[1] + 1]
-		match[2] = indexes2[match[2] + 1]
+		match[1] = indexes1[match[1] + 1] + prefix
+		match[2] = indexes2[match[2] + 1] + prefix
+	end
+	for index = prefix - 1, 0, -1 do
+		table.insert(matches, 1, { index, index })
+	end
+	for offset = suffix - 1, 0, -1 do
+		table.insert(matches, {
+			#values1 - offset - 1,
+			#values2 - offset - 1,
+		})
 	end
 	return { matches = matches, status = "ok" }
 end
