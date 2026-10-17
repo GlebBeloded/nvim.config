@@ -80,14 +80,28 @@ T["references: TypeScript query classifies every usage type"] = function()
 	local query_cases = require("tests.unit.references.usage_cases.js")
 	for _, suite in ipairs(query_cases.suites) do
 		local positions = vim.tbl_map(function(case)
-			return { line = case.line, character = case.character, target_kind = case.kind or "unknown" }
+			return { line = case.line, character = case.character }
+		end, suite.cases)
+		local targets = vim.tbl_map(function(case)
+			return case.kind or "unknown"
 		end, suite.cases)
 		local expected = vim.tbl_map(function(case)
-			return case.refined_expected or "read"
+			if case.query_expected == "read" then
+				return "read"
+			end
+			return case.refined_expected
 		end, suite.cases)
 		local actual = child.lua_get(
-			[[require("gleb.references.kind_ts").classify(...)]],
-			{ suite.source, suite.filetype, positions }
+			[[(function(source, filetype, source_positions, target_kinds)
+				local classify = require("gleb.references.kind_ts").classify
+				local refine = require("gleb.references.kind_refine").refine_query_kind
+				local refined = {}
+				for index, query_kind in ipairs(classify(source, filetype, source_positions)) do
+					refined[index] = refine(query_kind, target_kinds[index], filetype) or false
+				end
+				return refined
+			end)(...)]],
+			{ suite.source, suite.filetype, positions, targets }
 		)
 		eq(actual, expected)
 	end

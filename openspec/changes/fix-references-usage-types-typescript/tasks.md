@@ -9,7 +9,7 @@ Scenarios: `languages: Every configured language meets the contract`
 ## Agent decisions
 
 - The JavaScript case module exposes TypeScript as its contract-compatible top-level suite and all three parser suites under `suites`, preserving the existing contract shape while covering each configured parser.
-- Target-kind refinement is opt-in on query positions, so the populated case table exercises refinement while existing raw-query callers keep their capture-only contract.
+- Query classification stays capture-only; production and the populated case table share the pure target-kind refinement function.
 - The catalogue test resolves `ecma` through `javascript` and `ts_angle_cast` through `typescript`, their direct real-parser inheritors, so Neovim compiles each pseudo-language capture without a nonexistent parser.
 - The fixture manifest generator records every identifier occurrence on a line, so the two `Money` static-member lines retain both the annotation and member-object locations; the real references exposed no query gap.
 
