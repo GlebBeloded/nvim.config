@@ -21,8 +21,18 @@ for _, facet in ipairs(languages.facet("treesitter")) do
 	vim.list_extend(parsers, facet.config.parsers)
 end
 
--- skips anything already built, so this is cheap on every startup
-require("nvim-treesitter").install(parsers)
+if vim.env.GLEB_TEST_SANDBOX then
+	local missing = vim.tbl_filter(function(parser)
+		local ok, loaded = pcall(vim.treesitter.language.add, parser)
+		return not ok or not loaded
+	end, parsers)
+	if #missing > 0 then
+		vim.notify("Missing Treesitter parsers: " .. table.concat(missing, ", "), vim.log.levels.WARN)
+	end
+else
+	-- skips anything already built, so this is cheap on every startup
+	require("nvim-treesitter").install(parsers)
+end
 
 -- Enable treesitter highlighting for all filetypes
 vim.api.nvim_create_autocmd("FileType", {
