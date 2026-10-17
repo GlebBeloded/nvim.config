@@ -17,16 +17,57 @@ local PARSER_LANGUAGES = {
 	tf = "hcl",
 	hcl = "hcl",
 }
-local CALLABLE_SYMBOLS = {
-	[vim.lsp.protocol.SymbolKind.Function] = true,
-	[vim.lsp.protocol.SymbolKind.Method] = true,
-	[vim.lsp.protocol.SymbolKind.Constructor] = true,
+---@alias gleb.references.TargetKind "function"|"type"|"field"|"variable"|"unknown"
+
+---@type table<integer, gleb.references.TargetKind>
+local TARGET_KINDS = {
+	[vim.lsp.protocol.SymbolKind.Function] = "function",
+	[vim.lsp.protocol.SymbolKind.Method] = "function",
+	[vim.lsp.protocol.SymbolKind.Constructor] = "function",
+	[vim.lsp.protocol.SymbolKind.Class] = "type",
+	[vim.lsp.protocol.SymbolKind.Struct] = "type",
+	[vim.lsp.protocol.SymbolKind.Interface] = "type",
+	[vim.lsp.protocol.SymbolKind.Enum] = "type",
+	[vim.lsp.protocol.SymbolKind.TypeParameter] = "type",
+	[vim.lsp.protocol.SymbolKind.Field] = "field",
+	[vim.lsp.protocol.SymbolKind.Property] = "field",
+	[vim.lsp.protocol.SymbolKind.EnumMember] = "field",
+	[vim.lsp.protocol.SymbolKind.Variable] = "variable",
+	[vim.lsp.protocol.SymbolKind.Constant] = "variable",
+}
+local VARIABLE_SYMBOLS = {
+	[vim.lsp.protocol.SymbolKind.Variable] = true,
+	[vim.lsp.protocol.SymbolKind.Constant] = true,
+}
+local TERRAFORM_FILETYPES = {
+	terraform = true,
+	tf = true,
+	hcl = true,
+}
+local TYPE_POSITION_KINDS = {
+	field_declaration = true,
+	parameter_declaration = true,
+	return_type = true,
+	receiver = true,
+	variable_declaration = true,
+	const_declaration = true,
+	type_alias = true,
+	type_assertion = true,
+	type_conversion = true,
+	type_instantiation = true,
+	type_constraint = true,
+	type_parameter_declaration = true,
+	cast = true,
+	instanceof = true,
+	extends = true,
+	impl = true,
+	catch = true,
 }
 
 ---@class gleb.references.KindUsage: gleb.references.Usage
 ---@field range? lsp.Range
 ---@field client_id? integer
----@field kind? "write"|"read"|"other"
+---@field kind? string
 
 ---@class gleb.references.KindCacheEntry
 ---@field version string
@@ -336,13 +377,64 @@ local function definition_target(result)
 	return location.uri, location.range.start
 end
 
---- Whether the symbol at `origin` is defined as a function, method or constructor.
+---@param uri string
+---@param position lsp.Position
+---@param client vim.lsp.Client
+---@return boolean
+local function definition_name_is_type(uri, position, client)
+	local filename = vim.uri_to_fname(uri)
+	local source = table.concat(vim.fn.readfile(filename), "\n")
+	local filetype = vim.filetype.match({ filename = filename }) or ""
+	local language = PARSER_LANGUAGES[filetype] or vim.treesitter.language.get_lang(filetype)
+	if not language then
+		return false
+	end
+	local character = position.character
+	if client.offset_encoding ~= "utf-8" then
+		local line = vim.split(source, "\n", { plain = true })[position.line + 1] or ""
+		local ok, byte_index = pcall(vim.str_byteindex, line, client.offset_encoding, character, false)
+		if not ok then
+			return false
+		end
+		character = byte_index
+	end
+	local parser_ok, parser = pcall(vim.treesitter.get_string_parser, source, language)
+	if not parser_ok then
+		return false
+	end
+	local tree_ok, tree = pcall(function()
+		return parser:parse()[1]
+	end)
+	if not tree_ok or not tree then
+		return false
+	end
+	local node = tree:root():named_descendant_for_range(position.line, character, position.line, character)
+	return node ~= nil and node:type() == "type_identifier"
+end
+
+---@param symbol_kind lsp.SymbolKind?
+---@param uri string
+---@param position lsp.Position
+---@param client vim.lsp.Client
+---@return gleb.references.TargetKind
+local function target_kind(symbol_kind, uri, position, client)
+	local filetype = vim.filetype.match({ filename = vim.uri_to_fname(uri) }) or ""
+	if symbol_kind == vim.lsp.protocol.SymbolKind.Class and TERRAFORM_FILETYPES[filetype] then
+		return "unknown"
+	end
+	if symbol_kind and VARIABLE_SYMBOLS[symbol_kind] and definition_name_is_type(uri, position, client) then
+		return "type"
+	end
+	return TARGET_KINDS[symbol_kind] or "unknown"
+end
+
+---Resolve the kind of the symbol at `origin` from its definition.
 ---@param origin gleb.references.KindOrigin
----@param done fun(callable: boolean)
-local function request_callable(origin, done)
+---@param done fun(kind: gleb.references.TargetKind)
+local function request_target_kind(origin, done)
 	local client = vim.lsp.get_client_by_id(origin.client_id)
 	if not client then
-		vim.schedule_wrap(done)(false)
+		vim.schedule_wrap(done)("unknown")
 		return
 	end
 	---@param uri string
@@ -352,11 +444,12 @@ local function request_callable(origin, done)
 			"textDocument/documentSymbol",
 			{ textDocument = { uri = uri } },
 			function(err, symbols)
-				done(not err and CALLABLE_SYMBOLS[symbol_kind_at(symbols or {}, position)] == true)
+				local symbol_kind = not err and symbol_kind_at(symbols or {}, position) or nil
+				done(target_kind(symbol_kind, uri, position, client))
 			end
 		)
 		if not ok then
-			done(false)
+			done("unknown")
 		end
 	end
 	local ok = client:request("textDocument/definition", origin.params, function(err, result)
@@ -364,7 +457,7 @@ local function request_callable(origin, done)
 		request_symbols(uri or origin.params.textDocument.uri, position or origin.params.position)
 	end)
 	if not ok then
-		vim.schedule_wrap(done)(false)
+		vim.schedule_wrap(done)("unknown")
 	end
 end
 
@@ -407,13 +500,23 @@ local function fill_fallbacks(groups)
 end
 
 ---@param usages gleb.references.KindUsage[]
-local function mark_other(usages)
+---@param target gleb.references.TargetKind
+local function refine_target_kinds(usages, target)
 	for _, usage in ipairs(usages) do
-		usage.kind = "other"
+		local kind = usage.kind
+		local drops_read_write = (target == "function" or target == "type") and (kind == "write" or kind == "read")
+		local drops_function_argument = kind == "function_argument" and target ~= "function"
+		local drops_static_member = kind == "static_member" and target ~= "type"
+		local drops_type_position = target ~= "unknown" and target ~= "type" and TYPE_POSITION_KINDS[kind]
+		if kind == "call" and target == "type" and usage.filetype == "go" then
+			usage.kind = "type_conversion"
+		elseif drops_read_write or drops_function_argument or drops_static_member or drops_type_position then
+			usage.kind = "unclassified"
+		end
 	end
 end
 
----Capture the symbol under the cursor for the callable check, before the view takes focus.
+---Capture the symbol under the cursor for target-kind refinement, before the view takes focus.
 ---@return gleb.references.KindOrigin?
 function M.origin()
 	local bufnr = vim.api.nvim_get_current_buf()
@@ -429,7 +532,6 @@ function M.origin()
 end
 
 ---Classify usages asynchronously, preferring server-provided kinds over syntax fallback.
----Usages of a function, method or constructor at `origin` are only calls, so they stay `other`.
 ---@param usages gleb.references.KindUsage[]
 ---@param callback fun(usages: gleb.references.KindUsage[])
 ---@param origin? gleb.references.KindOrigin
@@ -444,16 +546,14 @@ function M.classify(usages, callback, origin)
 
 	local pending = 0
 	local finished = false
-	local callable = false
+	local target = "unknown"
 	local function finish()
 		if finished then
 			return
 		end
 		finished = true
 		fill_fallbacks(groups)
-		if callable then
-			mark_other(classified)
-		end
+		refine_target_kinds(classified, target)
 		callback(classified)
 	end
 	local function request_done()
@@ -513,8 +613,8 @@ function M.classify(usages, callback, origin)
 	end
 	if origin then
 		pending = pending + 1
-		request_callable(origin, function(is_callable)
-			callable = is_callable
+		request_target_kind(origin, function(resolved_target)
+			target = resolved_target
 			request_done()
 		end)
 	end

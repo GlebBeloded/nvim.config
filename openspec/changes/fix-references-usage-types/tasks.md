@@ -18,10 +18,10 @@ Scenarios: `references: Every query capture is in the catalogue`, `references: G
 
 Scenarios: `references: Go query classifies every GoLand usage type`, `references: A Go conversion of a type is a type conversion`, `references: A function passed as a value is a function argument`, `references: A variable named by a type identifier is a type target`, `references: Terraform blocks are not type targets`, `references: Function and type targets get no write or read`
 
-- [ ] 2.1 Port the Go entries of `drafts/cases.lua` into tests/unit/references/test_go_usages.lua (real `go` parser), add the target-kind cases, and see them fail
-- [ ] 2.2 Add `queries/go/usages.scm` from `drafts/queries/go/usages.scm`, renaming `value_write` to `write` (regenerate with `drafts/gen_go.py` or hand-maintain; every draft case must pass).
-- [ ] 2.3 Generalise `request_callable` in `kind.lua` to `request_target_kind` and apply the refinement rules, including the `type_identifier` upgrade (design Decision 3).
-- [ ] 2.4 Run the unit files and see them pass
+- [x] 2.1 Port the Go entries of `drafts/cases.lua` into tests/unit/references/test_go_usages.lua (real `go` parser), add the target-kind cases, and see them fail
+- [x] 2.2 Add `queries/go/usages.scm` from `drafts/queries/go/usages.scm`, renaming `value_write` to `write` (regenerate with `drafts/gen_go.py` or hand-maintain; every draft case must pass).
+- [x] 2.3 Generalise `request_callable` in `kind.lua` to `request_target_kind` and apply the refinement rules, including the `type_identifier` upgrade (design Decision 3).
+- [x] 2.4 Run the unit files and see them pass
 
 ## 3. Classification order through gr
 

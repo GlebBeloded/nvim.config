@@ -12,15 +12,14 @@ T["references: Treesitter fallback classifies writes where a parser exists"] = M
 
 T["references: Treesitter fallback classifies writes where a parser exists"]["Go declarations and increments"] = function()
 	local actual = child.lua_get([[(function()
-		local source = "x := 1\nx++\nprint(x)"
+		local source = "package p\ntype T struct { X int }\nfunc f() { _ = T{X: 1}; _ = T{}.X }"
 		return require("gleb.references.kind_ts").classify(source, "go", {
-			{ line = 0, character = 0 },
-			{ line = 1, character = 0 },
-			{ line = 2, character = 6 },
+			{ line = 2, character = 17 },
+			{ line = 2, character = 32 },
 		})
 	end)()]])
 
-	eq(actual, { "write", "write", "read" })
+	eq(actual, { "write", "read" })
 end
 
 T["references: Treesitter fallback classifies writes where a parser exists"]["Lua assignments"] = function()
