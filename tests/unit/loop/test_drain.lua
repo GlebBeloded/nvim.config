@@ -162,6 +162,15 @@ T["loop: Drain works queued changes until the queue is empty"] = function()
 	eq(out:find("queue is empty", 1, true) ~= nil, true, { fail_reason = out })
 end
 
+T["loop: Drain gives a re-queued change one more run"] = function()
+	local repo, stubs = make_repo(), stub_env()
+	write_change(repo, "t-a", "2026-01-01", { "## Why", "w", "", "## Rejected run", "- review findings" })
+	write_change(repo, "t-c", "2026-01-03")
+	set_outcome(stubs, "t-a", "cancelled")
+	output(drain(repo, stubs))
+	eq(ran(stubs), { "t-a", "t-a", "t-c" })
+end
+
 T["loop: Drain stops after N runs"] = function()
 	local repo, stubs = make_repo(), stub_env()
 	write_change(repo, "t-a", "2026-01-01")
