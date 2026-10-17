@@ -63,6 +63,7 @@ nodes:
           runtime: uv
           with:
             change: $INPUTS.change
+            sync_base: "true" # sync_base.py: an auditor Decision on auto reaches the next task, not only the gate
           output_format:
             type: object
             properties:

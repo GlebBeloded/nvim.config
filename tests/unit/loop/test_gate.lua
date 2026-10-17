@@ -670,6 +670,17 @@ T["loop: Fix prompt probes first and caps attempts"] = function()
 	has(fix, "unless the proposal's `## Decision` allows it")
 end
 
+T["loop: Each task's context pack merges a moved auto first"] = function()
+	local deliver = read(vim.fs.joinpath(H.root, ".archon/workflows/nvim-deliver/nvim-deliver.yaml"))
+	has(deliver, 'sync_base: "true" # sync_base.py: an auditor Decision on auto reaches the next task')
+	local pack = read(vim.fs.joinpath(H.root, ".archon/scripts/context_pack.py"))
+	eq(
+		pack:find("INPUTS_SYNC_BASE", 1, true)
+			< pack:find('change_dir = pathlib.Path("openspec/changes") / CHANGE', 1, true),
+		true
+	)
+end
+
 T["loop: Gate merges a moved auto first"] = function()
 	local deliver = read(vim.fs.joinpath(H.root, ".archon/workflows/nvim-deliver/nvim-deliver.yaml"))
 	has(deliver, 'sync_base: "true" # sync_base.py')

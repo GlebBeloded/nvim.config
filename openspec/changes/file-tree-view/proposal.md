@@ -86,6 +86,14 @@ This change adds the new tree beside neo-tree. It opens only from new, unbound a
 - Approved look: `ft_idea` (= `nest_chevron`). Nesting comes in `file-tree-nesting`, so this change renders it without nest chevrons.
 - "Also I need fold all/unfold all actions in file tree".
 
+## Decision (auditor, 2026-10-17, pre-implementation audit)
+
+- Watching and isolation: watch every compact-chain member and every folder whose scan feeds a row; cache scans until a watcher invalidates them. Git and watch state are keyed per root with handle refcounts across tabs; view state, buffer name and autocmds per tabpage handle (never tabnr, never a group-wide clear). A two-tab scenario.
+- One path normaliser `normalize(path)` (fs_realpath, else the nearest existing parent) for root, buffers, git toplevel and HOME shortening; a folder is cut at the first already-seen realpath. Scenarios: a root reached through a symlink, a symlink loop (`loop -> .`), a deleted file during follow and during toggle, an expanded folder deleted while open (cursor clamped, entry pruned, handle closed), a `chmod 000` folder, a directory buffer (not followed); none raises or notifies.
+- Window hygiene: open/split/tab/new editor window run from the target editor window (skipping neo-tree, quickfix, terminal, float and diff-view windows), never the tree. The tree window sets `foldenable=false`, `foldmethod=manual`, `statuscolumn=""` and detaches ufo; a file opened into the tree window moves to the editor window; the cursor is hidden only in `n`/`v` modes from an original `guicursor` saved once. QuitPre counts neo-tree windows as trees too; `:close` and both-trees scenarios; the v/s/t scenarios assert the new window has `number` and no `winfixwidth`.
+- Spec and tasks: add "toggle reveals the current file" to "Project tree window"; move QuitPre into task 2; split task 2 into 2a (neo-tree move, `render.lua`) and 2b (`view.lua`, toggle, QuitPre, bufferline), task 5 into 5a (follow/reveal and the deleted-file cases), 5b (`watch.lua`, chain splits), 5c (`expanded.json` per-root merge with atomic write, re-root incl. git worktrees via `rev-parse --absolute-git-dir`). Folder status is precomputed once per git result; manual expand and watched folders are capped.
+- Render proof: the screen case asserts the tree window's text rows verbatim against `renders/f1_proposed.ansi` with real glyphs as well as the reference screenshot, which is reviewed against that file before commit; integration tests assert each row's extmark groups; `DevIcon*` and every `FileTree*` colour are pinned with `expect_hl_colors`. `git-changes-tree` reuses `model.parse_status`.
+
 ## Agent decisions
 
 - **Ignored entries until `file-tree-ignored`:** the tree lists them like any other entry and hides only `.git`. The approved render is reproduced on a fixture copy without its ignored entries, so the screen scenario keeps holding once they are hidden by default.

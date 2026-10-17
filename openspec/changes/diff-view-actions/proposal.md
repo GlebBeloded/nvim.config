@@ -72,6 +72,14 @@ The user also wanted move detection ("only if IDEA doesn't have it"; IntelliJ ha
 - Panes: picked "Aligned, IntelliJ chrome" (numbers in the middle, » apply, checkbox per change, ╱ padding, wavy folds).
 - General: "I'm used to Idea", "I like IDEA IDE diff more".
 
+## Decision (auditor, 2026-10-17, pre-implementation audit)
+
+- `diff.apply` and `diff.toggle_include` do nothing (and notify) when the file is absent from HEAD, unborn, unmerged or binary. The toggle re-reads the index first and refuses with "Stage failed: overlaps other staged lines" instead of reverting staged edits outside the change. Staging and checkbox states always use `policy = default`. The patch's old side matches the index blob's own end-of-file newline; the new side takes the buffer's `'eol'` only when the change touches the last line; a CRLF unit case. The `index.lock` scenario uses `git rev-parse --git-path index.lock`.
+- `highlight = "none"`, a policy that hides every change, and reverting the last change all keep the view open with no fold: `build()` stops treating zero fragments as "No changes" in those cases. Three scenarios cover them.
+- `<Space>` stays the include key (the approved design); scenarios prove `<leader>` mappings still work inside the view and in another window of the same file. Mappings keep the per-view namespace and augroup, and `FocusGained` lives in `view.augroup`.
+- Tasks update `test_run.lua` `more_results`, `test_layout.lua` (checkbox state and signature) and `ADAPTER_PLUGINS` keyed on `action.plugin`. Without an index the checkbox defaults to `☐`, so the approved render and plain-spec tests stay unchanged. Reuse `layout.change_at_line` instead of a second lookup.
+- Split task 2 into 2a (revert, `do`/`dp`), 2b (`stage.lua` and the toggle with its failure case), 2c (checkbox states and drawing), and task 4 into 4a (`settings.lua` with its unit test), 4b (the nine radio actions), 4c (the `none`-mode layout). Moves get a per-side kind on rows; lookups use a line→row map built once (no per-line row scan) and a two-pointer pass for states. Screen masks come from `renders/*.ansi`, never from the implementation's own screenshots.
+
 ## Agent decisions
 
 - **Apply key `do` and `dp`.**

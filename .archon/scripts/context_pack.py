@@ -13,8 +13,10 @@ import json
 import os
 import pathlib
 import re
+import sys
 
 from blocked import SECTION as BLOCKED, blocks
+from sync_base import sync
 from tasks import next_task
 
 CHANGE = os.environ.get("INPUTS_CHANGE", "")
@@ -209,6 +211,8 @@ def has_task(tasks: pathlib.Path, task: str) -> bool:
 
 
 def main() -> None:
+    if os.environ.get("INPUTS_SYNC_BASE") == "true":  # an auditor Decision landed on auto mid-run: the next task reads it
+        print(sync() or "sync: base already merged", file=sys.stderr)
     change_dir = pathlib.Path("openspec/changes") / CHANGE
     task = next_task(change_dir / "tasks.md", ARTIFACTS)
     parts = [f"# Context pack: {CHANGE}\n", section("Next task", task or "(none: every task is ticked)")]
