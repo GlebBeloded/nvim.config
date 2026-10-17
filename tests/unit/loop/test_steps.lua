@@ -359,6 +359,20 @@ T["loop: An abandoned run's branch does not take its change"] = function()
 	eq(vim.json.decode(vim.trim(result.stdout):match("[^\n]*$")).change, "c")
 end
 
+T["loop: A folder left without a proposal is not queued"] = function()
+	local repo = H.tempdir(child)
+	write(repo, {
+		["openspec/changes/a-shipped/drafts/lsp/lua/.luarc.json"] = "{}",
+		["openspec/changes/archive/2026-10-17-a-shipped/proposal.md"] = "## Why\nx\n\nKind: bug",
+		["openspec/changes/b/proposal.md"] = "## Why\nx\n\nKind: bug",
+		["openspec/changes/b/.openspec.yaml"] = "schema: spec-driven",
+	})
+	git_ok({ "init", "-q", "-b", "auto" }, repo)
+	local env = vim.tbl_extend("force", H.GIT_ENV, { HOME = H.tempdir(child), INPUTS_CHANGE = "" })
+	local result = H.system(child, { "python3", vim.fs.joinpath(SCRIPTS, "queue_pick.py") }, repo, env)
+	eq(vim.json.decode(vim.trim(result.stdout):match("[^\n]*$")).change, "b")
+end
+
 T["loop: Spec gate catches main specs a change would break"] = function()
 	local repo = H.tempdir(child)
 	local long = "The thing SHALL " .. string.rep("work very well ", 40) .. "."

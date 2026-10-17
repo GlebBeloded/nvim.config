@@ -583,9 +583,17 @@ When `make check` fails only in `test`, `test-readiness` or `e2e`, gate.py SHALL
 - **WHEN** gate.py runs with a `make` stub whose check fails in `e2e` with only sandbox lines (`did not answer SSH`, `is not running`) and whose rerun passes, then fails; then with a `FAIL in` case; then with another non-sandbox line
 - **THEN** the first reruns `make e2e E2E=1` and is green with `e2e: <last sandbox line>` in `flaky`; the second is red; the last two are red with no rerun
 
+#### Scenario: A folder left without a proposal is not queued
+- **WHEN** `queue_pick.py` runs with an archived change whose ignored `drafts/` folder stayed under `openspec/changes/<name>/`, and a queued change `b`
+- **THEN** it picks `b`, never the leftover folder
+
 #### Scenario: Gate reruns smoke-health once after a checkhealth error
 - **WHEN** gate.py runs with a `make` stub whose check fails only in `smoke-health` with an `ERROR` line and whose rerun passes, then fails
 - **THEN** the first reruns `make smoke-health` and is green with `smoke-health: <the ERROR line>` in `flaky`; the second is red
+
+#### Scenario: Gate reruns the stack layer once after a failure
+- **WHEN** gate.py runs with a `make` stub whose check fails only in `stack` with a `FAIL in` line and whose rerun passes, then fails
+- **THEN** the first reruns `make stack` and is green with `stack: <the FAIL in line>` in `flaky`; the second is red
 
 ### Requirement: Gate stops on sandbox infra
 When the e2e rerun fails on sandbox infra again (incl. the image pull disk guard) and every other rerun passes, gate.py SHALL print `infra` (the sandbox line) and not count the pass as an attempt; verdict SHALL end the loop with no fix pass and not exhausted; the judge SHALL decide `infra` (neither reject nor re-queue) and ship-decide SHALL stop the run.

@@ -71,7 +71,8 @@ def kind(path: pathlib.Path) -> str:
 
 wanted = os.environ.get("INPUTS_CHANGE", "").strip()
 listing = json.loads(subprocess.run(["openspec", "list", "--json"], capture_output=True, text=True, check=True).stdout)
-names = [c["name"] for c in listing.get("changes", [])]
+# a folder with no proposal.md (an archived change's ignored drafts/ left behind) is not a queued change
+names = [c["name"] for c in listing.get("changes", []) if (CHANGES / c["name"] / "proposal.md").exists() and not archived(c["name"])]
 skip = set(re.split(r"[\s,]+", os.environ.get("QUEUE_SKIP", "").strip())) - {""}
 if wanted:
     candidates = [n for n in names if n == wanted]
