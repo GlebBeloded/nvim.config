@@ -57,6 +57,7 @@ local M = {
 ---@field syncing? boolean
 ---@field timer? uv.uv_timer_t
 ---@field attached? boolean
+---@field ufo_attached? boolean
 
 ---@param lines string[]
 ---@return integer
@@ -68,6 +69,25 @@ local function readonly_buffer(lines)
 	vim.bo[buf].buftype = "nofile"
 	vim.bo[buf].bufhidden = "wipe"
 	return buf
+end
+
+---@param lhs string
+---@param previous table
+local function replay_mapping(lhs, previous)
+	if next(previous) == nil then
+		local count = vim.v.count > 0 and tostring(vim.v.count) or ""
+		vim.api.nvim_feedkeys(vim.keycode(count .. lhs), "n", false)
+		return
+	end
+	if previous.callback then
+		local result = previous.callback()
+		if previous.expr == 1 and type(result) == "string" then
+			vim.api.nvim_feedkeys(vim.keycode(result), previous.noremap == 1 and "n" or "m", false)
+		end
+		return
+	end
+	local count = vim.v.count > 0 and tostring(vim.v.count) or ""
+	vim.api.nvim_feedkeys(vim.keycode(count .. previous.rhs), previous.noremap == 1 and "n" or "m", false)
 end
 
 ---@param view gleb.diff.view.View
@@ -85,7 +105,13 @@ local function set_mappings(view)
 			for lhs, mapping in pairs(mappings) do
 				local previous = vim.fn.maparg(lhs, "n", false, true)
 				table.insert(saved, { lhs = lhs, previous = previous })
-				vim.keymap.set("n", lhs, mapping.callback, {
+				vim.keymap.set("n", lhs, function()
+					if M.state.by_win[vim.api.nvim_get_current_win()] == view then
+						mapping.callback()
+					else
+						replay_mapping(lhs, previous)
+					end
+				end, {
 					buffer = buf,
 					desc = mapping.desc,
 					nowait = true,
@@ -312,7 +338,7 @@ local function build(spec)
 		filetype = spec.filetype or "",
 		right_buf = spec.right_buf or readonly_buffer(spec.right),
 		on_next_file = spec.on_next_file,
-		ns = vim.api.nvim_create_namespace("gleb_diff_view"),
+		ns = vim.api.nvim_create_namespace(""),
 		fragments = comparison.fragments,
 		layout = model,
 		approximate = comparison.too_big or comparison.timed_out,
@@ -470,6 +496,7 @@ function M.close(view)
 		end
 		windows.restore(view)
 	end
+	windows.restore_ufo(view)
 	if vim.api.nvim_win_is_valid(view.origin_win) then
 		vim.api.nvim_set_current_win(view.origin_win)
 	end

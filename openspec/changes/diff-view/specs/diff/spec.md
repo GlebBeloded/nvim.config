@@ -81,6 +81,10 @@ Scrolling either window SHALL scroll the other so that the same aligned row is a
 - **WHEN** the right cursor of the `controller.go` view moves to line 58, then to line 59, and then the left cursor moves to line 65
 - **THEN** the left cursor is on line 58 after each of the first two moves, and the right cursor is then on line 66
 
+#### Scenario: Layout maps cursor rows across changes
+- **WHEN** the layout for the three `controller.go` changes transfers right lines 58 and 59 and left line 65
+- **THEN** they map to left lines 58 and 58 and right line 66, and left line 58 belongs to change 2
+
 ### Requirement: Diff view change navigation
 `diff.next_change` and `diff.prev_change` SHALL move the cursor in the current window to the first line of the next or previous change on that window's side. For a side without lines, that is the line just below the gap. There is no wrap: at the last or first change, the cursor stays.
 
@@ -125,6 +129,10 @@ The left buffer SHALL NOT be modifiable. Each change to the right buffer SHALL r
 #### Scenario: Diff view restores a shadowed buffer mapping
 - **WHEN** `controller.go` has a buffer-local normal-mode `q` mapping, and its view is opened and then closed with `q`
 - **THEN** the buffer's `q` mapping is the one it had before the view opened
+
+#### Scenario: Diff view keys stay native outside view windows
+- **WHEN** the `controller.go` view is open, lines 1–10 are manually folded in its original window, which also had a buffer-local `]c` mapping, and `zo` then `]c` are pressed there
+- **THEN** the manual fold opens and the buffer-local `]c` mapping runs
 
 ### Requirement: Diff view embedding
 `require("gleb.diff.view").show(win, spec)` SHALL show a view in the area of window `win`, without changing the current window or the tab page count. `spec` holds `path`, `left` (lines), `right` (a buffer or lines), `labels` and an optional `on_next_file`. A later `show` on the same area SHALL replace the view. `diff.next_file` SHALL call `on_next_file`; without one, it does nothing.

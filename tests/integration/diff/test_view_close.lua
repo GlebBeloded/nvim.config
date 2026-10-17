@@ -43,6 +43,7 @@ T["diff: Diff view q closes the tab page"] = function()
 	eq(child.api.nvim_get_current_buf(), view.right_buf)
 	eq(next(child.fn.maparg("q", "n", false, true)), nil)
 	eq(child.api.nvim_buf_get_extmarks(view.right_buf, view.ns, 0, -1, {}), {})
+	eq(child.lua_get([[require("ufo").hasAttached(...)]], { view.right_buf }), true)
 end
 
 local closes_scenario = "diff: Diff view closes with either window"
@@ -76,6 +77,25 @@ T[closes_scenario]["closes the peer after the right window quits"] = function()
 		end)]]),
 		false
 	)
+end
+
+T[closes_scenario]["keeps a second view isolated when the first closes"] = function()
+	open_controller()
+	local first = child.lua_get([[require("gleb.diff.view").current()]])
+	child.api.nvim_set_current_win(first.origin_win)
+	edit(manifest.ids)
+	open_diff()
+	local second = child.lua_get([[require("gleb.diff.view").current()]])
+
+	eq(first.ns == second.ns, false)
+	child.api.nvim_set_current_win(first.left_win)
+	child.cmd("quit")
+	eq(child.wait(("not vim.api.nvim_win_is_valid(%d)"):format(first.right_win), 1000 * H.load_factor()), true)
+
+	eq(#child.api.nvim_list_tabpages(), 2)
+	eq(child.api.nvim_win_is_valid(second.left_win), true)
+	eq(child.api.nvim_win_is_valid(second.right_win), true)
+	eq(child.lua_get([[require("gleb.diff.view").state.by_win[...] ~= nil]], { second.right_win }), true)
 end
 
 T["diff: Diff view restores a shadowed buffer mapping"] = function()

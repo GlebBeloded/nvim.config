@@ -1,8 +1,6 @@
 local MiniTest = require("mini.test")
 local F = require("tests.fixtures")
 local H = require("tests.helpers")
-local layout = require("gleb.diff.view.layout")
-
 local eq = MiniTest.expect.equality
 local child = H.new_child()
 
@@ -87,16 +85,6 @@ T["diff: Diff view scrolls both windows together"] = function()
 end
 
 T["diff: Diff view maps the cursor across changes"] = function()
-	local result = layout.build({
-		{ start1 = 52, end1 = 53, start2 = 52, end2 = 53 },
-		{ start1 = 57, end1 = 57, start2 = 57, end2 = 58 },
-		{ start1 = 64, end1 = 65, start2 = 65, end2 = 65 },
-	}, 151, 151, 4)
-	eq(layout.transfer_line(result, "right", 58), 58)
-	eq(layout.transfer_line(result, "right", 59), 58)
-	eq(layout.transfer_line(result, "left", 65), 66)
-	eq(layout.change_at_line(result, "left", 58), 2)
-
 	open_controller()
 	local view = child.lua_get([[require("gleb.diff.view").current()]])
 
@@ -110,6 +98,22 @@ T["diff: Diff view maps the cursor across changes"] = function()
 	child.api.nvim_win_set_cursor(view.left_win, { 65, 0 })
 	child.api.nvim_exec_autocmds("CursorMoved", { buffer = view.left_buf })
 	eq(child.api.nvim_win_get_cursor(view.right_win)[1], 66)
+end
+
+T["diff: Diff view keys stay native outside view windows"] = function()
+	edit(manifest.controller)
+	child.lua([[vim.keymap.set("n", "]c", function() vim.g.shadowed_next_change = true end, { buffer = true })]])
+	open_diff()
+	local origin = child.lua_get([[require("gleb.diff.view").current().origin_win]])
+	child.api.nvim_set_current_win(origin)
+	child.cmd("setlocal foldmethod=manual | 1,10fold")
+	child.api.nvim_win_set_cursor(origin, { 1, 0 })
+	eq(child.fn.foldclosed(1), 1)
+
+	child.type_keys("zo")
+	eq(child.fn.foldclosed(1), -1)
+	child.type_keys("]c")
+	eq(child.g.shadowed_next_change, true)
 end
 
 T["diff: Diff view ]c and [c walk the changes"] = function()

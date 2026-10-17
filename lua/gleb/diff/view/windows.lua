@@ -59,6 +59,9 @@ end
 function M.add_folds(view, open_ranges)
 	local has_ufo, ufo = pcall(require, "ufo")
 	if has_ufo then
+		if view.ufo_attached == nil then
+			view.ufo_attached = ufo.hasAttached(view.right_buf) == true
+		end
 		ufo.detach(view.left_buf)
 		ufo.detach(view.right_buf)
 	end
@@ -201,6 +204,17 @@ function M.restore(view)
 	vim.api.nvim_win_set_buf(view.right_win, restore.buf)
 	for name, value in pairs(restore.options) do
 		vim.wo[view.right_win][name] = value
+	end
+end
+
+---@param view gleb.diff.view.View
+function M.restore_ufo(view)
+	if not view.ufo_attached or not vim.api.nvim_buf_is_valid(view.right_buf) then
+		return
+	end
+	local has_ufo, ufo = pcall(require, "ufo")
+	if has_ufo then
+		ufo.attach(view.right_buf)
 	end
 end
 

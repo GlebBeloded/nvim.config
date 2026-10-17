@@ -60,6 +60,14 @@ T["diff: Diff view folds unchanged lines with context 4"] = function()
 	})
 end
 
+T["diff: Layout maps cursor rows across changes"] = function()
+	local result = controller_layout()
+	eq(layout.transfer_line(result, "right", 58), 58)
+	eq(layout.transfer_line(result, "right", 59), 58)
+	eq(layout.transfer_line(result, "left", 65), 66)
+	eq(layout.change_at_line(result, "left", 58), 2)
+end
+
 T["diff: Diff view gutter shows both line numbers"] = MiniTest.new_set()
 
 T["diff: Diff view gutter shows both line numbers"]["formats unchanged, changed and padded rows"] = function()
