@@ -2,6 +2,7 @@
 
 local M = {}
 
+local expanded = require("gleb.file_tree.expanded")
 local fs = require("gleb.file_tree.fs")
 local git = require("gleb.file_tree.git")
 local model = require("gleb.file_tree.model")
@@ -100,6 +101,8 @@ local function forget(view)
 	end
 	if view.watching then
 		view.watching = false
+		expanded.save(view.root, view.expanded)
+		expanded.flush()
 		watch.stop_root(view.root, view.tab)
 		git.stop_root(view.root, view.tab)
 	end
@@ -212,6 +215,7 @@ local function draw(view, path)
 	end, function()
 		git.request(view.root)
 	end)
+	expanded.save(view.root, view.expanded)
 end
 
 ---@param view FileTreeView
@@ -563,7 +567,7 @@ local function open_view(path)
 		root = root,
 		buf = buf,
 		win = win,
-		expanded = {},
+		expanded = expanded.load(root),
 		rows = {},
 		autocmds = {},
 		watching = true,
@@ -581,6 +585,30 @@ local function open_view(path)
 	git.request(root)
 	update_cursor(view)
 	return view
+end
+
+---@param view FileTreeView
+---@param root string
+local function reroot(view, root)
+	if root == view.root then
+		return
+	end
+	expanded.save(view.root, view.expanded)
+	expanded.flush()
+	watch.stop_root(view.root, view.tab)
+	git.stop_root(view.root, view.tab)
+	view.root = root
+	view.expanded = expanded.load(root)
+	vim.api.nvim_buf_set_name(view.buf, ("gleb-file-tree://%s#%d"):format(root, view.tab))
+	watch.start_root(root, view.tab)
+	git.start_root(root, view.tab, function()
+		if M.state.by_tab[view.tab] == view and vim.api.nvim_buf_is_valid(view.buf) then
+			local selected = view.rows[vim.api.nvim_win_get_cursor(view.win)[1]]
+			draw(view, selected and selected.path or root)
+		end
+	end)
+	draw(view, root)
+	git.request(root)
 end
 
 ---@param tab integer
@@ -680,6 +708,17 @@ function M.setup()
 	vim.api.nvim_create_autocmd("WinEnter", { group = view_group, callback = remember_editor })
 	vim.api.nvim_create_autocmd("QuitPre", { group = view_group, callback = on_quit_pre })
 	vim.api.nvim_create_autocmd("WinClosed", { group = view_group, callback = close_trees_without_an_editor })
+	vim.api.nvim_create_autocmd("DirChanged", {
+		group = view_group,
+		pattern = "global",
+		callback = function()
+			local view = M.state.by_tab[vim.api.nvim_get_current_tabpage()]
+			if view then
+				reroot(view, fs.normalize(vim.fn.getcwd()))
+			end
+		end,
+	})
+	vim.api.nvim_create_autocmd("VimLeavePre", { group = view_group, callback = expanded.flush })
 	vim.api.nvim_create_autocmd("BufWritePost", {
 		group = view_group,
 		callback = function()

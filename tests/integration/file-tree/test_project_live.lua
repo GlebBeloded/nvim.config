@@ -554,4 +554,140 @@ T["file-tree: Project tree isolates tabpage state"] = function()
 	eq(isolated, { git_refs = 1, watch_refs = 1 })
 end
 
+T["file-tree: Project tree re-roots on a cwd change"] = function()
+	edit("README.md")
+	run_action("file_tree.toggle")
+	local other = F.copy("treeproj", vim.fn.tempname() .. "/other")
+	H.write_files(other, { ["other-root.txt"] = "other\n" })
+
+	child.cmd("cd " .. vim.fn.fnameescape(other))
+	local actual = child.lua_get(
+		[[(function(old_root)
+		return vim.wait(1000, function()
+			local view = require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()]
+			return view
+				and view.root == require("gleb.file_tree.fs").normalize(vim.fn.getcwd())
+				and vim.iter(view.rows):any(function(row)
+					return row.label == "other-root.txt"
+				end)
+		end, 20) and {
+			root = require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()].root,
+			old_watch = require("gleb.file_tree.watch").state.roots[require("gleb.file_tree.fs").normalize(old_root)] ~= nil,
+		}
+	end)(...)]],
+		{ root }
+	)
+	eq(actual, { root = assert(vim.uv.fs_realpath(other)), old_watch = false })
+end
+
+T["file-tree: Project tree expanded folders persist per root"] = function()
+	edit("README.md")
+	run_action("file_tree.toggle")
+	focus_tree_row("internal")
+	child.type_keys("<CR>")
+	run_action("file_tree.close")
+
+	local other = F.copy("treeproj", vim.fn.tempname() .. "/other")
+	child.cmd("cd " .. vim.fn.fnameescape(other))
+	child.cmd("edit " .. vim.fn.fnameescape(vim.fs.joinpath(other, "README.md")))
+	run_action("file_tree.toggle")
+	focus_tree_row("web")
+	child.type_keys("<CR>")
+	run_action("file_tree.close")
+
+	child.cmd("cd " .. vim.fn.fnameescape(root))
+	run_action("file_tree.toggle")
+	local first = child.lua_get(
+		[[vim.deepcopy(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()].expanded)]]
+	)
+	run_action("file_tree.close")
+	child.cmd("cd " .. vim.fn.fnameescape(other))
+	run_action("file_tree.toggle")
+	local second = child.lua_get(
+		[[vim.deepcopy(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()].expanded)]]
+	)
+	eq(first, { internal = true })
+	eq(second, { web = true })
+end
+
+T["file-tree: Project tree drops a stored folder that is gone"] = function()
+	edit("README.md")
+	run_action("file_tree.toggle")
+	focus_tree_row("internal")
+	child.type_keys("<CR>")
+	run_action("file_tree.close")
+	eq(H.system(child, { "rm", "-r", vim.fs.joinpath(root, "internal") }, root).code, 0)
+
+	run_action("file_tree.toggle")
+	local expanded = child.lua_get(
+		[[vim.deepcopy(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()].expanded)]]
+	)
+	run_action("file_tree.close")
+	local stored = child.lua_get(
+		[[(function(root)
+		local path = vim.fs.joinpath(vim.fn.stdpath("state"), "file_tree", "expanded.json")
+		return vim.json.decode(table.concat(vim.fn.readfile(path), "\n"))[root]
+	end)(...)]],
+		{ assert(vim.uv.fs_realpath(root)) }
+	)
+	eq(expanded, {})
+	eq(stored, {})
+end
+
+T["file-tree: Project tree atomically merges expansion state"] = function()
+	edit("README.md")
+	run_action("file_tree.toggle")
+	focus_tree_row("internal")
+	child.type_keys("<CR>")
+
+	local other = F.copy("treeproj", vim.fn.tempname() .. "/other")
+	child.cmd("tabnew " .. vim.fn.fnameescape(vim.fs.joinpath(other, "README.md")))
+	child.cmd("cd " .. vim.fn.fnameescape(other))
+	run_action("file_tree.toggle")
+	focus_tree_row("web")
+	child.type_keys("<CR>")
+	child.cmd("tabclose")
+	run_action("file_tree.close")
+
+	local stored = child.lua_get([[(function()
+		local directory = vim.fs.joinpath(vim.fn.stdpath("state"), "file_tree")
+		local path = vim.fs.joinpath(directory, "expanded.json")
+		return {
+			value = vim.json.decode(table.concat(vim.fn.readfile(path), "\n")),
+			temporary = vim.fn.globpath(directory, "expanded.json.*", false, true),
+		}
+	end)()]])
+	eq(stored, {
+		value = {
+			[assert(vim.uv.fs_realpath(root))] = { "internal" },
+			[assert(vim.uv.fs_realpath(other))] = { "web" },
+		},
+		temporary = {},
+	})
+end
+
+T["file-tree: Project tree re-roots across git worktrees"] = function()
+	edit("README.md")
+	run_action("file_tree.toggle")
+	local linked = vim.fn.tempname() .. "/linked"
+	eq(H.system(child, { "git", "worktree", "add", "-q", "-b", "linked-test", linked }, root).code, 0)
+	local expected_top = vim.trim(H.system(child, { "git", "-C", linked, "rev-parse", "--show-toplevel" }, root).stdout)
+	local expected_git =
+		vim.trim(H.system(child, { "git", "-C", linked, "rev-parse", "--absolute-git-dir" }, root).stdout)
+
+	child.cmd("cd " .. vim.fn.fnameescape(linked))
+	local actual = child.lua_get([[(function()
+		return vim.wait(1000, function()
+			local root = require("gleb.file_tree.fs").normalize(vim.fn.getcwd())
+			local state = require("gleb.file_tree.watch").state.roots[root]
+			return state and state.toplevel and state.git_dir
+		end, 20) and (function()
+			local root = require("gleb.file_tree.fs").normalize(vim.fn.getcwd())
+			local state = require("gleb.file_tree.watch").state.roots[root]
+			return { root = root, toplevel = state.toplevel, git_dir = state.git_dir }
+		end)()
+	end)()]])
+	eq(actual, { root = assert(vim.uv.fs_realpath(linked)), toplevel = expected_top, git_dir = expected_git })
+end
+
 return T

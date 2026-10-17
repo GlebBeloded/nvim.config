@@ -162,9 +162,9 @@ Scenarios: `file-tree: Project tree shares root work across tabs`, `file-tree: P
 
 Scenarios: `file-tree: Project tree re-roots on a cwd change`, `file-tree: Project tree expanded folders persist per root`, `file-tree: Project tree drops a stored folder that is gone`, `file-tree: Project tree atomically merges expansion state`, `file-tree: Project tree re-roots across git worktrees`
 
-- [ ] 5c.1 Write these scenarios in `tests/integration/file-tree/test_project_live.lua`, using two real roots and linked git worktrees; see them fail.
-- [ ] 5c.2 Add `lua/gleb/file_tree/expanded.lua` with per-root merge and temporary-file atomic replacement. Re-root only the current tab and refresh `git rev-parse --show-toplevel --absolute-git-dir`.
-- [ ] 5c.3 Run `make test FILE=tests/integration/file-tree/test_project_live.lua` for these cases and see them pass.
+- [x] 5c.1 Write these scenarios in `tests/integration/file-tree/test_project_live.lua`, using two real roots and linked git worktrees; see them fail.
+- [x] 5c.2 Add `lua/gleb/file_tree/expanded.lua` with per-root merge and temporary-file atomic replacement. Re-root only the current tab and refresh `git rev-parse --show-toplevel --absolute-git-dir`.
+- [x] 5c.3 Run `make test FILE=tests/integration/file-tree/test_project_live.lua` for these cases and see them pass.
 
 ## 6a. Git status parsing and colours
 
@@ -203,3 +203,4 @@ Scenarios: `file-tree: Project tree matches the approved render`, `file-tree: Pr
 - Live-update tests inspect rendered extmark groups; a small async Git snapshot module supplies watcher-triggered colours, while throttling and exhaustive porcelain parsing remain in task 6.
 - Folder-watch admission keeps the normalized root first and then uses lexical path order, making the cap deterministic while preserving every rendered row.
 - Shared-root watchers union each tab's scan set and fan events out by tabpage handle, so closing one view cannot strand another view's live updates.
+- Expansion writes use a PID-and-sequence temporary sibling, avoiding collisions while retaining atomic same-directory replacement.
