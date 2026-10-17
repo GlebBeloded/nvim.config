@@ -1235,6 +1235,17 @@ end
 T["references: Terraform usage types match the approved render"] = function()
 	eq(require("tests.render.cases").terraform_h1_vpc ~= nil, true)
 	open_terraform_vpc()
+	eq(
+		child.wait(
+			[[(function()
+			local state = require("gleb.references.view").state
+			local origin_buf = vim.api.nvim_win_get_buf(state.origin_win)
+			return #vim.lsp.semantic_tokens.get_at_pos(origin_buf, 1, 2) > 0
+		end)()]],
+			TIMEOUT_MS
+		),
+		true
+	)
 	H.expect_screenshot(child.get_screenshot())
 	clear_background_for_mask()
 	H.expect_screen_colors(child, 1, with_cleared_lua_background(TERRAFORM_GROUPED_MASK), TERRAFORM_LEGEND)
