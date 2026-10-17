@@ -122,12 +122,33 @@ local function open_references(root, path, line, col, server, client_name, timeo
 	client_name = client_name or server
 	timeout = timeout or TIMEOUT_MS
 	require_server(server)
+	if client_name == "rust-analyzer" then
+		child.lua([[
+			_G.rust_analyzer_quiescent = nil
+			local server = require("rustaceanvim.config.internal").server
+			server.handlers = server.handlers or {}
+			_G.previous_server_status_handler = server.handlers["experimental/serverStatus"]
+			server.handlers["experimental/serverStatus"] = function(err, result, context, config)
+				if result and result.quiescent then _G.rust_analyzer_quiescent = true end
+				local handler = _G.previous_server_status_handler or require("rustaceanvim.server_status").handler
+				return handler(err, result, context, config)
+			end
+		]])
+	end
 	child.cmd("cd " .. vim.fn.fnameescape(root) .. " | edit " .. vim.fn.fnameescape(path))
 	child.api.nvim_win_set_cursor(0, { line, col - 1 })
 	assert(
 		child.wait(([[#vim.lsp.get_clients({ bufnr = 0, name = %q }) > 0]]):format(client_name), timeout),
 		client_name .. " did not attach"
 	)
+	if client_name == "rust-analyzer" then
+		assert(child.wait("_G.rust_analyzer_quiescent == true", timeout), "rust-analyzer did not become quiescent")
+		child.lua([[
+			require("rustaceanvim.config.internal").server.handlers["experimental/serverStatus"] =
+				_G.previous_server_status_handler
+			_G.previous_server_status_handler = nil
+		]])
+	end
 	if parser then
 		assert(
 			child.lua_get(
