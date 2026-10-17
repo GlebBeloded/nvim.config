@@ -205,9 +205,11 @@ T[typescript_scenario]["gr opens usages"] = function()
 	local _, manifest = open_references("tsproj", "total", "vtsls", { "vtsls", "eslint" })
 	expect_tree_rows({
 		"scope:Production",
+		"type:Call",
 		"folder:src",
 		"usage:" .. usage_label(manifest, "total", "src/cart.ts"),
 		"scope:Test",
+		"type:Call",
 		"folder:src",
 		"usage:" .. usage_label(manifest, "total", "src/price.test.ts"),
 	})
