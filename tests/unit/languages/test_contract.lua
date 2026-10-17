@@ -145,6 +145,33 @@ T["references: Python query classifies every usage type"] = function()
 	eq(actual, expected)
 end
 
+T["references: Rust query classifies every usage type"] = function()
+	local suite = require("tests.unit.references.usage_cases.rust")
+	local positions = vim.tbl_map(function(case)
+		return { line = case.line, character = case.character }
+	end, suite.cases)
+	local expected = vim.tbl_map(function(case)
+		return case.kind and case.refined_expected or case.query_expected
+	end, suite.cases)
+	local targets = vim.tbl_map(function(case)
+		return case.kind or false
+	end, suite.cases)
+	local actual = child.lua_get(
+		[[(function(source, filetype, source_positions, target_kinds)
+			local classify = require("gleb.references.kind_ts").classify
+			local refine = require("gleb.references.kind_refine").refine_query_kind
+			local refined = {}
+			for index, query_kind in ipairs(classify(source, filetype, source_positions)) do
+				local target_kind = target_kinds[index]
+				refined[index] = target_kind and refine(query_kind, target_kind, filetype) or query_kind
+			end
+			return refined
+		end)(...)]],
+		{ suite.source, suite.filetype, positions, targets }
+	)
+	eq(actual, expected)
+end
+
 T["languages: A missing usages query breaks the contract"] = function()
 	local problems = contract_problems("missing query")
 

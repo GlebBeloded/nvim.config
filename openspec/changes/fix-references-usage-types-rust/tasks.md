@@ -1,24 +1,22 @@
-## 1. Rust query, case table and facet
-
+## 1. Rust query and language facet
 Scenarios: `references: Rust query classifies every usage type`, `references: Rust usages in production and test code`
+- [x] 1.1 Write the test `references: Rust query classifies every usage type` in `tests/unit/languages/test_contract.lua` and tighten `references: Rust usages in production and test code` in `tests/integration/references/test_languages.lua`, driving the installed Rust parser and real `gr` mapping against populated fixtures; run `make test FILE=tests/unit/languages/test_contract.lua CASE="Rust query classifies every usage type"` and `make test FILE=tests/integration/references/test_languages.lua CASE="Rust usages in production and test code"` and see them fail
+- [x] 1.2 Add `queries/rust/usages.scm` from the verified draft and set `references.usage_types = true` in `lua/gleb/languages/rust/init.lua`
+- [x] 1.3 Run `make test FILE=tests/unit/languages/test_contract.lua CASE="Rust query classifies every usage type"` and `make test FILE=tests/integration/references/test_languages.lua CASE="Rust usages in production and test code"` and see them pass
 
-- [ ] 1.1 Add `tests/unit/references/usage_cases/rust.lua` from `drafts/expected.lua` and its source `tests/unit/references/usage_cases/rust/usages.rs` from `drafts/fixtures/usages.rs` (design Decision 6). Add the `Macro argument` rows to the Rust case of tests/integration/references/test_languages.lua (design Decision 8). See the case driver and that case fail: no `rust` query, and the facet is still disabled
-- [ ] 1.2 Add `queries/rust/usages.scm` from `drafts/queries/rust/usages.scm` (design Decision 1; already in catalogue ids, including the field `write` patterns)
-- [ ] 1.3 Set `references.usage_types = true` in `lua/gleb/languages/rust/init.lua` (design Decision 5)
-- [ ] 1.4 Run the case driver, the catalogue test, `tests/unit/languages/test_contract.lua` and `make test FILE=tests/integration/references/test_languages.lua`, and see them pass
-
-## 2. Fixture and gr through rust-analyzer
-
+## 2. Rust struct and field usages
 Scenarios: `references: gr classifies Rust struct usages`, `references: gr classifies Rust field usages`
+- [x] 2.1 Write the tests `references: gr classifies Rust struct usages` and `references: gr classifies Rust field usages` in `tests/integration/references/test_kind.lua`, driving the real `gr` mapping with rust-analyzer attached and quiescent in a populated `rustproj` fixture, and run `make test FILE=tests/integration/references/test_kind.lua CASE="gr classifies Rust struct usages"` and `make test FILE=tests/integration/references/test_kind.lua CASE="gr classifies Rust field usages"` and see them fail
+- [x] 2.2 Extend `rustproj` in `tests/fixtures/build.sh` with the `Money` files, module declarations and manifest entry specified by design Decision 7
+- [x] 2.3 Run `make test FILE=tests/integration/references/test_kind.lua CASE="gr classifies Rust struct usages"` and `make test FILE=tests/integration/references/test_kind.lua CASE="gr classifies Rust field usages"` and see them pass
 
-- [ ] 2.1 Write the two `gr` scenarios in tests/integration/references/test_kind.lua, opening the fixture through the existing rust-analyzer readiness wait (`experimental/serverStatus` quiescent), and see them fail: the fixture has no `Money`.
-- [ ] 2.2 Extend `rustproj` in tests/fixtures/build.sh: append the two `pub mod` lines to `src/lib.rs`, add `src/money.rs`, `src/ledger.rs` and `tests/money.rs` with the exact text of design Decision 7, and add the `Money` manifest entry
-- [ ] 2.3 Run `make test FILE=tests/integration/references/test_kind.lua` and `make test FILE=tests/integration/references/test_languages.lua`, and see every scenario in them pass, the old ones included
-
-## 3. Screen
-
+## 3. Rust usage-type grouping render
 Scenarios: `references: Rust struct usages are grouped by usage type`
+- [x] 3.1 Write the test `references: Rust struct usages are grouped by usage type` in `tests/screen/references/test_view.lua`, driving the real `gr` mapping on `Money` in the populated `rustproj` fixture at 70x36, and run `make test FILE=tests/screen/references/test_view.lua CASE="Rust struct usages are grouped by usage type"` and see it fail
+- [x] 3.2 Make the smallest fixture or query correction needed for the screen to match approved render "Proposed R1 — usage types of a Rust struct"
+- [x] 3.3 Run `make test FILE=tests/screen/references/test_view.lua CASE="Rust struct usages are grouped by usage type"` and see it pass
+- [x] 3.4 Run `make test FILE=tests/unit/languages/test_contract.lua CASE="A missing usages query breaks the contract"`, `make quick` and `make check`
 
-- [ ] 3.1 Add the R1 screen test to tests/screen/references/test_view.lua at 70x36, with real glyphs where the render has stand-ins and attribute blocks per the mask groups, and see it fail
-- [ ] 3.2 Make `make test-screen` pass and commit the screenshot. Compare `make render` with `renders/type_r1_rust_struct.ansi`.
-- [ ] 3.3 Run `make check`
+## Agent decisions
+
+- Keep numbered rows 11–34 in approved R1 by adding trailing blank fixture lines; this preserves Rust behavior and every manifest location.

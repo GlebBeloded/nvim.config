@@ -96,6 +96,105 @@ local PYTHON_LEGEND = vim.tbl_extend("force", LEGEND, {
 	v = "ReferencesUsageTypeInstanceofLabel",
 })
 
+local RUST_LEGEND = vim.tbl_extend("force", LEGEND, {
+	["."] = "Normal",
+	["4"] = "ReferencesMaskBackground",
+	G = "DevIconRs",
+	g = "ReferencesFileLabelDevIconRs",
+	L = "ReferencesUsageTypeCall",
+	l = "ReferencesUsageTypeCallLabel",
+	A = "ReferencesUsageTypeImpl",
+	a = "ReferencesUsageTypeImplLabel",
+	I = "ReferencesUsageTypeImport",
+	i = "ReferencesUsageTypeImportLabel",
+	J = "ReferencesUsageTypeParameterDeclaration",
+	j = "ReferencesUsageTypeParameterDeclarationLabel",
+	V = "ReferencesUsageTypePattern",
+	v = "ReferencesUsageTypePatternLabel",
+	U = "ReferencesUsageTypeReturnType",
+	u = "ReferencesUsageTypeReturnTypeLabel",
+	Z = "ReferencesUsageTypeStructInitialization",
+	z = "ReferencesUsageTypeStructInitializationLabel",
+})
+
+local RUST_GROUPED_MASK = {
+	"......................................................................",
+	".........bttttttttttttttttttttttbbbbbbbbbbbbbbbbbbbbbbbbbbbb..........",
+	".........bfffPfppppppppppffsfffffffffffffffffffffffffffffffb..........",
+	".........bfffffLfllllffsfffffffffffffffffffffffffffffffffffb..........",
+	".........bfffffffDfdddffsffffffffffffffffffffffffffffffffffb..........",
+	".........bcccccccccGcgggggggggcccccccccccccccccccccccccccccb..........",
+	".........bfffffAfaaaaffsfffffffffffffffffffffffffffffffffffb..........",
+	".........bfffffffDfdddffsffffffffffffffffffffffffffffffffffb..........",
+	".........bfffffffffGfggggggggssffffffffffffffffffffffffffffb..........",
+	".........bfffffIfiiiiiiffsfffffffffffffffffffffffffffffffffb..........",
+	".........bfffffffDfdddffsffffffffffffffffffffffffffffffffffb..........",
+	".........bfffffffffGfgggggggggssfffffffffffffffffffffffffffb..........",
+	".........bfffffJfjjjjjjjjjjjjjjjjjjjjjffsffffffffffffffffffb..........",
+	".........bfffffffDfdddffsffffffffffffffffffffffffffffffffffb..........",
+	".........bfffffffffGfgggggggggssfffffffffffffffffffffffffffb..........",
+	".........bfffffVfvvvvvvvffsffffffffffffffffffffffffffffffffb..........",
+	".........bfffffffDfdddffsffffffffffffffffffffffffffffffffffb..........",
+	".........bfffffffffGfgggggggggsssffffffffffffffffffffffffffb..........",
+	".........bfffffUfuuuuuuuuuuuffsffffffffffffffffffffffffffffb..........",
+	".........bfffffffDfdddffsffffffffffffffffffffffffffffffffffb..........",
+	".........bfffffffffGfgggggggggssfffffffffffffffffffffffffffb..........",
+	".........bfffffffffGfggggggggssffffffffffffffffffffffffffffb..........",
+	".........bfffffZfzzzzzzzzzzzzzzzzzzzzzffsffffffffffffffffffb..........",
+	".........bfffffffDfdddffsffffffffffffffffffffffffffffffffffb..........",
+	".........bfffffffffGfggggggggssffffffffffffffffffffffffffffb..........",
+	".........bfffEfeeeeffsfffffffffffffffffffffffffffffffffffffb..........",
+	".........bfffffLfllllffsfffffffffffffffffffffffffffffffffffb..........",
+	".........bfffffffDfdddddffsffffffffffffffffffffffffffffffffb..........",
+	".........bfffffffffGfggggggggssffffffffffffffffffffffffffffb..........",
+	".........bfffffIfiiiiiiffsfffffffffffffffffffffffffffffffffb..........",
+	".........bfffffffDfdddddffsffffffffffffffffffffffffffffffffb..........",
+	".........bfffffffffGfggggggggssffffffffffffffffffffffffffffb..........",
+	".........bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb..........",
+	".........bfxxxxxxxxxxxxxxxxxxxoxxxxxxxxxxxxxoxxxxxxxxxxxxxxb..........",
+	".........bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb..........",
+	"......................................................................",
+}
+
+local RUST_GROUPED_TEXT = {
+	"▎ money.rs",
+	"   1 /// ╭ Usages of Money · 10 ───────────────────────────╮",
+	"   2 pub │ ▾  Production  8                               │",
+	"   3     │   ▾  Call  1                                   │",
+	"   4 }   │     ▾ 󰉖 src  1                                  │",
+	"   5     │          ledger.rs:5                           │",
+	"   6 impl│   ▾  Impl  1                                   │",
+	"   7     │     ▾ 󰉖 src  1                                  │",
+	"   8     │          money.rs:6                            │",
+	"   9     │   ▾  Import  1                                 │",
+	"  10 }   │     ▾ 󰉖 src  1                                  │",
+	"  11     │          ledger.rs:1                           │",
+	"  12     │   ▾  Parameter declaration  1                  │",
+	"  13     │     ▾ 󰉖 src  1                                  │",
+	"  14     │          ledger.rs:9                           │",
+	"  15     │   ▾ 󰠲 Pattern  1                                │",
+	"  16     │     ▾ 󰉖 src  1                                  │",
+	"  17     │          ledger.rs:11                          │",
+	"  18     │   ▾ 󰌑 Return type  2                            │",
+	"  19     │     ▾ 󰉖 src  2                                  │",
+	"  20     │          ledger.rs:4                           │",
+	"  21     │          money.rs:7                            │",
+	"  22     │   ▾  Struct initialization  1                  │",
+	"  23     │     ▾ 󰉖 src  1                                  │",
+	"  24     │          money.rs:8                            │",
+	"  25     │ ▾  Test  2                                     │",
+	"  26     │   ▾  Call  1                                   │",
+	"  27     │     ▾ 󰉖 tests  1                                │",
+	"  28     │          money.rs:5                            │",
+	"  29     │   ▾  Import  1                                 │",
+	"  30     │     ▾ 󰉖 tests  1                                │",
+	"  31     │          money.rs:1                            │",
+	"  32     ├─────────────────────────────────────────────────┤",
+	"  33     │ Tests: grouped t · ● Folders f · ● Usage type u │",
+	"  34     ╰─────────────────────────────────────────────────╯",
+	" NORMAL  ⎇ main                                                  rust",
+}
+
 local PYTHON_GROUPED_MASK = {
 	"......................................................................",
 	".........btttttttttttttttttttttbbbbbbbbbbbbbbbbbbbbbbbbbbbbb..........",
@@ -417,6 +516,82 @@ local function open_invoice()
 	child.cmd("redraw")
 end
 
+local function open_rust_money()
+	child.o.columns, child.o.lines = 70, 36
+	local rust_root, rust_manifest = F.copy("rustproj", vim.fn.tempname())
+	local declaration = rust_manifest.references.Money[1]
+	child.lua([[
+		_G.rust_analyzer_quiescent = nil
+		local server = require("rustaceanvim.config.internal").server
+		server.handlers = server.handlers or {}
+		_G.previous_server_status_handler = server.handlers["experimental/serverStatus"]
+		server.handlers["experimental/serverStatus"] = function(err, result, context, config)
+			if result and result.quiescent then _G.rust_analyzer_quiescent = true end
+			local handler = _G.previous_server_status_handler or require("rustaceanvim.server_status").handler
+			return handler(err, result, context, config)
+		end
+	]])
+	child.cmd("cd " .. vim.fn.fnameescape(rust_root) .. " | edit " .. vim.fn.fnameescape(declaration.path))
+	child.wo.number = true
+	child.wo.relativenumber = false
+	child.wo.numberwidth = 3
+	child.lua([[require("ibl").setup_buffer(0, { enabled = false })]])
+	child.o.showtabline = 0
+	child.o.laststatus = 2
+	child.wo.winbar = "%#Normal#▎ money.rs"
+	child.api.nvim_win_set_cursor(0, { declaration.line, declaration.col - 1 })
+	local timeout = H.lsp_timeout(30000)
+	eq(child.wait([[#vim.lsp.get_clients({ bufnr = 0, name = "rust-analyzer" }) > 0]], timeout), true)
+	eq(child.wait("_G.rust_analyzer_quiescent == true", timeout), true)
+	child.lua([[
+		require("rustaceanvim.config.internal").server.handlers["experimental/serverStatus"] =
+			_G.previous_server_status_handler
+		_G.previous_server_status_handler = nil
+	]])
+	child.lua(
+		[[
+			local minimum, timeout = ...
+_G.references_ready = nil
+local bufnr = vim.api.nvim_get_current_buf()
+local started = vim.uv.hrtime()
+local populated = 0
+local function request()
+	local client = vim.lsp.get_clients({ bufnr = bufnr, name = "rust-analyzer" })[1]
+	local params = vim.lsp.util.make_position_params(0, client.offset_encoding)
+	params.context = { includeDeclaration = false }
+	client:request("textDocument/references", params, function(_, result)
+		populated = result and #result >= minimum and populated + 1 or 0
+		if populated >= 2 then
+			_G.references_ready = true
+		elseif (vim.uv.hrtime() - started) / 1e6 < timeout then
+			vim.defer_fn(request, 10)
+		end
+	end, bufnr)
+end
+request()
+]],
+		{ 10, timeout }
+	)
+	eq(child.wait("_G.references_ready == true", timeout), true)
+	child.type_keys("gr")
+	eq(child.wait([[vim.bo.filetype == "gleb-references"]], timeout), true)
+	eq(child.wait([[not require("gleb.references.view").state.classifying]], timeout), true)
+	child.lua([[
+local state = require("gleb.references.view").state
+for index, node in ipairs(state.visible_nodes) do
+	if node.kind == "usage" then
+		vim.api.nvim_win_set_cursor(state.tree_win, { index, 0 })
+		break
+	end
+end
+local win = state.origin_win
+require("lualine").hide({ place = { "statusline" } })
+vim.o.statusline = "%#Normal# NORMAL  ⎇ main%=rust "
+vim.wo[win].statusline = "%#Normal# NORMAL  ⎇ main%=rust "
+vim.cmd("redraw")
+]])
+end
+
 local function open_money()
 	child.o.columns, child.o.lines = 70, 50
 	local typescript_root, typescript_manifest = F.copy("tsproj", vim.fn.tempname())
@@ -604,6 +779,15 @@ local function with_cleared_python_background(mask)
 	return result
 end
 
+local function with_cleared_rust_background(mask)
+	local result = vim.deepcopy(mask)
+	result[1] = result[1]:gsub("%.", "4")
+	for index = 3, #result do
+		result[index] = result[index]:gsub("%.", "4")
+	end
+	return result
+end
+
 T["references: Wide view matches reference screenshot"] = function()
 	open_format(100, 30)
 	H.expect_screenshot(child.get_screenshot())
@@ -715,6 +899,18 @@ T["references: Python class usages are grouped by usage type"] = function()
 	H.expect_screenshot(child.get_screenshot())
 	clear_background_for_mask()
 	H.expect_screen_colors(child, 1, with_cleared_python_background(PYTHON_GROUPED_MASK), PYTHON_LEGEND)
+end
+
+local rust_grouped_scenario = "references: Rust struct usages are grouped by usage type"
+T[rust_grouped_scenario] = MiniTest.new_set()
+T[rust_grouped_scenario]["matches approved R1"] = function()
+	open_rust_money()
+	local actual = vim.tbl_map(function(row)
+		return (table.concat(row):gsub("%s+$", ""))
+	end, child.get_screenshot().text)
+	eq(actual, RUST_GROUPED_TEXT)
+	clear_background_for_mask()
+	H.expect_screen_colors(child, 1, with_cleared_rust_background(RUST_GROUPED_MASK), RUST_LEGEND)
 end
 
 return T
