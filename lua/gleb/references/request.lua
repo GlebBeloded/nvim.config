@@ -49,8 +49,9 @@ end
 ---@param locations lsp.Location[]
 ---@param cwd string
 ---@param offset_encoding 'utf-8'|'utf-16'|'utf-32'
+---@param client_id integer
 ---@return gleb.references.Usage[]
-local function normalize(locations, cwd, offset_encoding)
+local function normalize(locations, cwd, offset_encoding, client_id)
 	local usages = {}
 	for _, location in ipairs(locations) do
 		local range = location.range
@@ -63,6 +64,8 @@ local function normalize(locations, cwd, offset_encoding)
 			lnum = range.start.line + 1,
 			col = col,
 			filetype = vim.filetype.match({ filename = filename }),
+			range = vim.deepcopy(range),
+			client_id = client_id,
 		})
 	end
 	return usages
@@ -94,16 +97,18 @@ function M.start(callback)
 	local pending = #clients
 	local location_batches = {}
 	local offset_encodings = {}
+	local client_ids = {}
 
 	---@param result lsp.Location[]?
 	---@param offset_encoding 'utf-8'|'utf-16'|'utf-32'
-	local function finish(result, offset_encoding)
+	local function finish(result, offset_encoding, client_id)
 		if request_id ~= M.request_id then
 			return
 		end
 		local locations = result or {}
 		for _, location in ipairs(locations) do
 			offset_encodings[location_key(location)] = offset_encodings[location_key(location)] or offset_encoding
+			client_ids[location_key(location)] = client_ids[location_key(location)] or client_id
 		end
 		table.insert(location_batches, locations)
 		pending = pending - 1
@@ -112,7 +117,15 @@ function M.start(callback)
 		end
 		local usages = {}
 		for _, location in ipairs(M.merge(location_batches)) do
-			vim.list_extend(usages, normalize({ location }, cwd, offset_encodings[location_key(location)]))
+			vim.list_extend(
+				usages,
+				normalize(
+					{ location },
+					cwd,
+					offset_encodings[location_key(location)],
+					client_ids[location_key(location)]
+				)
+			)
 		end
 		vim.schedule(function()
 			if request_id ~= M.request_id then
@@ -131,7 +144,7 @@ function M.start(callback)
 		local offset_encoding = client.offset_encoding
 		client_params.position = vim.lsp.util.make_position_params(0, offset_encoding).position
 		client:request("textDocument/references", client_params, function(_, result)
-			finish(result, offset_encoding)
+			finish(result, offset_encoding, client.id)
 		end, bufnr)
 	end
 end

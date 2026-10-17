@@ -27,6 +27,8 @@ local tree = require("gleb.references.tree")
 ---@field visible_nodes? gleb.references.TreeNode[]
 ---@field origin_win? integer
 ---@field origin_cursor? integer[]
+---@field classifying? boolean
+---@field id? integer
 
 ---@class gleb.references.Segment
 ---@field text string
@@ -48,13 +50,14 @@ local PREVIEW_BORDER = { "┬", "─", "╮", "│", "┤", "─", "┴", "│" 
 -- The tree and preview bottom borders draw the rule above the hints.
 local HINT_BORDER = { "", "", "", "│", "╯", "─", "╰", "│" }
 local TOGGLE_ON = "●"
+local next_view_id = 0
 
 ---@param node gleb.references.TreeNode
 ---@return gleb.references.Segment[]
 local function group_segments(node)
 	local icon = icons.for_node(node)
 	local folded = M.state.folded and M.state.folded[node.id]
-	local indent = node.kind == "folder" and "  " or ""
+	local indent = string.rep(" ", node.depth * 2)
 	return {
 		{ text = indent .. (folded and "▸" or "▾") .. " " },
 		{ text = icon.icon, group = icon.icon_group },
@@ -101,6 +104,27 @@ local function add_test_tag(segments, width)
 	})
 end
 
+---@param segments gleb.references.Segment[]
+---@param usage_kind "write"|"read"
+---@param width? integer
+local function add_kind_tag(segments, usage_kind, width)
+	local icon = icons.for_node({
+		kind = "kind",
+		id = "kind:tag:" .. usage_kind,
+		label = usage_kind,
+		depth = 0,
+		usage_kind = usage_kind,
+	})
+	local tag_width = vim.fn.strdisplaywidth(icon.icon .. " " .. usage_kind)
+	local line_width = vim.fn.strdisplaywidth(segments_text(segments))
+	vim.list_extend(segments, {
+		{ text = string.rep(" ", math.max((width or 0) - line_width - tag_width, 2)) },
+		{ text = icon.icon, group = icon.icon_group },
+		{ text = " " },
+		{ text = usage_kind, group = icon.label_group },
+	})
+end
+
 ---@param node gleb.references.TreeNode
 ---@param width? integer
 ---@return gleb.references.Segment[]
@@ -111,6 +135,9 @@ local function tree_segments(node, width)
 	local segments = usage_segments(node)
 	if node.test_tag then
 		add_test_tag(segments, width)
+	end
+	if node.kind_tag then
+		add_kind_tag(segments, node.kind_tag, width)
 	end
 	return segments
 end
@@ -268,6 +295,14 @@ function M.hint(wide)
 		state.options.folders and "●" or "○",
 		folders_key
 	)
+	if state.tree.has_kinds then
+		hint = string.format(
+			"%s · %s Read/write %s",
+			hint,
+			state.options.read_write and "●" or "○",
+			shortcut("references.toggle_read_write", "w")
+		)
+	end
 	if wide then
 		local open_key = shortcut("references.open", "<CR>")
 		if open_key == "<CR>" then
@@ -411,7 +446,12 @@ local function apply_layout(selected_id)
 		width = size.tree_width,
 		height = size.body_height,
 		border = visible and WIDE_TREE_BORDER or NARROW_TREE_BORDER,
-		title = string.format(" Usages of %s · %d ", state.title, state.tree.count),
+		title = string.format(
+			" Usages of %s · %d%s ",
+			state.title,
+			state.tree.count,
+			state.classifying and " · classifying" or ""
+		),
 		title_pos = "left",
 		style = "minimal",
 		zindex = 50,
@@ -477,8 +517,9 @@ end
 
 ---@param title string
 ---@param usages gleb.references.Usage[]
----@return nil
-function M.open(title, usages)
+---@param classifying? boolean
+---@return integer view_id
+function M.open(title, usages, classifying)
 	M.close()
 	icons.setup()
 	local origin_win = vim.api.nvim_get_current_win()
@@ -486,6 +527,8 @@ function M.open(title, usages)
 	local options = persisted_state.load()
 	local built = tree.build(usages, options)
 	local selected = selected_usage(built)
+	next_view_id = next_view_id + 1
+	local view_id = next_view_id
 
 	local tree_buf = vim.api.nvim_create_buf(false, true)
 	configure_buffer(tree_buf, "gleb-references")
@@ -502,7 +545,7 @@ function M.open(title, usages)
 		width = 1,
 		height = 1,
 		border = "rounded",
-		title = string.format(" Usages of %s · %d ", title, built.count),
+		title = string.format(" Usages of %s · %d%s ", title, built.count, classifying and " · classifying" or ""),
 		title_pos = "left",
 		style = "minimal",
 		zindex = 50,
@@ -545,6 +588,8 @@ function M.open(title, usages)
 		visible_nodes = built.nodes,
 		origin_win = origin_win,
 		origin_cursor = origin_cursor,
+		classifying = classifying == true,
+		id = view_id,
 	}
 	local group = vim.api.nvim_create_augroup("gleb_references_view", { clear = true })
 	vim.api.nvim_create_autocmd("CursorMoved", { group = group, buffer = tree_buf, callback = update_preview })
@@ -556,6 +601,20 @@ function M.open(title, usages)
 		end,
 	})
 	apply_layout()
+	return view_id
+end
+
+---Finish the current view's asynchronous usage-kind classification.
+---@param view_id integer
+---@param usages gleb.references.Usage[]
+---@return nil
+function M.finish_classification(view_id, usages)
+	if M.state.id ~= view_id or not M.state.classifying then
+		return
+	end
+	M.state.usages = usages
+	M.state.classifying = false
+	rebuild()
 end
 
 ---@return nil
@@ -569,6 +628,16 @@ end
 ---@return nil
 function M.toggle_folders()
 	M.state.options.folders = not M.state.options.folders
+	persisted_state.save(M.state.options)
+	rebuild()
+end
+
+---@return nil
+function M.toggle_read_write()
+	if not M.state.tree or not M.state.tree.has_kinds then
+		return
+	end
+	M.state.options.read_write = not M.state.options.read_write
 	persisted_state.save(M.state.options)
 	rebuild()
 end

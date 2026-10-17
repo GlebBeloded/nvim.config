@@ -21,15 +21,15 @@ Scenarios: `references: gopls kinds classify a Go variable`, `references: lua_ls
 
 ## 4. Level, toggle and async view
 Scenarios: `references: Function usages have no read/write level or hint`, `references: Read/write state persists across sessions`, `references: The read/write key comes from the keymap file`, `references: The view opens before classification finishes`, `references: Classification gives up after the timeout`
-- [ ] 4.1 Write the scenarios in tests/unit/references/test_tree.lua and tests/integration/references/test_kind_view.lua and see them fail
-- [ ] 4.2 Add:
+- [x] 4.1 Write the scenarios in tests/unit/references/test_tree.lua and tests/integration/references/test_kind_view.lua and see them fail
+- [x] 4.2 Add:
   - the conditional read/write level and the row tags to `tree.lua`;
   - the `ReferencesWrite[Label]` and `ReferencesRead[Label]` groups to `icons.lua`;
   - the `references.toggle_read_write` action, with `w` in `settings/keymap.json`;
   - the conditional `Read/write` hint and the `· classifying` title state;
   - persistence;
   - a rebuild on classification that keeps the selection.
-- [ ] 4.3 Run both files and see every listed scenario pass
+- [x] 4.3 Run both files and see every listed scenario pass
 
 ## 5. Screens and the real-key workflow
 Scenarios: `references: Variable usages are grouped by write and read`, `references: w turns the level into row tags`
@@ -47,3 +47,4 @@ Scenarios: `references: Variable usages are grouped by write and read`, `referen
 - Let the Treesitter fallback accept zero-based source positions and return an ordered kind list, matching the LSP data shape without mutating usages.
 - Cache each server result below its URI/version by client and anchor range so classifications for different symbols cannot collide.
 - Populate the lua_ls scenario from document highlights because that server omits assignment targets from its references response.
+- Use the file-document glyph and the existing neutral usage colour for the uncommon `Usage` group because the approved renders only prescribe glyphs and colours for read and write.

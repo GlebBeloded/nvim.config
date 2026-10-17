@@ -25,6 +25,10 @@ local function toggle_preview()
 	view.toggle_preview()
 end
 
+local function toggle_read_write()
+	view.toggle_read_write()
+end
+
 ---@type gleb.Action[]
 return {
 	{
@@ -54,6 +58,13 @@ return {
 		category = "References",
 		ft = "gleb-references",
 		run = toggle_folders,
+	},
+	{
+		id = "references.toggle_read_write",
+		title = "Toggle Read/write",
+		category = "References",
+		ft = "gleb-references",
+		run = toggle_read_write,
 	},
 	{
 		id = "references.toggle_preview",
