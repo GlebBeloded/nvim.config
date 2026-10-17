@@ -24,6 +24,12 @@ Terraform has no read/write check.
 - tree.lua's `tagged` and `has_kinds` parameters get `---@param` annotations (review minor of
   references-usage-kind).
 
+## Decision (auditor, 2026-10-17, from the user's goal)
+
+- Every configured language's treesitter parser is installed by the config: add `hcl`, `terraform`, `rust`, `python`, `typescript`, `tsx` and `javascript` to the parser list in `lua/gleb/treesitter.lua`, so the fallback and its tests run on real parsers in the test environment too.
+- The HCL fallback test parses real HCL with the installed parser (no stubbed `language.add`, `query.parse` or parser); Terraform kinds come from that fallback, never from matching the client name or a `var.` text prefix.
+- The direct-classify scenarios of the shipped spec keep their cases under their original titles next to the new `gr` cases.
+
 ## Capabilities
 
 - `references`: Usage kind classification (MODIFIED), read/write suite scenarios per language.
