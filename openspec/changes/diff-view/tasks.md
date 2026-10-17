@@ -27,14 +27,14 @@ Scenarios: `diff: Diff view opens on the current file`, `diff: Diff view of an u
 
 Scenarios: `diff: Diff view zo opens a fold in both windows`, `diff: Diff view zR toggles every fold`, `diff: Diff view scrolls both windows together`, `diff: Diff view maps the cursor across changes`, `diff: Diff view ]c and [c walk the changes`, `diff: Diff view ]c on the left side`, `diff: Diff view left window is read-only`, `diff: Diff view re-diffs after an edit`, `diff: Diff view marks an approximate comparison`
 
-- [ ] 3.1 Write these scenarios in `tests/integration/diff/test_view_keys.lua`, and see them fail
-- [ ] 3.2 Implement:
+- [x] 3.1 Write these scenarios in `tests/integration/diff/test_view_keys.lua`, and see them fail
+- [x] 3.2 Implement:
   - the fold actions;
   - `WinScrolled`/`CursorMoved` sync with its guard (Decision 7);
   - `]c`/`[c` (Decision 8);
   - the debounced re-diff with kept folds and the fallback label (Decision 9);
   - the view actions with `plugin = "gleb-diff"`, the adapter `lua/gleb/actions/adapters/gleb_diff.lua`, and the keys in `settings/keymap.json`.
-- [ ] 3.3 Run the file and see it pass
+- [x] 3.3 Run the file and see it pass
 
 ## 4. Close, embedding and keys
 
@@ -70,17 +70,4 @@ Scenarios: `diff: Diff view matches the approved render`
 - The left scratch buffer inherits the real buffer's tab width so identical source stays visually aligned.
 - The rendered checkbox uses the approved U+F0131 Nerd Font glyph; prose keeps `☐` as its stand-in.
 - A virtual delete gutter draws `╱` in its last cell so the approved padding row remains continuous.
-
-## Stuck
-
-Task 3 is left unticked with its failing integration scenarios. The scroll-sync probe printed:
-
-```text
-left = { cursor = 61, topline = 52 }
-right = { cursor = 62, topline = 52 }
-```
-
-- Attempt 1 added paired fold actions, cursor and scroll autocmds, navigation mappings, debounced re-diff, fallback labeling and the `gleb-diff` adapter. Eight scenarios passed, but `62zt` left the right topline at 52 instead of 62 because the peer viewport was clamped around its old cursor and echoed back.
-- Attempt 2 transferred the peer cursor before `winrestview` and consumed one deferred peer `WinScrolled` event. The same assertion still reported right topline 52 instead of 62.
-
-The complete second production attempt is saved in `artifacts/runs/20817010-c87a-4cc5-95db-e0c0d18840d7/stuck-attempt.diff`; production edits were reverted and the red test remains.
+- Diff windows set local `scrolloff=0` so an explicit top-line scroll remains the synchronization anchor; embedded windows restore their prior value on close.

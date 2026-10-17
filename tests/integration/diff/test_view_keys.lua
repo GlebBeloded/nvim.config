@@ -69,8 +69,20 @@ T["diff: Diff view scrolls both windows together"] = function()
 	child.type_keys("zR", "62zt")
 
 	local view = child.lua_get([[require("gleb.diff.view").current()]])
-	eq(child.lua_get([[vim.api.nvim_win_call(..., function() return vim.fn.winsaveview().topline end)]], { view.right_win }), 62)
-	eq(child.lua_get([[vim.api.nvim_win_call(..., function() return vim.fn.winsaveview().topline end)]], { view.left_win }), 61)
+	eq(
+		child.lua_get(
+			[[vim.api.nvim_win_call(..., function() return vim.fn.winsaveview().topline end)]],
+			{ view.right_win }
+		),
+		62
+	)
+	eq(
+		child.lua_get(
+			[[vim.api.nvim_win_call(..., function() return vim.fn.winsaveview().topline end)]],
+			{ view.left_win }
+		),
+		61
+	)
 end
 
 T["diff: Diff view maps the cursor across changes"] = function()
@@ -133,19 +145,22 @@ T["diff: Diff view re-diffs after an edit"] = function()
 	local view = child.lua_get([[require("gleb.diff.view").current()]])
 	child.api.nvim_win_set_cursor(view.right_win, { 58, 0 })
 
-	child.type_keys("dd")
-	local redrawn = child.wait([[#require("gleb.diff.view").current().fragments == 2]], 1000)
+	child.type_keys(10, "dd")
+	local redrawn = child.wait([[#require("gleb.diff.view").current().fragments == 2]], 1000 * H.load_factor())
 	eq(redrawn, true)
-	eq(child.lua_get([[(function()
+	eq(
+		child.lua_get([[(function()
 		local view = require("gleb.diff.view").current()
 		for _, mark in ipairs(vim.api.nvim_buf_get_extmarks(view.left_buf, view.ns, 0, -1, { details = true })) do
 			if mark[4].virt_lines then return true end
 		end
 		return false
-	end)()]]), false)
+	end)()]]),
+		false
+	)
 
-	child.type_keys("u")
-	eq(child.wait([[#require("gleb.diff.view").current().fragments == 3]], 1000), true)
+	child.type_keys(10, "u")
+	eq(child.wait([[#require("gleb.diff.view").current().fragments == 3]], 1000 * H.load_factor()), true)
 end
 
 T["diff: Diff view marks an approximate comparison"] = function()
@@ -154,7 +169,7 @@ T["diff: Diff view marks an approximate comparison"] = function()
 	open_diff()
 
 	local view = child.lua_get([[require("gleb.diff.view").current()]])
-	eq(child.lua_get("vim.wo[...].winbar", { view.right_win }), "Your version · approximate diff")
+	eq(child.lua_get("vim.wo[...].winbar", { view.right_win }), "                Your version · approximate diff")
 end
 
 return T

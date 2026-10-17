@@ -11,6 +11,7 @@ local WINDOW_OPTIONS = {
 	"cursorline",
 	"wrap",
 	"list",
+	"scrolloff",
 	"signcolumn",
 	"foldcolumn",
 	"foldmethod",
@@ -41,6 +42,7 @@ local function configure_window(win)
 	wo.cursorline = false
 	wo.wrap = false
 	wo.list = false
+	wo.scrolloff = 0
 	wo.signcolumn = "no"
 	wo.foldcolumn = "0"
 	wo.foldmethod = "manual"
@@ -53,7 +55,8 @@ local function configure_window(win)
 end
 
 ---@param view gleb.diff.view.View
-local function add_folds(view)
+---@param open_ranges? { start: integer, finish: integer }[]
+function M.add_folds(view, open_ranges)
 	local has_ufo, ufo = pcall(require, "ufo")
 	if has_ufo then
 		ufo.detach(view.left_buf)
@@ -67,9 +70,22 @@ local function add_folds(view)
 				local first = side == "left" and fold.start1 or fold.start2
 				local last = side == "left" and fold.end1 or fold.end2
 				vim.cmd(("%d,%dfold"):format(first, last))
+				for _, range in ipairs(open_ranges or {}) do
+					if fold.start2 <= range.finish and fold.end2 >= range.start then
+						vim.cmd(("%dfoldopen"):format(first))
+						break
+					end
+				end
 			end
 		end)
 	end
+end
+
+---@param view gleb.diff.view.View
+function M.update_labels(view)
+	local suffix = view.approximate and " · approximate diff" or ""
+	vim.wo[view.left_win].winbar = " " .. view.labels.left
+	vim.wo[view.right_win].winbar = string.rep(" ", 16) .. view.labels.right .. suffix
 end
 
 ---@param relpath string
@@ -133,9 +149,8 @@ local function finish(view, width)
 
 	configure_window(view.left_win)
 	configure_window(view.right_win)
-	vim.wo[view.left_win].winbar = " " .. view.labels.left
-	vim.wo[view.right_win].winbar = string.rep(" ", 16) .. view.labels.right
-	add_folds(view)
+	M.update_labels(view)
+	M.add_folds(view)
 	create_autocmds(view)
 end
 

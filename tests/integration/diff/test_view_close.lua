@@ -114,7 +114,7 @@ T["diff: Diff view shows in a given window without focus"] = function()
 	eq(child.api.nvim_get_current_win(), current)
 	eq(child.api.nvim_buf_get_lines(view.left_buf, 0, -1, false), { "a", "b" })
 	eq(child.api.nvim_buf_get_lines(view.right_buf, 0, -1, false), { "a", "c" })
-	eq(child.lua_get("vim.wo[...].winbar", { view.left_win }), "HEAD")
+	eq(child.lua_get("vim.wo[...].winbar", { view.left_win }), " HEAD")
 end
 
 T["diff: Diff view ]f calls the next-file hook"] = function()

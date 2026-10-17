@@ -6,6 +6,9 @@ local layout = require("gleb.diff.view.layout")
 local render = require("gleb.diff.view.render")
 local windows = require("gleb.diff.view.windows")
 
+---@type table<gleb.diff.view.View, { cursor?: { win: integer, line: integer, col: integer }, scroll?: { win: integer, topline: integer, topfill: integer, leftcol: integer } }>
+local sync_states = setmetatable({}, { __mode = "k" })
+
 local M = {
 	config = {
 		context = 4,
@@ -50,6 +53,8 @@ local M = {
 ---@field right_restore? { buf: integer, options: table<string, unknown> }
 ---@field mappings? table<integer, { lhs: string, previous: table }[]>
 ---@field closing? boolean
+---@field approximate? boolean
+---@field syncing? boolean
 ---@field timer? uv.uv_timer_t
 ---@field attached? boolean
 
@@ -91,6 +96,191 @@ local function set_mappings(view)
 	end
 end
 
+---@param left string[]
+---@param right string[]
+---@return gleb.diff.Result
+local function compare(left, right)
+	return engine.compare_lines(left, right, {
+		policy = "default",
+		highlight = "by_word",
+		limits = { timeout_ms = M.config.timeout_ms },
+	})
+end
+
+---@param view gleb.diff.view.View
+---@return { start: integer, finish: integer }[]
+local function open_fold_ranges(view)
+	if not vim.api.nvim_win_is_valid(view.right_win) then
+		return {}
+	end
+	return vim.api.nvim_win_call(view.right_win, function()
+		local ranges = {}
+		for _, fold in ipairs(view.layout.folds) do
+			if vim.fn.foldclosed(fold.start2) == -1 then
+				ranges[#ranges + 1] = { start = fold.start2, finish = fold.end2 }
+			end
+		end
+		return ranges
+	end)
+end
+
+---@param view gleb.diff.view.View
+local function redraw(view)
+	if view.closing or not vim.api.nvim_buf_is_valid(view.right_buf) then
+		return
+	end
+	local open_ranges = open_fold_ranges(view)
+	local right = vim.api.nvim_buf_get_lines(view.right_buf, 0, -1, false)
+	local comparison = compare(view.left, right)
+	view.right = right
+	view.fragments = comparison.fragments
+	view.layout = layout.build(comparison.fragments, #view.left, #right, M.config.context)
+	view.approximate = comparison.too_big or comparison.timed_out
+	render.draw(view)
+	windows.add_folds(view, open_ranges)
+	windows.update_labels(view)
+end
+
+---@param view gleb.diff.view.View
+local function schedule_redraw(view)
+	if view.closing then
+		return
+	end
+	view.timer = view.timer or assert(vim.uv.new_timer())
+	view.timer:stop()
+	view.timer:start(M.config.debounce_ms, 0, function()
+		vim.schedule(function()
+			redraw(view)
+		end)
+	end)
+end
+
+---@param view gleb.diff.view.View
+local function attach(view)
+	local function on_lines()
+		if view.closing then
+			return true
+		end
+		schedule_redraw(view)
+	end
+	local function on_detach()
+		view.attached = false
+	end
+	view.attached = vim.api.nvim_buf_attach(view.right_buf, false, {
+		on_lines = on_lines,
+		on_detach = on_detach,
+	})
+end
+
+---@param view gleb.diff.view.View
+---@param source_win integer
+local function sync_windows(view, source_win)
+	if view.syncing or not vim.api.nvim_win_is_valid(source_win) then
+		return
+	end
+	local source_side = source_win == view.left_win and "left" or "right"
+	local peer_win = source_side == "left" and view.right_win or view.left_win
+	if not vim.api.nvim_win_is_valid(peer_win) then
+		return
+	end
+	local source_view = vim.api.nvim_win_call(source_win, vim.fn.winsaveview)
+	local source_cursor = vim.api.nvim_win_get_cursor(source_win)
+	local peer_line = layout.transfer_line(view.layout, source_side, source_cursor[1])
+	local peer_count = vim.api.nvim_buf_line_count(vim.api.nvim_win_get_buf(peer_win))
+	local peer_topline = layout.transfer_line(view.layout, source_side, source_view.topline)
+	peer_line = math.min(math.max(peer_line, 1), peer_count)
+	local state = sync_states[view] or {}
+	sync_states[view] = state
+
+	view.syncing = true
+	local peer_cursor = vim.api.nvim_win_get_cursor(peer_win)
+	if peer_cursor[1] ~= peer_line or peer_cursor[2] ~= source_cursor[2] then
+		state.cursor = { win = peer_win, line = peer_line, col = source_cursor[2] }
+		vim.api.nvim_win_set_cursor(peer_win, { peer_line, source_cursor[2] })
+	end
+	local target_topline = math.min(math.max(peer_topline, 1), peer_count)
+	state.scroll = {
+		win = peer_win,
+		topline = target_topline,
+		topfill = source_view.topfill,
+		leftcol = source_view.leftcol,
+	}
+	vim.api.nvim_win_call(peer_win, function()
+		vim.fn.winrestview({
+			topline = target_topline,
+			topfill = source_view.topfill,
+			leftcol = source_view.leftcol,
+		})
+	end)
+	view.syncing = false
+end
+
+---@param args vim.api.keyset.create_autocmd.callback_args
+local function on_scrolled(args)
+	local win = tonumber(args.match) --[[@as integer?]]
+	if not win then
+		return
+	end
+	local view = M.state.by_win[win]
+	if view then
+		local state = sync_states[view]
+		local synced = state and state.scroll or nil
+		if synced and synced.win == win then
+			local actual = vim.api.nvim_win_call(win, vim.fn.winsaveview)
+			state.scroll = nil
+			if
+				synced.topline == actual.topline
+				and synced.topfill == actual.topfill
+				and synced.leftcol == actual.leftcol
+			then
+				return
+			end
+		end
+		sync_windows(view, win)
+	end
+end
+
+local function on_cursor_moved()
+	local win = vim.api.nvim_get_current_win()
+	local view = M.state.by_win[win]
+	if view then
+		local cursor = vim.api.nvim_win_get_cursor(win)
+		local state = sync_states[view]
+		local synced = state and state.cursor or nil
+		if synced and synced.win == win and synced.line == cursor[1] and synced.col == cursor[2] then
+			state.cursor = nil
+			return
+		end
+		if synced and synced.win == win then
+			state.cursor = nil
+		end
+		sync_windows(view, win)
+	end
+end
+
+---@param view gleb.diff.view.View
+local function create_interaction_autocmds(view)
+	vim.api.nvim_create_autocmd("WinScrolled", {
+		group = view.augroup,
+		pattern = { tostring(view.left_win), tostring(view.right_win) },
+		callback = on_scrolled,
+	})
+	for _, buf in ipairs({ view.left_buf, view.right_buf }) do
+		vim.api.nvim_create_autocmd("CursorMoved", {
+			group = view.augroup,
+			buffer = buf,
+			callback = on_cursor_moved,
+		})
+	end
+	vim.api.nvim_create_autocmd({ "TextChanged", "TextChangedI" }, {
+		group = view.augroup,
+		buffer = view.right_buf,
+		callback = function()
+			schedule_redraw(view)
+		end,
+	})
+end
+
 ---@param view gleb.diff.view.View
 local function register(view)
 	M.state.by_path[view.path] = view
@@ -98,16 +288,14 @@ local function register(view)
 	M.state.by_win[view.right_win] = view
 	set_mappings(view)
 	render.draw(view)
+	create_interaction_autocmds(view)
+	attach(view)
 end
 
 ---@param spec gleb.diff.view.Spec
 ---@return gleb.diff.view.View?
 local function build(spec)
-	local comparison = engine.compare_lines(spec.left, spec.right, {
-		policy = "default",
-		highlight = "by_word",
-		limits = { timeout_ms = M.config.timeout_ms },
-	})
+	local comparison = compare(spec.left, spec.right)
 	if #comparison.fragments == 0 then
 		return nil
 	end
@@ -127,7 +315,74 @@ local function build(spec)
 		ns = vim.api.nvim_create_namespace("gleb_diff_view"),
 		fragments = comparison.fragments,
 		layout = model,
+		approximate = comparison.too_big or comparison.timed_out,
+		syncing = false,
 	}
+end
+
+---@param view gleb.diff.view.View
+---@param source_win integer
+function M.expand_fold(view, source_win)
+	local source_side = source_win == view.left_win and "left" or "right"
+	local source_line = vim.api.nvim_win_get_cursor(source_win)[1]
+	local peer_win = source_side == "left" and view.right_win or view.left_win
+	local peer_line = layout.transfer_line(view.layout, source_side, source_line)
+	for _, target in ipairs({ { source_win, source_line }, { peer_win, peer_line } }) do
+		vim.api.nvim_win_call(target[1], function()
+			vim.cmd(("%dfoldopen"):format(target[2]))
+		end)
+	end
+end
+
+---@param view gleb.diff.view.View
+---@param source_win integer
+function M.toggle_folds(view, source_win)
+	local source_side = source_win == view.left_win and "left" or "right"
+	local has_closed = vim.api.nvim_win_call(source_win, function()
+		for _, fold in ipairs(view.layout.folds) do
+			local first = source_side == "left" and fold.start1 or fold.start2
+			if vim.fn.foldclosed(first) ~= -1 then
+				return true
+			end
+		end
+		return false
+	end)
+	local command = has_closed and "normal! zR" or "normal! zM"
+	for _, win in ipairs({ view.left_win, view.right_win }) do
+		vim.api.nvim_win_call(win, function()
+			vim.cmd(command)
+		end)
+	end
+end
+
+---@param view gleb.diff.view.View
+---@param win integer
+---@param step -1|1
+function M.navigate(view, win, step)
+	local side = win == view.left_win and "left" or "right"
+	local line = vim.api.nvim_win_get_cursor(win)[1]
+	local index = layout.change_at_line(view.layout, side, line)
+	if index then
+		index = index + step
+	else
+		local start_key = side == "left" and "start1" or "start2"
+		for candidate, fragment in ipairs(view.fragments) do
+			local target = fragment[start_key] + 1
+			if (step == 1 and target > line) or (step == -1 and target < line) then
+				index = candidate
+				if step == 1 then
+					break
+				end
+			end
+		end
+	end
+	local fragment = index and view.fragments[index] or nil
+	if not fragment then
+		return
+	end
+	local start_key = side == "left" and "start1" or "start2"
+	local count = vim.api.nvim_buf_line_count(vim.api.nvim_win_get_buf(win))
+	vim.api.nvim_win_set_cursor(win, { math.min(fragment[start_key] + 1, count), 0 })
 end
 
 ---@param spec gleb.diff.view.Spec
@@ -179,6 +434,7 @@ function M.close(view)
 	M.state.by_path[view.path] = nil
 	M.state.by_win[view.left_win] = nil
 	M.state.by_win[view.right_win] = nil
+	sync_states[view] = nil
 	pcall(vim.api.nvim_del_augroup_by_id, view.augroup)
 
 	for buf, mappings in pairs(view.mappings or {}) do
@@ -203,9 +459,7 @@ function M.close(view)
 		view.timer:stop()
 		view.timer:close()
 	end
-	if view.attached and vim.api.nvim_buf_is_valid(view.right_buf) then
-		vim.api.nvim_buf_detach(view.right_buf)
-	end
+	view.attached = false
 
 	if view.owns_tab and vim.api.nvim_tabpage_is_valid(view.tab) then
 		vim.api.nvim_set_current_tabpage(view.tab)
