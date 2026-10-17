@@ -72,6 +72,13 @@ Find Usages has GoLand's usage types for Go only. TypeScript and JavaScript have
 
 - "it is implemented, but lacking. Goland system is ALOT reacher. … I want goland-like observability over references, which is sueprior. … create a spec to fix it for all langauges."
 
+## Decision (auditor, 2026-10-17, test and spec integrity)
+
+- The P1 screen case asserts its whole colour mask (`expect_screen_colors`, legend from renders/ts_p1_class.ansi) like K1/T1, and its screenshot is regenerated only once the render matches renders/ts_p1_class.ansi; a self-created reference never stands in for the approved render.
+- Usage-type refinement has one implementation, the one real `gr` uses; tests drive that path, never a test-only copy of the rules.
+- An existing test keeps its expectation unless a spec scenario changes it: when live TS/JS queries change the no-tsserver fallback, that is a MODIFIED scenario with the new result, not a test that disables the queries.
+- The TS/JS usage types stay a SHALL of their own (the 14 types and the per-filetype parser rule); tasks.md keeps its `make types`, `make check` and `make colorize` gates.
+
 ## Agent decisions
 
 - **Mapping:** JetBrains' JS wording maps onto the GoLand-worded catalogue:
