@@ -31,6 +31,9 @@ local LEGEND = {
 	v = "@type",
 	H = "@function",
 	J = "@property",
+	M = "@module.go",
+	V = "@variable.go",
+	B = "@punctuation.bracket.go",
 	P = "ReferencesProduction",
 	p = "ReferencesProductionLabel",
 	E = "ReferencesTest",
@@ -39,7 +42,77 @@ local LEGEND = {
 	d = "ReferencesFolderLabel",
 	G = "DevIconGo",
 	g = "ReferencesFileLabelDevIconGo",
+	W = "ReferencesWrite",
+	w = "ReferencesWriteLabel",
+	Y = "ReferencesRead",
+	y = "ReferencesReadLabel",
 	z = "ReferencesMaskBackground",
+}
+
+local KIND_GROUPED_MASK = {
+	"....................................................................................................",
+	"..btttttttttttttttttttttbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb..",
+	"..bfffPfppppppppppffsffffffffffffffffffffffffbfsssssssssssssssssfffffffffffffffffffffffffffffffffb..",
+	"..bfffffWfwwwwwwwwwwwffsfffffffffffffffffffffbfsssffkkkkkkkfMMMMMMfffffffffffffffffffffffffffffffb..",
+	"..bfffffffDfddddddffsffffffffffffffffffffffffbfsssfffffffffffffffffffffffffffffffffffffffffffffffb..",
+	"..bcccccccccGcggggggggcccccccccccccccccccccccbfsssffmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmffffffffffb..",
+	"..bfffEfeeeeffsffffffffffffffffffffffffffffffbfsssffkkkfVVVVVfTTTffffffffffffffffffffffffffffffffb..",
+	"..bfffffWfwwwwwwwwwwwffsfffffffffffffffffffffbfsssfffffffffffffffffffffffffffffffffffffffffffffffb..",
+	"..bfffffffDfddddddffsffffffffffffffffffffffffbfsssffmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmfffffffb..",
+	"..bfffffffffGfgggggggggggggssffffffffffffffffbfsssffkkkkfHHHHHBBfBfffffffffffffffffffffffffffffffb..",
+	"..bfffffYfyyyyyyyyyyffsffffffffffffffffffffffbfrrrffffffhhhhhjjffffffffffffffffffffffffffffffffffb..",
+	"..bfffffffDfddddddffsffffffffffffffffffffffffbfsssffBffffffffffffffffffffffffffffffffffffffffffffb..",
+	"..bfffffffffGfgggggggggggggssffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
+	"..bfffffffffGfgggggggggggggssffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
+	"..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
+	"..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
+	"..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
+	"..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
+	"..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
+	"..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
+	"..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
+	"..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
+	"..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
+	"..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
+	"..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
+	"..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
+	"..bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb..",
+	"..bfffffffffffffffffffffffffxxxxxxxxxxxxxxxxxxxoxxxxxxxxxxxxxoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxb..",
+	"..bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb..",
+	"....................................................................................................",
+}
+
+local KIND_TAGGED_MASK = {
+	"....................................................................................................",
+	"..btttttttttttttttttttttbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb..",
+	"..bfffPfppppppppppffsffffffffffffffffffffffffbfsssssssssssssssssfffffffffffffffffffffffffffffffffb..",
+	"..bfffffDfddddddffsffffffffffffffffffffffffffbfsssffkkkkkkkfMMMMMMfffffffffffffffffffffffffffffffb..",
+	"..bcccccccGcggggggggcccccccccccccccccWcwwwwwcbfsssfffffffffffffffffffffffffffffffffffffffffffffffb..",
+	"..bfffEfeeeeffsffffffffffffffffffffffffffffffbfsssffmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmffffffffffb..",
+	"..bfffffDfddddddffsffffffffffffffffffffffffffbfsssffkkkfVVVVVfTTTffffffffffffffffffffffffffffffffb..",
+	"..bfffffffGfgggggggggggggssffffffffffWfwwwwwfbfsssfffffffffffffffffffffffffffffffffffffffffffffffb..",
+	"..bfffffffGfgggggggggggggssfffffffffffYfyyyyfbfsssffmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmfffffffb..",
+	"..bfffffffGfgggggggggggggssfffffffffffYfyyyyfbfsssffkkkkfHHHHHBBfBfffffffffffffffffffffffffffffffb..",
+	"..bffffffffffffffffffffffffffffffffffffffffffbfrrrffffffhhhhhjjffffffffffffffffffffffffffffffffffb..",
+	"..bffffffffffffffffffffffffffffffffffffffffffbfsssffBffffffffffffffffffffffffffffffffffffffffffffb..",
+	"..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
+	"..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
+	"..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
+	"..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
+	"..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
+	"..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
+	"..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
+	"..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
+	"..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
+	"..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
+	"..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
+	"..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
+	"..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
+	"..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
+	"..bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb..",
+	"..bfffffffffffffffffffffffffxxxxxxxxxxxxxxxxxxxoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxb..",
+	"..bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb..",
+	"....................................................................................................",
 }
 
 local WIDE_DEFAULT_MASK = {
@@ -123,6 +196,19 @@ local function open_format(columns, lines)
 	eq(child.wait([[#vim.lsp.get_clients({ bufnr = 0, name = "gopls" }) > 0]], TIMEOUT_MS), true)
 	child.type_keys("gr")
 	eq(child.wait([[vim.bo.filetype == "gleb-references"]], TIMEOUT_MS), true)
+	eq(child.wait([[not require("gleb.references.view").state.classifying]], TIMEOUT_MS), true)
+	child.cmd("redraw")
+end
+
+local function open_calls()
+	child.o.columns, child.o.lines = 100, 30
+	local declaration = manifest.references.Calls[1]
+	child.cmd("cd " .. vim.fn.fnameescape(root) .. " | edit " .. vim.fn.fnameescape(declaration.path))
+	child.api.nvim_win_set_cursor(0, { declaration.line, declaration.col - 1 })
+	eq(child.wait([[#vim.lsp.get_clients({ bufnr = 0, name = "gopls" }) > 0]], TIMEOUT_MS), true)
+	child.type_keys("gr")
+	eq(child.wait([[vim.bo.filetype == "gleb-references"]], TIMEOUT_MS), true)
+	eq(child.wait([[not require("gleb.references.view").state.classifying]], TIMEOUT_MS), true)
 	child.cmd("redraw")
 end
 
@@ -188,6 +274,26 @@ T["references: Narrow view fits its content"] = function()
 	H.expect_screenshot(child.get_screenshot())
 	clear_background_for_mask()
 	H.expect_screen_colors(child, 1, with_cleared_background(NARROW_MASK), LEGEND)
+end
+
+local grouped_scenario = "references: Variable usages are grouped by write and read"
+T[grouped_scenario] = MiniTest.new_set()
+T[grouped_scenario]["matches approved K1"] = function()
+	open_calls()
+	H.expect_screenshot(child.get_screenshot())
+	clear_background_for_mask()
+	H.expect_screen_colors(child, 1, with_cleared_background(KIND_GROUPED_MASK), LEGEND)
+end
+
+local tagged_scenario = "references: w turns the level into row tags"
+T[tagged_scenario] = MiniTest.new_set()
+T[tagged_scenario]["matches approved K2 through the real key"] = function()
+	open_calls()
+	child.type_keys("w")
+	child.cmd("redraw")
+	H.expect_screenshot(child.get_screenshot())
+	clear_background_for_mask()
+	H.expect_screen_colors(child, 1, with_cleared_background(KIND_TAGGED_MASK), LEGEND)
 end
 
 return T

@@ -78,6 +78,7 @@ request()
 
 	child.type_keys("gr")
 	eq(child.wait([[vim.bo.filetype == "gleb-references"]], timeout or TIMEOUT_MS), true)
+	eq(child.wait([[not require("gleb.references.view").state.classifying]], timeout or TIMEOUT_MS), true)
 	return root, manifest
 end
 

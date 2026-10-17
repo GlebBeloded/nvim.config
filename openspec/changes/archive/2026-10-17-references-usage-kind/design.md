@@ -94,15 +94,15 @@ The real-glyph, real-colour versions are `renders/kind_k1_read_write.ansi` and `
 ....................................................................................................
 ..btttttttttttttttttttttbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb..
 ..bfffPfppppppppppffsffffffffffffffffffffffffbfsssssssssssssssssfffffffffffffffffffffffffffffffffb..
-..bfffffWfwwwwwwwwwwwffsfffffffffffffffffffffbfsssffkkkkkkkffffffffffffffffffffffffffffffffffffffb..
+..bfffffWfwwwwwwwwwwwffsfffffffffffffffffffffbfsssffkkkkkkkfMMMMMMfffffffffffffffffffffffffffffffb..
 ..bfffffffDfddddddffsffffffffffffffffffffffffbfsssfffffffffffffffffffffffffffffffffffffffffffffffb..
 ..bcccccccccGcggggggggcccccccccccccccccccccccbfsssffmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmffffffffffb..
-..bfffEfeeeeffsffffffffffffffffffffffffffffffbfsssffkkkfffffffTTTffffffffffffffffffffffffffffffffb..
+..bfffEfeeeeffsffffffffffffffffffffffffffffffbfsssffkkkfVVVVVfTTTffffffffffffffffffffffffffffffffb..
 ..bfffffWfwwwwwwwwwwwffsfffffffffffffffffffffbfsssfffffffffffffffffffffffffffffffffffffffffffffffb..
 ..bfffffffDfddddddffsffffffffffffffffffffffffbfsssffmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmfffffffb..
-..bfffffffffGfgggggggggggggssffffffffffffffffbfsssffkkkkfFFFFFfffffffffffffffffffffffffffffffffffb..
-..bfffffYfyyyyyyyyyyffsffffffffffffffffffffffbfrrrffffffhhhhhffffffffffffffffffffffffffffffffffffb..
-..bfffffffDfddddddffsffffffffffffffffffffffffbfsssfffffffffffffffffffffffffffffffffffffffffffffffb..
+..bfffffffffGfgggggggggggggssffffffffffffffffbfsssffkkkkfHHHHHBBfBfffffffffffffffffffffffffffffffb..
+..bfffffYfyyyyyyyyyyffsffffffffffffffffffffffbfrrrffffffhhhhhjjffffffffffffffffffffffffffffffffffb..
+..bfffffffDfddddddffsffffffffffffffffffffffffbfsssffBffffffffffffffffffffffffffffffffffffffffffffb..
 ..bfffffffffGfgggggggggggggssffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..
 ..bfffffffffGfgggggggggggggssffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..
 ..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..
@@ -123,7 +123,7 @@ The real-glyph, real-colour versions are `renders/kind_k1_read_write.ansi` and `
 ....................................................................................................
 ```
 
-Legend: `b` [PickerBorder] · `t` [MiniPickBorderText] · `f` [MiniPickNormal] · `c` [MiniPickMatchCurrent] · `s` [PickerSecondary] · `r` [CursorLineNr] · `h` [Search] · `x` [PickerHint] · `o` [PickerToggleOn] · `k` [@keyword] · `T` [@type.builtin] · `F` [@function.call] · `q` [@string] · `m` [@comment] · `n` [@number] · `.` [Normal] · `P` [ReferencesProduction] · `p` [ReferencesProductionLabel] · `E` [ReferencesTest] · `e` [ReferencesTestLabel] · `D` [ReferencesFolder] · `d` [ReferencesFolderLabel] · `G` [DevIconGo] · `g` [ReferencesFileLabelDevIconGo] · `W` [ReferencesWrite] · `w` [ReferencesWriteLabel] · `Y` [ReferencesRead] · `y` [ReferencesReadLabel]
+Legend: `b` [PickerBorder] · `t` [MiniPickBorderText] · `f` [MiniPickNormal] · `c` [MiniPickMatchCurrent] · `s` [PickerSecondary] · `r` [CursorLineNr] · `h` [Search] · `x` [PickerHint] · `o` [PickerToggleOn] · `k` [@keyword] · `T` [@type.builtin] · `F` [@function.call] · `H` [@function] · `j` [@operator] · `M` [@module.go] · `V` [@variable.go] · `B` [@punctuation.bracket.go] · `q` [@string] · `m` [@comment] · `n` [@number] · `.` [Normal] · `P` [ReferencesProduction] · `p` [ReferencesProductionLabel] · `E` [ReferencesTest] · `e` [ReferencesTestLabel] · `D` [ReferencesFolder] · `d` [ReferencesFolderLabel] · `G` [DevIconGo] · `g` [ReferencesFileLabelDevIconGo] · `W` [ReferencesWrite] · `w` [ReferencesWriteLabel] · `Y` [ReferencesRead] · `y` [ReferencesReadLabel]
 
 **Proposed K2 — read/write level off**: `100x30`, as K1 after `w`; each usage row keeps a right-aligned write/read tag.
 
@@ -164,15 +164,15 @@ Legend: `b` [PickerBorder] · `t` [MiniPickBorderText] · `f` [MiniPickNormal] �
 ....................................................................................................
 ..btttttttttttttttttttttbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb..
 ..bfffPfppppppppppffsffffffffffffffffffffffffbfsssssssssssssssssfffffffffffffffffffffffffffffffffb..
-..bfffffDfddddddffsffffffffffffffffffffffffffbfsssffkkkkkkkffffffffffffffffffffffffffffffffffffffb..
-..bcccccccGcggggggggcccccccccccccccccWfwwwwwcbfsssfffffffffffffffffffffffffffffffffffffffffffffffb..
+..bfffffDfddddddffsffffffffffffffffffffffffffbfsssffkkkkkkkfMMMMMMfffffffffffffffffffffffffffffffb..
+..bcccccccGcggggggggcccccccccccccccccWcwwwwwcbfsssfffffffffffffffffffffffffffffffffffffffffffffffb..
 ..bfffEfeeeeffsffffffffffffffffffffffffffffffbfsssffmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmffffffffffb..
-..bfffffDfddddddffsffffffffffffffffffffffffffbfsssffkkkfffffffTTTffffffffffffffffffffffffffffffffb..
+..bfffffDfddddddffsffffffffffffffffffffffffffbfsssffkkkfVVVVVfTTTffffffffffffffffffffffffffffffffb..
 ..bfffffffGfgggggggggggggssffffffffffWfwwwwwfbfsssfffffffffffffffffffffffffffffffffffffffffffffffb..
 ..bfffffffGfgggggggggggggssfffffffffffYfyyyyfbfsssffmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmfffffffb..
-..bfffffffGfgggggggggggggssfffffffffffYfyyyyfbfsssffkkkkfFFFFFfffffffffffffffffffffffffffffffffffb..
-..bffffffffffffffffffffffffffffffffffffffffffbfrrrffffffhhhhhffffffffffffffffffffffffffffffffffffb..
-..bffffffffffffffffffffffffffffffffffffffffffbfsssfffffffffffffffffffffffffffffffffffffffffffffffb..
+..bfffffffGfgggggggggggggssfffffffffffYfyyyyfbfsssffkkkkfHHHHHBBfBfffffffffffffffffffffffffffffffb..
+..bffffffffffffffffffffffffffffffffffffffffffbfrrrffffffhhhhhjjffffffffffffffffffffffffffffffffffb..
+..bffffffffffffffffffffffffffffffffffffffffffbfsssffBffffffffffffffffffffffffffffffffffffffffffffb..
 ..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..
 ..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..
 ..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..
@@ -193,7 +193,7 @@ Legend: `b` [PickerBorder] · `t` [MiniPickBorderText] · `f` [MiniPickNormal] �
 ....................................................................................................
 ```
 
-Legend: `b` [PickerBorder] · `t` [MiniPickBorderText] · `f` [MiniPickNormal] · `c` [MiniPickMatchCurrent] · `s` [PickerSecondary] · `r` [CursorLineNr] · `h` [Search] · `x` [PickerHint] · `o` [PickerToggleOn] · `k` [@keyword] · `T` [@type.builtin] · `F` [@function.call] · `q` [@string] · `m` [@comment] · `n` [@number] · `.` [Normal] · `P` [ReferencesProduction] · `p` [ReferencesProductionLabel] · `E` [ReferencesTest] · `e` [ReferencesTestLabel] · `D` [ReferencesFolder] · `d` [ReferencesFolderLabel] · `G` [DevIconGo] · `g` [ReferencesFileLabelDevIconGo] · `W` [ReferencesWrite] · `w` [ReferencesWriteLabel] · `Y` [ReferencesRead] · `y` [ReferencesReadLabel]
+Legend: `b` [PickerBorder] · `t` [MiniPickBorderText] · `f` [MiniPickNormal] · `c` [MiniPickMatchCurrent] · `s` [PickerSecondary] · `r` [CursorLineNr] · `h` [Search] · `x` [PickerHint] · `o` [PickerToggleOn] · `k` [@keyword] · `T` [@type.builtin] · `F` [@function.call] · `H` [@function] · `j` [@operator] · `M` [@module.go] · `V` [@variable.go] · `B` [@punctuation.bracket.go] · `q` [@string] · `m` [@comment] · `n` [@number] · `.` [Normal] · `P` [ReferencesProduction] · `p` [ReferencesProductionLabel] · `E` [ReferencesTest] · `e` [ReferencesTestLabel] · `D` [ReferencesFolder] · `d` [ReferencesFolderLabel] · `G` [DevIconGo] · `g` [ReferencesFileLabelDevIconGo] · `W` [ReferencesWrite] · `w` [ReferencesWriteLabel] · `Y` [ReferencesRead] · `y` [ReferencesReadLabel]
 
 ## Risks / Trade-offs
 

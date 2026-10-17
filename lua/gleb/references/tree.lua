@@ -9,14 +9,18 @@ local scope = require("gleb.references.scope")
 ---@field lnum integer
 ---@field col integer
 ---@field filetype? string
+---@field range? lsp.Range
+---@field client_id? integer
+---@field kind? "write"|"read"|"other"
 
 ---@class gleb.references.TreeOptions
 ---@field tests "grouped"|"hidden"|"mixed"
 ---@field folders boolean
+---@field read_write boolean
 
 ---@class gleb.references.TreeNode
 ---@field id string
----@field kind "scope"|"folder"|"usage"
+---@field kind "scope"|"kind"|"folder"|"usage"
 ---@field label string
 ---@field depth integer
 ---@field count? integer
@@ -28,14 +32,18 @@ local scope = require("gleb.references.scope")
 ---@field filetype? string
 ---@field test? boolean
 ---@field test_tag? boolean
+---@field usage_kind? "write"|"read"|"other"
+---@field kind_tag? "write"|"read"
 
 ---@class gleb.references.Tree
 ---@field nodes gleb.references.TreeNode[]
 ---@field count integer
 ---@field selected_id? string
+---@field has_kinds boolean
 
 ---@class gleb.references.ClassifiedUsage: gleb.references.Usage
 ---@field test boolean
+---@field usage_kind? "write"|"read"|"other"
 
 ---@param usage gleb.references.Usage
 ---@return string
@@ -86,6 +94,7 @@ local function classify(usages, tests_mode)
 				col = usage.col,
 				filetype = usage.filetype,
 				test = is_test,
+				usage_kind = usage.kind,
 			})
 		end
 	end
@@ -99,7 +108,7 @@ end
 ---@param show_path boolean
 ---@param mixed boolean
 ---@return gleb.references.TreeNode
-local function usage_node(usage, depth, parent_id, show_path, mixed)
+local function usage_node(usage, depth, parent_id, show_path, mixed, tagged)
 	local path = show_path and usage.path or basename(usage.path)
 	local node = {
 		id = usage_id(usage),
@@ -113,9 +122,13 @@ local function usage_node(usage, depth, parent_id, show_path, mixed)
 		col = usage.col,
 		filetype = usage.filetype,
 		test = usage.test,
+		usage_kind = usage.usage_kind,
 	}
 	if mixed then
 		node.test_tag = usage.test
+	end
+	if tagged and (usage.usage_kind == "write" or usage.usage_kind == "read") then
+		node.kind_tag = usage.usage_kind
 	end
 	return node
 end
@@ -126,7 +139,7 @@ end
 ---@param depth integer
 ---@param parent_id string?
 ---@param mixed boolean
-local function append_folders(nodes, usages, scope_name, depth, parent_id, mixed)
+local function append_folders(nodes, usages, scope_name, depth, parent_id, mixed, tagged)
 	local index = 1
 	while index <= #usages do
 		local folder = directory(usages[index].path)
@@ -145,7 +158,7 @@ local function append_folders(nodes, usages, scope_name, depth, parent_id, mixed
 			parent_id = parent_id,
 		})
 		for usage_index = index, last do
-			table.insert(nodes, usage_node(usages[usage_index], depth + 1, folder_id, false, mixed))
+			table.insert(nodes, usage_node(usages[usage_index], depth + 1, folder_id, false, mixed, tagged))
 		end
 		index = last + 1
 	end
@@ -157,13 +170,51 @@ end
 ---@param depth integer
 ---@param parent_id string?
 ---@param options gleb.references.TreeOptions
-local function append_usages(nodes, usages, scope_name, depth, parent_id, options)
+local function append_flat_usages(nodes, usages, scope_name, depth, parent_id, options, tagged)
 	if options.folders then
-		append_folders(nodes, usages, scope_name, depth, parent_id, options.tests == "mixed")
+		append_folders(nodes, usages, scope_name, depth, parent_id, options.tests == "mixed", tagged)
 		return
 	end
 	for _, usage in ipairs(usages) do
-		table.insert(nodes, usage_node(usage, depth, parent_id, true, options.tests == "mixed"))
+		table.insert(nodes, usage_node(usage, depth, parent_id, true, options.tests == "mixed", tagged))
+	end
+end
+
+local KIND_GROUPS = {
+	{ kind = "write", label = "Value write" },
+	{ kind = "read", label = "Value read" },
+	{ kind = "other", label = "Usage" },
+}
+
+---@param nodes gleb.references.TreeNode[]
+---@param usages gleb.references.ClassifiedUsage[]
+---@param scope_name string
+---@param depth integer
+---@param parent_id string?
+---@param options gleb.references.TreeOptions
+---@param has_kinds boolean
+local function append_usages(nodes, usages, scope_name, depth, parent_id, options, has_kinds)
+	if not has_kinds or not options.read_write then
+		append_flat_usages(nodes, usages, scope_name, depth, parent_id, options, has_kinds)
+		return
+	end
+	for _, group in ipairs(KIND_GROUPS) do
+		local grouped = vim.tbl_filter(function(usage)
+			return (usage.usage_kind or "other") == group.kind
+		end, usages)
+		if #grouped > 0 then
+			local id = string.format("kind:%s:%s", scope_name, group.kind)
+			table.insert(nodes, {
+				id = id,
+				kind = "kind",
+				label = group.label,
+				count = #grouped,
+				depth = depth,
+				parent_id = parent_id,
+				usage_kind = group.kind,
+			})
+			append_flat_usages(nodes, grouped, scope_name .. ":" .. group.kind, depth + 1, id, options, false)
+		end
 	end
 end
 
@@ -171,7 +222,7 @@ end
 ---@param usages gleb.references.ClassifiedUsage[]
 ---@param is_test boolean
 ---@param options gleb.references.TreeOptions
-local function append_scope(nodes, usages, is_test, options)
+local function append_scope(nodes, usages, is_test, options, has_kinds)
 	local scoped = {}
 	for _, usage in ipairs(usages) do
 		if usage.test == is_test then
@@ -191,7 +242,7 @@ local function append_scope(nodes, usages, is_test, options)
 		count = #scoped,
 		depth = 0,
 	})
-	append_usages(nodes, scoped, name, 1, id, options)
+	append_usages(nodes, scoped, name, 1, id, options, has_kinds)
 end
 
 ---@param nodes gleb.references.TreeNode[]
@@ -216,18 +267,22 @@ end
 ---@return gleb.references.Tree
 function M.build(usages, options, selected)
 	local classified = classify(usages, options.tests)
+	local has_kinds = vim.iter(classified):any(function(usage)
+		return usage.usage_kind == "write" or usage.usage_kind == "read"
+	end)
 	local nodes = {}
 	if options.tests == "mixed" then
-		append_usages(nodes, classified, "all", 0, nil, options)
+		append_usages(nodes, classified, "all", 0, nil, options, has_kinds)
 	else
-		append_scope(nodes, classified, false, options)
-		append_scope(nodes, classified, true, options)
+		append_scope(nodes, classified, false, options, has_kinds)
+		append_scope(nodes, classified, true, options, has_kinds)
 	end
 
 	return {
 		nodes = nodes,
 		count = #classified,
 		selected_id = selected_id(nodes, selected),
+		has_kinds = has_kinds,
 	}
 end
 

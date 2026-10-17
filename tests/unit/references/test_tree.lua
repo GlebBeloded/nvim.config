@@ -194,4 +194,59 @@ T["references: Regrouping keeps the selected usage"] = function()
 	eq(flat.nodes[4].label, "report/summary.go:7")
 end
 
+local kinds_scenario = "references: Function usages have no read/write level or hint"
+T[kinds_scenario] = MiniTest.new_set()
+
+T[kinds_scenario]["omits the level when every usage is other"] = function()
+	child.lua([[
+		for _, usage in ipairs(UsageFixture) do usage.kind = "other" end
+	]])
+
+	local actual = build([[{ tests = "grouped", folders = true, read_write = true }]])
+	eq(
+		vim.tbl_filter(function(node)
+			return node.kind == "kind"
+		end, actual.nodes),
+		{}
+	)
+end
+
+T[kinds_scenario]["groups kinds or adds row tags according to the toggle"] = function()
+	child.lua([[
+		UsageFixture[1].kind = "other"
+		UsageFixture[2].kind = "read"
+		UsageFixture[3].kind = "write"
+		UsageFixture[4].kind = "write"
+	]])
+
+	local grouped = build([[{ tests = "mixed", folders = false, read_write = true }]])
+	eq(
+		vim.tbl_map(function(node)
+			return { node.kind, node.label, node.count, node.depth, node.usage_kind }
+		end, grouped.nodes),
+		{
+			{ "kind", "Value write", 2, 0, "write" },
+			{ "usage", "billing/invoice.go:16", nil, 1, "write" },
+			{ "usage", "billing/invoice.go:23", nil, 1, "write" },
+			{ "kind", "Value read", 1, 0, "read" },
+			{ "usage", "internal/money/money_test.go:6", nil, 1, "read" },
+			{ "kind", "Usage", 1, 0, "other" },
+			{ "usage", "report/summary.go:7", nil, 1, "other" },
+		}
+	)
+
+	local tagged = build([[{ tests = "mixed", folders = false, read_write = false }]])
+	eq(
+		vim.tbl_map(function(node)
+			return { node.label, node.kind_tag }
+		end, tagged.nodes),
+		{
+			{ "billing/invoice.go:16", "write" },
+			{ "billing/invoice.go:23", "write" },
+			{ "internal/money/money_test.go:6", "read" },
+			{ "report/summary.go:7" },
+		}
+	)
+end
+
 return T
