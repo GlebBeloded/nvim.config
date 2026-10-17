@@ -74,9 +74,9 @@ Scenarios: `file-tree: Project tree Enter toggles a folder`, `file-tree: Project
 
 Scenarios: `file-tree: Project tree v opens a vertical split`, `file-tree: Project tree s opens a horizontal split`, `file-tree: Project tree t opens a new tab`
 
-- [ ] 4b.1 Write these scenarios in `tests/integration/file-tree/test_project_tree.lua`, pressing `v`, `s` and `t` on the populated `Makefile` row, and see them fail.
-- [ ] 4b.2 Add the scoped split, vertical-split and tab actions and their keys.
-- [ ] 4b.3 Run `make test FILE=tests/integration/file-tree/test_project_tree.lua` for these cases and see them pass.
+- [x] 4b.1 Write these scenarios in `tests/integration/file-tree/test_project_tree.lua`, pressing `v`, `s` and `t` on the populated `Makefile` row, and see them fail.
+- [x] 4b.2 Add the scoped split, vertical-split and tab actions and their keys.
+- [x] 4b.3 Run `make test FILE=tests/integration/file-tree/test_project_tree.lua` for these cases and see them pass.
 
 ## 4c. Fold keys
 

@@ -307,24 +307,6 @@ local function protect_tree_buffer(view)
 end
 
 ---@param view FileTreeView
-local function configure_mappings(view)
-	local options = { buffer = view.buf, silent = true }
-	vim.keymap.set(
-		"n",
-		"v",
-		M.open_vsplit,
-		vim.tbl_extend("force", options, { desc = "Project: Open in Vertical Split" })
-	)
-	vim.keymap.set(
-		"n",
-		"s",
-		M.open_split,
-		vim.tbl_extend("force", options, { desc = "Project: Open in Horizontal Split" })
-	)
-	vim.keymap.set("n", "t", M.open_tab, vim.tbl_extend("force", options, { desc = "Project: Open in New Tab" }))
-end
-
----@param view FileTreeView
 local function add_teardown_autocmds(view)
 	view.autocmds = {
 		vim.api.nvim_create_autocmd("BufLeave", {
@@ -400,7 +382,6 @@ local function open_view(path)
 	}
 	M.state.by_tab[tab] = view
 	add_teardown_autocmds(view)
-	configure_mappings(view)
 	draw(view, path)
 	update_cursor(view)
 	return view

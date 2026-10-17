@@ -252,6 +252,18 @@ local function project_close()
 	require("gleb.file_tree.view").close()
 end
 
+local function project_open_vsplit()
+	require("gleb.file_tree.view").open_vsplit()
+end
+
+local function project_open_split()
+	require("gleb.file_tree.view").open_split()
+end
+
+local function project_open_tab()
+	require("gleb.file_tree.view").open_tab()
+end
+
 ---@type gleb.Action[]
 local actions = {
 	{
@@ -290,6 +302,27 @@ local actions = {
 		category = "Project",
 		ft = "gleb-file-tree",
 		run = project_close,
+	},
+	{
+		id = "file_tree.open_vsplit",
+		title = "Open in Vertical Split",
+		category = "Project",
+		ft = "gleb-file-tree",
+		run = project_open_vsplit,
+	},
+	{
+		id = "file_tree.open_split",
+		title = "Open in Horizontal Split",
+		category = "Project",
+		ft = "gleb-file-tree",
+		run = project_open_split,
+	},
+	{
+		id = "file_tree.open_tab",
+		title = "Open in New Tab",
+		category = "Project",
+		ft = "gleb-file-tree",
+		run = project_open_tab,
 	},
 	{
 		id = "tree.toggle_filesystem",

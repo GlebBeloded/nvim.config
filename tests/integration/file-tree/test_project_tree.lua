@@ -494,4 +494,47 @@ T["file-tree: Project tree q closes the tree"] = function()
 	eq(child.api.nvim_get_current_win(), editor_win)
 end
 
+local function assert_registered_action(id)
+	eq(child.lua_get([[require("gleb.actions").state.applicator.catalog:get(...) ~= nil]], { id }), true)
+end
+
+T["file-tree: Project tree v opens a vertical split"] = function()
+	open_tree_on_makefile()
+	local editor_win = child.lua_get([[vim.fn.win_getid(2)]])
+	local editor_position = child.api.nvim_win_get_position(editor_win)
+
+	child.type_keys("v")
+
+	local opened_position = child.api.nvim_win_get_position(0)
+	eq(child.api.nvim_buf_get_name(0), real_path("Makefile"))
+	eq(opened_position[1], editor_position[1])
+	assert(opened_position[2] ~= editor_position[2], "file was not opened in a vertical split")
+	assert_registered_action("file_tree.open_vsplit")
+end
+
+T["file-tree: Project tree s opens a horizontal split"] = function()
+	open_tree_on_makefile()
+	local editor_win = child.lua_get([[vim.fn.win_getid(2)]])
+	local editor_position = child.api.nvim_win_get_position(editor_win)
+
+	child.type_keys("s")
+
+	local opened_position = child.api.nvim_win_get_position(0)
+	eq(child.api.nvim_buf_get_name(0), real_path("Makefile"))
+	eq(opened_position[2], editor_position[2])
+	assert(opened_position[1] ~= editor_position[1], "file was not opened in a horizontal split")
+	assert_registered_action("file_tree.open_split")
+end
+
+T["file-tree: Project tree t opens a new tab"] = function()
+	open_tree_on_makefile()
+	local tabs = #child.api.nvim_list_tabpages()
+
+	child.type_keys("t")
+
+	eq(#child.api.nvim_list_tabpages(), tabs + 1)
+	eq(child.api.nvim_buf_get_name(0), real_path("Makefile"))
+	assert_registered_action("file_tree.open_tab")
+end
+
 return T
