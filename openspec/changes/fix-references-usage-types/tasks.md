@@ -27,9 +27,9 @@ Scenarios: `references: Go query classifies every GoLand usage type`, `reference
 
 Scenarios: `references: gr classifies struct usages`, `references: gr classifies function usages as calls`, `references: Composite literal keys are field writes`, `references: gopls kinds classify a Go variable`, `references: gr classifies every Go variable usage`, `references: gr classifies every Lua local usage`, `references: gr classifies every Bash variable usage`, `references: gr classifies every Terraform variable usage`, `references: Classification gives up after the timeout`
 
-- [ ] 3.1 Extend the `gomod` fixture in tests/fixtures/build.sh with `billing/batch.go` and `billing/invoice_test.go` (design Decision 8, exact text as in the T1 preview) and the `Invoice` manifest entry. Write the three new scenarios in tests/integration/references/test_kind.lua. See them fail.
-- [ ] 3.2 Implement the order in `kind.lua` (design Decision 2): `other` becomes `unclassified`, and the query step needs no server.
-- [ ] 3.3 Run `make test FILE=tests/integration/references/test_kind.lua` and see every scenario in it pass, the old ones included
+- [x] 3.1 Extend the `gomod` fixture in tests/fixtures/build.sh with `billing/batch.go` and `billing/invoice_test.go` (design Decision 8, exact text as in the T1 preview) and the `Invoice` manifest entry. Write the three new scenarios in tests/integration/references/test_kind.lua. See them fail.
+- [x] 3.2 Implement the order in `kind.lua` (design Decision 2): `other` becomes `unclassified`, and the query step needs no server.
+- [x] 3.3 Run `make test FILE=tests/integration/references/test_kind.lua` and see every scenario in it pass, the old ones included
 
 ## 4. Tree level, icons, toggle and state
 

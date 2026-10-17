@@ -1,4 +1,4 @@
--- Resolve usage kinds from language servers first, then fill unsupported ranges with Treesitter.
+-- Resolve syntactic usage types first, then server read/write and Treesitter fallbacks.
 local M = {
 	state = {
 		cache = {},
@@ -477,23 +477,44 @@ local function fallback_position(usage, client)
 	return { line = range.start.line, character = character }
 end
 
+---@param kind string
+---@param target gleb.references.TargetKind
+---@param filetype string
+---@return string?
+local function refine_query_kind(kind, target, filetype)
+	if kind == "call" and target == "type" and filetype == "go" then
+		return "type_conversion"
+	end
+	local drops_function_argument = kind == "function_argument" and target ~= "function"
+	local drops_static_member = kind == "static_member" and target ~= "type"
+	local drops_type_position = target ~= "unknown" and target ~= "type" and TYPE_POSITION_KINDS[kind]
+	if drops_function_argument or drops_static_member or drops_type_position then
+		return nil
+	end
+	return kind
+end
+
 ---@param groups table<string, gleb.references.KindUsage[]>
-local function fill_fallbacks(groups)
+---@param target gleb.references.TargetKind
+local function apply_query_kinds(groups, target)
 	for uri, usages in pairs(groups) do
-		local unresolved = vim.tbl_filter(function(usage)
-			return usage.kind == nil
-		end, usages)
-		if #unresolved > 0 then
+		if #usages > 0 then
 			local source = table.concat(vim.fn.readfile(vim.uri_to_fname(uri)), "\n")
-			local client = usage_client(unresolved[1])
+			local client = usage_client(usages[1])
 			local positions = vim.tbl_map(function(usage)
 				return fallback_position(usage, client)
-			end, unresolved)
-			local filetype = unresolved[1].filetype or ""
+			end, usages)
+			local filetype = usages[1].filetype or ""
 			local language = PARSER_LANGUAGES[filetype] or vim.treesitter.language.get_lang(filetype) or ""
 			local kinds = kind_ts.classify(source, language, positions)
-			for index, usage in ipairs(unresolved) do
-				usage.kind = kinds[index]
+			for index, usage in ipairs(usages) do
+				local query_kind = kinds[index]
+				local is_syntactic = query_kind ~= "write" and query_kind ~= "read" and query_kind ~= "unclassified"
+				if is_syntactic then
+					usage.kind = refine_query_kind(query_kind, target, usage.filetype or "") or usage.kind or "read"
+				elseif usage.kind == nil then
+					usage.kind = query_kind
+				end
 			end
 		end
 	end
@@ -531,7 +552,7 @@ function M.origin()
 	end
 end
 
----Classify usages asynchronously, preferring server-provided kinds over syntax fallback.
+---Classify usages asynchronously in syntax, server read/write, query fallback order.
 ---@param usages gleb.references.KindUsage[]
 ---@param callback fun(usages: gleb.references.KindUsage[])
 ---@param origin? gleb.references.KindOrigin
@@ -552,7 +573,7 @@ function M.classify(usages, callback, origin)
 			return
 		end
 		finished = true
-		fill_fallbacks(groups)
+		apply_query_kinds(groups, target)
 		refine_target_kinds(classified, target)
 		callback(classified)
 	end
