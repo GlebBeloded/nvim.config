@@ -327,6 +327,18 @@ Every usage listed by `gr` SHALL get one catalogue type: the type the filetype's
 - **WHEN** the treesitter fallback classifies `region` in `variable "region" {}` and in `value = var.region`
 - **THEN** the variable block label is `write` and the traversal is `read`
 
+#### Scenario: Rust query classifies every usage type
+- **WHEN** the Rust `usages` query classifies each position of the case table `tests/unit/references/usage_cases/rust.lua` in its source `usage_cases/rust/usages.rs` with the installed `rust` parser and the case's target kind
+- **THEN** every position gets its expected catalogue id (`trait_bound` is `type_constraint`, `method_call` is `call`, `dot` is `field_access`, `trait_impl` is `extends`, `type_argument` is `type_instantiation`), a field assignment target is `write`, and every negative case gets no syntactic type
+
+#### Scenario: gr classifies Rust struct usages
+- **WHEN** Neovim runs in a fresh copy of the extended `rustproj` fixture with the cursor on the `Money` declaration in `src/money.rs`, rust-analyzer attached and quiescent, and `gr` is pressed in normal mode
+- **THEN** the view lists `src/ledger.rs:1` and `tests/money.rs:1` as `import`, `src/ledger.rs:4` and `src/money.rs:7` as `return_type`, `src/ledger.rs:5` and `tests/money.rs:5` as `call`, `src/ledger.rs:9` as `parameter_declaration`, `src/ledger.rs:11` as `pattern`, `src/money.rs:6` as `impl` and `src/money.rs:8` as `struct_initialization`
+
+#### Scenario: gr classifies Rust field usages
+- **WHEN** Neovim runs in a fresh copy of the extended `rustproj` fixture with the cursor on the `cents` field declaration in `src/money.rs`, rust-analyzer attached and quiescent, and `gr` is pressed in normal mode
+- **THEN** the view lists `src/ledger.rs:11` as `pattern`, `src/money.rs:8` as `field_initialization` and `tests/money.rs:6` as `macro_argument`
+
 ### Requirement: Asynchronous classification
 The view SHALL open with scope and folder grouping as soon as references arrive, show `Usages of <symbol> · <count> · classifying` in its title while classification runs (at most 3 seconds), and rebuild with the usage type level when it finishes, keeping the selected usage.
 
@@ -364,6 +376,10 @@ When at least one listed usage is not `unclassified`, the tree SHALL add a usage
 #### Scenario: Usage type icons and label shades match the palette
 - **WHEN** the view is open for `Invoice` after classification and the extmarks of the `Field declaration 2`, `Receiver 2` and `Struct initialization 1` rows are read
 - **THEN** each icon cell uses its type's icon group with the catalogue colour, and each label uses a group whose foreground equals the 0.7 mix of that colour and the palette foreground
+
+#### Scenario: Rust struct usages are grouped by usage type
+- **WHEN** `gr` is pressed on the `Money` declaration in `src/money.rs` of the extended `rustproj` fixture with rust-analyzer attached, the editor at 70x36 and default grouping, and classification has finished
+- **THEN** the screen matches the approved render "Proposed R1 — usage types of a Rust struct"
 
 ### Requirement: Usage type toggle
 When the usage type level is available, `u` SHALL toggle it, the hint row SHALL show `●`/`○ Usage type u`, and the state SHALL persist across sessions; a persisted state saved before this key existed SHALL be honoured. With the level off, each usage row whose type is not `unclassified` SHALL carry a right-aligned tag: its type's icon in the icon colour and the type's short name.
