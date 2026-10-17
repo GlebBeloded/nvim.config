@@ -2,8 +2,12 @@
 
 Scenarios: `diff: Every IntelliJ line case passes`, `diff: IntelliJ trim equality and line fragments hold`, `diff: diffbandit oracle goldens pass`
 
-- [ ] 1.1 Fetch the pinned sources into a temp dir outside the repo (design.md, Context, Sources). Write `drafts/intellij_fixtures.py`, which reads the `.kt` test files as text, applies the DSL semantics of design Decision 6 and writes `tests/unit/diff/fixtures/intellij_lines.lua` and `intellij_equality.lua`, each with the attribution header. Hand-convert diffbandit's 5 goldens into `diffbandit_oracle.lua` (1-based hunks to 0-based ranges).
-- [ ] 1.2 Write `tests/unit/diff/test_goldens.lua`. It runs every row, asserts the row counts (69, 45, 5) and names the failing row's `source`. See it fail.
+- [x] 1.1 Fetch the pinned sources into a temp dir outside the repo (design.md, Context, Sources). Write `drafts/intellij_fixtures.py`, which reads the `.kt` test files as text, applies the DSL semantics of design Decision 6 and writes `tests/unit/diff/fixtures/intellij_lines.lua` and `intellij_equality.lua`, each with the attribution header. Hand-convert diffbandit's 5 goldens into `diffbandit_oracle.lua` (1-based hunks to 0-based ranges).
+- [x] 1.2 Write `tests/unit/diff/test_goldens.lua`. It runs every row, asserts the row counts (69, 45, 5) and names the failing row's `source`. See it fail.
+
+## Agent decisions
+
+- Equality fixtures use a `kind` discriminator so one 45-row table can exercise trim equality and line-fragment ranges without inventing separate files.
 
 ## 2. LCS core
 
