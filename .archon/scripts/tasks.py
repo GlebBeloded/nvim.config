@@ -55,7 +55,7 @@ STUCK_TASKS = "stuck-tasks.json"  # {"stuck": tasks.md's Stuck text when recorde
 
 
 STUCK_HEADING = re.compile(r"^#{2,4} Stuck\b[^\n]*\n\s*(?!#)\S", re.MULTILINE)  # a Stuck section with a body
-NUMBERED = re.compile(r"^#{2,4} \d+\..*$", re.MULTILINE)
+NUMBERED = re.compile(r"^#{2,4} \d+[a-z0-9]*\..*$", re.MULTILINE)  # `## 3.` and split tasks `## 3a.`, `## 5a1.`
 
 
 def stuck_tasks(text: str, artifacts: pathlib.Path) -> list[str]:
