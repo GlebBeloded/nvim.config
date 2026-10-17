@@ -10,14 +10,14 @@ Scenarios: `references: Treesitter fallback classifies writes where a parser exi
 
 ## 3. Server classification sources
 Scenarios: `references: gopls kinds classify a Go variable`, `references: lua_ls kinds classify a Lua local`, `references: basedpyright kinds classify a Python variable`, `references: tsserver kinds classify a TypeScript variable`, `references: rust-analyzer kinds classify a Rust variable`
-- [ ] 3.1 Write the five scenarios in tests/integration/references/test_kind.lua (the gomod fixture, plus temporary Lua, Python, TypeScript and Cargo projects). A missing server is skipped with its reason. This file is the one per-language read/write suite: each case asserts the exact kind (write or read) of every usage line, not only counts. See them fail.
-- [ ] 3.2 Add `lua/gleb/references/kind.lua`:
+- [x] 3.1 Write the five scenarios in tests/integration/references/test_kind.lua (the gomod fixture, plus temporary Lua, Python, TypeScript and Cargo projects). A missing server is skipped with its reason. This file is the one per-language read/write suite: each case asserts the exact kind (write or read) of every usage line, not only counts. See them fail.
+- [x] 3.2 Add `lua/gleb/references/kind.lua`:
   - the vtsls tsserver path;
   - per-file documentHighlight with range matching;
   - the fallback fill;
   - a cache keyed by uri and changedtick/mtime;
   - `CLASSIFY_TIMEOUT_MS = 3000`.
-- [ ] 3.3 Run the file and see all five pass or skip with a reason
+- [x] 3.3 Run the file and see all five pass or skip with a reason
 
 ## 4. Level, toggle and async view
 Scenarios: `references: Function usages have no read/write level or hint`, `references: Read/write state persists across sessions`, `references: The read/write key comes from the keymap file`, `references: The view opens before classification finishes`, `references: Classification gives up after the timeout`
@@ -45,3 +45,5 @@ Scenarios: `references: Variable usages are grouped by write and read`, `referen
 
 - Keep the `Calls` manifest locations explicit because comments and the failure string also contain the identifier, so the fixture's lexical helper would report non-symbol occurrences.
 - Let the Treesitter fallback accept zero-based source positions and return an ordered kind list, matching the LSP data shape without mutating usages.
+- Cache each server result below its URI/version by client and anchor range so classifications for different symbols cannot collide.
+- Populate the lua_ls scenario from document highlights because that server omits assignment targets from its references response.

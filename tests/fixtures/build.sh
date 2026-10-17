@@ -368,7 +368,7 @@ EOF
 	commit "gomod fixture"
 	printf '{"references":{"Format":[%s],"Calls":[%s]}}\n' \
 		"$(format_locations internal/money/money.go internal/money/money_test.go billing/invoice.go report/summary.go)" \
-		'{"path":"report/calls.go","line":4,"col":5},{"path":"report/calls.go","line":8,"col":2},{"path":"report/calls_test.go","line":6,"col":2},{"path":"report/calls_test.go","line":8,"col":5},{"path":"report/calls_test.go","line":9,"col":35}' \
+		'{"path":"report/calls.go","line":4,"col":5},{"path":"report/calls.go","line":8,"col":2},{"path":"report/calls_test.go","line":6,"col":2},{"path":"report/calls_test.go","line":8,"col":5},{"path":"report/calls_test.go","line":9,"col":34}' \
 		>../manifest.json
 }
 
