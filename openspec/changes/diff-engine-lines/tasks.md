@@ -9,6 +9,7 @@ Scenarios: `diff: Every IntelliJ line case passes`, `diff: IntelliJ trim equalit
 
 - Equality fixtures use a `kind` discriminator so one 45-row table can exercise trim equality and line-fragment ranges without inventing separate files.
 - Line records cache policy and ignore-whitespace keys so every pipeline stage shares one normalization without repeated string allocation.
+- Chunk-policy invariant gaps compare their joined text because ignored empty-line changes can alter the number of lines without altering normalized text.
 
 ## 2. LCS core
 
@@ -36,9 +37,9 @@ Scenarios: `diff: Brace lines do not anchor a match`, `diff: Shifted indentation
 
 Scenarios: `diff: A too big comparison falls back to xdiff`, `diff: A missed deadline falls back to xdiff`, `diff: A 5000-line file compares within budget`, `diff: Random texts keep IntelliJ's line invariants`
 
-- [ ] 4.1 Write the scenarios in `test_limits.lua`, `test_perf.lua` (generator from design Decision 5, `H.load_factor()`) and `test_invariants.lua` (LCG, alphabets and invariants from Decision 6), and see them fail
-- [ ] 4.2 Add the deadline context, clock checks and the `vim.text.diff` histogram fallback (design Decision 4)
-- [ ] 4.3 Make the four files pass. If the perf bound fails, profile and optimise; never loosen the bound.
+- [x] 4.1 Write the scenarios in `test_limits.lua`, `test_perf.lua` (generator from design Decision 5, `H.load_factor()`) and `test_invariants.lua` (LCG, alphabets and invariants from Decision 6), and see them fail
+- [x] 4.2 Add the deadline context, clock checks and the `vim.text.diff` histogram fallback (design Decision 4)
+- [x] 4.3 Make the four files pass. If the perf bound fails, profile and optimise; never loosen the bound.
 
 ## 5. Attribution and docs
 

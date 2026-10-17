@@ -3,7 +3,7 @@
 
 local M = {}
 
----@alias gleb.diff.LcsStatus "ok"|"too_big"
+---@alias gleb.diff.LcsStatus "ok"|"too_big"|"timed_out"
 
 ---@class gleb.diff.LcsResult
 ---@field matches gleb.diff.Match[]
@@ -48,14 +48,21 @@ local function backtrack(trace, distance, length1, length2)
 	return matches
 end
 
-local function myers(values1, values2, threshold)
+local function timed_out(context)
+	return context.clock() > context.deadline
+end
+
+local function myers(values1, values2, context, bounded)
 	local length1 = #values1
 	local length2 = #values2
 	local vector = { [1] = 0 }
 	local trace = {}
 	for distance = 0, length1 + length2 do
-		if threshold and distance > threshold then
-			return nil
+		if timed_out(context) then
+			return nil, "timed_out"
+		end
+		if bounded and distance > context.myers_threshold then
+			return nil, "too_big"
 		end
 		trace[distance] = copy_vector(vector)
 		for diagonal = -distance, distance, 2 do
@@ -75,11 +82,11 @@ local function myers(values1, values2, threshold)
 			end
 			vector[diagonal] = x
 			if x >= length1 and y >= length2 then
-				return backtrack(trace, distance, length1, length2)
+				return backtrack(trace, distance, length1, length2), "ok"
 			end
 		end
 	end
-	return {}
+	return {}, "ok"
 end
 
 local function unique_anchors(values1, values2, start1, end1, start2, end2)
@@ -136,7 +143,10 @@ local function append_offset(matches, additions, offset1, offset2)
 	end
 end
 
-local function patience_region(values1, values2, start1, end1, start2, end2, may_fail)
+local function patience_region(values1, values2, start1, end1, start2, end2, may_fail, context)
+	if timed_out(context) then
+		return {}, false, "timed_out"
+	end
 	local matches = {}
 	while start1 <= end1 and start2 <= end2 and values1[start1] == values2[start2] do
 		table.insert(matches, { start1 - 1, start2 - 1 })
@@ -151,13 +161,13 @@ local function patience_region(values1, values2, start1, end1, start2, end2, may
 	end
 	if start1 > end1 or start2 > end2 then
 		vim.list_extend(matches, suffix)
-		return matches, true
+		return matches, true, "ok"
 	end
 
 	local anchors = unique_anchors(values1, values2, start1, end1, start2, end2)
 	if #anchors == 0 then
 		if may_fail then
-			return {}, false
+			return {}, false, "too_big"
 		end
 		local left = {}
 		local right = {}
@@ -167,9 +177,13 @@ local function patience_region(values1, values2, start1, end1, start2, end2, may
 		for index = start2, end2 do
 			table.insert(right, values2[index])
 		end
-		append_offset(matches, myers(left, right), start1 - 1, start2 - 1)
+		local additions, status = myers(left, right, context, false)
+		if status ~= "ok" then
+			return {}, false, status
+		end
+		append_offset(matches, additions, start1 - 1, start2 - 1)
 		vim.list_extend(matches, suffix)
-		return matches, true
+		return matches, true, "ok"
 	end
 
 	local next1 = start1
@@ -178,23 +192,31 @@ local function patience_region(values1, values2, start1, end1, start2, end2, may
 		local gap1 = anchor[1] - next1
 		local gap2 = anchor[2] - next2
 		local reduced = gap1 * 2 < (end1 - start1 + 1) or gap2 * 2 < (end2 - start2 + 1)
-		local inner, ok =
-			patience_region(values1, values2, next1, anchor[1] - 1, next2, anchor[2] - 1, may_fail and not reduced)
+		local inner, ok, status = patience_region(
+			values1,
+			values2,
+			next1,
+			anchor[1] - 1,
+			next2,
+			anchor[2] - 1,
+			may_fail and not reduced,
+			context
+		)
 		if not ok then
-			return {}, false
+			return {}, false, status
 		end
 		vim.list_extend(matches, inner)
 		table.insert(matches, { anchor[1] - 1, anchor[2] - 1 })
 		next1 = anchor[1] + 1
 		next2 = anchor[2] + 1
 	end
-	local tail, ok = patience_region(values1, values2, next1, end1, next2, end2, false)
+	local tail, ok, status = patience_region(values1, values2, next1, end1, next2, end2, false, context)
 	if not ok then
-		return {}, false
+		return {}, false, status
 	end
 	vim.list_extend(matches, tail)
 	vim.list_extend(matches, suffix)
-	return matches, true
+	return matches, true, "ok"
 end
 
 local function discard_unique(values1, values2)
@@ -227,9 +249,9 @@ end
 
 ---@param values1 integer[]
 ---@param values2 integer[]
----@param threshold integer
+---@param context gleb.diff.Context
 ---@return gleb.diff.LcsResult
-function M.diff(values1, values2, threshold)
+function M.diff(values1, values2, context)
 	local prefix = 0
 	while prefix < math.min(#values1, #values2) and values1[prefix + 1] == values2[prefix + 1] do
 		prefix = prefix + 1
@@ -250,14 +272,18 @@ function M.diff(values1, values2, threshold)
 	end
 
 	local reduced1, reduced2, indexes1, indexes2 = discard_unique(middle1, middle2)
-	local matches = myers(reduced1, reduced2, threshold)
-	if not matches then
+	local matches, status = myers(reduced1, reduced2, context, true)
+	if status == "timed_out" then
+		return { matches = {}, status = status }
+	end
+	if status == "too_big" then
 		local ok
-		matches, ok = patience_region(reduced1, reduced2, 1, #reduced1, 1, #reduced2, true)
+		matches, ok, status = patience_region(reduced1, reduced2, 1, #reduced1, 1, #reduced2, true, context)
 		if not ok then
-			return { matches = {}, status = "too_big" }
+			return { matches = {}, status = status }
 		end
 	end
+	assert(matches, "successful LCS has matches")
 	for _, match in ipairs(matches) do
 		match[1] = indexes1[match[1] + 1] + prefix
 		match[2] = indexes2[match[2] + 1] + prefix

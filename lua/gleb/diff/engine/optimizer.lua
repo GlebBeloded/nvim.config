@@ -81,8 +81,9 @@ end
 ---@param lines2 gleb.diff.Line[]
 ---@param changes gleb.diff.LineFragment[]
 ---@param equals fun(index1: integer, index2: integer): boolean
----@return gleb.diff.LineFragment[]
-function M.optimize(lines1, lines2, changes, equals)
+---@param context gleb.diff.Context
+---@return gleb.diff.LineFragment[], gleb.diff.LcsStatus
+function M.optimize(lines1, lines2, changes, equals, context)
 	local unchanged = ranges.unchanged_from_changes(changes, #lines1, #lines2)
 	local optimized = {}
 
@@ -145,10 +146,13 @@ function M.optimize(lines1, lines2, changes, equals)
 	end
 
 	for _, range in ipairs(unchanged) do
+		if context.clock() > context.deadline then
+			return {}, "timed_out"
+		end
 		optimized[#optimized + 1] = range
 		process_last_ranges()
 	end
-	return ranges.changes_from_unchanged(optimized, #lines1, #lines2)
+	return ranges.changes_from_unchanged(optimized, #lines1, #lines2), "ok"
 end
 
 return M

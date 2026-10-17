@@ -36,8 +36,12 @@ local function line_equals(lines1, lines2, field)
 	end
 end
 
-local function sequence_changes(values1, values2, threshold)
-	local result = lcs.diff(values1, values2, threshold)
+local function timed_out(context)
+	return context.clock() > context.deadline
+end
+
+local function sequence_changes(values1, values2, context)
+	local result = lcs.diff(values1, values2, context)
 	return ranges.from_matches(result.matches, #values1, #values2), result.status
 end
 
@@ -77,7 +81,7 @@ local function new_change_builder(length1, length2, expand_equals)
 	return builder
 end
 
-local function smart_line_change_corrector(lines1, lines2, big_changes, indexes1, indexes2, threshold)
+local function smart_line_change_corrector(lines1, lines2, big_changes, indexes1, indexes2, context)
 	local builder = new_change_builder(#lines1, #lines2)
 	local ignore_equals = line_equals(lines1, lines2, "ignore_key")
 	local big_unchanged = ranges.unchanged_from_changes(big_changes, #indexes1, #indexes2)
@@ -94,7 +98,7 @@ local function smart_line_change_corrector(lines1, lines2, big_changes, indexes1
 		for index = expanded.start2, expanded.end2 - 1 do
 			values2[#values2 + 1] = lines2[index + 1].ignore_key
 		end
-		local inner_changes, inner_status = sequence_changes(values1, values2, threshold)
+		local inner_changes, inner_status = sequence_changes(values1, values2, context)
 		if inner_status ~= "ok" then
 			status = inner_status
 			return
@@ -113,6 +117,9 @@ local function smart_line_change_corrector(lines1, lines2, big_changes, indexes1
 	local last1 = 0
 	local last2 = 0
 	for _, unchanged in ipairs(big_unchanged) do
+		if timed_out(context) then
+			return {}, "timed_out"
+		end
 		for offset = 0, unchanged.end1 - unchanged.start1 - 1 do
 			local index1 = indexes1[unchanged.start1 + offset + 1]
 			local index2 = indexes2[unchanged.start2 + offset + 1]
@@ -129,7 +136,7 @@ local function smart_line_change_corrector(lines1, lines2, big_changes, indexes1
 	return builder.finish(), status
 end
 
-local function compare_smart(lines1, lines2, threshold)
+local function compare_smart(lines1, lines2, context)
 	local big1 = {}
 	local big2 = {}
 	local indexes1 = {}
@@ -146,11 +153,11 @@ local function compare_smart(lines1, lines2, threshold)
 			indexes2[#indexes2 + 1] = index - 1
 		end
 	end
-	local big_changes, status = sequence_changes(big1, big2, threshold)
+	local big_changes, status = sequence_changes(big1, big2, context)
 	if status ~= "ok" then
 		return {}, status
 	end
-	return smart_line_change_corrector(lines1, lines2, big_changes, indexes1, indexes2, threshold)
+	return smart_line_change_corrector(lines1, lines2, big_changes, indexes1, indexes2, context)
 end
 
 local function align_exact_matching(lines1, lines2, indexes1, indexes2, builder)
@@ -218,7 +225,7 @@ local function align_exact_matching(lines1, lines2, indexes1, indexes2, builder)
 	end
 end
 
-local function correct_changes_second_step(lines1, lines2, ignore_changes)
+local function correct_changes_second_step(lines1, lines2, ignore_changes, context)
 	local unchanged = ranges.unchanged_from_changes(ignore_changes, #lines1, #lines2)
 	local builder = new_change_builder(#lines1, #lines2, line_equals(lines1, lines2, "key"))
 	local sample
@@ -248,6 +255,9 @@ local function correct_changes_second_step(lines1, lines2, ignore_changes)
 	end
 
 	for _, range in ipairs(unchanged) do
+		if timed_out(context) then
+			return {}, "timed_out"
+		end
 		for offset = 0, range.end1 - range.start1 - 1 do
 			local index1 = range.start1 + offset
 			local index2 = range.start2 + offset
@@ -265,39 +275,45 @@ local function correct_changes_second_step(lines1, lines2, ignore_changes)
 		end
 	end
 	flush(#lines1, #lines2)
-	return builder.finish()
+	return builder.finish(), "ok"
 end
 
-local function expand_ranges(lines1, lines2, changes)
+local function expand_ranges(lines1, lines2, changes, context)
 	local equals = line_equals(lines1, lines2, "key")
 	local expanded = {}
 	for _, change in ipairs(changes) do
+		if timed_out(context) then
+			return {}, "timed_out"
+		end
 		local range = trim.expand(change.start1, change.start2, change.end1, change.end2, equals)
 		if range.start1 ~= range.end1 or range.start2 ~= range.end2 then
 			expanded[#expanded + 1] = range
 		end
 	end
-	return expanded
+	return expanded, "ok"
 end
 
 ---@param raw1 string[]
 ---@param raw2 string[]
 ---@param comparison_policy gleb.diff.Policy
----@param threshold integer
+---@param context gleb.diff.Context
 ---@return gleb.diff.LineFragment[], gleb.diff.LcsStatus
-function M.compare(raw1, raw2, comparison_policy, threshold)
+function M.compare(raw1, raw2, comparison_policy, context)
 	local lines1 = make_lines(raw1, comparison_policy)
 	local lines2 = make_lines(raw2, comparison_policy)
-	local changes, status = compare_smart(lines1, lines2, threshold)
+	local changes, status = compare_smart(lines1, lines2, context)
 	if status ~= "ok" then
 		return {}, status
 	end
 	local equals = line_equals(lines1, lines2, "key")
-	changes = optimizer.optimize(lines1, lines2, changes, equals)
-	if comparison_policy == "ignore_whitespaces" or comparison_policy == "ignore_whitespaces_chunks" then
-		return expand_ranges(lines1, lines2, changes), status
+	changes, status = optimizer.optimize(lines1, lines2, changes, equals, context)
+	if status ~= "ok" then
+		return {}, status
 	end
-	return correct_changes_second_step(lines1, lines2, changes), status
+	if comparison_policy == "ignore_whitespaces" or comparison_policy == "ignore_whitespaces_chunks" then
+		return expand_ranges(lines1, lines2, changes, context)
+	end
+	return correct_changes_second_step(lines1, lines2, changes, context)
 end
 
 return M
