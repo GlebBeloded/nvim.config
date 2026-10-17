@@ -292,6 +292,44 @@ local function open_invoice()
 	child.cmd("redraw")
 end
 
+local function open_money()
+	child.o.columns, child.o.lines = 70, 50
+	local typescript_root, typescript_manifest = F.copy("tsproj", vim.fn.tempname())
+	local declaration = typescript_manifest.references.Money[1]
+	child.cmd("cd " .. vim.fn.fnameescape(typescript_root) .. " | edit " .. vim.fn.fnameescape(declaration.path))
+	child.api.nvim_win_set_cursor(0, { declaration.line, declaration.col - 1 })
+	eq(child.wait([[#vim.lsp.get_clients({ bufnr = 0, name = "vtsls" }) > 0]], TIMEOUT_MS), true)
+	child.lua(
+		[[
+		local minimum, timeout = ...
+_G.references_ready = nil
+local bufnr = vim.api.nvim_get_current_buf()
+local started = vim.uv.hrtime()
+local populated = 0
+local function request()
+	local client = vim.lsp.get_clients({ bufnr = bufnr, name = "vtsls" })[1]
+	local params = vim.lsp.util.make_position_params(0, client.offset_encoding)
+	params.context = { includeDeclaration = false }
+	client:request("textDocument/references", params, function(_, result)
+		populated = result and #result >= minimum and populated + 1 or 0
+		if populated >= 2 then
+			_G.references_ready = true
+		elseif (vim.uv.hrtime() - started) / 1e6 < timeout then
+			vim.defer_fn(request, 10)
+		end
+	end, bufnr)
+end
+request()
+]],
+		{ #typescript_manifest.references.Money - 1, TIMEOUT_MS }
+	)
+	eq(child.wait("_G.references_ready == true", TIMEOUT_MS), true)
+	child.type_keys("gr")
+	eq(child.wait([[vim.bo.filetype == "gleb-references"]], TIMEOUT_MS), true)
+	eq(child.wait([[not require("gleb.references.view").state.classifying]], TIMEOUT_MS), true)
+	child.cmd("redraw")
+end
+
 local function tree_lines()
 	return child.lua_get([[vim.api.nvim_buf_get_lines(require("gleb.references.view").state.tree_buf, 0, -1, false)]])
 end
@@ -436,6 +474,12 @@ T["references: u turns struct usage types into row tags"] = function()
 	H.expect_screenshot(child.get_screenshot())
 	clear_background_for_mask()
 	H.expect_screen_colors(child, 1, with_cleared_background(STRUCT_TAGGED_MASK), LEGEND)
+end
+
+T["references: TypeScript class usages are grouped by usage type"] = function()
+	eq(require("tests.render.cases").ts_p1_class ~= nil, true)
+	open_money()
+	H.expect_screenshot(child.get_screenshot())
 end
 
 return T

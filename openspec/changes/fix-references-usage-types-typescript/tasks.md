@@ -41,6 +41,6 @@ Scenarios: `references: gr classifies TypeScript class usages`, `references: gr 
 
 Scenarios: `references: TypeScript class usages are grouped by usage type`
 
-- [ ] 5.1 Add the 70x50 P1 case to `tests/screen/references/test_view.lua`, drive the real `gr` mapping against the populated `tsproj` data, and run `make test FILE=tests/screen/references/test_view.lua CASE="TypeScript class usages are grouped by usage type"` with the approved P1 screenshot expectation to see it fail
-- [ ] 5.2 Make the query-backed classification produce the approved render without changing the existing tree layout, then compare `make render CASE=ts_p1_class COLUMNS=70 LINES=50` with `renders/ts_p1_class.ansi`
-- [ ] 5.3 Run `make test FILE=tests/screen/references/test_view.lua CASE="TypeScript class usages are grouped by usage type"` and see it pass
+- [x] 5.1 Add the 70x50 P1 case to `tests/screen/references/test_view.lua`, drive the real `gr` mapping against the populated `tsproj` data, and run `make test FILE=tests/screen/references/test_view.lua CASE="TypeScript class usages are grouped by usage type"` with the approved P1 screenshot expectation to see it fail
+- [x] 5.2 Make the query-backed classification produce the approved render without changing the existing tree layout, then compare `make render CASE=ts_p1_class COLUMNS=70 LINES=50` with `renders/ts_p1_class.ansi`
+- [x] 5.3 Run `make test FILE=tests/screen/references/test_view.lua CASE="TypeScript class usages are grouped by usage type"` and see it pass
