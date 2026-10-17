@@ -1,0 +1,48 @@
+-- Translated from microsoft/vscode (MIT, © Microsoft Corporation) at 5b23ab39:
+-- src/vs/editor/test/node/diffing/fixtures/issue-201713/advanced.expected.diff.json
+-- Modified: JSON rewritten as Lua data, ranges made 0-based.
+return {
+	lines1 = {
+		"const deletedCodeLineBreaksComputer = !renderSideBySide ? this._editors.modified._getViewModel()?.createLineBreaksComputer() : undefined;",
+		"if (deletedCodeLineBreaksComputer) {",
+		"\tfor (const a of alignmentsVal) {",
+		"\t\tif (a.diff) {",
+		"\t\t\tfor (let i = a.originalRange.startLineNumber; i < a.originalRange.endLineNumberExclusive; i++) {",
+		"\t\t\t\tdeletedCodeLineBreaksComputer?.addRequest(this._editors.original.getModel()!.getLineContent(i), null, null);",
+		"\t\t\t}",
+		"\t\t}",
+		"\t}",
+		"}",
+		"",
+		"const lineBreakData = deletedCodeLineBreaksComputer?.finalize() ?? [];",
+		"let lineBreakDataIdx = 0;",
+	},
+	lines2 = {
+		"const deletedCodeLineBreaksComputer = !renderSideBySide ? this._editors.modified._getViewModel()?.createLineBreaksComputer() : undefined;",
+		"if (deletedCodeLineBreaksComputer) {",
+		"\tconst originalModel = this._editors.original.getModel()!;",
+		"\tfor (const a of alignmentsVal) {",
+		"\t\tif (a.diff) {",
+		"\t\t\tfor (let i = a.originalRange.startLineNumber; i < a.originalRange.endLineNumberExclusive; i++) {",
+		"\t\t\t\t// `i` can be out of bound when the diff has not been updated yet.",
+		"\t\t\t\t// In this case, we do an early return.",
+		"\t\t\t\t// TODO@hediet: Fix this by applying the edit directly to the diff model, so that the diff is always valid.",
+		"\t\t\t\tif (i > originalModel.getLineCount()) {",
+		"\t\t\t\t\treturn { orig: origViewZones, mod: modViewZones };",
+		"\t\t\t\t}",
+		"\t\t\t\tdeletedCodeLineBreaksComputer?.addRequest(originalModel.getLineContent(i), null, null);",
+		"\t\t\t}",
+		"\t\t}",
+		"\t}",
+		"}",
+		"",
+		"const lineBreakData = deletedCodeLineBreaksComputer?.finalize() ?? [];",
+		"let lineBreakDataIdx = 0;",
+	},
+	trim_ws = false,
+	changes = {
+		{ 2, 2, 2, 3 },
+		{ 5, 6, 6, 13 },
+	},
+	moves = {},
+}

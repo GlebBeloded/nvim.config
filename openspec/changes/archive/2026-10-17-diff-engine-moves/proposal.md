@@ -50,6 +50,7 @@ This change adds the port to the engine and returns moves next to the IntelliJ l
   - IntelliJ: no move detection (IJPL-101150).
   - vscode-diff.nvim already in the config computes VS Code's diff and moves in C. But it would bring a second line diff and its own UI, while the user picked "own the UI" and IntelliJ's line diff.
   - Neovim's xdiff: no moves.
+- Main-spec compatibility: `references: Production paths are not test code` remains unchanged; the copied VS Code `utils.ts` is source attribution, not a references-path change.
 - Core keymaps: none.
 - Unchanged scenarios: none pinned, since no existing module changes. The `diff` scenarios of `diff-engine-lines` and `diff-engine-words` still hold, because `moves` is off unless asked for, and `fragments` never change.
 - Out of scope:

@@ -1,0 +1,47 @@
+-- Translated from microsoft/vscode (MIT, © Microsoft Corporation) at 5b23ab39:
+-- src/vs/editor/test/node/diffing/fixtures/ts-unfragmented-diffing/advanced.expected.diff.json
+-- Modified: JSON rewritten as Lua data, ranges made 0-based.
+return {
+	lines1 = {
+		"import { KeyCode, KeyMod } from 'vs/base/common/keyCodes';",
+		"import { Disposable } from 'vs/base/common/lifecycle';",
+		"import { ICodeEditor } from 'vs/editor/browser/editorBrowser';",
+		"import { EditorAction, EditorCommand, registerEditorAction, registerEditorCommand, registerEditorContribution, ServicesAccessor } from 'vs/editor/browser/editorExtensions';",
+		"import { IEditorContribution } from 'vs/editor/common/editorCommon';",
+		"import { EditorContextKeys } from 'vs/editor/common/editorContextKeys';",
+		"import * as languages from 'vs/editor/common/languages';",
+		"import { TriggerContext } from 'vs/editor/contrib/parameterHints/browser/parameterHintsModel';",
+		"import { Context } from 'vs/editor/contrib/parameterHints/browser/provideSignatureHelp';",
+		"import * as nls from 'vs/nls';",
+		"import { ContextKeyExpr } from 'vs/platform/contextkey/common/contextkey';",
+		"import { IInstantiationService } from 'vs/platform/instantiation/common/instantiation';",
+		"import { KeybindingWeight } from 'vs/platform/keybinding/common/keybindingsRegistry';",
+		"import { ParameterHintsWidget } from './parameterHintsWidget';",
+		"",
+	},
+	lines2 = {
+		"import { KeyCode, KeyMod } from 'vs/base/common/keyCodes';",
+		"import { Lazy } from 'vs/base/common/lazy';",
+		"import { Disposable } from 'vs/base/common/lifecycle';",
+		"import { ICodeEditor } from 'vs/editor/browser/editorBrowser';",
+		"import { EditorAction, EditorCommand, registerEditorAction, registerEditorCommand, registerEditorContribution, ServicesAccessor } from 'vs/editor/browser/editorExtensions';",
+		"import { IEditorContribution } from 'vs/editor/common/editorCommon';",
+		"import { EditorContextKeys } from 'vs/editor/common/editorContextKeys';",
+		"import * as languages from 'vs/editor/common/languages';",
+		"import { ILanguageFeaturesService } from 'vs/editor/common/services/languageFeatures';",
+		"import { ParameterHintsModel, TriggerContext } from 'vs/editor/contrib/parameterHints/browser/parameterHintsModel';",
+		"import { Context } from 'vs/editor/contrib/parameterHints/browser/provideSignatureHelp';",
+		"import * as nls from 'vs/nls';",
+		"import { ContextKeyExpr } from 'vs/platform/contextkey/common/contextkey';",
+		"import { IInstantiationService } from 'vs/platform/instantiation/common/instantiation';",
+		"import { KeybindingWeight } from 'vs/platform/keybinding/common/keybindingsRegistry';",
+		"import { ParameterHintsWidget } from './parameterHintsWidget';",
+		"",
+	},
+	trim_ws = false,
+	changes = {
+		{ 1, 1, 1, 2 },
+		{ 7, 8, 8, 10 },
+	},
+	moves = {},
+}
