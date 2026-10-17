@@ -20,9 +20,9 @@ Scenarios: `references: gr classifies every Python variable usage`
 
 ## 4. Exercise TypeScript through the rendered view
 Scenarios: `references: gr classifies every TypeScript variable usage`
-- [ ] 4.1 Write the test `references: gr classifies every TypeScript variable usage` in `tests/integration/references/test_kind.lua`; press the real normal-mode `gr` on populated TypeScript data and see the old direct-classifier test path fail the new entry-point assertion
-- [ ] 4.2 Reuse the real-`gr` helper for vtsls and assert the exact rendered write/read rows
-- [ ] 4.3 Run `make test FILE=tests/integration/references/test_kind.lua CASE="gr classifies every TypeScript variable usage"` and see it pass
+- [x] 4.1 Write the test `references: gr classifies every TypeScript variable usage` in `tests/integration/references/test_kind.lua`; press the real normal-mode `gr` on populated TypeScript data and see the old direct-classifier test path fail the new entry-point assertion
+- [x] 4.2 Reuse the real-`gr` helper for vtsls and assert the exact rendered write/read rows
+- [x] 4.3 Run `make test FILE=tests/integration/references/test_kind.lua CASE="gr classifies every TypeScript variable usage"` and see it pass
 
 ## 5. Exercise Rust through the rendered view
 Scenarios: `references: gr classifies every Rust variable usage`

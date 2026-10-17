@@ -263,16 +263,16 @@ T[python_scenario]["renders every usage kind"] = function()
 	})
 end
 
-local typescript_scenario = "references: tsserver kinds classify a TypeScript variable"
+local typescript_scenario = "references: gr classifies every TypeScript variable usage"
 T[typescript_scenario] = MiniTest.new_set()
-T[typescript_scenario]["classifies every usage"] = function()
-	require_server("vtsls")
+T[typescript_scenario]["renders every usage kind"] = function()
 	local root = H.git_repo({
 		["package.json"] = [[{"private":true}]],
 		["tsconfig.json"] = [[{"compilerOptions":{"strict":true}}]],
 		["main.ts"] = "let hits = 0;\nhits++;\nconsole.log(hits);\n",
 	})
-	eq(classify(root, "main.ts", 1, 5, "vtsls"), {
+	local actual = open_references(root, "main.ts", 1, 5, "vtsls", nil, nil, "typescript")
+	eq(actual, {
 		{ "main.ts", 2, 1, "write" },
 		{ "main.ts", 3, 13, "read" },
 	})
