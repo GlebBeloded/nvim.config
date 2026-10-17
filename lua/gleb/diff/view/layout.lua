@@ -133,16 +133,29 @@ end
 ---@param rows gleb.diff.view.Row[]
 ---@param moves gleb.diff.Move[]
 local function mark_moves(rows, moves)
+	local left_rows = {}
+	local right_rows = {}
+	for _, row in ipairs(rows) do
+		if row.left then
+			left_rows[row.left - 1] = row
+		end
+		if row.right then
+			right_rows[row.right - 1] = row
+		end
+	end
 	for _, move in ipairs(moves) do
-		for _, row in ipairs(rows) do
-			local left = row.left and row.left - 1 or nil
-			local right = row.right and row.right - 1 or nil
-			if left and left >= move.start1 and left < move.end1 then
+		for left = move.start1, move.end1 - 1 do
+			local row = left_rows[left]
+			if row then
 				mark_moved(row)
 				if left == move.start1 then
 					row.move_marker = move_marker("→" .. (move.start2 + 1))
 				end
-			elseif right and right >= move.start2 and right < move.end2 then
+			end
+		end
+		for right = move.start2, move.end2 - 1 do
+			local row = right_rows[right]
+			if row then
 				mark_moved(row)
 				if right == move.start2 then
 					row.move_marker = move_marker("←" .. (move.start1 + 1))
@@ -196,20 +209,28 @@ function M.build(fragments, line_count1, line_count2, context, states, moves)
 	}
 end
 
----@param layout gleb.diff.view.Layout
+---@param fragments gleb.diff.LineFragment[]
 ---@param side "left"|"right"
 ---@param line integer 1-based line
 ---@return integer? change 1-based fragment index
-function M.change_at_line(layout, side, line)
+function M.change_at_fragments(fragments, side, line)
 	local start_key = side == "left" and "start1" or "start2"
 	local end_key = side == "left" and "end1" or "end2"
-	for index, fragment in ipairs(layout.fragments) do
+	for index, fragment in ipairs(fragments) do
 		local start_line = fragment[start_key]
 		local end_line = fragment[end_key]
 		if (start_line == end_line and line == start_line + 1) or (line > start_line and line <= end_line) then
 			return index
 		end
 	end
+end
+
+---@param layout gleb.diff.view.Layout
+---@param side "left"|"right"
+---@param line integer 1-based line
+---@return integer? change 1-based fragment index
+function M.change_at_line(layout, side, line)
+	return M.change_at_fragments(layout.fragments, side, line)
 end
 
 ---@param model gleb.diff.view.Layout

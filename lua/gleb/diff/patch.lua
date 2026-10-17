@@ -35,6 +35,16 @@ local function overlapping_fragments(fragments, current)
 	return result
 end
 
+local function fragment_before(fragment, current)
+	return fragment.end1 < current.start1
+		or (fragment.end1 == current.start1 and fragment.start1 < fragment.end1 and current.start1 < current.end1)
+end
+
+local function fragment_after(fragment, current)
+	return fragment.start1 > current.end1
+		or (fragment.start1 == current.end1 and fragment.start1 < fragment.end1 and current.start1 < current.end1)
+end
+
 local function slices_equal(lines1, start1, end1, lines2, start2, end2)
 	if end1 - start1 ~= end2 - start2 then
 		return false
@@ -78,13 +88,12 @@ local function index_range(fragments, overlapping, union_start, union_end)
 	return union_start + delta_before, union_end + delta_before + overlap_delta
 end
 
----@param head string[]
 ---@param index string[]
 ---@param right string[]
 ---@param current gleb.diff.PatchChange
+---@param overlapping gleb.diff.LineFragment[]
 ---@return string
-function M.state(head, index, right, current)
-	local overlapping = overlapping_fragments(index_fragments(head, index), current)
+local function state_from_fragments(index, right, current, overlapping)
 	if #overlapping == 0 then
 		return UNCHECKED
 	end
@@ -105,11 +114,60 @@ end
 ---@param index string[]
 ---@param right string[]
 ---@param current gleb.diff.PatchChange
----@param include boolean
+---@return string
+function M.state(head, index, right, current)
+	local overlapping = overlapping_fragments(index_fragments(head, index), current)
+	return state_from_fragments(index, right, current, overlapping)
+end
+
+---@param head string[]
+---@param index string[]
+---@param right string[]
+---@param changes gleb.diff.PatchChange[] ordered, non-overlapping ranges
 ---@return string[]
+function M.states(head, index, right, changes)
+	local staged = index_fragments(head, index)
+	local states = {}
+	local staged_index = 1
+	for change_index, current in ipairs(changes) do
+		while staged[staged_index] and fragment_before(staged[staged_index], current) do
+			staged_index = staged_index + 1
+		end
+		local overlapping = {}
+		local candidate = staged_index
+		while staged[candidate] and not fragment_after(staged[candidate], current) do
+			if ranges_overlap(staged[candidate].start1, staged[candidate].end1, current.start1, current.end1) then
+				overlapping[#overlapping + 1] = staged[candidate]
+			end
+			candidate = candidate + 1
+		end
+		states[change_index] = state_from_fragments(index, right, current, overlapping)
+	end
+	return states
+end
+
+local function overlaps_outside_current(overlapping, current)
+	for _, fragment in ipairs(overlapping) do
+		if fragment.start1 < current.start1 or fragment.end1 > current.end1 then
+			return true
+		end
+	end
+	return false
+end
+
+---@param head string[]
+---@param index string[]
+---@param right string[]
+---@param current gleb.diff.PatchChange
+---@param include boolean
+---@return string[]?
+---@return string?
 function M.update_index(head, index, right, current, include)
 	local fragments = index_fragments(head, index)
 	local overlapping = overlapping_fragments(fragments, current)
+	if overlaps_outside_current(overlapping, current) then
+		return nil, "overlaps other staged lines"
+	end
 	local union_start, union_end = union_range(current, overlapping)
 	local index_start, index_end = index_range(fragments, overlapping, union_start, union_end)
 	local result = {}

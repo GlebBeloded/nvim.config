@@ -115,6 +115,56 @@ T["diff: Diff view revert off a change does nothing"] = function()
 	eq(notifications(), {})
 end
 
+T["diff: Diff view actions reject a file absent from HEAD"] = function()
+	root = F.copy("diffgo", vim.fn.tempname())
+	local path = "internal/user/new.go"
+	H.write_files(root, { [path] = "package user\n\nvar x = 1\n" })
+	child.start_config({ env = F.go_env() })
+	child.wait_very_lazy()
+	child.cmd("cd " .. vim.fn.fnameescape(root) .. " | edit " .. vim.fn.fnameescape(path))
+	local notifications = H.record_notify(child)
+	child.lua([[
+		local actions = require("gleb.actions")
+		local action = assert(actions.state.applicator.catalog:get("diff.open_file"))
+		assert(require("gleb.actions.context").execute(action, require("gleb.actions.context").capture()))
+	]])
+	local view = child.lua_get([[require("gleb.diff.view").current()]])
+	local before = child.api.nvim_buf_get_lines(view.right_buf, 0, -1, false)
+
+	child.type_keys("do")
+	child.type_keys("<Space>")
+
+	eq(child.api.nvim_buf_get_lines(view.right_buf, 0, -1, false), before)
+	eq(H.git(root, { "diff", "--cached" }), "")
+	eq(notifications(), {
+		{ msg = "Revert unavailable: file cannot be compared with HEAD", level = vim.log.levels.WARN },
+		{ msg = "Stage unavailable: file cannot be compared with HEAD", level = vim.log.levels.WARN },
+	})
+end
+
+T["diff: Diff view reverting the last change keeps the view open"] = function()
+	root, manifest = F.copy("diffgo", vim.fn.tempname())
+	H.git(root, { "checkout", "--", manifest.controller })
+	local lines = vim.fn.readfile(vim.fs.joinpath(root, manifest.controller))
+	lines[53] = "\t\treturn wrap(err)"
+	vim.fn.writefile(lines, vim.fs.joinpath(root, manifest.controller))
+	child.start_config({ env = F.go_env() })
+	child.wait_very_lazy()
+	child.cmd("cd " .. vim.fn.fnameescape(root) .. " | edit " .. vim.fn.fnameescape(manifest.controller))
+	child.lua([[
+		local actions = require("gleb.actions")
+		local action = assert(actions.state.applicator.catalog:get("diff.open_file"))
+		assert(require("gleb.actions.context").execute(action, require("gleb.actions.context").capture()))
+	]])
+	focus("right", 53)
+
+	child.type_keys("do")
+
+	eq(child.lua_get([[require("gleb.diff.view").current() ~= nil]]), true)
+	eq(child.lua_get([[#require("gleb.diff.view").current().fragments]]), 0)
+	eq(child.lua_get([[#require("gleb.diff.view").current().layout.folds]]), 0)
+end
+
 T["diff: Diff view checkboxes follow the index"] = function()
 	open_view("dirty", "d.txt")
 
@@ -198,6 +248,54 @@ T["diff: Diff view reports a staging failure"] = function()
 	eq(notifications()[1].level, vim.log.levels.ERROR)
 	eq(H.git(root, { "diff", "--cached" }), "")
 	eq(checkbox(53), "󰄱")
+end
+
+T["diff: Diff view refuses staging over other staged lines"] = function()
+	open_controller()
+	local path = manifest.controller
+	local staged = vim.fn.readfile(vim.fs.joinpath(root, path))
+	staged[53] = "\t\treturn staged(err)"
+	staged[54] = "\t} // staged"
+	vim.fn.writefile(staged, vim.fs.joinpath(root, path))
+	H.git(root, { "add", path })
+	H.git(root, { "checkout", "--", path })
+	local before = H.git(root, { "diff", "--cached" })
+	local notifications = H.record_notify(child)
+	focus("right", 53)
+
+	child.type_keys("<Space>")
+
+	eq(H.git(root, { "diff", "--cached" }), before)
+	eq(notifications(), { { msg = "Stage failed: overlaps other staged lines", level = vim.log.levels.ERROR } })
+end
+
+local function install_leader_mapping()
+	child.lua([[
+		_G.diff_leader_hits = 0
+		vim.keymap.set("n", "<leader>x", function() _G.diff_leader_hits = _G.diff_leader_hits + 1 end)
+	]])
+end
+
+T["diff: Diff view leader mapping works inside the view"] = function()
+	open_controller()
+	install_leader_mapping()
+
+	child.type_keys("<Space>x")
+
+	eq(child.lua_get([[_G.diff_leader_hits]]), 1)
+	eq(H.git(root, { "diff", "--cached" }), "")
+end
+
+T["diff: Diff view leader mapping works in another window of the same file"] = function()
+	open_controller()
+	install_leader_mapping()
+	local view = child.lua_get([[require("gleb.diff.view").current()]])
+	child.api.nvim_set_current_win(view.origin_win)
+
+	child.type_keys("<Space>x")
+
+	eq(child.lua_get([[_G.diff_leader_hits]]), 1)
+	eq(H.git(root, { "diff", "--cached" }), "")
 end
 
 return T

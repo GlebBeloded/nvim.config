@@ -34,6 +34,7 @@ local M = {
 ---@field relpath? string
 ---@field root? string
 ---@field filetype? string
+---@field actionable? boolean
 ---@field on_next_file? function
 
 ---@class gleb.diff.view.View
@@ -44,6 +45,7 @@ local M = {
 ---@field right string[]
 ---@field labels { left: string, right: string }
 ---@field filetype string
+---@field actionable boolean
 ---@field right_buf integer
 ---@field left_buf integer
 ---@field left_win integer
@@ -52,6 +54,7 @@ local M = {
 ---@field augroup integer
 ---@field ns integer
 ---@field fragments gleb.diff.LineFragment[]
+---@field action_fragments gleb.diff.LineFragment[]
 ---@field moves gleb.diff.Move[]
 ---@field layout gleb.diff.view.Layout
 ---@field on_next_file? function
@@ -112,6 +115,7 @@ local function set_mappings(view)
 		vim.api.nvim_buf_call(buf, function()
 			for lhs, mapping in pairs(mappings) do
 				local previous = vim.fn.maparg(lhs, "n", false, true)
+				local is_leader = vim.keycode(lhs) == vim.g.mapleader
 				table.insert(saved, { lhs = lhs, previous = previous })
 				vim.keymap.set("n", lhs, function()
 					if M.state.by_win[vim.api.nvim_get_current_win()] == view then
@@ -122,7 +126,7 @@ local function set_mappings(view)
 				end, {
 					buffer = buf,
 					desc = mapping.desc,
-					nowait = true,
+					nowait = not is_leader,
 					silent = true,
 				})
 			end
@@ -142,6 +146,17 @@ local function compare(left, right)
 	})
 end
 
+---@param left string[]
+---@param right string[]
+---@return gleb.diff.Result
+local function compare_default(left, right)
+	return engine.compare_lines(left, right, {
+		policy = "default",
+		highlight = "by_line",
+		limits = { timeout_ms = M.config.timeout_ms },
+	})
+end
+
 ---@param view gleb.diff.view.View
 ---@param fragments gleb.diff.LineFragment[]
 ---@param right string[]
@@ -150,11 +165,44 @@ local function checkbox_states(view, fragments, right)
 	if not view.index then
 		return nil
 	end
-	local states = {}
-	for index, fragment in ipairs(fragments) do
-		states[index] = patch.state(view.left, view.index.lines, right, fragment)
+	return patch.states(view.left, view.index.lines, right, fragments)
+end
+
+---@param displayed gleb.diff.LineFragment[]
+---@param actionable gleb.diff.LineFragment[]
+---@param states string[]?
+---@return string[]?
+local function displayed_states(displayed, actionable, states)
+	if not states then
+		return nil
 	end
-	return states
+	local result = {}
+	local action_index = 1
+	for display_index, fragment in ipairs(displayed) do
+		while
+			actionable[action_index]
+			and (
+				actionable[action_index].start1 < fragment.start1
+				or (
+					actionable[action_index].start1 == fragment.start1
+					and actionable[action_index].start2 < fragment.start2
+				)
+			)
+		do
+			action_index = action_index + 1
+		end
+		local action = actionable[action_index]
+		if
+			action
+			and action.start1 == fragment.start1
+			and action.end1 == fragment.end1
+			and action.start2 == fragment.start2
+			and action.end2 == fragment.end2
+		then
+			result[display_index] = states[action_index]
+		end
+	end
+	return result
 end
 
 ---@param view gleb.diff.view.View
@@ -182,15 +230,21 @@ local function redraw(view)
 	local open_ranges = open_fold_ranges(view)
 	local right = vim.api.nvim_buf_get_lines(view.right_buf, 0, -1, false)
 	local comparison = compare(view.left, right)
+	local action_comparison = compare_default(view.left, right)
 	view.right = right
 	view.fragments = comparison.fragments
+	view.action_fragments = action_comparison.fragments
 	view.moves = comparison.moves
 	view.layout = layout.build(
 		comparison.fragments,
 		#view.left,
 		#right,
 		M.config.context,
-		checkbox_states(view, comparison.fragments, right),
+		displayed_states(
+			comparison.fragments,
+			action_comparison.fragments,
+			checkbox_states(view, action_comparison.fragments, right)
+		),
 		comparison.moves
 	)
 	view.approximate = comparison.too_big or comparison.timed_out
@@ -380,7 +434,8 @@ end
 ---@return gleb.diff.view.View?
 local function build(spec)
 	local comparison = compare(spec.left, spec.right)
-	if #comparison.fragments == 0 and M.config.highlight ~= "none" then
+	local action_comparison = compare_default(spec.left, spec.right)
+	if #action_comparison.fragments == 0 then
 		return nil
 	end
 	local path = vim.fs.normalize(spec.path)
@@ -396,10 +451,12 @@ local function build(spec)
 		right = spec.right,
 		labels = spec.labels,
 		filetype = spec.filetype or "",
+		actionable = spec.actionable ~= false,
 		right_buf = spec.right_buf or readonly_buffer(spec.right),
 		on_next_file = spec.on_next_file,
 		ns = vim.api.nvim_create_namespace(""),
 		fragments = comparison.fragments,
+		action_fragments = action_comparison.fragments,
 		moves = comparison.moves,
 		index = index,
 		approximate = comparison.too_big or comparison.timed_out,
@@ -410,7 +467,11 @@ local function build(spec)
 		#spec.left,
 		#spec.right,
 		M.config.context,
-		checkbox_states(view, comparison.fragments, spec.right),
+		displayed_states(
+			comparison.fragments,
+			action_comparison.fragments,
+			checkbox_states(view, action_comparison.fragments, spec.right)
+		),
 		comparison.moves
 	)
 	return view
@@ -437,6 +498,10 @@ end
 ---@param view gleb.diff.view.View
 ---@param win integer
 function M.apply(view, win)
+	if view.actionable == false then
+		vim.notify("Revert unavailable: file cannot be compared with HEAD", vim.log.levels.WARN)
+		return
+	end
 	local side = win == view.left_win and "left" or "right"
 	local line = vim.api.nvim_win_get_cursor(win)[1]
 	local index = layout.change_at(view.layout, side, line)
@@ -452,13 +517,17 @@ end
 ---@param view gleb.diff.view.View
 ---@param win integer
 function M.toggle_include(view, win)
+	if view.actionable == false then
+		vim.notify("Stage unavailable: file cannot be compared with HEAD", vim.log.levels.WARN)
+		return
+	end
 	if not view.root then
 		return
 	end
 	local side = win == view.left_win and "left" or "right"
 	local line = vim.api.nvim_win_get_cursor(win)[1]
-	local index = layout.change_at(view.layout, side, line)
-	local fragment = index and view.fragments[index] or nil
+	local index = layout.change_at_fragments(view.action_fragments, side, line)
+	local fragment = index and view.action_fragments[index] or nil
 	if not fragment then
 		return
 	end
@@ -469,7 +538,11 @@ function M.toggle_include(view, win)
 		vim.notify((include and "Stage" or "Unstage") .. " failed: " .. (err or ""), vim.log.levels.ERROR)
 		return
 	end
-	local new_lines = patch.update_index(view.left, current.lines, view.right, fragment, include)
+	local new_lines, update_err = patch.update_index(view.left, current.lines, view.right, fragment, include)
+	if not new_lines then
+		vim.notify((include and "Stage" or "Unstage") .. " failed: " .. update_err, vim.log.levels.ERROR)
+		return
+	end
 	local right_final_newline = vim.bo[view.right_buf].eol or vim.bo[view.right_buf].fixeol
 	local new_final_newline = fragment.end2 == #view.right and right_final_newline or current.final_newline
 	local text = patch.make_patch(view.relpath, current.lines, new_lines, current.final_newline, new_final_newline)

@@ -61,6 +61,27 @@ T["diff: Diff patch state of a partly staged change"]["an overlapping staged edi
 	eq(patch.state(head, index, right, change(1, 2, 1, 2)), "󰡖")
 end
 
+T["diff: Diff patch computes checkbox states in one pass"] = function()
+	local engine = require("gleb.diff.engine")
+	local compare_lines = engine.compare_lines
+	local calls = 0
+	rawset(engine, "compare_lines", function(...)
+		calls = calls + 1
+		return compare_lines(...)
+	end)
+	local patch = patch_module()
+	local states = patch.states(
+		{ "old one", "same", "old two" },
+		{ "new one", "same", "old two" },
+		{ "new one", "same", "new two" },
+		{ change(0, 1, 0, 1), change(2, 3, 2, 3) }
+	)
+	rawset(engine, "compare_lines", compare_lines)
+
+	eq(states, { "󰄲", "󰄱" })
+	eq(calls, 1)
+end
+
 T["diff: Diff patch stages one change"] = MiniTest.new_set()
 
 T["diff: Diff patch stages one change"]["a changed line stages and unstages"] = function()
@@ -90,8 +111,10 @@ T["diff: Diff patch stages one change"]["overlapping staged edits return to HEAD
 	local right = { "first", "new one", "old two", "last" }
 	local current = change(1, 2, 1, 2)
 
-	eq(patch.update_index(head, index, right, current, true), right)
-	eq(patch.update_index(head, index, right, current, false), head)
+	local staged, stage_err = patch.update_index(head, index, right, current, true)
+	local unstaged, unstage_err = patch.update_index(head, index, right, current, false)
+	eq({ staged, stage_err }, { nil, "overlaps other staged lines" })
+	eq({ unstaged, unstage_err }, { nil, "overlaps other staged lines" })
 end
 
 T["diff: Diff patch stages one change"]["a patch preserves a missing final newline"] = function()

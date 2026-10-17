@@ -90,6 +90,23 @@ T["diff: Diff view trim policy hides a trailing space"] = function()
 	)
 end
 
+T["diff: Diff view policy hiding every change keeps the view open"] = function()
+	open_controller()
+	choose_setting("diff.ignore_whitespaces", "Ignore Whitespaces")
+	child.lua([[require("gleb.diff.view").close(require("gleb.diff.view").current())]])
+	H.git(root, { "checkout", "--", manifest.controller })
+	local lines = vim.fn.readfile(vim.fs.joinpath(root, manifest.controller))
+	lines[53] = lines[53]:gsub("return err", "return  err")
+	vim.fn.writefile(lines, vim.fs.joinpath(root, manifest.controller))
+	child.cmd("edit! " .. vim.fn.fnameescape(manifest.controller))
+
+	open_controller()
+
+	eq(child.lua_get([[require("gleb.diff.view").current() ~= nil]]), true)
+	eq(child.lua_get([[#require("gleb.diff.view").current().fragments]]), 0)
+	eq(child.lua_get([[#require("gleb.diff.view").current().layout.folds]]), 0)
+end
+
 T["diff: Diff view whitespace policy persists"] = function()
 	open_controller()
 	choose_setting("diff.ignore_whitespaces", "Ignore Whitespaces")

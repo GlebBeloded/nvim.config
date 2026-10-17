@@ -154,6 +154,7 @@ local function open_file(ctx)
 		left = data.left,
 		right = data.right,
 		right_buf = ctx.buf,
+		actionable = data.actionable,
 		filetype = data.filetype,
 		labels = { left = data.hash .. " · HEAD", right = "Your version" },
 	})

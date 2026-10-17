@@ -61,3 +61,10 @@ Scenarios: `diff: Diff view staged change matches the approved render`, `diff: D
 - Set `arrow_kind` only when a row becomes moved, so plain change rows keep their original layout model.
 - Draw a padding row's blank arrow as `Normal` and its blank checkbox slot as a `DiffViewPadding` `╱`, one ordered `virt_lines` extmark per padding run, as Proposed E2 shows.
 - Keep the shared scenario names on the integration cases and name the pure `patch.lua` cases after added `Diff patch …` scenarios.
+- Report unsupported revert and staging actions as unavailable at WARN, naming the missing comparable `HEAD` text so the no-op is explicit.
+
+## 6. Review fixes
+
+- [x] Guard revert and staging for files without a usable `HEAD` text, and reject staged overlap outside the selected change.
+- [x] Keep hidden and fully reverted views open, while deriving staging and checkbox state from the default policy in one pass.
+- [x] Build move row lookups once and preserve longer `<leader>` mappings in every window showing the right buffer.

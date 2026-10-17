@@ -19,6 +19,14 @@
 - **WHEN** `do` is pressed in normal mode on right line 50 of the `controller.go` view
 - **THEN** the right buffer's `changedtick` is unchanged and nothing is notified
 
+#### Scenario: Diff view actions reject a file absent from HEAD
+- **WHEN** an untracked text file is opened in the diff view and `do` and `<Space>` are pressed on its added lines
+- **THEN** the buffer and index are unchanged, and each action notifies that the file cannot be compared with `HEAD`
+
+#### Scenario: Diff view reverting the last change keeps the view open
+- **WHEN** a diff view containing one changed line runs `diff.apply` on that line
+- **THEN** the view remains open with zero fragments and no folds
+
 ### Requirement: Diff view include checkbox
 Each change of a file present in `HEAD` SHALL show its index state in its checkbox cell, comparing `HEAD`, the index and the right buffer:
 - `☑` (`U+F0132`) when the index holds the change's right lines in place of its left lines;
@@ -43,6 +51,10 @@ The states SHALL refresh after each comparison and each toggle.
 - **WHEN** `require("gleb.diff.patch").state` runs for a changed line whose index holds a different edit of it, or a staged edit that also covers the next line
 - **THEN** both return `◪`
 
+#### Scenario: Diff patch computes checkbox states in one pass
+- **WHEN** checkbox states are computed for several changes against one index snapshot
+- **THEN** the `HEAD` to index comparison runs once and returns one state per change
+
 ### Requirement: Diff view hunk staging
 `diff.toggle_include` SHALL unstage the change at the cursor when it is `☑`, and stage it otherwise. It builds the new index text for that change only. It SHALL pipe the `vim.text.diff` patch from the current to the new index text to `git apply --cached --whitespace=nowarn -`, run as an argument list in the repository root, so that other staged changes stay. A failure SHALL notify `Stage failed: <stderr>` or `Unstage failed: <stderr>` at ERROR.
 
@@ -62,11 +74,14 @@ The states SHALL refresh after each comparison and each toggle.
 - **THEN** `git diff --cached -U0` adds exactly `\t\tc.stats.Skipped.Inc()` and removes exactly `\tc.stats.LastRun.Touch()`, and line 53 is still unstaged
 
 #### Scenario: Diff patch stages one change
-- **WHEN** `require("gleb.diff.patch").update_index(head, index, right, change, include)` stages and unstages a changed line, with an earlier staged insertion and with an overlapping staged edit, and `make_patch` builds a patch for a file without a final newline
+- **WHEN** `require("gleb.diff.patch").update_index(head, index, right, change, include)` stages and unstages a changed line, with an earlier staged insertion, and `make_patch` builds a patch for a file without a final newline
 - **THEN**
   - staging yields the right lines in place of the change and keeps the earlier insertion;
-  - unstaging yields the `HEAD` lines, also over the overlapping edit;
   - the patch has two `\ No newline at end of file` markers and passes `git apply --cached --check`.
+
+#### Scenario: Diff view refuses staging over other staged lines
+- **WHEN** the index has a staged edit extending beyond the change at the cursor and `<Space>` is pressed on that change
+- **THEN** the index is unchanged and `Stage failed: overlaps other staged lines` is notified at ERROR
 
 #### Scenario: Diff patch stages an insertion and a deletion
 - **WHEN** `require("gleb.diff.patch").update_index` stages and then unstages an insertion, and then a deletion
@@ -108,6 +123,10 @@ The actions `diff.ignore_none`, `diff.ignore_trim`, `diff.ignore_whitespaces` an
 - **WHEN** a space is appended to right line 50 of the `controller.go` view, 300 ms pass, and `diff.ignore_trim` runs
 - **THEN** before the action there is a change at line 50; after it there is none, and the view has its three original fragments
 
+#### Scenario: Diff view policy hiding every change keeps the view open
+- **WHEN** a file differs from `HEAD` only by ignored whitespace and opens while `ignore_whitespaces` is active
+- **THEN** the view remains open with zero fragments and no folds
+
 #### Scenario: Diff view whitespace policy persists
 - **WHEN** `diff.ignore_whitespaces` runs in a view, Neovim restarts with the same state directory, and a view opens
 - **THEN** `diff.json` holds `"policy":"ignore_whitespaces"`, the new view compares with that policy, and Find Action shows "Ignore Whitespaces" as on
@@ -133,6 +152,17 @@ The actions `diff.highlight_words`, `diff.highlight_split`, `diff.highlight_char
 #### Scenario: Diff view highlight mode persists
 - **WHEN** `diff.highlight_chars` runs, Neovim restarts with the same state directory, and a view opens
 - **THEN** `diff.json` holds `"highlight":"by_char"` and Find Action shows "Highlight Symbols" as on
+
+### Requirement: Diff view leader mappings
+The `<Space>` include mapping SHALL not preempt longer `<leader>` mappings in a diff window or another window showing the same right buffer.
+
+#### Scenario: Diff view leader mapping works inside the view
+- **WHEN** a normal-mode `<leader>x` mapping is installed and pressed in the right diff window
+- **THEN** that mapping runs and the change is not staged
+
+#### Scenario: Diff view leader mapping works in another window of the same file
+- **WHEN** a normal-mode `<leader>x` mapping is installed and pressed in the original window showing the diff view's right buffer
+- **THEN** that mapping runs and the change is not staged
 
 ### Requirement: Diff view action colours
 The groups SHALL derive from the gruvbox-material palette and be redefined on `ColorScheme`:

@@ -39,10 +39,10 @@ Today, staging one hunk is possible only in differ's or diffview's own panels. T
      - `☑` when `O` is one fragment with `start1 = s1`, `end1 = e1` and `I[start2+1 .. end2] == R[s2+1 .. e2]`;
      - `◪` otherwise.
    - New index text:
-     - Let `U = [u1,u2)` be the union of `[s1,e1)` and `O`'s side-1 ranges. Its index range `[i1,i2)` is `U` shifted by the line deltas of the `S` fragments before it, plus `O`'s own extents.
+     - If any fragment in `O` extends outside `[s1,e1)`, refuse with `Stage failed: overlaps other staged lines` rather than changing that staged edit.
+     - Otherwise, let `U = [u1,u2)` be the union of `[s1,e1)` and `O`'s side-1 ranges. Its index range `[i1,i2)` is `U` shifted by the line deltas of the `S` fragments before it, plus `O`'s own extents.
      - Stage: `I[1..i1] ++ H[u1+1..s1] ++ R[s2+1..e2] ++ H[e1+1..u2] ++ I[i2+1..]`.
      - Unstage: `I[1..i1] ++ H[u1+1..u2] ++ I[i2+1..]`.
-     - Staged edits overlapping `U` but outside `C` therefore go back to `HEAD`. That is rare, and the result is shown at once by the checkbox.
    - Patch:
      - `vim.text.diff(old, new, { result_type = "unified", ctxlen = 3 })`, where `old` and `new` are the lines joined with `"\n"` plus a final `"\n"`. When the index blob or the buffer (`'eol'` off and `'fixeol'` off) has no final newline, there is none, and xdiff writes `\ No newline at end of file`.
      - It is prefixed with `diff --git a/<p> b/<p>`, `--- a/<p>` and `+++ b/<p>`, where `<p>` is the repo-relative path.
