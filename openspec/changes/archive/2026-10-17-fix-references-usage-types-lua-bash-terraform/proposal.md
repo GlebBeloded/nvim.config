@@ -21,6 +21,7 @@ Checked with lua-language-server 3.17.1, bash-language-server 5.6.0, terraform-l
   - 44 Bash;
   - 64 Terraform, each run with both the `hcl` and the `terraform` parser.
 - `languages-registry` leaves `references.usage_types` of the `lua`, `shell` and `terraform` languages as `{ disabled = "queued: fix-references-usage-types-lua-bash-terraform" }`.
+- The disabled gates are at `lua/gleb/languages/lua/init.lua:18`, `lua/gleb/languages/shell/init.lua:20` and `lua/gleb/languages/terraform/init.lua:19`; the installed queries expose only generic captures at `queries/lua/usages.scm:1`, `queries/bash/usages.scm:1` and `queries/hcl/usages.scm:3`/`:7`.
 
 ## What Changes
 
@@ -58,6 +59,8 @@ Checked with lua-language-server 3.17.1, bash-language-server 5.6.0, terraform-l
 - Fixture: `tests/fixtures/build.sh` (`luaproj`, `bashproj` and `tfproj` gain new files and manifest symbols).
 - Plugins: none. Core keymaps: none.
 - Unchanged scenarios:
+  - `languages: Requirement: References facet` still holds: enabling the three facets supplies the required per-parser queries and case tables, and Terraform continues to inherit HCL through `queries/terraform/usages.scm`.
+  - `languages: A missing usages query breaks the contract` still holds: the contract and its diagnostic are unchanged; this change supplies the queries required before the three gates become `true`.
   - `file-tree: gr keeps its global meaning in git status tree` still holds: the global `gr` mapping and its callback are untouched; only query files, the registry flag and classification change.
   - `references: Treesitter fallback classifies writes where a parser exists` still holds: `x = 1` (Lua) and `x=1` (Bash) still match only the write patterns, and `print(x)` / `echo "$x"` only the read catch-all.
   - `references: HCL fallback classifies variable labels and traversals` still holds: the `variable` label keeps its `write` pattern (no declaration capture precedes it), and `value = var.region` outside an output block only matches the `var.` read pattern.

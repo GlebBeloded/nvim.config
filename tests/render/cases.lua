@@ -161,6 +161,205 @@ vim.wo[win].statusline = "%#Normal# NORMAL  ⎇ main%=python "
 ]])
 end
 
+--- Lua function usages grouped as calls and a function declaration.
+---@param driver render.Driver
+local function lua_l1_apply(driver)
+	local root, manifest = F.copy("luaproj", vim.fn.tempname())
+	local declaration = manifest.references.apply[1]
+	driver.cmd("cd " .. vim.fn.fnameescape(root) .. " | edit " .. vim.fn.fnameescape(declaration.path))
+	driver.lua([[
+vim.wo.number = true
+vim.wo.relativenumber = false
+vim.wo.numberwidth = 3
+require("ibl").setup_buffer(0, { enabled = false })
+vim.o.showtabline = 0
+vim.o.laststatus = 2
+vim.wo.winbar = "%#Normal#▎ discount.lua"
+]])
+	driver.lua([[vim.api.nvim_win_set_cursor(0, ...)]], { { declaration.line, declaration.col - 1 } })
+	assert(driver.wait([[#vim.lsp.get_clients({ bufnr = 0, name = "lua_ls" }) > 0]], H.lsp_timeout(10000)))
+	driver.lua([[vim.diagnostic.enable(false, { bufnr = 0 })]])
+	driver.lua(
+		[[
+		local minimum, timeout = ...
+_G.references_ready = nil
+local bufnr = vim.api.nvim_get_current_buf()
+local started = vim.uv.hrtime()
+local populated = 0
+local function request()
+	local client = vim.lsp.get_clients({ bufnr = bufnr, name = "lua_ls" })[1]
+	local params = vim.lsp.util.make_position_params(0, client.offset_encoding)
+	params.context = { includeDeclaration = false }
+	client:request("textDocument/references", params, function(_, result)
+		populated = result and #result >= minimum and populated + 1 or 0
+		if populated >= 2 then
+			_G.references_ready = true
+		elseif (vim.uv.hrtime() - started) / 1e6 < timeout then
+			vim.defer_fn(request, 10)
+		end
+	end, bufnr)
+end
+request()
+]],
+		{ #manifest.references.apply - 2, H.lsp_timeout(10000) }
+	)
+	assert(driver.wait("_G.references_ready == true", H.lsp_timeout(10000)))
+	driver.type_keys("gr")
+	assert(driver.wait([[vim.bo.filetype == "gleb-references"]], H.lsp_timeout(10000)))
+	assert(driver.wait([[not require("gleb.references.view").state.classifying]], H.lsp_timeout(10000)))
+	driver.lua([[
+local state = require("gleb.references.view").state
+local origin_buf = vim.api.nvim_win_get_buf(state.origin_win)
+vim.api.nvim_buf_set_lines(origin_buf, -1, -1, false, {
+	"", "", "", "", "", "", "", "", "",
+})
+require("gitsigns").detach(origin_buf)
+vim.wo[state.origin_win].signcolumn = "yes:1"
+for index, node in ipairs(state.visible_nodes) do
+	if node.kind == "usage" then
+		vim.api.nvim_win_set_cursor(state.tree_win, { index, 0 })
+		break
+	end
+end
+local win = state.origin_win
+require("lualine").hide({ place = { "statusline" } })
+vim.o.statusline = "%#Normal# NORMAL  ⎇ main%=lua "
+vim.wo[win].statusline = "%#Normal# NORMAL  ⎇ main%=lua "
+]])
+end
+
+--- Bash variable usages grouped as export, read and write.
+---@param driver render.Driver
+local function bash_b1_rate(driver)
+	local root, manifest = F.copy("bashproj", vim.fn.tempname())
+	local declaration = manifest.references.rate[1]
+	driver.cmd("cd " .. vim.fn.fnameescape(root) .. " | edit " .. vim.fn.fnameescape(declaration.path))
+	driver.lua([[
+vim.wo.number = true
+vim.wo.relativenumber = false
+vim.wo.numberwidth = 3
+require("ibl").setup_buffer(0, { enabled = false })
+vim.o.showtabline = 0
+vim.o.laststatus = 2
+vim.wo.winbar = "%#Normal#▎ tax.sh"
+]])
+	driver.lua([[vim.api.nvim_win_set_cursor(0, ...)]], { { declaration.line, declaration.col - 1 } })
+	assert(driver.wait([[#vim.lsp.get_clients({ bufnr = 0, name = "bashls" }) > 0]], H.lsp_timeout(10000)))
+	driver.lua(
+		[[
+		local minimum, timeout = ...
+_G.references_ready = nil
+local bufnr = vim.api.nvim_get_current_buf()
+local started = vim.uv.hrtime()
+local populated = 0
+local function request()
+	local client = vim.lsp.get_clients({ bufnr = bufnr, name = "bashls" })[1]
+	local params = vim.lsp.util.make_position_params(0, client.offset_encoding)
+	params.context = { includeDeclaration = false }
+	client:request("textDocument/references", params, function(_, result)
+		populated = result and #result >= minimum and populated + 1 or 0
+		if populated >= 2 then
+			_G.references_ready = true
+		elseif (vim.uv.hrtime() - started) / 1e6 < timeout then
+			vim.defer_fn(request, 10)
+		end
+	end, bufnr)
+end
+request()
+]],
+		{ #manifest.references.rate - 1, H.lsp_timeout(10000) }
+	)
+	assert(driver.wait("_G.references_ready == true", H.lsp_timeout(10000)))
+	driver.type_keys("gr")
+	assert(driver.wait([[vim.bo.filetype == "gleb-references"]], H.lsp_timeout(10000)))
+	assert(driver.wait([[not require("gleb.references.view").state.classifying]], H.lsp_timeout(10000)))
+	driver.lua([[
+local state = require("gleb.references.view").state
+local origin_buf = vim.api.nvim_win_get_buf(state.origin_win)
+vim.api.nvim_buf_set_lines(origin_buf, 5, 6, false, { "" })
+vim.api.nvim_buf_set_lines(origin_buf, -1, -1, false, {
+	"", "", "", "", "", "", "", "", "", "", "", "", "", "", "",
+})
+require("gitsigns").detach(origin_buf)
+vim.wo[state.origin_win].signcolumn = "yes:1"
+for index, node in ipairs(state.visible_nodes) do
+	if node.kind == "usage" then
+		vim.api.nvim_win_set_cursor(state.tree_win, { index, 0 })
+		break
+	end
+end
+local win = state.origin_win
+require("lualine").hide({ place = { "statusline" } })
+vim.o.statusline = "%#Normal# NORMAL  ⎇ main%=sh "
+vim.wo[win].statusline = "%#Normal# NORMAL  ⎇ main%=sh "
+	]])
+end
+
+--- Terraform module usages grouped as dependency, module reference and output value.
+---@param driver render.Driver
+local function terraform_h1_vpc(driver)
+	local root, manifest = F.copy("tfproj", vim.fn.tempname())
+	local declaration = manifest.references.vpc[1]
+	driver.cmd("cd " .. vim.fn.fnameescape(root) .. " | edit " .. vim.fn.fnameescape(declaration.path))
+	driver.lua([[
+vim.wo.number = true
+vim.wo.relativenumber = false
+vim.wo.numberwidth = 3
+require("ibl").setup_buffer(0, { enabled = false })
+vim.o.showtabline = 0
+vim.o.laststatus = 2
+vim.wo.winbar = "%#Normal#▎ network.tf"
+]])
+	driver.lua([[vim.api.nvim_win_set_cursor(0, ...)]], { { declaration.line, declaration.col - 1 } })
+	assert(driver.wait([[#vim.lsp.get_clients({ bufnr = 0, name = "terraformls" }) > 0]], H.lsp_timeout(10000)))
+	driver.lua([[vim.diagnostic.enable(false, { bufnr = 0 })]])
+	driver.lua(
+		[[
+		local minimum, timeout = ...
+_G.references_ready = nil
+local bufnr = vim.api.nvim_get_current_buf()
+local started = vim.uv.hrtime()
+local populated = 0
+local function request()
+	local client = vim.lsp.get_clients({ bufnr = bufnr, name = "terraformls" })[1]
+	local params = vim.lsp.util.make_position_params(0, client.offset_encoding)
+	params.context = { includeDeclaration = false }
+	client:request("textDocument/references", params, function(_, result)
+		populated = result and #result >= minimum and populated + 1 or 0
+		if populated >= 2 then
+			_G.references_ready = true
+		elseif (vim.uv.hrtime() - started) / 1e6 < timeout then
+			vim.defer_fn(request, 10)
+		end
+	end, bufnr)
+end
+request()
+]],
+		{ #manifest.references.vpc - 1, H.lsp_timeout(10000) }
+	)
+	assert(driver.wait("_G.references_ready == true", H.lsp_timeout(10000)))
+	driver.type_keys("gr")
+	assert(driver.wait([[vim.bo.filetype == "gleb-references"]], H.lsp_timeout(10000)))
+	assert(driver.wait([[not require("gleb.references.view").state.classifying]], H.lsp_timeout(10000)))
+	driver.lua([[
+local state = require("gleb.references.view").state
+local origin_buf = vim.api.nvim_win_get_buf(state.origin_win)
+vim.lsp.codelens.clear(nil, origin_buf)
+require("gitsigns").detach(origin_buf)
+vim.wo[state.origin_win].signcolumn = "yes:1"
+for index, node in ipairs(state.visible_nodes) do
+	if node.kind == "usage" then
+		vim.api.nvim_win_set_cursor(state.tree_win, { index, 0 })
+		break
+	end
+end
+local win = state.origin_win
+require("lualine").hide({ place = { "statusline" } })
+vim.o.statusline = "%#Normal# NORMAL  ⎇ main%=terraform "
+vim.wo[win].statusline = "%#Normal# NORMAL  ⎇ main%=terraform "
+]])
+end
+
 --- `<C-q>` on `sample.lua` shown in two `:vsplit` windows, `init.lua` the other listed buffer (no LSP).
 ---@param driver render.Driver
 local function close_buffer_split(driver)
@@ -240,6 +439,9 @@ return {
 		setup = close_buffer_split,
 	},
 	["neo-tree"] = { description = "neo-tree filesystem tree of this checkout", setup = neo_tree },
+	["lua_l1_apply"] = { description = "Lua function usages grouped by usage type", setup = lua_l1_apply },
+	["bash_b1_rate"] = { description = "Bash variable usages grouped by usage type", setup = bash_b1_rate },
+	["terraform_h1_vpc"] = { description = "Terraform module usages grouped by usage type", setup = terraform_h1_vpc },
 	["py_p1_class"] = { description = "Python class usages grouped by usage type", setup = py_p1_class },
 	["ts_p1_class"] = { description = "TypeScript class usages grouped by usage type", setup = ts_p1_class },
 }
