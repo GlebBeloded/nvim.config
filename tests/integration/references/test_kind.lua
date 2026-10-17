@@ -234,6 +234,21 @@ T[lua_scenario]["classifies every usage"] = function()
 	})
 end
 
+local lua_gr_scenario = "references: gr classifies every Lua local usage"
+T[lua_gr_scenario] = MiniTest.new_set()
+T[lua_gr_scenario]["renders every usage kind"] = function()
+	local root = H.git_repo({
+		[".luarc.json"] = [[{"workspace":{"checkThirdParty":false}}]],
+		["main.lua"] = "local count = 0\ncount = count + 1\nprint(count)\n",
+	})
+	local actual = open_references(root, "main.lua", 1, 7, "lua_ls", nil, nil, "lua")
+	eq(actual, {
+		{ "main.lua", 2, 1, "write" },
+		{ "main.lua", 2, 9, "read" },
+		{ "main.lua", 3, 7, "read" },
+	})
+end
+
 local python_scenario = "references: basedpyright kinds classify a Python variable"
 T[python_scenario] = MiniTest.new_set()
 T[python_scenario]["classifies every usage"] = function()

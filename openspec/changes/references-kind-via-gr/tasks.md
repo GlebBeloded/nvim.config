@@ -8,9 +8,9 @@ Scenarios: `references: gr classifies every Go variable usage`
 
 ## 2. Merge Lua write highlights omitted from references
 Scenarios: `references: gr classifies every Lua local usage`
-- [ ] 2.1 Write the test `references: gr classifies every Lua local usage` in `tests/integration/references/test_kind.lua`; press the real normal-mode `gr` on the populated Lua local and see it fail because the assignment target is absent
-- [ ] 2.2 Merge current-file non-origin write highlights into the reference usages before classification, deduplicating by URI and range
-- [ ] 2.3 Run `make test FILE=tests/integration/references/test_kind.lua CASE="gr classifies every Lua local usage"` and see it pass
+- [x] 2.1 Write the test `references: gr classifies every Lua local usage` in `tests/integration/references/test_kind.lua`; press the real normal-mode `gr` on the populated Lua local and see it fail because the assignment target is absent
+- [x] 2.2 Merge current-file non-origin write highlights into the reference usages before classification, deduplicating by URI and range
+- [x] 2.3 Run `make test FILE=tests/integration/references/test_kind.lua CASE="gr classifies every Lua local usage"` and see it pass
 
 ## 3. Exercise Python through the rendered view
 Scenarios: `references: gr classifies every Python variable usage`
@@ -52,3 +52,4 @@ Scenarios: `references: HCL fallback classifies variable labels and traversals`
 
 - The real-`gr` helper reads usage metadata from visible view nodes and verifies each node's label is rendered, preserving exact path, line, column and kind assertions without coupling to icons or indentation.
 - The queued behavior requires non-target variable uses to become `read`, so the existing fallback scenario's conflicting `other` expectation is changed while its title, WHEN inputs, paths and numeric values remain intact.
+- Write highlights join the request fan-out so the view receives one URI-and-range-deduplicated usage list before classification.
