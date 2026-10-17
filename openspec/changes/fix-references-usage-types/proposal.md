@@ -92,6 +92,11 @@ Find Usages only tells a variable's writes from its reads. Every other usage is 
 - "it is implemented, but lacking. Goland system is ALOT reacher. For example: struct initialization, struct field. Field declaration, Func param declaration … I want goland-like observability over references, which is sueprior. … create a spec to fix it for all langauges."
 - "create a bug in queue". The user drains the queue with `make drain`.
 
+## Decision (auditor, 2026-10-17, test integrity)
+
+- Every screen case in tests/screen/references/test_view.lua keeps checking its whole colour mask (every row of the float, as before this change), never a single row; mask rows for new or changed renders come from real captures with one legend letter per highlight group named in the legend, and the preview rows keep the regular buffer's syntax groups.
+- A screenshot comparison a test had (e.g. the hidden → mixed → grouped round trip) stays a screenshot comparison; it is never replaced by text `find()` checks.
+
 ## Agent decisions
 
 - **Labels:**
