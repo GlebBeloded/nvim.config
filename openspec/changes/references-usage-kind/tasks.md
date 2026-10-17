@@ -1,6 +1,6 @@
 ## 1. Extend the Go fixture
 Scenarios: `references: gopls kinds classify a Go variable`
-- [ ] 1.1 Add `report/calls.go` and `report/calls_test.go` (contents as in Proposed K1's preview and design.md) to `gomod` in `tests/fixtures/build.sh`, plus the `Calls` manifest entries. Verify that `go build ./...` and `go vet ./...` pass and that the existing `Format` entries are unchanged.
+- [x] 1.1 Add `report/calls.go` and `report/calls_test.go` (contents as in Proposed K1's preview and design.md) to `gomod` in `tests/fixtures/build.sh`, plus the `Calls` manifest entries. Verify that `go build ./...` and `go vet ./...` pass and that the existing `Format` entries are unchanged.
 
 ## 2. Treesitter fallback
 Scenarios: `references: Treesitter fallback classifies writes where a parser exists`, `references: Without kinds or a parser a usage is other`
@@ -40,3 +40,7 @@ Scenarios: `references: Variable usages are grouped by write and read`, `referen
   3. compare with K1;
   4. press `w` and compare with K2.
 - [ ] 5.3 Make `make test-screen` and `make e2e` (sandbox VM) pass, then `make check`. Compare `make render` with `renders/kind_*.ansi`.
+
+## Agent decisions
+
+- Keep the `Calls` manifest locations explicit because comments and the failure string also contain the identifier, so the fixture's lexical helper would report non-symbol occurrences.

@@ -338,12 +338,38 @@ func Summary(total int) string {
 	return "total: " + money.Format(total)
 }
 EOF
+	cat >report/calls.go <<'EOF'
+package report
+
+// Calls counts rendered summaries.
+var Calls int
+
+// Count records one rendered summary.
+func Count() {
+	Calls++
+}
+EOF
+	cat >report/calls_test.go <<'EOF'
+package report
+
+import "testing"
+
+func TestCount(t *testing.T) {
+	Calls = 0
+	Count()
+	if Calls != 1 {
+		t.Fatalf("Calls = %d, want 1", Calls)
+	}
+}
+EOF
 	go build ./... >&2
 	go vet ./... >&2
 	git init -q
 	commit "gomod fixture"
-	printf '{"references":{"Format":[%s]}}\n' "$(format_locations internal/money/money.go \
-		internal/money/money_test.go billing/invoice.go report/summary.go)" >../manifest.json
+	printf '{"references":{"Format":[%s],"Calls":[%s]}}\n' \
+		"$(format_locations internal/money/money.go internal/money/money_test.go billing/invoice.go report/summary.go)" \
+		'{"path":"report/calls.go","line":4,"col":5},{"path":"report/calls.go","line":8,"col":2},{"path":"report/calls_test.go","line":6,"col":2},{"path":"report/calls_test.go","line":8,"col":5},{"path":"report/calls_test.go","line":9,"col":35}' \
+		>../manifest.json
 }
 
 # stdin: paths, one per line; $1, $2: staged, untracked. JSON fixtures.Entry list items
