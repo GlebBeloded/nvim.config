@@ -10,6 +10,7 @@ Scenarios: `languages: Every configured language meets the contract`
 
 - The JavaScript case module exposes TypeScript as its contract-compatible top-level suite and all three parser suites under `suites`, preserving the existing contract shape while covering each configured parser.
 - Target-kind refinement is opt-in on query positions, so the populated case table exercises refinement while existing raw-query callers keep their capture-only contract.
+- The catalogue test resolves `ecma` through `javascript` and `ts_angle_cast` through `typescript`, their direct real-parser inheritors, so Neovim compiles each pseudo-language capture without a nonexistent parser.
 
 ## 2. Classify TypeScript, TSX and JavaScript syntax
 
@@ -23,9 +24,9 @@ Scenarios: `references: TypeScript query classifies every usage type`, `referenc
 
 Scenarios: `references: Every query capture is in the catalogue`
 
-- [ ] 3.1 Tighten `tests/unit/references/test_usage_types.lua` so the real catalogue test resolves the parserless `ecma` and `ts_angle_cast` query bases through their inheriting parser queries; run `make test FILE=tests/unit/references/test_usage_types.lua CASE="Every query capture is in the catalogue"` and see it fail on the new query files
-- [ ] 3.2 Make the smallest test-driver change needed to validate inherited captures without requiring nonexistent pseudo-language parsers
-- [ ] 3.3 Run `make test FILE=tests/unit/references/test_usage_types.lua CASE="Every query capture is in the catalogue"` and see it pass
+- [x] 3.1 Tighten `tests/unit/references/test_usage_types.lua` so the real catalogue test resolves the parserless `ecma` and `ts_angle_cast` query bases through their inheriting parser queries; run `make test FILE=tests/unit/references/test_usage_types.lua CASE="Every query capture is in the catalogue"` and see it fail on the new query files
+- [x] 3.2 Make the smallest test-driver change needed to validate inherited captures without requiring nonexistent pseudo-language parsers
+- [x] 3.3 Run `make test FILE=tests/unit/references/test_usage_types.lua CASE="Every query capture is in the catalogue"` and see it pass
 
 ## 4. Classify real vtsls references
 
