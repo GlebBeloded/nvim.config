@@ -29,8 +29,6 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 
 ## Loop lessons
 
-- LSP positions count `character` in the client's `offset_encoding` (UTF-16 by default): convert with `vim.str_byteindex(line, client.offset_encoding, character)` before using it as a byte column.
-- Keep generic test-directory segments additive after language-specific patterns so configured filetypes retain shared conventions.
 - Stub optional parsers with grammar-shaped nodes so parser-dependent regressions execute on every configured host.
 - Screen-mask legend groups resolve through the current window's winhighlight, so a float must not remap a legend group (CursorLineNr, LineNr) it draws; pick status-column groups per line by expression instead.
 - When a view owns companion floats and global autocmds, observe closure of its primary window and route it through the view's complete cleanup path.
@@ -45,6 +43,7 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - When adding a Treesitter usages query, update the exhaustive runtime query-language expectation alongside the query.
 - Adding a Treesitter usages query requires adding its language to the exhaustive runtime query-language expectation.
 - Build ordered LCS matches by appending and preserve IntelliJ's original-count recursion state so large common regions stay linear without premature fallback.
+- Compare a symlink's normalized raw target for ownership; realpath can hide an out-of-tree alias by resolving it into the expected tree.
 
 ## The loop
 
