@@ -2,8 +2,8 @@
 
 Scenarios: `diff: Every VS Code move fixture passes`
 
-- [ ] 1.1 Fetch the pinned VS Code sparse clone into a temp dir outside the repo (design.md, Context). Write `drafts/vscode_moves.py`, which turns each of the 58 `advanced.expected.diff.json` files into `tests/unit/diff/fixtures/vscode_moves/<folder>.lua` (design Decision 5, with the header).
-- [ ] 1.2 Write `tests/unit/diff/test_moves_goldens.lua`, asserting 58 tables and naming the failing folder, and see it fail
+- [x] 1.1 Fetch the pinned VS Code sparse clone into a temp dir outside the repo (design.md, Context). Write `drafts/vscode_moves.py`, which turns each of the 58 `advanced.expected.diff.json` files into `tests/unit/diff/fixtures/vscode_moves/<folder>.lua` (design Decision 5, with the header).
+- [x] 1.2 Write `tests/unit/diff/test_moves_goldens.lua`, asserting 58 tables and naming the failing folder, and see it fail
 
 ## 2. Port computeMovedLines
 
