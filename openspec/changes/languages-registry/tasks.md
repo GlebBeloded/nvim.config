@@ -20,6 +20,8 @@ Scenarios: `languages: Registered facets`, `languages: A language missing a face
 - LSP and treesitter validators require their list fields to be Lua lists, catching malformed facet data at feature registration.
 - Parser lookup retries the registry language name only when a filetype's core parser is unavailable, so aliases such as `tf` stay data-driven.
 - YAML companion config is evaluated by the LSP consumer, keeping bare registry readers independent of lazy plugin availability.
+- Usage case tables store a filetype, source and zero-based positions, matching the query classifier API without test-only conversion rules.
+- Contract checks use the sole configured parser when an unavailable core alias has no registry-name parser, covering aliases such as `zsh` without another parser map.
 
 ## 3. Drive LSP and treesitter from facets
 
@@ -41,7 +43,7 @@ Scenarios: `languages: Test patterns come from the facet`, `languages: Terraform
 
 Scenarios: `languages: Every configured language meets the contract`, `languages: A missing usages query breaks the contract`, `languages: A missing fixture breaks the contract`, `languages: A stale queued reason breaks the contract`, `languages: Each references facet gets a gr run`
 
-- [ ] 5.1 Write the five cases in `tests/unit/languages/test_contract.lua`; make the language-suite case enumerate the registry and drive the real `gr` mapping over each enabled facet's built fixture and symbol in `tests/integration/references/test_languages.lua`, and see the new assertions fail
-- [ ] 5.2 Add the pure contract checker, per-language query case tables and data-driven references suite; reject missing or invalid queries, captures, cases, fixtures, symbols and queued changes
-- [ ] 5.3 Run `make test FILE=tests/unit/languages/test_contract.lua CASE="Every configured language meets the contract"`, `make test FILE=tests/unit/languages/test_contract.lua CASE="A missing usages query breaks the contract"`, `make test FILE=tests/unit/languages/test_contract.lua CASE="A missing fixture breaks the contract"`, `make test FILE=tests/unit/languages/test_contract.lua CASE="A stale queued reason breaks the contract"`, and `make test FILE=tests/unit/languages/test_contract.lua CASE="Each references facet gets a gr run"`, then run `make test FILE=tests/integration/references/test_languages.lua` and see them pass
-- [ ] 5.4 Add architecture rule 1.10 and the `languages/` module-map row to `docs/architecture.md`, then run `make check`
+- [x] 5.1 Write the five cases in `tests/unit/languages/test_contract.lua`; make the language-suite case enumerate the registry and drive the real `gr` mapping over each enabled facet's built fixture and symbol in `tests/integration/references/test_languages.lua`, and see the new assertions fail
+- [x] 5.2 Add the pure contract checker, per-language query case tables and data-driven references suite; reject missing or invalid queries, captures, cases, fixtures, symbols and queued changes
+- [x] 5.3 Run `make test FILE=tests/unit/languages/test_contract.lua CASE="Every configured language meets the contract"`, `make test FILE=tests/unit/languages/test_contract.lua CASE="A missing usages query breaks the contract"`, `make test FILE=tests/unit/languages/test_contract.lua CASE="A missing fixture breaks the contract"`, `make test FILE=tests/unit/languages/test_contract.lua CASE="A stale queued reason breaks the contract"`, and `make test FILE=tests/unit/languages/test_contract.lua CASE="Each references facet gets a gr run"`, then run `make test FILE=tests/integration/references/test_languages.lua` and see them pass
+- [x] 5.4 Add architecture rule 1.10 and the `languages/` module-map row to `docs/architecture.md`, then run `make check`

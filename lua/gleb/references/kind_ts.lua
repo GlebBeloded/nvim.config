@@ -42,8 +42,7 @@ function M.classify(source, filetype, positions)
 	end
 
 	local language = languages.for_filetype(filetype)
-	local references = language and language.references
-	if not references or references.disabled ~= nil then
+	if not language or language.references.disabled ~= nil then
 		return kinds
 	end
 	local parser_language = vim.treesitter.language.get_lang(filetype)

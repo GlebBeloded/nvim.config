@@ -67,6 +67,7 @@ Depends: fix-references-usage-types
   - integration: `test_languages.lua` driven by the registry; the lsp config test checks the server list is unchanged.
 - Plugins: none. Core keymaps: none.
 - Unchanged scenarios:
+  - `lsp: diagnostic signs use Nerd Font glyphs` still holds: moving language-specific server data does not change shared diagnostic signs.
   - `references: Go test paths` still holds: the same patterns now come from the go language's `references` facet.
   - `references: TypeScript and JavaScript test paths` still holds: the same patterns come from the js facet.
   - `references: Python test paths` still holds: the same patterns come from the python facet.

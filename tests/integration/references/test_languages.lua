@@ -8,12 +8,16 @@ local TIMEOUT_MS = H.lsp_timeout(15000)
 local RUST_TIMEOUT_MS = H.lsp_timeout(30000)
 
 local function start()
-	child.start_config()
+	child.start_config({ env = F.go_env() })
 	child.wait_very_lazy()
 	child.o.lines, child.o.columns = 30, 100
 end
 
 local T = H.child_set(child, start)
+
+local LANGUAGE_CLIENTS = {
+	rust = { server = "rust_analyzer", attached = { "rust-analyzer" }, timeout = RUST_TIMEOUT_MS },
+}
 
 ---@param command string
 local function require_command(command)
@@ -134,6 +138,24 @@ local function expect_fixture(fixture, symbol, paths)
 	for _, location in ipairs(locations) do
 		local line = vim.fn.readfile(vim.fs.joinpath(root, location.path))[location.line]
 		eq(line:sub(location.col, location.col + #symbol - 1), symbol)
+	end
+end
+
+local language_scenario = "languages: Each references facet gets a gr run"
+T[language_scenario] = MiniTest.new_set()
+for _, entry in ipairs(require("gleb.languages").facet("references")) do
+	local language = entry.language
+	local references = entry.config
+	local client = LANGUAGE_CLIENTS[language.name]
+		or { server = language.lsp.servers[1], attached = { language.lsp.servers[1] } }
+	T[language_scenario][language.name] = function()
+		open_references(
+			references.fixture.project,
+			references.fixture.symbol,
+			client.server,
+			client.attached,
+			client.timeout
+		)
 	end
 end
 

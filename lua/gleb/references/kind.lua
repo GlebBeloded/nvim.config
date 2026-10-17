@@ -58,8 +58,15 @@ local TYPE_POSITION_KINDS = {
 ---@return gleb.language.References?
 local function references_config(filetype)
 	local language = languages.for_filetype(filetype)
-	local references = language and language.references
-	return references and references.disabled == nil and references or nil
+	if not language then
+		return nil
+	end
+	local references = language.references
+	if references.disabled ~= nil then
+		return nil
+	end
+	---@cast references gleb.language.References
+	return references
 end
 
 ---@param symbol_kind lsp.SymbolKind
