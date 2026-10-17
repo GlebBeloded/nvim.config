@@ -25,6 +25,15 @@ local function open_tree()
 	assert(child.wait([[vim.bo.filetype == "neo-tree"]], 3000), "neo-tree window did not open")
 end
 
+local function open_project_tree()
+	child.lua([[
+		local catalog = require("gleb.actions").state.applicator.catalog
+		local action = assert(catalog:get("file_tree.toggle"), "file_tree.toggle is not registered")
+		action.run(require("gleb.actions.context").capture())
+	]])
+	assert(child.wait([[vim.bo.filetype == "gleb-file-tree"]], 3000), "project tree window did not open")
+end
+
 ---@return string[] cells of row 1 of the screen, one per display column
 local function tabline_cells()
 	return H.screen_rows(child, 1).text[1]
@@ -62,6 +71,15 @@ local T = H.child_set(child, start)
 
 T["bufferline: tabs start after the open tree"] = function()
 	open_tree()
+	vim.wait(2000, function()
+		return tab_column() == TREE_COLUMNS + 1
+	end, 20)
+	eq(table.concat(tabline_cells(), "", 1, TREE_COLUMNS), (" "):rep(TREE_COLUMNS))
+	eq(tab_column(), TREE_COLUMNS + 1)
+end
+
+T["bufferline: tabs start after the open project tree"] = function()
+	open_project_tree()
 	vim.wait(2000, function()
 		return tab_column() == TREE_COLUMNS + 1
 	end, 20)

@@ -34,9 +34,9 @@ Scenarios: `file-tree: Project tree opens on the left at width 35`, `file-tree: 
 
 Scenarios: `file-tree: Project tree actions start unbound`, `bufferline: tabs start after the open project tree`
 
-- [ ] 2c.1 Write the file-tree case in `tests/integration/file-tree/test_project_tree.lua` and the bufferline case in `tests/screen/bufferline/test_bufferline_screen.lua`; see them fail.
-- [ ] 2c.2 Keep `<A-e>` and `<A-G>` on neo-tree, and add the `gleb-file-tree` offset to `lua/gleb/bufferline.lua` without removing the neo-tree offset.
-- [ ] 2c.3 Run both test files and see them pass.
+- [x] 2c.1 Write the file-tree case in `tests/integration/file-tree/test_project_tree.lua` and the bufferline case in `tests/screen/bufferline/test_bufferline_screen.lua`; see them fail.
+- [x] 2c.2 Keep `<A-e>` and `<A-G>` on neo-tree, and add the `gleb-file-tree` offset to `lua/gleb/bufferline.lua` without removing the neo-tree offset.
+- [x] 2c.3 Run both test files and see them pass.
 
 ## 3a. Eligible editor targets
 

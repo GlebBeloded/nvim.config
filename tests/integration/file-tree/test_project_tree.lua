@@ -158,6 +158,14 @@ T["file-tree: Project tree toggle reveals the current file"] = function()
 	eq(line:match("[^ ]+$"), "money.go")
 end
 
+T["file-tree: Project tree actions start unbound"] = function()
+	local shortcuts = child.lua_get([[require("gleb.actions").state.store.last_good]])
+	eq(shortcuts["file_tree.toggle"], nil)
+	eq(shortcuts["file_tree.reveal"], nil)
+	eq(child.lua_get([[vim.fn.maparg("<A-e>", "n", false, true).desc]]), "View | Tool Windows: Toggle File Tree")
+	eq(child.lua_get([[vim.fn.maparg("<A-G>", "n", false, true).desc]]), "View | Tool Windows: Toggle Git Status Tree")
+end
+
 T["file-tree: Project tree closes with the last window"] = function()
 	edit("README.md")
 	run_toggle()
