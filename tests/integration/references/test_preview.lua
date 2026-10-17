@@ -183,8 +183,12 @@ end
 T["references: P toggles the preview pane"] = function()
 	open_format()
 	local initial = child.lua_get([[(function()
-local win = vim.api.nvim_get_current_win()
-return { vim.api.nvim_win_get_width(win), vim.api.nvim_win_get_config(win).col }
+	local state = require("gleb.references.view").state
+	return {
+		vim.api.nvim_win_get_width(state.tree_win),
+		vim.api.nvim_win_get_config(state.tree_win).col,
+		vim.api.nvim_win_get_width(state.preview_win),
+	}
 end)()]])
 	child.type_keys("P")
 	eq(child.wait([[require("gleb.references.view").state.preview_win == nil]]), true)
@@ -192,7 +196,7 @@ end)()]])
 local win = vim.api.nvim_get_current_win()
 return { vim.api.nvim_win_get_width(win), vim.api.nvim_win_get_config(win).col }
 end)()]])
-	eq(fitted[1] < initial[1], true)
+	eq(fitted[1] < initial[1] + initial[3] + 1, true)
 	eq(fitted[2], math.floor((100 - fitted[1] - 2) / 2))
 
 	child.type_keys("P")
@@ -201,7 +205,7 @@ end)()]])
 local win = vim.api.nvim_get_current_win()
 return { vim.api.nvim_win_get_width(win), vim.api.nvim_win_get_config(win).col }
 end)()]])
-	eq(restored, initial)
+	eq(restored, { initial[1], initial[2] })
 end
 
 return T

@@ -203,9 +203,14 @@ request()
 	for index, node in ipairs(state.visible_nodes) do
 		assert(rows[index]:find(node.label, 1, true), "rendered row does not contain " .. node.label)
 		if node.kind == "usage" then
-			table.insert(usages, { node.path, node.lnum, node.col, node.usage_kind })
+			table.insert(usages, { node.path, node.lnum, node.col, node.usage_type })
 		end
 	end
+	table.sort(usages, function(left, right)
+		if left[1] ~= right[1] then return left[1] < right[1] end
+		if left[2] ~= right[2] then return left[2] < right[2] end
+		return left[3] < right[3]
+	end)
 	return usages
 end)()
 ]])
@@ -286,8 +291,8 @@ T[go_function_scenario]["renders every function usage as a call"] = function()
 	eq(actual, {
 		{ "billing/invoice.go", 16, 15, "call" },
 		{ "billing/invoice.go", 23, 31, "call" },
-		{ "report/summary.go", 7, 27, "call" },
 		{ "internal/money/money_test.go", 6, 12, "call" },
+		{ "report/summary.go", 7, 27, "call" },
 	})
 end
 

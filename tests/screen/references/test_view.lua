@@ -271,6 +271,16 @@ local function open_invoice()
 	child.cmd("redraw")
 end
 
+local function tree_lines()
+	return child.lua_get([[vim.api.nvim_buf_get_lines(require("gleb.references.view").state.tree_buf, 0, -1, false)]])
+end
+
+local function hint_line()
+	return child.lua_get(
+		[=[vim.api.nvim_buf_get_lines(require("gleb.references.view").state.hint_buf, 0, 1, false)[1]]=]
+	)
+end
+
 -- Design masks intentionally leave the editor outside the view uncoloured. Clear
 -- that background after the text screenshot so only view-owned colours are checked.
 local function clear_background_for_mask()
@@ -320,7 +330,10 @@ end
 
 T["references: Tests key cycles grouped, hidden and mixed"] = function()
 	open_format(100, 30)
+	local default = tree_lines()
 	child.type_keys("t")
+	eq(child.lua_get([[require("gleb.references.view").state.tree.count]]), 3)
+	eq(hint_line():find("Tests: hidden t", 1, true) ~= nil, true)
 	child.cmd("redraw")
 	H.expect_screenshot(child.get_screenshot())
 
@@ -337,19 +350,24 @@ T["references: Tests key cycles grouped, hidden and mixed"] = function()
 	end)()]]),
 		{ true, true, true, true }
 	)
+	eq(tree_lines()[1], "▾  Call  4")
+	eq(hint_line():find("Tests: mixed t", 1, true) ~= nil, true)
 
 	child.type_keys("t")
-	eq(
-		child.lua_get(
-			[[table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n"):find("Production  3", 1, true) ~= nil]]
-		),
-		true
-	)
+	eq(tree_lines(), default)
 end
 
 T["references: Mixed tests without folders is a flat list"] = function()
 	open_format(100, 30)
 	child.type_keys("ttf")
+	eq(tree_lines(), {
+		"▾  Call  4",
+		"   billing/invoice.go:16",
+		"   billing/invoice.go:23",
+		"   …ternal/money/money_test.go:6  test",
+		"   report/summary.go:7",
+	})
+	eq(hint_line():find("Tests: mixed t · ○ Folders f", 1, true) ~= nil, true)
 	child.cmd("redraw")
 	H.expect_screenshot(child.get_screenshot())
 end

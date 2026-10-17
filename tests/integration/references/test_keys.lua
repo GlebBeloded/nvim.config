@@ -63,29 +63,6 @@ local function add_test_only_reference()
 	)
 end
 
-T["references: Tests key cycles grouped, hidden and mixed"] = function()
-	open_format()
-	local default = tree_lines()
-
-	child.type_keys("t")
-	eq(child.lua_get([[require("gleb.references.view").state.tree.count]]), 3)
-	eq(table.concat(tree_lines(), "\n"):find("Test", 1, true), nil)
-	eq(hint_line():find("Tests: hidden t", 1, true) ~= nil, true)
-
-	child.type_keys("t")
-	local mixed_lines = tree_lines()
-	local mixed = table.concat(mixed_lines, "\n")
-	eq(mixed_lines[1], "▾  Call  4")
-	eq(mixed:find("Production", 1, true), nil)
-	eq(mixed:find("Test  ", 1, true), nil)
-	eq(mixed:find("money_test.go:6", 1, true) ~= nil, true)
-	eq(mixed:find("test", 1, true) ~= nil, true)
-	eq(hint_line():find("Tests: mixed t", 1, true) ~= nil, true)
-
-	child.type_keys("t")
-	eq(tree_lines(), default)
-end
-
 T["references: Tests filter can leave the tree empty"] = function()
 	add_test_only_reference()
 	child.o.lines, child.o.columns = 30, 100
@@ -127,20 +104,6 @@ end)()
 	child.type_keys("qgr")
 	eq(child.wait([[vim.bo.filetype == "gleb-references"]], TIMEOUT_MS), true)
 	eq(child.lua_get([[require("gleb.references.view").state.tree.count]]), 0)
-end
-
-T["references: Mixed tests without folders is a flat list"] = function()
-	open_format()
-	child.type_keys("ttf")
-
-	eq(tree_lines(), {
-		"▾  Call  4",
-		"     billing/invoice.go:16",
-		"     billing/invoice.go:23",
-		"     internal/money/money_test.go:6   test",
-		"     report/summary.go:7",
-	})
-	eq(hint_line():find("Tests: mixed t · ○ Folders f", 1, true) ~= nil, true)
 end
 
 T["references: Grouping persists across sessions"] = function()

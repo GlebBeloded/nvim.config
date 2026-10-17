@@ -127,6 +127,9 @@ local function open_references(s)
 			return s:lua([[return require("gleb.references.view").state.tree_win ~= nil]])
 		end, "Find Usages view")
 	end)
+	S.wait_for(function()
+		return not s:lua([[return require("gleb.references.view").state.classifying]])
+	end, "Format usage classification")
 end
 
 --- Open the references picker of `Calls` from its declaration through `gr`.

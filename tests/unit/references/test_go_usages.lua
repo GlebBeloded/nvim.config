@@ -384,13 +384,13 @@ T["references: Function and type targets get no write or read"] = MiniTest.new_s
 T["references: Function and type targets get no write or read"]["function write is suppressed"] = function()
 	eq(
 		classify_with_target({
-			source = "package p\nfunc run() {}\nfunc f() { run() }",
+			source = "package p\nfunc run() {}\nfunc f() { _ = run }",
 			extension = "go",
 			filetype = "go",
 			target_line = 1,
 			target_character = 5,
 			usage_line = 2,
-			usage_character = 11,
+			usage_character = 15,
 			symbol_kind = 12,
 			highlight = true,
 		}),
@@ -401,13 +401,13 @@ end
 T["references: Function and type targets get no write or read"]["type write is suppressed"] = function()
 	eq(
 		classify_with_target({
-			source = "package p\ntype Money int\nfunc f(x int) { _ = Money(x) }",
+			source = "package p\ntype Money int\nfunc f() { _ = Money }",
 			extension = "go",
 			filetype = "go",
 			target_line = 1,
 			target_character = 5,
 			usage_line = 2,
-			usage_character = 20,
+			usage_character = 15,
 			symbol_kind = 23,
 			highlight = true,
 		}),
