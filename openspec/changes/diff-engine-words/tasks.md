@@ -40,3 +40,11 @@ Scenarios: `diff: Random texts keep IntelliJ's inner invariants`
 - [ ] 4.1 Write the scenario in `tests/unit/diff/test_invariants_inner.lua` (design Decision 7) and see it fail if anything breaks; fix the engine, never the invariant
 - [ ] 4.2 Add the Unicode Character Database line to `NOTICE` and headers to the new files. `diff: Ported files carry their attribution` (from `diff-engine-lines`) must still pass.
 - [ ] 4.3 Run `make check`
+
+## Stuck
+
+- Task: 2. Words, chars and splitting.
+- Probe output: no headless probe was needed; the missing word/char modules and the remaining policy mismatches were directly observable in the focused tests.
+- Attempt 1: added UTF-8 word/char comparison, splitting, inner fragments and squash. The focused tests exposed a punctuation-transfer bug that marked non-punctuation gaps equal, plus whitespace-placement and trailing-line split mismatches.
+- Attempt 2: fixed punctuation transfer, insertion-point placement, edge trimming and trailing unmatched-line splitting. All focused word, char and split scenarios passed except `trim ignores trailing whitespace`; all 27 split goldens passed, but the word and char golden suites still failed on exact TRIM/IGNORE range placement (for example `WordComparisonUtilTest.kt:499` placed the insertion point at byte 1 instead of 2, and `CharComparisonUtilTest.kt:388` retained bytes 3–8 instead of byte 5).
+- Saved implementation: `/Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/b5f3c5b8-bb9a-46d3-a147-dc84204666ea/stuck-attempt.diff`.
