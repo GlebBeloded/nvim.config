@@ -23,3 +23,9 @@
 ---@field write_access "documentHighlight"|"tsserver"|false
 ---@field target_kinds table<string, gleb.references.TargetKind>
 ---@field fixture { project: string, symbol: string }
+
+---@alias gleb.languages.FacetValidator fun(config: table, language: gleb.Language): error_message: string?
+
+---@class gleb.languages.Facet
+---@field language gleb.Language
+---@field config table

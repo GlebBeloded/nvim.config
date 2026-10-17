@@ -10,9 +10,13 @@ Scenarios: `languages: Every configured language is registered`, `languages: A f
 
 Scenarios: `languages: Registered facets`, `languages: A language missing a facet fails at startup`, `languages: A disabled facet needs a reason`, `languages: A new facet must be answered by every language`
 
-- [ ] 2.1 Write the four cases in `tests/unit/languages/test_registry.lua`, registering facets and validating complete and deliberately incomplete language specs through the real registry API, and see them fail
-- [ ] 2.2 Implement `register_facet()`, `facet()` and startup validation, including unknown keys, non-empty disabled reasons and validator errors
-- [ ] 2.3 Run `make test FILE=tests/unit/languages/test_registry.lua CASE="Registered facets"`, `make test FILE=tests/unit/languages/test_registry.lua CASE="A language missing a facet fails at startup"`, `make test FILE=tests/unit/languages/test_registry.lua CASE="A disabled facet needs a reason"`, and `make test FILE=tests/unit/languages/test_registry.lua CASE="A new facet must be answered by every language"`, then run `make smoke` and see them pass
+- [x] 2.1 Write the four cases in `tests/unit/languages/test_registry.lua`, registering facets and validating complete and deliberately incomplete language specs through the real registry API, and see them fail
+- [x] 2.2 Implement `register_facet()`, `facet()` and startup validation, including unknown keys, non-empty disabled reasons and validator errors
+- [x] 2.3 Run `make test FILE=tests/unit/languages/test_registry.lua CASE="Registered facets"`, `make test FILE=tests/unit/languages/test_registry.lua CASE="A language missing a facet fails at startup"`, `make test FILE=tests/unit/languages/test_registry.lua CASE="A disabled facet needs a reason"`, and `make test FILE=tests/unit/languages/test_registry.lua CASE="A new facet must be answered by every language"`, then run `make smoke` and see them pass
+
+## Agent decisions
+
+- Facet validators return an optional error string, which preserves the validator's exact diagnostic while a `nil` return means valid.
 
 ## 3. Drive LSP and treesitter from facets
 
