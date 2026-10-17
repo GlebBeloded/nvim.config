@@ -8,6 +8,33 @@ local M = {}
 ---@type FileTreeFsState
 M.state = { cache = {} }
 
+--- Resolve a path through its nearest existing parent.
+---@param path string
+---@return string
+function M.normalize(path)
+	local absolute = vim.fs.normalize(vim.fn.fnamemodify(path, ":p"))
+	local resolved = vim.uv.fs_realpath(absolute)
+	if resolved then
+		return vim.fs.normalize(resolved)
+	end
+
+	local missing = {}
+	local parent = absolute
+	while parent do
+		local next_parent = vim.fs.dirname(parent)
+		if not next_parent or next_parent == parent then
+			break
+		end
+		table.insert(missing, 1, vim.fs.basename(parent))
+		parent = next_parent
+		resolved = vim.uv.fs_realpath(parent)
+		if resolved then
+			return vim.fs.normalize(vim.fs.joinpath(resolved, unpack(missing)))
+		end
+	end
+	return absolute
+end
+
 --- Clear all cached scans.
 ---@return nil
 function M.reset()

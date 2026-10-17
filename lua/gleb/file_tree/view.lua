@@ -124,6 +124,28 @@ end
 
 ---@param view FileTreeView
 ---@param path string
+---@param missing_is_root boolean
+---@return string?
+local function reveal_target(view, path, missing_is_root)
+	if path:match("^%w+://") then
+		return nil
+	end
+	if path == "" then
+		return missing_is_root and view.root or nil
+	end
+	local normalized = fs.normalize(path)
+	local stat = vim.uv.fs_stat(normalized)
+	if not stat then
+		return view.root
+	end
+	if stat.type == "file" and vim.startswith(normalized, view.root .. "/") then
+		return normalized
+	end
+	return nil
+end
+
+---@param view FileTreeView
+---@param path string
 local function expand_to(view, path)
 	if not is_file_under(view.root, path) then
 		return
@@ -146,6 +168,16 @@ local function draw(view, path)
 			vim.api.nvim_win_set_cursor(view.win, { index, 0 })
 			break
 		end
+	end
+end
+
+---@param view FileTreeView
+---@param path string
+---@param missing_is_root boolean
+local function reveal_path(view, path, missing_is_root)
+	local target = reveal_target(view, path, missing_is_root)
+	if target then
+		draw(view, target)
 	end
 end
 
@@ -417,6 +449,14 @@ local function protect_tree_buffer(view)
 end
 
 ---@param view FileTreeView
+local function follow_current_buffer(view)
+	if vim.api.nvim_get_current_tabpage() ~= view.tab or vim.api.nvim_get_current_buf() == view.buf then
+		return
+	end
+	reveal_path(view, vim.api.nvim_buf_get_name(0), false)
+end
+
+---@param view FileTreeView
 local function add_teardown_autocmds(view)
 	view.autocmds = {
 		vim.api.nvim_create_autocmd("BufLeave", {
@@ -446,6 +486,7 @@ local function add_teardown_autocmds(view)
 			group = view_group,
 			callback = function()
 				protect_tree_buffer(view)
+				follow_current_buffer(view)
 			end,
 		}),
 		vim.api.nvim_create_autocmd("WinClosed", {
@@ -469,7 +510,7 @@ end
 ---@return FileTreeView
 local function open_view(path)
 	local tab = vim.api.nvim_get_current_tabpage()
-	local root = vim.fn.getcwd()
+	local root = fs.normalize(vim.fn.getcwd())
 	local buf = vim.api.nvim_create_buf(false, true)
 	vim.api.nvim_buf_set_name(buf, ("gleb-file-tree://%s#%d"):format(root, tab))
 	configure_buffer(buf)
@@ -492,7 +533,7 @@ local function open_view(path)
 	}
 	M.state.by_tab[tab] = view
 	add_teardown_autocmds(view)
-	draw(view, path)
+	reveal_path(view, path, true)
 	update_cursor(view)
 	return view
 end
@@ -572,7 +613,7 @@ function M.reveal()
 		view = open_view(path)
 	else
 		vim.api.nvim_set_current_win(view.win)
-		draw(view, path)
+		reveal_path(view, path, true)
 	end
 end
 

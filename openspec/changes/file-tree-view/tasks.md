@@ -106,9 +106,9 @@ Scenarios: `file-tree: Project tree manual expansion stops at the row limit`
 
 Scenarios: `file-tree: Project tree follows the current file`, `file-tree: Project tree ignores files outside the root`, `file-tree: Project tree reveal focuses the current file`, `file-tree: Project tree reveal tolerates a deleted file`, `file-tree: Project tree follow tolerates a deleted file`
 
-- [ ] 5a1.1 Write these scenarios in `tests/integration/file-tree/test_project_live.lua`, driving `:edit`, `BufEnter` and `file_tree.reveal` against real buffers and populated data, and see them fail.
-- [ ] 5a1.2 Implement follow and reveal through the shared path normalizer; deleted files select the root without errors or notifications.
-- [ ] 5a1.3 Run `make test FILE=tests/integration/file-tree/test_project_live.lua` for these cases and see them pass.
+- [x] 5a1.1 Write these scenarios in `tests/integration/file-tree/test_project_live.lua`, driving `:edit`, `BufEnter` and `file_tree.reveal` against real buffers and populated data, and see them fail.
+- [x] 5a1.2 Implement follow and reveal through the shared path normalizer; deleted files select the root without errors or notifications.
+- [x] 5a1.3 Run `make test FILE=tests/integration/file-tree/test_project_live.lua` for these cases and see them pass.
 
 ## 5a2. Toggle and non-file resilience
 
