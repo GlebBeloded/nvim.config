@@ -79,13 +79,36 @@ local function usage_less_than(left, right)
 	return left.uri < right.uri
 end
 
+---@param usage gleb.references.Usage
+---@return boolean
+local function is_test_usage(usage)
+	if scope.is_test(usage.path, usage.filetype) then
+		return true
+	end
+	local filetype = usage.filetype or vim.filetype.match({ filename = usage.path })
+	if filetype ~= "rust" then
+		return false
+	end
+
+	local filename = vim.uri_to_fname(usage.uri)
+	local buf = vim.fn.bufnr(filename)
+	local lines
+	if buf ~= -1 and vim.api.nvim_buf_is_loaded(buf) then
+		lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
+	else
+		local ok, disk_lines = pcall(vim.fn.readfile, filename)
+		lines = ok and disk_lines or {}
+	end
+	return scope.is_test_at(usage.path, usage.lnum, table.concat(lines, "\n"))
+end
+
 ---@param usages gleb.references.Usage[]
 ---@param tests_mode "grouped"|"hidden"|"mixed"
 ---@return gleb.references.ClassifiedUsage[]
 local function classify(usages, tests_mode)
 	local result = {}
 	for _, usage in ipairs(usages) do
-		local is_test = scope.is_test(usage.path, usage.filetype)
+		local is_test = is_test_usage(usage)
 		if tests_mode ~= "hidden" or not is_test then
 			table.insert(result, {
 				uri = usage.uri,
@@ -107,6 +130,7 @@ end
 ---@param parent_id string?
 ---@param show_path boolean
 ---@param mixed boolean
+---@param tagged boolean
 ---@return gleb.references.TreeNode
 local function usage_node(usage, depth, parent_id, show_path, mixed, tagged)
 	local path = show_path and usage.path or basename(usage.path)
@@ -139,6 +163,7 @@ end
 ---@param depth integer
 ---@param parent_id string?
 ---@param mixed boolean
+---@param tagged boolean
 local function append_folders(nodes, usages, scope_name, depth, parent_id, mixed, tagged)
 	local index = 1
 	while index <= #usages do
@@ -170,6 +195,7 @@ end
 ---@param depth integer
 ---@param parent_id string?
 ---@param options gleb.references.TreeOptions
+---@param tagged boolean
 local function append_flat_usages(nodes, usages, scope_name, depth, parent_id, options, tagged)
 	if options.folders then
 		append_folders(nodes, usages, scope_name, depth, parent_id, options.tests == "mixed", tagged)
@@ -222,6 +248,7 @@ end
 ---@param usages gleb.references.ClassifiedUsage[]
 ---@param is_test boolean
 ---@param options gleb.references.TreeOptions
+---@param has_kinds boolean
 local function append_scope(nodes, usages, is_test, options, has_kinds)
 	local scoped = {}
 	for _, usage in ipairs(usages) do

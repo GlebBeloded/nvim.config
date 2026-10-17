@@ -2,7 +2,7 @@
 local M = {}
 
 ---@type table<string, string>
-local WRITE_QUERIES = {
+local KIND_QUERIES = {
 	go = [[
 		(short_var_declaration left: (expression_list (identifier) @write))
 		(assignment_statement left: (expression_list (identifier) @write))
@@ -17,6 +17,16 @@ local WRITE_QUERIES = {
 	bash = [[
 		(variable_assignment name: (variable_name) @write)
 	]],
+	hcl = [[
+		(block
+			(identifier) @_block_type
+			(string_lit (template_literal) @write)
+			(#eq? @_block_type "variable"))
+		(expression
+			(variable_expr (identifier) @_root)
+			(get_attr (identifier) @read)
+			(#eq? @_root "var"))
+	]],
 }
 
 ---@class ReferencesSourcePosition
@@ -27,7 +37,7 @@ local WRITE_QUERIES = {
 ---@param language string
 ---@return vim.treesitter.Query?, TSTree?
 local function parse(source, language)
-	local query_text = WRITE_QUERIES[language]
+	local query_text = KIND_QUERIES[language]
 	if not query_text or not pcall(vim.treesitter.language.add, language) then
 		return nil, nil
 	end
@@ -50,7 +60,7 @@ end
 ---@param source string
 ---@param language string
 ---@param positions ReferencesSourcePosition[]
----@return ("write"|"other")[]
+---@return ("write"|"read"|"other")[]
 function M.classify(source, language, positions)
 	local kinds = {}
 	local by_position = {}
@@ -63,13 +73,17 @@ function M.classify(source, language, positions)
 	if not query or not tree then
 		return kinds
 	end
+	for index in ipairs(positions) do
+		kinds[index] = "read"
+	end
 
 	for capture, node in query:iter_captures(tree:root(), source, 0, -1) do
-		if query.captures[capture] == "write" then
+		local kind = query.captures[capture]
+		if kind == "write" or kind == "read" then
 			local row, column = node:range()
 			local index = by_position[row .. ":" .. column]
 			if index then
-				kinds[index] = "write"
+				kinds[index] = kind
 			end
 		end
 	end
