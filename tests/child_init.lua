@@ -26,3 +26,5 @@ vim.g.clipboard = {
 	copy = { ["+"] = copy("+"), ["*"] = copy("*") },
 	paste = { ["+"] = paste("+"), ["*"] = paste("*") },
 }
+
+vim.env.GLEB_TEST_SANDBOX = "1"

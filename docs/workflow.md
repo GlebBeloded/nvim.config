@@ -41,6 +41,7 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - When adding a Treesitter usages query, update the exhaustive runtime query-language expectation alongside the query.
 - Adding a Treesitter usages query requires adding its language to the exhaustive runtime query-language expectation.
 - Build ordered LCS matches by appending and preserve IntelliJ's original-count recursion state so large common regions stay linear without premature fallback.
+- Compare a symlink's normalized raw target for ownership; realpath can hide an out-of-tree alias by resolving it into the expected tree.
 - Golden harnesses should compare only fields declared by each fixture row so exact-range rows do not fail on redundant derived byte sets.
 - - IntelliJ inner comparison runs on a line fragment's text plus the newline ending its last line (getLineEnd(line, true)), and doSquash shifts an empty side past that newline; dropping it costs the splitter its matched-newline anchor and the trailing-newline range.
 - Golden checks for empty expected changes must reject missing, fallback, and partial inner results before comparing changed-byte sets.
