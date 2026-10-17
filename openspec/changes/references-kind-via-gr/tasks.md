@@ -14,9 +14,9 @@ Scenarios: `references: gr classifies every Lua local usage`
 
 ## 3. Exercise Python through the rendered view
 Scenarios: `references: gr classifies every Python variable usage`
-- [ ] 3.1 Write the test `references: gr classifies every Python variable usage` in `tests/integration/references/test_kind.lua`; press the real normal-mode `gr` on populated Python data and see the old direct-classifier test path fail the new entry-point assertion
-- [ ] 3.2 Reuse the real-`gr` helper for basedpyright and assert the exact rendered write/read rows
-- [ ] 3.3 Run `make test FILE=tests/integration/references/test_kind.lua CASE="gr classifies every Python variable usage"` and see it pass
+- [x] 3.1 Write the test `references: gr classifies every Python variable usage` in `tests/integration/references/test_kind.lua`; press the real normal-mode `gr` on populated Python data and see the old direct-classifier test path fail the new entry-point assertion
+- [x] 3.2 Reuse the real-`gr` helper for basedpyright and assert the exact rendered write/read rows
+- [x] 3.3 Run `make test FILE=tests/integration/references/test_kind.lua CASE="gr classifies every Python variable usage"` and see it pass
 
 ## 4. Exercise TypeScript through the rendered view
 Scenarios: `references: gr classifies every TypeScript variable usage`

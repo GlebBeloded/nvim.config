@@ -249,15 +249,15 @@ T[lua_gr_scenario]["renders every usage kind"] = function()
 	})
 end
 
-local python_scenario = "references: basedpyright kinds classify a Python variable"
+local python_scenario = "references: gr classifies every Python variable usage"
 T[python_scenario] = MiniTest.new_set()
-T[python_scenario]["classifies every usage"] = function()
-	require_server("basedpyright")
+T[python_scenario]["renders every usage kind"] = function()
 	local root = H.git_repo({
 		["pyproject.toml"] = '[project]\nname = "usage-kinds"\nversion = "0.1.0"\n',
 		["main.py"] = "total = 0\ntotal += 1\nprint(total)\n",
 	})
-	eq(classify(root, "main.py", 1, 1, "basedpyright"), {
+	local actual = open_references(root, "main.py", 1, 1, "basedpyright", nil, nil, "python")
+	eq(actual, {
 		{ "main.py", 2, 1, "write" },
 		{ "main.py", 3, 7, "read" },
 	})
