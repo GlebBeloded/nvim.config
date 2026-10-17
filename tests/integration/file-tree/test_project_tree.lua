@@ -320,4 +320,58 @@ T["file-tree: Project tree tab windows keep editor options"] = function()
 	eq(child.wo.winfixwidth, false)
 end
 
+T["file-tree: Project tree disables editor-only window features"] = function()
+	edit("README.md")
+	local editor_win = child.api.nvim_get_current_win()
+	local editor_buf = child.api.nvim_get_current_buf()
+	child.lua(
+		[[(function(buf, win)
+			require("ufo").attach(buf)
+			vim.wo[win].foldenable = true
+			vim.wo[win].foldmethod = "manual"
+			vim.wo[win].statuscolumn = "%s"
+		end)(...)]],
+		{ editor_buf, editor_win }
+	)
+	eq(child.lua_get([[require("ufo").hasAttached(...)]], { editor_buf }), true)
+
+	run_toggle()
+	local tree_win = child.api.nvim_get_current_win()
+	local tree_buf = child.api.nvim_get_current_buf()
+
+	eq({ child.wo.foldenable, child.wo.foldmethod, child.wo.statuscolumn }, { false, "manual", "" })
+	eq(child.lua_get([[require("ufo").hasAttached(...) == true]], { tree_buf }), false)
+	eq(
+		child.lua_get([[{ vim.wo[...].foldenable, vim.wo[...].foldmethod, vim.wo[...].statuscolumn }]], {
+			editor_win,
+			editor_win,
+			editor_win,
+		}),
+		{ true, "manual", "%s" }
+	)
+	eq(child.api.nvim_get_current_win(), tree_win)
+end
+
+T["file-tree: Project tree preserves the original cursor setting"] = function()
+	local original = "n-v:block,i:ver25"
+	child.o.guicursor = original
+	edit("README.md")
+
+	run_toggle()
+	eq(child.o.guicursor, "a:FileTreeHiddenCursor")
+	child.type_keys("v")
+	eq(child.o.guicursor, "a:FileTreeHiddenCursor")
+	child.type_keys("<Esc>", "i")
+	eq(child.o.guicursor, original)
+	child.type_keys("<Esc>")
+	eq(child.o.guicursor, "a:FileTreeHiddenCursor")
+
+	child.cmd("wincmd l")
+	eq(child.o.guicursor, original)
+	run_toggle()
+	eq(child.o.guicursor, "a:FileTreeHiddenCursor")
+	run_toggle()
+	eq(child.o.guicursor, original)
+end
+
 return T

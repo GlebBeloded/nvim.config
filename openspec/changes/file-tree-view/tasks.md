@@ -50,7 +50,7 @@ Scenarios: `file-tree: Project tree opening skips non-editor windows`, `file-tre
 
 Scenarios: `file-tree: Project tree disables editor-only window features`, `file-tree: Project tree preserves the original cursor setting`
 
-- [ ] 3b.1 Write these scenarios in `tests/integration/file-tree/test_project_tree.lua`, using the real ufo attachment and mode changes, and see them fail.
+- [x] 3b.1 Write these scenarios in `tests/integration/file-tree/test_project_tree.lua`, using the real ufo attachment and mode changes, and see them fail.
 - [ ] 3b.2 Set `foldenable`, `foldmethod` and `statuscolumn` locally, detach ufo, and save `guicursor` once while hiding it only in normal and visual modes.
 - [ ] 3b.3 Run `make test FILE=tests/integration/file-tree/test_project_tree.lua` for these cases and see them pass.
 
@@ -188,3 +188,9 @@ Scenarios: `file-tree: Project tree matches the approved render`, `file-tree: Pr
 - `fs.tree` passes a root and scan function into `model.rows`, keeping the row model pure while sharing the filesystem cache.
 - Task 2a introduces `view.setup()` only as the render-highlight owner required by the entry-point order; task 2b extends it with per-tab windows.
 - Eligible editor selection remembers the latest valid `WinEnter` per tab and falls back to another valid editor, so special windows never become targets.
+
+## Stuck
+
+- Task 3b: a headless probe could not enter Visual mode while the probe script was active (`events = {}`, `mode = "n"`), although it confirmed normal-mode cursor hiding before the transition.
+- Attempt 1 detached ufo after installing the tree buffer and restored one saved `guicursor` from buffer, window and mode autocmds; ufo passed after normalizing its detached `nil` result, but Visual mode restored the original cursor.
+- Attempt 2 read the destination mode from `ModeChanged`'s `old:new` match instead of querying mode inside the callback; Visual mode still restored the original cursor, and the implementation is saved in `stuck-attempt.diff`.
