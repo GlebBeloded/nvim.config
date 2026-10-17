@@ -15,9 +15,9 @@ Scenarios: `references: Lua query classifies every usage type`
 
 Scenarios: `references: Bash query classifies every usage type`
 
-- [ ] 2.1 Port the Bash cases from `drafts/verify.lua` to `tests/unit/references/usage_cases/shell.lua` with their real sources under `usage_cases/shell/`, add the scenario to the shared driver in `tests/unit/languages/test_contract.lua`, run `make test FILE=tests/unit/languages/test_contract.lua CASE="Bash query classifies every usage type"`, and see it fail against the write/read-only query
-- [ ] 2.2 Replace `queries/bash/usages.scm` with the verified draft using the catalogue ids in design.md Decision 1
-- [ ] 2.3 Run `make test FILE=tests/unit/languages/test_contract.lua CASE="Bash query classifies every usage type"` and see it pass; also run the Bash cases of `references: Treesitter fallback classifies writes where a parser exists`
+- [x] 2.1 Port the Bash cases from `drafts/verify.lua` to `tests/unit/references/usage_cases/shell.lua` with their real sources under `usage_cases/shell/`, add the scenario to the shared driver in `tests/unit/languages/test_contract.lua`, run `make test FILE=tests/unit/languages/test_contract.lua CASE="Bash query classifies every usage type"`, and see it fail against the write/read-only query
+- [x] 2.2 Replace `queries/bash/usages.scm` with the verified draft using the catalogue ids in design.md Decision 1
+- [x] 2.3 Run `make test FILE=tests/unit/languages/test_contract.lua CASE="Bash query classifies every usage type"` and see it pass; also run the Bash cases of `references: Treesitter fallback classifies writes where a parser exists`
 
 ## 3. Terraform query cases
 
