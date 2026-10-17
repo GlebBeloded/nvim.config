@@ -22,6 +22,17 @@ end
 
 local T = MiniTest.new_set()
 
+T["diff: NOTICE credits VS Code"] = function()
+	local notice = read(ENGINE_DIR .. "/NOTICE")
+	eq(notice:find("Visual Studio Code", 1, true) ~= nil, true)
+	eq(notice:find("Microsoft Corporation", 1, true) ~= nil, true)
+	eq(notice:find("Permission is hereby granted, free of charge", 1, true) ~= nil, true)
+
+	local header = table.concat(vim.fn.readfile(ENGINE_DIR .. "/moves.lua", "", 3), "\n")
+	eq(header:find("computeMovedLines.ts", 1, true) ~= nil, true)
+	eq(header:find("MIT", 1, true) ~= nil, true)
+end
+
 T["diff: Ported files carry their attribution"] = function()
 	local notice_path = ENGINE_DIR .. "/NOTICE"
 	local license_path = ENGINE_DIR .. "/LICENSE-APACHE-2.0"

@@ -1,6 +1,6 @@
 -- Lua port of microsoft/vscode src/vs/editor/common/diff/defaultLinesDiffComputer/computeMovedLines.ts
 -- and LineRangeFragment in utils.ts (MIT, © Microsoft Corporation). Modified: rewritten in Lua,
--- 0-based ranges, code-point counts; see NOTICE.
+-- 0-based ranges, code-point counts; modifications licensed Apache-2.0; see NOTICE.
 -- Detects moved line ranges on top of an existing line diff while preserving VS Code's thresholds.
 
 local lcs = require("gleb.diff.engine.lcs")

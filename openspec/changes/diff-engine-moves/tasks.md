@@ -27,6 +27,6 @@ Scenarios: `diff: A moved block is detected`, `diff: A moved block with an edit 
 
 Scenarios: `diff: NOTICE credits VS Code`
 
-- [ ] 4.1 Write the scenario in `tests/unit/diff/test_notice.lua` and see it fail
-- [ ] 4.2 Add the VS Code line and MIT text to `NOTICE`, and the header to `moves.lua` and every fixture table. `diff: Ported files carry their attribution` must still pass.
-- [ ] 4.3 Run `make check`
+- [x] 4.1 Write the scenario in `tests/unit/diff/test_notice.lua` and see it fail
+- [x] 4.2 Add the VS Code line and MIT text to `NOTICE`, and the header to `moves.lua` and every fixture table. `diff: Ported files carry their attribution` must still pass.
+- [x] 4.3 Run `make check`
