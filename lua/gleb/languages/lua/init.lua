@@ -15,7 +15,7 @@ return {
 	treesitter = { parsers = { "lua" } },
 	references = {
 		test_patterns = { "_spec%.lua$", "/spec/", "/tests/" },
-		usage_types = { disabled = "queued: fix-references-usage-types-lua-bash-terraform" },
+		usage_types = true,
 		write_access = "documentHighlight",
 		target_kinds = {},
 		fixture = { project = "luaproj", symbol = "total" },

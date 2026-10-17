@@ -16,7 +16,7 @@ return {
 	treesitter = { parsers = { "hcl", "terraform" } },
 	references = {
 		test_patterns = { "%.tftest%.hcl$", "/tests/" },
-		usage_types = { disabled = "queued: fix-references-usage-types-lua-bash-terraform" },
+		usage_types = true,
 		write_access = "documentHighlight",
 		target_kinds = { Class = "unknown" },
 		fixture = { project = "tfproj", symbol = "region" },

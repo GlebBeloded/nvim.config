@@ -17,7 +17,7 @@ return {
 	treesitter = { parsers = { "bash" } },
 	references = {
 		test_patterns = { "%.bats$", "/test/", "/tests/" },
-		usage_types = { disabled = "queued: fix-references-usage-types-lua-bash-terraform" },
+		usage_types = true,
 		write_access = "documentHighlight",
 		target_kinds = {},
 		fixture = { project = "bashproj", symbol = "total" },

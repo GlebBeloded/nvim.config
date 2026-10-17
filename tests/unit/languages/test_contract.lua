@@ -58,6 +58,9 @@ T[configured_scenario]["query case tables"] = function()
 		end
 		return names
 	end)()]])
+	for _, name in ipairs({ "lua", "shell", "terraform" }) do
+		eq(vim.tbl_contains(names, name), true)
+	end
 	for _, name in ipairs(names) do
 		local query_cases = require("tests.unit.references.usage_cases." .. name)
 		for _, suite in ipairs(query_cases.suites or { query_cases }) do

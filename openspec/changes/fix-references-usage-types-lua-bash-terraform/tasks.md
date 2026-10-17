@@ -10,6 +10,7 @@ Scenarios: `references: Lua query classifies every usage type`
 
 - Keep draft `false` values as `query_expected`, while `expected` uses the classifier's documented `read` fallback so negative positions remain distinguishable in the case data.
 - Declare and consume the draft fixture's synthetic globals on existing lines so it stays lint-clean without moving any verified position.
+- Validate every suite in a multi-suite usage case table so one language can cover multiple sources and parser filetypes.
 
 ## 2. Bash query cases
 
@@ -31,9 +32,9 @@ Scenarios: `references: Terraform query classifies every usage type`
 
 Scenarios: `languages: Every configured language meets the contract`, `languages: A missing usages query breaks the contract`
 
-- [ ] 4.1 Tighten `tests/unit/languages/test_contract.lua` so the configured-language case requires Lua, Shell and Terraform among the enabled usage-type case tables; run `make test FILE=tests/unit/languages/test_contract.lua CASE="Every configured language meets the contract"` and see it fail while their facets remain disabled
-- [ ] 4.2 Set `references.usage_types = true` in `lua/gleb/languages/{lua,shell,terraform}/init.lua`
-- [ ] 4.3 Run `make test FILE=tests/unit/languages/test_contract.lua CASE="Every configured language meets the contract"` and `make test FILE=tests/unit/languages/test_contract.lua CASE="A missing usages query breaks the contract"` and see both pass
+- [x] 4.1 Tighten `tests/unit/languages/test_contract.lua` so the configured-language case requires Lua, Shell and Terraform among the enabled usage-type case tables; run `make test FILE=tests/unit/languages/test_contract.lua CASE="Every configured language meets the contract"` and see it fail while their facets remain disabled
+- [x] 4.2 Set `references.usage_types = true` in `lua/gleb/languages/{lua,shell,terraform}/init.lua`
+- [x] 4.3 Run `make test FILE=tests/unit/languages/test_contract.lua CASE="Every configured language meets the contract"` and `make test FILE=tests/unit/languages/test_contract.lua CASE="A missing usages query breaks the contract"` and see both pass
 
 ## 5. Lua references through the real picker
 
