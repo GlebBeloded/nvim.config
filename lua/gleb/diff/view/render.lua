@@ -34,7 +34,7 @@ local function gutter(row)
 	local arrow = row.first and "»" or " "
 	local left = row.left and string.format("%3d ", row.left) or "╱╱╱╱"
 	local right = row.right and string.format("%3d ", row.right) or "╱╱╱╱"
-	local checkbox = row.first and row.checkbox and "󰄱" or " "
+	local checkbox = row.first and row.checkbox and (type(row.checkbox) == "string" and row.checkbox or "󰄱") or " "
 	if not kind then
 		return highlighted(arrow, "Normal")
 			.. highlighted(left, "DiffViewLineNr")
@@ -67,7 +67,10 @@ local function padding_gutter(row)
 			row.right and string.format("%3d ", row.right) or "╱╱╱╱",
 			row.right and ("DiffViewGutter" .. kind) or "DiffViewPadding",
 		},
-		{ row.first and row.checkbox and "󰄱" or " ", checkbox_group },
+		{
+			row.first and row.checkbox and (type(row.checkbox) == "string" and row.checkbox or "󰄱") or " ",
+			checkbox_group,
+		},
 		{ row.right and " " or "╱", row.right and ("DiffViewGutter" .. kind) or "DiffViewPadding" },
 	}
 end

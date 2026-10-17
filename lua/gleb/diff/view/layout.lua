@@ -11,7 +11,7 @@ local M = {}
 ---@field change? integer
 ---@field kind? gleb.diff.view.Kind
 ---@field first? boolean
----@field checkbox? boolean
+---@field checkbox? boolean|string
 ---@field fold? integer
 ---@field count? integer
 
@@ -87,7 +87,7 @@ end
 ---@param rows gleb.diff.view.Row[]
 ---@param fragment gleb.diff.LineFragment
 ---@param index integer
----@param checkbox boolean
+---@param checkbox boolean|string
 local function add_change(rows, fragment, index, checkbox)
 	local count1 = fragment.end1 - fragment.start1
 	local count2 = fragment.end2 - fragment.start2
@@ -114,14 +114,15 @@ end
 ---@param line_count1 integer
 ---@param line_count2 integer
 ---@param context integer
+---@param states? string[]
 ---@return gleb.diff.view.Layout
-function M.build(fragments, line_count1, line_count2, context)
+function M.build(fragments, line_count1, line_count2, context, states)
 	local rows = {}
 	local folds = {}
 	local previous1, previous2 = 0, 0
 	for index, fragment in ipairs(fragments) do
 		add_unchanged(rows, folds, previous1, fragment.start1, previous2, context, index > 1, true)
-		add_change(rows, fragment, index, line_count1 > 0)
+		add_change(rows, fragment, index, line_count1 > 0 and (states and states[index] or true))
 		previous1, previous2 = fragment.end1, fragment.end2
 	end
 	add_unchanged(rows, folds, previous1, line_count1, previous2, context, #fragments > 0, false)
@@ -148,6 +149,14 @@ function M.change_at_line(layout, side, line)
 			return index
 		end
 	end
+end
+
+---@param model gleb.diff.view.Layout
+---@param side "left"|"right"
+---@param line integer 1-based line
+---@return integer? change 1-based fragment index
+function M.change_at(model, side, line)
+	return M.change_at_line(model, side, line)
 end
 
 ---@param layout gleb.diff.view.Layout
@@ -187,7 +196,7 @@ function M.gutter(row)
 	local arrow = row.first and "»" or " "
 	local left = row.left and string.format("%3d ", row.left) or "╱╱╱╱"
 	local right = row.right and string.format("%3d ", row.right) or "╱╱╱╱"
-	local checkbox = row.first and row.checkbox and "󰄱" or " "
+	local checkbox = row.first and row.checkbox and (type(row.checkbox) == "string" and row.checkbox or "󰄱") or " "
 	return arrow .. left .. "     " .. right .. checkbox .. " "
 end
 

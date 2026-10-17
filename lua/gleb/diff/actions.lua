@@ -57,6 +57,22 @@ local function previous_change(ctx)
 end
 
 ---@param ctx gleb.ActionContext
+local function apply(ctx)
+	local view = current(ctx)
+	if view then
+		require("gleb.diff.view").apply(view, ctx.win)
+	end
+end
+
+---@param ctx gleb.ActionContext
+local function toggle_include(ctx)
+	local view = current(ctx)
+	if view then
+		require("gleb.diff.view").toggle_include(view, ctx.win)
+	end
+end
+
+---@param ctx gleb.ActionContext
 local function open_file(ctx)
 	local path = vim.api.nvim_buf_get_name(ctx.buf)
 	local view = require("gleb.diff.view")
@@ -73,6 +89,7 @@ local function open_file(ctx)
 	assert(data, "source data missing")
 	local opened = view.open({
 		path = data.path,
+		root = data.root,
 		relpath = data.relpath,
 		left = data.left,
 		right = data.right,
@@ -109,6 +126,20 @@ local actions = {
 		category = "Git | Diff",
 		plugin = "gleb-diff",
 		run = previous_change,
+	},
+	{
+		id = "diff.apply",
+		title = "Revert Change",
+		category = "Git | Diff",
+		plugin = "gleb-diff",
+		run = apply,
+	},
+	{
+		id = "diff.toggle_include",
+		title = "Toggle Change Staging",
+		category = "Git | Diff",
+		plugin = "gleb-diff",
+		run = toggle_include,
 	},
 	{
 		id = "diff.next_file",

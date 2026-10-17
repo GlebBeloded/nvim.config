@@ -3,7 +3,9 @@
 
 local engine = require("gleb.diff.engine")
 local layout = require("gleb.diff.view.layout")
+local patch = require("gleb.diff.patch")
 local render = require("gleb.diff.view.render")
+local stage = require("gleb.diff.stage")
 local windows = require("gleb.diff.view.windows")
 
 ---@type table<gleb.diff.view.View, { cursor?: { win: integer, line: integer, col: integer }, scroll?: { win: integer, topline: integer, topfill: integer, leftcol: integer } }>
@@ -28,12 +30,14 @@ local M = {
 ---@field labels { left: string, right: string }
 ---@field right_buf? integer
 ---@field relpath? string
+---@field root? string
 ---@field filetype? string
 ---@field on_next_file? function
 
 ---@class gleb.diff.view.View
 ---@field path string
 ---@field relpath string
+---@field root? string
 ---@field left string[]
 ---@field right string[]
 ---@field labels { left: string, right: string }
@@ -54,6 +58,7 @@ local M = {
 ---@field mappings? table<integer, { lhs: string, previous: table }[]>
 ---@field closing? boolean
 ---@field approximate? boolean
+---@field index? gleb.diff.Index
 ---@field syncing? boolean
 ---@field timer? uv.uv_timer_t
 ---@field attached? boolean
@@ -134,6 +139,21 @@ local function compare(left, right)
 end
 
 ---@param view gleb.diff.view.View
+---@param fragments gleb.diff.LineFragment[]
+---@param right string[]
+---@return string[]?
+local function checkbox_states(view, fragments, right)
+	if not view.index then
+		return nil
+	end
+	local states = {}
+	for index, fragment in ipairs(fragments) do
+		states[index] = patch.state(view.left, view.index.lines, right, fragment)
+	end
+	return states
+end
+
+---@param view gleb.diff.view.View
 ---@return { start: integer, finish: integer }[]
 local function open_fold_ranges(view)
 	if not vim.api.nvim_win_is_valid(view.right_win) then
@@ -160,11 +180,37 @@ local function redraw(view)
 	local comparison = compare(view.left, right)
 	view.right = right
 	view.fragments = comparison.fragments
-	view.layout = layout.build(comparison.fragments, #view.left, #right, M.config.context)
+	view.layout = layout.build(
+		comparison.fragments,
+		#view.left,
+		#right,
+		M.config.context,
+		checkbox_states(view, comparison.fragments, right)
+	)
 	view.approximate = comparison.too_big or comparison.timed_out
 	render.draw(view)
 	windows.add_folds(view, open_ranges)
 	windows.update_labels(view)
+end
+
+---@param view gleb.diff.view.View
+local function redraw_now(view)
+	if view.timer then
+		view.timer:stop()
+	end
+	redraw(view)
+end
+
+---@param view gleb.diff.view.View
+local function refresh_index(view)
+	if not view.root then
+		return
+	end
+	local current = stage.read(view.root, view.relpath)
+	if current then
+		view.index = current
+		redraw_now(view)
+	end
 end
 
 ---@param view gleb.diff.view.View
@@ -305,6 +351,12 @@ local function create_interaction_autocmds(view)
 			schedule_redraw(view)
 		end,
 	})
+	vim.api.nvim_create_autocmd("FocusGained", {
+		group = view.augroup,
+		callback = function()
+			refresh_index(view)
+		end,
+	})
 end
 
 ---@param view gleb.diff.view.View
@@ -326,12 +378,14 @@ local function build(spec)
 		return nil
 	end
 	local path = vim.fs.normalize(spec.path)
-	local model = layout.build(comparison.fragments, #spec.left, #spec.right, M.config.context)
+	local relpath = spec.relpath or vim.fs.basename(path)
+	local index = spec.root and stage.read(spec.root, relpath) or nil
 	---@type gleb.diff.view.View
 	---@diagnostic disable-next-line: missing-fields -- windows initializes the handles as one lifecycle step.
-	return {
+	local view = {
 		path = path,
-		relpath = spec.relpath or vim.fs.basename(path),
+		relpath = relpath,
+		root = spec.root,
 		left = spec.left,
 		right = spec.right,
 		labels = spec.labels,
@@ -340,10 +394,63 @@ local function build(spec)
 		on_next_file = spec.on_next_file,
 		ns = vim.api.nvim_create_namespace(""),
 		fragments = comparison.fragments,
-		layout = model,
+		index = index,
 		approximate = comparison.too_big or comparison.timed_out,
 		syncing = false,
 	}
+	view.layout = layout.build(
+		comparison.fragments,
+		#spec.left,
+		#spec.right,
+		M.config.context,
+		checkbox_states(view, comparison.fragments, spec.right)
+	)
+	return view
+end
+
+---@param view gleb.diff.view.View
+---@param win integer
+function M.apply(view, win)
+	local side = win == view.left_win and "left" or "right"
+	local line = vim.api.nvim_win_get_cursor(win)[1]
+	local index = layout.change_at(view.layout, side, line)
+	local fragment = index and view.fragments[index] or nil
+	if not fragment then
+		return
+	end
+	local replacement = vim.list_slice(view.left, fragment.start1 + 1, fragment.end1)
+	vim.api.nvim_buf_set_lines(view.right_buf, fragment.start2, fragment.end2, false, replacement)
+	redraw_now(view)
+end
+
+---@param view gleb.diff.view.View
+---@param win integer
+function M.toggle_include(view, win)
+	if not view.root then
+		return
+	end
+	local side = win == view.left_win and "left" or "right"
+	local line = vim.api.nvim_win_get_cursor(win)[1]
+	local index = layout.change_at(view.layout, side, line)
+	local fragment = index and view.fragments[index] or nil
+	if not fragment then
+		return
+	end
+	local current, err = stage.read(view.root, view.relpath)
+	local old_state = current and patch.state(view.left, current.lines, view.right, fragment) or nil
+	local include = old_state ~= "󰄲"
+	if not current then
+		vim.notify((include and "Stage" or "Unstage") .. " failed: " .. (err or ""), vim.log.levels.ERROR)
+		return
+	end
+	local new_lines = patch.update_index(view.left, current.lines, view.right, fragment, include)
+	local right_final_newline = vim.bo[view.right_buf].eol or vim.bo[view.right_buf].fixeol
+	local new_final_newline = fragment.end2 == #view.right and right_final_newline or current.final_newline
+	local text = patch.make_patch(view.relpath, current.lines, new_lines, current.final_newline, new_final_newline)
+	if stage.apply(view.root, text, include) then
+		view.index = { lines = new_lines, final_newline = new_final_newline }
+		redraw_now(view)
+	end
 end
 
 ---@param view gleb.diff.view.View

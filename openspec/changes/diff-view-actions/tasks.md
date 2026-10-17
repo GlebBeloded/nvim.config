@@ -14,14 +14,14 @@ Scenarios: `diff: Diff view checkboxes follow the index`, `diff: Diff view check
 
 Scenarios: `diff: Diff view do reverts a changed line`, `diff: Diff view dp reverts a deletion from the left window`, `diff: Diff view reverts an insertion as one undo step`, `diff: Diff view revert off a change does nothing`, `diff: Diff view checkboxes follow the index`, `diff: Diff view checkbox of a partly staged change`, `diff: Diff view Space stages one change`, `diff: Diff view Space unstages a staged change`, `diff: Diff view stages an insertion and a deletion separately`, `diff: Diff view reports a staging failure`
 
-- [ ] 2.1 Write these scenarios in `tests/integration/diff/test_actions.lua` (`diffgo` and `dirty` fixtures), and see them fail
-- [ ] 2.2 Add:
+- [x] 2.1 Write these scenarios in `tests/integration/diff/test_actions.lua` (`diffgo` and `dirty` fixtures), and see them fail
+- [x] 2.2 Add:
   - `layout.change_at` (Decision 1);
   - `diff.apply` (Decision 2);
   - `lua/gleb/diff/stage.lua` (Decision 4);
   - checkbox states in `layout.lua`/`render.lua` (Decision 5);
   - the actions with their keys in `settings/keymap.json` (`do`, `dp`, `<Space>`).
-- [ ] 2.3 Run the file and see it pass, together with `tests/integration/diff/test_view_close.lua` (the key ownership scenarios).
+- [x] 2.3 Run the file and see it pass, together with `tests/integration/diff/test_view_close.lua` (the key ownership scenarios).
 
 ## 3. Moved blocks
 
@@ -55,3 +55,4 @@ Scenarios: `diff: Diff view staged change matches the approved render`, `diff: D
 ## Agent decisions
 
 - Expose `state`, `update_index(..., include)` and `make_patch(..., final-newline flags)` so index math and serialization stay independently testable.
+- Keep the index snapshot and its final-newline bit on each view so redraws stay synchronous and toggles can refresh it explicitly.
