@@ -318,7 +318,8 @@ local function fill_fallbacks(groups)
 			local positions = vim.tbl_map(function(usage)
 				return fallback_position(usage, client)
 			end, unresolved)
-			local kinds = kind_ts.classify(source, unresolved[1].filetype or "", positions)
+			local language = vim.treesitter.language.get_lang(unresolved[1].filetype or "") or ""
+			local kinds = kind_ts.classify(source, language, positions)
 			for index, usage in ipairs(unresolved) do
 				usage.kind = kinds[index]
 			end

@@ -47,6 +47,30 @@ T["references: Treesitter fallback classifies writes where a parser exists"]["Ba
 	eq(actual, { "write", "other" })
 end
 
+T["references: Treesitter fallback classifies writes where a parser exists"]["Bash filetype resolves parser language"] = function()
+	local path = child.fn.tempname() .. ".sh"
+	child.fn.writefile({ "x=1" }, path)
+	child.lua(
+		[[
+		local path = ...
+		_G.bash_usage_kind = nil
+		require("gleb.references.kind").classify({ {
+			uri = vim.uri_from_fname(path),
+			path = path,
+			lnum = 1,
+			col = 1,
+			filetype = vim.filetype.match({ filename = path }),
+		} }, function(usages)
+			_G.bash_usage_kind = usages[1].kind
+		end)
+	]],
+		{ path }
+	)
+	eq(child.wait("_G.bash_usage_kind ~= nil", 1000), true)
+
+	eq(child.lua_get("_G.bash_usage_kind"), "write")
+end
+
 T["references: Without kinds or a parser a usage is other"] = function()
 	local actual = child.lua_get([[(function()
 		return require("gleb.references.kind_ts").classify("value", "text", {
