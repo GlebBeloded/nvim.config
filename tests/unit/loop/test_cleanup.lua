@@ -44,6 +44,10 @@ end
 local function make_repo()
 	local repo = H.tempdir(child)
 	eq(H.system(child, { "git", "init", "-q", "-b", "auto" }, repo, H.GIT_ENV).code, 0)
+	-- the openspec stub lists `t-change` by default; a queued change always has a proposal.md
+	child.fn.mkdir(vim.fs.joinpath(repo, "openspec/changes/t-change"), "p")
+	child.fn.writefile({ "## Why", "x" }, vim.fs.joinpath(repo, "openspec/changes/t-change/proposal.md"))
+	eq(H.system(child, { "git", "add", "openspec" }, repo, H.GIT_ENV).code, 0)
 	eq(H.system(child, { "git", "commit", "-q", "--allow-empty", "-m", "init" }, repo, H.GIT_ENV).code, 0)
 	child.lua("vim.uv.fs_symlink(...)", { vim.fs.joinpath(H.root, "Makefile"), vim.fs.joinpath(repo, "Makefile") })
 	local scripts = vim.fs.joinpath(repo, ".archon/scripts")
@@ -148,6 +152,7 @@ local function write_change(repo, name, created)
 	local dir = vim.fs.joinpath(repo, "openspec/changes", name)
 	child.fn.mkdir(dir, "p")
 	child.fn.writefile({ "created: " .. created }, vim.fs.joinpath(dir, ".openspec.yaml"))
+	child.fn.writefile({ "## Why", "x" }, vim.fs.joinpath(dir, "proposal.md"))
 	eq(H.system(child, { "git", "add", "openspec" }, repo, H.GIT_ENV).code, 0)
 	eq(H.system(child, { "git", "commit", "-q", "-m", "change " .. name }, repo, H.GIT_ENV).code, 0)
 end
