@@ -1,6 +1,7 @@
 local MiniTest = require("mini.test")
 local F = require("tests.fixtures")
 local H = require("tests.helpers")
+local layout = require("gleb.diff.view.layout")
 
 local eq = MiniTest.expect.equality
 local child = H.new_child()
@@ -86,6 +87,16 @@ T["diff: Diff view scrolls both windows together"] = function()
 end
 
 T["diff: Diff view maps the cursor across changes"] = function()
+	local result = layout.build({
+		{ start1 = 52, end1 = 53, start2 = 52, end2 = 53 },
+		{ start1 = 57, end1 = 57, start2 = 57, end2 = 58 },
+		{ start1 = 64, end1 = 65, start2 = 65, end2 = 65 },
+	}, 151, 151, 4)
+	eq(layout.transfer_line(result, "right", 58), 58)
+	eq(layout.transfer_line(result, "right", 59), 58)
+	eq(layout.transfer_line(result, "left", 65), 66)
+	eq(layout.change_at_line(result, "left", 58), 2)
+
 	open_controller()
 	local view = child.lua_get([[require("gleb.diff.view").current()]])
 
