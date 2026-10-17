@@ -117,8 +117,9 @@ end
 ---@param client_name? string
 ---@param timeout? integer
 ---@param parser? string
+---@param before_open? fun()
 ---@return table[]
-local function open_references(root, path, line, col, server, client_name, timeout, parser)
+local function open_references(root, path, line, col, server, client_name, timeout, parser, before_open)
 	client_name = client_name or server
 	timeout = timeout or TIMEOUT_MS
 	require_server(server)
@@ -148,6 +149,9 @@ local function open_references(root, path, line, col, server, client_name, timeo
 				_G.previous_server_status_handler
 			_G.previous_server_status_handler = nil
 		]])
+	end
+	if before_open then
+		before_open()
 	end
 	if parser then
 		assert(
@@ -406,6 +410,27 @@ T[typescript_scenario]["renders every usage kind"] = function()
 	eq(actual, {
 		{ "main.ts", 2, 1, "write" },
 		{ "main.ts", 3, 13, "read" },
+	})
+end
+T[typescript_scenario]["falls back when the tsserver command is unavailable"] = function()
+	local root = H.git_repo({
+		["package.json"] = [[{"private":true}]],
+		["tsconfig.json"] = [[{"compilerOptions":{"strict":true}}]],
+		["main.ts"] = "let hits = 0;\nhits++;\nconsole.log(hits);\n",
+	})
+	local actual = open_references(root, "main.ts", 1, 5, "vtsls", nil, nil, "typescript", function()
+		child.lua([[
+local client = assert(vim.lsp.get_clients({ bufnr = 0, name = "vtsls" })[1])
+local provider = assert(client.server_capabilities.executeCommandProvider)
+provider.commands = vim.tbl_filter(function(command)
+	return command ~= "typescript.tsserverRequest"
+end, provider.commands)
+vim.treesitter.query.set("typescript", "usages", "")
+]])
+	end)
+	eq(actual, {
+		{ "main.ts", 2, 1, "read" },
+		{ "main.ts", 3, 13, "unclassified" },
 	})
 end
 

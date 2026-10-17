@@ -614,7 +614,7 @@ function M.classify(usages, callback, origin)
 			vim.list_extend(tsserver_usages, file_usages)
 		elseif
 			client
-			and (not references or references.write_access == "documentHighlight")
+			and (not references or references.write_access ~= false)
 			and client:supports_method("textDocument/documentHighlight")
 		then
 			pending = pending + 1
@@ -637,7 +637,7 @@ function M.classify(usages, callback, origin)
 		local references = references_config(filetype)
 		if
 			client
-			and (not references or references.write_access == "documentHighlight")
+			and (not references or references.write_access ~= false)
 			and client:supports_method("textDocument/documentHighlight")
 		then
 			pending = pending + 1
