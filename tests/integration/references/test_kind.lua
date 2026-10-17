@@ -203,9 +203,14 @@ request()
 	for index, node in ipairs(state.visible_nodes) do
 		assert(rows[index]:find(node.label, 1, true), "rendered row does not contain " .. node.label)
 		if node.kind == "usage" then
-			table.insert(usages, { node.path, node.lnum, node.col, node.usage_kind })
+			table.insert(usages, { node.path, node.lnum, node.col, node.usage_type })
 		end
 	end
+	table.sort(usages, function(left, right)
+		if left[1] ~= right[1] then return left[1] < right[1] end
+		if left[2] ~= right[2] then return left[2] < right[2] end
+		return left[3] < right[3]
+	end)
 	return usages
 end)()
 ]])
@@ -256,6 +261,54 @@ T[go_scenario]["fixture contains the exact usages"] = function()
 	})
 	run_go(root, { "go", "build", "./..." })
 	run_go(root, { "go", "vet", "./..." })
+end
+
+local go_struct_scenario = "references: gr classifies struct usages"
+T[go_struct_scenario] = MiniTest.new_set()
+T[go_struct_scenario]["renders every struct usage type"] = function()
+	local root, manifest = F.copy("gomod", vim.fn.tempname())
+	local declaration = manifest.references.Invoice[1]
+	local actual = open_references(root, declaration.path, declaration.line, declaration.col, "gopls", nil, nil, "go")
+	eq(actual, {
+		{ "billing/batch.go", 5, 10, "field_declaration" },
+		{ "billing/batch.go", 6, 13, "field_declaration" },
+		{ "billing/batch.go", 10, 29, "return_type" },
+		{ "billing/batch.go", 11, 10, "struct_initialization" },
+		{ "billing/batch.go", 15, 16, "parameter_declaration" },
+		{ "billing/batch.go", 15, 38, "return_type" },
+		{ "billing/invoice.go", 11, 9, "receiver" },
+		{ "billing/invoice.go", 20, 9, "receiver" },
+		{ "billing/invoice_test.go", 6, 9, "struct_initialization" },
+	})
+end
+
+local go_function_scenario = "references: gr classifies function usages as calls"
+T[go_function_scenario] = MiniTest.new_set()
+T[go_function_scenario]["renders every function usage as a call"] = function()
+	local root, manifest = F.copy("gomod", vim.fn.tempname())
+	local declaration = manifest.references.Format[1]
+	local actual = open_references(root, declaration.path, declaration.line, declaration.col, "gopls", nil, nil, "go")
+	eq(actual, {
+		{ "billing/invoice.go", 16, 15, "call" },
+		{ "billing/invoice.go", 23, 31, "call" },
+		{ "internal/money/money_test.go", 6, 12, "call" },
+		{ "report/summary.go", 7, 27, "call" },
+	})
+end
+
+local go_field_scenario = "references: Composite literal keys are field writes"
+T[go_field_scenario] = MiniTest.new_set()
+T[go_field_scenario]["renders every field read and write"] = function()
+	local root = F.copy("gomod", vim.fn.tempname())
+	local actual = open_references(root, "billing/invoice.go", 7, 2, "gopls", nil, nil, "go")
+	eq(actual, {
+		{ "billing/batch.go", 11, 18, "write" },
+		{ "billing/batch.go", 16, 6, "write" },
+		{ "billing/batch.go", 16, 25, "read" },
+		{ "billing/invoice.go", 13, 26, "read" },
+		{ "billing/invoice.go", 22, 26, "read" },
+		{ "billing/invoice_test.go", 6, 17, "write" },
+	})
 end
 T[go_scenario]["renders every usage kind"] = function()
 	local root, manifest = F.copy("gomod", vim.fn.tempname())

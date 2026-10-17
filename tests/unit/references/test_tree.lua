@@ -30,103 +30,127 @@ local function build(options, selected)
 end
 
 T["references: Go usages are grouped by scope and folder"] = function()
-	local actual = build([[{ tests = "grouped", folders = true }]])
+	child.lua([[for _, usage in ipairs(UsageFixture) do usage.kind = "call" end]])
+	local actual = build([[{ tests = "grouped", folders = true, usage_type = true }]])
 
 	eq(actual.count, 4)
 	eq(actual.nodes, {
 		{ id = "scope:production", kind = "scope", label = "Production", count = 3, depth = 0 },
 		{
-			id = "folder:production:billing",
+			id = "type:production:call",
+			kind = "type",
+			label = "Call",
+			count = 3,
+			depth = 1,
+			parent_id = "scope:production",
+			usage_type = "call",
+		},
+		{
+			id = "folder:production:call:billing",
 			kind = "folder",
 			label = "billing",
 			count = 2,
-			depth = 1,
-			parent_id = "scope:production",
+			depth = 2,
+			parent_id = "type:production:call",
 		},
 		{
 			id = "usage:file:///repo/billing/invoice.go:16:11",
 			kind = "usage",
 			label = "invoice.go:16",
-			depth = 2,
-			parent_id = "folder:production:billing",
+			depth = 3,
+			parent_id = "folder:production:call:billing",
 			uri = "file:///repo/billing/invoice.go",
 			path = "billing/invoice.go",
 			lnum = 16,
 			col = 11,
 			test = false,
+			usage_type = "call",
 		},
 		{
 			id = "usage:file:///repo/billing/invoice.go:23:11",
 			kind = "usage",
 			label = "invoice.go:23",
-			depth = 2,
-			parent_id = "folder:production:billing",
+			depth = 3,
+			parent_id = "folder:production:call:billing",
 			uri = "file:///repo/billing/invoice.go",
 			path = "billing/invoice.go",
 			lnum = 23,
 			col = 11,
 			test = false,
+			usage_type = "call",
 		},
 		{
-			id = "folder:production:report",
+			id = "folder:production:call:report",
 			kind = "folder",
 			label = "report",
 			count = 1,
-			depth = 1,
-			parent_id = "scope:production",
+			depth = 2,
+			parent_id = "type:production:call",
 		},
 		{
 			id = "usage:file:///repo/report/summary.go:7:8",
 			kind = "usage",
 			label = "summary.go:7",
-			depth = 2,
-			parent_id = "folder:production:report",
+			depth = 3,
+			parent_id = "folder:production:call:report",
 			uri = "file:///repo/report/summary.go",
 			path = "report/summary.go",
 			lnum = 7,
 			col = 8,
 			test = false,
+			usage_type = "call",
 		},
 		{ id = "scope:test", kind = "scope", label = "Test", count = 1, depth = 0 },
 		{
-			id = "folder:test:internal/money",
-			kind = "folder",
-			label = "internal/money",
+			id = "type:test:call",
+			kind = "type",
+			label = "Call",
 			count = 1,
 			depth = 1,
 			parent_id = "scope:test",
+			usage_type = "call",
+		},
+		{
+			id = "folder:test:call:internal/money",
+			kind = "folder",
+			label = "internal/money",
+			count = 1,
+			depth = 2,
+			parent_id = "type:test:call",
 		},
 		{
 			id = "usage:file:///repo/internal/money/money_test.go:6:4",
 			kind = "usage",
 			label = "money_test.go:6",
-			depth = 2,
-			parent_id = "folder:test:internal/money",
+			depth = 3,
+			parent_id = "folder:test:call:internal/money",
 			uri = "file:///repo/internal/money/money_test.go",
 			path = "internal/money/money_test.go",
 			lnum = 6,
 			col = 4,
 			test = true,
+			usage_type = "call",
 		},
 	})
 	eq(actual.selected_id, "usage:file:///repo/billing/invoice.go:16:11")
 
-	local hidden = build([[{ tests = "hidden", folders = true }]])
+	local hidden = build([[{ tests = "hidden", folders = true, usage_type = true }]])
 	eq(hidden.count, 3)
 	eq(
 		vim.tbl_map(function(node)
 			return node.label
 		end, hidden.nodes),
-		{ "Production", "billing", "invoice.go:16", "invoice.go:23", "report", "summary.go:7" }
+		{ "Production", "Call", "billing", "invoice.go:16", "invoice.go:23", "report", "summary.go:7" }
 	)
 
-	local mixed = build([[{ tests = "mixed", folders = true }]])
+	local mixed = build([[{ tests = "mixed", folders = true, usage_type = true }]])
 	eq(mixed.count, 4)
 	eq(
 		vim.tbl_map(function(node)
 			return { node.kind, node.label, node.test_tag }
 		end, mixed.nodes),
 		{
+			{ "type", "Call" },
 			{ "folder", "billing" },
 			{ "usage", "invoice.go:16", false },
 			{ "usage", "invoice.go:23", false },
@@ -137,16 +161,17 @@ T["references: Go usages are grouped by scope and folder"] = function()
 		}
 	)
 
-	local folderless = build([[{ tests = "mixed", folders = false }]])
+	local folderless = build([[{ tests = "mixed", folders = false, usage_type = true }]])
 	eq(
 		vim.tbl_map(function(node)
 			return { node.label, node.depth, node.test_tag }
 		end, folderless.nodes),
 		{
-			{ "billing/invoice.go:16", 0, false },
-			{ "billing/invoice.go:23", 0, false },
-			{ "internal/money/money_test.go:6", 0, true },
-			{ "report/summary.go:7", 0, false },
+			{ "Call", 0 },
+			{ "billing/invoice.go:16", 1, false },
+			{ "billing/invoice.go:23", 1, false },
+			{ "internal/money/money_test.go:6", 1, true },
+			{ "report/summary.go:7", 1, false },
 		}
 	)
 end
@@ -191,58 +216,75 @@ T["references: Regrouping keeps the selected usage"] = function()
 
 	eq(grouped.selected_id, "usage:file:///repo/report/summary.go:7:8")
 	eq(flat.selected_id, grouped.selected_id)
-	eq(flat.nodes[4].label, "report/summary.go:7")
 end
 
-local kinds_scenario = "references: Function usages have no read/write level or hint"
-T[kinds_scenario] = MiniTest.new_set()
-
-T[kinds_scenario]["omits the level when every usage is other"] = function()
+T["references: Unclassified usages add no level"] = function()
 	child.lua([[
-		for _, usage in ipairs(UsageFixture) do usage.kind = "other" end
+		for _, usage in ipairs(UsageFixture) do usage.kind = "unclassified" end
 	]])
 
-	local actual = build([[{ tests = "grouped", folders = true, read_write = true }]])
+	local actual = build([[{ tests = "grouped", folders = true, usage_type = true }]])
 	eq(
 		vim.tbl_filter(function(node)
-			return node.kind == "kind"
+			return node.kind == "type"
 		end, actual.nodes),
 		{}
 	)
+	eq(actual.has_types, false)
 end
 
-T[kinds_scenario]["groups kinds or adds row tags according to the toggle"] = function()
+local types_scenario = "references: Usage type groups sort by label"
+T[types_scenario] = MiniTest.new_set()
+
+T[types_scenario]["orders catalogue labels"] = function()
 	child.lua([[
-		UsageFixture[1].kind = "other"
-		UsageFixture[2].kind = "read"
-		UsageFixture[3].kind = "write"
-		UsageFixture[4].kind = "write"
+		UsageFixture = {
+			{ uri = "file:///repo/a.go", path = "a.go", lnum = 1, col = 1, kind = "write" },
+			{ uri = "file:///repo/b.go", path = "b.go", lnum = 1, col = 1, kind = "read" },
+			{ uri = "file:///repo/c.go", path = "c.go", lnum = 1, col = 1, kind = "unclassified" },
+			{ uri = "file:///repo/d.go", path = "d.go", lnum = 1, col = 1, kind = "call" },
+			{ uri = "file:///repo/e.go", path = "e.go", lnum = 1, col = 1, kind = "struct_initialization" },
+			{ uri = "file:///repo/f.go", path = "f.go", lnum = 1, col = 1, kind = "field_declaration" },
+		}
 	]])
 
-	local grouped = build([[{ tests = "mixed", folders = false, read_write = true }]])
+	local grouped = build([[{ tests = "mixed", folders = false, usage_type = true }]])
 	eq(
-		vim.tbl_map(function(node)
-			return { node.kind, node.label, node.count, node.depth, node.usage_kind }
-		end, grouped.nodes),
+		vim.tbl_map(
+			function(node)
+				return node.label
+			end,
+			vim.tbl_filter(function(node)
+				return node.kind == "type"
+			end, grouped.nodes)
+		),
 		{
-			{ "kind", "Value write", 2, 0, "write" },
-			{ "usage", "billing/invoice.go:16", nil, 1, "write" },
-			{ "usage", "billing/invoice.go:23", nil, 1, "write" },
-			{ "kind", "Value read", 1, 0, "read" },
-			{ "usage", "internal/money/money_test.go:6", nil, 1, "read" },
-			{ "kind", "Usage", 1, 0, "other" },
-			{ "usage", "report/summary.go:7", nil, 1, "other" },
+			"Call",
+			"Field declaration",
+			"Struct initialization",
+			"Unclassified",
+			"Value read",
+			"Value write",
 		}
 	)
+	eq(grouped.has_types, true)
+end
 
-	local tagged = build([[{ tests = "mixed", folders = false, read_write = false }]])
+T[types_scenario]["adds catalogue tags when the level is off"] = function()
+	child.lua([[
+		UsageFixture[1].kind = "unclassified"
+		UsageFixture[2].kind = "read"
+		UsageFixture[3].kind = "struct_initialization"
+		UsageFixture[4].kind = "field_declaration"
+	]])
+	local tagged = build([[{ tests = "mixed", folders = false, usage_type = false }]])
 	eq(
 		vim.tbl_map(function(node)
-			return { node.label, node.kind_tag }
+			return { node.label, node.type_tag }
 		end, tagged.nodes),
 		{
-			{ "billing/invoice.go:16", "write" },
-			{ "billing/invoice.go:23", "write" },
+			{ "billing/invoice.go:16", "field_declaration" },
+			{ "billing/invoice.go:23", "struct_initialization" },
 			{ "internal/money/money_test.go:6", "read" },
 			{ "report/summary.go:7" },
 		}

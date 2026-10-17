@@ -42,137 +42,205 @@ local LEGEND = {
 	d = "ReferencesFolderLabel",
 	G = "DevIconGo",
 	g = "ReferencesFileLabelDevIconGo",
-	W = "ReferencesWrite",
-	w = "ReferencesWriteLabel",
-	Y = "ReferencesRead",
-	y = "ReferencesReadLabel",
+	C = "ReferencesUsageTypeCall",
+	a = "ReferencesUsageTypeCallLabel",
+	W = "ReferencesUsageTypeWrite",
+	w = "ReferencesUsageTypeWriteLabel",
+	Y = "ReferencesUsageTypeRead",
+	y = "ReferencesUsageTypeReadLabel",
 	z = "ReferencesMaskBackground",
 }
 
 local KIND_GROUPED_MASK = {
-	"....................................................................................................",
-	"..btttttttttttttttttttttbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb..",
-	"..bfffPfppppppppppffsffffffffffffffffffffffffbfsssssssssssssssssfffffffffffffffffffffffffffffffffb..",
-	"..bfffffWfwwwwwwwwwwwffsfffffffffffffffffffffbfsssffkkkkkkkfMMMMMMfffffffffffffffffffffffffffffffb..",
-	"..bfffffffDfddddddffsffffffffffffffffffffffffbfsssfffffffffffffffffffffffffffffffffffffffffffffffb..",
-	"..bcccccccccGcggggggggcccccccccccccccccccccccbfsssffmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmffffffffffb..",
-	"..bfffEfeeeeffsffffffffffffffffffffffffffffffbfsssffkkkfVVVVVfTTTffffffffffffffffffffffffffffffffb..",
-	"..bfffffWfwwwwwwwwwwwffsfffffffffffffffffffffbfsssfffffffffffffffffffffffffffffffffffffffffffffffb..",
-	"..bfffffffDfddddddffsffffffffffffffffffffffffbfsssffmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmfffffffb..",
-	"..bfffffffffGfgggggggggggggssffffffffffffffffbfsssffkkkkfHHHHHBBfBfffffffffffffffffffffffffffffffb..",
-	"..bfffffYfyyyyyyyyyyffsffffffffffffffffffffffbfrrrffffffhhhhhjjffffffffffffffffffffffffffffffffffb..",
-	"..bfffffffDfddddddffsffffffffffffffffffffffffbfsssffBffffffffffffffffffffffffffffffffffffffffffffb..",
-	"..bfffffffffGfgggggggggggggssffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
-	"..bfffffffffGfgggggggggggggssffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
-	"..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
-	"..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
-	"..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
-	"..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
-	"..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
-	"..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
-	"..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
-	"..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
-	"..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
-	"..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
-	"..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
-	"..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
-	"..bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb..",
-	"..bfffffffffffffffffffffffffxxxxxxxxxxxxxxxxxxxoxxxxxxxxxxxxxoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxb..",
-	"..bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb..",
-	"....................................................................................................",
+	"VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV",
+	"BBbVVVVVVVVVVVVVVVVVVVVVbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbBB",
+	"BBbVVVJVppppppppppVVDVVVVVVVVVVVVVVVVVVVVVVVVbVDDDDDDDDDDDDDDDDDVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVHVwwwwwwwwwwwVVDVVVVVVVVVVVVVVVVVVVVVbVDDDVVjjjjjjjVBBBBBBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVDVddddddVVDVVVVVVVVVVVVVVVVVVVVVVVVbVDDDVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbcVVVVVVVVGVccccccccDDVVVVVVVVVVVVVVVVVVVVVbVDDDVVmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmVVVVVVVVVVbBB",
+	"BBbVVVEVeeeeVVDVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVDDDVVjjjVVVVVVVFFFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVEVeeeeeeeeeeVVDVVVVVVVVVVVVVVVVVVVVVVbVDDDVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVDVddddddVVDVVVVVVVVVVVVVVVVVVVVVVVVbVDDDVVmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmVVVVVVVbBB",
+	"BBbVVVVVVVVVGVgggggggggggggDDVVVVVVVVVVVVVVVVbVDDDVVjjjjVHHHHHBBVBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVGVgggggggggggggDDVVVVVVVVVVVVVVVVbVrrrVVVVVVVVVVVjjVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVHVwwwwwwwwwwwVVDVVVVVVVVVVVVVVVVVVVVVbVDDDVVBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVDVddddddVVDVVVVVVVVVVVVVVVVVVVVVVVVbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVGVgggggggggggggDDVVVVVVVVVVVVVVVVbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVDDDDDDDDDDDDDDDDDDDFDDDDDDDDDDDDDFDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDbBB",
+	"BBbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbBB",
+	"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
 }
 
 local KIND_TAGGED_MASK = {
-	"....................................................................................................",
-	"..btttttttttttttttttttttbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb..",
-	"..bfffPfppppppppppffsffffffffffffffffffffffffbfsssssssssssssssssfffffffffffffffffffffffffffffffffb..",
-	"..bfffffDfddddddffsffffffffffffffffffffffffffbfsssffkkkkkkkfMMMMMMfffffffffffffffffffffffffffffffb..",
-	"..bcccccccGcggggggggcccccccccccccccccWcwwwwwcbfsssfffffffffffffffffffffffffffffffffffffffffffffffb..",
-	"..bfffEfeeeeffsffffffffffffffffffffffffffffffbfsssffmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmffffffffffb..",
-	"..bfffffDfddddddffsffffffffffffffffffffffffffbfsssffkkkfVVVVVfTTTffffffffffffffffffffffffffffffffb..",
-	"..bfffffffGfgggggggggggggssffffffffffWfwwwwwfbfsssfffffffffffffffffffffffffffffffffffffffffffffffb..",
-	"..bfffffffGfgggggggggggggssfffffffffffYfyyyyfbfsssffmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmfffffffb..",
-	"..bfffffffGfgggggggggggggssfffffffffffYfyyyyfbfsssffkkkkfHHHHHBBfBfffffffffffffffffffffffffffffffb..",
-	"..bffffffffffffffffffffffffffffffffffffffffffbfrrrffffffhhhhhjjffffffffffffffffffffffffffffffffffb..",
-	"..bffffffffffffffffffffffffffffffffffffffffffbfsssffBffffffffffffffffffffffffffffffffffffffffffffb..",
-	"..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
-	"..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
-	"..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
-	"..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
-	"..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
-	"..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
-	"..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
-	"..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
-	"..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
-	"..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
-	"..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
-	"..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
-	"..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
-	"..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
-	"..bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb..",
-	"..bfffffffffffffffffffffffffxxxxxxxxxxxxxxxxxxxoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxb..",
-	"..bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb..",
-	"....................................................................................................",
+	"VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV",
+	"BBbVVVVVVVVVVVVVVVVVVVVVbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbBB",
+	"BBbVVVJVppppppppppVVDVVVVVVVVVVVVVVVVVVVVVVVVbVDDDDDDDDDDDDDDDDDVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVDVddddddVVDVVVVVVVVVVVVVVVVVVVVVVVVVVbVDDDVVjjjjjjjVBBBBBBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbcVVVVVVGVccccccccDDVVVVVVVVVVVVVVVHVcccccVbVDDDVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVEVeeeeVVDVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVDDDVVmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmVVVVVVVVVVbBB",
+	"BBbVVVVVDVddddddVVDVVVVVVVVVVVVVVVVVVVVVVVVVVbVDDDVVjjjVVVVVVVFFFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVGVgggggggggggggDDVVVVVVVVVVHVwwwwwVbVDDDVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVGVgggggggggggggDDVVVVVVVVVVVEVeeeeVbVDDDVVmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmVVVVVVVbBB",
+	"BBbVVVVVVVGVgggggggggggggDDVVVVVVVVVVVEVeeeeVbVDDDVVjjjjVHHHHHBBVBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVrrrVVVVVVVVVVVjjVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVDDDVVBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVDDDDDDDDDDDDDDDDDDDFDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDbBB",
+	"BBbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbBB",
+	"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
 }
 
 local WIDE_DEFAULT_MASK = {
-	"....................................................................................................",
-	"..bttttttttttttttttttttttbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb..",
-	"..bfffPfppppppppppffsffffffffffffffffffffffffbfsssssssssssssssssssssfffffffffffffffffffffffffffffb..",
-	"..bfffffDfdddddddffsfffffffffffffffffffffffffbfsssffmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmb..",
-	"..bcccccccGcggggggggggcccccccccccccccccccccccbfsssffkkkkfffffffffkkkkkkfzffffffffffffffffffffffffb..",
-	"..bfffffffGfggggggggggsssffffffffffffffffffffbfsssffffffffffffzzTTTffffffffffffffffffffffffffffffb..",
-	"..bfffffDfddddddffsffffffffffffffffffffffffffbfsssffzffffffffffffffffffffffffffffffffffffffffffffb..",
-	"..bfffffffGfggggggggggssfffffffffffffffffffffbfsssfffffffffffffffffffffffffffffffffffffffffffffffb..",
-	"..bfffEfeeeeffsffffffffffffffffffffffffffffffbfsssffmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmfffffffffb..",
-	"..bfffffDfddddddddddddddffsffffffffffffffffffbfsssffkkkkfzzfvvvvvvvzfHHHzzfTTTTTTfzffffffffffffffb..",
-	"..bfffffffGfgggggggggggggssffffffffffffffffffbfsssffffffffffffjjfnfffffffffffffffffffffffffffffffb..",
-	"..bffffffffffffffffffffffffffffffffffffffffffbfsssffffffkkkffifffffffjjfkkkkkffiJJJJJfzffffffffffb..",
-	"..bffffffffffffffffffffffffffffffffffffffffffbfsssffffffffffffffffjjfffffffffffffffffffffffffffffb..",
-	"..bffffffffffffffffffffffffffffffffffffffffffbfsssffffffzffffffffffffffffffffffffffffffffffffffffb..",
-	"..bffffffffffffffffffffffffffffffffffffffffffbfrrrffffffkkkkkkffffffihhhhhhzfffffzfffffffffffffffb..",
-	"..bffffffffffffffffffffffffffffffffffffffffffbfsssffzffffffffffffffffffffffffffffffffffffffffffffb..",
-	"..bffffffffffffffffffffffffffffffffffffffffffbfsssfffffffffffffffffffffffffffffffffffffffffffffffb..",
-	"..bffffffffffffffffffffffffffffffffffffffffffbfsssffmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmffffffffffffffb..",
-	"..bffffffffffffffffffffffffffffffffffffffffffbfsssffkkkkfzzfvvvvvvvzfHHHHHHHHzzfzzTTTTTTfzfffffffb..",
-	"..bffffffffffffffffffffffffffffffffffffffffffbfsssffffffffffffjjfzzTTTTTTzzffffffffffffffffffffffb..",
-	"..bffffffffffffffffffffffffffffffffffffffffffbfsssffffffkkkffifffffffjjfkkkkkffiJJJJJfzffffffffffb..",
-	"..bffffffffffffffffffffffffffffffffffffffffffbfsssffffffffffffffffjfHHHHHHzfffffiffffffihhhhhhzffb..",
-	"..bffffffffffffffffffffffffffffffffffffffffffbfsssffffffzffffffffffffffffffffffffffffffffffffffffb..",
-	"..bffffffffffffffffffffffffffffffffffffffffffbfsssffffffkkkkkkfffffffffffffffffffffffffffffffffffb..",
-	"..bffffffffffffffffffffffffffffffffffffffffffbfsssffzffffffffffffffffffffffffffffffffffffffffffffb..",
-	"..bffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffffffb..",
-	"..bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb..",
-	"..bffffffffffffffffffffffffffffffffffffffffffxxxxxxxxxxxxxxxxxxxoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxb..",
-	"..bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb..",
-	"....................................................................................................",
+	"VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbBB",
+	"BBbVVVJVppppppppppVVDVVVVVVVVVVVVVVVVVVVVVVVVbVDDDDDDDDDDDDDDDDDDDDDVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVCVaaaaVVDVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVDDDVVmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmbBB",
+	"BBbVVVVVVVDVdddddddVVDVVVVVVVVVVVVVVVVVVVVVVVbVDDDVVjjjjVVVVVVVVVjjjjjjVBVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbcVVVVVVVVGVccccccccccDDDVVVVVVVVVVVVVVVVVVbVDDDVVVVVVVVVVVVBBFFFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVGVggggggggggDDDVVVVVVVVVVVVVVVVVVbVDDDVVBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVDVddddddVVDVVVVVVVVVVVVVVVVVVVVVVVVbVDDDVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVGVggggggggggDDVVVVVVVVVVVVVVVVVVVbVDDDVVmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmVVVVVVVVVbBB",
+	"BBbVVVEVeeeeVVDVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVDDDVVjjjjVBBVFFFFFFFBVHHHBBVFFFFFFVBVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVCVaaaaVVDVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVDDDVVVVVVVVVVVVjjVCVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVDVddddddddddddddVVDVVVVVVVVVVVVVVVVbVDDDVVVVVVjjjVVEVVVVVVVjjVjjjjjVVEJJJJJVBVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVGVgggggggggggggDDVVVVVVVVVVVVVVVVbVDDDVVVVVVVVVVVVVVVVjjVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVDDDVVVVVVBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVrrrVVVVVVjjjjjjVVVVVVEHHHHHHBVVVVVBVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVDDDVVBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVDDDVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVDDDVVmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVDDDVVjjjjVBBVFFFFFFFBVHHHHHHHHBBVBBFFFFFFVBVVVVVVVbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVDDDVVVVVVVVVVVVjjVBBFFFFFFBBVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVDDDVVVVVVjjjVVEVVVVVVVjjVjjjjjVVEJJJJJVBVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVDDDVVVVVVVVVVVVVVVVjVHHHHHHBVVVVVEVVVVVVEHHHHHHBVVbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVDDDVVVVVVBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVDDDVVVVVVjjjjjjVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVDDDVVBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVDDDDDDDDDDDDDDDDDDDFDDDDDDDDDDDDDFDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDbBB",
+	"BBbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbBB",
+	"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
 }
 
 local NARROW_MASK = {
-	"......................................................................",
-	"......................................................................",
-	"......................................................................",
-	"......................................................................",
-	"......................................................................",
-	"..................bttttttttttttttttttttttbbbbbbbbbbb..................",
-	"..................bfffPfppppppppppffsffffffffffffffb..................",
-	"..................bfffffDfdddddddffsfffffffffffffffb..................",
-	"..................bcccccccGcggggggggggcccccccccccccb..................",
-	"..................bfffffffGfggggggggggsssffffffffffb..................",
-	"..................bfffffDfddddddffsffffffffffffffffb..................",
-	"..................bfffffffGfggggggggggssfffffffffffb..................",
-	"..................bfffEfeeeeffsffffffffffffffffffffb..................",
-	"..................bfffffDfddddddddddddddffsffffffffb..................",
-	"..................bfffffffGfgggggggggggggssffffffffb..................",
-	"..................bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb..................",
-	"..................bfxxxxxxxxxxxxxxxxxxxoxxxxxxxxxxxb..................",
-	"..................bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb..................",
-	"......................................................................",
-	"......................................................................",
-	"......................................................................",
-	"......................................................................",
-	"......................................................................",
-	"......................................................................",
+	"VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV",
+	"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+	"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+	"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+	"BBBBBBBBBbVVVVVVVVVVVVVVVVVVVVVVbbbbbbbbbbbbbbbbbbbbbbbbbbbbBBBBBBBBBB",
+	"BBBBBBBBBbVVVJVppppppppppVVDVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBBBBBBBBBB",
+	"BBBBBBBBBbVVVVVCVaaaaVVDVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBBBBBBBBBB",
+	"BBBBBBBBBbVVVVVVVDVdddddddVVDVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBBBBBBBBBB",
+	"BBBBBBBBBbcVVVVVVVVGVccccccccccDDDVVVVVVVVVVVVVVVVVVVVVVVVVbBBBBBBBBBB",
+	"BBBBBBBBBbVVVVVVVVVGVggggggggggDDDVVVVVVVVVVVVVVVVVVVVVVVVVbBBBBBBBBBB",
+	"BBBBBBBBBbVVVVVVVDVddddddVVDVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBBBBBBBBBB",
+	"BBBBBBBBBbVVVVVVVVVGVggggggggggDDVVVVVVVVVVVVVVVVVVVVVVVVVVbBBBBBBBBBB",
+	"BBBBBBBBBbVVVEVeeeeVVDVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBBBBBBBBBB",
+	"BBBBBBBBBbVVVVVCVaaaaVVDVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBBBBBBBBBB",
+	"BBBBBBBBBbVVVVVVVDVddddddddddddddVVDVVVVVVVVVVVVVVVVVVVVVVVbBBBBBBBBBB",
+	"BBBBBBBBBbVVVVVVVVVGVgggggggggggggDDVVVVVVVVVVVVVVVVVVVVVVVbBBBBBBBBBB",
+	"BBBBBBBBBbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbBBBBBBBBBB",
+	"BBBBBBBBBbVDDDDDDDDDDDDDDDDDDDFDDDDDDDDDDDDDFDDDDDDDDDDDDDDbBBBBBBBBBB",
+	"BBBBBBBBBbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbBBBBBBBBBB",
+	"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+	"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+	"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+	"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+	"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+}
+
+local STRUCT_GROUPED_MASK = {
+	"VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbBB",
+	"BBbVVVJVppppppppppVVDVVVVVVVVVVVVVVVVVVVVVVVVbVDDDDDDDDDDDDDDDDDDVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVJVpppppppppppppppppVVDVVVVVVVVVVVVVVVbVDDDVVjjjjjjjVBBBBBBBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVDVdddddddVVDVVVVVVVVVVVVVVVVVVVVVVVbVDDDVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbcVVVVVVVVGVccccccccDDVVVVVVVVVVVVVVVVVVVVVbVDDDVVmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmbBB",
+	"BBbVVVVVVVVVGVggggggggDDVVVVVVVVVVVVVVVVVVVVVbVDDDVVjjjjVVVVVVVjjjjjjVBVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVJVpppppppppppppppppppppVVDVVVVVVVVVVVbVrrrVVVVVVVVVVVVVVFFFFFFFVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVDVdddddddVVDVVVVVVVVVVVVVVVVVVVVVVVbVDDDVVVVVVVVVVVVVVBBjFFFFFFFVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVGVggggggggDDDVVVVVVVVVVVVVVVVVVVVbVDDDVVBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVJVppppppppVVDVVVVVVVVVVVVVVVVVVVVVVVVbVDDDVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVDVdddddddVVDVVVVVVVVVVVVVVVVVVVVVVVbVDDDVVmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmbBB",
+	"BBbVVVVVVVVVGVggggggggggDDDVVVVVVVVVVVVVVVVVVbVDDDVVjjjjVHHHHHHHHHHBBBBBBVFFFBVjFFFFFFFVBVVVVVVVVbBB",
+	"BBbVVVVVVVVVGVggggggggggDDDVVVVVVVVVVVVVVVVVVbVDDDVVVVVVjjjjjjVjFFFFFFFBVVVVVEVBBFFFBVVVVVBBVVVVVbBB",
+	"BBbVVVVVJVpppppppppppVVDVVVVVVVVVVVVVVVVVVVVVbVDDDVVBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVDVdddddddVVDVVVVVVVVVVVVVVVVVVVVVVVbVDDDVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVGVggggggggDDDVVVVVVVVVVVVVVVVVVVVbVDDDVVmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmVVVVVVVVVbBB",
+	"BBbVVVVVVVVVGVggggggggDDDVVVVVVVVVVVVVVVVVVVVbVDDDVVjjjjVHHHHHBBBBVFFFFFFFEVBBBBBVBBFFFBVFFFFFFFVbBB",
+	"BBbVVVVVCVaaaaaaaaaaaaaaaaaaaaaVVDVVVVVVVVVVVbVDDDVVVVVVVVVEJJJJJVjVHHHHHHBVVVEJJJJJEVVVVVVjjjBVVbBB",
+	"BBbVVVVVVVDVdddddddVVDVVVVVVVVVVVVVVVVVVVVVVVbVDDDVVVVVVjjjjjjVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVGVggggggggDDDVVVVVVVVVVVVVVVVVVVVbVDDDVVBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVEVeeeeVVDVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVCVaaaaaaaaaaaaaaaaaaaaaVVDVVVVVVVVVVVbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVDVdddddddVVDVVVVVVVVVVVVVVVVVVVVVVVbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVGVgggggggggggggggDDVVVVVVVVVVVVVVbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVDDDDDDDDDDDDDDDDDDDFDDDDDDDDDDDDDFDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDbBB",
+	"BBbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbBB",
+	"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+}
+
+local STRUCT_TAGGED_MASK = {
+	"VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbBB",
+	"BBbVVVJVppppppppppVVDVVVVVVVVVVVVVVVVVVVVVVVVbVDDDDDDDDDDDDDDDDDDVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVDVdddddddVVDVVVVVVVVVVVVVVVVVVVVVVVVVbVDDDVVjjjjjjjVBBBBBBBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbcVVVVVVGVccccccccDDVVVVVVVVVVVVVVVJVcccccVbVDDDVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVGVggggggggDDVVVVVVVVVVVVVVVJVpppppVbVDDDVVmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmbBB",
+	"BBbVVVVVVVGVggggggggDDDVVVVVVVVVVVVVJVppppppVbVDDDVVjjjjVVVVVVVjjjjjjVBVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVGVggggggggDDDVVVVVVVVVVVVVVVCVaaaaVbVrrrVVVVVVVVVVVVVVFFFFFFFVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVGVggggggggDDDVVVVVVVVVVVVVVJVpppppVbVDDDVVVVVVVVVVVVVVBBjFFFFFFFVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVGVggggggggDDDVVVVVVVVVVVVVJVppppppVbVDDDVVBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVGVggggggggggDDDVVVVVVVVVJVppppppppVbVDDDVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVGVggggggggggDDDVVVVVVVVVJVppppppppVbVDDDVVmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmbBB",
+	"BBbVVVEVeeeeVVDVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVDDDVVjjjjVHHHHHHHHHHBBBBBBVFFFBVjFFFFFFFVBVVVVVVVVbBB",
+	"BBbVVVVVDVdddddddVVDVVVVVVVVVVVVVVVVVVVVVVVVVbVDDDVVVVVVjjjjjjVjFFFFFFFBVVVVVEVBBFFFBVVVVVBBVVVVVbBB",
+	"BBbVVVVVVVGVgggggggggggggggDDVVVVVVVVVCVaaaaVbVDDDVVBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVDDDVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVDDDVVmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmVVVVVVVVVbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVDDDVVjjjjVHHHHHBBBBVFFFFFFFEVBBBBBVBBFFFBVFFFFFFFVbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVDDDVVVVVVVVVEJJJJJVjVHHHHHHBVVVEJJJJJEVVVVVVjjjBVVbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVDDDVVVVVVjjjjjjVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVDDDVVBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVbBB",
+	"BBbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbBB",
+	"BBbVVVVVVVVVVVVVVVVVVVVVVVVVDDDDDDDDDDDDDDDDDDDFDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDbBB",
+	"BBbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbBB",
+	"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
 }
 
 local function start()
@@ -210,6 +278,28 @@ local function open_calls()
 	eq(child.wait([[vim.bo.filetype == "gleb-references"]], TIMEOUT_MS), true)
 	eq(child.wait([[not require("gleb.references.view").state.classifying]], TIMEOUT_MS), true)
 	child.cmd("redraw")
+end
+
+local function open_invoice()
+	child.o.columns, child.o.lines = 100, 30
+	local declaration = manifest.references.Invoice[1]
+	child.cmd("cd " .. vim.fn.fnameescape(root) .. " | edit " .. vim.fn.fnameescape(declaration.path))
+	child.api.nvim_win_set_cursor(0, { declaration.line, declaration.col - 1 })
+	eq(child.wait([[#vim.lsp.get_clients({ bufnr = 0, name = "gopls" }) > 0]], TIMEOUT_MS), true)
+	child.type_keys("gr")
+	eq(child.wait([[vim.bo.filetype == "gleb-references"]], TIMEOUT_MS), true)
+	eq(child.wait([[not require("gleb.references.view").state.classifying]], TIMEOUT_MS), true)
+	child.cmd("redraw")
+end
+
+local function tree_lines()
+	return child.lua_get([[vim.api.nvim_buf_get_lines(require("gleb.references.view").state.tree_buf, 0, -1, false)]])
+end
+
+local function hint_line()
+	return child.lua_get(
+		[=[vim.api.nvim_buf_get_lines(require("gleb.references.view").state.hint_buf, 0, 1, false)[1]]=]
+	)
 end
 
 -- Design masks intentionally leave the editor outside the view uncoloured. Clear
@@ -254,19 +344,55 @@ end
 T["references: Wide view matches reference screenshot"] = function()
 	open_format(100, 30)
 	H.expect_screenshot(child.get_screenshot())
+	clear_background_for_mask()
+	H.expect_screen_colors(child, 1, with_cleared_background(WIDE_DEFAULT_MASK), LEGEND)
+end
+
+T["references: Tests key cycles grouped, hidden and mixed"] = function()
+	open_format(100, 30)
+	local default = child.get_screenshot()
+	child.type_keys("t")
+	eq(child.lua_get([[require("gleb.references.view").state.tree.count]]), 3)
+	eq(hint_line():find("Tests: hidden t", 1, true) ~= nil, true)
+	child.cmd("redraw")
+	H.expect_screenshot(child.get_screenshot())
+
+	child.type_keys("t")
+	eq(
+		child.lua_get([[(function()
+		local text = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n")
+		return {
+			text:find("Production", 1, true) == nil,
+			text:find("Test  ", 1, true) == nil,
+			text:find("money_test.go:6", 1, true) ~= nil,
+			text:find(" test", 1, true) ~= nil,
+		}
+	end)()]]),
+		{ true, true, true, true }
+	)
+	eq(tree_lines()[1], "▾  Call  4")
+	eq(hint_line():find("Tests: mixed t", 1, true) ~= nil, true)
+	child.cmd("redraw")
+	H.expect_screenshot(child.get_screenshot())
 
 	child.type_keys("t")
 	child.cmd("redraw")
-	H.expect_screenshot(child.get_screenshot())
+	eq(child.get_screenshot(), default)
+end
 
-	child.type_keys("tf")
+T["references: Mixed tests without folders is a flat list"] = function()
+	open_format(100, 30)
+	child.type_keys("ttf")
+	eq(tree_lines(), {
+		"▾  Call  4",
+		"   billing/invoice.go:16",
+		"   billing/invoice.go:23",
+		"   …ternal/money/money_test.go:6  test",
+		"   report/summary.go:7",
+	})
+	eq(hint_line():find("Tests: mixed t · ○ Folders f", 1, true) ~= nil, true)
 	child.cmd("redraw")
 	H.expect_screenshot(child.get_screenshot())
-
-	child.type_keys("tf")
-	child.cmd("redraw")
-	clear_background_for_mask()
-	H.expect_screen_colors(child, 1, with_cleared_background(WIDE_DEFAULT_MASK), LEGEND)
 end
 
 T["references: Narrow view fits its content"] = function()
@@ -285,15 +411,31 @@ T[grouped_scenario]["matches approved K1"] = function()
 	H.expect_screen_colors(child, 1, with_cleared_background(KIND_GROUPED_MASK), LEGEND)
 end
 
-local tagged_scenario = "references: w turns the level into row tags"
+local tagged_scenario = "references: u turns the level into row tags"
 T[tagged_scenario] = MiniTest.new_set()
 T[tagged_scenario]["matches approved K2 through the real key"] = function()
 	open_calls()
-	child.type_keys("w")
+	child.type_keys("u")
 	child.cmd("redraw")
 	H.expect_screenshot(child.get_screenshot())
 	clear_background_for_mask()
 	H.expect_screen_colors(child, 1, with_cleared_background(KIND_TAGGED_MASK), LEGEND)
+end
+
+T["references: Struct usages are grouped by usage type"] = function()
+	open_invoice()
+	H.expect_screenshot(child.get_screenshot())
+	clear_background_for_mask()
+	H.expect_screen_colors(child, 1, with_cleared_background(STRUCT_GROUPED_MASK), LEGEND)
+end
+
+T["references: u turns struct usage types into row tags"] = function()
+	open_invoice()
+	child.type_keys("u")
+	child.cmd("redraw")
+	H.expect_screenshot(child.get_screenshot())
+	clear_background_for_mask()
+	H.expect_screen_colors(child, 1, with_cleared_background(STRUCT_TAGGED_MASK), LEGEND)
 end
 
 return T

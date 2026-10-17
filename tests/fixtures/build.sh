@@ -328,6 +328,38 @@ func (i Invoice) Rendered() []string {
 	return lines
 }
 EOF
+	cat >billing/batch.go <<'EOF'
+package billing
+
+// Batch groups the invoices of one customer.
+type Batch struct {
+	Current Invoice
+	Past    []*Invoice
+}
+
+// NewInvoice starts an invoice with one line.
+func NewInvoice(cents int) *Invoice {
+	return &Invoice{Lines: []int{cents}}
+}
+
+// Merge appends extra lines to inv.
+func Merge(inv Invoice, extra []int) Invoice {
+	inv.Lines = append(inv.Lines, extra...)
+	return inv
+}
+EOF
+	cat >billing/invoice_test.go <<'EOF'
+package billing
+
+import "testing"
+
+func TestDue(t *testing.T) {
+	inv := Invoice{Lines: []int{100, 250}}
+	if got := inv.Due(); got != "$3.50" {
+		t.Fatalf("Due() = %q, want $3.50", got)
+	}
+}
+EOF
 	cat >report/summary.go <<'EOF'
 package report
 
@@ -366,9 +398,10 @@ EOF
 	go vet ./... >&2
 	git init -q
 	commit "gomod fixture"
-	printf '{"references":{"Format":[%s],"Calls":[%s]}}\n' \
+	printf '{"references":{"Format":[%s],"Calls":[%s],"Invoice":[%s]}}\n' \
 		"$(format_locations internal/money/money.go internal/money/money_test.go billing/invoice.go report/summary.go)" \
 		'{"path":"report/calls.go","line":4,"col":5},{"path":"report/calls.go","line":8,"col":2},{"path":"report/calls_test.go","line":6,"col":2},{"path":"report/calls_test.go","line":8,"col":5},{"path":"report/calls_test.go","line":9,"col":34}' \
+		'{"path":"billing/invoice.go","line":6,"col":6},{"path":"billing/invoice.go","line":11,"col":9},{"path":"billing/invoice.go","line":20,"col":9},{"path":"billing/batch.go","line":5,"col":10},{"path":"billing/batch.go","line":6,"col":13},{"path":"billing/batch.go","line":10,"col":29},{"path":"billing/batch.go","line":11,"col":10},{"path":"billing/batch.go","line":15,"col":16},{"path":"billing/invoice_test.go","line":6,"col":9}' \
 		>../manifest.json
 }
 

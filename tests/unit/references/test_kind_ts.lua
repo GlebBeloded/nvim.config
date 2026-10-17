@@ -11,16 +11,33 @@ end)
 T["references: Treesitter fallback classifies writes where a parser exists"] = MiniTest.new_set()
 
 T["references: Treesitter fallback classifies writes where a parser exists"]["Go declarations and increments"] = function()
-	local actual = child.lua_get([[(function()
+	child.lua([[
+		_G.go_fallback_kinds = nil
 		local source = "x := 1\nx++\nprint(x)"
-		return require("gleb.references.kind_ts").classify(source, "go", {
+		local path = vim.fn.tempname() .. ".go"
+		vim.fn.writefile(vim.split(source, "\n", { plain = true }), path)
+		local uri = vim.uri_from_fname(path)
+		local usages = vim.tbl_map(function(position)
+			return {
+				uri = uri,
+				path = path,
+				lnum = position.line + 1,
+				col = position.character + 1,
+				filetype = "go",
+				range = { start = position, ["end"] = position },
+			}
+		end, {
 			{ line = 0, character = 0 },
 			{ line = 1, character = 0 },
 			{ line = 2, character = 6 },
 		})
-	end)()]])
+		require("gleb.references.kind").classify(usages, function(classified)
+			_G.go_fallback_kinds = vim.tbl_map(function(usage) return usage.kind end, classified)
+		end)
+	]])
+	eq(child.wait([[type(_G.go_fallback_kinds) == "table"]]), true)
 
-	eq(actual, { "write", "write", "read" })
+	eq(child.lua_get("_G.go_fallback_kinds"), { "write", "write", "read" })
 end
 
 T["references: Treesitter fallback classifies writes where a parser exists"]["Lua assignments"] = function()
@@ -92,7 +109,7 @@ T["references: Without kinds or a parser a usage is other"] = function()
 		})
 	end)()]])
 
-	eq(actual, { "other" })
+	eq(actual, { "unclassified" })
 end
 
 return T

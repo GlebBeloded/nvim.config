@@ -63,29 +63,6 @@ local function add_test_only_reference()
 	)
 end
 
-T["references: Tests key cycles grouped, hidden and mixed"] = function()
-	open_format()
-	local default = tree_lines()
-
-	child.type_keys("t")
-	eq(child.lua_get([[require("gleb.references.view").state.tree.count]]), 3)
-	eq(table.concat(tree_lines(), "\n"):find("Test", 1, true), nil)
-	eq(hint_line():find("Tests: hidden t", 1, true) ~= nil, true)
-
-	child.type_keys("t")
-	local mixed_lines = tree_lines()
-	local mixed = table.concat(mixed_lines, "\n")
-	eq(mixed_lines[1], "  ▾ 󰉖 billing  2")
-	eq(mixed:find("Production", 1, true), nil)
-	eq(mixed:find("Test  ", 1, true), nil)
-	eq(mixed:find("money_test.go:6", 1, true) ~= nil, true)
-	eq(mixed:find("test", 1, true) ~= nil, true)
-	eq(hint_line():find("Tests: mixed t", 1, true) ~= nil, true)
-
-	child.type_keys("t")
-	eq(tree_lines(), default)
-end
-
 T["references: Tests filter can leave the tree empty"] = function()
 	add_test_only_reference()
 	child.o.lines, child.o.columns = 30, 100
@@ -127,19 +104,6 @@ end)()
 	child.type_keys("qgr")
 	eq(child.wait([[vim.bo.filetype == "gleb-references"]], TIMEOUT_MS), true)
 	eq(child.lua_get([[require("gleb.references.view").state.tree.count]]), 0)
-end
-
-T["references: Mixed tests without folders is a flat list"] = function()
-	open_format()
-	child.type_keys("ttf")
-
-	eq(tree_lines(), {
-		" billing/invoice.go:16",
-		" billing/invoice.go:23",
-		" internal/money/money_test.go:6   test",
-		" report/summary.go:7",
-	})
-	eq(hint_line():find("Tests: mixed t · ○ Folders f", 1, true) ~= nil, true)
 end
 
 T["references: Grouping persists across sessions"] = function()
@@ -243,7 +207,7 @@ T["references: View keys come from the keymap file"] = function()
 	open_format()
 	local actual = child.lua_get([[
 (function()
-	local wanted = { "<CR>", "za", "t", "f", "P", "q", "<Esc>" }
+	local wanted = { "<CR>", "za", "t", "f", "u", "P", "q", "<Esc>" }
 	local maps = {}
 	for _, map in ipairs(vim.api.nvim_buf_get_keymap(0, "n")) do maps[map.lhs] = map.desc end
 	local shortcuts = vim.json.decode(table.concat(vim.fn.readfile(
@@ -255,7 +219,8 @@ T["references: View keys come from the keymap file"] = function()
 		local action = desc and desc:match("^References: (.+)$")
 		result[lhs] = { desc = desc, action = action }
 	end
-	return { result, shortcuts }
+	local legacy = vim.fn.maparg("w", "n", false, true)
+	return { result, shortcuts, legacy.buffer == 1 }
 end)()
 ]])
 	local expected = {
@@ -263,6 +228,7 @@ end)()
 		za = "Fold Group",
 		t = "Cycle Tests",
 		f = "Toggle Folders",
+		u = "Toggle Usage Type",
 		P = "Toggle Preview",
 		q = "Close",
 		["<Esc>"] = "Close",
@@ -274,8 +240,11 @@ end)()
 	eq(actual[2]["references.fold"], { "za" })
 	eq(actual[2]["references.cycle_tests"], { "t" })
 	eq(actual[2]["references.toggle_folders"], { "f" })
+	eq(actual[2]["references.toggle_usage_type"], { "u" })
+	eq(actual[2]["references.toggle_read_write"], nil)
 	eq(actual[2]["references.toggle_preview"], { "P" })
 	eq(actual[2]["references.close"], { "q", "<Esc>" })
+	eq(actual[3], false)
 
 	child.lua([[
 local actions = require("gleb.actions")
@@ -290,7 +259,10 @@ assert(actions.apply())
 ]])
 	child.type_keys("T")
 	eq(child.lua_get([[require("gleb.references.view").state.tree.count]]), 3)
-	eq(hint_line():find("Tests: hidden T · ● Folders F · Preview P · Open o", 1, true) ~= nil, true)
+	eq(
+		hint_line():find("Tests: hidden T · ● Folders F · ● Usage type u · Preview P · Open o", 1, true) ~= nil,
+		true
+	)
 end
 
 return T

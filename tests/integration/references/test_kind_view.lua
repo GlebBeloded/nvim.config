@@ -83,7 +83,7 @@ end
 	)
 end
 
-local persistence_scenario = "references: Read/write state persists across sessions"
+local persistence_scenario = "references: Usage type state persists across sessions"
 T[persistence_scenario] = MiniTest.new_set()
 T[persistence_scenario]["restores the disabled level"] = function()
 	open_symbol("Calls")
@@ -91,7 +91,8 @@ T[persistence_scenario]["restores the disabled level"] = function()
 		child.wait([[vim.api.nvim_buf_get_lines(0, 0, -1, false)[2]:find("Value write", 1, true) ~= nil]], TIMEOUT_MS),
 		true
 	)
-	child.type_keys("w")
+	eq(child.lua_get([[vim.fn.maparg("u", "n", false, true).desc]]), "References: Toggle Usage Type")
+	child.type_keys("u")
 	child.stop()
 
 	child.restart_config({ "--cmd", "cd " .. root }, { env = F.go_env() })
@@ -99,35 +100,57 @@ T[persistence_scenario]["restores the disabled level"] = function()
 	child.lua([[require("null-ls").disable({ name = "golangci_lint" })]])
 	open_symbol("Calls")
 	eq(child.wait([[not vim.api.nvim_win_get_config(0).title[1][1]:find("classifying", 1, true)]], TIMEOUT_MS), true)
-	eq(hint():find("○ Read/write w", 1, true) ~= nil, true)
+	eq(hint():find("○ Usage type u", 1, true) ~= nil, true)
 	eq(lines():find("Value write", 1, true), nil)
 	eq(lines():find("Value read", 1, true), nil)
 end
 
-local key_scenario = "references: The read/write key comes from the keymap file"
+T["references: A saved read/write state carries over"] = function()
+	child.lua([[
+local path = vim.fs.joinpath(vim.fn.stdpath("state"), "references.json")
+vim.fn.mkdir(vim.fs.dirname(path), "p")
+vim.fn.writefile({ '{"read_write":false}' }, path)
+]])
+	open_symbol("Calls")
+	eq(child.wait([[not vim.api.nvim_win_get_config(0).title[1][1]:find("classifying", 1, true)]], TIMEOUT_MS), true)
+	eq(hint():find("○ Usage type u", 1, true) ~= nil, true)
+	eq(lines():find("Value write", 1, true), nil)
+	local saved = child.lua_get([[
+vim.json.decode(table.concat(vim.fn.readfile(vim.fs.joinpath(vim.fn.stdpath("state"), "references.json")), "\n"))
+]])
+	eq(saved.usage_type, false)
+end
+
+local key_scenario = "references: The usage type key comes from the keymap file"
 T[key_scenario] = MiniTest.new_set()
 T[key_scenario]["owns the effective buffer mapping"] = function()
 	open_symbol("Format")
 	local actual = child.lua_get([[
 (function()
-	local map = vim.fn.maparg("w", "n", false, true)
+	local map = vim.fn.maparg("u", "n", false, true)
 	local shortcuts = vim.json.decode(table.concat(vim.fn.readfile(
 		vim.fs.joinpath(vim.fn.stdpath("config"), "settings/keymap.json")), "\n"))
-	return { desc = map.desc, keys = shortcuts["references.toggle_read_write"] }
+	return {
+		desc = map.desc,
+		keys = shortcuts["references.toggle_usage_type"],
+		legacy = shortcuts["references.toggle_read_write"],
+	}
 end)()
 ]])
-	eq(actual, { desc = "References: Toggle Read/write", keys = { "w" } })
+	eq(actual, { desc = "References: Toggle Usage Type", keys = { "u" } })
 end
 
 local async_scenario = "references: The view opens before classification finishes"
 T[async_scenario] = MiniTest.new_set()
-T[async_scenario]["leaves function-only views unchanged after classification"] = function()
+
+T["references: Function usages are grouped under Call"] = function()
 	open_symbol("Format")
 	eq(child.wait([[not vim.api.nvim_win_get_config(0).title[1][1]:find("classifying", 1, true)]], TIMEOUT_MS), true)
+	local actual = lines()
+	eq(select(2, actual:gsub("Call", "")), 2)
 	eq(lines():find("Value write", 1, true), nil)
 	eq(lines():find("Value read", 1, true), nil)
-	eq(lines():find("Usage", 1, true), nil)
-	eq(hint():find("Read/write", 1, true), nil)
+	eq(hint():find("● Usage type u", 1, true) ~= nil, true)
 end
 
 T[async_scenario]["rebuilds around the selected usage"] = function()
@@ -136,6 +159,7 @@ T[async_scenario]["rebuilds around the selected usage"] = function()
 	end)
 	eq(title(), " Usages of Calls · 4 · classifying ")
 	eq(lines():find("Value write", 1, true), nil)
+	eq(lines():find("Value read", 1, true), nil)
 
 	local selected = manifest.references.Calls[4]
 	local row = child.lua_get([[
@@ -149,9 +173,13 @@ end)()
 	eq(child.wait([[require("gleb.references.view").state.preview_usage.lnum == 8]]), true)
 	child.lua([[_G.ReleaseHighlight()]])
 	eq(
-		child.wait([[vim.api.nvim_buf_get_lines(0, 0, -1, false)[2]:find("Value write", 1, true) ~= nil]], TIMEOUT_MS),
+		child.wait(
+			[[table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n"):find("Value write", 1, true) ~= nil]],
+			TIMEOUT_MS
+		),
 		true
 	)
+	eq(lines():find("Value read", 1, true) ~= nil, true)
 	eq(title(), " Usages of Calls · 4 ")
 	eq(child.lua_get([[require("gleb.references.view").state.preview_usage.lnum]]), selected.line)
 end
@@ -166,8 +194,8 @@ T[timeout_scenario]["falls back silently after three seconds"] = function()
 	end)
 	eq(title(), " Usages of Calls · 4 · classifying ")
 	eq(child.wait([[not vim.api.nvim_win_get_config(0).title[1][1]:find("classifying", 1, true)]], 5000), true)
-	eq(lines():find("Value write", 1, true) ~= nil, true)
-	child.type_keys("w")
+	eq(lines():find("Value read", 1, true) ~= nil, true)
+	child.type_keys("u")
 	local timed_out_lines = lines()
 	eq(timed_out_lines:find("read", 1, true) ~= nil, true)
 	child.lua([[_G.ReleaseHighlight()]])

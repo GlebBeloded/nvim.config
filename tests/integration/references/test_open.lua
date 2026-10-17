@@ -52,8 +52,9 @@ T["references: gr opens the view in a Go module"] = function()
 end
 
 T["references: gr with no usages notifies and opens nothing"] = function()
-	local due = { path = "billing/invoice.go", line = 11, col = 18 }
-	edit(due.path, due.line, due.col)
+	vim.fn.writefile({ "package billing", "", "func Ignore(value int) {}" }, root .. "/billing/unused.go")
+	local unused = { path = "billing/unused.go", line = 3, col = 13 }
+	edit(unused.path, unused.line, unused.col)
 	local notifications = H.record_notify(child)
 	local before = #child.api.nvim_list_wins()
 
@@ -111,7 +112,7 @@ end
 T["references: The first usage is selected and previewed"] = function()
 	open_format()
 
-	eq(child.fn.getline("."), "       invoice.go:16")
+	eq(child.fn.getline("."), "         invoice.go:16")
 	local preview = child.lua_get([[
 (function()
 	for _, win in ipairs(vim.api.nvim_list_wins()) do
@@ -139,7 +140,11 @@ T["references: View reflows when the editor resizes"] = function()
 	child.o.columns = 70
 	child.cmd("doautocmd VimResized")
 	eq(child.lua_get([[require("gleb.references.view").state.preview_win == nil]]), true)
-	eq(child.lua_get([[vim.api.nvim_win_get_config(require("gleb.references.view").state.tree_win).col]]), 18)
+	local narrow = child.lua_get([[(function()
+		local win = require("gleb.references.view").state.tree_win
+		return { vim.api.nvim_win_get_width(win), vim.api.nvim_win_get_config(win).col }
+	end)()]])
+	eq(narrow[2], math.floor((70 - narrow[1] - 2) / 2))
 end
 
 return T
