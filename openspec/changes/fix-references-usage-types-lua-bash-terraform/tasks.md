@@ -11,6 +11,8 @@ Scenarios: `references: Lua query classifies every usage type`
 - Keep draft `false` values as `query_expected`, while `expected` uses the classifier's documented `read` fallback so negative positions remain distinguishable in the case data.
 - Declare and consume the draft fixture's synthetic globals on existing lines so it stays lint-clean without moving any verified position.
 - Validate every suite in a multi-suite usage case table so one language can cover multiple sources and parser filetypes.
+- Wait for the full expected Bash reference count before opening the picker so partial bashls indexing cannot satisfy the scenarios.
+- Keep the `total` picker scenario as a regression although it was already green after task 2 supplied Bash call classification; only the missing `rate` fixture produced the expected red in this task.
 
 ## 2. Bash query cases
 
@@ -48,9 +50,9 @@ Scenarios: `references: gr classifies Lua function calls and redefinitions`
 
 Scenarios: `references: gr classifies Bash exports, writes and reads`, `references: gr classifies Bash function usages as calls`
 
-- [ ] 6.1 Write both scenarios in `tests/integration/references/test_kind.lua`, driving `gr` through the real picker on `rate` and `total` with bashls and populated fixture data, and see them fail
-- [ ] 6.2 Add the `bashproj` files and `rate` manifest entry from design.md Decision 7 to `tests/fixtures/build.sh`, add the new scripts to `bash -n`, and change no existing fixture line
-- [ ] 6.3 Run `make test FILE=tests/integration/references/test_kind.lua CASE="gr classifies Bash exports, writes and reads"` and `make test FILE=tests/integration/references/test_kind.lua CASE="gr classifies Bash function usages as calls"` and see both pass; run the existing Bash language and variable-usage scenarios
+- [x] 6.1 Write both scenarios in `tests/integration/references/test_kind.lua`, driving `gr` through the real picker on `rate` and `total` with bashls and populated fixture data, and see them fail
+- [x] 6.2 Add the `bashproj` files and `rate` manifest entry from design.md Decision 7 to `tests/fixtures/build.sh`, add the new scripts to `bash -n`, and change no existing fixture line
+- [x] 6.3 Run `make test FILE=tests/integration/references/test_kind.lua CASE="gr classifies Bash exports, writes and reads"` and `make test FILE=tests/integration/references/test_kind.lua CASE="gr classifies Bash function usages as calls"` and see both pass; run the existing Bash language and variable-usage scenarios
 
 ## 7. Terraform references through the real picker
 

@@ -693,6 +693,33 @@ T[bash_scenario]["renders every usage kind"] = function()
 	})
 end
 
+local bash_variable_scenario = "references: gr classifies Bash exports, writes and reads"
+T[bash_variable_scenario] = MiniTest.new_set()
+T[bash_variable_scenario]["renders every variable usage type"] = function()
+	local root, manifest = F.copy("bashproj", vim.fn.tempname())
+	local declaration = manifest.references.rate[1]
+	local actual =
+		open_references(root, declaration.path, declaration.line, declaration.col, "bashls", nil, nil, "bash", nil, 3)
+	eq(actual, {
+		{ "bin/invoice.sh", 4, 1, "write" },
+		{ "lib/tax.sh", 3, 8, "export" },
+		{ "lib/tax.sh", 6, 25, "read" },
+	})
+end
+
+local bash_function_scenario = "references: gr classifies Bash function usages as calls"
+T[bash_function_scenario] = MiniTest.new_set()
+T[bash_function_scenario]["renders every function usage as a call"] = function()
+	local root, manifest = F.copy("bashproj", vim.fn.tempname())
+	local declaration = manifest.references.total[1]
+	local actual =
+		open_references(root, declaration.path, declaration.line, declaration.col, "bashls", nil, nil, "bash", nil, 2)
+	eq(actual, {
+		{ "bin/run.sh", 4, 1, "call" },
+		{ "test/price_test.sh", 4, 9, "call" },
+	})
+end
+
 local terraform_scenario = "references: gr classifies every Terraform variable usage"
 T[terraform_scenario] = MiniTest.new_set()
 T[terraform_scenario]["renders every usage kind"] = function()

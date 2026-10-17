@@ -422,11 +422,28 @@ source "$(dirname "$0")/../lib/price.sh"
 
 test "$(total 10 2)" = 20
 EOF
-	bash -n lib/price.sh bin/run.sh test/price_test.sh
+	cat >lib/tax.sh <<'EOF'
+#!/usr/bin/env bash
+rate=20
+export rate
+
+tax() {
+	printf '%s\n' "$(($1 * rate / 100))"
+}
+EOF
+	cat >bin/invoice.sh <<'EOF'
+#!/usr/bin/env bash
+source "$(dirname "$0")/../lib/tax.sh"
+
+rate=25
+tax 100
+EOF
+	bash -n lib/price.sh bin/run.sh test/price_test.sh lib/tax.sh bin/invoice.sh
 	git init -q
 	commit "Bash references fixture"
-	printf '{"references":{"total":[%s]}}\n' \
-		"$(identifier_locations total lib/price.sh bin/run.sh test/price_test.sh)" >../manifest.json
+	printf '{"references":{"total":[%s],"rate":[%s]}}\n' \
+		"$(identifier_locations total lib/price.sh bin/run.sh test/price_test.sh)" \
+		"$(identifier_locations rate lib/tax.sh bin/invoice.sh)" >../manifest.json
 }
 
 tfproj() {
