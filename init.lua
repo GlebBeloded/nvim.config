@@ -21,6 +21,7 @@ require("gleb.actions").setup({
 	require("gleb.folding.actions"),
 	require("gleb.ai.actions"),
 	require("gleb.git.actions"),
+	require("gleb.diff.actions"),
 	require("gleb.file_tree.actions"),
 	require("gleb.autocommands.actions"),
 	require("gleb.surround.actions"),
@@ -37,6 +38,7 @@ require("gleb.lsp")
 require("gleb.select")
 require("gleb.treesitter")
 require("gleb.references")
+require("gleb.diff")
 require("gleb.languages").validate()
 require("gleb.folding") -- must be after treesitter
 require("gleb.autopairs") -- must be after treesitter

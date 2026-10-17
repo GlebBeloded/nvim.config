@@ -10,6 +10,7 @@
 #   build.sh bashproj Bash project with production and test-script usages
 #   build.sh tfproj  Terraform module with variable usages
 #   build.sh dirty   repo with staged, unstaged and untracked changes (differ review)
+#   build.sh diffgo  Go files with changed, inserted, deleted and moved lines
 # Git is hermetic: no user or system config, fixed author, committer and dates.
 set -eu
 root=$(cd "$(dirname "$0")/../.." && pwd)
@@ -682,6 +683,57 @@ dirty() {
 		"$(hunk_starts b.txt)" >../manifest.json
 }
 
+# $1 first, $2 last: one 4-line block per step (blank, func, body, close)
+ctl_steps() {
+	i=$1
+	while [ "$i" -le "$2" ]; do
+		printf '\nfunc (c *Ctl) Step%d() error {\n\treturn c.step(%d)\n}\n' "$i" "$i"
+		i=$((i + 1))
+	done
+}
+
+# $1 old | new: internal/user/controller.go, 151 lines; Drop() is lines 50-67
+ctl_controller() {
+	printf '// Package user manages user accounts.\npackage user\n\nimport "log"\n\n'
+	printf '// Ctl removes users and counts what it did.\n// It is not safe for concurrent use.\ntype Ctl struct {\n\tstats Stats\n}\n\n'
+	printf '// Stats are the counters of a Ctl.\ntype Stats struct{ Removed, Skipped, LastRun Counter }\n\n'
+	printf '// Counter is one metric.\ntype Counter interface{ Inc(); Touch() }\n'
+	ctl_steps 1 8
+	printf '\nfunc (c *Ctl) Drop(id string) error {\n\tuser, ok, err := c.lookup(id)\n\tif err != nil {\n'
+	if [ "$1" = old ]; then printf '\t\treturn err\n'; else printf '\t\treturn wrap(err)\n'; fi
+	printf '\t}\n\tif !ok {\n\t\tlog.Info("no user, skipping")\n\n'
+	if [ "$1" = new ]; then printf '\t\tc.stats.Skipped.Inc()\n'; fi
+	printf '\t\treturn err\n\t}\n\n\tif err = c.del(user); err != nil {\n\t\treturn err\n\t}\n\tc.stats.Removed.Inc()\n'
+	if [ "$1" = old ]; then printf '\tc.stats.LastRun.Touch()\n'; fi
+	printf '\treturn nil\n}\n'
+	ctl_steps 9 29
+}
+
+# $1 old | new: internal/user/ids.go; new moves Validate (7 lines) below Key
+ids_validate() {
+	printf '// Validate rejects empty ids.\nfunc Validate(id string) error {\n\tif id == "" {\n\t\treturn errEmpty\n\t}\n\treturn nil\n}\n'
+}
+ids_rest() {
+	printf '// Normalize trims and lowercases an id.\nfunc Normalize(id string) string {\n\treturn strings.ToLower(strings.TrimSpace(id))\n}\n'
+	printf '// Key is the storage key of an id.\nfunc Key(id string) string {\n\treturn "user/" + Normalize(id)\n}\n'
+}
+ids() {
+	printf 'package user\n\n'
+	if [ "$1" = old ]; then ids_validate; ids_rest; else ids_rest; ids_validate; fi
+}
+
+diffgo() {
+	git init -q
+	mkdir -p internal/user
+	ctl_controller old >internal/user/controller.go
+	ids old >internal/user/ids.go
+	commit "add user controller"
+	ctl_controller new >internal/user/controller.go
+	ids new >internal/user/ids.go
+	printf '{"head":"%s","controller":"internal/user/controller.go","ids":"internal/user/ids.go"}\n' \
+		"$(git rev-parse --short=7 HEAD)" >../manifest.json
+}
+
 # cache key input: this script, plus the Go toolchain for Go fixtures
 key_input() {
 	cat "$0"
@@ -691,7 +743,7 @@ key_input() {
 }
 
 case "$name" in
-gomod | luaproj | pyproj | tsproj | rustproj | bashproj | tfproj | dirty) ;;
+gomod | luaproj | pyproj | tsproj | rustproj | bashproj | tfproj | dirty | diffgo) ;;
 *)
 	echo "build.sh: unknown fixture '$name'" >&2
 	exit 2

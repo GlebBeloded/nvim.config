@@ -37,7 +37,7 @@ Feature code lives in `lua/gleb/<feature>/`; the capability name is the kebab-ca
 | `languages/` | Typed language registry whose feature-owned facets keep language support complete | [languages](../openspec/specs/languages/spec.md) |
 | `lsp/`, `cmp.lua`, `select/`, editing modules | LSP, completion, treesitter, folding, comments | |
 | `git/` | Signs, diff viewers, permalinks, AI commit popup | [git](../openspec/specs/git/spec.md) |
-| `diff/` | IntelliJ-port diff engine (pure), viewer to follow | [diff](../openspec/specs/diff/spec.md) |
+| `diff/` | IntelliJ-port diff engine (pure) and owned aligned viewer | [diff](../openspec/specs/diff/spec.md) |
 | `file_tree/` | neo-tree, git status tree with live diff preview | [file-tree](../openspec/specs/file-tree/spec.md) |
 | `references/`, `queries/<lang>/usages.scm` | Find Usages: catalogue-backed usage types captured by language queries, grouped by test scope and folder beside a side-effect-free preview | [references](../openspec/specs/references/spec.md) |
 | `session/` | zellij-aware session save and restore | [session](../openspec/specs/session/spec.md) |
@@ -174,6 +174,8 @@ flowchart LR
 - **git**: three diff viewers on purpose, for comparison. Commit messages come from a local model, the
   prompt goes on stdin to avoid shell escaping, and the diff is cut to 200 lines to keep the model on
   track. `pgw.dev` permalinks use the GitHub URL format.
+- **diff**: the right pane is the real file buffer, with window-scoped decorations so its other windows
+  stay clean.
 - **statusline**: one global statusline. Bar colors are derived from the gruvbox-material palette and
   shared with the bufferline, never hard-coded. The language chip carries LSP health. LSP progress shows
   only after 500 ms with short aliases, and every event is logged so the aliases can grow from real data.

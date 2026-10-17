@@ -29,9 +29,6 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 
 ## Loop lessons
 
-- When a Decision names every required Treesitter grammar, compare the complete parser list against it rather than stopping after the newly introduced language.
-- When grouping Rust references, pass source text and line positions to the cfg-test classifier instead of relying only on paths.
-- When a newly installed parser invalidates a no-parser fallback fixture, switch the fixture to a real Vim-syntax-only filetype.
 - Replacing whole-screen colour assertions with selected rows hid additional changed highlight families; recapture and assert every screen row from row 1.
 - Treat a preferred write-access source as additive: only an explicit false may suppress an available documentHighlight fallback.
 - Approved screen renders need case-owned editor chrome normalized before regenerating their reference screenshots.
@@ -44,6 +41,9 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - Golden checks for empty expected changes must reject missing, fallback, and partial inner results before comparing changed-byte sets.
 - When archiving a change, retain its adopted main-spec scenarios so trace can link the regression cases.
 - Gate optional post-processing on every fallback status; `too_big` xdiff results must skip move detection just like timed-out results.
+- Diff viewport sync must neutralize window-local scrolloff and ignore only peer events whose cursor or view still matches the programmatic target, preventing deferred echoes from remapping the source.
+- Give invariant assertions diagnostic messages and remove unused test imports so Selene accepts the rendered-view implementation.
+- Derive repository-relative paths from Git's working-directory prefix; filesystem relpath fails when Git canonicalizes a symlinked repository root.
 
 ## The loop
 

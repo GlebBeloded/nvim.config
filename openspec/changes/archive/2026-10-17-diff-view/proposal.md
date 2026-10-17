@@ -73,6 +73,8 @@ The user wants IntelliJ's two-side diff, built on the ported engine and with a U
   - `file-tree: q closes preview and tree` still holds: the neo-tree `q` and its diff preview are untouched.
   - `git: q closes diffview from file panel` still holds: diffview's plugin-scoped `q` is untouched.
   - `git: q discards popup` still holds: the commit popup's `q` is untouched.
+  - `references: gr classifies Lua function calls and redefinitions` still holds: diff-view adds only `diff.*` actions and does not alter reference classification.
+  - `references: Lua usage types match the approved render` still holds: the new view is isolated from the references view and its render.
 - Out of scope:
   - Behaviour of the `»` arrow and the checkbox, moved blocks, and whitespace and highlight-mode toggles (`diff-view-actions`).
   - The file list and `]f` targets (`git-changes-tree`).
