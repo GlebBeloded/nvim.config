@@ -130,9 +130,12 @@ function M.start(callback)
 		local client_params = vim.deepcopy(params)
 		local offset_encoding = client.offset_encoding
 		client_params.position = vim.lsp.util.make_position_params(0, offset_encoding).position
-		client:request("textDocument/references", client_params, function(_, result)
+		local sent = client:request("textDocument/references", client_params, function(_, result)
 			finish(result, offset_encoding)
 		end, bufnr)
+		if not sent then
+			finish(nil, offset_encoding)
+		end
 	end
 end
 

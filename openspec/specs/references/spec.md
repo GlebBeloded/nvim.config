@@ -78,7 +78,7 @@ For Rust source, `is_test_at(path, lnum, text)` SHALL report positions within a 
 - **THEN** it does not error, does not classify the position from source text, and still reports a path under `tests` as test code
 
 ### Requirement: Find Usages view opens on gr
-Normal-mode `gr` SHALL request `textDocument/references` (declaration excluded) from the attached clients that support it and open the Find Usages view for the symbol under the cursor. When no attached client supports references, or no usages are returned, it SHALL notify at INFO level (`No LSP references support` / `No usages found`) and open no window.
+Normal-mode `gr` SHALL request `textDocument/references` (declaration excluded) from the attached clients that support it and open the Find Usages view for the symbol under the cursor. A client that refuses the request SHALL count as returning no usages and SHALL NOT prevent accepted requests from completing. When no attached client supports references, or no usages are returned, it SHALL notify at INFO level (`No LSP references support` / `No usages found`) and open no window.
 
 #### Scenario: gr opens the view in a Go module
 - **WHEN** Neovim runs in a fresh copy of the `gomod` fixture with `internal/money/money.go` open, the cursor on the `Format` declaration, gopls attached, and `gr` is pressed in normal mode
@@ -91,6 +91,10 @@ Normal-mode `gr` SHALL request `textDocument/references` (declaration excluded) 
 #### Scenario: gr without a references-capable client notifies
 - **WHEN** a buffer with no attached LSP client is current and `gr` is pressed in normal mode
 - **THEN** `No LSP references support` is notified at INFO level and the window count is unchanged
+
+#### Scenario: gr continues when one client refuses the request
+- **WHEN** Neovim runs in a fresh copy of the `gomod` fixture with `internal/money/money.go` open, the cursor on the `Format` declaration, two references-capable clients attached, one client refuses its `textDocument/references` request, and `gr` is pressed in normal mode
+- **THEN** a Find Usages view is open whose top border title is `Usages of Format · 4`
 
 ### Requirement: Find Usages layout
 With the preview shown, the view SHALL be a centred rounded float covering the editor except two columns per side and the bufferline and statusline rows, with the tree on the left (45% of the inner width) and the preview on the right. Without the preview it SHALL shrink to its content and stay centred. Hints SHALL sit on the last inner row below a joined rule. Below 80 editor columns the preview SHALL start hidden.
