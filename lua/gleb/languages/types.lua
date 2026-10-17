@@ -10,7 +10,7 @@
 
 ---@class gleb.language.Lsp
 ---@field servers string[]
----@field config? vim.lsp.Config
+---@field config? vim.lsp.Config|fun(): vim.lsp.Config
 ---@field mason string[]
 ---@field null_ls? fun(null_ls: table): table[]
 

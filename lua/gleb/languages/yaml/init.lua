@@ -1,12 +1,17 @@
+---@return vim.lsp.Config
+local function config()
+	return require("yaml-companion").setup({
+		lspconfig = { settings = { yaml = { schemas = require("gleb.languages.yaml.schemas") } } },
+	})
+end
+
 ---@type gleb.Language
 return {
 	name = "yaml",
 	filetypes = { "yaml" },
 	lsp = {
 		servers = { "yamlls" },
-		config = require("yaml-companion").setup({
-			lspconfig = { settings = { yaml = { schemas = require("gleb.languages.yaml.schemas") } } },
-		}),
+		config = config,
 		mason = { "yaml-language-server" },
 	},
 	treesitter = { parsers = { "yaml" } },

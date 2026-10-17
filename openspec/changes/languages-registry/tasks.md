@@ -18,6 +18,8 @@ Scenarios: `languages: Registered facets`, `languages: A language missing a face
 
 - Facet validators return an optional error string, which preserves the validator's exact diagnostic while a `nil` return means valid.
 - LSP and treesitter validators require their list fields to be Lua lists, catching malformed facet data at feature registration.
+- Parser lookup retries the registry language name only when a filetype's core parser is unavailable, so aliases such as `tf` stay data-driven.
+- YAML companion config is evaluated by the LSP consumer, keeping bare registry readers independent of lazy plugin availability.
 
 ## 3. Drive LSP and treesitter from facets
 
@@ -31,9 +33,9 @@ Scenarios: `languages: Enabled LSP servers are unchanged`, `languages: Installed
 
 Scenarios: `languages: Test patterns come from the facet`, `languages: Terraform queries inherit the HCL query`
 
-- [ ] 4.1 Write the two cases in `tests/unit/languages/test_references.lua`, changing the registry's Go facet before calling `is_test()` and classifying a populated Terraform buffer through the real query runner, and see them fail
-- [ ] 4.2 Register the references facet and make `lua/gleb/references/scope.lua`, `kind.lua` and `kind_ts.lua` read test patterns, parser languages, write access and target kinds from it
-- [ ] 4.3 Run `make test FILE=tests/unit/languages/test_references.lua CASE="Test patterns come from the facet"` and `make test FILE=tests/unit/languages/test_references.lua CASE="Terraform queries inherit the HCL query"`, then run `make test FILE=tests/unit/references/test_scope.lua`, `make test FILE=tests/integration/references/test_kind.lua`, and `make test FILE=tests/screen/references/test_view.lua CASE="Struct usages are grouped by usage type"` and see them pass
+- [x] 4.1 Write the two cases in `tests/unit/languages/test_references.lua`, changing the registry's Go facet before calling `is_test()` and classifying a populated Terraform buffer through the real query runner, and see them fail
+- [x] 4.2 Register the references facet and make `lua/gleb/references/scope.lua`, `kind.lua` and `kind_ts.lua` read test patterns, parser languages, write access and target kinds from it
+- [x] 4.3 Run `make test FILE=tests/unit/languages/test_references.lua CASE="Test patterns come from the facet"` and `make test FILE=tests/unit/languages/test_references.lua CASE="Terraform queries inherit the HCL query"`, then run `make test FILE=tests/unit/references/test_scope.lua`, `make test FILE=tests/integration/references/test_kind.lua`, and `make test FILE=tests/screen/references/test_view.lua CASE="Struct usages are grouped by usage type"` and see them pass
 
 ## 5. Check every language contract
 

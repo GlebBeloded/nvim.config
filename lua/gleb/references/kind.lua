@@ -6,17 +6,12 @@ local M = {
 }
 
 local kind_ts = require("gleb.references.kind_ts")
+local languages = require("gleb.languages")
 
 local CLASSIFY_TIMEOUT_MS = 3000
 local DOCUMENT_HIGHLIGHT_READ = 2
 local DOCUMENT_HIGHLIGHT_WRITE = 3
 local TSSERVER_COMMAND = "typescript.tsserverRequest"
----@type table<string, string>
-local PARSER_LANGUAGES = {
-	terraform = "hcl",
-	tf = "hcl",
-	hcl = "hcl",
-}
 ---@alias gleb.references.TargetKind "function"|"type"|"field"|"variable"|"unknown"
 
 ---@type table<integer, gleb.references.TargetKind>
@@ -39,11 +34,6 @@ local VARIABLE_SYMBOLS = {
 	[vim.lsp.protocol.SymbolKind.Variable] = true,
 	[vim.lsp.protocol.SymbolKind.Constant] = true,
 }
-local TERRAFORM_FILETYPES = {
-	terraform = true,
-	tf = true,
-	hcl = true,
-}
 local TYPE_POSITION_KINDS = {
 	field_declaration = true,
 	parameter_declaration = true,
@@ -63,6 +53,24 @@ local TYPE_POSITION_KINDS = {
 	impl = true,
 	catch = true,
 }
+
+---@param filetype string
+---@return gleb.language.References?
+local function references_config(filetype)
+	local language = languages.for_filetype(filetype)
+	local references = language and language.references
+	return references and references.disabled == nil and references or nil
+end
+
+---@param symbol_kind lsp.SymbolKind
+---@return string?
+local function symbol_kind_name(symbol_kind)
+	for name, value in pairs(vim.lsp.protocol.SymbolKind) do
+		if value == symbol_kind then
+			return name
+		end
+	end
+end
 
 ---@class gleb.references.KindUsage: gleb.references.Usage
 ---@field range? lsp.Range
@@ -385,7 +393,7 @@ local function definition_name_is_type(uri, position, client)
 	local filename = vim.uri_to_fname(uri)
 	local source = table.concat(vim.fn.readfile(filename), "\n")
 	local filetype = vim.filetype.match({ filename = filename }) or ""
-	local language = PARSER_LANGUAGES[filetype] or vim.treesitter.language.get_lang(filetype)
+	local language = vim.treesitter.language.get_lang(filetype)
 	if not language then
 		return false
 	end
@@ -419,8 +427,10 @@ end
 ---@return gleb.references.TargetKind
 local function target_kind(symbol_kind, uri, position, client)
 	local filetype = vim.filetype.match({ filename = vim.uri_to_fname(uri) }) or ""
-	if symbol_kind == vim.lsp.protocol.SymbolKind.Class and TERRAFORM_FILETYPES[filetype] then
-		return "unknown"
+	local references = references_config(filetype)
+	local override = symbol_kind and references and references.target_kinds[symbol_kind_name(symbol_kind) or ""]
+	if override then
+		return override
 	end
 	if symbol_kind and VARIABLE_SYMBOLS[symbol_kind] and definition_name_is_type(uri, position, client) then
 		return "type"
@@ -505,8 +515,7 @@ local function apply_query_kinds(groups, target)
 				return fallback_position(usage, client)
 			end, usages)
 			local filetype = usages[1].filetype or ""
-			local language = PARSER_LANGUAGES[filetype] or vim.treesitter.language.get_lang(filetype) or ""
-			local kinds = kind_ts.classify(source, language, positions)
+			local kinds = kind_ts.classify(source, filetype, positions)
 			for index, usage in ipairs(usages) do
 				local query_kind = kinds[index]
 				local is_syntactic = query_kind ~= "write" and query_kind ~= "read" and query_kind ~= "unclassified"
@@ -592,10 +601,16 @@ function M.classify(usages, callback, origin)
 	local origin_highlights = false
 	for uri, file_usages in pairs(groups) do
 		local client = usage_client(file_usages[1])
-		if client and client.name == "vtsls" and has_tsserver_command(client) then
+		local references = references_config(file_usages[1].filetype or "")
+		if client and references and references.write_access == "tsserver" and has_tsserver_command(client) then
 			tsserver_client = client
 			vim.list_extend(tsserver_usages, file_usages)
-		elseif client and client:supports_method("textDocument/documentHighlight") then
+		elseif
+			client
+			and references
+			and references.write_access == "documentHighlight"
+			and client:supports_method("textDocument/documentHighlight")
+		then
 			pending = pending + 1
 			local anchor_range
 			local received
@@ -612,7 +627,14 @@ function M.classify(usages, callback, origin)
 	end
 	if origin and not origin_highlights then
 		local client = vim.lsp.get_client_by_id(origin.client_id)
-		if client and client:supports_method("textDocument/documentHighlight") then
+		local filetype = vim.filetype.match({ filename = vim.uri_to_fname(origin.params.textDocument.uri) }) or ""
+		local references = references_config(filetype)
+		if
+			client
+			and references
+			and references.write_access == "documentHighlight"
+			and client:supports_method("textDocument/documentHighlight")
+		then
 			pending = pending + 1
 			local anchor_range = { start = origin.params.position, ["end"] = origin.params.position }
 			request_highlights(

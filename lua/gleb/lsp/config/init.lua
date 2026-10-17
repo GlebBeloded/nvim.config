@@ -56,7 +56,8 @@ local global_config = require("gleb.lsp.config.handlers")
 global_config.setup()
 
 for _, language in ipairs(language_configs) do
-	local config = merge(global_config, language.config or {})
+	local language_config = type(language.config) == "function" and language.config() or language.config
+	local config = merge(global_config, language_config or {})
 	for _, name in ipairs(language.servers) do
 		vim.lsp.config(name, config)
 		vim.lsp.enable(name)

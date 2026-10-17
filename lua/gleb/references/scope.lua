@@ -1,25 +1,7 @@
 -- Classify reference paths consistently so consumers can separate production and test usages.
 local M = {}
 
----@type string[]
-local TERRAFORM_PATTERNS = { "%.tftest%.hcl$", "/tests/" }
-
----@type table<string, string[]>
-local PATTERNS = {
-	go = { "_test%.go$" },
-	typescript = { "%.test%.[^/]+$", "%.spec%.[^/]+$", "/__tests__/" },
-	typescriptreact = { "%.test%.[^/]+$", "%.spec%.[^/]+$", "/__tests__/" },
-	javascript = { "%.test%.[^/]+$", "%.spec%.[^/]+$", "/__tests__/" },
-	javascriptreact = { "%.test%.[^/]+$", "%.spec%.[^/]+$", "/__tests__/" },
-	python = { "/test_[^/]*%.py$", "/[^/]*_test%.py$", "/conftest%.py$", "/tests/" },
-	lua = { "_spec%.lua$", "/spec/", "/tests/" },
-	rust = { "/tests/" },
-	sh = { "%.bats$", "/test/", "/tests/" },
-	bash = { "%.bats$", "/test/", "/tests/" },
-	terraform = TERRAFORM_PATTERNS,
-	tf = TERRAFORM_PATTERNS,
-	hcl = TERRAFORM_PATTERNS,
-}
+local languages = require("gleb.languages")
 
 ---@type table<string, boolean>
 local GENERIC_SEGMENTS = {
@@ -58,7 +40,10 @@ end
 function M.is_test(path, filetype)
 	local normalized = "/" .. path:gsub("\\", "/")
 	local resolved_filetype = filetype or vim.filetype.match({ filename = path })
-	if matches_any(normalized, PATTERNS[resolved_filetype or ""]) then
+	local language = languages.for_filetype(resolved_filetype or "")
+	local references = language and language.references
+	local patterns = references and references.disabled == nil and references.test_patterns or nil
+	if matches_any(normalized, patterns) then
 		return true
 	end
 
