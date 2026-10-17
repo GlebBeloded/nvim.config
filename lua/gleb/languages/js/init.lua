@@ -35,7 +35,7 @@ return {
 	treesitter = { parsers = { "javascript", "typescript", "tsx" } },
 	references = {
 		test_patterns = { "%.test%.[^/]+$", "%.spec%.[^/]+$", "/__tests__/" },
-		usage_types = { disabled = "queued: fix-references-usage-types-typescript" },
+		usage_types = true,
 		write_access = "tsserver",
 		target_kinds = {},
 		fixture = { project = "tsproj", symbol = "total" },

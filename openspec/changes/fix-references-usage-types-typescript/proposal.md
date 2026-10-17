@@ -7,6 +7,7 @@ Find Usages has GoLand's usage types for Go only. TypeScript and JavaScript have
 
 ## Evidence
 
+- Root cause: `lua/gleb/languages/js/init.lua:38` disables `references.usage_types` for the `js` language, and `lua/gleb/references/kind_ts.lua:48`-`60` can only apply syntactic usage types when the buffer parser has a loadable `usages` query. The configured `javascript`, `typescript` and `tsx` parsers have no such repo query, so type targets fall through to `unclassified`.
 - `gr` on `Money` in the extended `tsproj` fixture (design.md, Decision 6), checked with vtsls 0.3.0 (TypeScript 5.9.3): the server returns 15 usages in `src/money.ts`, `src/wallet.ts` and `src/money.test.ts`, each range starting at the `Money` identifier.
   - Today every one of them is `read`, except the two `import { Money }` specifiers, which tsserver marks `isWriteAccess`.
   - Once `fix-references-usage-types` lands, `Money` is a `type` target, which never gets write/read, and no TypeScript query exists. So all 15 are `Unclassified`, and the view has no usage type level (render "Current — class usages").
@@ -39,7 +40,7 @@ Find Usages has GoLand's usage types for Go only. TypeScript and JavaScript have
 - none
 
 ### Modified Capabilities
-- `references`: added "TypeScript usage types". No existing requirement or scenario changes.
+- `references`: extend usage type classification and grouping to TypeScript, TSX and JavaScript syntax while preserving every existing scenario.
 
 ## Impact
 
@@ -54,6 +55,8 @@ Find Usages has GoLand's usage types for Go only. TypeScript and JavaScript have
 - Fixture: `tests/fixtures/build.sh` `tsproj` (three new files and the `Money` manifest entry).
 - Plugins: none. Core keymaps: none.
 - Unchanged scenarios:
+  - `languages: Requirement: References facet` still holds: the enabled `js` facet continues to take test patterns, write-access source, symbol-kind overrides and each query parser language from the registry contract.
+  - `languages: A missing usages query breaks the contract` still holds: enabling the `js` facet requires a query for each configured parser language, and the existing missing-query diagnostic is unchanged.
   - `references: TypeScript usages in production and test files` still holds: the new files don't reference `total`, and the scenario names no type rows.
   - `references: gr classifies every TypeScript variable usage` still holds: `hits++` and `console.log(hits)` match no type pattern, so tsserver's write/read still decides.
   - `references: tsserver kinds classify a TypeScript variable` still holds: the same lines get no syntactic type.

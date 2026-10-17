@@ -1,33 +1,43 @@
-## 1. Queries and case table
+## 1. Enable the JavaScript references facet
 
-Scenarios: `references: TypeScript query classifies every usage type`, `references: Every query capture is in the catalogue`, `languages: Every configured language meets the contract`
+Scenarios: `languages: Every configured language meets the contract`
 
-- [ ] 1.1 Port the TypeScript, TSX and JavaScript suites of `drafts/cases.lua` into `tests/unit/references/usage_cases/js.lua`, with their sources from `drafts/fixtures/usages.{ts,tsx,js}` in `tests/unit/references/usage_cases/js/`. Rename the expected ids per design Decision 1. Flip the `js` facet's `references.usage_types` to `true`. Run the shared usage-case driver from `languages-registry` and `make test FILE=tests/unit/languages/test_contract.lua`, and see them fail for `js`.
-- [ ] 1.2 Add `queries/ecma/usages.scm`, `queries/javascript/usages.scm`, `queries/typescript/usages.scm`, `queries/tsx/usages.scm` and `queries/ts_angle_cast/usages.scm` from `drafts/queries`. Keep the `; inherits:` lines and rename captures per Decision 1 (`type_argument` → `type_instantiation`, `local_declaration` → `variable_declaration`, `catch_declaration` → `catch`). Regenerate `typescript` with `drafts/gen_ts.py`, or hand-maintain it.
-- [ ] 1.3 Make the catalogue test resolve the pseudo-languages `ecma` and `ts_angle_cast` through the files that inherit them (design Decision 2).
-- [ ] 1.4 Run both files and `make test FILE=tests/unit/references/test_usage_types.lua`, and see them pass
+- [x] 1.1 In `tests/unit/languages/test_contract.lua`, extend the existing query-case-table coverage with the populated `js` case table and set `lua/gleb/languages/js/init.lua` `references.usage_types = true`; run `make test FILE=tests/unit/languages/test_contract.lua CASE="Every configured language meets the contract"` and see it fail because the JavaScript, TypeScript and TSX usage queries are missing
+- [x] 1.2 Add the five parser query files and JavaScript case table described by design Decisions 1, 2 and 7, using the real `gleb.references.kind_ts.classify` entry point with the installed parsers
+- [x] 1.3 Run `make test FILE=tests/unit/languages/test_contract.lua CASE="Every configured language meets the contract"` and see it pass
 
-## 2. Parser per filetype and type alias targets
+## Agent decisions
 
-Scenarios: `references: TSX and TypeScript buffers use their own parser`, `references: TypeScript type alias targets keep their usage types`
+- The JavaScript case module exposes TypeScript as its contract-compatible top-level suite and all three parser suites under `suites`, preserving the existing contract shape while covering each configured parser.
 
-- [ ] 2.1 Write the parser scenario in tests/unit/references/test_kind_ts.lua and the type alias scenario in tests/integration/references/test_kind.lua (temporary vtsls project), and see them fail
-- [ ] 2.2 Confirm the query runner picks `tsx` for `typescriptreact` and `javascript` for `javascriptreact` through `vim.treesitter.language.get_lang` (design Decision 3); fix the runner only if it doesn't
-- [ ] 2.3 Confirm the template's `type_identifier` upgrade covers vtsls's Variable report for `type Amount` (design Decision 4); fix `request_target_kind` only if it doesn't
-- [ ] 2.4 Run both files, the contract test and `make types`, and see them pass
+## 2. Classify TypeScript, TSX and JavaScript syntax
 
-## 3. Fixture and gr classification
+Scenarios: `references: TypeScript query classifies every usage type`, `references: TSX and TypeScript buffers use their own parser`, `references: TypeScript type alias targets keep their usage types`
 
-Scenarios: `references: gr classifies TypeScript class usages`, `references: gr classifies TypeScript method usages as calls`, `references: TypeScript usages in production and test files`
+- [ ] 2.1 Write `references: TypeScript query classifies every usage type` in `tests/unit/languages/test_contract.lua`, `references: TSX and TypeScript buffers use their own parser` in `tests/unit/references/test_kind_ts.lua`, and `references: TypeScript type alias targets keep their usage types` in `tests/integration/references/test_kind.lua`; drive the populated case table and real `gr` mapping, then run `make test FILE=tests/unit/languages/test_contract.lua CASE="TypeScript query classifies every usage type"`, `make test FILE=tests/unit/references/test_kind_ts.lua CASE="TSX and TypeScript buffers use their own parser"`, and `make test FILE=tests/integration/references/test_kind.lua CASE="TypeScript type alias targets keep their usage types"` and see them fail
+- [ ] 2.2 Keep parser selection through `vim.treesitter.language.get_lang`, and apply the existing `type_identifier` target-kind upgrade to vtsls type aliases; change the classifier only if either scenario exposes a gap
+- [ ] 2.3 Run the three focused commands from 2.1 and see them pass
 
-- [ ] 3.1 Extend `tsproj()` in tests/fixtures/build.sh: add `src/money.ts`, `src/wallet.ts` and `src/money.test.ts` with the exact text of design Decision 6, the second `node --check` loop, and the `Money` manifest entry. Write the two `gr` scenarios in tests/integration/references/test_kind.lua, waiting until vtsls's references reply holds every manifest usage (Decision 5). See them fail.
-- [ ] 3.2 Fix any pattern or ordering gap the scenarios expose, keeping every case of task 1 green
-- [ ] 3.3 Run `make test FILE=tests/integration/references/test_kind.lua` and `make test FILE=tests/integration/references/test_languages.lua`, and see them pass
+## 3. Validate every query capture
 
-## 4. Screen
+Scenarios: `references: Every query capture is in the catalogue`
+
+- [ ] 3.1 Tighten `tests/unit/references/test_usage_types.lua` so the real catalogue test resolves the parserless `ecma` and `ts_angle_cast` query bases through their inheriting parser queries; run `make test FILE=tests/unit/references/test_usage_types.lua CASE="Every query capture is in the catalogue"` and see it fail on the new query files
+- [ ] 3.2 Make the smallest test-driver change needed to validate inherited captures without requiring nonexistent pseudo-language parsers
+- [ ] 3.3 Run `make test FILE=tests/unit/references/test_usage_types.lua CASE="Every query capture is in the catalogue"` and see it pass
+
+## 4. Classify real vtsls references
+
+Scenarios: `references: gr classifies TypeScript class usages`, `references: gr classifies TypeScript method usages as calls`
+
+- [ ] 4.1 Extend the populated `tsproj` fixture and manifest with the exact files and locations from design Decision 6, write both scenarios in `tests/integration/references/test_kind.lua`, drive the real `gr` mapping after vtsls returns all manifest locations, and run `make test FILE=tests/integration/references/test_kind.lua CASE="gr classifies TypeScript"` and see them fail
+- [ ] 4.2 Fix only query pattern or precedence gaps exposed by the real references, preserving all unit cases
+- [ ] 4.3 Run `make test FILE=tests/integration/references/test_kind.lua CASE="gr classifies TypeScript"` and see both scenarios pass
+
+## 5. Group TypeScript class usages on screen
 
 Scenarios: `references: TypeScript class usages are grouped by usage type`
 
-- [ ] 4.1 Add the P1 case to tests/screen/references/test_view.lua at 70x50, with a reference screenshot from the approved render (real glyphs where the render has stand-ins; attribute blocks per the mask groups). See it fail.
-- [ ] 4.2 Make it pass, then compare `make render` of the case with `renders/ts_p1_class.ansi` and `make colorize FILE=openspec/changes/fix-references-usage-types-typescript/design.md`
-- [ ] 4.3 Run `make check`
+- [ ] 5.1 Add the 70x50 P1 case to `tests/screen/references/test_view.lua`, drive the real `gr` mapping against the populated `tsproj` data, and run `make test FILE=tests/screen/references/test_view.lua CASE="TypeScript class usages are grouped by usage type"` with the approved P1 screenshot expectation to see it fail
+- [ ] 5.2 Make the query-backed classification produce the approved render without changing the existing tree layout, then compare `make render CASE=ts_p1_class COLUMNS=70 LINES=50` with `renders/ts_p1_class.ansi`
+- [ ] 5.3 Run `make test FILE=tests/screen/references/test_view.lua CASE="TypeScript class usages are grouped by usage type"` and see it pass

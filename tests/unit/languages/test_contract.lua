@@ -60,17 +60,19 @@ T[configured_scenario]["query case tables"] = function()
 	end)()]])
 	for _, name in ipairs(names) do
 		local query_cases = require("tests.unit.references.usage_cases." .. name)
-		local positions = vim.tbl_map(function(case)
-			return { line = case.line, character = case.character }
-		end, query_cases.cases)
-		local expected = vim.tbl_map(function(case)
-			return case.expected
-		end, query_cases.cases)
-		local actual = child.lua_get(
-			[[require("gleb.references.kind_ts").classify(...)]],
-			{ query_cases.source, query_cases.filetype, positions }
-		)
-		eq(actual, expected)
+		for _, suite in ipairs(query_cases.suites or { query_cases }) do
+			local positions = vim.tbl_map(function(case)
+				return { line = case.line, character = case.character }
+			end, suite.cases)
+			local expected = vim.tbl_map(function(case)
+				return case.query_expected or case.expected
+			end, suite.cases)
+			local actual = child.lua_get(
+				[[require("gleb.references.kind_ts").classify(...)]],
+				{ suite.source, suite.filetype, positions }
+			)
+			eq(actual, expected)
+		end
 	end
 end
 
