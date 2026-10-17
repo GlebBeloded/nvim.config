@@ -75,6 +75,14 @@ Myers SHALL give up past IntelliJ's edit threshold, `max(20000 + 10·⌊√(n1+n
 - **WHEN** the design's generated 5000-line input and its edited copy (50 edits, 10 insertions, 10 deletions) are compared with default options, once to warm up and then 3 times
 - **THEN** the median call takes under 100 ms times the load factor, and `fragments` has 70 entries
 
+#### Scenario: A 100000-line suffix edit meets deadline
+- **WHEN** a 100000-line file and a copy with only its last line changed are compared with the default 1 s deadline
+- **THEN** the call takes under 1 s, returns one fragment, and `too_big` and `timed_out` are false
+
+#### Scenario: Patience reduction uses original counts
+- **WHEN** Myers hands Patience a problem whose large anchored gap trims below half of the original counts
+- **THEN** Patience continues with linear Myers instead of falling back, and `too_big` and `timed_out` are false
+
 ### Requirement: IntelliJ line goldens
 The engine SHALL reproduce IntelliJ's own line test expectations and diffbandit's IntelliJ-oracle goldens. They are translated into Lua tables under `tests/unit/diff/fixtures/`: `LineComparisonUtilTest` (69 cases), `ComparisonUtilTest` (33 trim-equality and 12 line-fragment cases) and diffbandit's 5 oracle cases. The engine SHALL also keep IntelliJ's line invariants on fixed-seed random texts.
 

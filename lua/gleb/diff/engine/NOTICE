@@ -1,0 +1,9 @@
+This software includes code from IntelliJ IDEA
+Copyright (C) JetBrains s.r.o.
+https://www.jetbrains.com/idea/
+
+Portions derived from diffbandit.nvim
+Copyright Corey Kaylor
+Licensed under the Apache License, Version 2.0.
+
+The applicable license text is in LICENSE-APACHE-2.0.
