@@ -86,6 +86,14 @@ The user wants IntelliJ's two-side diff, built on the ported engine and with a U
 - Panes: picked "Aligned, IntelliJ chrome" (numbers in the middle, » apply, checkbox per change, ╱ padding, wavy folds) after a refined connector render. On the connector: "connector strip looks cool but it doesn't actually work like it does in idea".
 - General: "I'm used to Idea", "I like IDEA IDE diff more".
 
+## Decision (auditor, 2026-10-17, pre-implementation audit)
+
+- Re-render Proposed D at the real tabstop (global 2; the left buffer copies the right's tabstop), add a "don't check" mask symbol for syntax-coloured code cells, fix the separator fg and the gutter-table cell-16 entry; task 5.1 uses the approved mask only, never one taken from the implementer's capture.
+- Isolate the view from shipped behaviour: detach or disable nvim-ufo for both view windows; actions fall through outside view windows (no leaked `q`/`]c`/`zo`/`zR` in other windows of the file); restore window options on every close, `open` included; run close cleanup via `vim.schedule` (a sync close in WinClosed gives E855); one namespace, augroup and timer per view.
+- Source: compute the repo-relative path with `git rev-parse --show-prefix` plus the file name (`ls-files` is empty for untracked files, and `git show HEAD:` then returns the tree with exit 0).
+- Add scenarios: close via `:tabclose`/`:close`/`:only` with checks that autocmds, attach, timer and options are gone; keys in non-view windows; folds and fold rows after an edit plus auto-save; `show` replacing a view and two views at once; VimResized and a narrow area; empty and zero-change diffs; multibyte words; sync with closed folds, a pad at the top and `leftcol`; a statuscolumn/re-diff perf budget on a large fixture. A task updates `find-action/test_run.lua` `more_results` and `ADAPTER_PLUGINS`.
+- Split tasks 2 and 3 into 2a (source, open, notify), 2b (render, pads, gutter, words, colours) and 3a (folds, ufo isolation), 3b (sync), 3c (navigation, keys), 3d (re-diff), so each fits the 2-attempt limit.
+
 ## Agent decisions
 
 - **The right pane is the real buffer, not a copy.** IntelliJ edits the document in place. This keeps LSP, autosave, undo and gitsigns, and `diff-view-actions` stages what the user sees. Decorations go in a namespace scoped to the right window (`nvim__ns_set`), so the file's other windows stay clean.
