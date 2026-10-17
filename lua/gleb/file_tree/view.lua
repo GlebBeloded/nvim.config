@@ -23,6 +23,20 @@ local render = require("gleb.file_tree.render")
 M.state = { by_tab = {}, last_editor_by_tab = {} }
 
 local view_group
+local original_guicursor
+
+---@param view FileTreeView
+local function update_cursor(view)
+	local tree_focused = vim.api.nvim_win_is_valid(view.win) and vim.api.nvim_get_current_win() == view.win
+	local mode = vim.api.nvim_get_mode().mode
+	local hidden = tree_focused and (mode == "n" or mode == "v" or mode == "V" or mode == "\22")
+	if hidden then
+		original_guicursor = original_guicursor or vim.o.guicursor
+		vim.o.guicursor = "a:FileTreeHiddenCursor"
+	elseif original_guicursor then
+		vim.o.guicursor = original_guicursor
+	end
+end
 
 ---@param win integer
 ---@return boolean
@@ -77,6 +91,9 @@ end
 
 ---@param view FileTreeView
 local function close_view(view)
+	if original_guicursor then
+		vim.o.guicursor = original_guicursor
+	end
 	forget(view)
 	if vim.api.nvim_win_is_valid(view.win) then
 		vim.api.nvim_win_close(view.win, true)
@@ -145,6 +162,14 @@ local function configure_window(win)
 	vim.wo[win].spell = false
 	vim.wo[win].winhighlight = "Normal:FileTreeNormal,CursorLine:FileTreeCursorLine"
 	vim.api.nvim_win_set_width(win, 35)
+end
+
+---@param buf integer
+local function detach_ufo(buf)
+	local ok, ufo = pcall(require, "ufo")
+	if ok then
+		ufo.detach(buf)
+	end
 end
 
 ---@param view FileTreeView
@@ -249,9 +274,16 @@ local function add_teardown_autocmds(view)
 			group = view_group,
 			pattern = tostring(view.win),
 			callback = function()
+				update_cursor(view)
 				if vim.api.nvim_buf_is_valid(view.buf) then
 					vim.bo[view.buf].bufhidden = "wipe"
 				end
+			end,
+		}),
+		vim.api.nvim_create_autocmd({ "WinEnter", "ModeChanged" }, {
+			group = view_group,
+			callback = function()
+				update_cursor(view)
 			end,
 		}),
 		vim.api.nvim_create_autocmd("BufEnter", {
@@ -290,6 +322,7 @@ local function open_view(path)
 	local win = vim.api.nvim_get_current_win()
 	vim.api.nvim_win_set_buf(win, buf)
 	configure_window(win)
+	detach_ufo(buf)
 
 	---@type FileTreeView
 	local view = {
@@ -305,6 +338,7 @@ local function open_view(path)
 	add_teardown_autocmds(view)
 	configure_mappings(view)
 	draw(view, path)
+	update_cursor(view)
 	return view
 end
 

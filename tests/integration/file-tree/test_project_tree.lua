@@ -359,11 +359,13 @@ T["file-tree: Project tree preserves the original cursor setting"] = function()
 
 	run_toggle()
 	eq(child.o.guicursor, "a:FileTreeHiddenCursor")
-	child.type_keys("v")
+	child.cmd("normal! v")
 	eq(child.o.guicursor, "a:FileTreeHiddenCursor")
+	child.bo.modifiable = true
 	child.type_keys("<Esc>", "i")
 	eq(child.o.guicursor, original)
 	child.type_keys("<Esc>")
+	child.bo.modifiable = false
 	eq(child.o.guicursor, "a:FileTreeHiddenCursor")
 
 	child.cmd("wincmd l")
