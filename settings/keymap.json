@@ -38,6 +38,8 @@
   "dap_ui.toggle": ["t"],
   "diag.next": ["<A-w>", "ge"],
   "diag.previous": ["[d"],
+  "diff.close": ["q"],
+  "diff.next_file": ["]f"],
   "differ.next_file": ["]f"],
   "differ.next_hunk": ["]c"],
   "diffview.choose_all": ["<leader>ca"],

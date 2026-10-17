@@ -40,9 +40,9 @@ Scenarios: `diff: Diff view zo opens a fold in both windows`, `diff: Diff view z
 
 Scenarios: `diff: Diff view q closes the tab page`, `diff: Diff view closes with either window`, `diff: Diff view restores a shadowed buffer mapping`, `diff: Diff view shows in a given window without focus`, `diff: Diff view ]f calls the next-file hook`, `diff: Diff view ]f without a list keeps the view`, `diff: Diff view mappings come from diff actions`, `diff: Diff view uses a reassigned key on reopen`
 
-- [ ] 4.1 Write these scenarios in `tests/integration/diff/test_view_close.lua`, and see them fail
-- [ ] 4.2 Implement the one cleanup path (Decision 10), `show(win, spec)` and `close`, and `diff.next_file` with `on_next_file`.
-- [ ] 4.3 Run the file and see it pass, then `make test CAPS=actions,find-action,git` to confirm that the existing ownership and differ scenarios still pass.
+- [x] 4.1 Write these scenarios in `tests/integration/diff/test_view_close.lua`, and see them fail
+- [x] 4.2 Implement the one cleanup path (Decision 10), `show(win, spec)` and `close`, and `diff.next_file` with `on_next_file`.
+- [x] 4.3 Run the file and see it pass, then `make test CAPS=actions,find-action,git` to confirm that the existing ownership and differ scenarios still pass.
 
 ## 5. Screen
 
@@ -65,6 +65,8 @@ Scenarios: `diff: Diff view matches the approved render`
 - Public helpers use snake-case names (`transfer_line`, `change_at_line`) to follow the repository's Lua naming convention.
 - Untracked files derive their repository-relative path after the required `ls-files` call returns empty, so `git show` can represent an absent HEAD side.
 - Diff windows detach nvim-ufo before creating manual folds, because its asynchronous provider otherwise replaces the paired ranges on the real file buffer.
+- Embedded views save the host buffer and window-local options, so their one cleanup path restores the hosting area exactly.
+- Shadowed mappings are restored with their full `maparg()` dictionaries, preserving callbacks and mapping options.
 
 ## Stuck
 

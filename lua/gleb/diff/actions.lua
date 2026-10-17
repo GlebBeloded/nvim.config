@@ -3,6 +3,22 @@
 local source = require("gleb.diff.view.source")
 
 ---@param ctx gleb.ActionContext
+local function close(ctx)
+	local view = require("gleb.diff.view").state.by_win[ctx.win]
+	if view then
+		require("gleb.diff.view").close(view)
+	end
+end
+
+---@param ctx gleb.ActionContext
+local function next_file(ctx)
+	local view = require("gleb.diff.view").state.by_win[ctx.win]
+	if view and view.on_next_file then
+		view.on_next_file()
+	end
+end
+
+---@param ctx gleb.ActionContext
 local function open_file(ctx)
 	local path = vim.api.nvim_buf_get_name(ctx.buf)
 	local view = require("gleb.diff.view")
@@ -41,6 +57,20 @@ local actions = {
 			return vim.bo[ctx.buf].buftype == "" and vim.api.nvim_buf_get_name(ctx.buf) ~= ""
 		end,
 		run = open_file,
+	},
+	{
+		id = "diff.next_file",
+		title = "Next File",
+		category = "Git | Diff",
+		plugin = "gleb-diff",
+		run = next_file,
+	},
+	{
+		id = "diff.close",
+		title = "Close Diff",
+		category = "Git | Diff",
+		plugin = "gleb-diff",
+		run = close,
 	},
 }
 
