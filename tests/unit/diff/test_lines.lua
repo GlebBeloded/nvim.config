@@ -10,13 +10,21 @@ local function start()
 		function CompareLines(lines1, lines2, opts)
 			return require("gleb.diff.engine").compare_lines(lines1, lines2, opts)
 		end
+
+		local function line_range(fragment)
+			return { start1 = fragment.start1, end1 = fragment.end1, start2 = fragment.start2, end2 = fragment.end2 }
+		end
+
+		function LineRanges(fragments)
+			return vim.tbl_map(line_range, fragments)
+		end
 	]])
 end
 
 local T = H.child_set(child, start)
 
 T["diff: Changed lines become fragments"] = function()
-	eq(child.lua_get([[CompareLines({ "x", "y", "z" }, { "n", "k", "y" })]]), {
+	eq(child.lua_get([[CompareLines({ "x", "y", "z" }, { "n", "k", "y" }, { highlight = "by_line" })]]), {
 		fragments = {
 			{ start1 = 0, end1 = 1, start2 = 0, end2 = 2 },
 			{ start1 = 2, end1 = 3, start2 = 3, end2 = 3 },
@@ -57,7 +65,7 @@ T["diff: The engine loads without plugins"] = function()
 				end
 			end
 			table.sort(unexpected)
-			return { fragments = compared.fragments, unexpected = unexpected }
+			return { fragments = LineRanges(compared.fragments), unexpected = unexpected }
 		end)()
 	]])
 	eq(result, {

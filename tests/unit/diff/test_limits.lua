@@ -15,7 +15,7 @@ T["diff: Patience takes over when Myers exceeds its threshold"] = function()
 		require("gleb.diff.engine").compare_lines(
 			{ "alpha", "bravo", "charlie", "delta", "echo" },
 			{ "echo", "bravo", "charlie", "delta", "alpha" },
-			{ limits = { myers_threshold = 1 } }
+			{ highlight = "by_line", limits = { myers_threshold = 1 } }
 		)
 	]])
 	eq(result, {

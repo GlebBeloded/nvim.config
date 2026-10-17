@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Inner fragments
-Each fragment of `compare_lines` SHALL carry `inner`: changed byte ranges `start1`, `end1`, `start2`, `end2`, 0-based half-open, relative to the fragment's lines joined with `"\n"`. `inner` SHALL be nil when the whole fragment is the change (a pure insertion or deletion, or `by_line`), and `{}` when its sides are equal under the policy. No range SHALL split a UTF-8 character.
+Each `compare_lines` fragment SHALL carry `inner`: 0-based half-open changed-byte ranges (`start1`, `end1`, `start2`, `end2`) relative to each side's comparison text. That text is the fragment's lines joined with `"\n"`, plus the final `"\n"` when another line follows on that side; a range MAY cover it. `inner` SHALL be nil for a whole-fragment change (pure insertion, deletion or `by_line`) and `{}` when the sides are equal under the policy. No range SHALL split a UTF-8 character.
 
 #### Scenario: Changed words inside a line
 - **WHEN** `compare_lines({ "x z " }, { "y z" })` is called with the `default` policy, then with `trim_whitespaces`
@@ -111,4 +111,4 @@ It SHALL also keep IntelliJ's inner invariants on fixed-seed random texts.
 
 #### Scenario: Random texts keep IntelliJ's inner invariants
 - **WHEN** 30 seeded random text pairs per alphabet (with and without emoji) are compared with `compare_words`, `compare_chars` and `compare_lines` in `by_word`, `by_word_split` and `by_char`, under all four policies
-- **THEN** every range is ordered and in bounds and splits no UTF-8 character, gaps are equal under the policy, changed chunks differ, and inner ranges stay inside their fragment's text
+- **THEN** every range is ordered and in bounds and splits no UTF-8 character; gaps are equal byte-for-byte under `default` and without whitespace under every other policy; changed chunks differ byte-for-byte under `default` and `trim_whitespaces` and without whitespace under the ignore-whitespace policies; and inner ranges stay inside their fragment's comparison text, including its trailing newline when another line follows
