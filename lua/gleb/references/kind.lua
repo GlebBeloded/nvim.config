@@ -312,6 +312,20 @@ local function fallback_position(usage, client)
 	return { line = range.start.line, character = character }
 end
 
+---@param source string
+---@param position ReferencesSourcePosition
+---@param client vim.lsp.Client?
+---@return "read"?
+local function terraform_traversal_kind(source, position, client)
+	if not client or client.name ~= "terraformls" then
+		return nil
+	end
+	local line = vim.split(source, "\n", { plain = true })[position.line + 1] or ""
+	if line:sub(position.character + 1, position.character + 4) == "var." then
+		return "read"
+	end
+end
+
 ---@param groups table<string, gleb.references.KindUsage[]>
 local function fill_fallbacks(groups)
 	for uri, usages in pairs(groups) do
@@ -327,7 +341,7 @@ local function fill_fallbacks(groups)
 			local language = vim.treesitter.language.get_lang(unresolved[1].filetype or "") or ""
 			local kinds = kind_ts.classify(source, language, positions)
 			for index, usage in ipairs(unresolved) do
-				usage.kind = kinds[index]
+				usage.kind = terraform_traversal_kind(source, positions[index], client) or kinds[index]
 			end
 		end
 	end

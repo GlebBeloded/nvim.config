@@ -38,9 +38,9 @@ Scenarios: `references: gr classifies every Bash variable usage`, `references: T
 
 ## 7. Classify Terraform traversals through gr
 Scenarios: `references: gr classifies every Terraform variable usage`
-- [ ] 7.1 Write the test `references: gr classifies every Terraform variable usage` in `tests/integration/references/test_kind.lua`; press the real normal-mode `gr` on the populated `tfproj` fixture and see its rows remain `other`
-- [ ] 7.2 Reuse the real-`gr` helper for terraform-ls and classify its listed `var.region` traversals as reads
-- [ ] 7.3 Run `make test FILE=tests/integration/references/test_kind.lua CASE="gr classifies every Terraform variable usage"` and see it pass
+- [x] 7.1 Write the test `references: gr classifies every Terraform variable usage` in `tests/integration/references/test_kind.lua`; press the real normal-mode `gr` on the populated `tfproj` fixture and see its rows remain `other`
+- [x] 7.2 Reuse the real-`gr` helper for terraform-ls and classify its listed `var.region` traversals as reads
+- [x] 7.3 Run `make test FILE=tests/integration/references/test_kind.lua CASE="gr classifies every Terraform variable usage"` and see it pass
 
 ## 8. Add HCL write/read syntax fallback
 Scenarios: `references: HCL fallback classifies variable labels and traversals`
@@ -54,3 +54,4 @@ Scenarios: `references: HCL fallback classifies variable labels and traversals`
 - The queued behavior requires non-target variable uses to become `read`, so the existing fallback scenario's conflicting `other` expectation is changed while its title, WHEN inputs, paths and numeric values remain intact.
 - Write highlights join the request fan-out so the view receives one URI-and-range-deduplicated usage list before classification.
 - The real-`gr` helper requires two consecutive populated reference responses so rust-analyzer has reached a stable indexed state without an arbitrary sleep.
+- Unresolved terraform-ls references beginning at `var.` are reads because Terraform input variables are immutable and terraform-ls does not provide document-highlight kinds.

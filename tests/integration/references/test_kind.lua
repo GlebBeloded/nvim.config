@@ -336,4 +336,16 @@ T[bash_scenario]["renders every usage kind"] = function()
 	})
 end
 
+local terraform_scenario = "references: gr classifies every Terraform variable usage"
+T[terraform_scenario] = MiniTest.new_set()
+T[terraform_scenario]["renders every usage kind"] = function()
+	local root, manifest = F.copy("tfproj", vim.fn.tempname())
+	local declaration = manifest.references.region[1]
+	local actual = open_references(root, declaration.path, declaration.line, declaration.col, "terraformls")
+	eq(actual, {
+		{ "main.tf", 2, 21, "read" },
+		{ "outputs.tf", 2, 11, "read" },
+	})
+end
+
 return T
