@@ -17,14 +17,15 @@ Scenarios: `languages: Registered facets`, `languages: A language missing a face
 ## Agent decisions
 
 - Facet validators return an optional error string, which preserves the validator's exact diagnostic while a `nil` return means valid.
+- LSP and treesitter validators require their list fields to be Lua lists, catching malformed facet data at feature registration.
 
 ## 3. Drive LSP and treesitter from facets
 
 Scenarios: `languages: Enabled LSP servers are unchanged`, `languages: Installed parsers are unchanged`
 
-- [ ] 3.1 Write the two cases in `tests/integration/languages/test_setup.lua`, loading the full config and observing the real server-enable calls and populated treesitter installer list, and see them fail against the registry contract
-- [ ] 3.2 Move each language's LSP data into its language folder, unify `lsp_name` and `lsp_names` as `servers`, then make `lua/gleb/lsp/config/init.lua` and `lua/gleb/treesitter.lua` register and consume their facets
-- [ ] 3.3 Run `make test FILE=tests/integration/languages/test_setup.lua CASE="Enabled LSP servers are unchanged"`, `make test FILE=tests/integration/languages/test_setup.lua CASE="Installed parsers are unchanged"`, and `make test FILE=tests/integration/lsp/test_config.lua`, then run `make smoke` and see them pass
+- [x] 3.1 Write the two cases in `tests/integration/languages/test_setup.lua`, loading the full config and observing the real server-enable calls and populated treesitter installer list, and see them fail against the registry contract
+- [x] 3.2 Move each language's LSP data into its language folder, unify `lsp_name` and `lsp_names` as `servers`, then make `lua/gleb/lsp/config/init.lua` and `lua/gleb/treesitter.lua` register and consume their facets
+- [x] 3.3 Run `make test FILE=tests/integration/languages/test_setup.lua CASE="Enabled LSP servers are unchanged"`, `make test FILE=tests/integration/languages/test_setup.lua CASE="Installed parsers are unchanged"`, and `make test FILE=tests/integration/lsp/test_config.lua`, then run `make smoke` and see them pass
 
 ## 4. Drive references from its facet
 

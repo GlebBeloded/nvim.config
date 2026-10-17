@@ -7,19 +7,20 @@ local function merge(...)
 	return tbl
 end
 
-local language_configs = {
-	require("gleb.lsp.config.go"), -- golang
-	require("gleb.lsp.config.lua"), -- lua
-	require("gleb.lsp.config.html"), -- html
-	require("gleb.lsp.config.css"), -- css
-	require("gleb.lsp.config.js"), -- javascript
-	require("gleb.lsp.config.json"), -- json
-	require("gleb.lsp.config.yaml"), -- yaml
-	require("gleb.lsp.config.shell"), -- sh,bash,zsh
-	require("gleb.lsp.config.terraform"), -- hashicorp yucky
-	require("gleb.lsp.config.rust"), -- rust
-	require("gleb.lsp.config.python"), -- python
-}
+---@type gleb.Languages
+local languages = require("gleb.languages")
+
+languages.register_facet("lsp", function(config, language)
+	if not vim.islist(config.servers) or not vim.islist(config.mason) then
+		return ("languages: %s has invalid lsp facet"):format(language.name)
+	end
+end)
+
+local language_configs = vim.iter(languages.facet("lsp"))
+	:map(function(facet)
+		return facet.config
+	end)
+	:totable()
 
 local actions = require("gleb.actions")
 local adapters = require("gleb.actions.adapters")
@@ -55,13 +56,10 @@ local global_config = require("gleb.lsp.config.handlers")
 global_config.setup()
 
 for _, language in ipairs(language_configs) do
-	local names = language.lsp_names or (language.lsp_name and { language.lsp_name })
-	if names then
-		local config = merge(global_config, language.lsp_config)
-		for _, name in ipairs(names) do
-			vim.lsp.config(name, config)
-			vim.lsp.enable(name)
-		end
+	local config = merge(global_config, language.config or {})
+	for _, name in ipairs(language.servers) do
+		vim.lsp.config(name, config)
+		vim.lsp.enable(name)
 	end
 end
 

@@ -29,3 +29,7 @@
 ---@class gleb.languages.Facet
 ---@field language gleb.Language
 ---@field config table
+
+---@class gleb.Languages
+---@field register_facet fun(name: string, validate: gleb.languages.FacetValidator)
+---@field facet fun(name: string): gleb.languages.Facet[]

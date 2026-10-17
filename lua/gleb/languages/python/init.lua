@@ -1,3 +1,5 @@
+require("gleb.languages.python.typecheck").setup()
+
 ---@type gleb.Language
 return {
 	name = "python",

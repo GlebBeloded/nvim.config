@@ -1,4 +1,4 @@
-local settings_path = vim.fn.stdpath("config") .. "/lua/gleb/lsp/config/lua/settings.json"
+local settings_path = vim.fn.stdpath("config") .. "/lua/gleb/languages/lua/settings.json"
 
 ---@type gleb.Language
 return {

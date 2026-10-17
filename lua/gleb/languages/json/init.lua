@@ -5,7 +5,7 @@ return {
 	lsp = {
 		servers = { "jsonls" },
 		config = {
-			settings = { json = { schemas = require("gleb.lsp.config.json.schemas"), validate = { enable = true } } },
+			settings = { json = { schemas = require("gleb.languages.json.schemas"), validate = { enable = true } } },
 		},
 		mason = { "json-lsp" },
 	},
