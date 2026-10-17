@@ -123,7 +123,8 @@ end
 ---@param usages gleb.references.KindUsage[]
 ---@param client vim.lsp.Client
 ---@param done fun()
-local function request_highlights(uri, usages, client, done)
+---@param active fun(): boolean
+local function request_highlights(uri, usages, client, done, active)
 	local anchor = range_key(usage_range(usages[1]))
 	local cache_key = client.id .. ":" .. anchor
 	local entry = cache_entry(uri)
@@ -149,7 +150,9 @@ local function request_highlights(uri, usages, client, done)
 			end
 		end
 		entry.results[cache_key] = kinds
-		apply_kinds(usages, kinds)
+		if active() then
+			apply_kinds(usages, kinds)
+		end
 		done()
 	end)
 	if not ok then
@@ -160,7 +163,8 @@ end
 ---@param usages gleb.references.KindUsage[]
 ---@param client vim.lsp.Client
 ---@param done fun()
-local function request_tsserver(usages, client, done)
+---@param active fun(): boolean
+local function request_tsserver(usages, client, done, active)
 	local anchor = usages[1]
 	local range = usage_range(anchor)
 	local cache_key = client.id .. ":" .. anchor.uri .. ":" .. range_key(range)
@@ -201,12 +205,14 @@ local function request_tsserver(usages, client, done)
 		for _, usage in ipairs(usages) do
 			local kinds = by_uri[usage.uri] or {}
 			cache_entry(usage.uri).results[cache_key] = kinds
-			usage.kind = kinds[range_key(usage_range(usage))] or usage.kind
+			if active() then
+				usage.kind = kinds[range_key(usage_range(usage))] or usage.kind
+			end
 		end
 		done()
 	end)
 	if not ok then
-		done()
+		vim.schedule(done)
 	end
 end
 
@@ -379,6 +385,9 @@ function M.classify(usages, callback, origin)
 			finish()
 		end
 	end
+	local function active()
+		return not finished
+	end
 
 	local tsserver_usages = {}
 	local tsserver_client
@@ -389,12 +398,12 @@ function M.classify(usages, callback, origin)
 			vim.list_extend(tsserver_usages, file_usages)
 		elseif client and client:supports_method("textDocument/documentHighlight") then
 			pending = pending + 1
-			request_highlights(uri, file_usages, client, request_done)
+			request_highlights(uri, file_usages, client, request_done, active)
 		end
 	end
 	if tsserver_client and #tsserver_usages > 0 then
 		pending = pending + 1
-		request_tsserver(tsserver_usages, tsserver_client, request_done)
+		request_tsserver(tsserver_usages, tsserver_client, request_done, active)
 	end
 	if origin then
 		pending = pending + 1

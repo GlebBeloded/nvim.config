@@ -69,7 +69,14 @@ end
 _G.ReleaseHighlight = function()
 	client.request = original
 	local held = _G.HeldHighlight
-	if held then original(held.self, held.method, held.params, held.handler, held.bufnr) end
+	if held then
+		local handler = held.handler
+		held.handler = function(...)
+			handler(...)
+			_G.HighlightAnswered = true
+		end
+		original(held.self, held.method, held.params, held.handler, held.bufnr)
+	end
 end
 ]],
 		{ drop }
@@ -154,12 +161,16 @@ T[timeout_scenario] = MiniTest.new_set()
 T[timeout_scenario]["falls back silently after three seconds"] = function()
 	local notifications
 	open_symbol("Calls", function()
-		hold_document_highlights(true)
+		hold_document_highlights(false)
 		notifications = H.record_notify(child)
 	end)
 	eq(title(), " Usages of Calls · 4 · classifying ")
 	eq(child.wait([[not vim.api.nvim_win_get_config(0).title[1][1]:find("classifying", 1, true)]], 5000), true)
 	eq(lines():find("Value write", 1, true) ~= nil, true)
+	child.lua([[_G.ReleaseHighlight()]])
+	eq(child.wait([[_G.HighlightAnswered == true]], TIMEOUT_MS), true)
+	child.type_keys("w")
+	eq(lines():find("read", 1, true), nil)
 	eq(notifications(), {})
 end
 
