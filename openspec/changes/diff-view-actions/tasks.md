@@ -2,13 +2,13 @@
 
 Scenarios: `diff: Diff view checkboxes follow the index`, `diff: Diff view checkbox of a partly staged change`, `diff: Diff view Space stages one change`, `diff: Diff view stages an insertion and a deletion separately`
 
-- [ ] 1.1 Write `tests/unit/diff/test_patch.lua`, and see it fail. It covers:
+- [x] 1.1 Write `tests/unit/diff/test_patch.lua`, and see it fail. It covers:
   - the states `☐`/`☑`/`◪`;
   - the staged and unstaged index texts for a change, an insertion and a deletion;
   - overlapping staged edits;
   - a file without a final newline, whose patch passes `git apply --cached --check` in a temp repo.
-- [ ] 1.2 Add `lua/gleb/diff/patch.lua` (pure, typed), following design Decision 3.
-- [ ] 1.3 Run the file and see it pass
+- [x] 1.2 Add `lua/gleb/diff/patch.lua` (pure, typed), following design Decision 3.
+- [x] 1.3 Run the file and see it pass
 
 ## 2. Revert and staging in the view
 
@@ -51,3 +51,7 @@ Scenarios: `diff: Diff view staged change matches the approved render`, `diff: D
   - rows 2–29 screenshot plus `H.expect_screen_colors` with the masks of Proposed E1 and E2.
 - [ ] 5.2 Make them pass. Re-run `diff: Diff view matches the approved render` unchanged.
 - [ ] 5.3 Compare `make render` (cases `diff-view-staged` and `diff-view-moved` in `tests/render/cases.lua`) with `renders/*.ansi`, then run `make check`.
+
+## Agent decisions
+
+- Expose `state`, `update_index(..., include)` and `make_patch(..., final-newline flags)` so index math and serialization stay independently testable.
