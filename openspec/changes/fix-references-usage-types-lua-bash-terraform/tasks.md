@@ -14,6 +14,7 @@ Scenarios: `references: Lua query classifies every usage type`
 - Wait for the full expected Bash reference count before opening the picker so partial bashls indexing cannot satisfy the scenarios.
 - Keep the `total` picker scenario as a regression although it was already green after task 2 supplied Bash call classification; only the missing `rate` fixture produced the expected red in this task.
 - Use Decision 7's four-space Lua fixture indentation and case-only blank-line padding so the real picker matches every approved L1 cell without changing reference positions.
+- Clear terraform-ls code lenses in the H1 case because the approved render normalizes case-owned editor chrome.
 
 ## 2. Bash query cases
 
@@ -83,6 +84,6 @@ Scenarios: `references: Bash usage types match the approved render`
 
 Scenarios: `references: Terraform usage types match the approved render`
 
-- [ ] 10.1 Write the `70x24` screen scenario in `tests/screen/references/test_view.lua`, driving `gr` on `vpc` with the real picker, terraform-ls and populated fixture data, and see it fail against the approved screenshot
-- [ ] 10.2 Add the Proposed H1 reference screenshot and attribute block from design.md
-- [ ] 10.3 Run `make test FILE=tests/screen/references/test_view.lua CASE="Terraform usage types match the approved render"` and see it pass; compare `make render` with `renders/terraform_h1_proposed.ansi`, then run `make check`
+- [x] 10.1 Write the `70x24` screen scenario in `tests/screen/references/test_view.lua`, driving `gr` on `vpc` with the real picker, terraform-ls and populated fixture data, and see it fail against the approved screenshot
+- [x] 10.2 Add the Proposed H1 reference screenshot and attribute block from design.md
+- [x] 10.3 Run `make test FILE=tests/screen/references/test_view.lua CASE="Terraform usage types match the approved render"` and see it pass; compare `make render` with `renders/terraform_h1_proposed.ansi`, then run `make check`
