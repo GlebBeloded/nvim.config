@@ -25,9 +25,9 @@ T["file-tree: Project tree lists folders first in case-insensitive order"] = Min
 
 T["file-tree: Project tree lists folders first in case-insensitive order"]["orders a populated fixture"] = function()
 	eq(entry_summaries(fixture_rows()), {
-		{ "directory", ".github" },
+		{ "directory", ".github/workflows" },
 		{ "directory", "bin" },
-		{ "directory", "cmd" },
+		{ "directory", "cmd/server" },
 		{ "directory", "internal" },
 		{ "directory", "web" },
 		{ "file", ".env" },
@@ -55,6 +55,37 @@ T["file-tree: Project tree lists folders first in case-insensitive order"]["uses
 		end, entries),
 		{ "zeta", "Alpha", "alpha" }
 	)
+end
+
+T["file-tree: Single-child folders share one row"] = MiniTest.new_set()
+
+T["file-tree: Single-child folders share one row"]["compacts populated fixture folders"] = function()
+	local labels = vim.tbl_map(function(row)
+		return row.label
+	end, fixture_rows())
+
+	eq(vim.tbl_contains(labels, ".github/workflows"), true)
+	eq(vim.tbl_contains(labels, "cmd/server"), true)
+	eq(vim.tbl_contains(labels, ".github"), false)
+	eq(vim.tbl_contains(labels, "cmd"), false)
+end
+
+T["file-tree: Expanding a compact row shows the last folder's entries"] = MiniTest.new_set()
+
+T["file-tree: Expanding a compact row shows the last folder's entries"]["expands the chain tail"] = function()
+	local root = F.copy("treeproj", vim.fn.tempname())
+	local rows = model.rows(fs.tree(root), { ["cmd/server"] = true }, {})
+	local compact_index
+	for index, row in ipairs(rows) do
+		if row.label == "cmd/server" then
+			compact_index = index
+			break
+		end
+	end
+
+	eq(compact_index ~= nil, true)
+	eq(rows[compact_index].expanded, true)
+	eq({ rows[compact_index + 1].label, rows[compact_index + 1].depth }, { "main.go", 1 })
 end
 
 T["file-tree: Project tree hides the git folder"] = MiniTest.new_set()

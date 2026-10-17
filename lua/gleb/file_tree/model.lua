@@ -57,35 +57,62 @@ function M.sort(entries)
 end
 
 ---@param tree FileTreeSource
----@param expanded table<string, boolean>
----@param status table<string, string>
----@param rows FileTreeRow[]
 ---@param path string
----@param depth integer
-local function append_children(tree, expanded, status, rows, path, depth)
+---@return FileTreeEntry[]
+local function visible_entries(tree, path)
 	local entries = {}
 	for _, entry in ipairs(tree.scan(path)) do
 		if entry.name ~= ".git" then
 			entries[#entries + 1] = entry
 		end
 	end
-	M.sort(entries)
+	return M.sort(entries)
+end
 
-	for _, entry in ipairs(entries) do
-		local relative = relative_path(tree.root, entry.path)
-		local is_expanded = entry.kind == "directory" and expanded[relative] == true
-		local children = is_expanded and tree.scan(entry.path) or {}
+---@param tree FileTreeSource
+---@param entry FileTreeEntry
+---@return string label
+---@return FileTreeEntry tail
+---@return FileTreeEntry[] children
+local function compact_directory(tree, entry)
+	local names = { entry.name }
+	local tail = entry
+	local children = visible_entries(tree, tail.path)
+	while #children == 1 and children[1].kind == "directory" do
+		tail = children[1]
+		names[#names + 1] = tail.name
+		children = visible_entries(tree, tail.path)
+	end
+	return table.concat(names, "/"), tail, children
+end
+
+---@param tree FileTreeSource
+---@param expanded table<string, boolean>
+---@param status table<string, string>
+---@param rows FileTreeRow[]
+---@param path string
+---@param depth integer
+local function append_children(tree, expanded, status, rows, path, depth)
+	for _, entry in ipairs(visible_entries(tree, path)) do
+		local label = entry.name
+		local tail = entry
+		local children = {}
+		if entry.kind == "directory" then
+			label, tail, children = compact_directory(tree, entry)
+		end
+		local relative = relative_path(tree.root, tail.path)
+		local is_expanded = tail.kind == "directory" and expanded[relative] == true
 		rows[#rows + 1] = {
 			depth = depth,
-			kind = entry.kind,
-			label = entry.name,
-			path = entry.path,
+			kind = tail.kind,
+			label = label,
+			path = tail.path,
 			expanded = is_expanded,
-			empty = entry.kind == "directory" and #children == 0,
+			empty = tail.kind == "directory" and #children == 0,
 			status = status[relative],
 		}
 		if is_expanded then
-			append_children(tree, expanded, status, rows, entry.path, depth + 1)
+			append_children(tree, expanded, status, rows, tail.path, depth + 1)
 		end
 	end
 end

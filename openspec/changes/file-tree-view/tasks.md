@@ -10,9 +10,9 @@ Scenarios: `file-tree: Project tree lists folders first in case-insensitive orde
 
 Scenarios: `file-tree: Single-child folders share one row`, `file-tree: Expanding a compact row shows the last folder's entries`
 
-- [ ] 1b.1 Write the scenarios in `tests/unit/file-tree/test_model.lua`, driving `model.rows` with populated scans and expansion state, and see them fail.
-- [ ] 1b.2 Implement compact-chain rows and last-folder expansion in `lua/gleb/file_tree/model.lua` and cached scans in `lua/gleb/file_tree/fs.lua`.
-- [ ] 1b.3 Run `make test FILE=tests/unit/file-tree/test_model.lua` and see it pass.
+- [x] 1b.1 Write the scenarios in `tests/unit/file-tree/test_model.lua`, driving `model.rows` with populated scans and expansion state, and see them fail.
+- [x] 1b.2 Implement compact-chain rows and last-folder expansion in `lua/gleb/file_tree/model.lua` and cached scans in `lua/gleb/file_tree/fs.lua`.
+- [x] 1b.3 Run `make test FILE=tests/unit/file-tree/test_model.lua` and see it pass.
 
 ## 2a. Neo-tree split and row rendering
 
