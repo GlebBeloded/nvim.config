@@ -120,6 +120,9 @@ T["diff: Random texts keep IntelliJ's line invariants"] = function()
 				local lines2 = random_lines(alphabet)
 				for _, policy_name in ipairs(policies) do
 					local result = engine.compare_lines(lines1, lines2, { policy = policy_name })
+					if result.too_big or result.timed_out then
+						return ("alphabet %d run %d policy %s: fallback"):format(alphabet_index, run, policy_name)
+					end
 					local message = check(lines1, lines2, policy_name, result.fragments)
 					if message then
 						return ("alphabet %d run %d policy %s: %s"):format(alphabet_index, run, policy_name, message)

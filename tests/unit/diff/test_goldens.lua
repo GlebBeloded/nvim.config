@@ -39,6 +39,9 @@ local function start()
 				if load_error then return load_error end
 				for policy, expected in pairs(row.expect) do
 					local result = engine.compare_lines(row.lines1, row.lines2, { policy = policy })
+					if result.too_big or result.timed_out then
+						return row.source .. " (" .. policy .. ") used fallback"
+					end
 					if expected.fragments and not vim.deep_equal(fragments(result), expected.fragments) then
 						return row.source .. " (" .. policy .. ") fragments: " .. vim.inspect(fragments(result))
 					end
@@ -58,7 +61,9 @@ local function start()
 				local engine, load_error = load_engine(row.source)
 				if load_error then return load_error end
 				local policy = row.kind == "trim_equality" and "trim_whitespaces" or "default"
-				local actual = fragments(engine.compare_lines(row.lines1, row.lines2, { policy = policy }))
+				local result = engine.compare_lines(row.lines1, row.lines2, { policy = policy })
+				if result.too_big or result.timed_out then return row.source .. ": used fallback" end
+				local actual = fragments(result)
 				local expected
 				if row.kind == "trim_equality" then
 					actual = #actual == 0
@@ -77,7 +82,9 @@ local function start()
 			for _, row in ipairs(DiffbanditOracle) do
 				local engine, load_error = load_engine(row.source)
 				if load_error then return load_error end
-				local actual = fragments(engine.compare_lines(row.lines1, row.lines2))
+				local result = engine.compare_lines(row.lines1, row.lines2)
+				if result.too_big or result.timed_out then return row.source .. ": used fallback" end
+				local actual = fragments(result)
 				if not vim.deep_equal(actual, row.fragments) then
 					return row.source .. ": " .. vim.inspect(actual)
 				end

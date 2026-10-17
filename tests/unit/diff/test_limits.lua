@@ -28,6 +28,24 @@ T["diff: Patience takes over when Myers exceeds its threshold"] = function()
 	})
 end
 
+T["diff: Patience reduction uses original counts"] = function()
+	local result = child.lua_get([[
+		require("gleb.diff.engine").compare_lines(
+			{
+				"left line", "first anchor", "common line", "common line", "common line", "alpha line",
+				"alpha line", "bravo line", "bravo line", "bravo line", "second anchor", "right line",
+			},
+			{
+				"right line", "first anchor", "common line", "common line", "common line", "bravo line",
+				"bravo line", "alpha line", "alpha line", "alpha line", "second anchor", "left line",
+			},
+			{ limits = { myers_threshold = 1 } }
+		)
+	]])
+	eq(result.too_big, false)
+	eq(result.timed_out, false)
+end
+
 T["diff: A too big comparison falls back to xdiff"] = function()
 	local result = child.lua_get([[
 		require("gleb.diff.engine").compare_lines(

@@ -20,9 +20,16 @@ local UNIMPORTANT_LINE_CHAR_COUNT = 3
 ---@field ignore_key string
 ---@field nonspace integer
 
-local function make_lines(raw_lines, comparison_policy)
+local function timed_out(context)
+	return context.clock() > context.deadline
+end
+
+local function make_lines(raw_lines, comparison_policy, context)
 	local lines = {}
 	for index, content in ipairs(raw_lines) do
+		if timed_out(context) then
+			return nil, "timed_out"
+		end
 		lines[index] = {
 			content = content,
 			key = policy.key(content, comparison_policy),
@@ -30,17 +37,13 @@ local function make_lines(raw_lines, comparison_policy)
 			nonspace = policy.count_nonspace_codepoints(content),
 		}
 	end
-	return lines
+	return lines, "ok"
 end
 
 local function line_equals(lines1, lines2, field)
 	return function(index1, index2)
 		return lines1[index1 + 1][field] == lines2[index2 + 1][field]
 	end
-end
-
-local function timed_out(context)
-	return context.clock() > context.deadline
 end
 
 local function sequence_changes(values1, values2, context)
@@ -302,9 +305,19 @@ end
 ---@param context gleb.diff.Context
 ---@return gleb.diff.LineFragment[], gleb.diff.LcsStatus
 function M.compare(raw1, raw2, comparison_policy, context)
-	local lines1 = make_lines(raw1, comparison_policy)
-	local lines2 = make_lines(raw2, comparison_policy)
-	local changes, status = compare_smart(lines1, lines2, context)
+	local lines1, status = make_lines(raw1, comparison_policy, context)
+	if status ~= "ok" then
+		return {}, status
+	end
+	assert(lines1, "successful line conversion has lines")
+	local lines2
+	lines2, status = make_lines(raw2, comparison_policy, context)
+	if status ~= "ok" then
+		return {}, status
+	end
+	assert(lines2, "successful line conversion has lines")
+	local changes
+	changes, status = compare_smart(lines1, lines2, context)
 	if status ~= "ok" then
 		return {}, status
 	end
