@@ -53,7 +53,7 @@ end
 ---@param row gleb.diff.view.Row
 ---@return table[]
 local function padding_gutter(row)
-	local kind = assert(row.kind)
+	local kind = assert(row.kind, "padding gutter requires a diff row")
 	local suffix = "DiffView" .. kind
 	local checkbox_group = row.right and ("DiffViewGutter" .. kind) or "DiffViewCheckbox"
 	return {

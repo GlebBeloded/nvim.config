@@ -1,4 +1,3 @@
-local MiniTest = require("mini.test")
 local H = require("tests.helpers")
 local cases = require("tests.render.cases")
 
