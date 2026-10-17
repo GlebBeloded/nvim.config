@@ -26,9 +26,9 @@ Scenarios: `file-tree: Project tree root row names the project`, `file-tree: Pro
 
 Scenarios: `file-tree: Project tree opens on the left at width 35`, `file-tree: Project tree toggle closes a focused tree`, `file-tree: Project tree toggle focuses an open tree`, `file-tree: Project tree toggle reveals the current file`, `file-tree: Project tree closes with the last window`
 
-- [ ] 2b.1 Write these scenarios in `tests/integration/file-tree/test_project_tree.lua`, driving `file_tree.toggle` with real file buffers in populated tabs, and see them fail.
-- [ ] 2b.2 Add `lua/gleb/file_tree/view.lua` with state, buffer names and autocmd teardown keyed by tabpage handle. Append the unbound `file_tree.toggle` and `file_tree.reveal` actions, and implement `QuitPre` without group-wide clearing.
-- [ ] 2b.3 Run `make test FILE=tests/integration/file-tree/test_project_tree.lua` for these cases and see them pass.
+- [x] 2b.1 Write these scenarios in `tests/integration/file-tree/test_project_tree.lua`, driving `file_tree.toggle` with real file buffers in populated tabs, and see them fail.
+- [x] 2b.2 Add `lua/gleb/file_tree/view.lua` with state, buffer names and autocmd teardown keyed by tabpage handle. Append the unbound `file_tree.toggle` and `file_tree.reveal` actions, and implement `QuitPre` without group-wide clearing.
+- [x] 2b.3 Run `make test FILE=tests/integration/file-tree/test_project_tree.lua` for these cases and see them pass.
 
 ## 2c. Transition wiring and bufferline
 

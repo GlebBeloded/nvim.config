@@ -243,6 +243,22 @@ end
 ---@type gleb.Action[]
 local actions = {
 	{
+		id = "file_tree.toggle",
+		title = "Toggle Project Tree",
+		category = "Project",
+		run = function()
+			require("gleb.file_tree.view").toggle()
+		end,
+	},
+	{
+		id = "file_tree.reveal",
+		title = "Reveal in Project Tree",
+		category = "Project",
+		run = function()
+			require("gleb.file_tree.view").reveal()
+		end,
+	},
+	{
 		id = "tree.toggle_filesystem",
 		title = "Toggle File Tree",
 		category = "View | Tool Windows",
