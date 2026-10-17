@@ -61,7 +61,7 @@ Scenarios: `diff: Diff view staged change matches the approved render`, `diff: D
 
 ## Stuck
 
-- Task 5, moved render: consecutive right-side padding rows are emitted as separate virtual-line extmarks at one anchor, so Neovim draws their gutter rows out of layout order (`3, 9, 8, …` instead of `3, 4, 5, …`).
-- Attempt 1 inserted the extmarks in reverse; the first moved row shifted into the middle (`9, 3, 4, …`).
-- Attempt 2 emitted each padding run as one ordered `virt_lines` block; text then matched Proposed E2, but the colour assertion exposed a second mismatch: a non-first moved gutter arrow cell draws `{ fg=#928374 bg=#434f41 }` (`DiffViewGutterMoved`) where the approved mask requires the neutral cell before `DiffViewGutterMoved` line numbers.
-- The second production attempt is saved in `artifacts/runs/17ad341c-03f5-491f-b9d6-67aa90e073c0/stuck-attempt.diff`; production edits were reverted and the failing screen regression remains.
+- Task 5, moved render: restoring the ordered `virt_lines` block makes text match Proposed E2, but the screen probe reports row 5, column 42 as `DiffViewGutterMoved` where the approved mask requires `Normal`.
+- Attempt 1 made the non-first virtual-padding arrow cell neutral; the probe advanced to row 5, column 56, where a blank checkbox slot drew `DiffViewCheckbox` instead of `DiffViewPadding`.
+- Attempt 2 made that blank slot padding-coloured; the probe advanced to row 20, column 42, revealing the real status-column `gutter()` independently colours its non-first blank arrow as `DiffViewGutterMoved` instead of `Normal`.
+- The second production attempt is saved in `artifacts/runs/17ad341c-03f5-491f-b9d6-67aa90e073c0/stuck-attempt.diff`; production edits were reverted and the existing moved-render regression remains red.
