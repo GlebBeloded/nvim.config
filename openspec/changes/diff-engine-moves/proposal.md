@@ -63,6 +63,14 @@ This change adds the port to the engine and returns moves next to the IntelliJ l
 - Move detection: "Let's get Move detection (but only if IDEA doesn't have it)". IntelliJ has none (YouTrack IJPL-101150, open since 2015), so the user picked "Port VS Code's move detection".
 - "I'm used to Idea", "I like IDEA IDE diff more". The move ranges sit on top of IntelliJ's line fragments.
 
+## Decision (auditor, 2026-10-17, shape, deadline, parity, tests)
+
+- `result.moves` is always present (`{}` without `opts.moves`, on `highlight="none"`, and on the too_big/timed_out xdiff fallback, where moves are not computed). A task updates the exact-shape asserts in `test_lines.lua`, `test_limits.lua` and `test_policies.lua`, and MODIFIES "Ported files carry their attribution" (spec and `test_notice.lua`) to accept an MIT header for `moves.lua` and `fixtures/vscode_moves/*`.
+- Deadline (a deliberate deviation from VS Code, which keeps simple moves and never sets hitTimeout): when the shared deadline passes anywhere after the line diff (any pass, `lines_similar`, a move's inner diff), `moves = {}` and `timed_out = true`. The deadline is checked per modified 3-line window and per claimed mapping; `lastMappings` extensions are found through a table keyed by original end (O(1), same result). A perf scenario: a 2000-line block of `}` reindented by 2 spaces with `moves = true` stays under 150 ms × load factor or times out cleanly.
+- `lines_similar` ports VS Code exactly: LCS over `trim(line)` cut to `#line1 - 1 - leading_ws` code points, the common non-space count read from raw `line1` at those sequence offsets, the inversion tail up to `#line1`; the `countNonWsChars` quirk stays. `possibleMappings` sorts stably (length desc, then creation index). In `remove_moves_in_same_change`, "no change found" on both sides counts as different.
+- A move's ranges may include up to 2 gap lines that sit in no fragment, and its sides may differ in length. The inner diff runs through an internal `compare_lines` that takes the caller's context (no new deadline) and is shifted by `start1`/`start2`.
+- Tests: threshold scenarios call `moves.compute` directly and pair each empty case with a positive control just over the threshold (`x=100,y=20,z=30` gives one move). Goldens assert the result is a table, the exact count, and all 3 positives. The perf fixture moves lines 2102–2141 and asserts `timed_out == false` and `too_big == false`. Tasks 2.2/2.3 split into: simple pass (`move-1` plus negatives), then window pass plus LineRangeSet (`difficult-move`), then `lines_similar` and growth (`noisy-move1`).
+
 ## Agent decisions
 
 - **Input changes.** Moves are computed from IntelliJ's line fragments, not VS Code's, so they always match what the viewer shows. The goldens feed VS Code's own changes to `moves.lua`, so they test the port exactly.
