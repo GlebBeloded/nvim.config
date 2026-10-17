@@ -29,9 +29,6 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 
 ## Loop lessons
 
-- Replacing whole-screen colour assertions with selected rows hid additional changed highlight families; recapture and assert every screen row from row 1.
-- Treat a preferred write-access source as additive: only an explicit false may suppress an available documentHighlight fallback.
-- Approved screen renders need case-owned editor chrome normalized before regenerating their reference screenshots.
 - When adding a Treesitter usages query, update the exhaustive runtime query-language expectation alongside the query.
 - Adding a Treesitter usages query requires adding its language to the exhaustive runtime query-language expectation.
 - Build ordered LCS matches by appending and preserve IntelliJ's original-count recursion state so large common regions stay linear without premature fallback.
@@ -44,6 +41,9 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - Diff viewport sync must neutralize window-local scrolloff and ignore only peer events whose cursor or view still matches the programmatic target, preventing deferred echoes from remapping the source.
 - Give invariant assertions diagnostic messages and remove unused test imports so Selene accepts the rendered-view implementation.
 - Derive repository-relative paths from Git's working-directory prefix; filesystem relpath fails when Git canonicalizes a symlinked repository root.
+- Map display-policy fragments to overlapping action fragments so UI-only splitting cannot erase semantic state.
+- Refresh cached comparisons before buffer-mutating actions whenever the debounce or changedtick shows stale input.
+- Keep package aggregators requires-only by loading persisted defaults in the owning implementation part.
 
 ## The loop
 

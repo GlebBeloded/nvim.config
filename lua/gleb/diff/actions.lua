@@ -3,6 +3,58 @@
 local source = require("gleb.diff.view.source")
 
 ---@param ctx gleb.ActionContext
+---@return boolean
+local function view_in_tab(ctx)
+	local tab = vim.api.nvim_win_get_tabpage(ctx.win)
+	for _, view in pairs(require("gleb.diff.view").state.by_path) do
+		if view.tab == tab then
+			return true
+		end
+	end
+	return false
+end
+
+---@param key "policy"|"highlight"
+---@param value string
+local function set_setting(key, value)
+	local view = require("gleb.diff.view")
+	view.config[key] = value
+	require("gleb.diff.settings").save({
+		policy = view.config.policy,
+		highlight = view.config.highlight,
+	})
+	view.recompare_all()
+end
+
+---@param id string
+---@param title string
+---@param key "policy"|"highlight"
+---@param value string
+---@return gleb.Action
+local function setting_action(id, title, key, value)
+	local function apply_setting()
+		set_setting(key, value)
+	end
+	return {
+		id = id,
+		title = title,
+		category = "Git | Diff",
+		when = view_in_tab,
+		run = apply_setting,
+		toggle = {
+			get = function()
+				return require("gleb.diff.view").config[key] == value
+			end,
+			set = function(_, enabled)
+				if enabled then
+					apply_setting()
+				end
+			end,
+		},
+	}
+end
+
+---@param ctx gleb.ActionContext
 ---@return gleb.diff.view.View?
 local function current(ctx)
 	return require("gleb.diff.view").state.by_win[ctx.win]
@@ -57,6 +109,30 @@ local function previous_change(ctx)
 end
 
 ---@param ctx gleb.ActionContext
+local function apply(ctx)
+	local view = current(ctx)
+	if view then
+		require("gleb.diff.view").apply(view, ctx.win)
+	end
+end
+
+---@param ctx gleb.ActionContext
+local function toggle_include(ctx)
+	local view = current(ctx)
+	if view then
+		require("gleb.diff.view").toggle_include(view, ctx.win)
+	end
+end
+
+---@param ctx gleb.ActionContext
+local function jump_move(ctx)
+	local view = current(ctx)
+	if view then
+		require("gleb.diff.view").jump_move(view, ctx.win)
+	end
+end
+
+---@param ctx gleb.ActionContext
 local function open_file(ctx)
 	local path = vim.api.nvim_buf_get_name(ctx.buf)
 	local view = require("gleb.diff.view")
@@ -73,10 +149,13 @@ local function open_file(ctx)
 	assert(data, "source data missing")
 	local opened = view.open({
 		path = data.path,
+		root = data.root,
 		relpath = data.relpath,
 		left = data.left,
 		right = data.right,
 		right_buf = ctx.buf,
+		actionable = data.actionable,
+		head_final_newline = data.head_final_newline,
 		filetype = data.filetype,
 		labels = { left = data.hash .. " · HEAD", right = "Your version" },
 	})
@@ -111,6 +190,27 @@ local actions = {
 		run = previous_change,
 	},
 	{
+		id = "diff.apply",
+		title = "Revert Change",
+		category = "Git | Diff",
+		plugin = "gleb-diff",
+		run = apply,
+	},
+	{
+		id = "diff.toggle_include",
+		title = "Toggle Change Staging",
+		category = "Git | Diff",
+		plugin = "gleb-diff",
+		run = toggle_include,
+	},
+	{
+		id = "diff.jump_move",
+		title = "Jump to Other End of Move",
+		category = "Git | Diff",
+		plugin = "gleb-diff",
+		run = jump_move,
+	},
+	{
 		id = "diff.next_file",
 		title = "Next File",
 		category = "Git | Diff",
@@ -138,6 +238,20 @@ local actions = {
 		plugin = "gleb-diff",
 		run = close,
 	},
+	setting_action("diff.ignore_none", "Do Not Ignore", "policy", "default"),
+	setting_action("diff.ignore_trim", "Trim Whitespaces", "policy", "trim_whitespaces"),
+	setting_action("diff.ignore_whitespaces", "Ignore Whitespaces", "policy", "ignore_whitespaces"),
+	setting_action(
+		"diff.ignore_whitespaces_chunks",
+		"Ignore Whitespaces and Empty Lines",
+		"policy",
+		"ignore_whitespaces_chunks"
+	),
+	setting_action("diff.highlight_words", "Highlight Words", "highlight", "by_word"),
+	setting_action("diff.highlight_split", "Highlight Split Changes", "highlight", "by_word_split"),
+	setting_action("diff.highlight_chars", "Highlight Symbols", "highlight", "by_char"),
+	setting_action("diff.highlight_lines", "Highlight Lines", "highlight", "by_line"),
+	setting_action("diff.highlight_none", "Do Not Highlight", "highlight", "none"),
 }
 
 return actions

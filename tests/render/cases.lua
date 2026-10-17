@@ -56,6 +56,44 @@ assert(require("gleb.actions.context").execute(action, require("gleb.actions.con
 	assert(driver.wait([[require("gleb.diff.view").current() ~= nil]]))
 end
 
+--- Owned aligned diff after staging the changed return line.
+---@param driver render.Driver
+local function diff_view_staged(driver)
+	diff_view(driver)
+	driver.lua([[
+local view = assert(require("gleb.diff.view").current())
+vim.api.nvim_set_current_win(view.right_win)
+vim.api.nvim_win_set_cursor(view.right_win, { 53, 0 })
+]])
+	driver.type_keys("<Space>")
+	assert(driver.wait([[(function()
+		for _, row in ipairs(require("gleb.diff.view").current().layout.rows) do
+			if row.right == 53 and row.first then return row.checkbox == "󰄲" end
+		end
+		return false
+	end)()]]))
+end
+
+--- Owned aligned diff of a moved Go block, focused on its new first line.
+---@param driver render.Driver
+local function diff_view_moved(driver)
+	local root, manifest = F.copy("diffgo", vim.fn.tempname())
+	driver.cmd("cd " .. vim.fn.fnameescape(root) .. " | edit " .. vim.fn.fnameescape(manifest.ids))
+	driver.lua([[
+vim.bo.tabstop = 4
+require("ibl").setup_buffer(0, { enabled = false })
+local actions = require("gleb.actions")
+local action = assert(actions.state.applicator.catalog:get("diff.open_file"))
+assert(require("gleb.actions.context").execute(action, require("gleb.actions.context").capture()))
+]])
+	assert(driver.wait([[require("gleb.diff.view").current() ~= nil]]))
+	driver.lua([[
+local view = assert(require("gleb.diff.view").current())
+vim.api.nvim_set_current_win(view.right_win)
+vim.api.nvim_win_set_cursor(view.right_win, { 11, 0 })
+]])
+end
+
 --- TypeScript class usages grouped by their query-backed usage types.
 ---@param driver render.Driver
 local function ts_p1_class(driver)
@@ -448,6 +486,8 @@ end
 return {
 	dashboard = { description = "alpha dashboard of a bare nvim", setup = dashboard },
 	["diff-view"] = { description = "aligned diff of the changed Go controller fixture", setup = diff_view },
+	["diff-view-staged"] = { description = "aligned diff with its first change staged", setup = diff_view_staged },
+	["diff-view-moved"] = { description = "aligned diff of a moved Go block", setup = diff_view_moved },
 	["git-hunk"] = { description = "sample.lua in a temp git repo, added line 2, no LSP", setup = git_hunk },
 	["lua-file"] = { description = "small Lua file, Normal mode, no LSP, outside git", setup = lua_file },
 	["close-buffer-split"] = {

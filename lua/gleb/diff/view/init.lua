@@ -3,7 +3,10 @@
 
 local engine = require("gleb.diff.engine")
 local layout = require("gleb.diff.view.layout")
+local patch = require("gleb.diff.patch")
 local render = require("gleb.diff.view.render")
+local settings = require("gleb.diff.settings").load()
+local stage = require("gleb.diff.stage")
 local windows = require("gleb.diff.view.windows")
 
 ---@type table<gleb.diff.view.View, { cursor?: { win: integer, line: integer, col: integer }, scroll?: { win: integer, topline: integer, topfill: integer, leftcol: integer } }>
@@ -14,6 +17,8 @@ local M = {
 		context = 4,
 		debounce_ms = 150,
 		timeout_ms = 1000,
+		policy = settings.policy,
+		highlight = settings.highlight,
 	},
 	state = {
 		by_path = {},
@@ -28,16 +33,22 @@ local M = {
 ---@field labels { left: string, right: string }
 ---@field right_buf? integer
 ---@field relpath? string
+---@field root? string
 ---@field filetype? string
+---@field actionable? boolean
+---@field head_final_newline? boolean
 ---@field on_next_file? function
 
 ---@class gleb.diff.view.View
 ---@field path string
 ---@field relpath string
+---@field root? string
 ---@field left string[]
 ---@field right string[]
 ---@field labels { left: string, right: string }
 ---@field filetype string
+---@field actionable boolean
+---@field head_final_newline boolean
 ---@field right_buf integer
 ---@field left_buf integer
 ---@field left_win integer
@@ -46,6 +57,8 @@ local M = {
 ---@field augroup integer
 ---@field ns integer
 ---@field fragments gleb.diff.LineFragment[]
+---@field action_fragments gleb.diff.LineFragment[]
+---@field moves gleb.diff.Move[]
 ---@field layout gleb.diff.view.Layout
 ---@field on_next_file? function
 ---@field owns_tab boolean
@@ -54,8 +67,10 @@ local M = {
 ---@field mappings? table<integer, { lhs: string, previous: table }[]>
 ---@field closing? boolean
 ---@field approximate? boolean
+---@field index? gleb.diff.Index
 ---@field syncing? boolean
 ---@field timer? uv.uv_timer_t
+---@field changedtick integer
 ---@field attached? boolean
 ---@field ufo_attached? boolean
 
@@ -104,6 +119,7 @@ local function set_mappings(view)
 		vim.api.nvim_buf_call(buf, function()
 			for lhs, mapping in pairs(mappings) do
 				local previous = vim.fn.maparg(lhs, "n", false, true)
+				local is_leader = vim.keycode(lhs) == vim.g.mapleader
 				table.insert(saved, { lhs = lhs, previous = previous })
 				vim.keymap.set("n", lhs, function()
 					if M.state.by_win[vim.api.nvim_get_current_win()] == view then
@@ -114,7 +130,7 @@ local function set_mappings(view)
 				end, {
 					buffer = buf,
 					desc = mapping.desc,
-					nowait = true,
+					nowait = not is_leader,
 					silent = true,
 				})
 			end
@@ -127,10 +143,70 @@ end
 ---@return gleb.diff.Result
 local function compare(left, right)
 	return engine.compare_lines(left, right, {
-		policy = "default",
-		highlight = "by_word",
+		policy = M.config.policy,
+		highlight = M.config.highlight,
+		moves = true,
 		limits = { timeout_ms = M.config.timeout_ms },
 	})
+end
+
+---@param left string[]
+---@param right string[]
+---@return gleb.diff.Result
+local function compare_default(left, right)
+	return engine.compare_lines(left, right, {
+		policy = "default",
+		highlight = "by_line",
+		limits = { timeout_ms = M.config.timeout_ms },
+	})
+end
+
+---@param view gleb.diff.view.View
+---@param fragments gleb.diff.LineFragment[]
+---@param right string[]
+---@return string[]?
+local function checkbox_states(view, fragments, right)
+	if not view.index then
+		return nil
+	end
+	return patch.states(view.left, view.index.lines, right, fragments)
+end
+
+---@param displayed gleb.diff.LineFragment[]
+---@param actionable gleb.diff.LineFragment[]
+---@param states string[]?
+---@return string[]?
+local function displayed_states(displayed, actionable, states)
+	if not states then
+		return nil
+	end
+	local result = {}
+	local function ranges_overlap(start1, end1, start2, end2)
+		if start1 == end1 then
+			return start2 <= start1 and start1 <= end2
+		end
+		if start2 == end2 then
+			return start1 <= start2 and start2 <= end1
+		end
+		return start1 < end2 and start2 < end1
+	end
+	local function fragments_overlap(first, second)
+		return ranges_overlap(first.start1, first.end1, second.start1, second.end1)
+			and ranges_overlap(first.start2, first.end2, second.start2, second.end2)
+	end
+	for display_index, fragment in ipairs(displayed) do
+		for action_index, action in ipairs(actionable) do
+			if fragments_overlap(fragment, action) then
+				local state = states[action_index]
+				if result[display_index] and result[display_index] ~= state then
+					result[display_index] = "󰡖"
+					break
+				end
+				result[display_index] = state
+			end
+		end
+	end
+	return result
 end
 
 ---@param view gleb.diff.view.View
@@ -158,13 +234,56 @@ local function redraw(view)
 	local open_ranges = open_fold_ranges(view)
 	local right = vim.api.nvim_buf_get_lines(view.right_buf, 0, -1, false)
 	local comparison = compare(view.left, right)
+	local action_comparison = compare_default(view.left, right)
 	view.right = right
+	view.changedtick = vim.api.nvim_buf_get_changedtick(view.right_buf)
 	view.fragments = comparison.fragments
-	view.layout = layout.build(comparison.fragments, #view.left, #right, M.config.context)
+	view.action_fragments = action_comparison.fragments
+	view.moves = comparison.moves
+	view.layout = layout.build(
+		comparison.fragments,
+		#view.left,
+		#right,
+		M.config.context,
+		displayed_states(
+			comparison.fragments,
+			action_comparison.fragments,
+			checkbox_states(view, action_comparison.fragments, right)
+		),
+		comparison.moves
+	)
 	view.approximate = comparison.too_big or comparison.timed_out
 	render.draw(view)
 	windows.add_folds(view, open_ranges)
 	windows.update_labels(view)
+end
+
+---@param view gleb.diff.view.View
+local function redraw_now(view)
+	if view.timer then
+		view.timer:stop()
+	end
+	redraw(view)
+end
+
+---@param view gleb.diff.view.View
+local function refresh_before_action(view)
+	local redraw_pending = view.timer and view.timer:is_active()
+	if redraw_pending or view.changedtick ~= vim.api.nvim_buf_get_changedtick(view.right_buf) then
+		redraw_now(view)
+	end
+end
+
+---@param view gleb.diff.view.View
+local function refresh_index(view)
+	if not view.root then
+		return
+	end
+	local current = stage.read(view.root, view.relpath)
+	if current then
+		view.index = current
+		redraw_now(view)
+	end
 end
 
 ---@param view gleb.diff.view.View
@@ -305,6 +424,12 @@ local function create_interaction_autocmds(view)
 			schedule_redraw(view)
 		end,
 	})
+	vim.api.nvim_create_autocmd("FocusGained", {
+		group = view.augroup,
+		callback = function()
+			refresh_index(view)
+		end,
+	})
 end
 
 ---@param view gleb.diff.view.View
@@ -322,28 +447,136 @@ end
 ---@return gleb.diff.view.View?
 local function build(spec)
 	local comparison = compare(spec.left, spec.right)
-	if #comparison.fragments == 0 then
+	local action_comparison = compare_default(spec.left, spec.right)
+	if #action_comparison.fragments == 0 then
 		return nil
 	end
 	local path = vim.fs.normalize(spec.path)
-	local model = layout.build(comparison.fragments, #spec.left, #spec.right, M.config.context)
+	local relpath = spec.relpath or vim.fs.basename(path)
+	local index = spec.root and stage.read(spec.root, relpath) or nil
+	local right_buf = spec.right_buf or readonly_buffer(spec.right)
 	---@type gleb.diff.view.View
 	---@diagnostic disable-next-line: missing-fields -- windows initializes the handles as one lifecycle step.
-	return {
+	local view = {
 		path = path,
-		relpath = spec.relpath or vim.fs.basename(path),
+		relpath = relpath,
+		root = spec.root,
 		left = spec.left,
 		right = spec.right,
 		labels = spec.labels,
 		filetype = spec.filetype or "",
-		right_buf = spec.right_buf or readonly_buffer(spec.right),
+		actionable = spec.actionable ~= false,
+		head_final_newline = spec.head_final_newline == true,
+		right_buf = right_buf,
 		on_next_file = spec.on_next_file,
 		ns = vim.api.nvim_create_namespace(""),
 		fragments = comparison.fragments,
-		layout = model,
+		action_fragments = action_comparison.fragments,
+		moves = comparison.moves,
+		index = index,
+		changedtick = vim.api.nvim_buf_get_changedtick(right_buf),
 		approximate = comparison.too_big or comparison.timed_out,
 		syncing = false,
 	}
+	view.layout = layout.build(
+		comparison.fragments,
+		#spec.left,
+		#spec.right,
+		M.config.context,
+		displayed_states(
+			comparison.fragments,
+			action_comparison.fragments,
+			checkbox_states(view, action_comparison.fragments, spec.right)
+		),
+		comparison.moves
+	)
+	return view
+end
+
+---@param view gleb.diff.view.View
+---@param win integer
+function M.jump_move(view, win)
+	local side = win == view.left_win and "left" or "right"
+	local line = vim.api.nvim_win_get_cursor(win)[1] - 1
+	local start_key = side == "left" and "start1" or "start2"
+	local end_key = side == "left" and "end1" or "end2"
+	local target_key = side == "left" and "start2" or "start1"
+	local target_win = side == "left" and view.right_win or view.left_win
+	for _, move in ipairs(view.moves) do
+		if line >= move[start_key] and line < move[end_key] then
+			vim.api.nvim_set_current_win(target_win)
+			vim.api.nvim_win_set_cursor(target_win, { move[target_key] + 1, 0 })
+			return
+		end
+	end
+end
+
+---@param view gleb.diff.view.View
+---@param win integer
+function M.apply(view, win)
+	if view.actionable == false then
+		vim.notify("Revert unavailable: file cannot be compared with HEAD", vim.log.levels.WARN)
+		return
+	end
+	refresh_before_action(view)
+	local side = win == view.left_win and "left" or "right"
+	local line = vim.api.nvim_win_get_cursor(win)[1]
+	local index = layout.change_at(view.layout, side, line)
+	local fragment = index and view.fragments[index] or nil
+	if not fragment then
+		return
+	end
+	local replacement = vim.list_slice(view.left, fragment.start1 + 1, fragment.end1)
+	vim.api.nvim_buf_set_lines(view.right_buf, fragment.start2, fragment.end2, false, replacement)
+	redraw_now(view)
+end
+
+---@param view gleb.diff.view.View
+---@param win integer
+function M.toggle_include(view, win)
+	if view.actionable == false then
+		vim.notify("Stage unavailable: file cannot be compared with HEAD", vim.log.levels.WARN)
+		return
+	end
+	if not view.root then
+		return
+	end
+	refresh_before_action(view)
+	local side = win == view.left_win and "left" or "right"
+	local line = vim.api.nvim_win_get_cursor(win)[1]
+	local index = layout.change_at_fragments(view.action_fragments, side, line)
+	local fragment = index and view.action_fragments[index] or nil
+	if not fragment then
+		return
+	end
+	local current, err = stage.read(view.root, view.relpath)
+	local old_state = current and patch.state(view.left, current.lines, view.right, fragment) or nil
+	local include = old_state ~= "󰄲"
+	if not current then
+		vim.notify((include and "Stage" or "Unstage") .. " failed: " .. (err or ""), vim.log.levels.ERROR)
+		return
+	end
+	local new_lines, update_err = patch.update_index(view.left, current.lines, view.right, fragment, include)
+	if not new_lines then
+		vim.notify((include and "Stage" or "Unstage") .. " failed: " .. update_err, vim.log.levels.ERROR)
+		return
+	end
+	local right_final_newline = vim.bo[view.right_buf].eol or vim.bo[view.right_buf].fixeol
+	local new_final_newline
+	if fragment.end2 == #view.right then
+		if include then
+			new_final_newline = right_final_newline
+		else
+			new_final_newline = view.head_final_newline
+		end
+	else
+		new_final_newline = current.final_newline
+	end
+	local text = patch.make_patch(view.relpath, current.lines, new_lines, current.final_newline, new_final_newline)
+	if stage.apply(view.root, text, include) then
+		view.index = { lines = new_lines, final_newline = new_final_newline }
+		redraw_now(view)
+	end
 end
 
 ---@param view gleb.diff.view.View
@@ -429,8 +662,10 @@ function M.open(spec)
 	windows.open(view)
 	register(view)
 	local first = view.fragments[1]
-	local line = math.min(first.start2 + 1, math.max(#spec.right, 1))
-	vim.api.nvim_win_set_cursor(view.right_win, { line, 0 })
+	if first then
+		local line = math.min(first.start2 + 1, math.max(#spec.right, 1))
+		vim.api.nvim_win_set_cursor(view.right_win, { line, 0 })
+	end
 	return view
 end
 
@@ -505,6 +740,12 @@ end
 ---@return gleb.diff.view.View?
 function M.current()
 	return M.state.by_win[vim.api.nvim_get_current_win()]
+end
+
+function M.recompare_all()
+	for _, view in pairs(M.state.by_path) do
+		redraw_now(view)
+	end
 end
 
 function M.reset()

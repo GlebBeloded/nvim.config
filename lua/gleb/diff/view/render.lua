@@ -32,9 +32,10 @@ local function gutter(row)
 	end
 	local kind = row.kind
 	local arrow = row.first and "»" or " "
+	local arrow_kind = row.arrow_kind or kind
 	local left = row.left and string.format("%3d ", row.left) or "╱╱╱╱"
 	local right = row.right and string.format("%3d ", row.right) or "╱╱╱╱"
-	local checkbox = row.first and row.checkbox and "󰄱" or " "
+	local checkbox = row.first and row.checkbox and (type(row.checkbox) == "string" and row.checkbox or "󰄱") or " "
 	if not kind then
 		return highlighted(arrow, "Normal")
 			.. highlighted(left, "DiffViewLineNr")
@@ -43,9 +44,11 @@ local function gutter(row)
 			.. highlighted(checkbox .. " ", "Normal")
 	end
 	local suffix = kind
-	return highlighted(arrow, row.first and ("DiffViewArrow" .. suffix) or ("DiffViewGutter" .. suffix))
+	local strip = row.move_marker and highlighted(row.move_marker, "DiffViewMovedMarker")
+		or highlighted("     ", "DiffView" .. suffix)
+	return highlighted(arrow, row.first and ("DiffViewArrow" .. arrow_kind) or "Normal")
 		.. highlighted(left, row.left and ("DiffViewGutter" .. suffix) or "DiffViewPadding")
-		.. highlighted("     ", "DiffView" .. suffix)
+		.. strip
 		.. highlighted(right, row.right and ("DiffViewGutter" .. suffix) or "DiffViewPadding")
 		.. highlighted(checkbox .. " ", "DiffViewGutter" .. suffix)
 end
@@ -55,19 +58,20 @@ end
 local function padding_gutter(row)
 	local kind = assert(row.kind, "padding gutter requires a diff row")
 	local suffix = "DiffView" .. kind
-	local checkbox_group = row.right and ("DiffViewGutter" .. kind) or "DiffViewCheckbox"
+	local arrow_kind = row.arrow_kind or kind
+	local checkbox = row.first and row.checkbox and (type(row.checkbox) == "string" and row.checkbox or "󰄱") or nil
 	return {
-		{ row.first and "»" or " ", row.first and ("DiffViewArrow" .. kind) or ("DiffViewGutter" .. kind) },
+		{ row.first and "»" or " ", row.first and ("DiffViewArrow" .. arrow_kind) or "Normal" },
 		{
 			row.left and string.format("%3d ", row.left) or "╱╱╱╱",
 			row.left and ("DiffViewGutter" .. kind) or "DiffViewPadding",
 		},
-		{ "     ", suffix },
+		{ row.move_marker or "     ", row.move_marker and "DiffViewMovedMarker" or suffix },
 		{
 			row.right and string.format("%3d ", row.right) or "╱╱╱╱",
 			row.right and ("DiffViewGutter" .. kind) or "DiffViewPadding",
 		},
-		{ row.first and row.checkbox and "󰄱" or " ", checkbox_group },
+		checkbox and { checkbox, "DiffViewCheckbox" } or { "╱", "DiffViewPadding" },
 		{ row.right and " " or "╱", row.right and ("DiffViewGutter" .. kind) or "DiffViewPadding" },
 	}
 end
@@ -105,30 +109,25 @@ end
 
 ---@param view gleb.diff.view.View
 ---@param side "left"|"right"
----@param row gleb.diff.view.Row
-local function add_padding(view, side, row)
+---@param rows gleb.diff.view.Row[]
+---@param next_line? integer
+local function add_padding(view, side, rows, next_line)
 	local buf = side == "left" and view.left_buf or view.right_buf
 	local win = side == "left" and view.left_win or view.right_win
-	local next_line
-	local found = false
-	for _, candidate in ipairs(view.layout.rows) do
-		if candidate == row then
-			found = true
-		elseif found and candidate[side] then
-			next_line = candidate[side]
-			break
-		end
-	end
 	local line_count = vim.api.nvim_buf_line_count(buf)
 	local at = next_line and next_line - 1 or math.max(line_count - 1, 0)
 	local width = vim.api.nvim_win_get_width(win)
-	local content = { { string.rep("╱", width), "DiffViewPadding" } }
-	if side == "right" then
-		content = padding_gutter(row)
-		table.insert(content, { string.rep("╱", width - 16), "DiffViewPadding" })
+	local contents = {}
+	for _, row in ipairs(rows) do
+		local content = { { string.rep("╱", width), "DiffViewPadding" } }
+		if side == "right" then
+			content = padding_gutter(row)
+			table.insert(content, { string.rep("╱", width - 16), "DiffViewPadding" })
+		end
+		contents[#contents + 1] = content
 	end
 	vim.api.nvim_buf_set_extmark(buf, view.ns, at, 0, {
-		virt_lines = { content },
+		virt_lines = contents,
 		virt_lines_above = next_line ~= nil,
 		virt_lines_leftcol = true,
 	})
@@ -185,13 +184,21 @@ local function decorate_side(view, side, lines)
 			end
 		end
 	end
+	local padding = {}
 	for _, row in ipairs(view.layout.rows) do
 		local line = row[side]
+		if line and #padding > 0 then
+			add_padding(view, side, padding, line)
+			padding = {}
+		end
 		if line and row.kind then
 			decorate_line(buf, view.ns, line - 1, row.kind, words_by_row[line - 1] or {})
 		elseif not line and row.change then
-			add_padding(view, side, row)
+			padding[#padding + 1] = row
 		end
+	end
+	if #padding > 0 then
+		add_padding(view, side, padding)
 	end
 end
 

@@ -1,0 +1,59 @@
+--|---------|---------|---------|---------|---------|---------|---------|---------|---------|---------|
+01| 6ee5f08 · HEAD                                          Your version                               
+02| package user                               1        1   package user                               
+03|                                            2        2                                              
+04| // Validate rejects empty ids.          »  3 →11  ╱╱╱╱󰄱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱
+05| func Validate(id string) error {           4      ╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱
+06|     if id == "" {                          5      ╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱
+07|         return errEmpty                    6      ╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱
+08|     }                                      7      ╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱
+09|     return nil                             8      ╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱
+10| }                                          9      ╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱
+11| // Normalize trims and lowercases an id   10        3   // Normalize trims and lowercases an id.   
+12| func Normalize(id string) string {        11        4   func Normalize(id string) string {         
+13|     return strings.ToLower(strings.Trim   12        5       return strings.ToLower(strings.TrimSpac
+14| }                                         13        6   }                                          
+15| // Key is the storage key of an id.       14        7   // Key is the storage key of an id.        
+16| func Key(id string) string {              15        8   func Key(id string) string {               
+17|     return "user/" + Normalize(id)        16        9       return "user/" + Normalize(id)         
+18| }                                         17       10   }                                          
+19|╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱ »╱╱╱╱←3    11 󰄱 // Validate rejects empty ids.             
+20|╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱  ╱╱╱╱      12   func Validate(id string) error {           
+21|╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱  ╱╱╱╱      13       if id == "" {                          
+22|╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱  ╱╱╱╱      14           return errEmpty                    
+23|╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱  ╱╱╱╱      15       }                                      
+24|╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱  ╱╱╱╱      16       return nil                             
+25|╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱  ╱╱╱╱      17   }                                          
+26|                                                                                                    
+27|                                                                                                    
+28|                                                                                                    
+
+--|---------|---------|---------|---------|---------|---------|---------|---------|---------|---------|
+01|0000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000
+02|2333333322222222222222222222222222222222124444222224444225555555677776666666666666666666666666666666
+03|2222222222222222222222222222222222222222124444222224444226666666666666666666666666666666666666666666
+04|8999999999999999999999999999999:::::::::1;<<<<=====1111>11111111111111111111111111111111111111111111
+05|8????:@@@@@@@@::::AAAAAA::AAAAA:::::::::12<<<<BBBBB1111111111111111111111111111111111111111111111111
+06|8::::??:CC:DD:EE::::::::::::::::::::::::12<<<<BBBBB1111111111111111111111111111111111111111111111111
+07|8::::::::DDDDDD:CCCCCCCC::::::::::::::::12<<<<BBBBB1111111111111111111111111111111111111111111111111
+08|8:::::::::::::::::::::::::::::::::::::::12<<<<BBBBB1111111111111111111111111111111111111111111111111
+09|8::::DDDDDD:FFF:::::::::::::::::::::::::12<<<<BBBBB1111111111111111111111111111111111111111111111111
+10|8:::::::::::::::::::::::::::::::::::::::12<<<<BBBBB1111111111111111111111111111111111111111111111111
+11|2GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG12444422222444422HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH666
+12|233332IIIIIIIII2222JJJJJJ22JJJJJJ22222221244442222244442255556KKKKKKKKK7LL6MMMMMM76MMMMMM67666666666
+13|22222NNNNNN2OOOOOOOPIIIIIII2OOOOOOOPIIII124444222224444226666QQQQQQ6RRRRRRRSKKKKKKK7RRRRRRRSKKKKKKKK
+14|2222222222222222222222222222222222222222124444222224444227666666666666666666666666666666666666666666
+15|2GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG222212444422222444422HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH66666666
+16|233332III2222JJJJJJ22JJJJJJ22222222222221244442222244442255556KKK7LL6MMMMMM76MMMMMM67666666666666666
+17|22222NNNNNN2PPPPPPP2N2TTTTTTTTT2OO222222124444222224444226666QQQQQQ6SSSSSSS6Q6UUUUUUUUU7RR7666666666
+18|2222222222222222222222222222222222222222124444222224444227666666666666666666666666666666666666666666
+19|VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV1WXXXXYYYYYZZZZZZ[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[BBBBBBBBBBBBB
+20|VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV12XXXX\\\\\ZZZZZZ]]]]B^^^^^^^^_``Baaaaaa_BaaaaaB_BBBBBBBBBBB
+21|VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV12XXXX\\\\\ZZZZZZBBBB]]BbbBccBddB_BBBBBBBBBBBBBBBBBBBBBBBBBB
+22|VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV12XXXX\\\\\ZZZZZZBBBBBBBBccccccBbbbbbbbbBBBBBBBBBBBBBBBBBBBB
+23|VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV12XXXX\\\\\ZZZZZZBBBB_BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+24|VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV12XXXX\\\\\ZZZZZZBBBBccccccBeeeBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+25|VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV12XXXX\\\\\ZZZZZZ_BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+26|2222222222222222222222222222222222222222122222222222222222222222222222222222222222222222222222222222
+27|2222222222222222222222222222222222222222122222222222222222222222222222222222222222222222222222222222
+28|2222222222222222222222222222222222222222122222222222222222222222222222222222222222222222222222222222

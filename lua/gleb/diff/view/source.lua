@@ -11,6 +11,8 @@ local M = {}
 ---@field right string[]
 ---@field hash string
 ---@field filetype string
+---@field actionable boolean
+---@field head_final_newline boolean
 
 ---@param args string[]
 ---@param cwd string
@@ -27,6 +29,17 @@ local function lines(text)
 	end
 	text = text:gsub("\n$", "")
 	return vim.split(text, "\n", { plain = true })
+end
+
+---@param values string[]
+---@return boolean
+local function has_nul(values)
+	for _, value in ipairs(values) do
+		if value:find("\0", 1, true) then
+			return true
+		end
+	end
+	return false
 end
 
 ---@param path string
@@ -46,14 +59,24 @@ function M.current(path, buf)
 	local left_result = git({ "show", "HEAD:" .. relpath }, root)
 	local hash_result = git({ "rev-parse", "--short=7", "HEAD" }, root)
 	local left = left_result.code == 0 and lines(left_result.stdout) or {}
+	local right = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
+	local unmerged = git({ "ls-files", "--unmerged", "--", relpath }, root)
+	local diff_attr = git({ "check-attr", "diff", "--", relpath }, root)
+	local binary_attr = diff_attr.code == 0 and diff_attr.stdout:match(": diff: unset%s*$") ~= nil
 	return {
 		path = path,
 		root = root,
 		relpath = relpath,
 		left = left,
-		right = vim.api.nvim_buf_get_lines(buf, 0, -1, false),
+		right = right,
 		hash = hash_result.code == 0 and vim.trim(hash_result.stdout) or "HEAD",
 		filetype = vim.bo[buf].filetype,
+		head_final_newline = left_result.stdout:sub(-1) == "\n",
+		actionable = left_result.code == 0
+			and unmerged.stdout == ""
+			and not binary_attr
+			and not left_result.stdout:find("\0", 1, true)
+			and not has_nul(right),
 	}
 end
 
