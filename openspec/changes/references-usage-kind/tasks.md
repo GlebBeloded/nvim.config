@@ -32,14 +32,14 @@ Scenarios: `references: Function usages have no read/write level or hint`, `refe
 - [x] 4.3 Run both files and see every listed scenario pass
 
 ## 5. Screens and the real-key workflow
-Scenarios: `references: Variable usages are grouped by write and read`, `references: w turns the level into row tags`
-- [ ] 5.1 Add K1 and K2 to tests/screen/references/test_view.lua (the one screenshot suite for the view; no other screen file), using real glyphs in the screenshot text, and see them fail. Check that the V1–V4 references are unchanged.
-- [ ] 5.2 Add an e2e case to tests/e2e/lsp/test_go_references.lua:
+Scenarios: `references: Variable usages are grouped by write and read`, `references: w turns the level into row tags`, `references: Real key presses switch Calls usages from the level to row tags`
+- [x] 5.1 Add K1 and K2 to tests/screen/references/test_view.lua (the one screenshot suite for the view; no other screen file), using real glyphs in the screenshot text, and see them fail. Check that the V1–V4 references are unchanged.
+- [x] 5.2 Add an e2e case to tests/e2e/lsp/test_go_references.lua:
   1. a real `gr` on `Calls`;
   2. wait for classification;
   3. compare with K1;
   4. press `w` and compare with K2.
-- [ ] 5.3 Make `make test-screen` and `make e2e` (sandbox VM) pass, then `make check`. Compare `make render` with `renders/kind_*.ansi`.
+- [x] 5.3 Make `make test-screen` and `make e2e` (sandbox VM) pass, then `make check`. Compare `make render` with `renders/kind_*.ansi`.
 
 ## Agent decisions
 
@@ -48,11 +48,8 @@ Scenarios: `references: Variable usages are grouped by write and read`, `referen
 - Cache each server result below its URI/version by client and anchor range so classifications for different symbols cannot collide.
 - Populate the lua_ls scenario from document highlights because that server omits assignment targets from its references response.
 - Use the file-document glyph and the existing neutral usage colour for the uncommon `Usage` group because the approved renders only prescribe glyphs and colours for read and write.
+- Detect call-only symbols with `textDocument/definition`, then `textDocument/documentSymbol` (hierarchical `selectionRange` only), from the first origin client that supports both, in parallel with the kind requests. The Treesitter fallback needs no call query: it only captures write targets, so calls already stay `other`.
+- The K2 tag separator keeps the selected row's background, as `renders/kind_k2_read_write_off.ansi` draws it; the mask cell follows the render.
+- The e2e file resets the view in a `pre_case` hook through `view.close()` and `state.save` of the defaults.
+- No `make render` case drives the references view, so the K1/K2 screen screenshots (text rows) and masks were compared with `renders/kind_*.ansi` instead.
 
-## Stuck
-
-- Task 5 remains red. The screen regressions still disagree with the approved K1/K2 attributes; no production edit is left applied.
-- Probe: `Count`'s `(` is Treesitter capture `@punctuation.bracket.go` linked to `Fg`. The K2 separator extmark combines `MiniPickNormal` with the selected row's `CursorLine` background because it has no replacement mode.
-- Attempt 1: remapped `@punctuation.bracket.go` to `MiniPickNormal` and used replacement mode for the separator. The separator was corrected, but the punctuation remap changed the existing V1 function preview, which must remain unchanged.
-- Attempt 2: applied all three Go capture remaps only while `tree.has_kinds`, on every preview update, and kept replacement mode for the separator. V1 passed again, but K1 and K2 still failed at line 10 column 63: the reference attribute is `4`, while the observed attributes are `@` and `?` respectively.
-- The preserved second production attempt is `/Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/f1714f29-d709-4cc9-a69c-c10182a4e30b/stuck-attempt.diff`; the probe is `probe.lua` beside it.

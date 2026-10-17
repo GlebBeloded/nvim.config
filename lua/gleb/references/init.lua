@@ -8,11 +8,12 @@ local view = require("gleb.references.view")
 ---@return nil
 function M.open()
 	local symbol = vim.fn.expand("<cword>")
+	local origin = kind.origin()
 	request.start(function(usages)
 		local view_id = view.open(symbol, usages, true)
 		kind.classify(usages, function(classified)
 			view.finish_classification(view_id, classified)
-		end)
+		end, origin)
 	end)
 end
 

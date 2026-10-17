@@ -44,7 +44,17 @@ local function get()
 	return assert(stack, "e2e stack not started")
 end
 
-local T = MiniTest.new_set({ hooks = { pre_once = start, post_once = stop } })
+local RESET_VIEW = [[require("gleb.references.view").close()
+	require("gleb.references.state").save({ tests = "grouped", folders = true, read_write = true })]]
+
+--- Every case starts from the default view state, whatever earlier cases on the shared stack persisted.
+local function reset_view()
+	if stack then
+		stack:lua(RESET_VIEW)
+	end
+end
+
+local T = MiniTest.new_set({ hooks = { pre_once = start, pre_case = reset_view, post_once = stop } })
 
 ---@param locations fixtures.Location[]
 ---@return fixtures.Location[] sorted copy, for set comparison
@@ -219,9 +229,7 @@ T["lsp: Selecting a reference opens its file at the call site"] = function()
 	})
 end
 
-local kinds_scenario = "references: Variable usages are grouped by write and read"
-T[kinds_scenario] = MiniTest.new_set()
-T[kinds_scenario]["w turns the level into row tags"] = function()
+T["references: Real key presses switch Calls usages from the level to row tags"] = function()
 	local s = get()
 	open_calls(s)
 	expect_render_rows(s, {

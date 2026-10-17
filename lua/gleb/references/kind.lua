@@ -11,6 +11,11 @@ local CLASSIFY_TIMEOUT_MS = 3000
 local DOCUMENT_HIGHLIGHT_READ = 2
 local DOCUMENT_HIGHLIGHT_WRITE = 3
 local TSSERVER_COMMAND = "typescript.tsserverRequest"
+local CALLABLE_SYMBOLS = {
+	[vim.lsp.protocol.SymbolKind.Function] = true,
+	[vim.lsp.protocol.SymbolKind.Method] = true,
+	[vim.lsp.protocol.SymbolKind.Constructor] = true,
+}
 
 ---@class gleb.references.KindUsage: gleb.references.Usage
 ---@field range? lsp.Range
@@ -23,6 +28,10 @@ local TSSERVER_COMMAND = "typescript.tsserverRequest"
 
 ---@class gleb.references.KindState
 ---@field cache table<string, gleb.references.KindCacheEntry>
+
+---@class gleb.references.KindOrigin
+---@field client_id integer
+---@field params lsp.TextDocumentPositionParams
 
 ---@param range lsp.Range
 ---@return string
@@ -201,6 +210,86 @@ local function request_tsserver(usages, client, done)
 	end
 end
 
+---@param range lsp.Range
+---@param position lsp.Position
+---@return boolean
+local function contains(range, position)
+	local start, finish = range.start, range["end"]
+	local after_start = position.line > start.line
+		or (position.line == start.line and position.character >= start.character)
+	local before_end = position.line < finish.line
+		or (position.line == finish.line and position.character <= finish.character)
+	return after_start and before_end
+end
+
+--- Only hierarchical symbols carry a name range; flat `SymbolInformation` ranges span the whole body.
+---@param symbols lsp.DocumentSymbol[]
+---@param position lsp.Position
+---@return lsp.SymbolKind?
+local function symbol_kind_at(symbols, position)
+	for _, symbol in ipairs(symbols) do
+		if symbol.selectionRange and contains(symbol.selectionRange, position) then
+			return symbol.kind
+		end
+		local child_kind = symbol_kind_at(symbol.children or {}, position)
+		if child_kind then
+			return child_kind
+		end
+	end
+end
+
+---@param result lsp.Location|lsp.Location[]|lsp.LocationLink[]|nil
+---@return string? uri, lsp.Position? position
+local function definition_target(result)
+	---@type (lsp.Location|lsp.LocationLink)?
+	local location = result and (result.uri and result or result[1])
+	if not location then
+		return nil, nil
+	end
+	if location.targetUri then
+		---@cast location lsp.LocationLink
+		return location.targetUri, location.targetSelectionRange.start
+	end
+	---@cast location lsp.Location
+	return location.uri, location.range.start
+end
+
+--- Whether the symbol at `origin` is defined as a function, method or constructor.
+---@param origin gleb.references.KindOrigin
+---@param done fun(callable: boolean)
+local function request_callable(origin, done)
+	local client = vim.lsp.get_client_by_id(origin.client_id)
+	if not client then
+		vim.schedule_wrap(done)(false)
+		return
+	end
+	---@param uri string
+	---@param position lsp.Position
+	local function request_symbols(uri, position)
+		local ok = client:request(
+			"textDocument/documentSymbol",
+			{ textDocument = { uri = uri } },
+			function(err, symbols)
+				done(not err and CALLABLE_SYMBOLS[symbol_kind_at(symbols or {}, position)] == true)
+			end
+		)
+		if not ok then
+			done(false)
+		end
+	end
+	local ok = client:request("textDocument/definition", origin.params, function(err, result)
+		local uri, position = definition_target(not err and result or nil)
+		if uri and position then
+			request_symbols(uri, position)
+		else
+			done(false)
+		end
+	end)
+	if not ok then
+		vim.schedule_wrap(done)(false)
+	end
+end
+
 ---@param usage gleb.references.KindUsage
 ---@param client vim.lsp.Client?
 ---@return ReferencesSourcePosition
@@ -237,11 +326,31 @@ local function fill_fallbacks(groups)
 	end
 end
 
+---@param usages gleb.references.KindUsage[]
+local function mark_other(usages)
+	for _, usage in ipairs(usages) do
+		usage.kind = "other"
+	end
+end
+
+---Capture the symbol under the cursor for the callable check, before the view takes focus.
+---@return gleb.references.KindOrigin?
+function M.origin()
+	local bufnr = vim.api.nvim_get_current_buf()
+	for _, client in ipairs(vim.lsp.get_clients({ bufnr = bufnr, method = "textDocument/definition" })) do
+		if client:supports_method("textDocument/documentSymbol", bufnr) then
+			return { client_id = client.id, params = vim.lsp.util.make_position_params(0, client.offset_encoding) }
+		end
+	end
+end
+
 ---Classify usages asynchronously, preferring server-provided kinds over syntax fallback.
+---Usages of a function, method or constructor at `origin` are only calls, so they stay `other`.
 ---@param usages gleb.references.KindUsage[]
 ---@param callback fun(usages: gleb.references.KindUsage[])
+---@param origin? gleb.references.KindOrigin
 ---@return nil
-function M.classify(usages, callback)
+function M.classify(usages, callback, origin)
 	local classified = vim.deepcopy(usages)
 	local groups = {}
 	for _, usage in ipairs(classified) do
@@ -251,12 +360,16 @@ function M.classify(usages, callback)
 
 	local pending = 0
 	local finished = false
+	local callable = false
 	local function finish()
 		if finished then
 			return
 		end
 		finished = true
 		fill_fallbacks(groups)
+		if callable then
+			mark_other(classified)
+		end
 		callback(classified)
 	end
 	local function request_done()
@@ -281,6 +394,13 @@ function M.classify(usages, callback)
 	if tsserver_client and #tsserver_usages > 0 then
 		pending = pending + 1
 		request_tsserver(tsserver_usages, tsserver_client, request_done)
+	end
+	if origin then
+		pending = pending + 1
+		request_callable(origin, function(is_callable)
+			callable = is_callable
+			request_done()
+		end)
 	end
 
 	if pending == 0 then

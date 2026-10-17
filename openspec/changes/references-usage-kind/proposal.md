@@ -58,6 +58,13 @@ Depends: references-languages
 - "It should work [for] all supported languages in config (where applicable), not only go."
 - The approved renders are K1 and K2 in design.md.
 
+## Decision (auditor, 2026-10-17, from the user's spec)
+
+- Preview code cells keep the regular buffer's highlighting (main spec `references`, "Usage preview"): never remap capture groups in the preview. Regenerate the code cells of the K1/K2 masks (and their screenshots) from the real captures, e.g. `report` in `package report` is `@module`, `Count` in `func Count()` is `@function`; the frame, tree, levels, tags and hint stay as in renders/kind_*.ansi.
+- A symbol whose usages are only calls (a function or method: documentSymbol kind Function/Method/Constructor at the definition, or the call-expression shape in the treesitter fallback) gets no read/write level or hint, even when its server reports documentHighlight Read for calls (lua_ls, basedpyright). test_languages.lua's expectations stay unchanged; V1–V4 stay unchanged.
+- Each e2e case in tests/e2e/lsp/test_go_references.lua starts from the default view state (tests grouped, folders on, preview on, read/write on), whatever earlier cases on the shared stack persisted.
+- Each case name appears in exactly one test file (trace rejects the duplicate between the e2e and screen files).
+
 ## Agent decisions
 
 - The tsserver request comes first because vtsls' documentHighlight needs an open document. Per-file documentHighlight comes next because those servers are type-aware. Treesitter is only a fallback.

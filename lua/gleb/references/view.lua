@@ -361,7 +361,7 @@ local function render_hint(size, visible)
 		{ end_col = #line, hl_group = "PickerHint", priority = vim.hl.priorities.syntax }
 	)
 	local toggle = hint:find(TOGGLE_ON, 1, true)
-	if toggle then
+	while toggle do
 		local col = #padding + toggle - 1
 		vim.api.nvim_buf_set_extmark(
 			buf,
@@ -370,6 +370,7 @@ local function render_hint(size, visible)
 			col,
 			{ end_col = col + #TOGGLE_ON, hl_group = "PickerToggleOn", priority = vim.hl.priorities.user }
 		)
+		toggle = hint:find(TOGGLE_ON, toggle + #TOGGLE_ON, true)
 	end
 end
 
