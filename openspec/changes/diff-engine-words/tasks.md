@@ -2,12 +2,17 @@
 
 Scenarios: `diff: Every IntelliJ word case passes`, `diff: Every IntelliJ char case passes`, `diff: Every IntelliJ split case passes`, `diff: IntelliJ character classes hold`
 
-- [ ] 1.1 Extend `openspec/changes/diff-engine-lines/drafts/intellij_fixtures.py`, or copy it to this change's `drafts/`, to emit `intellij_words.lua`, `intellij_chars.lua`, `intellij_split.lua` and `intellij_chars_classes.lua`:
+- [x] 1.1 Extend `openspec/changes/diff-engine-lines/drafts/intellij_fixtures.py`, or copy it to this change's `drafts/`, to emit `intellij_words.lua`, `intellij_chars.lua`, `intellij_split.lua` and `intellij_chars_classes.lua`:
   - UTF-16 offsets become byte offsets.
   - Matchings become changed-byte sets (design Decision 7).
   - Every file gets the attribution header.
-- [ ] 1.2 Write `tests/unit/diff/test_goldens_inner.lua`, asserting the row counts 78, 71 and 27, and see it fail
-- [ ] 1.3 Write `drafts/unicode_ranges.py` (`UnicodeData.txt` 16.0.0 → BMP letter ranges). Add `lua/gleb/diff/engine/unicode.lua` with those ranges and the `CharacterUtils.kt` tables, and the punctuation, alpha and continuous-script classes in `trim.lua`. Make `diff: IntelliJ character classes hold` pass.
+- [x] 1.2 Write `tests/unit/diff/test_goldens_inner.lua`, asserting the row counts 78, 71 and 27, and see it fail
+- [x] 1.3 Write `drafts/unicode_ranges.py` (`UnicodeData.txt` 16.0.0 → BMP letter ranges). Add `lua/gleb/diff/engine/unicode.lua` with those ranges and the `CharacterUtils.kt` tables, and the punctuation, alpha and continuous-script classes in `trim.lua`. Make `diff: IntelliJ character classes hold` pass.
+
+## Agent decisions
+
+- Fixture rows retain their IntelliJ case kind and per-policy expectations so later golden tests can dispatch through the real engine API.
+- Unicode tables use flat start/end pairs so generated data stays compact and lookup remains a binary search.
 
 ## 2. Words, chars and splitting
 
