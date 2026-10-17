@@ -276,6 +276,8 @@ edition = "2021"
 EOF
 	cat >src/lib.rs <<'EOF'
 pub mod price;
+pub mod money;
+pub mod ledger;
 EOF
 	cat >src/price.rs <<'EOF'
 pub fn total(price: i32, quantity: i32) -> i32 {
@@ -305,11 +307,73 @@ fn totals_a_cart() {
     assert_eq!(price::total(10, 2), 20);
 }
 EOF
+	cat >src/money.rs <<'EOF'
+/// An amount in cents.
+pub struct Money {
+    pub cents: i64,
+}
+
+impl Money {
+    pub fn from_cents(cents: i64) -> Money {
+        Money { cents }
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+EOF
+	cat >src/ledger.rs <<'EOF'
+use crate::money::Money;
+
+/// Adds up the entries of one account.
+pub fn balance(entries: &[i64]) -> Money {
+    Money::from_cents(entries.iter().sum())
+}
+
+/// Returns true when the amount is zero.
+pub fn is_free(amount: &Money) -> bool {
+    match amount {
+        Money { cents: 0 } => true,
+        _ => false,
+    }
+}
+EOF
+	cat >tests/money.rs <<'EOF'
+use rustproj::money::Money;
+
+#[test]
+fn starts_from_cents() {
+    let amount = Money::from_cents(250);
+    assert_eq!(amount.cents, 250);
+}
+EOF
 	cargo check --all-targets >&2
 	git init -q
 	commit "Rust references fixture"
-	printf '{"references":{"total":[%s]}}\n' \
-		"$(identifier_locations total src/price.rs src/main.rs tests/price.rs)" >../manifest.json
+	printf '{"references":{"total":[%s],"Money":[%s]}}\n' \
+		"$(identifier_locations total src/price.rs src/main.rs tests/price.rs)" \
+		"$(identifier_locations Money src/money.rs src/ledger.rs tests/money.rs)" >../manifest.json
 }
 
 bashproj() {

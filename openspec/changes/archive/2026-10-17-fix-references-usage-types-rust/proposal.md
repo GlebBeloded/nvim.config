@@ -18,7 +18,7 @@ Find Usages has GoLand's usage types for Go only. Rust has no `usages` query, so
   - macro call, macro argument
   - init struct, init field
   - variable binding, field, meta item, use, mod
-- `languages-registry` leaves the `rust` language's `references.usage_types` as `{ disabled = "queued: fix-references-usage-types-rust" }`.
+- `lua/gleb/languages/rust/init.lua:15` leaves the `rust` language's `references.usage_types` as `{ disabled = "queued: fix-references-usage-types-rust" }`.
 - A verified draft is in `drafts/`: `queries/rust/usages.scm` (already in catalogue ids), the case fixture `fixtures/usages.rs`, the case table `expected.lua` and a verifier. Its 187 cases pass on Neovim 0.12.5 with the installed `rust` parser.
 
 ## What Changes
@@ -41,7 +41,7 @@ Find Usages has GoLand's usage types for Go only. Rust has no `usages` query, so
 - none
 
 ### Modified Capabilities
-- `references`: added "Rust usage types". No existing requirement or scenario changes.
+- `references`: extend usage type classification and grouping to Rust.
 
 ## Impact
 
@@ -57,6 +57,7 @@ Find Usages has GoLand's usage types for Go only. Rust has no `usages` query, so
 - Fixture: `tests/fixtures/build.sh` `rustproj` (three new files, two appended `pub mod` lines and the `Money` manifest entry).
 - Plugins: none. Core keymaps: none.
 - Unchanged scenarios:
+  - `languages: A missing usages query breaks the contract` still holds: the Rust facet is enabled only together with `queries/rust/usages.scm`, so the contract continues to reject any enabled language whose query is absent.
   - `references: Rust usages in production and test code` still holds: the new files don't reference `total`, and the scenario places usages by scope and folder only; the `Macro argument` level sits between them.
   - `references: gr classifies every Rust variable usage` still holds: `n += 1` matches no type pattern and `{n}` lies inside string content, so rust-analyzer's write/read still decides.
   - `references: rust-analyzer kinds classify a Rust variable` still holds: the same positions get no syntactic type.

@@ -43,6 +43,7 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - Treat a preferred write-access source as additive: only an explicit false may suppress an available documentHighlight fallback.
 - Approved screen renders need case-owned editor chrome normalized before regenerating their reference screenshots.
 - When adding a Treesitter usages query, update the exhaustive runtime query-language expectation alongside the query.
+- Adding a Treesitter usages query requires adding its language to the exhaustive runtime query-language expectation.
 - Build ordered LCS matches by appending and preserve IntelliJ's original-count recursion state so large common regions stay linear without premature fallback.
 
 ## The loop

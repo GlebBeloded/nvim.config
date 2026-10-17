@@ -608,6 +608,50 @@ T[rust_scenario]["renders every usage kind"] = function()
 	})
 end
 
+local rust_struct_scenario = "references: gr classifies Rust struct usages"
+T[rust_struct_scenario] = MiniTest.new_set()
+T[rust_struct_scenario]["renders every struct usage type"] = function()
+	local root, manifest = F.copy("rustproj", vim.fn.tempname())
+	local declaration = manifest.references.Money[1]
+	local actual = open_references(
+		root,
+		declaration.path,
+		declaration.line,
+		declaration.col,
+		"rust_analyzer",
+		"rust-analyzer",
+		RUST_TIMEOUT_MS,
+		"rust",
+		nil,
+		10
+	)
+	eq(actual, {
+		{ "src/ledger.rs", 1, 19, "import" },
+		{ "src/ledger.rs", 4, 36, "return_type" },
+		{ "src/ledger.rs", 5, 5, "call" },
+		{ "src/ledger.rs", 9, 25, "parameter_declaration" },
+		{ "src/ledger.rs", 11, 9, "pattern" },
+		{ "src/money.rs", 6, 6, "impl" },
+		{ "src/money.rs", 7, 38, "return_type" },
+		{ "src/money.rs", 8, 9, "struct_initialization" },
+		{ "tests/money.rs", 1, 22, "import" },
+		{ "tests/money.rs", 5, 18, "call" },
+	})
+end
+
+local rust_field_scenario = "references: gr classifies Rust field usages"
+T[rust_field_scenario] = MiniTest.new_set()
+T[rust_field_scenario]["renders every field usage type"] = function()
+	local root = F.copy("rustproj", vim.fn.tempname())
+	local actual =
+		open_references(root, "src/money.rs", 3, 9, "rust_analyzer", "rust-analyzer", RUST_TIMEOUT_MS, "rust", nil, 3)
+	eq(actual, {
+		{ "src/ledger.rs", 11, 17, "pattern" },
+		{ "src/money.rs", 8, 17, "field_initialization" },
+		{ "tests/money.rs", 6, 23, "macro_argument" },
+	})
+end
+
 local rust_direct_scenario = "references: rust-analyzer kinds classify a Rust variable"
 T[rust_direct_scenario] = MiniTest.new_set()
 T[rust_direct_scenario]["classifies every usage"] = function()

@@ -232,9 +232,11 @@ T[rust_scenario]["gr opens usages"] = function()
 	if has_parser then
 		expect_tree_rows({
 			"scope:Production",
+			"type:Macro argument",
 			"folder:src",
 			main,
 			"scope:Test",
+			"type:Macro argument",
 			"folder:src",
 			inline,
 			"folder:tests",

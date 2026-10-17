@@ -12,7 +12,7 @@ return {
 	treesitter = { parsers = { "rust" } },
 	references = {
 		test_patterns = { "/tests/" },
-		usage_types = { disabled = "queued: fix-references-usage-types-rust" },
+		usage_types = true,
 		write_access = "documentHighlight",
 		target_kinds = {},
 		fixture = { project = "rustproj", symbol = "total" },
