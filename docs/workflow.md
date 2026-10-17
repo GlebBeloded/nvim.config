@@ -29,8 +29,6 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 
 ## Loop lessons
 
-- When a picker source can render into alternate buffers, update window-owned chrome before checking whether the source buffer is visible.
-- When picker item refreshes restore selection, gate scheduled first-match selection on query changes so the callback cannot overwrite the restored row.
 - Neo-tree source-scoped mappings override common mappings on duplicate lhs values, so ownership tests must validate the effective merged table.
 - Mask an unselected row that contains a shortcut hint so metadata-colour drift cannot hide behind selected-row coverage.
 - Inspect resolved multigrid cells for floating-window colour masks because grid 1 shows underlying cells and screen attribute numbers are arbitrary tokens.
@@ -45,6 +43,7 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - Stub optional parsers with grammar-shaped nodes so parser-dependent regressions execute on every configured host.
 - Screen-mask legend groups resolve through the current window's winhighlight, so a float must not remap a legend group (CursorLineNr, LineNr) it draws; pick status-column groups per line by expression instead.
 - When a view owns companion floats and global autocmds, observe closure of its primary window and route it through the view's complete cleanup path.
+- Guard mutations of retained async result tables after timeout completion while still allowing late replies to populate caches.
 
 ## The loop
 
