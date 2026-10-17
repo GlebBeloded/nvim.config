@@ -670,6 +670,14 @@ T["loop: Gate merges a moved auto first"] = function()
 	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
 end
 
+T["loop: Review treats a narrowed screen check as weakened"] = function()
+	local review = read(vim.fs.joinpath(H.root, ".archon/commands/review.md")):gsub("%s+", " ")
+	has(
+		review,
+		"a screen case that checks fewer mask rows or swaps a screenshot comparison for text checks is weakened"
+	)
+end
+
 T["loop: A stuck fix pass fixes the other gate failures too"] = function()
 	local fix = read(vim.fs.joinpath(H.root, ".archon/commands/fix.md")):gsub("%s+", " ")
 	has(
