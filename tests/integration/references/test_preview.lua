@@ -33,6 +33,7 @@ local function open_format()
 	edit(declaration.path, declaration.line, declaration.col)
 	child.type_keys("gr")
 	eq(child.wait([[vim.bo.filetype == "gleb-references"]], TIMEOUT_MS), true)
+	eq(child.wait([[not require("gleb.references.view").state.classifying]], TIMEOUT_MS), true)
 end
 
 ---@param label string

@@ -9,6 +9,9 @@ local LABEL_PALENESS = 0.7
 local PRODUCTION_ICON = ""
 local TEST_ICON = ""
 local FOLDER_ICON = "󰉖"
+local WRITE_ICON = "󰏫"
+local READ_ICON = "󰈈"
+local USAGE_ICON = "󰈙"
 
 ---@class gleb.references.Icon
 ---@field icon string
@@ -38,6 +41,8 @@ local function setup_highlights()
 		ReferencesProduction = foreground.aqua,
 		ReferencesTest = foreground.yellow,
 		ReferencesFolder = background.bg5,
+		ReferencesWrite = foreground.blue,
+		ReferencesRead = foreground.yellow,
 	}
 
 	for group, icon_color in pairs(groups) do
@@ -67,6 +72,15 @@ end
 ---@param node gleb.references.TreeNode
 ---@return gleb.references.Icon
 function M.for_node(node)
+	if node.kind == "kind" and node.usage_kind == "write" then
+		return { icon = WRITE_ICON, icon_group = "ReferencesWrite", label_group = "ReferencesWriteLabel" }
+	end
+	if node.kind == "kind" and node.usage_kind == "read" then
+		return { icon = READ_ICON, icon_group = "ReferencesRead", label_group = "ReferencesReadLabel" }
+	end
+	if node.kind == "kind" then
+		return { icon = USAGE_ICON, icon_group = "ReferencesProduction", label_group = "ReferencesProductionLabel" }
+	end
 	if node.kind == "scope" and node.label == "Production" then
 		return {
 			icon = PRODUCTION_ICON,

@@ -112,6 +112,7 @@
   "references.fold": ["za"],
   "references.open": ["<CR>"],
   "references.toggle_folders": ["f"],
+  "references.toggle_read_write": ["w"],
   "references.toggle_preview": ["P"],
   "search.live_grep": ["<A-F>"],
   "surround.add": ["ys"],

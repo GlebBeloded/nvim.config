@@ -26,6 +26,7 @@ local function open_format()
 	eq(child.wait([[#vim.lsp.get_clients({ bufnr = 0, name = "gopls" }) > 0]], TIMEOUT_MS), true)
 	child.type_keys("gr")
 	eq(child.wait([[vim.bo.filetype == "gleb-references"]], TIMEOUT_MS), true)
+	eq(child.wait([[not require("gleb.references.view").state.classifying]], TIMEOUT_MS), true)
 end
 
 ---@return string[]
@@ -72,7 +73,9 @@ T["references: Tests key cycles grouped, hidden and mixed"] = function()
 	eq(hint_line():find("Tests: hidden t", 1, true) ~= nil, true)
 
 	child.type_keys("t")
-	local mixed = table.concat(tree_lines(), "\n")
+	local mixed_lines = tree_lines()
+	local mixed = table.concat(mixed_lines, "\n")
+	eq(mixed_lines[1], "  ▾ 󰉖 billing  2")
 	eq(mixed:find("Production", 1, true), nil)
 	eq(mixed:find("Test  ", 1, true), nil)
 	eq(mixed:find("money_test.go:6", 1, true) ~= nil, true)

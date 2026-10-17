@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Read/write grouping
-When at least one listed usage is classified `write` or `read`, the tree SHALL add a read/write level between test scope and folder, with groups `Value write` (pencil, blue), `Value read` (eye, yellow) and `Usage` (other) in that order, each with its count and a label in the paler shade of its icon colour. When no usage is `write` or `read`, the level and its hint SHALL be omitted.
+When at least one listed usage is classified `write` or `read`, the tree SHALL add a read/write level between test scope and folder, with groups `Value write` (pencil, blue), `Value read` (eye, yellow) and `Usage` (other) in that order, each with its count and a label in the paler shade of its icon colour. When no usage is `write` or `read`, the level and its hint SHALL be omitted. Usages of a function, method or constructor SHALL be `other`, whatever kind its server reports.
 
 #### Scenario: Variable usages are grouped by write and read
 - **WHEN** `gr` is pressed on the `Calls` declaration in `report/calls.go` of the extended `gomod` fixture with gopls attached, the editor at 100x30 and default grouping, and classification has finished
@@ -17,6 +17,10 @@ When the read/write level is available, `w` SHALL toggle it, the hint row SHALL 
 #### Scenario: w turns the level into row tags
 - **WHEN** the view is open for `Calls` with default grouping after classification and `w` is pressed
 - **THEN** the screen matches the approved render "Proposed K2 — read/write level off"
+
+#### Scenario: Real key presses switch Calls usages from the level to row tags
+- **WHEN** Neovim runs in a fresh copy of the extended `gomod` fixture at 100x30 with the cursor on the `Calls` declaration in `report/calls.go` and gopls attached, `g` `r` is pressed as a real key press, classification finishes, and `w` is pressed as a real key press
+- **THEN** the view first shows the rows of "Proposed K1 — read/write level" with `● Read/write w` in the hint, then the rows of "Proposed K2 — read/write level off" with `○ Read/write w`
 
 #### Scenario: Read/write state persists across sessions
 - **WHEN** `w` is pressed in the view for `Calls`, Neovim is restarted, and the view is opened again for `Calls`
