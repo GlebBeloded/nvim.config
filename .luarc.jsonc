@@ -8,5 +8,5 @@
     "undefined-doc-name": "Information"
   },
   "workspace.checkThirdParty": false,
-  "workspace.ignoreDir": [".tests", ".git", "plugin"]
+  "workspace.ignoreDir": [".tests", ".git", "plugin", "openspec"]
 }
