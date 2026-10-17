@@ -29,7 +29,6 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 
 ## Loop lessons
 
-- Give toggle actions a real `run` implementation so assigned shortcuts and palette selection have the same effect.
 - LSP positions count `character` in the client's `offset_encoding` (UTF-16 by default): convert with `vim.str_byteindex(line, client.offset_encoding, character)` before using it as a byte column.
 - Keep generic test-directory segments additive after language-specific patterns so configured filetypes retain shared conventions.
 - Stub optional parsers with grammar-shaped nodes so parser-dependent regressions execute on every configured host.
@@ -44,6 +43,7 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - Treat a preferred write-access source as additive: only an explicit false may suppress an available documentHighlight fallback.
 - Approved screen renders need case-owned editor chrome normalized before regenerating their reference screenshots.
 - When adding a Treesitter usages query, update the exhaustive runtime query-language expectation alongside the query.
+- Build ordered LCS matches by appending and preserve IntelliJ's original-count recursion state so large common regions stay linear without premature fallback.
 
 ## The loop
 
