@@ -66,9 +66,9 @@ Scenarios: `file-tree: Project tree closes before last editor with close`, `file
 
 Scenarios: `file-tree: Project tree Enter toggles a folder`, `file-tree: Project tree Enter opens a file in the editor window`, `file-tree: Project tree h on a file collapses its folder`, `file-tree: Project tree q closes the tree`
 
-- [ ] 4a.1 Write these scenarios in `tests/integration/file-tree/test_project_tree.lua`, pressing the real buffer-local keys on populated rows, and see them fail.
-- [ ] 4a.2 Add the scoped open, close-node and close actions to `lua/gleb/file_tree/actions.lua` and their keys to `settings/keymap.json`.
-- [ ] 4a.3 Run `make test FILE=tests/integration/file-tree/test_project_tree.lua` for these cases and see them pass.
+- [x] 4a.1 Write these scenarios in `tests/integration/file-tree/test_project_tree.lua`, pressing the real buffer-local keys on populated rows, and see them fail.
+- [x] 4a.2 Add the scoped open, close-node and close actions to `lua/gleb/file_tree/actions.lua` and their keys to `settings/keymap.json`.
+- [x] 4a.3 Run `make test FILE=tests/integration/file-tree/test_project_tree.lua` for these cases and see them pass.
 
 ## 4b. Split and tab keys
 

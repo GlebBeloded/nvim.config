@@ -189,6 +189,17 @@ local function selected_row(view)
 end
 
 ---@param view FileTreeView
+---@param row FileTreeRow
+local function toggle_directory(view, row)
+	if row.kind == "root" or row.empty then
+		return
+	end
+	local relative = row.path:sub(#view.root + 2)
+	view.expanded[relative] = not row.expanded or nil
+	draw(view, row.path)
+end
+
+---@param view FileTreeView
 ---@param command string
 local function open_selected(view, command)
 	local row = selected_row(view)
@@ -204,7 +215,51 @@ end
 function M.open()
 	local view = M.state.by_tab[vim.api.nvim_get_current_tabpage()]
 	if view then
-		open_selected(view, "edit")
+		local row = selected_row(view)
+		if row and row.kind == "directory" then
+			toggle_directory(view, row)
+		else
+			open_selected(view, "edit")
+		end
+	end
+end
+
+--- Collapse the selected directory or its displayed parent.
+---@return nil
+function M.close_node()
+	local view = M.state.by_tab[vim.api.nvim_get_current_tabpage()]
+	if not view then
+		return
+	end
+	local index = vim.api.nvim_win_get_cursor(view.win)[1]
+	local row = view.rows[index]
+	if not row or row.kind == "root" then
+		return
+	end
+	local target = row
+	if row.kind ~= "directory" or not row.expanded then
+		for parent_index = index - 1, 1, -1 do
+			local candidate = view.rows[parent_index]
+			if candidate.depth < row.depth then
+				target = candidate
+				break
+			end
+		end
+	end
+	if target.kind == "root" then
+		return
+	end
+	view.expanded[target.path:sub(#view.root + 2)] = nil
+	draw(view, target.path)
+end
+
+--- Close the current tab page's project tree.
+---@return nil
+function M.close()
+	local view = M.state.by_tab[vim.api.nvim_get_current_tabpage()]
+	if view then
+		vim.api.nvim_set_current_win(eligible_editor(view))
+		close_view(view)
 	end
 end
 
@@ -254,7 +309,6 @@ end
 ---@param view FileTreeView
 local function configure_mappings(view)
 	local options = { buffer = view.buf, silent = true }
-	vim.keymap.set("n", "<CR>", M.open, vim.tbl_extend("force", options, { desc = "Project: Open" }))
 	vim.keymap.set(
 		"n",
 		"v",

@@ -240,6 +240,18 @@ local function visual_tree_action(id, title, scope, command)
 	return action
 end
 
+local function project_open()
+	require("gleb.file_tree.view").open()
+end
+
+local function project_close_node()
+	require("gleb.file_tree.view").close_node()
+end
+
+local function project_close()
+	require("gleb.file_tree.view").close()
+end
+
 ---@type gleb.Action[]
 local actions = {
 	{
@@ -257,6 +269,27 @@ local actions = {
 		run = function()
 			require("gleb.file_tree.view").reveal()
 		end,
+	},
+	{
+		id = "file_tree.open",
+		title = "Open",
+		category = "Project",
+		ft = "gleb-file-tree",
+		run = project_open,
+	},
+	{
+		id = "file_tree.close_node",
+		title = "Close Node",
+		category = "Project",
+		ft = "gleb-file-tree",
+		run = project_close_node,
+	},
+	{
+		id = "file_tree.close",
+		title = "Close",
+		category = "Project",
+		ft = "gleb-file-tree",
+		run = project_close,
 	},
 	{
 		id = "tree.toggle_filesystem",

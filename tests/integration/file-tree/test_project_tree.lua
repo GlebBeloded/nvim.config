@@ -426,4 +426,72 @@ T["file-tree: Project tree preserves the original cursor setting"] = function()
 	eq(child.o.guicursor, original)
 end
 
+T["file-tree: Project tree Enter toggles a folder"] = function()
+	edit("README.md")
+	run_toggle()
+	focus_tree_row("internal")
+
+	child.type_keys("<CR>")
+	eq(child.lua_get([[vim.api.nvim_get_current_line():find("", 1, true) ~= nil]]), true)
+	focus_tree_row(" billing")
+	focus_tree_row(" money")
+
+	focus_tree_row("internal")
+	child.type_keys("<CR>")
+	eq(child.lua_get([[vim.api.nvim_get_current_line():find("", 1, true) ~= nil]]), true)
+	eq(
+		child.lua_get([[vim.iter(vim.api.nvim_buf_get_lines(0, 1, -1, false)):any(function(line)
+		return line:find("billing", 1, true) or line:find("money", 1, true)
+	end)]]),
+		false
+	)
+end
+
+T["file-tree: Project tree Enter opens a file in the editor window"] = function()
+	edit("go.mod")
+	run_toggle()
+	local tree_win = child.api.nvim_get_current_win()
+	local editor_win = child.lua_get([[vim.fn.win_getid(2)]])
+	focus_tree_row("Makefile")
+
+	child.type_keys("<CR>")
+
+	eq(child.api.nvim_get_current_win(), editor_win)
+	eq(child.api.nvim_buf_get_name(0), real_path("Makefile"))
+	eq(child.api.nvim_win_get_width(tree_win), 35)
+	eq(#project_tree_windows(), 1)
+end
+
+T["file-tree: Project tree h on a file collapses its folder"] = function()
+	edit("README.md")
+	run_toggle()
+	focus_tree_row("internal")
+	child.type_keys("<CR>")
+	focus_tree_row(" billing")
+	child.type_keys("<CR>")
+	focus_tree_row("invoice.go")
+
+	child.type_keys("h")
+
+	eq(child.lua_get([[vim.api.nvim_get_current_line():find("billing", 1, true) ~= nil]]), true)
+	eq(child.lua_get([[vim.api.nvim_get_current_line():find("", 1, true) ~= nil]]), true)
+	eq(
+		child.lua_get([[vim.iter(vim.api.nvim_buf_get_lines(0, 0, -1, false)):any(function(line)
+		return line:find("invoice.go", 1, true)
+	end)]]),
+		false
+	)
+end
+
+T["file-tree: Project tree q closes the tree"] = function()
+	edit("README.md")
+	local editor_win = child.api.nvim_get_current_win()
+	run_toggle()
+
+	child.type_keys("q")
+
+	eq(project_tree_windows(), {})
+	eq(child.api.nvim_get_current_win(), editor_win)
+end
+
 return T
