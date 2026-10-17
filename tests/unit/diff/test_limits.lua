@@ -23,6 +23,7 @@ T["diff: Patience takes over when Myers exceeds its threshold"] = function()
 			{ start1 = 0, end1 = 1, start2 = 0, end2 = 1 },
 			{ start1 = 4, end1 = 5, start2 = 4, end2 = 5 },
 		},
+		moves = {},
 		too_big = false,
 		timed_out = false,
 	})
@@ -59,9 +60,49 @@ T["diff: A too big comparison falls back to xdiff"] = function()
 			{ start1 = 0, end1 = 1, start2 = 0, end2 = 1 },
 			{ start1 = 3, end1 = 4, start2 = 3, end2 = 4 },
 		},
+		moves = {},
 		too_big = true,
 		timed_out = false,
 	})
+end
+
+T["diff: A too big fallback skips move detection"] = function()
+	local result = child.lua_get("require('gleb.diff.engine').compare_lines(...)", {
+		{
+			"local limit = 2048",
+			"local cheap = true",
+			"local count = 10",
+			"bravo",
+			"alpha",
+			"bravo",
+			"local limit = 2048",
+			"local cheap = true",
+			"local count = 10",
+			"bravo",
+			"bravo",
+			"bravo",
+		},
+		{
+			"alpha",
+			"bravo",
+			"alpha",
+			"bravo",
+			"local limit = 2048",
+			"local cheap = true",
+			"local count = 10",
+			"bravo",
+			"alpha",
+			"alpha",
+			"alpha",
+			"local limit = 2048",
+			"local cheap = true",
+			"local count = 10",
+		},
+		{ moves = true, limits = { myers_threshold = 1 } },
+	})
+
+	eq(result.too_big, true)
+	eq(result.moves, {})
 end
 
 T["diff: A missed deadline falls back to xdiff"] = function()
@@ -81,6 +122,7 @@ T["diff: A missed deadline falls back to xdiff"] = function()
 		fragments = {
 			{ start1 = 1, end1 = 2, start2 = 1, end2 = 2 },
 		},
+		moves = {},
 		too_big = false,
 		timed_out = true,
 	})

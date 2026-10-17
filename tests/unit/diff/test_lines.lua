@@ -29,6 +29,7 @@ T["diff: Changed lines become fragments"] = function()
 			{ start1 = 0, end1 = 1, start2 = 0, end2 = 2 },
 			{ start1 = 2, end1 = 3, start2 = 3, end2 = 3 },
 		},
+		moves = {},
 		too_big = false,
 		timed_out = false,
 	})
@@ -37,6 +38,7 @@ end
 T["diff: Identical lines have no fragments"] = function()
 	eq(child.lua_get([[CompareLines({ "a", "b" }, { "a", "b" })]]), {
 		fragments = {},
+		moves = {},
 		too_big = false,
 		timed_out = false,
 	})
@@ -47,6 +49,7 @@ T["diff: Lines added after an empty line"] = function()
 		fragments = {
 			{ start1 = 1, end1 = 1, start2 = 1, end2 = 3 },
 		},
+		moves = {},
 		too_big = false,
 		timed_out = false,
 	})

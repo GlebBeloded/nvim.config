@@ -807,13 +807,13 @@ M.GIT_ENV = {
 ---@param cmd string[]
 ---@param cwd string
 ---@param env? table<string, string>
+---@param timeout_ms? integer default 30000; a command that starts other CLIs (codex, claude) needs more under load
 ---@return test.SystemResult
-function M.system(child, cmd, cwd, env)
-	return child.lua_get("vim.system(..., { cwd = select(2, ...), env = select(3, ...), text = true }):wait(30000)", {
-		cmd,
-		cwd,
-		env or vim.empty_dict(),
-	})
+function M.system(child, cmd, cwd, env, timeout_ms)
+	return child.lua_get(
+		"vim.system(..., { cwd = select(2, ...), env = select(3, ...), text = true }):wait(select(4, ...))",
+		{ cmd, cwd, env or vim.empty_dict(), timeout_ms or 30000 }
+	)
 end
 
 --- How much slower the host runs than idle: the 1-min load average per CPU, at least 1. Timing
