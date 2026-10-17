@@ -70,8 +70,8 @@ end
 local moved = { "local limit = 2048", "local cheap = true", "local count = 10" }
 local stable = { "function a() end", "function b() end", "function c() end", "function d() end" }
 
-local function moved_lines(moved_lines)
-	return vim.list_extend(vim.deepcopy(stable), moved_lines or vim.deepcopy(moved))
+local function moved_lines(candidate_lines)
+	return vim.list_extend(vim.deepcopy(stable), candidate_lines or vim.deepcopy(moved))
 end
 
 T["diff: A moved block is detected"] = function()
