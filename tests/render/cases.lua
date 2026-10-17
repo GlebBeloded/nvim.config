@@ -101,6 +101,66 @@ vim.wo[win].statusline = "%#Normal# NORMAL  ⎇ main%=typescript "
 ]])
 end
 
+--- Python class usages grouped by their query-backed usage types.
+---@param driver render.Driver
+local function py_p1_class(driver)
+	local root, manifest = F.copy("pyproj", vim.fn.tempname())
+	local declaration = manifest.references.Money[1]
+	driver.cmd("cd " .. vim.fn.fnameescape(root) .. " | edit " .. vim.fn.fnameescape(declaration.path))
+	driver.lua([[
+vim.wo.number = true
+vim.wo.relativenumber = false
+vim.wo.numberwidth = 3
+require("ibl").setup_buffer(0, { enabled = false })
+vim.o.showtabline = 0
+vim.o.laststatus = 2
+vim.wo.winbar = "%#Normal#▎ money.py"
+]])
+	driver.lua([[vim.api.nvim_win_set_cursor(0, ...)]], { { declaration.line, declaration.col - 1 } })
+	assert(driver.wait([[#vim.lsp.get_clients({ bufnr = 0, name = "basedpyright" }) > 0]], H.lsp_timeout(10000)))
+	driver.lua(
+		[[
+		local minimum, timeout = ...
+_G.references_ready = nil
+local bufnr = vim.api.nvim_get_current_buf()
+local started = vim.uv.hrtime()
+local populated = 0
+local function request()
+	local client = vim.lsp.get_clients({ bufnr = bufnr, name = "basedpyright" })[1]
+	local params = vim.lsp.util.make_position_params(0, client.offset_encoding)
+	params.context = { includeDeclaration = false }
+	client:request("textDocument/references", params, function(_, result)
+		populated = result and #result >= minimum and populated + 1 or 0
+		if populated >= 2 then
+			_G.references_ready = true
+		elseif (vim.uv.hrtime() - started) / 1e6 < timeout then
+			vim.defer_fn(request, 10)
+		end
+	end, bufnr)
+end
+request()
+]],
+		{ #manifest.references.Money - 1, H.lsp_timeout(10000) }
+	)
+	assert(driver.wait("_G.references_ready == true", H.lsp_timeout(10000)))
+	driver.type_keys("gr")
+	assert(driver.wait([[vim.bo.filetype == "gleb-references"]], H.lsp_timeout(10000)))
+	assert(driver.wait([[not require("gleb.references.view").state.classifying]], H.lsp_timeout(10000)))
+	driver.lua([[
+local state = require("gleb.references.view").state
+for index, node in ipairs(state.visible_nodes) do
+	if node.kind == "usage" then
+		vim.api.nvim_win_set_cursor(state.tree_win, { index, 0 })
+		break
+	end
+end
+local win = state.origin_win
+require("lualine").hide({ place = { "statusline" } })
+vim.o.statusline = "%#Normal# NORMAL  ⎇ main%=python "
+vim.wo[win].statusline = "%#Normal# NORMAL  ⎇ main%=python "
+]])
+end
+
 --- `<C-q>` on `sample.lua` shown in two `:vsplit` windows, `init.lua` the other listed buffer (no LSP).
 ---@param driver render.Driver
 local function close_buffer_split(driver)
@@ -180,5 +240,6 @@ return {
 		setup = close_buffer_split,
 	},
 	["neo-tree"] = { description = "neo-tree filesystem tree of this checkout", setup = neo_tree },
+	["py_p1_class"] = { description = "Python class usages grouped by usage type", setup = py_p1_class },
 	["ts_p1_class"] = { description = "TypeScript class usages grouped by usage type", setup = ts_p1_class },
 }

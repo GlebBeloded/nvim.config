@@ -135,7 +135,7 @@ See proposal.md (Why, Evidence). This change plugs Python into the classifier fr
 - **Grammar updates** can rename nodes. The query then fails to compile, the language falls back to step 2, and the case table fails loudly.
 - **basedpyright from mason** must be runnable. On this host the mason venv's interpreter is missing, and the probes ran with `~/.venvs/default/bin/basedpyright-langserver` 1.37.4. The integration tests reuse `require_server`, which reports a missing server as a skip.
 
-## Renders
+## Current render
 
 Stand-ins: `⇲` import, `⊕` new instance creation, `∷` parameter declaration, `⊤` supertype, `≟` type check. `◆` is the Python devicon. Other stand-ins are as in `fix-references-usage-types`.
 - The real-glyph, real-colour renders are in `renders/py_current.ansi` and `renders/py_p1_class.ansi`; view them with `command cat`.
@@ -199,6 +199,8 @@ Stand-ins: `⇲` import, `⊕` new instance creation, `∷` parameter declaratio
 ```
 
 Legend: `b` [PickerBorder] · `t` [MiniPickBorderText] · `f` [MiniPickNormal] · `c` [MiniPickMatchCurrent] · `s` [PickerSecondary] · `r` [CursorLineNr] · `h` [Search] · `x` [PickerHint] · `o` [PickerToggleOn] · `k` [@keyword] · `T` [@type.builtin] · `F` [@function.call] · `q` [@string] · `m` [@comment] · `n` [@number] · `.` [Normal] · `P` [ReferencesProduction] · `p` [ReferencesProductionLabel] · `E` [ReferencesTest] · `e` [ReferencesTestLabel] · `D` [ReferencesFolder] · `d` [ReferencesFolderLabel] · `G` [DevIconPy] · `g` [ReferencesFileLabelDevIconPy]
+
+## Proposed render
 
 **Proposed P1 — Python usage types of a class**: `70x24`, Normal, `shop/money.py` (extended pyproj fixture), basedpyright and ruff attached, `gr` on `Money` (line 5); tests grouped, folders on, usage type on; classification finished; first usage selected; the preview is hidden below 80 columns, the window shrinks to its content and stays centred.
 

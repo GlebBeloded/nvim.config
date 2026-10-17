@@ -186,9 +186,11 @@ T[python_scenario]["gr opens usages"] = function()
 	local _, manifest = open_references("pyproj", "total", "basedpyright", { "basedpyright", "ruff" })
 	expect_tree_rows({
 		"scope:Production",
+		"type:Call",
 		"folder:shop",
 		"usage:" .. usage_label(manifest, "total", "shop/cart.py"),
 		"scope:Test",
+		"type:Call",
 		"folder:tests",
 		"usage:" .. usage_label(manifest, "total", "tests/test_price.py"),
 	})

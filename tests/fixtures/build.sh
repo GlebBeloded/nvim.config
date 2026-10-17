@@ -123,12 +123,41 @@ from shop import price
 def test_total() -> None:
     assert price.total(10, 2) == 20
 EOF
-	python3 -m py_compile shop/__init__.py shop/price.py shop/cart.py tests/test_price.py
+	cat >shop/money.py <<'EOF'
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class Money:
+    cents: int
+EOF
+	cat >shop/pricing.py <<'EOF'
+from shop.money import Money
+
+ZERO = Money(0)
+
+
+class Price(Money):
+    """A unit price in cents."""
+
+
+def discount(price: Money, percent: int) -> int:
+    return price.cents * percent // 100
+EOF
+	cat >tests/test_pricing.py <<'EOF'
+from shop import money, pricing
+
+
+def test_zero_is_money() -> None:
+    assert isinstance(pricing.ZERO, money.Money)
+EOF
+	python3 -m py_compile shop/__init__.py shop/price.py shop/cart.py shop/money.py shop/pricing.py tests/test_price.py tests/test_pricing.py
 	rm -rf shop/__pycache__ tests/__pycache__
 	git init -q
 	commit "Python references fixture"
-	printf '{"references":{"total":[%s]}}\n' \
-		"$(identifier_locations total shop/price.py shop/cart.py tests/test_price.py)" >../manifest.json
+	printf '{"references":{"total":[%s],"Money":[%s]}}\n' \
+		"$(identifier_locations total shop/price.py shop/cart.py tests/test_price.py)" \
+		"$(identifier_locations Money shop/money.py shop/pricing.py tests/test_pricing.py)" >../manifest.json
 }
 
 tsproj() {

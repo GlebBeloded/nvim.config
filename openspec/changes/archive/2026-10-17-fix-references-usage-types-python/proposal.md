@@ -17,7 +17,8 @@ Find Usages has GoLand's usage types for Go only. Python has no `usages` query, 
   - Usage in a type hint
   - Usage in the superclass list
   - Read/write comes from `PyReadWriteAccessDetector`.
-- `languages-registry` leaves the `python` language's `references.usage_types` as `{ disabled = "queued: fix-references-usage-types-python" }`.
+- `lua/gleb/languages/python/init.lua:11` leaves Python's `references.usage_types` disabled, while `lua/gleb/references/kind_ts.lua:19` looks up a runtime `usages` query and `lua/gleb/references/kind_ts.lua:59` returns unclassified results when none exists.
+- `lua/gleb/references/kind_refine.lua:28` refines a type-target call only for Go, so Python class calls cannot become `new` after the query classifies them as `call`.
 - A verified draft is in `drafts/`: `queries/python/usages.scm`, the case fixture `fixtures/usages.py`, the case table `expected.lua` and a verifier. It uses catalogue ids and the template's target-kind rules plus this change's call rule. Its 157 cases pass on Neovim 0.12.5 with the installed `python` parser.
 
 ## What Changes
@@ -47,7 +48,7 @@ Find Usages has GoLand's usage types for Go only. Python has no `usages` query, 
   - New: `queries/python/usages.scm`.
   - Changed:
     - `lua/gleb/languages/python/init.lua`: `usage_types = true`;
-    - the target-kind refinement in `lua/gleb/references/kind.lua`: a `call` of a `type` target is `new` in Python.
+    - the target-kind refinement in `lua/gleb/references/kind_refine.lua`: a `call` of a `type` target is `new` in Python.
 - Tests:
   - unit: `tests/unit/references/usage_cases/python.lua` and its source, run by the shared case driver.
   - integration: basedpyright `gr` on `Money` in the extended `pyproj` fixture.
@@ -55,6 +56,8 @@ Find Usages has GoLand's usage types for Go only. Python has no `usages` query, 
 - Fixture: `tests/fixtures/build.sh` `pyproj` (three new files and the `Money` manifest entry).
 - Plugins: none. Core keymaps: none.
 - Unchanged scenarios:
+  - `languages: Requirement: References facet` still holds: enabling Python is paired with its Python parser query and query case table.
+  - `languages: A missing usages query breaks the contract` still holds: the contract remains unchanged, and Python supplies the query it requires before enabling usage types.
   - `references: Python usages in production and test files` still holds: the new files don't reference `total`, and the scenario names no type rows.
   - `references: gr classifies every Python variable usage` still holds: `total += 1` and `print(total)` match no syntactic type, so basedpyright's write/read still decides.
   - `references: basedpyright kinds classify a Python variable` still holds: the same lines get no syntactic type.
