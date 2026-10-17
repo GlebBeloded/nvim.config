@@ -117,6 +117,11 @@ Depends: fix-references-usage-types
 
 - "is the api/typing clear and logical inside lua? For example when I add new langauge, i want ai langauge not to miss it has to implement that aswell. Ideally it should have plugin-like api, and then langauges just plugin in to the library right? Create a feature for this if not like this already."
 
+## Decision (auditor, 2026-10-17, behaviour unchanged)
+
+- The registry changes no behaviour: every attached client that supports `textDocument/documentHighlight` still supplies read/write kinds (bash included) unless a facet explicitly opts out with a reason in its module; a registry entry never narrows what the previous code did for a filetype, registered or not.
+- Paths a language module reads (e.g. the Lua server's settings file) resolve relative to that module's own file, never `stdpath("config")`, so the config works under `NVIM_APPNAME` and from a worktree.
+
 ## Agent decisions
 
 - **Placement in the queue:** this runs right after `fix-references-usage-types` and before the per-language usage-type changes. Those changes then plug in by setting `references.usage_types = true` and adding their query, which the contract checks.
