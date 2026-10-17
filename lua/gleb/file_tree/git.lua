@@ -5,17 +5,24 @@ local M = {}
 local fs = require("gleb.file_tree.fs")
 local model = require("gleb.file_tree.model")
 
+local GIT_DEBOUNCE_MS = 150
+
 ---@class FileTreeGitRoot
 ---@field status table<string, string>
 ---@field refs integer
 ---@field callbacks table<integer, fun()>
+---@field generation integer
+---@field in_flight boolean
+---@field dirty boolean
+---@field timer? uv.uv_timer_t
 
 ---@class FileTreeGitState
 ---@field roots table<string, FileTreeGitRoot>
 ---@field last_cmd? string[]
+---@field runs integer
 
 ---@type FileTreeGitState
-M.state = { roots = {} }
+M.state = { roots = {}, runs = 0 }
 
 ---@param output string
 ---@return table<string, string>
@@ -56,7 +63,14 @@ function M.start_root(root, owner, callback)
 	root = fs.normalize(root)
 	local state = M.state.roots[root]
 	if not state then
-		state = { status = {}, refs = 0, callbacks = {} }
+		state = {
+			status = {},
+			refs = 0,
+			callbacks = {},
+			generation = 0,
+			in_flight = false,
+			dirty = false,
+		}
 		M.state.roots[root] = state
 	end
 	if not state.callbacks[owner] then
@@ -78,8 +92,42 @@ function M.stop_root(root, owner)
 	state.callbacks[owner] = nil
 	state.refs = state.refs - 1
 	if state.refs == 0 then
+		if state.timer then
+			state.timer:stop()
+			state.timer:close()
+		end
 		M.state.roots[root] = nil
 	end
+end
+
+---@param root string
+---@param state FileTreeGitRoot
+local function run(root, state)
+	state.timer = nil
+	state.in_flight = true
+	local generation = state.generation
+	local command =
+		{ "git", "--no-optional-locks", "-C", root, "status", "--porcelain=v2", "-z", "--untracked-files=normal" }
+	M.state.last_cmd = command
+	M.state.runs = M.state.runs + 1
+	vim.system(command, { text = true }, function(result)
+		vim.schedule(function()
+			if M.state.roots[root] ~= state then
+				return
+			end
+			state.in_flight = false
+			if result.code == 0 and generation == state.generation then
+				state.status = parse_status(result.stdout or "")
+				for _, callback in pairs(state.callbacks) do
+					callback()
+				end
+			end
+			if state.dirty then
+				state.dirty = false
+				run(root, state)
+			end
+		end)
+	end)
 end
 
 --- Refresh one root's status and redraw after the result is applied.
@@ -88,25 +136,40 @@ end
 function M.request(root)
 	root = fs.normalize(root)
 	local state = assert(M.state.roots[root], "git root was not started")
-	local command =
-		{ "git", "--no-optional-locks", "-C", root, "status", "--porcelain=v2", "-z", "--untracked-files=normal" }
-	M.state.last_cmd = command
-	vim.system(command, { text = true }, function(result)
-		vim.schedule(function()
-			if M.state.roots[root] == state and result.code == 0 then
-				state.status = parse_status(result.stdout or "")
-				for _, callback in pairs(state.callbacks) do
-					callback()
-				end
+	state.generation = state.generation + 1
+	if state.in_flight then
+		state.dirty = true
+		return
+	end
+	if not state.timer then
+		state.timer = assert(vim.uv.new_timer())
+	end
+	state.timer:stop()
+	local generation = state.generation
+	state.timer:start(
+		GIT_DEBOUNCE_MS,
+		0,
+		vim.schedule_wrap(function()
+			if M.state.roots[root] ~= state or generation ~= state.generation or not state.timer then
+				return
 			end
+			state.timer:stop()
+			state.timer:close()
+			run(root, state)
 		end)
-	end)
+	)
 end
 
 --- Clear Git status state.
 ---@return nil
 function M.reset()
-	M.state = { roots = {} }
+	for _, state in pairs(M.state.roots) do
+		if state.timer then
+			state.timer:stop()
+			state.timer:close()
+		end
+	end
+	M.state = { roots = {}, runs = 0 }
 end
 
 return M

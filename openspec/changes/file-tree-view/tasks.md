@@ -178,9 +178,9 @@ Scenarios: `file-tree: Project tree colours changed files`, `file-tree: Project 
 
 Scenarios: `file-tree: Project tree runs git status once per burst`
 
-- [ ] 6b.1 Write the scenario in `tests/integration/file-tree/test_project_git.lua` against 20 real writes and `git.state.runs`, and see it fail.
-- [ ] 6b.2 Add debounce, single-flight dirty follow-up, generations and `state.last_cmd` to `lua/gleb/file_tree/git.lua`.
-- [ ] 6b.3 Run `make test FILE=tests/integration/file-tree/test_project_git.lua` for this case and see it pass.
+- [x] 6b.1 Write the scenario in `tests/integration/file-tree/test_project_git.lua` against 20 real writes and `git.state.runs`, and see it fail.
+- [x] 6b.2 Add debounce, single-flight dirty follow-up, generations and `state.last_cmd` to `lua/gleb/file_tree/git.lua`.
+- [x] 6b.3 Run `make test FILE=tests/integration/file-tree/test_project_git.lua` for this case and see it pass.
 
 ## 7. Approved render and extmark proof
 

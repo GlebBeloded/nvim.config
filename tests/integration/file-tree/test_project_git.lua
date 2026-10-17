@@ -186,4 +186,60 @@ T["file-tree: Project tree outside a repository has no git colours"] = function(
 	eq(notifications(), {})
 end
 
+T["file-tree: Project tree runs git status once per burst"] = function()
+	open_tree()
+	local baseline = child.lua_get([[(function()
+		local git = require("gleb.file_tree.git")
+		assert(vim.wait(3000, function()
+			return type(git.state.runs) == "number" and git.state.runs > 0
+		end, 20), "initial git status did not finish")
+		return git.state.runs
+	end)()]])
+
+	child.lua(
+		[[(function(root)
+			local script = table.concat({
+				"i=1",
+				'while [ "$i" -le 20 ]; do',
+				"printf 'burst\\n' > \"burst-$i.txt\"",
+				"i=$((i + 1))",
+				"done",
+			}, "\n")
+			local result = vim.system({ "sh", "-c", script }, { cwd = root, text = true }):wait()
+			assert(result.code == 0, result.stderr)
+			for index = 1, 20 do
+				local path = vim.fs.joinpath(root, ("burst-%d.txt"):format(index))
+				local buf = vim.api.nvim_create_buf(false, true)
+				vim.api.nvim_buf_set_name(buf, path)
+				vim.api.nvim_exec_autocmds("BufWritePost", { buffer = buf })
+			end
+		end)(...)]],
+		{ root }
+	)
+
+	local result = child.lua_get(
+		[[(function(baseline)
+		local git = require("gleb.file_tree.git")
+		local complete = vim.wait(1000, function()
+			local view = require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()]
+			if not view then
+				return false
+			end
+			local found = 0
+			for _, row in ipairs(view.rows) do
+				if row.label:match("^burst%-%d+%.txt$") then
+					found = found + 1
+				end
+			end
+			return found == 20
+		end, 20)
+		return { complete = complete, runs = git.state.runs - baseline }
+	end)(...)]],
+		{ baseline }
+	)
+
+	eq(result.complete, true)
+	assert(result.runs <= 2, ("expected at most 2 git runs, got %d"):format(result.runs))
+end
+
 return T
