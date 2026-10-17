@@ -544,7 +544,12 @@ function M.toggle_include(view, win)
 		return
 	end
 	local right_final_newline = vim.bo[view.right_buf].eol or vim.bo[view.right_buf].fixeol
-	local new_final_newline = fragment.end2 == #view.right and right_final_newline or current.final_newline
+	local new_final_newline
+	if fragment.end2 == #view.right then
+		new_final_newline = right_final_newline
+	else
+		new_final_newline = current.final_newline
+	end
 	local text = patch.make_patch(view.relpath, current.lines, new_lines, current.final_newline, new_final_newline)
 	if stage.apply(view.root, text, include) then
 		view.index = { lines = new_lines, final_newline = new_final_newline }

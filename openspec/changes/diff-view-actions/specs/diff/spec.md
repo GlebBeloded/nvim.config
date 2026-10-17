@@ -65,6 +65,10 @@ The states SHALL refresh after each comparison and each toggle.
   - `git diff -U0` still holds the insertion of line 58 and the deletion of old line 65;
   - the checkbox on line 53 is `☑`.
 
+#### Scenario: Diff view stages a final line without a newline
+- **WHEN** the index ends with a newline, the buffer has `noeol nofixeol`, and `<Space>` is pressed on a change touching the final line
+- **THEN** the staged blob matches the buffer without a final newline and the checkbox is `☑`
+
 #### Scenario: Diff view Space unstages a staged change
 - **WHEN** `<Space>` is pressed twice in normal mode on right line 53 of the `controller.go` view
 - **THEN** `git diff --cached` is empty and the checkbox on line 53 is `☐`

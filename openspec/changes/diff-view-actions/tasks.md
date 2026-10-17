@@ -68,3 +68,4 @@ Scenarios: `diff: Diff view staged change matches the approved render`, `diff: D
 - [x] Guard revert and staging for files without a usable `HEAD` text, and reject staged overlap outside the selected change.
 - [x] Keep hidden and fully reverted views open, while deriving staging and checkbox state from the default policy in one pass.
 - [x] Build move row lookups once and preserve longer `<leader>` mappings in every window showing the right buffer.
+- [x] Preserve a missing buffer final newline when staging a change that touches the last line.
