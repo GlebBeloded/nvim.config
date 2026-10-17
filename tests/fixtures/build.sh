@@ -90,10 +90,36 @@ local price = require("shop.price")
 
 assert(price.total(10, 2) == 20)
 EOF
+	cat >lua/shop/discount.lua <<'EOF'
+local M = { rate = 0.1 }
+
+---@param amount number
+function M.apply(amount)
+    return amount * (1 - M.rate)
+end
+
+-- Flat-rate shops override the percentage.
+M.apply = function(amount)
+    return amount - M.rate
+end
+
+return M
+EOF
+	cat >lua/shop/checkout.lua <<'EOF'
+local discount = require("shop.discount")
+
+return discount.apply(100)
+EOF
+	cat >spec/discount_spec.lua <<'EOF'
+local discount = require("shop.discount")
+
+assert(discount.apply(100) == 99.9)
+EOF
 	git init -q
 	commit "Lua references fixture"
-	printf '{"references":{"total":[%s]}}\n' \
-		"$(identifier_locations total lua/shop/price.lua lua/shop/cart.lua spec/price_spec.lua)" >../manifest.json
+	printf '{"references":{"total":[%s],"apply":[%s]}}\n' \
+		"$(identifier_locations total lua/shop/price.lua lua/shop/cart.lua spec/price_spec.lua)" \
+		"$(identifier_locations apply lua/shop/discount.lua lua/shop/checkout.lua spec/discount_spec.lua)" >../manifest.json
 }
 
 pyproj() {
@@ -396,14 +422,32 @@ source "$(dirname "$0")/../lib/price.sh"
 
 test "$(total 10 2)" = 20
 EOF
-	bash -n lib/price.sh bin/run.sh test/price_test.sh
+	cat >lib/tax.sh <<'EOF'
+#!/usr/bin/env bash
+rate=20
+export rate
+
+tax() {
+	printf '%s\n' "$(($1 * rate / 100))"
+}
+EOF
+	cat >bin/invoice.sh <<'EOF'
+#!/usr/bin/env bash
+source "$(dirname "$0")/../lib/tax.sh"
+
+rate=25
+tax 100
+EOF
+	bash -n lib/price.sh bin/run.sh test/price_test.sh lib/tax.sh bin/invoice.sh
 	git init -q
 	commit "Bash references fixture"
-	printf '{"references":{"total":[%s]}}\n' \
-		"$(identifier_locations total lib/price.sh bin/run.sh test/price_test.sh)" >../manifest.json
+	printf '{"references":{"total":[%s],"rate":[%s]}}\n' \
+		"$(identifier_locations total lib/price.sh bin/run.sh test/price_test.sh)" \
+		"$(identifier_locations rate lib/tax.sh bin/invoice.sh)" >../manifest.json
 }
 
 tfproj() {
+	mkdir -p net
 	cat >variables.tf <<'EOF'
 variable "region" {
   type = string
@@ -419,10 +463,44 @@ output "selected_region" {
   value = var.region
 }
 EOF
+	cat >network.tf <<'EOF'
+variable "vpc_cidr" {
+  type = string
+}
+
+module "vpc" {
+  source = "./net"
+  cidr   = var.vpc_cidr
+}
+
+resource "aws_s3_bucket" "logs" {
+  bucket     = module.vpc.id
+  depends_on = [module.vpc]
+}
+
+output "vpc_id" {
+  value = module.vpc.id
+}
+EOF
+	cat >net/main.tf <<'EOF'
+variable "cidr" {
+  type = string
+}
+
+locals {
+  name = "subnet-${var.cidr}"
+}
+
+output "id" {
+  value = var.cidr
+}
+EOF
 	git init -q
 	commit "Terraform references fixture"
-	printf '{"references":{"region":[%s]}}\n' \
-		"$(identifier_locations region variables.tf main.tf outputs.tf)" >../manifest.json
+	printf '{"references":{"region":[%s],"cidr":[%s],"vpc":[%s]}}\n' \
+		"$(identifier_locations region variables.tf main.tf outputs.tf)" \
+		"$(identifier_locations cidr net/main.tf network.tf)" \
+		"$(identifier_locations vpc network.tf net/main.tf)" >../manifest.json
 }
 
 gomod() {

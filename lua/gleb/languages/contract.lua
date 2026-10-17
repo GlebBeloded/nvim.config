@@ -100,6 +100,39 @@ local function check_query(language, parser, problems)
 	end
 end
 
+---@param suite table
+---@return boolean
+local function valid_case_suite(suite)
+	local valid = type(suite.filetype) == "string"
+		and type(suite.source) == "string"
+		and vim.islist(suite.cases)
+		and #suite.cases > 0
+	if valid then
+		for _, case in ipairs(suite.cases) do
+			valid = valid
+				and type(case.line) == "number"
+				and type(case.character) == "number"
+				and type(case.expected) == "string"
+		end
+	end
+	return valid
+end
+
+---@param cases table
+---@return boolean
+local function valid_case_table(cases)
+	local suites = cases.suites or { cases }
+	if not vim.islist(suites) or #suites == 0 then
+		return false
+	end
+	for _, suite in ipairs(suites) do
+		if type(suite) ~= "table" or not valid_case_suite(suite) then
+			return false
+		end
+	end
+	return true
+end
+
 ---@param language gleb.Language
 ---@param problems string[]
 local function check_cases(language, problems)
@@ -110,21 +143,7 @@ local function check_cases(language, problems)
 		return
 	end
 	local loaded, cases = pcall(dofile, path)
-	local valid = loaded
-		and type(cases) == "table"
-		and type(cases.filetype) == "string"
-		and type(cases.source) == "string"
-		and vim.islist(cases.cases)
-		and #cases.cases > 0
-	if valid then
-		for _, case in ipairs(cases.cases) do
-			valid = valid
-				and type(case.line) == "number"
-				and type(case.character) == "number"
-				and type(case.expected) == "string"
-		end
-	end
-	if not valid then
+	if not loaded or type(cases) ~= "table" or not valid_case_table(cases) then
 		add(problems, ("%s: references.usage_types has invalid cases in %s"):format(language.name, case_path))
 	end
 end

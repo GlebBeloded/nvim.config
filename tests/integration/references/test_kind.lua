@@ -371,6 +371,19 @@ T[lua_gr_scenario]["renders every usage kind"] = function()
 	})
 end
 
+local lua_function_scenario = "references: gr classifies Lua function calls and redefinitions"
+T[lua_function_scenario] = MiniTest.new_set()
+T[lua_function_scenario]["renders calls and the current-file redefinition"] = function()
+	local root, manifest = F.copy("luaproj", vim.fn.tempname())
+	local declaration = manifest.references.apply[1]
+	local actual = open_references(root, declaration.path, declaration.line, declaration.col, "lua_ls", nil, nil, "lua")
+	eq(actual, {
+		{ "lua/shop/checkout.lua", 3, 17, "call" },
+		{ "lua/shop/discount.lua", 9, 3, "function_declaration" },
+		{ "spec/discount_spec.lua", 3, 17, "call" },
+	})
+end
+
 local python_scenario = "references: gr classifies every Python variable usage"
 T[python_scenario] = MiniTest.new_set()
 T[python_scenario]["renders every usage kind"] = function()
@@ -680,6 +693,33 @@ T[bash_scenario]["renders every usage kind"] = function()
 	})
 end
 
+local bash_variable_scenario = "references: gr classifies Bash exports, writes and reads"
+T[bash_variable_scenario] = MiniTest.new_set()
+T[bash_variable_scenario]["renders every variable usage type"] = function()
+	local root, manifest = F.copy("bashproj", vim.fn.tempname())
+	local declaration = manifest.references.rate[1]
+	local actual =
+		open_references(root, declaration.path, declaration.line, declaration.col, "bashls", nil, nil, "bash", nil, 3)
+	eq(actual, {
+		{ "bin/invoice.sh", 4, 1, "write" },
+		{ "lib/tax.sh", 3, 8, "export" },
+		{ "lib/tax.sh", 6, 25, "read" },
+	})
+end
+
+local bash_function_scenario = "references: gr classifies Bash function usages as calls"
+T[bash_function_scenario] = MiniTest.new_set()
+T[bash_function_scenario]["renders every function usage as a call"] = function()
+	local root, manifest = F.copy("bashproj", vim.fn.tempname())
+	local declaration = manifest.references.total[1]
+	local actual =
+		open_references(root, declaration.path, declaration.line, declaration.col, "bashls", nil, nil, "bash", nil, 2)
+	eq(actual, {
+		{ "bin/run.sh", 4, 1, "call" },
+		{ "test/price_test.sh", 4, 9, "call" },
+	})
+end
+
 local terraform_scenario = "references: gr classifies every Terraform variable usage"
 T[terraform_scenario] = MiniTest.new_set()
 T[terraform_scenario]["renders every usage kind"] = function()
@@ -690,6 +730,72 @@ T[terraform_scenario]["renders every usage kind"] = function()
 	eq(actual, {
 		{ "main.tf", 2, 21, "read" },
 		{ "outputs.tf", 2, 11, "read" },
+	})
+end
+
+local terraform_module_variable_scenario = "references: gr classifies Terraform module variable usages"
+T[terraform_module_variable_scenario] = MiniTest.new_set()
+T[terraform_module_variable_scenario]["renders module inputs and variable reads"] = function()
+	local root, manifest = F.copy("tfproj", vim.fn.tempname())
+	eq(manifest.references.cidr, {
+		{ path = "net/main.tf", line = 1, col = 11 },
+		{ path = "net/main.tf", line = 6, col = 24 },
+		{ path = "net/main.tf", line = 10, col = 15 },
+		{ path = "network.tf", line = 7, col = 3 },
+	})
+	require_server("terraformls")
+	child.cmd("cd " .. vim.fn.fnameescape(root) .. " | edit network.tf")
+	assert(
+		child.wait([[#vim.lsp.get_clients({ bufnr = 0, name = "terraformls" }) > 0]], TIMEOUT_MS),
+		"terraformls did not index the parent module"
+	)
+	local declaration = manifest.references.cidr[1]
+	local actual = open_references(
+		root,
+		declaration.path,
+		declaration.line,
+		declaration.col,
+		"terraformls",
+		nil,
+		nil,
+		"hcl",
+		nil,
+		3
+	)
+	eq(actual, {
+		{ "net/main.tf", 6, 20, "read" },
+		{ "net/main.tf", 10, 11, "read" },
+		{ "network.tf", 7, 3, "attribute_assignment" },
+	})
+end
+
+local terraform_module_scenario = "references: gr classifies Terraform module usages"
+T[terraform_module_scenario] = MiniTest.new_set()
+T[terraform_module_scenario]["renders every module usage type"] = function()
+	local root, manifest = F.copy("tfproj", vim.fn.tempname())
+	eq(manifest.references.vpc, {
+		{ path = "network.tf", line = 5, col = 9 },
+		{ path = "network.tf", line = 11, col = 23 },
+		{ path = "network.tf", line = 12, col = 24 },
+		{ path = "network.tf", line = 16, col = 18 },
+	})
+	local declaration = manifest.references.vpc[1]
+	local actual = open_references(
+		root,
+		declaration.path,
+		declaration.line,
+		declaration.col,
+		"terraformls",
+		nil,
+		nil,
+		"hcl",
+		nil,
+		3
+	)
+	eq(actual, {
+		{ "network.tf", 11, 16, "module_reference" },
+		{ "network.tf", 12, 17, "depends_on" },
+		{ "network.tf", 16, 11, "output" },
 	})
 end
 
