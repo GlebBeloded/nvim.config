@@ -1,3 +1,6 @@
+-- Lua port of intellij-community Range.kt, DiffIterableUtil.kt, and ExpandChangeBuilder.kt
+-- (Apache-2.0, © JetBrains s.r.o.), seeded from diffbandit.nvim lua/diffbandit/diff/smart_align.lua
+-- (Apache-2.0, © Corey Kaylor). Modified: rewritten in Lua; see NOTICE.
 -- Changed-range construction for the diff engine.
 -- Matching pairs stay internal so every public range is ordered and half-open.
 

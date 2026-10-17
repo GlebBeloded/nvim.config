@@ -45,7 +45,7 @@ Scenarios: `diff: A too big comparison falls back to xdiff`, `diff: A missed dea
 
 Scenarios: `diff: Ported files carry their attribution`
 
-- [ ] 5.1 Write `tests/unit/diff/test_notice.lua` and see it fail
-- [ ] 5.2 Add `lua/gleb/diff/engine/NOTICE` and `LICENSE-APACHE-2.0` (the verbatim Apache-2.0 text), and the header from design Decision 7 on every engine file and fixture table
-- [ ] 5.3 Add a `diff/` row to the module map in `docs/architecture.md`: "IntelliJ-port diff engine (pure), viewer to follow", linked to the `diff` spec
-- [ ] 5.4 Run `make check`
+- [x] 5.1 Write `tests/unit/diff/test_notice.lua` and see it fail
+- [x] 5.2 Add `lua/gleb/diff/engine/NOTICE` and `LICENSE-APACHE-2.0` (the verbatim Apache-2.0 text), and the header from design Decision 7 on every engine file and fixture table
+- [x] 5.3 Add a `diff/` row to the module map in `docs/architecture.md`: "IntelliJ-port diff engine (pure), viewer to follow", linked to the `diff` spec
+- [x] 5.4 Run `make check`

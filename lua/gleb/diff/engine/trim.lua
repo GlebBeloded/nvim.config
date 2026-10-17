@@ -1,3 +1,6 @@
+-- Lua port of intellij-community platform/util/diff/src/com/intellij/diff/comparison/TrimUtil.kt
+-- (Apache-2.0, © JetBrains s.r.o.), seeded from diffbandit.nvim lua/diffbandit/diff/smart_align.lua
+-- (Apache-2.0, © Corey Kaylor). Modified: rewritten in Lua; see NOTICE.
 -- Range trimming primitives shared by line matching and chunk optimization.
 -- Equality is supplied by the caller so each whitespace policy uses the same mechanics.
 

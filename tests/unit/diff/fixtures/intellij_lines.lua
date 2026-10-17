@@ -1,6 +1,6 @@
 -- Translated from intellij-community (Apache-2.0, © JetBrains s.r.o.) at d4223873:
 -- platform/diff-impl/tests/testSrc/com/intellij/diff/comparison/LineComparisonUtilTest.kt
--- Modified: Kotlin DSL rewritten as Lua data.
+-- Modified: Kotlin DSL rewritten as Lua data; see lua/gleb/diff/engine/NOTICE.
 return {
 	{
 		source = "LineComparisonUtilTest.kt:20",

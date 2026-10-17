@@ -1,3 +1,6 @@
+-- Lua port of intellij-community ComparisonUtil.kt and IgnorePolicy.java
+-- (Apache-2.0, © JetBrains s.r.o.).
+-- Modified: rewritten in Lua; see NOTICE.
 -- Whitespace policy normalization for IntelliJ-style line comparison.
 -- Only space, tab, and newline are whitespace; carriage returns remain text.
 

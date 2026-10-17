@@ -1,3 +1,6 @@
+-- Lua port of intellij-community ComparisonManagerImpl.kt compareLines
+-- (Apache-2.0, © JetBrains s.r.o.).
+-- Modified: rewritten in Lua; see NOTICE.
 -- Public line-comparison entry point for the IntelliJ-style diff engine.
 -- Lines are interned before the integer LCS and exposed as half-open ranges.
 

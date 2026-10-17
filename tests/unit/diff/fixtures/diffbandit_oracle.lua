@@ -1,6 +1,6 @@
 -- Translated from diffbandit.nvim (Apache-2.0, © Corey Kaylor) at 7e1e5b8b:
 -- tests/specs/40_oracle.lua, captured from IntelliJ util-diff 261.26222.72.
--- Modified: 1-based hunks rewritten as 0-based, half-open Lua fixture data.
+-- Modified: 1-based hunks rewritten as 0-based, half-open Lua fixture data; see lua/gleb/diff/engine/NOTICE.
 return {
 	{
 		source = "40_oracle.lua:iw-realign",

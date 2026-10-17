@@ -258,7 +258,7 @@ def write_fixture(path: Path, upstream: str, rows: list[dict[str, object]]) -> N
     header = (
         f"-- Translated from intellij-community (Apache-2.0, © JetBrains s.r.o.) at {PIN[:8]}:\n"
         f"-- {TEST_PATH / upstream}\n"
-        "-- Modified: Kotlin DSL rewritten as Lua data.\n"
+        "-- Modified: Kotlin DSL rewritten as Lua data; see lua/gleb/diff/engine/NOTICE.\n"
     )
     content = header + "return {\n" + "".join(f"\t{lua_value(row)},\n" for row in rows) + "}\n"
     path.parent.mkdir(parents=True, exist_ok=True)

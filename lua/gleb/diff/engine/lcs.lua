@@ -1,3 +1,6 @@
+-- Lua port of intellij-community Diff.kt, MyersLCS.kt, Reindexer.kt, PatienceIntLCS.kt, and UniqueLCS.kt
+-- (Apache-2.0, © JetBrains s.r.o.), seeded from diffbandit.nvim lua/diffbandit/diff/myers_lcs.lua
+-- (Apache-2.0, © Corey Kaylor). Modified: rewritten in Lua; see NOTICE.
 -- Integer longest-common-subsequence engine used by line comparison.
 -- Myers handles ordinary inputs; unique anchors bound difficult comparisons.
 
