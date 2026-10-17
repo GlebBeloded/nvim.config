@@ -421,8 +421,10 @@ sync_repo() {
 # parsers change (a parser added to lua/gleb/treesitter.lua: the guest has no tree-sitter CLI to build it)
 sync_plugins() {
 	local data=${NVIM_TEST_DATA_DIR:-$HOME/.local/share/nvim} stamp d
-	nvim --headless --clean -l "$ROOT/tests/sandbox/parsers.lua" "$ROOT/lua/gleb/treesitter.lua" "$data" >&2 ||
-		die "building the configured treesitter parsers failed"
+	if [ -d "$data/lazy/nvim-treesitter" ]; then
+		nvim --headless --clean -l "$ROOT/tests/sandbox/parsers.lua" "$ROOT/lua/gleb/treesitter.lua" "$data" >&2 ||
+			die "building the configured treesitter parsers failed"
+	fi
 	stamp=$({ cat "$ROOT/lazy-lock.json"; ls "$data/site/parser" 2>/dev/null; } | shasum | cut -c1-12)
 	[ "$(gssh "cat $GUEST_DATA/.lock-stamp 2>/dev/null")" = "$stamp" ] && return
 	log "syncing plugins (lazy-lock.json $stamp)"
