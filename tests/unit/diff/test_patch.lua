@@ -15,9 +15,9 @@ end
 
 local T = MiniTest.new_set()
 
-T["diff: Diff view checkboxes follow the index"] = MiniTest.new_set()
+T["diff: Diff patch states of a change, an insertion and a deletion"] = MiniTest.new_set()
 
-T["diff: Diff view checkboxes follow the index"]["modified lines have unchecked and checked states"] = function()
+T["diff: Diff patch states of a change, an insertion and a deletion"]["modified lines have unchecked and checked states"] = function()
 	local patch = patch_module()
 	local head = { "first", "old", "last" }
 	local right = { "first", "new", "last" }
@@ -27,7 +27,7 @@ T["diff: Diff view checkboxes follow the index"]["modified lines have unchecked 
 	eq(patch.state(head, right, right, current), "󰄲")
 end
 
-T["diff: Diff view checkboxes follow the index"]["insertions and deletions have unchecked and checked states"] = function()
+T["diff: Diff patch states of a change, an insertion and a deletion"]["insertions and deletions have unchecked and checked states"] = function()
 	local patch = patch_module()
 	local inserted = { "first", "added", "last" }
 	local insertion = change(1, 1, 1, 2)
@@ -41,9 +41,9 @@ T["diff: Diff view checkboxes follow the index"]["insertions and deletions have 
 	eq(patch.state(deleted_head, deleted, deleted, deletion), "󰄲")
 end
 
-T["diff: Diff view checkbox of a partly staged change"] = MiniTest.new_set()
+T["diff: Diff patch state of a partly staged change"] = MiniTest.new_set()
 
-T["diff: Diff view checkbox of a partly staged change"]["a different index edit is mixed"] = function()
+T["diff: Diff patch state of a partly staged change"]["a different index edit is mixed"] = function()
 	local patch = patch_module()
 	local head = { "first", "old", "last" }
 	local index = { "first", "other", "last" }
@@ -52,7 +52,7 @@ T["diff: Diff view checkbox of a partly staged change"]["a different index edit 
 	eq(patch.state(head, index, right, change(1, 2, 1, 2)), "󰡖")
 end
 
-T["diff: Diff view checkbox of a partly staged change"]["an overlapping staged edit is mixed"] = function()
+T["diff: Diff patch state of a partly staged change"]["an overlapping staged edit is mixed"] = function()
 	local patch = patch_module()
 	local head = { "first", "old one", "old two", "last" }
 	local index = { "first", "staged one", "staged two", "last" }
@@ -61,9 +61,9 @@ T["diff: Diff view checkbox of a partly staged change"]["an overlapping staged e
 	eq(patch.state(head, index, right, change(1, 2, 1, 2)), "󰡖")
 end
 
-T["diff: Diff view Space stages one change"] = MiniTest.new_set()
+T["diff: Diff patch stages one change"] = MiniTest.new_set()
 
-T["diff: Diff view Space stages one change"]["a changed line stages and unstages"] = function()
+T["diff: Diff patch stages one change"]["a changed line stages and unstages"] = function()
 	local patch = patch_module()
 	local head = { "first", "old", "last" }
 	local right = { "first", "new", "last" }
@@ -73,7 +73,7 @@ T["diff: Diff view Space stages one change"]["a changed line stages and unstages
 	eq(patch.update_index(head, right, right, current, false), head)
 end
 
-T["diff: Diff view Space stages one change"]["an earlier staged insertion stays in the index"] = function()
+T["diff: Diff patch stages one change"]["an earlier staged insertion stays in the index"] = function()
 	local patch = patch_module()
 	local head = { "first", "old", "last" }
 	local index = { "staged before", "first", "old", "last" }
@@ -83,7 +83,7 @@ T["diff: Diff view Space stages one change"]["an earlier staged insertion stays 
 	eq(patch.update_index(head, index, right, current, true), { "staged before", "first", "new", "last" })
 end
 
-T["diff: Diff view Space stages one change"]["overlapping staged edits return to HEAD"] = function()
+T["diff: Diff patch stages one change"]["overlapping staged edits return to HEAD"] = function()
 	local patch = patch_module()
 	local head = { "first", "old one", "old two", "last" }
 	local index = { "first", "staged one", "staged two", "last" }
@@ -94,7 +94,7 @@ T["diff: Diff view Space stages one change"]["overlapping staged edits return to
 	eq(patch.update_index(head, index, right, current, false), head)
 end
 
-T["diff: Diff view Space stages one change"]["a patch preserves a missing final newline"] = function()
+T["diff: Diff patch stages one change"]["a patch preserves a missing final newline"] = function()
 	local patch = patch_module()
 	local repo = H.git_repo({ ["file.txt"] = "old" })
 	local text = patch.make_patch("file.txt", { "old" }, { "new" }, false, false)
@@ -107,9 +107,9 @@ T["diff: Diff view Space stages one change"]["a patch preserves a missing final 
 	eq(vim.tbl_count(vim.fn.split(text, "\\ No newline at end of file", true)), 3)
 end
 
-T["diff: Diff view stages an insertion and a deletion separately"] = MiniTest.new_set()
+T["diff: Diff patch stages an insertion and a deletion"] = MiniTest.new_set()
 
-T["diff: Diff view stages an insertion and a deletion separately"]["an insertion stages and unstages"] = function()
+T["diff: Diff patch stages an insertion and a deletion"]["an insertion stages and unstages"] = function()
 	local patch = patch_module()
 	local head = { "first", "last" }
 	local right = { "first", "added", "last" }
@@ -119,7 +119,7 @@ T["diff: Diff view stages an insertion and a deletion separately"]["an insertion
 	eq(patch.update_index(head, right, right, current, false), head)
 end
 
-T["diff: Diff view stages an insertion and a deletion separately"]["a deletion stages and unstages"] = function()
+T["diff: Diff patch stages an insertion and a deletion"]["a deletion stages and unstages"] = function()
 	local patch = patch_module()
 	local head = { "first", "removed", "last" }
 	local right = { "first", "last" }

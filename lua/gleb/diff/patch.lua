@@ -9,11 +9,7 @@ local UNCHECKED = "󰄱"
 local CHECKED = "󰄲"
 local MIXED = "󰡖"
 
----@class gleb.diff.PatchChange
----@field start1 integer
----@field end1 integer
----@field start2 integer
----@field end2 integer
+---@alias gleb.diff.PatchChange gleb.diff.LineFragment
 
 local function ranges_overlap(start1, end1, start2, end2)
 	if start1 == end1 then

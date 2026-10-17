@@ -1,6 +1,6 @@
 ## 1. Index states and patches (pure)
 
-Scenarios: `diff: Diff view checkboxes follow the index`, `diff: Diff view checkbox of a partly staged change`, `diff: Diff view Space stages one change`, `diff: Diff view stages an insertion and a deletion separately`
+Scenarios: `diff: Diff patch states of a change, an insertion and a deletion`, `diff: Diff patch state of a partly staged change`, `diff: Diff patch stages one change`, `diff: Diff patch stages an insertion and a deletion`
 
 - [x] 1.1 Write `tests/unit/diff/test_patch.lua`, and see it fail. It covers:
   - the states `☐`/`☑`/`◪`;
@@ -36,7 +36,7 @@ Scenarios: `diff: Diff view marks both ends of a moved block`, `diff: Diff view 
 
 ## 4. Whitespace policy and highlight mode
 
-Scenarios: `diff: Diff view trim policy hides a trailing space`, `diff: Diff view whitespace policy persists`, `diff: Diff view line mode drops word highlights`, `diff: Diff view no-highlight mode shows plain texts`, `diff: Diff view highlight mode persists`
+Scenarios: `diff: Diff view trim policy hides a trailing space`, `diff: Diff view whitespace policy persists`, `diff: Diff view line mode drops word highlights`, `diff: Diff view no-highlight mode shows plain texts`, `diff: Diff view highlight mode persists`, `diff: Diff settings validate diff.json`
 
 - [x] 4.1 Write these scenarios in `tests/integration/diff/test_settings.lua` and the `diff.json` validation in `tests/unit/diff/test_settings.lua`, and see them fail
 - [x] 4.2 Add `lua/gleb/diff/settings.lua` and the nine radio actions (Decisions 7 and 8), and re-compare open views on change.
@@ -46,11 +46,11 @@ Scenarios: `diff: Diff view trim policy hides a trailing space`, `diff: Diff vie
 
 Scenarios: `diff: Diff view staged change matches the approved render`, `diff: Diff view moved block matches the approved render`
 
-- [ ] 5.1 Add both cases to `tests/screen/diff/test_view.lua`, and see them fail:
+- [x] 5.1 Add both cases to `tests/screen/diff/test_view.lua`, and see them fail:
   - a `100x30` child on `diffgo`;
   - rows 2–29 screenshot plus `H.expect_screen_colors` with the masks of Proposed E1 and E2.
-- [ ] 5.2 Make them pass. Re-run `diff: Diff view matches the approved render` unchanged.
-- [ ] 5.3 Compare `make render` (cases `diff-view-staged` and `diff-view-moved` in `tests/render/cases.lua`) with `renders/*.ansi`, then run `make check`.
+- [x] 5.2 Make them pass. Re-run `diff: Diff view matches the approved render` unchanged.
+- [x] 5.3 Compare `make render` (cases `diff-view-staged` and `diff-view-moved` in `tests/render/cases.lua`) with `renders/*.ansi`, then run `make check`.
 
 ## Agent decisions
 
@@ -58,10 +58,6 @@ Scenarios: `diff: Diff view staged change matches the approved render`, `diff: D
 - Keep the index snapshot and its final-newline bit on each view so redraws stay synchronous and toggles can refresh it explicitly.
 - Keep each moved row's original change kind separately so its arrow retains the add/delete colour while the row uses the moved tint.
 - Pair no-highlight rows through the longer side and leave unmatched cells plain, preserving both complete texts without diff padding.
-
-## Stuck
-
-- Task 5, moved render: restoring the ordered `virt_lines` block makes text match Proposed E2, but the screen probe reports row 5, column 42 as `DiffViewGutterMoved` where the approved mask requires `Normal`.
-- Attempt 1 made the non-first virtual-padding arrow cell neutral; the probe advanced to row 5, column 56, where a blank checkbox slot drew `DiffViewCheckbox` instead of `DiffViewPadding`.
-- Attempt 2 made that blank slot padding-coloured; the probe advanced to row 20, column 42, revealing the real status-column `gutter()` independently colours its non-first blank arrow as `DiffViewGutterMoved` instead of `Normal`.
-- The second production attempt is saved in `artifacts/runs/17ad341c-03f5-491f-b9d6-67aa90e073c0/stuck-attempt.diff`; production edits were reverted and the existing moved-render regression remains red.
+- Set `arrow_kind` only when a row becomes moved, so plain change rows keep their original layout model.
+- Draw a padding row's blank arrow as `Normal` and its blank checkbox slot as a `DiffViewPadding` `╱`, one ordered `virt_lines` extmark per padding run, as Proposed E2 shows.
+- Keep the shared scenario names on the integration cases and name the pure `patch.lua` cases after added `Diff patch …` scenarios.

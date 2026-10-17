@@ -3,14 +3,15 @@
 
 local M = {}
 
----@alias gleb.diff.view.Kind "Add"|"Change"|"Delete"|"Moved"
+---@alias gleb.diff.view.ChangeKind "Add"|"Change"|"Delete"
+---@alias gleb.diff.view.Kind gleb.diff.view.ChangeKind|"Moved"
 
 ---@class gleb.diff.view.Row
 ---@field left? integer
 ---@field right? integer
 ---@field change? integer
 ---@field kind? gleb.diff.view.Kind
----@field arrow_kind? "Add"|"Change"|"Delete"
+---@field arrow_kind? gleb.diff.view.ChangeKind
 ---@field first? boolean
 ---@field checkbox? boolean|string
 ---@field move_marker? string
@@ -34,7 +35,7 @@ local M = {}
 ---@field line_count2 integer
 
 ---@param fragment gleb.diff.LineFragment
----@return gleb.diff.view.Kind
+---@return gleb.diff.view.ChangeKind
 local function change_kind(fragment)
 	if fragment.start1 == fragment.end1 then
 		return "Add"
@@ -98,7 +99,7 @@ local function add_change(rows, fragment, index, checkbox)
 	local kind = change_kind(fragment)
 	for offset = 0, count - 1 do
 		---@type gleb.diff.view.Row
-		local row = { change = index, kind = kind, arrow_kind = kind }
+		local row = { change = index, kind = kind }
 		if offset < count1 then
 			row.left = fragment.start1 + offset + 1
 		end
@@ -120,6 +121,15 @@ local function move_marker(text)
 	return text .. string.rep(" ", math.max(5 - vim.fn.strdisplaywidth(text), 0))
 end
 
+--- Tints a changed row as moved while its arrow keeps the original change colour.
+---@param row gleb.diff.view.Row
+local function mark_moved(row)
+	if row.kind ~= "Moved" then
+		row.arrow_kind = row.kind --[[@as gleb.diff.view.ChangeKind?]]
+		row.kind = "Moved"
+	end
+end
+
 ---@param rows gleb.diff.view.Row[]
 ---@param moves gleb.diff.Move[]
 local function mark_moves(rows, moves)
@@ -128,12 +138,12 @@ local function mark_moves(rows, moves)
 			local left = row.left and row.left - 1 or nil
 			local right = row.right and row.right - 1 or nil
 			if left and left >= move.start1 and left < move.end1 then
-				row.kind = "Moved"
+				mark_moved(row)
 				if left == move.start1 then
 					row.move_marker = move_marker("→" .. (move.start2 + 1))
 				end
 			elseif right and right >= move.start2 and right < move.end2 then
-				row.kind = "Moved"
+				mark_moved(row)
 				if right == move.start2 then
 					row.move_marker = move_marker("←" .. (move.start1 + 1))
 				end
