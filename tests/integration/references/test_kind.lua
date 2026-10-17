@@ -649,4 +649,30 @@ T[terraform_scenario]["renders every usage kind"] = function()
 	})
 end
 
+local python_class_scenario = "references: gr classifies Python class usages"
+T[python_class_scenario] = MiniTest.new_set()
+T[python_class_scenario]["classifies every class usage through the picker"] = function()
+	local root, manifest = F.copy("pyproj", vim.fn.tempname())
+	local declaration = manifest.references.Money[1]
+	local actual = open_references(
+		root,
+		declaration.path,
+		declaration.line,
+		declaration.col,
+		"basedpyright",
+		nil,
+		nil,
+		"python",
+		nil,
+		5
+	)
+	eq(actual, {
+		{ "shop/pricing.py", 1, 24, "import" },
+		{ "shop/pricing.py", 3, 8, "new" },
+		{ "shop/pricing.py", 6, 13, "extends" },
+		{ "shop/pricing.py", 10, 21, "parameter_declaration" },
+		{ "tests/test_pricing.py", 5, 43, "instanceof" },
+	})
+end
+
 return T

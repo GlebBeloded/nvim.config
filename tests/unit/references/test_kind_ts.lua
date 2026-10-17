@@ -128,4 +128,21 @@ T["references: TSX and TypeScript buffers use their own parser"] = function()
 	eq(actual, { "new", "cast" })
 end
 
+local python_call_scenario = "references: A Python call of a class is a new instance creation"
+T[python_call_scenario] = MiniTest.new_set()
+T[python_call_scenario]["refines a class call but keeps an unknown-target call"] = function()
+	local actual = child.lua_get([[(function()
+		local source = "local: Thing = Thing(key)"
+		local position = { { line = 0, character = 15 } }
+		local query_kind = require("gleb.references.kind_ts").classify(source, "python", position)[1]
+		local refine = require("gleb.references.kind_refine").refine_query_kind
+		return {
+			refine(query_kind, "type", "python"),
+			refine(query_kind, "unknown", "python"),
+		}
+	end)()]])
+
+	eq(actual, { "new", "call" })
+end
+
 return T

@@ -47,6 +47,7 @@ T["references: Every query capture is in the catalogue"] = function()
 		"hcl",
 		"javascript",
 		"lua",
+		"python",
 		"terraform",
 		"ts_angle_cast",
 		"tsx",
