@@ -100,7 +100,8 @@ local function forget(view)
 	end
 	if view.watching then
 		view.watching = false
-		watch.stop_root(view.root)
+		watch.stop_root(view.root, view.tab)
+		git.stop_root(view.root, view.tab)
 	end
 	for _, autocmd in ipairs(view.autocmds) do
 		pcall(vim.api.nvim_del_autocmd, autocmd)
@@ -192,7 +193,7 @@ local function draw(view, path)
 			break
 		end
 	end
-	watch.sync(view.root, watched, function(changed_path)
+	watch.sync(view.root, view.tab, watched, function(changed_path)
 		if M.state.by_tab[view.tab] ~= view or not vim.api.nvim_buf_is_valid(view.buf) then
 			return
 		end
@@ -209,12 +210,7 @@ local function draw(view, path)
 		local selected = view.rows[vim.api.nvim_win_get_cursor(view.win)[1]]
 		draw(view, selected and selected.path or view.root)
 	end, function()
-		git.request(view.root, function()
-			if M.state.by_tab[view.tab] == view and vim.api.nvim_buf_is_valid(view.buf) then
-				local selected = view.rows[vim.api.nvim_win_get_cursor(view.win)[1]]
-				draw(view, selected and selected.path or view.root)
-			end
-		end)
+		git.request(view.root)
 	end)
 end
 
@@ -573,15 +569,16 @@ local function open_view(path)
 		watching = true,
 	}
 	M.state.by_tab[tab] = view
-	watch.start_root(root)
-	add_teardown_autocmds(view)
-	reveal_path(view, path, true)
-	git.request(root, function()
+	watch.start_root(root, tab)
+	git.start_root(root, tab, function()
 		if M.state.by_tab[tab] == view and vim.api.nvim_buf_is_valid(buf) then
 			local selected = view.rows[vim.api.nvim_win_get_cursor(win)[1]]
 			draw(view, selected and selected.path or root)
 		end
 	end)
+	add_teardown_autocmds(view)
+	reveal_path(view, path, true)
+	git.request(root)
 	update_cursor(view)
 	return view
 end
@@ -687,13 +684,11 @@ function M.setup()
 		group = view_group,
 		callback = function()
 			local path = fs.normalize(vim.api.nvim_buf_get_name(0))
+			local requested = {}
 			for _, view in pairs(M.state.by_tab) do
-				if vim.startswith(path, view.root .. "/") then
-					git.request(view.root, function()
-						if M.state.by_tab[view.tab] == view and vim.api.nvim_buf_is_valid(view.buf) then
-							draw(view, path)
-						end
-					end)
+				if vim.startswith(path, view.root .. "/") and not requested[view.root] then
+					requested[view.root] = true
+					git.request(view.root)
 				end
 			end
 		end,

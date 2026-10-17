@@ -154,9 +154,9 @@ Scenarios: `file-tree: Project tree watchers stop when the tree closes`, `file-t
 
 Scenarios: `file-tree: Project tree shares root work across tabs`, `file-tree: Project tree isolates tabpage state`
 
-- [ ] 5b3.1 Write the two-tab scenarios in `tests/integration/file-tree/test_project_live.lua`, opening real trees for one root and closing the first tab before reusing the second; see them fail.
-- [ ] 5b3.2 Keep git/watch state per root with handle refcounts, and view buffers, cursors and autocmd ids per tabpage handle.
-- [ ] 5b3.3 Run `make test FILE=tests/integration/file-tree/test_project_live.lua` for these cases and see them pass.
+- [x] 5b3.1 Write the two-tab scenarios in `tests/integration/file-tree/test_project_live.lua`, opening real trees for one root and closing the first tab before reusing the second; see them fail.
+- [x] 5b3.2 Keep git/watch state per root with handle refcounts, and view buffers, cursors and autocmd ids per tabpage handle.
+- [x] 5b3.3 Run `make test FILE=tests/integration/file-tree/test_project_live.lua` for these cases and see them pass.
 
 ## 5c. Atomic per-root persistence and re-rooting
 
@@ -202,3 +202,4 @@ Scenarios: `file-tree: Project tree matches the approved render`, `file-tree: Pr
 - A tree scan assigns each real directory to its first lexical path while allowing that same path to be rescanned, so compact-row construction can reuse scans without traversing aliases or loops.
 - Live-update tests inspect rendered extmark groups; a small async Git snapshot module supplies watcher-triggered colours, while throttling and exhaustive porcelain parsing remain in task 6.
 - Folder-watch admission keeps the normalized root first and then uses lexical path order, making the cap deterministic while preserving every rendered row.
+- Shared-root watchers union each tab's scan set and fan events out by tabpage handle, so closing one view cannot strand another view's live updates.

@@ -479,4 +479,79 @@ T["file-tree: Project tree caps watched folders"] = function()
 	eq(watched, { handle_count = 2, has_compact_row = true, has_unwatched_row = true })
 end
 
+T["file-tree: Project tree shares root work across tabs"] = function()
+	edit("README.md")
+	run_action("file_tree.toggle")
+	child.cmd("tabnew " .. vim.fn.fnameescape(vim.fs.joinpath(root, "go.mod")))
+	run_action("file_tree.toggle")
+
+	local result = H.system(child, { "touch", vim.fs.joinpath(root, "shared.lua") }, root)
+	eq(result.code, 0)
+	local shared = child.lua_get(
+		[[(function(root)
+		root = require("gleb.file_tree.fs").normalize(root)
+		return vim.wait(1000, function()
+			local views = vim.tbl_values(require("gleb.file_tree.view").state.by_tab)
+			return #views == 2 and vim.iter(views):all(function(view)
+				return vim.iter(view.rows):any(function(row)
+					return row.label == "shared.lua"
+				end)
+			end)
+		end, 20) and {
+			git_refs = require("gleb.file_tree.git").state.roots[root].refs,
+			watch_refs = require("gleb.file_tree.watch").state.roots[root].refs,
+		}
+	end)(...)]],
+		{ root }
+	)
+	eq(shared, { git_refs = 2, watch_refs = 2 })
+end
+
+T["file-tree: Project tree isolates tabpage state"] = function()
+	edit("README.md")
+	run_action("file_tree.toggle")
+	local first_tab = child.api.nvim_get_current_tabpage()
+	focus_tree_row("internal")
+
+	child.cmd("tabnew " .. vim.fn.fnameescape(vim.fs.joinpath(root, "go.mod")))
+	run_action("file_tree.toggle")
+	local second_tab = child.api.nvim_get_current_tabpage()
+	focus_tree_row("go.mod")
+	local second = child.lua_get([[(function()
+		local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+		return { buf = view.buf, cursor = vim.api.nvim_win_get_cursor(view.win), autocmds = vim.deepcopy(view.autocmds) }
+	end)()]])
+
+	child.cmd("tabprevious")
+	child.type_keys("<CR>")
+	child.cmd("tabclose")
+	eq(child.api.nvim_get_current_tabpage(), second_tab)
+
+	local result = H.system(child, { "touch", vim.fs.joinpath(root, "isolated.lua") }, root)
+	eq(result.code, 0)
+	local isolated = child.lua_get(
+		[[(function(first_tab, expected, root)
+		root = require("gleb.file_tree.fs").normalize(root)
+		local ready = vim.wait(1000, function()
+			local state = require("gleb.file_tree.view").state
+			local view = state.by_tab[vim.api.nvim_get_current_tabpage()]
+			return state.by_tab[first_tab] == nil
+				and view ~= nil
+				and view.buf == expected.buf
+				and vim.deep_equal(vim.api.nvim_win_get_cursor(view.win), expected.cursor)
+				and vim.deep_equal(view.autocmds, expected.autocmds)
+				and vim.iter(view.rows):any(function(row)
+					return row.label == "isolated.lua"
+				end)
+		end, 20)
+		return ready and {
+			git_refs = require("gleb.file_tree.git").state.roots[root].refs,
+			watch_refs = require("gleb.file_tree.watch").state.roots[root].refs,
+		} or false
+	end)(...)]],
+		{ first_tab, second, root }
+	)
+	eq(isolated, { git_refs = 1, watch_refs = 1 })
+end
+
 return T

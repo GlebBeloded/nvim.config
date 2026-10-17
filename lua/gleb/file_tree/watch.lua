@@ -13,6 +13,10 @@ M.MAX_WATCH_HANDLES = 256
 ---@field timers table<string, uv.uv_timer_t>
 ---@field git_handle? uv.uv_fs_event_t
 ---@field refs integer
+---@field clients table<integer, FileTreeWatchClient>
+
+---@class FileTreeWatchClient
+---@field paths table<string, boolean>
 ---@field redraw fun(path: string)
 ---@field refresh_git fun()
 
@@ -41,8 +45,14 @@ local function queue_redraw(root, path)
 		vim.schedule_wrap(function()
 			if M.state.roots[root] == state then
 				fs.invalidate(path)
-				state.redraw(path)
-				state.refresh_git()
+				local refresh_git
+				for _, client in pairs(state.clients) do
+					client.redraw(path)
+					refresh_git = refresh_git or client.refresh_git
+				end
+				if refresh_git then
+					refresh_git()
+				end
 			end
 		end)
 	)
@@ -77,7 +87,12 @@ local function watch_git_dir(root, state)
 			local handle = assert(vim.uv.new_fs_event())
 			local ok = handle:start(path, {}, function(error)
 				if not error then
-					vim.schedule(state.refresh_git)
+					vim.schedule(function()
+						local _, client = next(state.clients)
+						if client then
+							client.refresh_git()
+						end
+					end)
 				end
 			end)
 			if ok then
@@ -107,28 +122,36 @@ local function close_folder(state, path)
 end
 
 ---@param root string
+---@param owner integer
 ---@return nil
-function M.start_root(root)
+function M.start_root(root, owner)
 	local state = M.state.roots[root]
 	if state then
-		state.refs = state.refs + 1
+		if not state.clients[owner] then
+			state.refs = state.refs + 1
+			state.clients[owner] = { paths = {}, redraw = function() end, refresh_git = function() end }
+		end
 		return
 	end
-	state = { handles = {}, timers = {}, refs = 1, redraw = function() end, refresh_git = function() end }
+	state = {
+		handles = {},
+		timers = {},
+		refs = 1,
+		clients = { [owner] = { paths = {}, redraw = function() end, refresh_git = function() end } },
+	}
 	M.state.roots[root] = state
 	watch_git_dir(root, state)
 end
 
---- Watch every directory scan currently feeding visible rows.
 ---@param root string
----@param paths table<string, boolean>
----@param redraw fun(path: string)
----@param refresh_git fun()
----@return nil
-function M.sync(root, paths, redraw, refresh_git)
-	local state = assert(M.state.roots[root], "watch root was not started")
-	state.redraw = redraw
-	state.refresh_git = refresh_git
+---@param state FileTreeWatchRoot
+local function sync_handles(root, state)
+	local paths = {}
+	for _, client in pairs(state.clients) do
+		for path in pairs(client.paths) do
+			paths[path] = true
+		end
+	end
 
 	local ordered = vim.tbl_keys(paths)
 	table.sort(ordered, function(left, right)
@@ -156,16 +179,35 @@ function M.sync(root, paths, redraw, refresh_git)
 	end
 end
 
+--- Watch every directory scan currently feeding one view's visible rows.
+---@param root string
+---@param owner integer
+---@param paths table<string, boolean>
+---@param redraw fun(path: string)
+---@param refresh_git fun()
+---@return nil
+function M.sync(root, owner, paths, redraw, refresh_git)
+	local state = assert(M.state.roots[root], "watch root was not started")
+	local client = assert(state.clients[owner], "watch root owner was not started")
+	client.paths = paths
+	client.redraw = redraw
+	client.refresh_git = refresh_git
+	sync_handles(root, state)
+end
+
 --- Release one tree's ownership of a normalized root.
 ---@param root string
+---@param owner integer
 ---@return nil
-function M.stop_root(root)
+function M.stop_root(root, owner)
 	local state = M.state.roots[root]
-	if not state then
+	if not state or not state.clients[owner] then
 		return
 	end
+	state.clients[owner] = nil
 	state.refs = state.refs - 1
 	if state.refs > 0 then
+		sync_handles(root, state)
 		return
 	end
 	for path in pairs(state.handles) do
@@ -183,8 +225,9 @@ end
 ---@return nil
 function M.reset()
 	for root, state in pairs(M.state.roots) do
-		state.refs = 1
-		M.stop_root(root)
+		for owner in pairs(state.clients) do
+			M.stop_root(root, owner)
+		end
 	end
 	M.state = { roots = {} }
 end
