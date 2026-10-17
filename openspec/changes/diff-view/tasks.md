@@ -63,7 +63,6 @@ Scenarios: `diff: Diff view matches the approved render`
 
 - Layout rows carry optional 1-based `left` and `right` lines, with fold metadata in the same ordered list, so rendering and synchronization can consume one model.
 - Public helpers use snake-case names (`transfer_line`, `change_at_line`) to follow the repository's Lua naming convention.
-- Untracked files derive their repository-relative path after the required `ls-files` call returns empty, so `git show` can represent an absent HEAD side.
 - Diff windows detach nvim-ufo before creating manual folds, because its asynchronous provider otherwise replaces the paired ranges on the real file buffer.
 - Embedded views save the host buffer and window-local options, so their one cleanup path restores the hosting area exactly.
 - Shadowed mappings are restored with their full `maparg()` dictionaries, preserving callbacks and mapping options.

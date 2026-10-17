@@ -9,7 +9,8 @@ local root
 local manifest
 
 local function start()
-	root, manifest = F.copy("diffgo", vim.fn.tempname())
+	local name = "diff-view-test-" .. vim.fn.getpid() .. "-" .. vim.fn.fnamemodify(vim.fn.tempname(), ":t")
+	root, manifest = F.copy("diffgo", "/tmp/" .. name)
 	child.start_config({ env = F.go_env() })
 	child.wait_very_lazy()
 end
@@ -81,6 +82,11 @@ end
 T["diff: Diff view of a file absent from HEAD"] = function()
 	local path = "internal/user/new.go"
 	vim.fn.writefile({ "package user", "", "var x = 1" }, root .. "/" .. path)
+	local source_data = child.lua_get([[require("gleb.diff.view.source").current(...)]], {
+		root .. "/" .. path,
+		child.api.nvim_get_current_buf(),
+	})
+	eq(source_data.relpath, path)
 	edit(path)
 
 	open_diff()

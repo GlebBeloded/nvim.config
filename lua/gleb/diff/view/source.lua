@@ -41,11 +41,8 @@ function M.current(path, buf)
 		return nil, "not_repo"
 	end
 	local root = vim.trim(root_result.stdout)
-	local tracked = git({ "ls-files", "--full-name", "--", path }, root)
-	local relpath = tracked.code == 0 and vim.trim(tracked.stdout) or ""
-	if relpath == "" then
-		relpath = assert(vim.fs.relpath(root, path))
-	end
+	local prefix = git({ "rev-parse", "--show-prefix" }, directory)
+	local relpath = vim.trim(prefix.stdout) .. vim.fs.basename(path)
 	local left_result = git({ "show", "HEAD:" .. relpath }, root)
 	local hash_result = git({ "rev-parse", "--short=7", "HEAD" }, root)
 	local left = left_result.code == 0 and lines(left_result.stdout) or {}
