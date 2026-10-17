@@ -18,9 +18,9 @@ Scenarios: `file-tree: Single-child folders share one row`, `file-tree: Expandin
 
 Scenarios: `file-tree: Project tree root row names the project`, `file-tree: Project tree rows have icons and no guides`, `file-tree: Project tree highlight colours come from the palette`
 
-- [ ] 2a.1 Write these scenarios in `tests/integration/file-tree/test_project_tree.lua`, opening the real `treeproj` picker data and inspecting lines, extmarks and `expect_hl_colors`; see them fail.
-- [ ] 2a.2 Move neo-tree setup verbatim from `lua/gleb/file_tree/init.lua` to `lua/gleb/file_tree/neo_tree.lua`; make `init.lua` require it and then call `view.setup()`. Add `lua/gleb/file_tree/render.lua` with lines, per-row extmarks and highlight groups redefined on `ColorScheme`.
-- [ ] 2a.3 Run `make test FILE=tests/integration/file-tree/test_project_tree.lua` for these cases and `make test FILE=tests/integration/file-tree/test_tree.lua`; see them pass.
+- [x] 2a.1 Write these scenarios in `tests/integration/file-tree/test_project_tree.lua`, opening the real `treeproj` picker data and inspecting lines, extmarks and `expect_hl_colors`; see them fail.
+- [x] 2a.2 Move neo-tree setup verbatim from `lua/gleb/file_tree/init.lua` to `lua/gleb/file_tree/neo_tree.lua`; make `init.lua` require it and then call `view.setup()`. Add `lua/gleb/file_tree/render.lua` with lines, per-row extmarks and highlight groups redefined on `ColorScheme`.
+- [x] 2a.3 Run `make test FILE=tests/integration/file-tree/test_project_tree.lua` for these cases and `make test FILE=tests/integration/file-tree/test_tree.lua`; see them pass.
 
 ## 2b. Per-tab window and toggle
 
@@ -186,3 +186,4 @@ Scenarios: `file-tree: Project tree matches the approved render`, `file-tree: Pr
 ## Agent decisions
 
 - `fs.tree` passes a root and scan function into `model.rows`, keeping the row model pure while sharing the filesystem cache.
+- Task 2a introduces `view.setup()` only as the render-highlight owner required by the entry-point order; task 2b extends it with per-tab windows.
