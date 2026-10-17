@@ -13,6 +13,7 @@ Scenarios: `references: Lua query classifies every usage type`
 - Validate every suite in a multi-suite usage case table so one language can cover multiple sources and parser filetypes.
 - Wait for the full expected Bash reference count before opening the picker so partial bashls indexing cannot satisfy the scenarios.
 - Keep the `total` picker scenario as a regression although it was already green after task 2 supplied Bash call classification; only the missing `rate` fixture produced the expected red in this task.
+- Use Decision 7's four-space Lua fixture indentation and case-only blank-line padding so the real picker matches every approved L1 cell without changing reference positions.
 
 ## 2. Bash query cases
 
@@ -66,9 +67,9 @@ Scenarios: `references: gr classifies Terraform module variable usages`, `refere
 
 Scenarios: `references: Lua usage types match the approved render`
 
-- [ ] 8.1 Write the `70x24` screen scenario in `tests/screen/references/test_view.lua`, driving `gr` on `apply` with the real picker, lua_ls and populated fixture data, and see it fail against the approved screenshot
-- [ ] 8.2 Add the Proposed L1 reference screenshot and attribute block from design.md
-- [ ] 8.3 Run `make test FILE=tests/screen/references/test_view.lua CASE="Lua usage types match the approved render"` and see it pass; compare `make render` with `renders/lua_l1_proposed.ansi`
+- [x] 8.1 Write the `70x24` screen scenario in `tests/screen/references/test_view.lua`, driving `gr` on `apply` with the real picker, lua_ls and populated fixture data, and see it fail against the approved screenshot
+- [x] 8.2 Add the Proposed L1 reference screenshot and attribute block from design.md
+- [x] 8.3 Run `make test FILE=tests/screen/references/test_view.lua CASE="Lua usage types match the approved render"` and see it pass; compare `make render` with `renders/lua_l1_proposed.ansi`
 
 ## 9. Bash approved render
 

@@ -96,6 +96,43 @@ local PYTHON_LEGEND = vim.tbl_extend("force", LEGEND, {
 	v = "ReferencesUsageTypeInstanceofLabel",
 })
 
+local LUA_LEGEND = vim.tbl_extend("force", LEGEND, {
+	["."] = "Normal",
+	G = "DevIconLua",
+	g = "ReferencesFileLabelDevIconLua",
+	L = "ReferencesUsageTypeCall",
+	l = "ReferencesUsageTypeCallLabel",
+	K = "ReferencesUsageTypeFunctionDeclaration",
+	k = "ReferencesUsageTypeFunctionDeclarationLabel",
+})
+
+local LUA_GROUPED_MASK = {
+	"......................................................................",
+	"......................................................................",
+	"......................................................................",
+	"......................................................................",
+	".........btttttttttttttttttttttbbbbbbbbbbbbbbbbbbbbbbbbbbbbb..........",
+	".........bfffPfppppppppppffsfffffffffffffffffffffffffffffffb..........",
+	".........bfffffLfllllffsfffffffffffffffffffffffffffffffffffb..........",
+	".........bfffffffDfddddddddffsfffffffffffffffffffffffffffffb..........",
+	".........bcccccccccGcggggggggggggccccccccccccccccccccccccccb..........",
+	".........bfffffKfkkkkkkkkkkkkkkkkkkkkffsfffffffffffffffffffb..........",
+	".........bfffffffDfddddddddffsfffffffffffffffffffffffffffffb..........",
+	".........bfffffffffGfggggggggggggssffffffffffffffffffffffffb..........",
+	".........bfffEfeeeeffsfffffffffffffffffffffffffffffffffffffb..........",
+	".........bfffffLfllllffsfffffffffffffffffffffffffffffffffffb..........",
+	".........bfffffffDfddddffsfffffffffffffffffffffffffffffffffb..........",
+	".........bfffffffffGfgggggggggggggggggssfffffffffffffffffffb..........",
+	".........bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb..........",
+	".........bfxxxxxxxxxxxxxxxxxxxoxxxxxxxxxxxxxoxxxxxxxxxxxxxxb..........",
+	".........bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb..........",
+	"......................................................................",
+	"......................................................................",
+	"......................................................................",
+	"......................................................................",
+	"......................................................................",
+}
+
 local RUST_LEGEND = vim.tbl_extend("force", LEGEND, {
 	["."] = "Normal",
 	["4"] = "ReferencesMaskBackground",
@@ -708,6 +745,71 @@ vim.wo[win].statusline = "%#Normal# NORMAL  ⎇ main%=python "
 	child.cmd("redraw")
 end
 
+local function open_lua_apply()
+	child.o.columns, child.o.lines = 70, 24
+	local lua_root, lua_manifest = F.copy("luaproj", vim.fn.tempname())
+	local declaration = lua_manifest.references.apply[1]
+	child.cmd("cd " .. vim.fn.fnameescape(lua_root) .. " | edit " .. vim.fn.fnameescape(declaration.path))
+	child.wo.number = true
+	child.wo.relativenumber = false
+	child.wo.numberwidth = 3
+	child.lua([[require("ibl").setup_buffer(0, { enabled = false })]])
+	child.o.showtabline = 0
+	child.o.laststatus = 2
+	child.wo.winbar = "%#Normal#▎ discount.lua"
+	child.api.nvim_win_set_cursor(0, { declaration.line, declaration.col - 1 })
+	eq(child.wait([[#vim.lsp.get_clients({ bufnr = 0, name = "lua_ls" }) > 0]], TIMEOUT_MS), true)
+	child.lua([[vim.diagnostic.enable(false, { bufnr = 0 })]])
+	child.lua(
+		[[
+		local minimum, timeout = ...
+_G.references_ready = nil
+local bufnr = vim.api.nvim_get_current_buf()
+local started = vim.uv.hrtime()
+local populated = 0
+local function request()
+	local client = vim.lsp.get_clients({ bufnr = bufnr, name = "lua_ls" })[1]
+	local params = vim.lsp.util.make_position_params(0, client.offset_encoding)
+	params.context = { includeDeclaration = false }
+	client:request("textDocument/references", params, function(_, result)
+		populated = result and #result >= minimum and populated + 1 or 0
+		if populated >= 2 then
+			_G.references_ready = true
+		elseif (vim.uv.hrtime() - started) / 1e6 < timeout then
+			vim.defer_fn(request, 10)
+		end
+	end, bufnr)
+end
+request()
+]],
+		{ #lua_manifest.references.apply - 2, TIMEOUT_MS }
+	)
+	eq(child.wait("_G.references_ready == true", TIMEOUT_MS), true)
+	child.type_keys("gr")
+	eq(child.wait([[vim.bo.filetype == "gleb-references"]], TIMEOUT_MS), true)
+	eq(child.wait([[not require("gleb.references.view").state.classifying]], TIMEOUT_MS), true)
+	child.lua([[
+local state = require("gleb.references.view").state
+local origin_buf = vim.api.nvim_win_get_buf(state.origin_win)
+vim.api.nvim_buf_set_lines(origin_buf, -1, -1, false, {
+	"", "", "", "", "", "", "", "", "",
+})
+require("gitsigns").detach(origin_buf)
+vim.wo[state.origin_win].signcolumn = "yes:1"
+for index, node in ipairs(state.visible_nodes) do
+	if node.kind == "usage" then
+		vim.api.nvim_win_set_cursor(state.tree_win, { index, 0 })
+		break
+	end
+end
+local win = state.origin_win
+require("lualine").hide({ place = { "statusline" } })
+vim.o.statusline = "%#Normal# NORMAL  ⎇ main%=lua "
+vim.wo[win].statusline = "%#Normal# NORMAL  ⎇ main%=lua "
+]])
+	child.cmd("redraw")
+end
+
 local function tree_lines()
 	return child.lua_get([[vim.api.nvim_buf_get_lines(require("gleb.references.view").state.tree_buf, 0, -1, false)]])
 end
@@ -784,6 +886,17 @@ local function with_cleared_rust_background(mask)
 	result[1] = result[1]:gsub("%.", "4")
 	for index = 3, #result do
 		result[index] = result[index]:gsub("%.", "4")
+	end
+	return result
+end
+
+---@param mask string[]
+---@return string[]
+local function with_cleared_lua_background(mask)
+	local result = vim.deepcopy(mask)
+	result[1] = result[1]:gsub("%.", "z")
+	for index = 3, #result do
+		result[index] = result[index]:gsub("%.", "z")
 	end
 	return result
 end
@@ -899,6 +1012,14 @@ T["references: Python class usages are grouped by usage type"] = function()
 	H.expect_screenshot(child.get_screenshot())
 	clear_background_for_mask()
 	H.expect_screen_colors(child, 1, with_cleared_python_background(PYTHON_GROUPED_MASK), PYTHON_LEGEND)
+end
+
+T["references: Lua usage types match the approved render"] = function()
+	eq(require("tests.render.cases").lua_l1_apply ~= nil, true)
+	open_lua_apply()
+	H.expect_screenshot(child.get_screenshot())
+	clear_background_for_mask()
+	H.expect_screen_colors(child, 1, with_cleared_lua_background(LUA_GROUPED_MASK), LUA_LEGEND)
 end
 
 local rust_grouped_scenario = "references: Rust struct usages are grouped by usage type"

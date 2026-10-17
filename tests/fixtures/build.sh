@@ -95,12 +95,12 @@ local M = { rate = 0.1 }
 
 ---@param amount number
 function M.apply(amount)
-	return amount * (1 - M.rate)
+    return amount * (1 - M.rate)
 end
 
 -- Flat-rate shops override the percentage.
 M.apply = function(amount)
-	return amount - M.rate
+    return amount - M.rate
 end
 
 return M
