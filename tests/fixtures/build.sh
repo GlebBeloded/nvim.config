@@ -133,6 +133,9 @@ tsproj() {
   "type": "module"
 }
 EOF
+	cat >eslint.config.js <<'EOF'
+export default [];
+EOF
 	cat >tsconfig.json <<'EOF'
 {
   "compilerOptions": {
@@ -164,7 +167,7 @@ EOF
 	if command -v tsc >/dev/null 2>&1; then
 		tsc --noEmit
 	else
-		for file in src/price.ts src/cart.ts src/price.test.ts; do
+		for file in eslint.config.js src/price.ts src/cart.ts src/price.test.ts; do
 			node --check --input-type=module <"$file"
 		done
 	fi

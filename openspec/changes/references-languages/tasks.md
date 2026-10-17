@@ -9,9 +9,9 @@ Scenarios: `references: Two attached clients list each usage once`
 
 ## 3. One end-to-end case per language
 Scenarios: `references: Lua usages in production and spec files`, `references: Python usages in production and test files`, `references: TypeScript usages in production and test files`, `references: Rust usages in production and test code`, `references: Bash usages in production and test scripts`, `references: Terraform variable usages`
-- [ ] 3.1 Write the six cases in tests/integration/references/test_languages.lua (fixture copy, wait for the client using the readiness helpers, `gr`, read the tree rows). A missing server or toolchain is a reported skip. See them fail.
-- [ ] 3.2 Fix what each case exposes in `request.lua` (server-specific handling), `scope.lua` (pattern gaps), `tests/fixtures/build.sh` (server root markers) or the relevant LSP configuration, and log each fix under `## Agent decisions`
-- [ ] 3.3 Run `make test FILE=tests/integration/references/test_languages.lua` and see every case pass or skip with a reason, then `make check`
+- [x] 3.1 Write the six cases in tests/integration/references/test_languages.lua (fixture copy, wait for the client using the readiness helpers, `gr`, read the tree rows). A missing server or toolchain is a reported skip. See them fail.
+- [x] 3.2 Fix what each case exposes in `request.lua` (server-specific handling), `scope.lua` (pattern gaps), `tests/fixtures/build.sh` (server root markers) or the relevant LSP configuration, and log each fix under `## Agent decisions`
+- [x] 3.3 Run `make test FILE=tests/integration/references/test_languages.lua` and see every case pass or skip with a reason, then `make check`
 
 ## Agent decisions
 
@@ -19,3 +19,6 @@ Scenarios: `references: Lua usages in production and spec files`, `references: P
 - Use JavaScript-compatible TypeScript syntax so `node --check` remains a valid fallback when `tsc` is unavailable.
 - Preserve the first client response for duplicate URI/range locations so merge order and offset encoding stay deterministic.
 - Allow task 3 to add an ESLint config to `tsproj` and configure bashls with its recursive upstream glob, because this tests the real configured behavior while preserving both scenarios.
+- Add a flat ESLint config marker to `tsproj` because the workspace-required ESLint client only starts for configured projects.
+- Restore bashls's recursive upstream glob in the shell config so references include nested project scripts.
+- Nest fixture checks and end-to-end checks under one set per spec scenario so tracing stays unique without dropping assertions.

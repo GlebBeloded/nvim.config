@@ -45,10 +45,14 @@ local function open_references(fixture, symbol, server, attached, timeout)
 	child.api.nvim_win_set_cursor(0, { declaration.line, declaration.col - 1 })
 
 	for _, name in ipairs(attached) do
-		eq(child.wait(([[#vim.lsp.get_clients({ bufnr = 0, name = %q }) > 0]]):format(name), timeout or TIMEOUT_MS), true)
+		eq(
+			child.wait(([[#vim.lsp.get_clients({ bufnr = 0, name = %q }) > 0]]):format(name), timeout or TIMEOUT_MS),
+			true
+		)
 	end
 
-	child.lua([[
+	child.lua(
+		[[
 local server, timeout = ...
 _G.references_ready, _G.references_error = nil, nil
 local bufnr = vim.api.nvim_get_current_buf()
@@ -67,7 +71,9 @@ local function request()
 	end, bufnr)
 end
 request()
-]], { attached[1], timeout or TIMEOUT_MS })
+]],
+		{ attached[1], timeout or TIMEOUT_MS }
+	)
 	eq(child.wait("_G.references_ready == true", timeout or TIMEOUT_MS), true)
 
 	child.type_keys("gr")
@@ -110,7 +116,32 @@ local function usage_label(manifest, symbol, path, occurrence)
 	error("missing manifest usage " .. path)
 end
 
-T["references: Lua usages in production and spec files"] = function()
+---@param fixture string
+---@param symbol string
+---@param paths string[]
+local function expect_fixture(fixture, symbol, paths)
+	local root, manifest = F.copy(fixture, vim.fn.tempname())
+	local locations = manifest.references[symbol]
+
+	eq(
+		vim.tbl_map(function(location)
+			return location.path
+		end, locations),
+		paths
+	)
+
+	for _, location in ipairs(locations) do
+		local line = vim.fn.readfile(vim.fs.joinpath(root, location.path))[location.line]
+		eq(line:sub(location.col, location.col + #symbol - 1), symbol)
+	end
+end
+
+local lua_scenario = "references: Lua usages in production and spec files"
+T[lua_scenario] = MiniTest.new_set()
+T[lua_scenario]["fixture manifest"] = function()
+	expect_fixture("luaproj", "total", { "lua/shop/price.lua", "lua/shop/cart.lua", "spec/price_spec.lua" })
+end
+T[lua_scenario]["gr opens usages"] = function()
 	local _, manifest = open_references("luaproj", "total", "lua_ls", { "lua_ls" })
 	expect_tree_rows({
 		"scope:Production",
@@ -122,7 +153,12 @@ T["references: Lua usages in production and spec files"] = function()
 	})
 end
 
-T["references: Python usages in production and test files"] = function()
+local python_scenario = "references: Python usages in production and test files"
+T[python_scenario] = MiniTest.new_set()
+T[python_scenario]["fixture manifest"] = function()
+	expect_fixture("pyproj", "total", { "shop/price.py", "shop/cart.py", "tests/test_price.py" })
+end
+T[python_scenario]["gr opens usages"] = function()
 	require_command("python3")
 	local _, manifest = open_references("pyproj", "total", "basedpyright", { "basedpyright", "ruff" })
 	expect_tree_rows({
@@ -135,7 +171,12 @@ T["references: Python usages in production and test files"] = function()
 	})
 end
 
-T["references: TypeScript usages in production and test files"] = function()
+local typescript_scenario = "references: TypeScript usages in production and test files"
+T[typescript_scenario] = MiniTest.new_set()
+T[typescript_scenario]["fixture manifest"] = function()
+	expect_fixture("tsproj", "total", { "src/price.ts", "src/cart.ts", "src/price.test.ts" })
+end
+T[typescript_scenario]["gr opens usages"] = function()
 	require_command("node")
 	require_command("vscode-eslint-language-server")
 	local _, manifest = open_references("tsproj", "total", "vtsls", { "vtsls", "eslint" })
@@ -149,7 +190,12 @@ T["references: TypeScript usages in production and test files"] = function()
 	})
 end
 
-T["references: Rust usages in production and test code"] = function()
+local rust_scenario = "references: Rust usages in production and test code"
+T[rust_scenario] = MiniTest.new_set()
+T[rust_scenario]["fixture manifest"] = function()
+	expect_fixture("rustproj", "total", { "src/price.rs", "src/price.rs", "src/main.rs", "tests/price.rs" })
+end
+T[rust_scenario]["gr opens usages"] = function()
 	require_command("cargo")
 	local _, manifest = open_references("rustproj", "total", "rust_analyzer", { "rust-analyzer" }, RUST_TIMEOUT_MS)
 	local inline = "usage:" .. usage_label(manifest, "total", "src/price.rs", 2)
@@ -180,7 +226,12 @@ T["references: Rust usages in production and test code"] = function()
 	end
 end
 
-T["references: Bash usages in production and test scripts"] = function()
+local bash_scenario = "references: Bash usages in production and test scripts"
+T[bash_scenario] = MiniTest.new_set()
+T[bash_scenario]["fixture manifest"] = function()
+	expect_fixture("bashproj", "total", { "lib/price.sh", "bin/run.sh", "test/price_test.sh" })
+end
+T[bash_scenario]["gr opens usages"] = function()
 	require_command("bash")
 	local _, manifest = open_references("bashproj", "total", "bashls", { "bashls" })
 	expect_tree_rows({
@@ -193,7 +244,12 @@ T["references: Bash usages in production and test scripts"] = function()
 	})
 end
 
-T["references: Terraform variable usages"] = function()
+local terraform_scenario = "references: Terraform variable usages"
+T[terraform_scenario] = MiniTest.new_set()
+T[terraform_scenario]["fixture manifest"] = function()
+	expect_fixture("tfproj", "region", { "variables.tf", "main.tf", "outputs.tf" })
+end
+T[terraform_scenario]["gr opens usages"] = function()
 	local _, manifest = open_references("tfproj", "region", "terraformls", { "terraformls" })
 	expect_tree_rows({
 		"scope:Production",
