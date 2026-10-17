@@ -5,6 +5,7 @@ when the loop was skipped.
 
 import json
 import os
+import sys
 
 
 def shipped(ship: str, reconcile: str) -> dict:
@@ -14,4 +15,8 @@ def shipped(ship: str, reconcile: str) -> dict:
     return result
 
 
-print(json.dumps(shipped(os.environ.get("INPUTS_SHIP", "{}"), os.environ.get("INPUTS_RECONCILE", ""))))
+result = shipped(os.environ.get("INPUTS_SHIP", "{}"), os.environ.get("INPUTS_RECONCILE", ""))
+print(json.dumps(result))
+if not result.get("merged"):  # the reconcile loop ran out with a red regate or a conflict: the run did not ship
+    print(f"not shipped: {result.get('log') or 'conflict with auto'}", file=sys.stderr)
+    sys.exit(1)
