@@ -35,6 +35,7 @@ local M = {
 ---@field root? string
 ---@field filetype? string
 ---@field actionable? boolean
+---@field head_final_newline? boolean
 ---@field on_next_file? function
 
 ---@class gleb.diff.view.View
@@ -46,6 +47,7 @@ local M = {
 ---@field labels { left: string, right: string }
 ---@field filetype string
 ---@field actionable boolean
+---@field head_final_newline boolean
 ---@field right_buf integer
 ---@field left_buf integer
 ---@field left_win integer
@@ -452,6 +454,7 @@ local function build(spec)
 		labels = spec.labels,
 		filetype = spec.filetype or "",
 		actionable = spec.actionable ~= false,
+		head_final_newline = spec.head_final_newline == true,
 		right_buf = spec.right_buf or readonly_buffer(spec.right),
 		on_next_file = spec.on_next_file,
 		ns = vim.api.nvim_create_namespace(""),
@@ -546,7 +549,11 @@ function M.toggle_include(view, win)
 	local right_final_newline = vim.bo[view.right_buf].eol or vim.bo[view.right_buf].fixeol
 	local new_final_newline
 	if fragment.end2 == #view.right then
-		new_final_newline = right_final_newline
+		if include then
+			new_final_newline = right_final_newline
+		else
+			new_final_newline = view.head_final_newline
+		end
 	else
 		new_final_newline = current.final_newline
 	end

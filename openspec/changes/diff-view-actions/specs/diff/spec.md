@@ -69,6 +69,10 @@ The states SHALL refresh after each comparison and each toggle.
 - **WHEN** the index ends with a newline, the buffer has `noeol nofixeol`, and `<Space>` is pressed on a change touching the final line
 - **THEN** the staged blob matches the buffer without a final newline and the checkbox is `☑`
 
+#### Scenario: Diff view unstages a final line with a different newline
+- **WHEN** `HEAD` ends with a newline, the buffer has `noeol nofixeol`, and `<Space>` is pressed twice on a change touching the final line
+- **THEN** `git diff --cached` is empty and the checkbox is `☐`
+
 #### Scenario: Diff view Space unstages a staged change
 - **WHEN** `<Space>` is pressed twice in normal mode on right line 53 of the `controller.go` view
 - **THEN** `git diff --cached` is empty and the checkbox on line 53 is `☐`

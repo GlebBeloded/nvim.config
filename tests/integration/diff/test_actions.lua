@@ -223,6 +223,20 @@ T["diff: Diff view stages a final line without a newline"] = function()
 	eq(checkbox(3), "󰄲")
 end
 
+T["diff: Diff view unstages a final line with a different newline"] = function()
+	open_view("dirty", "d.txt")
+	H.git(root, { "reset", "HEAD" })
+	local view = child.lua_get([[require("gleb.diff.view").current()]])
+	child.lua([[vim.bo[...].eol = false; vim.bo[...].fixeol = false]], { view.right_buf })
+	focus("right", 3)
+
+	child.type_keys("<Space>")
+	child.type_keys("<Space>")
+
+	eq(H.git(root, { "diff", "--cached" }), "")
+	eq(checkbox(3), "󰄱")
+end
+
 T["diff: Diff view Space unstages a staged change"] = function()
 	open_controller()
 	focus("right", 53)

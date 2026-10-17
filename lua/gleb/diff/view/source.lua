@@ -12,6 +12,7 @@ local M = {}
 ---@field hash string
 ---@field filetype string
 ---@field actionable boolean
+---@field head_final_newline boolean
 
 ---@param args string[]
 ---@param cwd string
@@ -70,6 +71,7 @@ function M.current(path, buf)
 		right = right,
 		hash = hash_result.code == 0 and vim.trim(hash_result.stdout) or "HEAD",
 		filetype = vim.bo[buf].filetype,
+		head_final_newline = left_result.stdout:sub(-1) == "\n",
 		actionable = left_result.code == 0
 			and unmerged.stdout == ""
 			and not binary_attr

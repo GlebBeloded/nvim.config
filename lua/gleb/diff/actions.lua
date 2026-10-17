@@ -155,6 +155,7 @@ local function open_file(ctx)
 		right = data.right,
 		right_buf = ctx.buf,
 		actionable = data.actionable,
+		head_final_newline = data.head_final_newline,
 		filetype = data.filetype,
 		labels = { left = data.hash .. " · HEAD", right = "Your version" },
 	})
