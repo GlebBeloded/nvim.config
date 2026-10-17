@@ -144,3 +144,14 @@ Scenarios: `diff: Diff view moved block matches the approved render`
 - Draw a padding row's blank arrow as `Normal` and its blank checkbox slot as a `DiffViewPadding` `╱`, one ordered `virt_lines` extmark per padding run, as Proposed E2 shows.
 - Keep the shared scenario names on the integration cases and name the pure `patch.lua` cases after added `Diff patch …` scenarios.
 - Report unsupported revert and staging actions as unavailable at WARN, naming the missing comparable `HEAD` text so the no-op is explicit.
+- Project a displayed checkbox from default-policy fragments overlapping on both text sides, using mixed when their states differ, so display-only splitting does not lose index state or inherit an adjacent empty range.
+- Track the right buffer's compared `changedtick` and refresh before actions when it or the debounce timer is stale, so actions use current text.
+
+## 18. Review fixes
+
+Scenarios: `diff: Diff view do uses an immediate buffer edit`, `diff: Diff view Space stages an immediate buffer edit`, `diff: Diff view trim policy shows a staged checkbox`
+
+- [x] 18.1 Add regressions for immediate action freshness and trim-policy checkbox projection
+- [x] 18.2 Refresh stale views before actions and project overlapping default-fragment states onto displayed fragments
+- [x] 18.3 Restore `diff/init.lua` to ordered requires and load persisted defaults in the view part
+- [x] 18.4 Run the affected diff integration and e2e cases

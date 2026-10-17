@@ -25,6 +25,20 @@ local function open_controller()
 	]])
 end
 
+---@param line integer
+---@return string?
+local function checkbox(line)
+	return child.lua_get(
+		[[(function(...)
+		local line = ...
+		for _, row in ipairs(require("gleb.diff.view").current().layout.rows) do
+			if row.right == line and row.first then return row.checkbox end
+		end
+	end)(...)]],
+		{ line }
+	)
+end
+
 ---@param id string
 ---@param title string
 local function choose_setting(id, title)
@@ -88,6 +102,26 @@ T["diff: Diff view trim policy hides a trailing space"] = function()
 		),
 		false
 	)
+end
+
+T["diff: Diff view trim policy shows a staged checkbox"] = function()
+	root = H.git_repo({ ["f.txt"] = "a\nb\nc\nd\n" })
+	H.write_files(root, { ["f.txt"] = "A\nb \nc\nd\n" })
+	child.cmd("cd " .. vim.fn.fnameescape(root) .. " | edit f.txt")
+	child.lua([[
+		local actions = require("gleb.actions")
+		local action = assert(actions.state.applicator.catalog:get("diff.open_file"))
+		assert(require("gleb.actions.context").execute(action, require("gleb.actions.context").capture()))
+	]])
+	choose_setting("diff.ignore_trim", "Trim Whitespaces")
+	local view = child.lua_get([[require("gleb.diff.view").current()]])
+	child.api.nvim_set_current_win(view.right_win)
+	child.api.nvim_win_set_cursor(view.right_win, { 1, 0 })
+
+	child.type_keys("<Space>")
+
+	eq(H.git(root, { "show", ":f.txt" }), "A\nb \nc\nd\n")
+	eq(checkbox(1), "󰄲")
 end
 
 T["diff: Diff view policy hiding every change keeps the view open"] = function()

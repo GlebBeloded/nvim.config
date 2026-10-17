@@ -73,6 +73,19 @@ T["diff: Diff view do reverts a changed line"] = function()
 	eq(#child.lua_get([[require("gleb.diff.view").current().fragments]]), 2)
 end
 
+T["diff: Diff view do uses an immediate buffer edit"] = function()
+	open_controller()
+	focus("right", 53)
+	local right_buf = child.lua_get([[require("gleb.diff.view").current().right_buf]])
+	child.lua([[require("gleb.diff.view").config.debounce_ms = 10000]])
+
+	child.type_keys("OEDITED<Esc>do")
+
+	eq(child.api.nvim_buf_get_lines(right_buf, 52, 53, false), { "\t\treturn err" })
+	eq(child.fn.search("EDITED", "nw"), 0)
+	eq(child.fn.search("return wrap(err)", "nw"), 0)
+end
+
 T["diff: Diff view dp reverts a deletion from the left window"] = function()
 	open_controller()
 	focus("left", 65)
@@ -209,6 +222,18 @@ T["diff: Diff view Space stages one change"] = function()
 	eq(working:find("+\t\tc.stats.Skipped.Inc()", 1, true) ~= nil, true)
 	eq(working:find("-\tc.stats.LastRun.Touch()", 1, true) ~= nil, true)
 	eq(checkbox(53), "󰄲")
+end
+
+T["diff: Diff view Space stages an immediate buffer edit"] = function()
+	open_controller()
+	focus("right", 53)
+	local view = child.lua_get([[require("gleb.diff.view").current()]])
+	child.api.nvim_buf_set_lines(view.right_buf, 52, 53, false, { "\t\treturn edited(err)" })
+
+	child.type_keys("<Space>")
+
+	eq(H.git(root, { "show", ":" .. manifest.controller }):find("return edited(err)", 1, true) ~= nil, true)
+	eq(H.git(root, { "show", ":" .. manifest.controller }):find("return wrap(err)", 1, true), nil)
 end
 
 T["diff: Diff view stages a final line without a newline"] = function()

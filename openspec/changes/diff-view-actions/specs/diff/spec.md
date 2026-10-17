@@ -7,6 +7,10 @@
 - **WHEN** the right cursor of the `controller.go` view (`diffgo` fixture) is on line 53 and `do` is pressed in normal mode
 - **THEN** right line 53 is `\t\treturn err`, the buffer is modified and not written, and the view has two fragments
 
+#### Scenario: Diff view do uses an immediate buffer edit
+- **WHEN** a line is inserted immediately above right line 53 of the `controller.go` view and `do` is pressed there without waiting for a redraw
+- **THEN** the freshly compared change is reverted, including the inserted line, and right line 53 is `\t\treturn err`
+
 #### Scenario: Diff view dp reverts a deletion from the left window
 - **WHEN** the left cursor of the `controller.go` view is on line 65 and `dp` is pressed in normal mode
 - **THEN** right line 66 is `\tc.stats.LastRun.Touch()`, right line 67 is `\treturn nil`, and the left window is still current
@@ -64,6 +68,10 @@ The states SHALL refresh after each comparison and each toggle.
   - `git diff --cached -U0` changes exactly `-\t\treturn err` to `+\t\treturn wrap(err)`;
   - `git diff -U0` still holds the insertion of line 58 and the deletion of old line 65;
   - the checkbox on line 53 is `☑`.
+
+#### Scenario: Diff view Space stages an immediate buffer edit
+- **WHEN** right line 53 of the `controller.go` view is changed to `\t\treturn edited(err)` and `<Space>` is pressed there without waiting for a redraw
+- **THEN** the index contains `\t\treturn edited(err)`, not the right text from the previous comparison
 
 #### Scenario: Diff view stages a final line without a newline
 - **WHEN** the index ends with a newline, the buffer has `noeol nofixeol`, and `<Space>` is pressed on a change touching the final line
@@ -130,6 +138,10 @@ The actions `diff.ignore_none`, `diff.ignore_trim`, `diff.ignore_whitespaces` an
 #### Scenario: Diff view trim policy hides a trailing space
 - **WHEN** a space is appended to right line 50 of the `controller.go` view, 300 ms pass, and `diff.ignore_trim` runs
 - **THEN** before the action there is a change at line 50; after it there is none, and the view has its three original fragments
+
+#### Scenario: Diff view trim policy shows a staged checkbox
+- **WHEN** `f.txt` changes `a` to `A` and `b` to `b `, `diff.ignore_trim` runs, and `<Space>` is pressed on right line 1
+- **THEN** the index contains both changed lines and the displayed change's checkbox is `☑`
 
 #### Scenario: Diff view policy hiding every change keeps the view open
 - **WHEN** a file differs from `HEAD` only by ignored whitespace and opens while `ignore_whitespaces` is active
