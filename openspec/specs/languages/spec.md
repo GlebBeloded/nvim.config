@@ -93,7 +93,7 @@ A unit test SHALL check every registered language against the contract: each ena
 - **THEN** it has one case per language with an enabled `references` facet, named after that language, each opening the facet's fixture and running `gr` on the facet's symbol
 
 ### Requirement: Parser installs stay valid
-A Neovim started under the test sandbox SHALL NOT create, change or remove anything in the host's `site` directory; there the parser installer SHALL NOT run, and missing configured parsers SHALL be named in one WARN. On every start, a `site/queries/<lang>` symlink whose target is missing or outside the installed nvim-treesitter's `runtime/queries` SHALL be relinked to `<nvim-treesitter>/runtime/queries/<lang>` when that exists, with one INFO naming the languages.
+Under the test sandbox, Neovim SHALL leave the host `site` directory unchanged, skip parser installation, and name missing configured parsers in one WARN. On every start, invalid `site/queries/<lang>` links SHALL be relinked to the installed nvim-treesitter query when it exists, with one INFO naming repaired languages. A replacement failure SHALL produce one WARN naming the link and error, without stopping startup or repair of other links.
 
 #### Scenario: A test child leaves the host site untouched
 - **WHEN** a child is started with the test helpers' sandbox and the full config, and the configured parser list holds a parser the host `site` lacks
@@ -110,3 +110,7 @@ A Neovim started under the test sandbox SHALL NOT create, change or remove anyth
 #### Scenario: Valid links and real folders are left alone
 - **WHEN** the repair runs over a temporary `site/queries` holding a correct `go` link and a real `custom` directory
 - **THEN** both are unchanged and no message is shown
+
+#### Scenario: An unwritable query link does not break startup
+- **WHEN** replacement of one invalid query link fails with a filesystem error while another invalid link can be replaced
+- **THEN** startup continues, the failed link is reported once at WARN with its path and error, and the other link is repaired

@@ -119,6 +119,43 @@ T[outside_scenario]["repairs a temporary path that resolves into the plugin"] = 
 	eq(child.lua_get([[vim.uv.fs_readlink(...)]], { link }), target)
 end
 
+local unwritable_scenario = "languages: An unwritable query link does not break startup"
+T[unwritable_scenario] = MiniTest.new_set()
+
+T[unwritable_scenario]["warns and repairs the next link"] = function()
+	local site, plugin = make_site()
+	local failed_link = vim.fs.joinpath(site, "queries/hcl")
+	local repairable_link = vim.fs.joinpath(site, "queries/go")
+	local repairable_target = vim.fs.joinpath(plugin, "runtime/queries/go")
+	child.lua(
+		[[
+			local failed_link, repairable_link = ...
+			assert(vim.uv.fs_symlink("/read-only/hcl", failed_link))
+			assert(vim.uv.fs_symlink("/missing/go", repairable_link))
+			local unlink = vim.uv.fs_unlink
+			vim.uv.fs_unlink = function(path)
+				if path == failed_link then
+					return nil, "EACCES: permission denied"
+				end
+				return unlink(path)
+			end
+		]],
+		{ failed_link, repairable_link }
+	)
+
+	repair(site, plugin)
+
+	eq(child.lua_get([[vim.uv.fs_readlink(...)]], { failed_link }), "/read-only/hcl")
+	eq(child.lua_get([[vim.uv.fs_readlink(...)]], { repairable_link }), repairable_target)
+	eq(notifications(), {
+		{
+			msg = "Treesitter query link repair failed for " .. failed_link .. ": EACCES: permission denied",
+			level = vim.log.levels.WARN,
+		},
+		{ msg = "Repaired Treesitter query links: go", level = vim.log.levels.INFO },
+	})
+end
+
 T["languages: Valid links and real folders are left alone"] = function()
 	local site, plugin = make_site()
 	local go_link = vim.fs.joinpath(site, "queries/go")
