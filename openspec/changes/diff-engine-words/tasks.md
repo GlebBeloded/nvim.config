@@ -29,9 +29,9 @@ Scenarios: `diff: CJK characters are words of their own`, `diff: An emoji change
 
 Scenarios: `diff: Inner comparison stops after three failures`, `diff: Small fragments keep inner ranges after two failures`, `diff: A deadline during inner comparison keeps the line diff`, `diff: Inner ranges for 500 changed lines stay within budget`, `diff: Squashed word ranges map to buffer columns`, `diff: A range across a newline splits per row`
 
-- [ ] 3.1 Write the scenarios in `tests/unit/diff/test_inner_limits.lua`, `test_perf_inner.lua` and `test_columns.lua`, and see them fail. The deadline case wraps `require("gleb.diff.engine.by_word").compare_and_split` to flip its fake clock.
-- [ ] 3.2 Add `MAX_BAD_LINES`, `MAX_INNER_BYTES` and the inner-phase deadline (design Decision 4), and `inner_columns`
-- [ ] 3.3 Make the three files pass. If the perf bound fails, optimise; never loosen it.
+- [x] 3.1 Write the scenarios in `tests/unit/diff/test_inner_limits.lua`, `test_perf_inner.lua` and `test_columns.lua`, and see them fail. The deadline case wraps `require("gleb.diff.engine.by_word").compare_and_split` to flip its fake clock.
+- [x] 3.2 Add `MAX_BAD_LINES`, `MAX_INNER_BYTES` and the inner-phase deadline (design Decision 4), and `inner_columns`
+- [x] 3.3 Make the three files pass. If the perf bound fails, optimise; never loosen it.
 
 ## 4. Invariants, attribution, check
 
