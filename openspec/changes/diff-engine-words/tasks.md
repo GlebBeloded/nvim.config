@@ -44,7 +44,7 @@ Scenarios: `diff: Random texts keep IntelliJ's inner invariants`
 ## Stuck
 
 - Task: 2. Words, chars and splitting.
-- Probe output: no headless probe was needed; the missing word/char modules and the remaining policy mismatches were directly observable in the focused tests.
-- Attempt 1: added UTF-8 word/char comparison, splitting, inner fragments and squash. The focused tests exposed a punctuation-transfer bug that marked non-punctuation gaps equal, plus whitespace-placement and trailing-line split mismatches.
-- Attempt 2: fixed punctuation transfer, insertion-point placement, edge trimming and trailing unmatched-line splitting. All focused word, char and split scenarios passed except `trim ignores trailing whitespace`; all 27 split goldens passed, but the word and char golden suites still failed on exact TRIM/IGNORE range placement (for example `WordComparisonUtilTest.kt:499` placed the insertion point at byte 1 instead of 2, and `CharComparisonUtilTest.kt:388` retained bytes 3–8 instead of byte 5).
+- Probe output: whole-text word ranges matched the four failing fixtures, while the line path either shifted the trailing-newline range or lost `inner` after `refine_edge_lines` introduced a pure sub-block that squash propagated as `inner = nil`.
+- Attempt 1: restored the missing UTF-8 word, char and splitter modules from the upstream algorithms and merged the saved squash/optimizer work with inner limits. All 27 split goldens passed, as did the prior exact char TRIM/IGNORE examples, but eight `lines_inner` word rows failed because the restored edge-refinement heuristic rewrote native splitter blocks.
+- Attempt 2: removed edge refinement and used the splitter's native blocks. The line-inner cause was removed, but split goldens `SplitComparisonUtilTest.kt:67` and `:72` collapsed expected `{ 1, 2, 0, 1 }` plus `{ 2, 3, 1, 1 }` blocks into `{ 1, 3, 0, 1 }`.
 - Saved implementation: `/Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/b5f3c5b8-bb9a-46d3-a147-dc84204666ea/stuck-attempt.diff`.

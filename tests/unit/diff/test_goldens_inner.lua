@@ -48,10 +48,9 @@ local function start()
 			for _, row in ipairs(rows) do
 				for policy, expected in pairs(row.expect) do
 					local fragments = engine.compare_words(row.text1, row.text2, { policy = policy })
-					local actual = {
-						changed1 = changed_bytes(fragments, 1),
-						changed2 = changed_bytes(fragments, 2),
-					}
+					local actual = {}
+					if expected.changed1 then actual.changed1 = changed_bytes(fragments, 1) end
+					if expected.changed2 then actual.changed2 = changed_bytes(fragments, 2) end
 					if expected.fragments then actual.fragments = tuple_fragments(fragments) end
 					if not vim.deep_equal(actual, expected) then
 						failures[#failures + 1] = { source = row.source, policy = policy, expected = expected, actual = actual }
@@ -59,10 +58,9 @@ local function start()
 					if row.kind == "lines_inner" then
 						local result = engine.compare_lines(lines(row.text1), lines(row.text2), { policy = policy })
 						local inner = #result.fragments == 1 and result.fragments[1].inner or {}
-						local line_actual = {
-							changed1 = changed_bytes(inner or {}, 1),
-							changed2 = changed_bytes(inner or {}, 2),
-						}
+						local line_actual = {}
+						if expected.changed1 then line_actual.changed1 = changed_bytes(inner or {}, 1) end
+						if expected.changed2 then line_actual.changed2 = changed_bytes(inner or {}, 2) end
 						if expected.fragments then line_actual.fragments = tuple_fragments(inner or {}) end
 						if not vim.deep_equal(line_actual, expected) then
 							failures[#failures + 1] = {
@@ -90,10 +88,9 @@ local function start()
 					else
 						fragments = engine.compare_chars(row.text1, row.text2, { policy = policy })
 					end
-					local actual = {
-						changed1 = changed_bytes(fragments, 1),
-						changed2 = changed_bytes(fragments, 2),
-					}
+					local actual = {}
+					if expected.changed1 then actual.changed1 = changed_bytes(fragments, 1) end
+					if expected.changed2 then actual.changed2 = changed_bytes(fragments, 2) end
 					if expected.fragments then actual.fragments = tuple_fragments(fragments) end
 					if not vim.deep_equal(actual, expected) then
 						failures[#failures + 1] = { source = row.source, policy = policy, expected = expected, actual = actual }
