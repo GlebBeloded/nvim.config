@@ -51,8 +51,8 @@ Scenarios: `references: Variable usages are grouped by write and read`, `referen
 
 ## Stuck
 
-- Task 5 is left red for the fix pass. The real-key e2e case passes, but both screen cases differ from the approved K1/K2 colour masks.
-- Probe: the K1 `report` cell is Treesitter capture `@module.go` linked to `Fg`; `Count` is both `@variable.go` and `@function.go`, with `@function.go` linked to `TSFunction`.
-- Attempt 1: remapped `@module.go` to `MiniPickNormal` in the preview window. That fixed `report`, then exposed `Count` as blue instead of the approved `@function.call` green and the selected K2 tag separator inheriting `CursorLine` background.
-- Attempt 2: also remapped `@function.go` to `@function.call` and gave the kind-tag separator `MiniPickNormal`. `Count` matched, but its `(` remained `Fg` instead of `MiniPickNormal`, while the separator still combined with the `CursorLine` background.
-- The preserved second production attempt is `/Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/f1714f29-d709-4cc9-a69c-c10182a4e30b/stuck-attempt.diff`; production edits were reverted and the red tests remain.
+- Task 5 remains red. The screen regressions still disagree with the approved K1/K2 attributes; no production edit is left applied.
+- Probe: `Count`'s `(` is Treesitter capture `@punctuation.bracket.go` linked to `Fg`. The K2 separator extmark combines `MiniPickNormal` with the selected row's `CursorLine` background because it has no replacement mode.
+- Attempt 1: remapped `@punctuation.bracket.go` to `MiniPickNormal` and used replacement mode for the separator. The separator was corrected, but the punctuation remap changed the existing V1 function preview, which must remain unchanged.
+- Attempt 2: applied all three Go capture remaps only while `tree.has_kinds`, on every preview update, and kept replacement mode for the separator. V1 passed again, but K1 and K2 still failed at line 10 column 63: the reference attribute is `4`, while the observed attributes are `@` and `?` respectively.
+- The preserved second production attempt is `/Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/f1714f29-d709-4cc9-a69c-c10182a4e30b/stuck-attempt.diff`; the probe is `probe.lua` beside it.
