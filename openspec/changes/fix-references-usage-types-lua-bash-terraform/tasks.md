@@ -1,33 +1,84 @@
-## 1. Case tables and queries
+## 1. Lua query cases
 
-Scenarios: `references: Lua query classifies every usage type`, `references: Bash query classifies every usage type`, `references: Terraform query classifies every usage type`, `references: Treesitter fallback classifies writes where a parser exists`, `references: HCL fallback classifies variable labels and traversals`, `references: Every query capture is in the catalogue`
+Scenarios: `references: Lua query classifies every usage type`
 
-- [ ] 1.1 Port `drafts/verify.lua` into `tests/unit/references/usage_cases/lua.lua`, `shell.lua` and `terraform.lua`, with the draft fixtures copied to `usage_cases/{lua,shell,terraform}/`. Rename the ids per design.md Decision 1 and apply the HCL expectation changes in Decision 3. Drop the `parity()` checks. Run the terraform table with both `hcl` and `terraform`. Run them with the shared case driver and see them fail against the write/read-only queries.
-- [ ] 1.2 Replace `queries/lua/usages.scm`, `queries/bash/usages.scm` and `queries/hcl/usages.scm` with the draft queries:
-  - rename `local_declaration` to `variable_declaration`;
-  - drop the `variable_`, `module_`, `output_`, `resource_` and `data_declaration` label patterns, keeping the `variable` label's `write` pattern;
-  - keep `queries/terraform/usages.scm` as `; inherits: hcl`.
-- [ ] 1.3 Run the three case tables, `tests/unit/references/test_kind_ts.lua` (or its query-runner successor) and the catalogue test, and see them pass
+- [x] 1.1 Port the Lua cases from `drafts/verify.lua` to `tests/unit/references/usage_cases/lua.lua` with their real sources under `usage_cases/lua/`, add the scenario to the shared driver in `tests/unit/languages/test_contract.lua`, run `make test FILE=tests/unit/languages/test_contract.lua CASE="Lua query classifies every usage type"`, and see it fail against the write/read-only query
+- [x] 1.2 Replace `queries/lua/usages.scm` with the verified draft using the catalogue ids in design.md Decision 1
+- [x] 1.3 Run `make test FILE=tests/unit/languages/test_contract.lua CASE="Lua query classifies every usage type"` and see it pass; also run the Lua cases of `references: Treesitter fallback classifies writes where a parser exists`
 
-## 2. Registry
+## Agent decisions
 
-Scenarios: `languages: Every configured language meets the contract`
+- Keep draft `false` values as `query_expected`, while `expected` uses the classifier's documented `read` fallback so negative positions remain distinguishable in the case data.
+- Declare and consume the draft fixture's synthetic globals on existing lines so it stays lint-clean without moving any verified position.
 
-- [ ] 2.1 Flip `references.usage_types` to `true` in `lua/gleb/languages/{lua,shell,terraform}/init.lua` and see the contract test fail until the three case tables and queries from task 1 are in place.
-- [ ] 2.2 Run `tests/unit/languages/test_contract.lua` and see it pass. Terraform's `target_kinds = { Class = "unknown" }` comes from `languages-registry`; this change adds no target-kind code.
+## 2. Bash query cases
 
-## 3. Fixtures and gr through the real servers
+Scenarios: `references: Bash query classifies every usage type`
 
-Scenarios: `references: gr classifies Lua function calls and redefinitions`, `references: gr classifies Bash exports, writes and reads`, `references: gr classifies Bash function usages as calls`, `references: gr classifies Terraform module variable usages`, `references: gr classifies Terraform module usages`, `references: Lua usages in production and spec files`, `references: Bash usages in production and test scripts`, `references: Terraform variable usages`, `references: gr classifies every Lua local usage`, `references: gr classifies every Bash variable usage`, `references: gr classifies every Terraform variable usage`, `references: Terraform blocks are not type targets`
+- [ ] 2.1 Port the Bash cases from `drafts/verify.lua` to `tests/unit/references/usage_cases/shell.lua` with their real sources under `usage_cases/shell/`, add the scenario to the shared driver in `tests/unit/languages/test_contract.lua`, run `make test FILE=tests/unit/languages/test_contract.lua CASE="Bash query classifies every usage type"`, and see it fail against the write/read-only query
+- [ ] 2.2 Replace `queries/bash/usages.scm` with the verified draft using the catalogue ids in design.md Decision 1
+- [ ] 2.3 Run `make test FILE=tests/unit/languages/test_contract.lua CASE="Bash query classifies every usage type"` and see it pass; also run the Bash cases of `references: Treesitter fallback classifies writes where a parser exists`
 
-- [ ] 3.1 Write the five new scenarios in `tests/integration/references/test_kind.lua`. The `cidr` one opens `network.tf` before `net/main.tf` and waits until terraform-ls returns the module argument. See them fail.
-- [ ] 3.2 Extend `luaproj`, `bashproj` and `tfproj` in `tests/fixtures/build.sh` with the new files and manifest symbols from design.md Decision 7, verbatim. Add the new Bash scripts to `bash -n`, and change no existing file or line.
-- [ ] 3.3 Make current-file write highlights that `gr` appends go through the same classification order (design.md, Decision 5), if the template doesn't already.
-- [ ] 3.4 Run `make test FILE=tests/integration/references/test_kind.lua` and `make test FILE=tests/integration/references/test_languages.lua`, and see every scenario pass, the existing ones included.
+## 3. Terraform query cases
 
-## 4. Screens
+Scenarios: `references: Terraform query classifies every usage type`
 
-Scenarios: `references: Lua usage types match the approved render`, `references: Bash usage types match the approved render`, `references: Terraform usage types match the approved render`
+- [ ] 3.1 Port the Terraform cases from `drafts/verify.lua` to `tests/unit/references/usage_cases/terraform.lua` with their real sources under `usage_cases/terraform/`, add the scenario to the shared driver in `tests/unit/languages/test_contract.lua` for both the `hcl` and `terraform` parsers, run `make test FILE=tests/unit/languages/test_contract.lua CASE="Terraform query classifies every usage type"`, and see it fail against the write/read-only query
+- [ ] 3.2 Replace `queries/hcl/usages.scm` with the verified draft after applying design.md Decisions 1 and 3; keep `queries/terraform/usages.scm` as `; inherits: hcl`
+- [ ] 3.3 Run `make test FILE=tests/unit/languages/test_contract.lua CASE="Terraform query classifies every usage type"` and see it pass; also run `references: HCL fallback classifies variable labels and traversals` and `references: Every query capture is in the catalogue`
 
-- [ ] 4.1 Add screen tests in `tests/screen/references/test_view.lua` at `70x24` for Proposed L1, B1 and H1, with reference screenshots and attribute blocks per the mask groups (real glyphs where the render has stand-ins). See them fail.
-- [ ] 4.2 Make them pass, compare `make render` with `renders/{lua_l1,bash_b1,terraform_h1}_proposed.ansi`, then run `make check`.
+## 4. Enable the language facets
+
+Scenarios: `languages: Every configured language meets the contract`, `languages: A missing usages query breaks the contract`
+
+- [ ] 4.1 Tighten `tests/unit/languages/test_contract.lua` so the configured-language case requires Lua, Shell and Terraform among the enabled usage-type case tables; run `make test FILE=tests/unit/languages/test_contract.lua CASE="Every configured language meets the contract"` and see it fail while their facets remain disabled
+- [ ] 4.2 Set `references.usage_types = true` in `lua/gleb/languages/{lua,shell,terraform}/init.lua`
+- [ ] 4.3 Run `make test FILE=tests/unit/languages/test_contract.lua CASE="Every configured language meets the contract"` and `make test FILE=tests/unit/languages/test_contract.lua CASE="A missing usages query breaks the contract"` and see both pass
+
+## 5. Lua references through the real picker
+
+Scenarios: `references: gr classifies Lua function calls and redefinitions`
+
+- [ ] 5.1 Write the scenario in `tests/integration/references/test_kind.lua`, driving `gr` through the real picker on `apply` with lua_ls and populated fixture data, and see it fail
+- [ ] 5.2 Add the `luaproj` files and `apply` manifest entry from design.md Decision 7 to `tests/fixtures/build.sh`, and make appended current-file write highlights pass through the same query-first classification as listed usages if the template does not already
+- [ ] 5.3 Run `make test FILE=tests/integration/references/test_kind.lua CASE="gr classifies Lua function calls and redefinitions"` and see it pass; run the existing Lua language and local-usage scenarios in `tests/integration/references/{test_languages,test_kind}.lua`
+
+## 6. Bash references through the real picker
+
+Scenarios: `references: gr classifies Bash exports, writes and reads`, `references: gr classifies Bash function usages as calls`
+
+- [ ] 6.1 Write both scenarios in `tests/integration/references/test_kind.lua`, driving `gr` through the real picker on `rate` and `total` with bashls and populated fixture data, and see them fail
+- [ ] 6.2 Add the `bashproj` files and `rate` manifest entry from design.md Decision 7 to `tests/fixtures/build.sh`, add the new scripts to `bash -n`, and change no existing fixture line
+- [ ] 6.3 Run `make test FILE=tests/integration/references/test_kind.lua CASE="gr classifies Bash exports, writes and reads"` and `make test FILE=tests/integration/references/test_kind.lua CASE="gr classifies Bash function usages as calls"` and see both pass; run the existing Bash language and variable-usage scenarios
+
+## 7. Terraform references through the real picker
+
+Scenarios: `references: gr classifies Terraform module variable usages`, `references: gr classifies Terraform module usages`
+
+- [ ] 7.1 Write both scenarios in `tests/integration/references/test_kind.lua`, driving `gr` through the real picker on `cidr` and `vpc` with terraform-ls and populated fixture data; open `network.tf` before `net/main.tf` for `cidr`, wait for the indexed module argument, and see the tests fail
+- [ ] 7.2 Add the `tfproj` files and `cidr`/`vpc` manifest entries from design.md Decision 7 to `tests/fixtures/build.sh`, changing no existing fixture line
+- [ ] 7.3 Run `make test FILE=tests/integration/references/test_kind.lua CASE="gr classifies Terraform module variable usages"` and `make test FILE=tests/integration/references/test_kind.lua CASE="gr classifies Terraform module usages"` and see both pass; run the existing Terraform language, variable-usage and block-target scenarios
+
+## 8. Lua approved render
+
+Scenarios: `references: Lua usage types match the approved render`
+
+- [ ] 8.1 Write the `70x24` screen scenario in `tests/screen/references/test_view.lua`, driving `gr` on `apply` with the real picker, lua_ls and populated fixture data, and see it fail against the approved screenshot
+- [ ] 8.2 Add the Proposed L1 reference screenshot and attribute block from design.md
+- [ ] 8.3 Run `make test FILE=tests/screen/references/test_view.lua CASE="Lua usage types match the approved render"` and see it pass; compare `make render` with `renders/lua_l1_proposed.ansi`
+
+## 9. Bash approved render
+
+Scenarios: `references: Bash usage types match the approved render`
+
+- [ ] 9.1 Write the `70x24` screen scenario in `tests/screen/references/test_view.lua`, driving `gr` on `rate` with the real picker, bashls and populated fixture data, and see it fail against the approved screenshot
+- [ ] 9.2 Add the Proposed B1 reference screenshot and attribute block from design.md
+- [ ] 9.3 Run `make test FILE=tests/screen/references/test_view.lua CASE="Bash usage types match the approved render"` and see it pass; compare `make render` with `renders/bash_b1_proposed.ansi`
+
+## 10. Terraform approved render
+
+Scenarios: `references: Terraform usage types match the approved render`
+
+- [ ] 10.1 Write the `70x24` screen scenario in `tests/screen/references/test_view.lua`, driving `gr` on `vpc` with the real picker, terraform-ls and populated fixture data, and see it fail against the approved screenshot
+- [ ] 10.2 Add the Proposed H1 reference screenshot and attribute block from design.md
+- [ ] 10.3 Run `make test FILE=tests/screen/references/test_view.lua CASE="Terraform usage types match the approved render"` and see it pass; compare `make render` with `renders/terraform_h1_proposed.ansi`, then run `make check`

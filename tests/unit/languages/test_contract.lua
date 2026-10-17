@@ -76,6 +76,23 @@ T[configured_scenario]["query case tables"] = function()
 	end
 end
 
+T["references: Lua query classifies every usage type"] = function()
+	local query_cases = require("tests.unit.references.usage_cases.lua")
+	for _, suite in ipairs(query_cases.suites) do
+		local positions = vim.tbl_map(function(case)
+			return { line = case.line, character = case.character }
+		end, suite.cases)
+		local expected = vim.tbl_map(function(case)
+			return case.expected
+		end, suite.cases)
+		local actual = child.lua_get(
+			[[require("gleb.references.kind_ts").classify(...)]],
+			{ suite.source, suite.filetype, positions }
+		)
+		eq(actual, expected)
+	end
+end
+
 T["references: TypeScript query classifies every usage type"] = function()
 	local query_cases = require("tests.unit.references.usage_cases.js")
 	for _, suite in ipairs(query_cases.suites) do
