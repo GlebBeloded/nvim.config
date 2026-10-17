@@ -87,6 +87,13 @@ This change ports IntelliJ's word and char levels on top of the line engine, so 
 - "is diffbanding perfect? I want to own ui 100%".
 - "I'm used to Idea", "I like IDEA IDE diff more".
 
+## Decision (auditor, 2026-10-17, no stubs, shipped tests)
+
+- `by_word`, `by_char` and the split/squash step implement IntelliJ's ByWord/ByChar (DEFAULT plus the TRIM/IGNORE corrections) in full; no task is ticked against a placeholder (one prefix-to-suffix span); tasks ticked on the placeholder are unticked and redone on the real modules.
+- The diff-engine-lines scenarios keep holding by asking for `highlight = "by_line"` (or comparing line ranges only) in their tests; that test edit is part of this change.
+- Inner goldens, limits and perf tests fail on a fallback: a nil or multi-fragment `inner` is a failure, never "no changes"; the perf case edits several words per line so the word LCS actually runs; the invariants test adds a minimality check (no range spans an unchanged word under DEFAULT).
+- `policy.squash` tracks running lengths (linear), no re-concatenation per merge.
+
 ## Agent decisions
 
 - **Byte offsets, not characters.**
