@@ -55,6 +55,16 @@ local function is_eligible_editor(win)
 		and not vim.wo[win].diff
 end
 
+---@param win integer
+---@return boolean
+local function is_tree_window(win)
+	if not vim.api.nvim_win_is_valid(win) then
+		return false
+	end
+	local filetype = vim.bo[vim.api.nvim_win_get_buf(win)].filetype
+	return filetype == "gleb-file-tree" or filetype == "neo-tree"
+end
+
 local function remember_editor()
 	local win = vim.api.nvim_get_current_win()
 	if is_eligible_editor(win) then
@@ -342,18 +352,51 @@ local function open_view(path)
 	return view
 end
 
+---@param tab integer
+---@return integer
+local function eligible_editor_count(tab)
+	return vim.iter(vim.api.nvim_tabpage_list_wins(tab)):fold(0, function(count, win)
+		return count + (is_eligible_editor(win) and 1 or 0)
+	end)
+end
+
+---@param tab integer
+local function close_tree_windows(tab)
+	local view = M.state.by_tab[tab]
+	for _, win in ipairs(vim.api.nvim_tabpage_list_wins(tab)) do
+		if is_tree_window(win) and (not view or win ~= view.win) and vim.api.nvim_win_is_valid(win) then
+			vim.api.nvim_win_close(win, true)
+		end
+	end
+	if view then
+		close_view(view)
+	end
+end
+
 local function on_quit_pre()
 	local tab = vim.api.nvim_get_current_tabpage()
-	local view = M.state.by_tab[tab]
-	if not view or vim.api.nvim_get_current_win() == view.win then
-		return
+	if
+		M.state.by_tab[tab]
+		and is_eligible_editor(vim.api.nvim_get_current_win())
+		and eligible_editor_count(tab) == 1
+	then
+		close_tree_windows(tab)
 	end
-	local editor_count = vim.iter(vim.api.nvim_tabpage_list_wins(tab)):fold(0, function(count, win)
-		local filetype = vim.bo[vim.api.nvim_win_get_buf(win)].filetype
-		return count + ((filetype == "gleb-file-tree" or filetype == "neo-tree") and 0 or 1)
-	end)
-	if editor_count == 1 then
-		close_view(view)
+end
+
+---@param tab integer
+local function close_trees_if_orphaned(tab)
+	if vim.api.nvim_tabpage_is_valid(tab) and M.state.by_tab[tab] and eligible_editor_count(tab) == 0 then
+		close_tree_windows(tab)
+	end
+end
+
+local function close_trees_without_an_editor()
+	for tab in pairs(M.state.by_tab) do
+		local pending_tab = tab
+		vim.schedule(function()
+			close_trees_if_orphaned(pending_tab)
+		end)
 	end
 end
 
@@ -405,6 +448,7 @@ function M.setup()
 	remember_editor()
 	vim.api.nvim_create_autocmd("WinEnter", { group = view_group, callback = remember_editor })
 	vim.api.nvim_create_autocmd("QuitPre", { group = view_group, callback = on_quit_pre })
+	vim.api.nvim_create_autocmd("WinClosed", { group = view_group, callback = close_trees_without_an_editor })
 end
 
 return M

@@ -58,9 +58,9 @@ Scenarios: `file-tree: Project tree disables editor-only window features`, `file
 
 Scenarios: `file-tree: Project tree closes before last editor with close`, `file-tree: Project and neo-tree close before the last editor`
 
-- [ ] 3c.1 Write these scenarios in `tests/integration/file-tree/test_project_tree.lua`, opening the real project tree and neo-tree before driving `:close` or `:q`; see them fail.
-- [ ] 3c.2 Make `QuitPre` count both tree filetypes and close them before the last eligible editor for either close command.
-- [ ] 3c.3 Run `make test FILE=tests/integration/file-tree/test_project_tree.lua` for these cases and see them pass.
+- [x] 3c.1 Write these scenarios in `tests/integration/file-tree/test_project_tree.lua`, opening the real project tree and neo-tree before driving `:close` or `:q`; see them fail.
+- [x] 3c.2 Make `QuitPre` count both tree filetypes and close them before the last eligible editor for either close command.
+- [x] 3c.3 Run `make test FILE=tests/integration/file-tree/test_project_tree.lua` for these cases and see them pass.
 
 ## 4a. Open and close keys
 
@@ -189,12 +189,4 @@ Scenarios: `file-tree: Project tree matches the approved render`, `file-tree: Pr
 - Task 2a introduces `view.setup()` only as the render-highlight owner required by the entry-point order; task 2b extends it with per-tab windows.
 - Eligible editor selection remembers the latest valid `WinEnter` per tab and falls back to another valid editor, so special windows never become targets.
 - Cursor hiding queries the current mode and keeps one original `guicursor`; per-view window and mode events restore it whenever the tree is not focused in normal or visual mode.
-
-## Stuck
-
-Task 3c remains unticked. The `Project tree closes before last editor with close` scenario stays red with `tree tab did not close`; the real project-and-neo-tree `:q` scenario passes.
-
-- Probe: neo-tree opens beside the project tree when its real `dir=` is supplied (the sandbox's `/var` alias otherwise opens neo-tree's cwd confirmation popup). After `:close`, the command returns successfully but the target tab remains; a subsequent direct `nvim_win_close` succeeds and removes that tab.
-- Attempt 1: close the project and neo-tree windows synchronously in `QuitPre`, then schedule a guarded close of the still-valid editor window. The target tab remained after the scheduled callback.
-- Attempt 2: count only eligible editors, add a reentrancy guard, close both tree types, and close the editor window directly. The same behavior assertion failed.
-- Saved second attempt: `/Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/3bb4a2e3-33e2-4151-9e62-67300da1da6a/stuck-attempt.diff`.
+- `:q` closes both tree types in `QuitPre`; `:close` schedules the same guarded cleanup from `WinClosed` because Neovim has no pre-close event and rejects closing the final tree inside that autocmd.
