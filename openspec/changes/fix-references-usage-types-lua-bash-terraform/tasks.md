@@ -75,9 +75,9 @@ Scenarios: `references: Lua usage types match the approved render`
 
 Scenarios: `references: Bash usage types match the approved render`
 
-- [ ] 9.1 Write the `70x24` screen scenario in `tests/screen/references/test_view.lua`, driving `gr` on `rate` with the real picker, bashls and populated fixture data, and see it fail against the approved screenshot
-- [ ] 9.2 Add the Proposed B1 reference screenshot and attribute block from design.md
-- [ ] 9.3 Run `make test FILE=tests/screen/references/test_view.lua CASE="Bash usage types match the approved render"` and see it pass; compare `make render` with `renders/bash_b1_proposed.ansi`
+- [x] 9.1 Write the `70x24` screen scenario in `tests/screen/references/test_view.lua`, driving `gr` on `rate` with the real picker, bashls and populated fixture data, and see it fail against the approved screenshot
+- [x] 9.2 Add the Proposed B1 reference screenshot and attribute block from design.md
+- [x] 9.3 Run `make test FILE=tests/screen/references/test_view.lua CASE="Bash usage types match the approved render"` and see it pass; compare `make render` with `renders/bash_b1_proposed.ansi`
 
 ## 10. Terraform approved render
 
