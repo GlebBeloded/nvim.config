@@ -35,6 +35,14 @@ class SpecReady(unittest.TestCase):
         self.assertFalse(self.check("## 1. A\n- [ ] 1.1 x\n\n## Blocked\n- which?\n")["ok"])
         self.assertFalse(self.check("## 1. A\n- [ ] 1.1 x\n\n## Unblocked\n- this\n")["ok"])
 
+    def test_auditor_decision_is_not_ready(self):
+        with tempfile.TemporaryDirectory() as root:
+            pathlib.Path(root, "c").mkdir()
+            pathlib.Path(root, "c", "tasks.md").write_text("- [ ] 1.1 x\n")
+            pathlib.Path(root, "c", "proposal.md").write_text("## Why\nx\n\n## Decision (auditor, 2026-10-17)\n- split task 2\n")
+            with mock.patch.dict(os.environ, {"LOOP_CHANGES_DIR": root}), mock.patch.object(spec_ready, "gate", return_value=GREEN):
+                self.assertFalse(spec_ready.ready("c")["ok"])
+
     def test_red_gate_is_not_ready(self):
         with tempfile.TemporaryDirectory() as root:
             pathlib.Path(root, "c").mkdir()
