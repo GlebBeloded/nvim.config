@@ -1,6 +1,7 @@
 ## Why
 
 Kind: bug
+Depends: fix-treesitter-site-links
 
 The startup repair of dangling `site/queries` links raises an error when the directory is not writable:
 `lua/gleb/treesitter/repair.lua` wraps `vim.uv.fs_unlink` and `vim.uv.fs_symlink` in `assert` during startup, so a
