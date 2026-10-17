@@ -16,12 +16,12 @@ Scenarios: `diff: Diff view pads the side without lines`, `diff: Diff view folds
 
 Scenarios: `diff: Diff view opens on the current file`, `diff: Diff view of an unchanged file opens nothing`, `diff: Diff view outside a repository opens nothing`, `diff: Diff view of a file absent from HEAD`, `diff: Diff view focuses an open view of the same file`, `diff: Diff view pads the side without lines`, `diff: Diff view gutter shows both line numbers`, `diff: Diff view folds unchanged lines with context 4`, `diff: Diff view highlights changed words`, `diff: Diff view highlight colours`
 
-- [ ] 2.1 Write these scenarios in `tests/integration/diff/test_view.lua` (fixture via `F.copy("diffgo", …)`), and see them fail
-- [ ] 2.2 Add:
+- [x] 2.1 Write these scenarios in `tests/integration/diff/test_view.lua` (fixture via `F.copy("diffgo", …)`), and see them fail
+- [x] 2.2 Add:
   - `source.lua`, `windows.lua`, `render.lua`, `highlights.lua` and `view/init.lua` (`open`, `current`, `M.state`, `M.reset`, `M.config`), following design Decisions 2, 3, 5 and 6;
   - `lua/gleb/diff/init.lua`, required from `init.lua`.
-- [ ] 2.3 Add `diff.open_file` to `lua/gleb/diff/actions.lua` and register the list in `init.lua`'s `gleb.actions.setup` call.
-- [ ] 2.4 Run the file and see it pass
+- [x] 2.3 Add `diff.open_file` to `lua/gleb/diff/actions.lua` and register the list in `init.lua`'s `gleb.actions.setup` call.
+- [x] 2.4 Run the file and see it pass
 
 ## 3. Folds, sync, navigation and editing
 
@@ -63,3 +63,5 @@ Scenarios: `diff: Diff view matches the approved render`
 
 - Layout rows carry optional 1-based `left` and `right` lines, with fold metadata in the same ordered list, so rendering and synchronization can consume one model.
 - Public helpers use snake-case names (`transfer_line`, `change_at_line`) to follow the repository's Lua naming convention.
+- Untracked files derive their repository-relative path after the required `ls-files` call returns empty, so `git show` can represent an absent HEAD side.
+- Diff windows detach nvim-ufo before creating manual folds, because its asynchronous provider otherwise replaces the paired ranges on the real file buffer.
