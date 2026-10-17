@@ -34,7 +34,7 @@ T["references: Every query capture is in the catalogue"] = function()
 		return { languages = names, unknown = unknown }
 	end)()]])
 
-	eq(actual.languages, { "bash", "go", "hcl", "lua", "terraform" })
+	eq(actual.languages, { "bash", "go", "gomod", "hcl", "lua", "terraform" })
 	eq(actual.unknown, {})
 end
 
