@@ -86,6 +86,48 @@ local function open_tree_on_makefile()
 	focus_tree_row("Makefile")
 end
 
+local function open_approved_tree()
+	edit("internal/billing/invoice.go")
+	run_toggle()
+	assert(
+		child.wait(
+			[[(function()
+		local view = require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		return view and next(require("gleb.file_tree.git").status(view.root)) ~= nil
+	end)()]],
+			5000
+		),
+		"project-tree git status did not load"
+	)
+	for _, name in ipairs({ "cmd/server", "web", "src" }) do
+		focus_tree_row(name)
+		child.type_keys("<CR>")
+	end
+	focus_tree_row("invoice.go")
+end
+
+---@param needle string
+---@return string[]
+local function visible_groups_for(needle)
+	return child.lua_get(
+		[[(function(needle)
+			for row, line in ipairs(vim.api.nvim_buf_get_lines(0, 0, -1, false)) do
+				if line:find(needle, 1, true) then
+					local groups = {}
+					for _, mark in ipairs(vim.api.nvim_buf_get_extmarks(
+						0, require("gleb.file_tree.render").namespace, { row - 1, 0 }, { row - 1, -1 }, { details = true }
+					)) do
+						groups[#groups + 1] = mark[4].hl_group
+					end
+					return groups
+				end
+			end
+			return {}
+		end)(...)]],
+		{ needle }
+	)
+end
+
 ---@param needle string
 ---@return boolean
 local function has_tree_line(needle)
@@ -126,7 +168,7 @@ local function groups_for(needle)
 end
 
 T["file-tree: Project tree root row names the project"] = function()
-	local expected = "  billing  " .. vim.fn.fnamemodify(root, ":~")
+	local expected = "   billing  " .. vim.fn.fnamemodify(root, ":~")
 	eq(lines()[1], expected)
 	eq(groups_for("billing"), { "FileTreeExpander", "FileTreeFolderIcon", "FileTreeRoot", "FileTreeRootPath" })
 end
@@ -158,6 +200,71 @@ T["file-tree: Project tree highlight colours come from the palette"] = function(
 	H.expect_hl_colors(child, "FileTreeRoot", { fg = "#ddc7a1", bold = true })
 	H.expect_hl_colors(child, "FileTreeRootPath", { fg = "#928374" })
 	H.expect_hl_colors(child, "FileTreeCursorLine", { bg = "#32302f" })
+end
+
+T["file-tree: Project tree rows expose their highlight groups"] = function()
+	open_approved_tree()
+
+	eq(
+		visible_groups_for("billing  "),
+		{ "FileTreeExpander", "FileTreeFolderIcon", "FileTreeRoot", "FileTreeRootPath" }
+	)
+	eq(visible_groups_for(".github/workflows"), { "FileTreeExpander", "FileTreeFolderIcon", "FileTreeFolderName" })
+	eq(visible_groups_for("internal"), { "FileTreeExpander", "FileTreeFolderIcon", "FileTreeGitModified" })
+	eq(visible_groups_for("invoice.go"), { "DevIconGo", "FileTreeGitModified" })
+	eq(visible_groups_for("tax.go"), { "DevIconGo", "FileTreeGitAdded" })
+	eq(visible_groups_for("notes.md"), { "DevIconMd", "FileTreeGitUntracked" })
+	eq(visible_groups_for("cart.tsx"), { "DevIconTsx", "FileTreeFileName" })
+	eq(visible_groups_for("price.d.ts"), { "DevIconTypeScriptDeclaration", "FileTreeFileName" })
+	eq(visible_groups_for("price.test.ts"), { "DevIconTestTs", "FileTreeFileName" })
+	eq(visible_groups_for("price.ts"), { "DevIconTypeScript", "FileTreeGitModified" })
+	eq(visible_groups_for("package-lock.json"), { "DevIconPackageLockJson", "FileTreeFileName" })
+	eq(visible_groups_for("package.json"), { "DevIconPackageJson", "FileTreeFileName" })
+	eq(visible_groups_for(".gitignore"), { "DevIconGitIgnore", "FileTreeFileName" })
+	eq(visible_groups_for("go.mod"), { "DevIconGoMod", "FileTreeFileName" })
+	eq(visible_groups_for("go.sum"), { "DevIconGoSum", "FileTreeFileName" })
+	eq(visible_groups_for("Makefile"), { "DevIconMakefile", "FileTreeFileName" })
+	eq(visible_groups_for("README.md"), { "DevIconReadme", "FileTreeFileName" })
+
+	local colours = {
+		FileTreeNormal = { fg = "#d4be98", bg = "#282828" },
+		FileTreeRoot = { fg = "#ddc7a1", bold = true },
+		FileTreeRootPath = { fg = "#928374" },
+		FileTreeExpander = { fg = "#928374" },
+		FileTreeFolderIcon = { fg = "#7daea3" },
+		FileTreeFolderName = { fg = "#d4be98" },
+		FileTreeFileName = { fg = "#d4be98" },
+		FileTreeGitModified = { fg = "#7daea3" },
+		FileTreeGitAdded = { fg = "#a9b665" },
+		FileTreeGitUntracked = { fg = "#e78a4e" },
+		FileTreeGitDeleted = { fg = "#928374" },
+		FileTreeGitRenamed = { fg = "#89b482" },
+		FileTreeGitConflict = { fg = "#ea6962" },
+		FileTreeCursorLine = { bg = "#32302f" },
+	}
+	for group, expected in pairs(colours) do
+		H.expect_hl_colors(child, group, expected)
+	end
+	assert(child.fn.execute("highlight FileTreeHiddenCursor"):find("blend=100", 1, true))
+
+	local icons = {
+		DevIconGo = "#00add8",
+		DevIconTsx = "#1354bf",
+		DevIconTypeScriptDeclaration = "#d59855",
+		DevIconTestTs = "#519aba",
+		DevIconTypeScript = "#519aba",
+		DevIconPackageLockJson = "#7a0d21",
+		DevIconPackageJson = "#e8274b",
+		DevIconGitIgnore = "#f54d27",
+		DevIconGoMod = "#00add8",
+		DevIconGoSum = "#00add8",
+		DevIconMakefile = "#6d8086",
+		DevIconMd = "#dddddd",
+		DevIconReadme = "#ededed",
+	}
+	for group, fg in pairs(icons) do
+		H.expect_hl_colors(child, group, { fg = fg })
+	end
 end
 
 T["file-tree: Project tree opens on the left at width 35"] = function()

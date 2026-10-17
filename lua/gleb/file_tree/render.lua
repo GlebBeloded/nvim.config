@@ -52,6 +52,7 @@ end
 ---@return FileTreeRenderSegment[]
 local function root_segments(row)
 	return {
+		{ text = " " },
 		{ text = EXPANDED, group = "FileTreeExpander" },
 		{ text = " " },
 		{ text = FOLDER_OPEN, group = "FileTreeFolderIcon" },

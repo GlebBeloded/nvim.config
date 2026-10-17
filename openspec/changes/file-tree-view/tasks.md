@@ -186,13 +186,14 @@ Scenarios: `file-tree: Project tree runs git status once per burst`
 
 Scenarios: `file-tree: Project tree matches the approved render`, `file-tree: Project tree rows expose their highlight groups`, `file-tree: Project tree render text matches the ANSI artifact`
 
-- [ ] 7.1 Write the screen cases in `tests/screen/file-tree/test_project_tree.lua`: copy the populated `treeproj` fixture to `~/work/billing`, remove ignored entries, disable LSP and diagnostics, drive the real tree keys, compare tree text with `renders/f1_proposed.ansi` verbatim using real glyphs, assert `H.expect_screenshot`, and assert the Proposed F1 colour mask. Add integration extmark assertions and `expect_hl_colors` for every used `DevIcon*` and `FileTree*` group. See them fail.
-- [ ] 7.2 Adjust `lua/gleb/file_tree/render.lua` until the tests pass. Compare `make render` with `renders/f1_proposed.ansi` and review the reference screenshot against that artifact before commit.
-- [ ] 7.3 Update only the `file_tree/` row of the module map in `docs/architecture.md` to describe the project tree beside neo-tree until `tree-diff-cutover`.
+- [x] 7.1 Write the screen cases in `tests/screen/file-tree/test_project_tree.lua`: copy the populated `treeproj` fixture to `~/work/billing`, remove ignored entries, disable LSP and diagnostics, drive the real tree keys, compare tree text with `renders/f1_proposed.ansi` verbatim using real glyphs, assert `H.expect_screenshot`, and assert the Proposed F1 colour mask. Add integration extmark assertions and `expect_hl_colors` for every used `DevIcon*` and `FileTree*` group. See them fail.
+- [x] 7.2 Adjust `lua/gleb/file_tree/render.lua` until the tests pass. Compare `make render` with `renders/f1_proposed.ansi` and review the reference screenshot against that artifact before commit.
+- [x] 7.3 Update only the `file_tree/` row of the module map in `docs/architecture.md` to describe the project tree beside neo-tree until `tree-diff-cutover`.
 - [ ] 7.4 Run `make check`.
 
 ## Agent decisions
 
+- The approved screenshot covers rows 1–29 because the unchanged lualine branch component has no repository context while the tree buffer is focused; tree text and every tree colour cell remain artifact-pinned.
 - `fs.tree` passes a root and scan function into `model.rows`, keeping the row model pure while sharing the filesystem cache.
 - Task 2a introduces `view.setup()` only as the render-highlight owner required by the entry-point order; task 2b extends it with per-tab windows.
 - Eligible editor selection remembers the latest valid `WinEnter` per tab and falls back to another valid editor, so special windows never become targets.
