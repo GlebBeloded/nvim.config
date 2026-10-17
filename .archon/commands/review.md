@@ -29,7 +29,7 @@ the diff against the conventions in docs/architecture.md and openspec/specs plus
   `openspec/changes/<change>/`; if `$ARTIFACTS_DIR/fix-scope.md` exists, the last fix pass edited
   the planning files it lists (proposal.md, .openspec.yaml, spec deltas): a finding unless the edit only
   repairs a failed `openspec validate` or trial archive;
-- test integrity: no deleted, skipped, xfailed or weakened tests, no loosened assertions (a screen case that checks fewer mask rows or swaps a screenshot comparison for text checks is weakened), test
+- test integrity: no deleted, skipped, xfailed or weakened tests, no loosened assertions (a screen case that checks fewer mask rows or swaps a screenshot comparison for text checks is weakened; a new screen case with a screenshot but no colour mask from the approved render is untested; a tasks.md rewrite that drops a `make types`/`make check`/`make colorize` step is weakened), test
   names match scenario titles; new case names must not already exist under tests/;
 - spec integrity: no scenario removed or weakened;
 - reuse over custom code (an existing plugin or built-in would do);

@@ -970,6 +970,10 @@ The context pack SHALL hold only what the next task needs, and the prompts and t
 - **WHEN** `tests/trace.lua` runs on a test case named after no scenario
 - **THEN** it exits 1 and the ORPHAN heading says to name it after a scenario or add that scenario to `openspec/changes/<change>/specs`, never delete it
 
+#### Scenario: A new look is checked against its approved render
+- **WHEN** `.archon/commands/implement.md` and `review.md` are read
+- **THEN** implement requires a new screen case to assert its whole colour mask from the change's approved render, and review calls a new screen case without that mask untested and a tasks.md rewrite that drops a gate step weakened
+
 #### Scenario: Review treats a narrowed screen check as weakened
 - **WHEN** `.archon/commands/review.md` is read
 - **THEN** its test-integrity rule calls a screen case that checks fewer mask rows, or replaces a screenshot comparison with text checks, a weakened test
