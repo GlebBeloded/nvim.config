@@ -11,6 +11,7 @@ local M = {}
 ---@field end1 integer
 ---@field start2 integer
 ---@field end2 integer
+---@field inner? gleb.diff.InnerFragment[]
 
 ---@class gleb.diff.Match
 ---@field [1] integer Index on side 1, 0-based.

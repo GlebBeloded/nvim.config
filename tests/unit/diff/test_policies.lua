@@ -7,8 +7,13 @@ local child = H.new_child()
 local function start()
 	child.start_bare()
 	child.lua([[
+		local function line_range(fragment)
+			return { start1 = fragment.start1, end1 = fragment.end1, start2 = fragment.start2, end2 = fragment.end2 }
+		end
+
 		function CompareFragments(lines1, lines2, policy)
-			return require("gleb.diff.engine").compare_lines(lines1, lines2, { policy = policy }).fragments
+			local fragments = require("gleb.diff.engine").compare_lines(lines1, lines2, { policy = policy }).fragments
+			return vim.tbl_map(line_range, fragments)
 		end
 	]])
 end
