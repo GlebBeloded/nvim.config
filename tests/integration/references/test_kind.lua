@@ -118,8 +118,9 @@ end
 ---@param timeout? integer
 ---@param parser? string
 ---@param before_open? fun()
+---@param minimum? integer
 ---@return table[]
-local function open_references(root, path, line, col, server, client_name, timeout, parser, before_open)
+local function open_references(root, path, line, col, server, client_name, timeout, parser, before_open, minimum)
 	client_name = client_name or server
 	timeout = timeout or TIMEOUT_MS
 	require_server(server)
@@ -164,7 +165,7 @@ local function open_references(root, path, line, col, server, client_name, timeo
 	end
 	child.lua(
 		[[
-		local server, timeout = ...
+		local server, timeout, minimum = ...
 _G.references_ready = nil
 local bufnr = vim.api.nvim_get_current_buf()
 local started = vim.uv.hrtime()
@@ -174,7 +175,7 @@ local function request()
 	local params = vim.lsp.util.make_position_params(0, client.offset_encoding)
 	params.context = { includeDeclaration = false }
 	client:request("textDocument/references", params, function(_, result)
-		if result and #result > 0 then
+		if result and #result >= minimum then
 			populated = populated + 1
 		else
 			populated = 0
@@ -188,7 +189,7 @@ local function request()
 end
 request()
 ]],
-		{ client_name, timeout }
+		{ client_name, timeout, minimum or 1 }
 	)
 	assert(child.wait("_G.references_ready == true", timeout), "references did not become ready")
 
@@ -425,6 +426,8 @@ local provider = assert(client.server_capabilities.executeCommandProvider)
 provider.commands = vim.tbl_filter(function(command)
 	return command ~= "typescript.tsserverRequest"
 end, provider.commands)
+vim.treesitter.query.set("ecma", "usages", "")
+vim.treesitter.query.set("javascript", "usages", "")
 vim.treesitter.query.set("typescript", "usages", "")
 ]])
 	end)
@@ -446,6 +449,147 @@ T[typescript_direct_scenario]["classifies every usage"] = function()
 	eq(classify(root, "main.ts", 1, 5, "vtsls"), {
 		{ "main.ts", 2, 1, "write" },
 		{ "main.ts", 3, 13, "read" },
+	})
+end
+
+local typescript_alias_scenario = "references: TypeScript type alias targets keep their usage types"
+T[typescript_alias_scenario] = MiniTest.new_set()
+T[typescript_alias_scenario]["classifies alias annotations through gr"] = function()
+	local root = H.git_repo({
+		["package.json"] = [[{"private":true}]],
+		["tsconfig.json"] = [[{"compilerOptions":{"strict":true}}]],
+		["main.ts"] = table.concat({
+			"type Amount = number;",
+			"const rate: Amount = 1;",
+			"function convert(a: Amount): Amount {",
+			"  return a * rate;",
+			"}",
+			"convert(2);",
+		}, "\n"),
+	})
+	local actual = open_references(root, "main.ts", 1, 6, "vtsls", nil, nil, "typescript")
+	eq(actual, {
+		{ "main.ts", 2, 13, "variable_declaration" },
+		{ "main.ts", 3, 21, "parameter_declaration" },
+		{ "main.ts", 3, 30, "return_type" },
+	})
+end
+
+local typescript_class_scenario = "references: gr classifies TypeScript class usages"
+T[typescript_class_scenario] = MiniTest.new_set()
+T[typescript_class_scenario]["fixture contains the exact class usages"] = function()
+	local root, manifest = F.copy("tsproj", vim.fn.tempname())
+
+	eq(vim.fn.readfile(root .. "/src/money.ts"), {
+		"// An amount in cents.",
+		"export class Money {",
+		"  cents: number;",
+		"",
+		"  constructor(cents: number) {",
+		"    this.cents = cents;",
+		"  }",
+		"",
+		'  // Reads a decimal amount such as "19.99".',
+		"  static parse(text: string): Money {",
+		"    return new Money(Math.round(Number(text) * 100));",
+		"  }",
+		"}",
+		"",
+		"// Narrows an unknown value to an amount.",
+		"export function isMoney(value: unknown): value is Money {",
+		"  return value instanceof Money;",
+		"}",
+	})
+	eq(vim.fn.readfile(root .. "/src/wallet.ts"), {
+		'import { Money, isMoney } from "./money";',
+		"",
+		"export class Coin extends Money {}",
+		"",
+		"export class Wallet {",
+		"  items: Money[] = [];",
+		"",
+		"  add(item: Money): Wallet {",
+		"    this.items.push(item);",
+		"    return this;",
+		"  }",
+		"",
+		"  latest(): Money {",
+		"    return this.items.at(-1) as Money;",
+		"  }",
+		"",
+		"  restore(json: string): Wallet {",
+		"    const value: unknown = JSON.parse(json);",
+		"    const item: Money = isMoney(value) ? value : Money.parse(json);",
+		"    return this.add(item);",
+		"  }",
+		"}",
+	})
+	eq(vim.fn.readfile(root .. "/src/money.test.ts"), {
+		'import { Money } from "./money";',
+		"",
+		'export const amounts: Array<Money> = [Money.parse("19.99")];',
+	})
+	eq(manifest.references.Money, {
+		{ path = "src/money.ts", line = 2, col = 14 },
+		{ path = "src/money.ts", line = 10, col = 31 },
+		{ path = "src/money.ts", line = 11, col = 16 },
+		{ path = "src/money.ts", line = 16, col = 51 },
+		{ path = "src/money.ts", line = 17, col = 27 },
+		{ path = "src/wallet.ts", line = 1, col = 10 },
+		{ path = "src/wallet.ts", line = 3, col = 27 },
+		{ path = "src/wallet.ts", line = 6, col = 10 },
+		{ path = "src/wallet.ts", line = 8, col = 13 },
+		{ path = "src/wallet.ts", line = 13, col = 13 },
+		{ path = "src/wallet.ts", line = 14, col = 33 },
+		{ path = "src/wallet.ts", line = 19, col = 17 },
+		{ path = "src/wallet.ts", line = 19, col = 50 },
+		{ path = "src/money.test.ts", line = 1, col = 10 },
+		{ path = "src/money.test.ts", line = 3, col = 29 },
+		{ path = "src/money.test.ts", line = 3, col = 39 },
+	})
+end
+T[typescript_class_scenario]["renders every class usage type"] = function()
+	local root, manifest = F.copy("tsproj", vim.fn.tempname())
+	local declaration = manifest.references.Money[1]
+	local actual = open_references(
+		root,
+		declaration.path,
+		declaration.line,
+		declaration.col,
+		"vtsls",
+		nil,
+		nil,
+		"typescript",
+		nil,
+		#manifest.references.Money - 1
+	)
+	eq(actual, {
+		{ "src/money.test.ts", 1, 10, "import" },
+		{ "src/money.test.ts", 3, 29, "type_instantiation" },
+		{ "src/money.test.ts", 3, 39, "static_member" },
+		{ "src/money.ts", 10, 31, "return_type" },
+		{ "src/money.ts", 11, 16, "new" },
+		{ "src/money.ts", 16, 51, "instanceof" },
+		{ "src/money.ts", 17, 27, "instanceof" },
+		{ "src/wallet.ts", 1, 10, "import" },
+		{ "src/wallet.ts", 3, 27, "extends" },
+		{ "src/wallet.ts", 6, 10, "field_declaration" },
+		{ "src/wallet.ts", 8, 13, "parameter_declaration" },
+		{ "src/wallet.ts", 13, 13, "return_type" },
+		{ "src/wallet.ts", 14, 33, "cast" },
+		{ "src/wallet.ts", 19, 17, "variable_declaration" },
+		{ "src/wallet.ts", 19, 50, "static_member" },
+	})
+end
+
+local typescript_method_scenario = "references: gr classifies TypeScript method usages as calls"
+T[typescript_method_scenario] = MiniTest.new_set()
+T[typescript_method_scenario]["renders every method usage as a call"] = function()
+	local root = F.copy("tsproj", vim.fn.tempname())
+	local actual = open_references(root, "src/money.ts", 10, 10, "vtsls", nil, nil, "typescript", nil, 2)
+	eq(actual, {
+		{ "src/money.test.ts", 3, 45, "call" },
+		{ "src/wallet.ts", 19, 56, "call" },
 	})
 end
 

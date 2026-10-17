@@ -112,4 +112,20 @@ T["references: Without kinds or a parser a usage is other"] = function()
 	eq(actual, { "unclassified" })
 end
 
+T["references: TSX and TypeScript buffers use their own parser"] = function()
+	local actual = child.lua_get([[(function()
+		local classify = require("gleb.references.kind_ts").classify
+		return {
+			classify("const price = <Price value={new Money(1)} />;", "typescriptreact", {
+				{ line = 0, character = 32 },
+			})[1],
+			classify("const m = <Money>raw;", "typescript", {
+				{ line = 0, character = 11 },
+			})[1],
+		}
+	end)()]])
+
+	eq(actual, { "new", "cast" })
+end
+
 return T

@@ -6,6 +6,7 @@ local M = {
 }
 
 local kind_ts = require("gleb.references.kind_ts")
+local kind_refine = require("gleb.references.kind_refine")
 local languages = require("gleb.languages")
 
 local CLASSIFY_TIMEOUT_MS = 3000
@@ -34,26 +35,6 @@ local VARIABLE_SYMBOLS = {
 	[vim.lsp.protocol.SymbolKind.Variable] = true,
 	[vim.lsp.protocol.SymbolKind.Constant] = true,
 }
-local TYPE_POSITION_KINDS = {
-	field_declaration = true,
-	parameter_declaration = true,
-	return_type = true,
-	receiver = true,
-	variable_declaration = true,
-	const_declaration = true,
-	type_alias = true,
-	type_assertion = true,
-	type_conversion = true,
-	type_instantiation = true,
-	type_constraint = true,
-	type_parameter_declaration = true,
-	cast = true,
-	instanceof = true,
-	extends = true,
-	impl = true,
-	catch = true,
-}
-
 ---@param filetype string
 ---@return gleb.language.References?
 local function references_config(filetype)
@@ -494,23 +475,6 @@ local function fallback_position(usage, client)
 	return { line = range.start.line, character = character }
 end
 
----@param kind string
----@param target gleb.references.TargetKind
----@param filetype string
----@return string?
-local function refine_query_kind(kind, target, filetype)
-	if kind == "call" and target == "type" and filetype == "go" then
-		return "type_conversion"
-	end
-	local drops_function_argument = kind == "function_argument" and target ~= "function"
-	local drops_static_member = kind == "static_member" and target ~= "type"
-	local drops_type_position = target ~= "unknown" and target ~= "type" and TYPE_POSITION_KINDS[kind]
-	if drops_function_argument or drops_static_member or drops_type_position then
-		return nil
-	end
-	return kind
-end
-
 ---@param groups table<string, gleb.references.KindUsage[]>
 ---@param target gleb.references.TargetKind
 local function apply_query_kinds(groups, target)
@@ -527,7 +491,9 @@ local function apply_query_kinds(groups, target)
 				local query_kind = kinds[index]
 				local is_syntactic = query_kind ~= "write" and query_kind ~= "read" and query_kind ~= "unclassified"
 				if is_syntactic then
-					usage.kind = refine_query_kind(query_kind, target, usage.filetype or "") or usage.kind or "read"
+					usage.kind = kind_refine.refine_query_kind(query_kind, target, usage.filetype or "")
+						or usage.kind
+						or "read"
 				elseif usage.kind == nil then
 					usage.kind = query_kind
 				end
@@ -541,14 +507,14 @@ end
 local function refine_target_kinds(usages, target)
 	for _, usage in ipairs(usages) do
 		local kind = usage.kind
-		local drops_read_write = (target == "function" or target == "type") and (kind == "write" or kind == "read")
-		local drops_function_argument = kind == "function_argument" and target ~= "function"
-		local drops_static_member = kind == "static_member" and target ~= "type"
-		local drops_type_position = target ~= "unknown" and target ~= "type" and TYPE_POSITION_KINDS[kind]
-		if kind == "call" and target == "type" and usage.filetype == "go" then
-			usage.kind = "type_conversion"
-		elseif drops_read_write or drops_function_argument or drops_static_member or drops_type_position then
-			usage.kind = "unclassified"
+		if kind then
+			local drops_read_write = (target == "function" or target == "type") and (kind == "write" or kind == "read")
+			local refined = kind_refine.refine_query_kind(kind, target, usage.filetype or "")
+			if drops_read_write or refined == nil then
+				usage.kind = "unclassified"
+			else
+				usage.kind = refined
+			end
 		end
 	end
 end

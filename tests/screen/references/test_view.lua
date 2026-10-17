@@ -51,6 +51,87 @@ local LEGEND = {
 	z = "ReferencesMaskBackground",
 }
 
+local TYPESCRIPT_LEGEND = vim.tbl_extend("force", LEGEND, {
+	["."] = "Normal",
+	G = "DevIconTypeScript",
+	g = "ReferencesFileLabelDevIconTypeScript",
+	I = "ReferencesUsageTypeFieldDeclaration",
+	i = "ReferencesUsageTypeFieldDeclarationLabel",
+	A = "ReferencesUsageTypeImport",
+	a = "ReferencesUsageTypeImportLabel",
+	W = "ReferencesUsageTypeNew",
+	w = "ReferencesUsageTypeNewLabel",
+	J = "ReferencesUsageTypeParameterDeclaration",
+	j = "ReferencesUsageTypeParameterDeclarationLabel",
+	U = "ReferencesUsageTypeReturnType",
+	u = "ReferencesUsageTypeReturnTypeLabel",
+	Y = "ReferencesUsageTypeStaticMember",
+	y = "ReferencesUsageTypeStaticMemberLabel",
+	V = "ReferencesUsageTypeExtends",
+	v = "ReferencesUsageTypeExtendsLabel",
+	L = "ReferencesUsageTypeCast",
+	l = "ReferencesUsageTypeCastLabel",
+	K = "ReferencesUsageTypeInstanceof",
+	["1"] = "ReferencesUsageTypeInstanceofLabel",
+	H = "ReferencesUsageTypeTypeInstantiation",
+	["2"] = "ReferencesUsageTypeTypeInstantiationLabel",
+	R = "ReferencesUsageTypeVariableDeclaration",
+	["3"] = "ReferencesUsageTypeVariableDeclarationLabel",
+})
+
+local TYPESCRIPT_GROUPED_MASK = {
+	"......................................................................",
+	".........bttttttttttttttttttttttbbbbbbbbbbbbbbbbbbbbbbbbbbbb..........",
+	".........bfffPfppppppppppffssffffffffffffffffffffffffffffffb..........",
+	".........bfffffIfiiiiiiiiiiiiiiiiiffsffffffffffffffffffffffb..........",
+	".........bfffffffDfdddffsffffffffffffffffffffffffffffffffffb..........",
+	".........bcccccccccGcgggggggggcccccccccccccccccccccccccccccb..........",
+	".........bfffffAfaaaaaaffsfffffffffffffffffffffffffffffffffb..........",
+	".........bfffffffDfdddffsffffffffffffffffffffffffffffffffffb..........",
+	".........bfffffffffGfgggggggggssfffffffffffffffffffffffffffb..........",
+	".........bfffffWfwwwwwwwwwwwwwwwwwwwwwffsffffffffffffffffffb..........",
+	".........bfffffffDfdddffsffffffffffffffffffffffffffffffffffb..........",
+	".........bfffffffffGfggggggggsssfffffffffffffffffffffffffffb..........",
+	".........bfffffJfjjjjjjjjjjjjjjjjjjjjjffsffffffffffffffffffb..........",
+	".........bfffffffDfdddffsffffffffffffffffffffffffffffffffffb..........",
+	".........bfffffffffGfgggggggggssfffffffffffffffffffffffffffb..........",
+	".........bfffffUfuuuuuuuuuuuffsffffffffffffffffffffffffffffb..........",
+	".........bfffffffDfdddffsffffffffffffffffffffffffffffffffffb..........",
+	".........bfffffffffGfggggggggsssfffffffffffffffffffffffffffb..........",
+	".........bfffffffffGfgggggggggsssffffffffffffffffffffffffffb..........",
+	".........bfffffYfyyyyyyyyyyyyyyyyyyyyffsfffffffffffffffffffb..........",
+	".........bfffffffDfdddffsffffffffffffffffffffffffffffffffffb..........",
+	".........bfffffffffGfgggggggggsssffffffffffffffffffffffffffb..........",
+	".........bfffffVfvvvvvvvvvffsffffffffffffffffffffffffffffffb..........",
+	".........bfffffffDfdddffsffffffffffffffffffffffffffffffffffb..........",
+	".........bfffffffffGfgggggggggssfffffffffffffffffffffffffffb..........",
+	".........bfffffLflllllllllffsffffffffffffffffffffffffffffffb..........",
+	".........bfffffffDfdddffsffffffffffffffffffffffffffffffffffb..........",
+	".........bfffffffffGfgggggggggsssffffffffffffffffffffffffffb..........",
+	".........bfffffKf1111111111ffsfffffffffffffffffffffffffffffb..........",
+	".........bfffffffDfdddffsffffffffffffffffffffffffffffffffffb..........",
+	".........bfffffffffGfggggggggsssfffffffffffffffffffffffffffb..........",
+	".........bfffffffffGfggggggggsssfffffffffffffffffffffffffffb..........",
+	".........bfffffRf33333333333333333333ffsfffffffffffffffffffb..........",
+	".........bfffffffDfdddffsffffffffffffffffffffffffffffffffffb..........",
+	".........bfffffffffGfgggggggggsssffffffffffffffffffffffffffb..........",
+	".........bfffEfeeeeffsfffffffffffffffffffffffffffffffffffffb..........",
+	".........bfffffAfaaaaaaffsfffffffffffffffffffffffffffffffffb..........",
+	".........bfffffffDfdddffsffffffffffffffffffffffffffffffffffb..........",
+	".........bfffffffffGfgggggggggggggssfffffffffffffffffffffffb..........",
+	".........bfffffYfyyyyyyyyyyyyyyyyyyyyffsfffffffffffffffffffb..........",
+	".........bfffffffDfdddffsffffffffffffffffffffffffffffffffffb..........",
+	".........bfffffffffGfgggggggggggggssfffffffffffffffffffffffb..........",
+	".........bfffffHf222222222222222222ffsfffffffffffffffffffffb..........",
+	".........bfffffffDfdddffsffffffffffffffffffffffffffffffffffb..........",
+	".........bfffffffffGfgggggggggggggssfffffffffffffffffffffffb..........",
+	".........bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb..........",
+	".........bfxxxxxxxxxxxxxxxxxxxoxxxxxxxxxxxxxoxxxxxxxxxxxxxxb..........",
+	".........bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb..........",
+	"......................................................................",
+	"......................................................................",
+}
+
 local KIND_GROUPED_MASK = {
 	"VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV",
 	"BBbVVVVVVVVVVVVVVVVVVVVVbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbBB",
@@ -292,6 +373,64 @@ local function open_invoice()
 	child.cmd("redraw")
 end
 
+local function open_money()
+	child.o.columns, child.o.lines = 70, 50
+	local typescript_root, typescript_manifest = F.copy("tsproj", vim.fn.tempname())
+	local declaration = typescript_manifest.references.Money[1]
+	child.cmd("cd " .. vim.fn.fnameescape(typescript_root) .. " | edit " .. vim.fn.fnameescape(declaration.path))
+	child.wo.number = true
+	child.wo.relativenumber = false
+	child.wo.numberwidth = 3
+	child.lua([[require("ibl").setup_buffer(0, { enabled = false })]])
+	child.o.showtabline = 0
+	child.o.laststatus = 2
+	child.wo.winbar = "%#Normal#▎ money.ts"
+	child.api.nvim_win_set_cursor(0, { declaration.line, declaration.col - 1 })
+	eq(child.wait([[#vim.lsp.get_clients({ bufnr = 0, name = "vtsls" }) > 0]], TIMEOUT_MS), true)
+	child.lua(
+		[[
+		local minimum, timeout = ...
+_G.references_ready = nil
+local bufnr = vim.api.nvim_get_current_buf()
+local started = vim.uv.hrtime()
+local populated = 0
+local function request()
+	local client = vim.lsp.get_clients({ bufnr = bufnr, name = "vtsls" })[1]
+	local params = vim.lsp.util.make_position_params(0, client.offset_encoding)
+	params.context = { includeDeclaration = false }
+	client:request("textDocument/references", params, function(_, result)
+		populated = result and #result >= minimum and populated + 1 or 0
+		if populated >= 2 then
+			_G.references_ready = true
+		elseif (vim.uv.hrtime() - started) / 1e6 < timeout then
+			vim.defer_fn(request, 10)
+		end
+	end, bufnr)
+end
+request()
+]],
+		{ #typescript_manifest.references.Money - 1, TIMEOUT_MS }
+	)
+	eq(child.wait("_G.references_ready == true", TIMEOUT_MS), true)
+	child.type_keys("gr")
+	eq(child.wait([[vim.bo.filetype == "gleb-references"]], TIMEOUT_MS), true)
+	eq(child.wait([[not require("gleb.references.view").state.classifying]], TIMEOUT_MS), true)
+	child.lua([[
+local state = require("gleb.references.view").state
+for index, node in ipairs(state.visible_nodes) do
+	if node.kind == "usage" then
+		vim.api.nvim_win_set_cursor(state.tree_win, { index, 0 })
+		break
+	end
+end
+local win = state.origin_win
+require("lualine").hide({ place = { "statusline" } })
+vim.o.statusline = "%#Normal# NORMAL  ⎇ main%=typescript "
+vim.wo[win].statusline = "%#Normal# NORMAL  ⎇ main%=typescript "
+]])
+	child.cmd("redraw")
+end
+
 local function tree_lines()
 	return child.lua_get([[vim.api.nvim_buf_get_lines(require("gleb.references.view").state.tree_buf, 0, -1, false)]])
 end
@@ -336,6 +475,17 @@ end
 local function with_cleared_background(mask)
 	local result = vim.deepcopy(mask)
 	for index = 2, #result do
+		result[index] = result[index]:gsub("%.", "z")
+	end
+	return result
+end
+
+---@param mask string[]
+---@return string[]
+local function with_cleared_typescript_background(mask)
+	local result = vim.deepcopy(mask)
+	result[1] = result[1]:gsub("%.", "z")
+	for index = 3, #result do
 		result[index] = result[index]:gsub("%.", "z")
 	end
 	return result
@@ -436,6 +586,14 @@ T["references: u turns struct usage types into row tags"] = function()
 	H.expect_screenshot(child.get_screenshot())
 	clear_background_for_mask()
 	H.expect_screen_colors(child, 1, with_cleared_background(STRUCT_TAGGED_MASK), LEGEND)
+end
+
+T["references: TypeScript class usages are grouped by usage type"] = function()
+	eq(require("tests.render.cases").ts_p1_class ~= nil, true)
+	open_money()
+	H.expect_screenshot(child.get_screenshot())
+	clear_background_for_mask()
+	H.expect_screen_colors(child, 1, with_cleared_typescript_background(TYPESCRIPT_GROUPED_MASK), TYPESCRIPT_LEGEND)
 end
 
 return T

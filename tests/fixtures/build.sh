@@ -51,9 +51,16 @@ identifier_locations() {
 			file = $0; sub(/:.*/, "", file)
 			rest = substr($0, length(file) + 2); line = rest; sub(/:.*/, "", line)
 			text = substr(rest, length(line) + 2)
-			col = index(text, identifier)
-			printf "%s{\"path\":\"%s\",\"line\":%d,\"col\":%d}", sep, file, line, col
-			sep = ","
+			offset = 0
+			while (match(text, "(^|[^A-Za-z0-9_])" identifier "([^A-Za-z0-9_]|$)")) {
+				matched = substr(text, RSTART, RLENGTH)
+				col = offset + RSTART + index(matched, identifier) - 1
+				printf "%s{\"path\":\"%s\",\"line\":%d,\"col\":%d}", sep, file, line, col
+				sep = ","
+				consumed = RSTART + index(matched, identifier) + length(identifier) - 2
+				offset += consumed
+				text = substr(text, consumed + 1)
+			}
 		}'
 }
 
@@ -164,17 +171,70 @@ import * as price from "./price";
 
 export const expected = price.total(10, 2);
 EOF
+	cat >src/money.ts <<'EOF'
+// An amount in cents.
+export class Money {
+  cents: number;
+
+  constructor(cents: number) {
+    this.cents = cents;
+  }
+
+  // Reads a decimal amount such as "19.99".
+  static parse(text: string): Money {
+    return new Money(Math.round(Number(text) * 100));
+  }
+}
+
+// Narrows an unknown value to an amount.
+export function isMoney(value: unknown): value is Money {
+  return value instanceof Money;
+}
+EOF
+	cat >src/wallet.ts <<'EOF'
+import { Money, isMoney } from "./money";
+
+export class Coin extends Money {}
+
+export class Wallet {
+  items: Money[] = [];
+
+  add(item: Money): Wallet {
+    this.items.push(item);
+    return this;
+  }
+
+  latest(): Money {
+    return this.items.at(-1) as Money;
+  }
+
+  restore(json: string): Wallet {
+    const value: unknown = JSON.parse(json);
+    const item: Money = isMoney(value) ? value : Money.parse(json);
+    return this.add(item);
+  }
+}
+EOF
+	cat >src/money.test.ts <<'EOF'
+import { Money } from "./money";
+
+export const amounts: Array<Money> = [Money.parse("19.99")];
+EOF
 	if command -v tsc >/dev/null 2>&1; then
 		tsc --noEmit
 	else
 		for file in eslint.config.js src/price.ts src/cart.ts src/price.test.ts; do
 			node --check --input-type=module <"$file"
 		done
+		for file in src/money.ts src/wallet.ts src/money.test.ts; do
+			node --check "$file"
+		done
 	fi
 	git init -q
 	commit "TypeScript references fixture"
-	printf '{"references":{"total":[%s]}}\n' \
-		"$(identifier_locations total src/price.ts src/cart.ts src/price.test.ts)" >../manifest.json
+	printf '{"references":{"total":[%s],"Money":[%s]}}\n' \
+		"$(identifier_locations total src/price.ts src/cart.ts src/price.test.ts)" \
+		"$(identifier_locations Money src/money.ts src/wallet.ts src/money.test.ts)" >../manifest.json
 }
 
 rustproj() {

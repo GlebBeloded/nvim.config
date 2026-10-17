@@ -222,7 +222,7 @@ Research (2026-10-17):
 - **Partial first replies** from vtsls could make a `gr` test flaky. The tests wait for the full location count (Decision 5).
 - **Older Node** without type stripping can't run the fallback syntax check. The fixture then needs `tsc`.
 
-## Renders
+## Render conventions
 
 Stand-ins:
 
@@ -240,6 +240,8 @@ Stand-ins:
 - The `ReferencesUsageType*` groups are created by `fix-references-usage-types`. Until it lands, `make colorize` shows them as plain text.
 - The editor is 70 columns wide, so there is no preview. It is 50 rows tall, so that P1's 43 tree rows fit without scrolling.
 - The background is `src/money.ts`. Rows below the file's end are blank (`fillchars` `eob: `).
+
+## Current render
 
 **Current — class usages**: `70x50`, Normal, `src/money.ts` (extended tsproj fixture), vtsls attached, `gr` on `Money` (line 2); default grouping; classification finished; no preview below 80 columns. Every usage is `unclassified`: no usage type level, no hint entry.
 
@@ -350,6 +352,8 @@ Stand-ins:
 ```
 
 Legend: `b` [PickerBorder] · `t` [MiniPickBorderText] · `f` [MiniPickNormal] · `c` [MiniPickMatchCurrent] · `s` [PickerSecondary] · `r` [CursorLineNr] · `h` [Search] · `x` [PickerHint] · `o` [PickerToggleOn] · `k` [@keyword] · `T` [@type.builtin] · `F` [@function.call] · `q` [@string] · `m` [@comment] · `n` [@number] · `.` [Normal] · `P` [ReferencesProduction] · `p` [ReferencesProductionLabel] · `E` [ReferencesTest] · `e` [ReferencesTestLabel] · `D` [ReferencesFolder] · `d` [ReferencesFolderLabel] · `G` [DevIconTypeScript] · `g` [ReferencesFileLabelDevIconTypeScript]
+
+## Proposed render
 
 **Proposed P1 — TypeScript usage types of a class**: `70x50`, Normal, `src/money.ts` (extended tsproj fixture), vtsls attached, `gr` on `Money` (line 2); tests grouped, folders on, usage type on; classification finished; first usage selected; no preview below 80 columns, the window shrinks to its content and stays centred.
 

@@ -11,6 +11,7 @@ end)
 T["references: Every query capture is in the catalogue"] = function()
 	local actual = child.lua_get([[(function()
 		local catalogue = require("gleb.references.usage_types")
+		local query_languages = { ecma = "javascript", ts_angle_cast = "typescript" }
 		local languages = {}
 		for _, path in ipairs(vim.api.nvim_get_runtime_file("queries/*/usages.scm", true)) do
 			languages[path:match("/queries/([^/]+)/usages%.scm$")] = true
@@ -19,9 +20,13 @@ T["references: Every query capture is in the catalogue"] = function()
 		table.sort(names)
 		local unknown = {}
 		for _, language in ipairs(names) do
-			local loaded, reason = vim.treesitter.language.add(language)
+			local query_language = query_languages[language] or language
+			local loaded, reason = vim.treesitter.language.add(query_language)
 			assert(loaded, reason or (language .. " parser is not installed"))
-			local query = assert(vim.treesitter.query.get(language, "usages"), language .. " usages query is missing")
+			local query = assert(
+				vim.treesitter.query.get(query_language, "usages"),
+				language .. " usages query is missing"
+			)
 			for _, capture in ipairs(query.captures) do
 				if not vim.startswith(capture, "_") then
 					local id = capture:match("^usage%.(.+)$")
@@ -34,7 +39,19 @@ T["references: Every query capture is in the catalogue"] = function()
 		return { languages = names, unknown = unknown }
 	end)()]])
 
-	eq(actual.languages, { "bash", "go", "gomod", "hcl", "lua", "terraform" })
+	eq(actual.languages, {
+		"bash",
+		"ecma",
+		"go",
+		"gomod",
+		"hcl",
+		"javascript",
+		"lua",
+		"terraform",
+		"ts_angle_cast",
+		"tsx",
+		"typescript",
+	})
 	eq(actual.unknown, {})
 end
 
