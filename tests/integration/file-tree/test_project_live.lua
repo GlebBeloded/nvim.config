@@ -69,6 +69,81 @@ local function focus_tree_row(name)
 	assert(found, "tree row not found: " .. name)
 end
 
+---@param relative string
+local function focus_tree_path(relative)
+	local found = child.lua_get(
+		[[(function(path)
+			local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+			for index, row in ipairs(view.rows) do
+				if row.path == path then
+					vim.api.nvim_win_set_cursor(view.win, { index, 0 })
+					return true
+				end
+			end
+			return false
+		end)(...)]],
+		{ vim.fs.joinpath(assert(vim.uv.fs_realpath(root)), relative) }
+	)
+	assert(found, "tree path not found: " .. relative)
+end
+
+---@param name string
+---@return boolean
+local function wait_for_tree_row(name)
+	return child.lua_get(
+		[[(function(name)
+			return vim.wait(1000, function()
+				local view = require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()]
+				return view and vim.iter(view.rows):any(function(row)
+					return row.label == name
+				end)
+			end, 20)
+		end)(...)]],
+		{ name }
+	)
+end
+
+---@param name string
+---@param group string
+---@return boolean
+local function wait_for_tree_highlight(name, group)
+	return child.lua_get(
+		[[(function(name, group)
+			return vim.wait(1000, function()
+				local view = require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()]
+				if not view then
+					return false
+				end
+				for index, row in ipairs(view.rows) do
+					if row.label == name then
+						local marks = vim.api.nvim_buf_get_extmarks(
+							view.buf,
+							require("gleb.file_tree.render").namespace,
+							{ index - 1, 0 },
+							{ index - 1, -1 },
+							{ details = true }
+						)
+						return vim.iter(marks):any(function(mark)
+							return mark[4].hl_group == group
+						end)
+					end
+				end
+				return false
+			end, 20)
+		end)(...)]],
+		{ name, group }
+	)
+end
+
+local function open_billing_folder()
+	edit("README.md")
+	run_action("file_tree.toggle")
+	focus_tree_row("internal")
+	child.type_keys("<CR>")
+	focus_tree_path("internal/billing")
+	child.type_keys("<CR>")
+end
+
 T["file-tree: Project tree follows the current file"] = function()
 	edit("README.md")
 	run_action("file_tree.toggle")
@@ -242,6 +317,73 @@ T["file-tree: Project tree tolerates an unreadable folder"] = function()
 	eq(locked_rows[1].empty, true)
 	eq(notifications(), {})
 	assert(vim.uv.fs_chmod(locked, 448))
+end
+
+T["file-tree: A compact chain splits when a folder gains an entry"] = function()
+	edit("README.md")
+	run_action("file_tree.toggle")
+	eq(wait_for_tree_row("cmd/server"), true)
+
+	local result = H.system(child, { "mkdir", vim.fs.joinpath(root, "cmd/worker") }, root)
+	eq(result.code, 0)
+
+	eq(wait_for_tree_row("cmd"), true)
+	eq(wait_for_tree_row("server"), true)
+	eq(wait_for_tree_row("worker"), true)
+	eq(wait_for_tree_row("cmd/server"), false)
+end
+
+T["file-tree: Every compact chain member is watched"] = function()
+	edit("README.md")
+	run_action("file_tree.toggle")
+	eq(wait_for_tree_row("cmd/server"), true)
+
+	local watched = child.lua_get(
+		[[(function(root)
+			root = require("gleb.file_tree.fs").normalize(root)
+			local handles = assert(require("gleb.file_tree.watch").state.roots[root]).handles
+			return { handles[root .. "/cmd"] ~= nil, handles[root .. "/cmd/server"] ~= nil }
+		end)(...)]],
+		{ root }
+	)
+	eq(watched, { true, true })
+
+	local result = H.system(child, { "mkdir", vim.fs.joinpath(root, "cmd/worker") }, root)
+	eq(result.code, 0)
+	eq(wait_for_tree_row("cmd"), true)
+	eq(wait_for_tree_row("server"), true)
+	eq(wait_for_tree_row("worker"), true)
+end
+
+T["file-tree: Project tree shows files created outside Neovim"] = function()
+	open_billing_folder()
+
+	local result = H.system(child, { "touch", vim.fs.joinpath(root, "internal/billing/fee.go") }, root)
+	eq(result.code, 0)
+
+	eq(wait_for_tree_highlight("fee.go", "FileTreeGitUntracked"), true)
+end
+
+T["file-tree: Project tree recolours a written file"] = function()
+	open_billing_folder()
+	child.cmd("wincmd l")
+	edit("internal/billing/discount.go")
+	child.api.nvim_buf_set_lines(0, -1, -1, false, { "// changed" })
+
+	child.cmd("write")
+
+	eq(wait_for_tree_highlight("discount.go", "FileTreeGitModified"), true)
+end
+
+T["file-tree: Project tree recolours after staging outside Neovim"] = function()
+	edit("README.md")
+	run_action("file_tree.toggle")
+	eq(wait_for_tree_highlight("notes.md", "FileTreeGitUntracked"), true)
+
+	local result = H.system(child, { "git", "add", "notes.md" }, root)
+	eq(result.code, 0)
+
+	eq(wait_for_tree_highlight("notes.md", "FileTreeGitAdded"), true)
 end
 
 return T

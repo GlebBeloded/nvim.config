@@ -138,9 +138,9 @@ Scenarios: `file-tree: Project tree normalizes a symlinked root`, `file-tree: Pr
 
 Scenarios: `file-tree: A compact chain splits when a folder gains an entry`, `file-tree: Every compact chain member is watched`, `file-tree: Project tree shows files created outside Neovim`, `file-tree: Project tree recolours a written file`, `file-tree: Project tree recolours after staging outside Neovim`
 
-- [ ] 5b1.1 Write these scenarios in `tests/integration/file-tree/test_project_live.lua`; external changes use `vim.system` (`touch`, `mkdir`, `git add`), never a hand-built tree state. See them fail.
-- [ ] 5b1.2 Add `lua/gleb/file_tree/watch.lua`; watch every cached scan feeding a row, invalidate only affected caches, debounce redraws and request git refreshes.
-- [ ] 5b1.3 Run `make test FILE=tests/integration/file-tree/test_project_live.lua` for these cases and see them pass.
+- [x] 5b1.1 Write these scenarios in `tests/integration/file-tree/test_project_live.lua`; external changes use `vim.system` (`touch`, `mkdir`, `git add`), never a hand-built tree state. See them fail.
+- [x] 5b1.2 Add `lua/gleb/file_tree/watch.lua`; watch every cached scan feeding a row, invalidate only affected caches, debounce redraws and request git refreshes.
+- [x] 5b1.3 Run `make test FILE=tests/integration/file-tree/test_project_live.lua` for these cases and see them pass.
 
 ## 5b2. Watch lifecycle and deletion
 
@@ -200,3 +200,4 @@ Scenarios: `file-tree: Project tree matches the approved render`, `file-tree: Pr
 - `:q` closes both tree types in `QuitPre`; `:close` schedules the same guarded cleanup from `WinClosed` because Neovim has no pre-close event and rejects closing the final tree inside that autocmd.
 - Unfold-all queues displayed directory rows breadth-first and rolls back the first expansion over 5000 rows, preserving a bounded visible tree.
 - A tree scan assigns each real directory to its first lexical path while allowing that same path to be rescanned, so compact-row construction can reuse scans without traversing aliases or loops.
+- Live-update tests inspect rendered extmark groups; a small async Git snapshot module supplies watcher-triggered colours, while throttling and exhaustive porcelain parsing remain in task 6.

@@ -80,12 +80,16 @@ end
 
 --- Build the filesystem-backed source consumed by the pure row model.
 ---@param root string
+---@param on_scan? fun(path: string)
 ---@return FileTreeSource
-function M.tree(root)
+function M.tree(root, on_scan)
 	local realpaths = { [vim.uv.fs_realpath(root) or root] = root }
 	return {
 		root = root,
 		scan = function(path)
+			if on_scan then
+				on_scan(path)
+			end
 			local realpath = vim.uv.fs_realpath(path)
 			local first_path = realpath and realpaths[realpath] or nil
 			if first_path and first_path ~= path then

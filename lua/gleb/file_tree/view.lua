@@ -3,8 +3,10 @@
 local M = {}
 
 local fs = require("gleb.file_tree.fs")
+local git = require("gleb.file_tree.git")
 local model = require("gleb.file_tree.model")
 local render = require("gleb.file_tree.render")
+local watch = require("gleb.file_tree.watch")
 
 local EXPANSION_MAX_ROWS = 5000
 
@@ -161,7 +163,14 @@ end
 ---@param path string
 local function draw(view, path)
 	expand_to(view, path)
-	view.rows = model.rows(fs.tree(view.root), view.expanded, {})
+	local watched = {}
+	view.rows = model.rows(
+		fs.tree(view.root, function(scan_path)
+			watched[scan_path] = true
+		end),
+		view.expanded,
+		git.status(view.root)
+	)
 	render.draw(view.buf, view.rows)
 	for index, row in ipairs(view.rows) do
 		if row.path == path then
@@ -169,6 +178,30 @@ local function draw(view, path)
 			break
 		end
 	end
+	watch.sync(view.root, watched, function(changed_path)
+		if M.state.by_tab[view.tab] ~= view or not vim.api.nvim_buf_is_valid(view.buf) then
+			return
+		end
+		for _, row in ipairs(view.rows) do
+			if
+				row.kind == "directory"
+				and row.label:find("/", 1, true)
+				and vim.startswith(row.path, changed_path .. "/")
+			then
+				view.expanded[changed_path:sub(#view.root + 2)] = true
+				break
+			end
+		end
+		local selected = view.rows[vim.api.nvim_win_get_cursor(view.win)[1]]
+		draw(view, selected and selected.path or view.root)
+	end, function()
+		git.request(view.root, function()
+			if M.state.by_tab[view.tab] == view and vim.api.nvim_buf_is_valid(view.buf) then
+				local selected = view.rows[vim.api.nvim_win_get_cursor(view.win)[1]]
+				draw(view, selected and selected.path or view.root)
+			end
+		end)
+	end)
 end
 
 ---@param view FileTreeView
@@ -184,14 +217,7 @@ end
 ---@param view FileTreeView
 ---@param path string
 local function redraw_at(view, path)
-	view.rows = model.rows(fs.tree(view.root), view.expanded, {})
-	render.draw(view.buf, view.rows)
-	for index, row in ipairs(view.rows) do
-		if row.path == path then
-			vim.api.nvim_win_set_cursor(view.win, { index, 0 })
-			return
-		end
-	end
+	draw(view, path)
 end
 
 ---@param buf integer
@@ -534,6 +560,12 @@ local function open_view(path)
 	M.state.by_tab[tab] = view
 	add_teardown_autocmds(view)
 	reveal_path(view, path, true)
+	git.request(root, function()
+		if M.state.by_tab[tab] == view and vim.api.nvim_buf_is_valid(buf) then
+			local selected = view.rows[vim.api.nvim_win_get_cursor(win)[1]]
+			draw(view, selected and selected.path or root)
+		end
+	end)
 	update_cursor(view)
 	return view
 end
@@ -635,6 +667,21 @@ function M.setup()
 	vim.api.nvim_create_autocmd("WinEnter", { group = view_group, callback = remember_editor })
 	vim.api.nvim_create_autocmd("QuitPre", { group = view_group, callback = on_quit_pre })
 	vim.api.nvim_create_autocmd("WinClosed", { group = view_group, callback = close_trees_without_an_editor })
+	vim.api.nvim_create_autocmd("BufWritePost", {
+		group = view_group,
+		callback = function()
+			local path = fs.normalize(vim.api.nvim_buf_get_name(0))
+			for _, view in pairs(M.state.by_tab) do
+				if vim.startswith(path, view.root .. "/") then
+					git.request(view.root, function()
+						if M.state.by_tab[view.tab] == view and vim.api.nvim_buf_is_valid(view.buf) then
+							draw(view, path)
+						end
+					end)
+				end
+			end
+		end,
+	})
 end
 
 return M
