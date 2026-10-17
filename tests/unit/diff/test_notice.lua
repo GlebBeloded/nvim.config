@@ -1,0 +1,50 @@
+local MiniTest = require("mini.test")
+
+local eq = MiniTest.expect.equality
+
+local ENGINE_DIR = "lua/gleb/diff/engine"
+local FIXTURE_DIR = "tests/unit/diff/fixtures"
+
+local function read(path)
+	return table.concat(vim.fn.readfile(path), "\n")
+end
+
+local function lua_files(path)
+	local files = {}
+	for name, kind in vim.fs.dir(path) do
+		if kind == "file" and vim.endswith(name, ".lua") then
+			table.insert(files, path .. "/" .. name)
+		end
+	end
+	table.sort(files)
+	return files
+end
+
+local T = MiniTest.new_set()
+
+T["diff: Ported files carry their attribution"] = function()
+	local notice_path = ENGINE_DIR .. "/NOTICE"
+	local license_path = ENGINE_DIR .. "/LICENSE-APACHE-2.0"
+	eq(vim.fn.filereadable(notice_path), 1)
+	eq(vim.fn.filereadable(license_path), 1)
+
+	local notice = read(notice_path)
+	eq(notice:find("IntelliJ IDEA", 1, true) ~= nil, true)
+	eq(notice:find("Copyright (C) JetBrains s.r.o.", 1, true) ~= nil, true)
+	eq(notice:find("diffbandit.nvim", 1, true) ~= nil, true)
+	eq(notice:find("Copyright Corey Kaylor", 1, true) ~= nil, true)
+	eq(notice:find("LICENSE-APACHE-2.0", 1, true) ~= nil, true)
+
+	local license = read(license_path)
+	eq(license:find("Apache License\n                           Version 2.0, January 2004", 1, true) ~= nil, true)
+	eq(license:find("END OF TERMS AND CONDITIONS", 1, true) ~= nil, true)
+
+	local files = vim.list_extend(lua_files(ENGINE_DIR), lua_files(FIXTURE_DIR))
+	for _, path in ipairs(files) do
+		local header = table.concat(vim.fn.readfile(path, "", 3), "\n")
+		eq(header:find("Apache%-2%.0") ~= nil, true, { fail_reason = path .. " lacks an Apache-2.0 header" })
+		eq(header:find("Modified:", 1, true) ~= nil, true, { fail_reason = path .. " lacks a modification notice" })
+	end
+end
+
+return T
