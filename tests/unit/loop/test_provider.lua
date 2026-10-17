@@ -52,7 +52,9 @@ T["loop: Configured provider resolves every declared skill here"] = function()
 		MiniTest.skip("codex or claude not on PATH")
 	end
 	local workflows = vim.fn.glob(vim.fs.joinpath(H.root, ".archon/workflows/*/*.yaml"), false, true)
-	local result = H.system(child, vim.list_extend({ "python3", ".archon/scripts/skills_check.py" }, workflows), H.root)
+	-- skills_check starts `claude plugin list` and `codex plugin list`: over 30 s while two drains load the host
+	local cmd = vim.list_extend({ "python3", ".archon/scripts/skills_check.py" }, workflows)
+	local result = H.system(child, cmd, H.root, nil, 180000)
 	eq(result.code, 0, { fail_reason = result.stderr })
 end
 

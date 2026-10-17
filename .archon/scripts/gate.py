@@ -1,6 +1,6 @@
 """Test gate for one build iteration. A change with a `## Blocked` section (blocked.py, not only `loop:` items) is red at once
 with `blocked` true: no make check and no review, since it never ships. Hard rules (integrity.py, then pinned.py on the proposal and branch diff) first: a violation is red at once, with
-no make check and no review. When only the `test`, `test-readiness` and e2e layers fail, each failing
+no make check and no review. When only the `test`, `test-readiness`, `stack`, `smoke-health` and e2e layers fail, each failing
 case is rerun once, serially (e2e only when it failed on sandbox infra alone, with no `FAIL in` case: one
 `make e2e E2E=1`): all passing (a test rerun must print its case as passed) makes the check green with them
 listed as `flaky` (a note, not a finding). A case the branch adds or edits, or named after a scenario of the
@@ -204,6 +204,10 @@ def rerun_plan(out: str) -> tuple[list[tuple[str, list[str]]], list[str]]:
             error = next((line.strip() for line in body if "ERROR" in line and not line.startswith("FAIL")), "checkhealth")
             plan.append((f"smoke-health: {error}", ["make", "smoke-health"]))
             continue
+        if target == "stack":  # real zellij + Neovim (~20 s) timing out under a parallel drain's load: one target rerun
+            failed = next((line.strip() for line in body if line.startswith("FAIL in")), "stack")
+            plan.append((f"stack: {failed}", ["make", "stack"]))
+            continue
         cases = failing_cases(body)
         if target not in ("test", "test-readiness") or not cases or any(" | " not in c for c in cases):
             return [], []
@@ -223,7 +227,7 @@ def rerun_plan(out: str) -> tuple[list[tuple[str, list[str]]], list[str]]:
 def rerun_passed(case: str, cmd: list[str], ok: bool, out: str) -> bool:
     """A rerun exited 0 and, for a test case, printed its group as all passed: the reporter groups by file
     and top-level set (group_depth 2), `<file> | <case>: o`, or `<file> | <set>: oo` for a nested set."""
-    if not ok or case.startswith(("e2e: ", "smoke-health: ")):  # whole-target reruns: the exit code says it
+    if not ok or case.startswith(("e2e: ", "smoke-health: ", "stack: ")):  # whole-target reruns: the exit code says it
         return ok
     file, group = case.split(" | ", 1)[0], cmd[-1].removeprefix("CASE=").split(" | ")[0]
     prefix = f"{file} | {group}: "
