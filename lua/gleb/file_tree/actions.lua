@@ -264,6 +264,18 @@ local function project_open_tab()
 	require("gleb.file_tree.view").open_tab()
 end
 
+local function project_toggle_fold()
+	require("gleb.file_tree.view").toggle_fold()
+end
+
+local function project_fold_all()
+	require("gleb.file_tree.view").fold_all()
+end
+
+local function project_unfold_all()
+	require("gleb.file_tree.view").unfold_all()
+end
+
 ---@type gleb.Action[]
 local actions = {
 	{
@@ -323,6 +335,27 @@ local actions = {
 		category = "Project",
 		ft = "gleb-file-tree",
 		run = project_open_tab,
+	},
+	{
+		id = "file_tree.toggle_fold",
+		title = "Toggle Fold",
+		category = "Project",
+		ft = "gleb-file-tree",
+		run = project_toggle_fold,
+	},
+	{
+		id = "file_tree.fold_all",
+		title = "Fold All",
+		category = "Project",
+		ft = "gleb-file-tree",
+		run = project_fold_all,
+	},
+	{
+		id = "file_tree.unfold_all",
+		title = "Unfold All",
+		category = "Project",
+		ft = "gleb-file-tree",
+		run = project_unfold_all,
 	},
 	{
 		id = "tree.toggle_filesystem",

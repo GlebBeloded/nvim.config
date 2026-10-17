@@ -6,6 +6,8 @@ local fs = require("gleb.file_tree.fs")
 local model = require("gleb.file_tree.model")
 local render = require("gleb.file_tree.render")
 
+local UNFOLD_ALL_MAX_ROWS = 5000
+
 ---@class FileTreeView
 ---@field tab integer
 ---@field root string
@@ -147,6 +149,19 @@ local function draw(view, path)
 	end
 end
 
+---@param view FileTreeView
+---@param path string
+local function redraw_at(view, path)
+	view.rows = model.rows(fs.tree(view.root), view.expanded, {})
+	render.draw(view.buf, view.rows)
+	for index, row in ipairs(view.rows) do
+		if row.path == path then
+			vim.api.nvim_win_set_cursor(view.win, { index, 0 })
+			return
+		end
+	end
+end
+
 ---@param buf integer
 local function configure_buffer(buf)
 	vim.bo[buf].buftype = "nofile"
@@ -251,6 +266,85 @@ function M.close_node()
 	end
 	view.expanded[target.path:sub(#view.root + 2)] = nil
 	draw(view, target.path)
+end
+
+--- Toggle the selected directory, or collapse the selected file's displayed parent.
+---@return nil
+function M.toggle_fold()
+	local view = M.state.by_tab[vim.api.nvim_get_current_tabpage()]
+	if not view then
+		return
+	end
+	local row = selected_row(view)
+	if row and row.kind == "directory" then
+		toggle_directory(view, row)
+	elseif row and row.kind == "file" then
+		M.close_node()
+	end
+end
+
+--- Collapse every project-tree directory while keeping the root visible.
+---@return nil
+function M.fold_all()
+	local view = M.state.by_tab[vim.api.nvim_get_current_tabpage()]
+	if not view then
+		return
+	end
+	local row = selected_row(view)
+	view.expanded = {}
+	redraw_at(view, row and row.path or view.root)
+end
+
+---@param rows FileTreeRow[]
+---@param parent FileTreeRow
+---@param queue FileTreeRow[]
+local function append_directory_children(rows, parent, queue)
+	local found_parent = false
+	for _, row in ipairs(rows) do
+		if row.path == parent.path then
+			found_parent = true
+		elseif found_parent and row.depth <= parent.depth then
+			return
+		elseif found_parent and row.depth == parent.depth + 1 and row.kind == "directory" then
+			queue[#queue + 1] = row
+		end
+	end
+end
+
+--- Expand project-tree directories breadth-first up to the visible-row safety limit.
+---@return nil
+function M.unfold_all()
+	local view = M.state.by_tab[vim.api.nvim_get_current_tabpage()]
+	if not view then
+		return
+	end
+	local selected = selected_row(view)
+	view.expanded = {}
+	local rows = model.rows(fs.tree(view.root), view.expanded, {})
+	local queue = {}
+	for _, row in ipairs(rows) do
+		if row.kind == "directory" then
+			queue[#queue + 1] = row
+		end
+	end
+	local queue_index = 1
+	while queue_index <= #queue do
+		local row = queue[queue_index]
+		queue_index = queue_index + 1
+		if not row.empty then
+			local relative = row.path:sub(#view.root + 2)
+			view.expanded[relative] = true
+			local expanded_rows = model.rows(fs.tree(view.root), view.expanded, {})
+			if #expanded_rows > UNFOLD_ALL_MAX_ROWS then
+				view.expanded[relative] = nil
+				vim.notify("Unfold all stopped at 5000 rows", vim.log.levels.WARN)
+				break
+			end
+			rows = expanded_rows
+			append_directory_children(rows, row, queue)
+		end
+	end
+	redraw_at(view, selected and selected.path or view.root)
 end
 
 --- Close the current tab page's project tree.

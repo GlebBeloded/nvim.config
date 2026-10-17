@@ -82,9 +82,9 @@ Scenarios: `file-tree: Project tree v opens a vertical split`, `file-tree: Proje
 
 Scenarios: `file-tree: Project tree za on a file collapses its folder`, `file-tree: Project tree zM collapses every folder`, `file-tree: Project tree zR expands every folder`, `file-tree: Project tree unfold all stops at the row limit`
 
-- [ ] 4c.1 Write these scenarios in `tests/integration/file-tree/test_project_tree.lua`, pressing the real fold keys on populated rows, and see them fail.
-- [ ] 4c.2 Add the scoped fold actions and keys; implement breadth-first unfold with the 5000-row cap.
-- [ ] 4c.3 Run `make test FILE=tests/integration/file-tree/test_project_tree.lua` for these cases and see them pass.
+- [x] 4c.1 Write these scenarios in `tests/integration/file-tree/test_project_tree.lua`, pressing the real fold keys on populated rows, and see them fail.
+- [x] 4c.2 Add the scoped fold actions and keys; implement breadth-first unfold with the 5000-row cap.
+- [x] 4c.3 Run `make test FILE=tests/integration/file-tree/test_project_tree.lua` for these cases and see them pass.
 
 ## 4d. Action ownership and assignment
 
@@ -190,3 +190,4 @@ Scenarios: `file-tree: Project tree matches the approved render`, `file-tree: Pr
 - Eligible editor selection remembers the latest valid `WinEnter` per tab and falls back to another valid editor, so special windows never become targets.
 - Cursor hiding queries the current mode and keeps one original `guicursor`; per-view window and mode events restore it whenever the tree is not focused in normal or visual mode.
 - `:q` closes both tree types in `QuitPre`; `:close` schedules the same guarded cleanup from `WinClosed` because Neovim has no pre-close event and rejects closing the final tree inside that autocmd.
+- Unfold-all queues displayed directory rows breadth-first and rolls back the first expansion over 5000 rows, preserving a bounded visible tree.

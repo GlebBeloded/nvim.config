@@ -87,6 +87,19 @@ local function open_tree_on_makefile()
 end
 
 ---@param needle string
+---@return boolean
+local function has_tree_line(needle)
+	return child.lua_get(
+		[[(function(needle)
+			return vim.iter(vim.api.nvim_buf_get_lines(0, 0, -1, false)):any(function(line)
+				return line:find(needle, 1, true) ~= nil
+			end)
+		end)(...)]],
+		{ needle }
+	)
+end
+
+---@param needle string
 ---@return string[]
 local function groups_for(needle)
 	return child.lua_get(
@@ -535,6 +548,78 @@ T["file-tree: Project tree t opens a new tab"] = function()
 	eq(#child.api.nvim_list_tabpages(), tabs + 1)
 	eq(child.api.nvim_buf_get_name(0), real_path("Makefile"))
 	assert_registered_action("file_tree.open_tab")
+end
+
+T["file-tree: Project tree za on a file collapses its folder"] = function()
+	edit("README.md")
+	run_toggle()
+	focus_tree_row("internal")
+	child.type_keys("<CR>")
+	focus_tree_row(" billing")
+	child.type_keys("<CR>")
+	focus_tree_row("invoice.go")
+
+	child.type_keys("za")
+
+	eq(child.lua_get([[vim.api.nvim_get_current_line():find("billing", 1, true) ~= nil]]), true)
+	eq(child.lua_get([[vim.api.nvim_get_current_line():find("", 1, true) ~= nil]]), true)
+	eq(has_tree_line("invoice.go"), false)
+end
+
+T["file-tree: Project tree zM collapses every folder"] = function()
+	edit("README.md")
+	run_toggle()
+	focus_tree_row("internal")
+	child.type_keys("<CR>")
+	focus_tree_row(" billing")
+	child.type_keys("<CR>")
+	focus_tree_row("invoice.go")
+
+	child.type_keys("zM")
+
+	eq(has_tree_line("invoice.go"), false)
+	eq(has_tree_line(" billing"), false)
+	focus_tree_row("internal")
+	eq(child.lua_get([[vim.api.nvim_get_current_line():find("", 1, true) ~= nil]]), true)
+end
+
+T["file-tree: Project tree zR expands every folder"] = function()
+	edit("README.md")
+	run_toggle()
+
+	child.type_keys("zR")
+
+	eq(has_tree_line("invoice.go"), true)
+	eq(has_tree_line("money.go"), true)
+	eq(has_tree_line("cart.tsx"), true)
+end
+
+T["file-tree: Project tree unfold all stops at the row limit"] = function()
+	local oversized = vim.fs.joinpath(root, "oversized")
+	for _, folder in ipairs({ "a", "b" }) do
+		local directory = vim.fs.joinpath(oversized, folder)
+		vim.fn.mkdir(directory, "p")
+		for index = 1, 2500 do
+			local file = assert(vim.uv.fs_open(vim.fs.joinpath(directory, ("file-%04d"):format(index)), "w", 420))
+			assert(vim.uv.fs_close(file))
+		end
+	end
+	child.lua([[require("gleb.file_tree.fs").reset()]])
+	local notifications = H.record_notify(child)
+	edit("README.md")
+	run_toggle()
+
+	child.type_keys("zR")
+
+	assert(#child.api.nvim_buf_get_lines(0, 0, -1, false) <= 5000, "unfold all exceeded the row limit")
+	eq(notifications(), {
+		{ msg = "Unfold all stopped at 5000 rows", level = vim.log.levels.WARN },
+	})
+	local expanded =
+		child.lua_get([[require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()].expanded]])
+	eq(expanded.oversized, true)
+	eq(expanded["oversized/a"], true)
+	eq(expanded["oversized/b"], nil)
 end
 
 return T
