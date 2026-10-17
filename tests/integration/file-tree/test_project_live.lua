@@ -141,4 +141,36 @@ T["file-tree: Project tree follow tolerates a deleted file"] = function()
 	eq(notifications(), {})
 end
 
+T["file-tree: Project tree toggle tolerates a deleted file"] = function()
+	edit("internal/money/money.go")
+	child.fn.delete(vim.fs.joinpath(root, "internal/money/money.go"))
+	local notifications = H.record_notify(child)
+
+	run_action("file_tree.toggle")
+
+	local position = tree_position()
+	eq(position[2], 1)
+	eq(notifications(), {})
+end
+
+T["file-tree: Project tree does not follow a directory buffer"] = function()
+	edit("README.md")
+	run_action("file_tree.toggle")
+	child.cmd("wincmd l")
+	focus_tree_row("go.mod")
+	local notifications = H.record_notify(child)
+
+	child.lua(
+		[[(function(path)
+			local buf = vim.api.nvim_create_buf(true, false)
+			vim.api.nvim_buf_set_name(buf, path)
+			vim.api.nvim_set_current_buf(buf)
+		end)(...)]],
+		{ vim.fs.joinpath(root, "internal") }
+	)
+
+	eq(selected_tree_line():match("[^ ]+$"), "go.mod")
+	eq(notifications(), {})
+end
+
 return T

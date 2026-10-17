@@ -114,9 +114,17 @@ Scenarios: `file-tree: Project tree follows the current file`, `file-tree: Proje
 
 Scenarios: `file-tree: Project tree toggle tolerates a deleted file`, `file-tree: Project tree does not follow a directory buffer`
 
-- [ ] 5a2.1 Write these scenarios in `tests/integration/file-tree/test_project_live.lua`, driving the real toggle action and directory buffer, and see them fail.
+- [x] 5a2.1 Write these scenarios in `tests/integration/file-tree/test_project_live.lua`, driving the real toggle action and directory buffer, and see them fail.
 - [ ] 5a2.2 Route toggle through normalization and ignore directory buffers without moving the tree cursor.
 - [ ] 5a2.3 Run `make test FILE=tests/integration/file-tree/test_project_live.lua` for these cases and see them pass.
+
+## Stuck
+
+- Task 5a2: the directory-buffer regression remains red after two production attempts; the toggle/deleted-file case passes through the existing normalized reveal path.
+- Probe: a plain directory `BufEnter` reported `kind = "directory"`, `filetype = ""`, and left the selected `Makefile` row unchanged; the populated fixture's real directory-hijack path moved `go.mod` to the root.
+- Attempt 1: ignored non-empty `buftype` buffers; the selection moved to `README.md` instead of staying on `go.mod`.
+- Attempt 2: additionally followed the emitting `args.buf` instead of buffer `0`; the selection still moved to `README.md`.
+- Saved second attempt: `/Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/fbd6851e-67b8-4168-af05-a7f56f965f73/stuck-attempt.diff`.
 
 ## 5a3. Normalized and hostile paths
 
