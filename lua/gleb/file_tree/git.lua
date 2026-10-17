@@ -2,6 +2,9 @@
 
 local M = {}
 
+local fs = require("gleb.file_tree.fs")
+local model = require("gleb.file_tree.model")
+
 ---@class FileTreeGitRoot
 ---@field status table<string, string>
 ---@field refs integer
@@ -9,6 +12,7 @@ local M = {}
 
 ---@class FileTreeGitState
 ---@field roots table<string, FileTreeGitRoot>
+---@field last_cmd? string[]
 
 ---@type FileTreeGitState
 M.state = { roots = {} }
@@ -16,17 +20,20 @@ M.state = { roots = {} }
 ---@param output string
 ---@return table<string, string>
 local function parse_status(output)
-	local status = {}
-	for _, record in ipairs(vim.split(output, "\0", { plain = true, trimempty = true })) do
-		local kind = record:sub(1, 1)
-		if kind == "?" then
-			status[record:sub(3)] = "untracked"
-		elseif kind == "1" then
-			local xy, path = record:match("^1 ([^ ]+) [^ ]+ [^ ]+ [^ ]+ [^ ]+ [^ ]+ [^ ]+ (.+)$")
-			if xy and path then
-				status[path] = xy:find("A", 1, true) and "added" or "modified"
-			end
+	local status = model.parse_status(output, "")
+	local folders = {}
+	for path in pairs(status) do
+		local current = path:gsub("/+$", ""):match("^(.*)/[^/]+$")
+		while current and current ~= "" do
+			folders[current] = true
+			current = current:match("^(.*)/[^/]+$")
 		end
+		if path:sub(-1) == "/" then
+			folders[path:sub(1, -2)] = true
+		end
+	end
+	for folder in pairs(folders) do
+		status[folder] = model.folder_status(status, folder)
 	end
 	return status
 end
@@ -35,6 +42,7 @@ end
 ---@param root string
 ---@return table<string, string>
 function M.status(root)
+	root = fs.normalize(root)
 	local state = M.state.roots[root]
 	return state and state.status or {}
 end
@@ -45,6 +53,7 @@ end
 ---@param callback fun()
 ---@return nil
 function M.start_root(root, owner, callback)
+	root = fs.normalize(root)
 	local state = M.state.roots[root]
 	if not state then
 		state = { status = {}, refs = 0, callbacks = {} }
@@ -61,6 +70,7 @@ end
 ---@param owner integer
 ---@return nil
 function M.stop_root(root, owner)
+	root = fs.normalize(root)
 	local state = M.state.roots[root]
 	if not state or not state.callbacks[owner] then
 		return
@@ -76,21 +86,21 @@ end
 ---@param root string
 ---@return nil
 function M.request(root)
+	root = fs.normalize(root)
 	local state = assert(M.state.roots[root], "git root was not started")
-	vim.system(
-		{ "git", "--no-optional-locks", "-C", root, "status", "--porcelain=v2", "-z", "--untracked-files=normal" },
-		{ text = true },
-		function(result)
-			vim.schedule(function()
-				if M.state.roots[root] == state and result.code == 0 then
-					state.status = parse_status(result.stdout or "")
-					for _, callback in pairs(state.callbacks) do
-						callback()
-					end
+	local command =
+		{ "git", "--no-optional-locks", "-C", root, "status", "--porcelain=v2", "-z", "--untracked-files=normal" }
+	M.state.last_cmd = command
+	vim.system(command, { text = true }, function(result)
+		vim.schedule(function()
+			if M.state.roots[root] == state and result.code == 0 then
+				state.status = parse_status(result.stdout or "")
+				for _, callback in pairs(state.callbacks) do
+					callback()
 				end
-			end)
-		end
-	)
+			end
+		end)
+	end)
 end
 
 --- Clear Git status state.

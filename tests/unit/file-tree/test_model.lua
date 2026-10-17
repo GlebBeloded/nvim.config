@@ -97,4 +97,71 @@ T["file-tree: Project tree hides the git folder"]["filters it from a populated f
 	end
 end
 
+T["file-tree: Project tree colours changed files"] = MiniTest.new_set()
+
+T["file-tree: Project tree colours changed files"]["parses tracked and untracked paths"] = function()
+	local output = table.concat({
+		"1 .M N... 100644 100644 100644 abcdef1 abcdef1 internal/invoice.go",
+		"1 A. N... 000000 100644 100644 0000000 abcdef2 internal/tax.go",
+		"1 .D N... 100644 100644 000000 abcdef3 abcdef3 old.go",
+		"? notes.md",
+	}, "\0") .. "\0"
+
+	eq(model.parse_status(output, ""), {
+		["internal/invoice.go"] = "modified",
+		["internal/tax.go"] = "added",
+		["old.go"] = "deleted",
+		["notes.md"] = "untracked",
+	})
+end
+
+T["file-tree: Project tree colours changed files"]["parses rename and unmerged records"] = function()
+	local output = table.concat({
+		"2 R. N... 100644 100644 100644 abcdef1 abcdef1 R100 new name.md",
+		"old name.md",
+		"u UU N... 100644 100644 100644 100644 abcdef1 abcdef2 abcdef3 go.mod",
+	}, "\0") .. "\0"
+
+	eq(model.parse_status(output, ""), {
+		["new name.md"] = "renamed",
+		["go.mod"] = "conflict",
+	})
+end
+
+T["file-tree: Project tree colours changed files"]["keeps only paths below a repository prefix"] = function()
+	local output = "1 .M N... 100644 100644 100644 abcdef1 abcdef1 apps/web/src/app.ts\0"
+
+	eq(model.parse_status(output, "apps/web"), { ["src/app.ts"] = "modified" })
+end
+
+T["file-tree: Project tree colours changed files"]["uses documented folder precedence"] = function()
+	local status = {
+		["internal/new.go"] = "added",
+		["internal/changed.go"] = "modified",
+		["internal/conflict.go"] = "conflict",
+		["web/renamed.ts"] = "renamed",
+		["scratch/"] = "untracked",
+	}
+
+	eq(model.folder_status(status, "internal"), "conflict")
+	eq(model.folder_status(status, "web"), "modified")
+	eq(model.folder_status(status, "scratch"), "untracked")
+	eq(model.folder_status(status, "clean"), nil)
+end
+
+T["file-tree: Project tree colours changed files"]["marks files below an untracked folder"] = function()
+	local tree = {
+		root = "/project",
+		scan = function(path)
+			if path == "/project" then
+				return { { name = "scratch", path = "/project/scratch", kind = "directory" } }
+			end
+			return { { name = "todo.txt", path = "/project/scratch/todo.txt", kind = "file" } }
+		end,
+	}
+	local rows = model.rows(tree, { scratch = true }, { ["scratch/"] = "untracked" })
+
+	eq({ rows[2].status, rows[3].status }, { "untracked", "untracked" })
+end
+
 return T

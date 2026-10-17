@@ -2,6 +2,15 @@
 
 local M = {}
 
+local STATUS_STRENGTH = {
+	untracked = 1,
+	added = 2,
+	deleted = 3,
+	renamed = 3,
+	modified = 3,
+	conflict = 4,
+}
+
 ---@class FileTreeEntry
 ---@field name string
 ---@field path string
@@ -54,6 +63,111 @@ end
 function M.sort(entries)
 	table.sort(entries, entry_before)
 	return entries
+end
+
+---@param path string
+---@param prefix string
+---@return string?
+local function strip_prefix(path, prefix)
+	prefix = prefix:gsub("/+$", "")
+	if prefix == "" then
+		return path
+	end
+	if path:sub(1, #prefix + 1) ~= prefix .. "/" then
+		return nil
+	end
+	return path:sub(#prefix + 2)
+end
+
+---@param xy string
+---@return string
+local function ordinary_status(xy)
+	if xy:sub(1, 1) == "A" then
+		return "added"
+	end
+	if xy:find("D", 1, true) then
+		return "deleted"
+	end
+	return "modified"
+end
+
+--- Parse porcelain v2 NUL-delimited status records relative to a repository prefix.
+---@param porcelain_z string
+---@param prefix string
+---@return table<string, string>
+function M.parse_status(porcelain_z, prefix)
+	local status = {}
+	local offset = 1
+	while offset <= #porcelain_z do
+		local separator = porcelain_z:find("\0", offset, true) or (#porcelain_z + 1)
+		local record = porcelain_z:sub(offset, separator - 1)
+		local kind = record:sub(1, 1)
+		local path
+		local value
+		if kind == "1" then
+			local xy
+			xy, path = record:match("^1 ([^ ]+) [^ ]+ [^ ]+ [^ ]+ [^ ]+ [^ ]+ [^ ]+ (.+)$")
+			if xy then
+				value = ordinary_status(xy)
+			end
+		elseif kind == "2" then
+			path = record:match("^2 [^ ]+ [^ ]+ [^ ]+ [^ ]+ [^ ]+ [^ ]+ [^ ]+ [^ ]+ (.+)$")
+			value = "renamed"
+		elseif kind == "u" then
+			path = record:match("^u [^ ]+ [^ ]+ [^ ]+ [^ ]+ [^ ]+ [^ ]+ [^ ]+ [^ ]+ [^ ]+ (.+)$")
+			value = "conflict"
+		elseif kind == "?" then
+			path = record:sub(3)
+			value = "untracked"
+		end
+		if path and value then
+			local relative = strip_prefix(path, prefix)
+			if relative then
+				status[relative] = value
+			end
+		end
+		offset = separator + 1
+	end
+	return status
+end
+
+--- Return the strongest status at or below a folder path.
+---@param status table<string, string>
+---@param path string
+---@return string?
+function M.folder_status(status, path)
+	local strongest
+	local strength = 0
+	local prefix = path:gsub("/+$", "") .. "/"
+	for candidate, value in pairs(status) do
+		if candidate == path or candidate == prefix or candidate:sub(1, #prefix) == prefix then
+			local candidate_strength = STATUS_STRENGTH[value] or 0
+			if candidate_strength > strength then
+				strength = candidate_strength
+				strongest = (value == "renamed" or value == "deleted") and "modified" or value
+			end
+		end
+	end
+	return strongest
+end
+
+---@param status table<string, string>
+---@param relative string
+---@param directory boolean
+---@return string?
+local function path_status(status, relative, directory)
+	local direct = status[relative] or (directory and status[relative .. "/"] or nil)
+	if direct then
+		return direct
+	end
+	local parent = relative:match("^(.*)/[^/]+$")
+	while parent do
+		if status[parent .. "/"] == "untracked" then
+			return "untracked"
+		end
+		parent = parent:match("^(.*)/[^/]+$")
+	end
+	return nil
 end
 
 ---@param tree FileTreeSource
@@ -109,7 +223,7 @@ local function append_children(tree, expanded, status, rows, path, depth)
 			path = tail.path,
 			expanded = is_expanded,
 			empty = tail.kind == "directory" and #children == 0,
-			status = status[relative],
+			status = path_status(status, relative, tail.kind == "directory"),
 		}
 		if is_expanded then
 			append_children(tree, expanded, status, rows, tail.path, depth + 1)

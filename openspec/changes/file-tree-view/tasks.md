@@ -170,9 +170,9 @@ Scenarios: `file-tree: Project tree re-roots on a cwd change`, `file-tree: Proje
 
 Scenarios: `file-tree: Project tree colours changed files`, `file-tree: Project tree folders take the strongest status below them`, `file-tree: Project tree colours renamed and conflicted files`, `file-tree: Project tree reads git status without optional locks`, `file-tree: Project tree outside a repository has no git colours`
 
-- [ ] 6a.1 Write these scenarios in `tests/integration/file-tree/test_project_git.lua`, each on its own populated `treeproj` copy; add unit cases in `tests/unit/file-tree/test_model.lua` for porcelain v2 `-z` records `1`, `2`, `u`, `?`, untracked folders and precomputed folder precedence. See them fail.
-- [ ] 6a.2 Add `lua/gleb/file_tree/git.lua` with async normalized-root state and render the precomputed folder status once per result.
-- [ ] 6a.3 Run both test files for these cases and see them pass.
+- [x] 6a.1 Write these scenarios in `tests/integration/file-tree/test_project_git.lua`, each on its own populated `treeproj` copy; add unit cases in `tests/unit/file-tree/test_model.lua` for porcelain v2 `-z` records `1`, `2`, `u`, `?`, untracked folders and precomputed folder precedence. See them fail.
+- [x] 6a.2 Add `lua/gleb/file_tree/git.lua` with async normalized-root state and render the precomputed folder status once per result.
+- [x] 6a.3 Run both test files for these cases and see them pass.
 
 ## 6b. Git refresh throttling
 
@@ -204,3 +204,4 @@ Scenarios: `file-tree: Project tree matches the approved render`, `file-tree: Pr
 - Folder-watch admission keeps the normalized root first and then uses lexical path order, making the cap deterministic while preserving every rendered row.
 - Shared-root watchers union each tab's scan set and fan events out by tabpage handle, so closing one view cannot strand another view's live updates.
 - Expansion writes use a PID-and-sequence temporary sibling, avoiding collisions while retaining atomic same-directory replacement.
+- Porcelain untracked-directory keys retain their trailing slash, so row lookup can colour descendants without filesystem-dependent parser work.
