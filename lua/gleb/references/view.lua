@@ -7,6 +7,7 @@ local icons = require("gleb.references.icons")
 local preview = require("gleb.references.preview")
 local persisted_state = require("gleb.references.state")
 local tree = require("gleb.references.tree")
+local usage_types = require("gleb.references.usage_types")
 
 ---@class gleb.references.ViewState
 ---@field windows integer[]
@@ -104,24 +105,46 @@ local function add_test_tag(segments, width)
 	})
 end
 
+---@param text string
+---@param width integer
+---@return string
+local function shorten_left(text, width)
+	if vim.fn.strdisplaywidth(text) <= width then
+		return text
+	end
+	if width <= 1 then
+		return "…"
+	end
+	local suffix = text
+	while suffix ~= "" and vim.fn.strdisplaywidth("…" .. suffix) > width do
+		suffix = vim.fn.strcharpart(suffix, 1)
+	end
+	return "…" .. suffix
+end
+
 ---@param segments gleb.references.Segment[]
----@param usage_kind "write"|"read"
+---@param type_id string
 ---@param width? integer
-local function add_kind_tag(segments, usage_kind, width)
+local function add_type_tag(segments, type_id, width)
+	local entry = assert(usage_types[type_id], "unknown reference usage type")
 	local icon = icons.for_node({
-		kind = "kind",
-		id = "kind:tag:" .. usage_kind,
-		label = usage_kind,
+		kind = "type",
+		id = "type:tag:" .. type_id,
+		label = entry.label,
 		depth = 0,
-		usage_kind = usage_kind,
+		usage_type = type_id,
 	})
-	local tag_width = vim.fn.strdisplaywidth(icon.icon .. " " .. usage_kind)
+	local tag_width = vim.fn.strdisplaywidth(icon.icon .. " " .. entry.tag)
+	if width then
+		local fixed_width = vim.fn.strdisplaywidth(segments_text(segments)) - vim.fn.strdisplaywidth(segments[4].text)
+		segments[4].text = shorten_left(segments[4].text, math.max(width - fixed_width - tag_width - 2, 1))
+	end
 	local line_width = vim.fn.strdisplaywidth(segments_text(segments))
 	vim.list_extend(segments, {
 		{ text = string.rep(" ", math.max((width or 0) - line_width - tag_width, 2)) },
 		{ text = icon.icon, group = icon.icon_group },
 		{ text = " " },
-		{ text = usage_kind, group = icon.label_group },
+		{ text = entry.tag, group = icon.label_group },
 	})
 end
 
@@ -136,8 +159,8 @@ local function tree_segments(node, width)
 	if node.test_tag then
 		add_test_tag(segments, width)
 	end
-	if node.kind_tag then
-		add_kind_tag(segments, node.kind_tag, width)
+	if node.type_tag then
+		add_type_tag(segments, node.type_tag, width)
 	end
 	return segments
 end
@@ -295,12 +318,12 @@ function M.hint(wide)
 		state.options.folders and "●" or "○",
 		folders_key
 	)
-	if state.tree.has_kinds then
+	if state.tree.has_types then
 		hint = string.format(
-			"%s · %s Read/write %s",
+			"%s · %s Usage type %s",
 			hint,
-			state.options.read_write and "●" or "○",
-			shortcut("references.toggle_read_write", "w")
+			state.options.usage_type and "●" or "○",
+			shortcut("references.toggle_usage_type", "u")
 		)
 	end
 	if wide then
@@ -634,11 +657,11 @@ function M.toggle_folders()
 end
 
 ---@return nil
-function M.toggle_read_write()
-	if not M.state.tree or not M.state.tree.has_kinds then
+function M.toggle_usage_type()
+	if not M.state.tree or not M.state.tree.has_types then
 		return
 	end
-	M.state.options.read_write = not M.state.options.read_write
+	M.state.options.usage_type = not M.state.options.usage_type
 	persisted_state.save(M.state.options)
 	rebuild()
 end

@@ -35,14 +35,14 @@ Scenarios: `references: gr classifies struct usages`, `references: gr classifies
 
 Scenarios: `references: Unclassified usages add no level`, `references: Usage type groups sort by label`, `references: Usage type icons and label shades match the palette`, `references: A saved read/write state carries over`, `references: The usage type key comes from the keymap file`, `references: View keys come from the keymap file`, `references: Usage type state persists across sessions`, `references: Go usages are grouped by scope and folder`, `references: Function usages are grouped under Call`, `references: The view opens before classification finishes`
 
-- [ ] 4.1 Write the scenarios in tests/unit/references/test_tree.lua, tests/integration/references/test_icons.lua, test_keys.lua and test_kind_view.lua. Delete the cases of the removed scenarios: `Function usages have no read/write level or hint`, `w turns the level into row tags`, `Read/write state persists across sessions`, `The read/write key comes from the keymap file`. See the new ones fail.
-- [ ] 4.2 Add:
+- [x] 4.1 Write the scenarios in tests/unit/references/test_tree.lua, tests/integration/references/test_icons.lua, test_keys.lua and test_kind_view.lua. Delete the cases of the removed scenarios: `Function usages have no read/write level or hint`, `w turns the level into row tags`, `Read/write state persists across sessions`, `The read/write key comes from the keymap file`. See the new ones fail.
+- [x] 4.2 Add:
   - the `type` level in `tree.lua` (design Decision 5);
   - per-type icon and label groups in `icons.lua` (Decision 7);
   - `references.toggle_usage_type` in `actions.lua` and `view.lua`, bound to `u` in `settings/keymap.json`, with `references.toggle_read_write` removed;
   - `usage_type` with the legacy migration in `state.lua`;
   - row tags with left-shortened paths.
-- [ ] 4.3 Run the four files and see them pass
+- [x] 4.3 Run the four files and see them pass
 
 ## 5. Screens and the real-key workflow
 

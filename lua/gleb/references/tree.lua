@@ -2,6 +2,7 @@
 local M = {}
 
 local scope = require("gleb.references.scope")
+local usage_types = require("gleb.references.usage_types")
 
 ---@class gleb.references.Usage
 ---@field uri string
@@ -11,16 +12,16 @@ local scope = require("gleb.references.scope")
 ---@field filetype? string
 ---@field range? lsp.Range
 ---@field client_id? integer
----@field kind? "write"|"read"|"other"
+---@field kind? string
 
 ---@class gleb.references.TreeOptions
 ---@field tests "grouped"|"hidden"|"mixed"
 ---@field folders boolean
----@field read_write boolean
+---@field usage_type boolean
 
 ---@class gleb.references.TreeNode
 ---@field id string
----@field kind "scope"|"kind"|"folder"|"usage"
+---@field kind "scope"|"type"|"folder"|"usage"
 ---@field label string
 ---@field depth integer
 ---@field count? integer
@@ -32,18 +33,18 @@ local scope = require("gleb.references.scope")
 ---@field filetype? string
 ---@field test? boolean
 ---@field test_tag? boolean
----@field usage_kind? "write"|"read"|"other"
----@field kind_tag? "write"|"read"
+---@field usage_type? string
+---@field type_tag? string
 
 ---@class gleb.references.Tree
 ---@field nodes gleb.references.TreeNode[]
 ---@field count integer
 ---@field selected_id? string
----@field has_kinds boolean
+---@field has_types boolean
 
 ---@class gleb.references.ClassifiedUsage: gleb.references.Usage
 ---@field test boolean
----@field usage_kind? "write"|"read"|"other"
+---@field usage_type string
 
 ---@param usage gleb.references.Usage
 ---@return string
@@ -117,7 +118,7 @@ local function classify(usages, tests_mode)
 				col = usage.col,
 				filetype = usage.filetype,
 				test = is_test,
-				usage_kind = usage.kind,
+				usage_type = usage.kind or "unclassified",
 			})
 		end
 	end
@@ -146,13 +147,13 @@ local function usage_node(usage, depth, parent_id, show_path, mixed, tagged)
 		col = usage.col,
 		filetype = usage.filetype,
 		test = usage.test,
-		usage_kind = usage.usage_kind,
+		usage_type = usage.usage_type,
 	}
 	if mixed then
 		node.test_tag = usage.test
 	end
-	if tagged and (usage.usage_kind == "write" or usage.usage_kind == "read") then
-		node.kind_tag = usage.usage_kind
+	if tagged and usage.usage_type ~= "unclassified" then
+		node.type_tag = usage.usage_type
 	end
 	return node
 end
@@ -206,41 +207,41 @@ local function append_flat_usages(nodes, usages, scope_name, depth, parent_id, o
 	end
 end
 
-local KIND_GROUPS = {
-	{ kind = "write", label = "Value write" },
-	{ kind = "read", label = "Value read" },
-	{ kind = "other", label = "Usage" },
-}
-
 ---@param nodes gleb.references.TreeNode[]
 ---@param usages gleb.references.ClassifiedUsage[]
 ---@param scope_name string
 ---@param depth integer
 ---@param parent_id string?
 ---@param options gleb.references.TreeOptions
----@param has_kinds boolean
-local function append_usages(nodes, usages, scope_name, depth, parent_id, options, has_kinds)
-	if not has_kinds or not options.read_write then
-		append_flat_usages(nodes, usages, scope_name, depth, parent_id, options, has_kinds)
+---@param has_types boolean
+local function append_usages(nodes, usages, scope_name, depth, parent_id, options, has_types)
+	if not has_types or not options.usage_type then
+		append_flat_usages(nodes, usages, scope_name, depth, parent_id, options, has_types)
 		return
 	end
-	for _, group in ipairs(KIND_GROUPS) do
+	local present = {}
+	for _, usage in ipairs(usages) do
+		present[usage.usage_type] = true
+	end
+	local type_ids = vim.tbl_keys(present)
+	table.sort(type_ids, function(left, right)
+		return usage_types[left].label < usage_types[right].label
+	end)
+	for _, type_id in ipairs(type_ids) do
 		local grouped = vim.tbl_filter(function(usage)
-			return (usage.usage_kind or "other") == group.kind
+			return usage.usage_type == type_id
 		end, usages)
-		if #grouped > 0 then
-			local id = string.format("kind:%s:%s", scope_name, group.kind)
-			table.insert(nodes, {
-				id = id,
-				kind = "kind",
-				label = group.label,
-				count = #grouped,
-				depth = depth,
-				parent_id = parent_id,
-				usage_kind = group.kind,
-			})
-			append_flat_usages(nodes, grouped, scope_name .. ":" .. group.kind, depth + 1, id, options, false)
-		end
+		local id = string.format("type:%s:%s", scope_name, type_id)
+		table.insert(nodes, {
+			id = id,
+			kind = "type",
+			label = usage_types[type_id].label,
+			count = #grouped,
+			depth = depth,
+			parent_id = parent_id,
+			usage_type = type_id,
+		})
+		append_flat_usages(nodes, grouped, scope_name .. ":" .. type_id, depth + 1, id, options, false)
 	end
 end
 
@@ -248,8 +249,8 @@ end
 ---@param usages gleb.references.ClassifiedUsage[]
 ---@param is_test boolean
 ---@param options gleb.references.TreeOptions
----@param has_kinds boolean
-local function append_scope(nodes, usages, is_test, options, has_kinds)
+---@param has_types boolean
+local function append_scope(nodes, usages, is_test, options, has_types)
 	local scoped = {}
 	for _, usage in ipairs(usages) do
 		if usage.test == is_test then
@@ -269,7 +270,7 @@ local function append_scope(nodes, usages, is_test, options, has_kinds)
 		count = #scoped,
 		depth = 0,
 	})
-	append_usages(nodes, scoped, name, 1, id, options, has_kinds)
+	append_usages(nodes, scoped, name, 1, id, options, has_types)
 end
 
 ---@param nodes gleb.references.TreeNode[]
@@ -294,22 +295,22 @@ end
 ---@return gleb.references.Tree
 function M.build(usages, options, selected)
 	local classified = classify(usages, options.tests)
-	local has_kinds = vim.iter(classified):any(function(usage)
-		return usage.usage_kind == "write" or usage.usage_kind == "read"
+	local has_types = vim.iter(classified):any(function(usage)
+		return usage.usage_type ~= "unclassified"
 	end)
 	local nodes = {}
 	if options.tests == "mixed" then
-		append_usages(nodes, classified, "all", 0, nil, options, has_kinds)
+		append_usages(nodes, classified, "all", 0, nil, options, has_types)
 	else
-		append_scope(nodes, classified, false, options, has_kinds)
-		append_scope(nodes, classified, true, options, has_kinds)
+		append_scope(nodes, classified, false, options, has_types)
+		append_scope(nodes, classified, true, options, has_types)
 	end
 
 	return {
 		nodes = nodes,
 		count = #classified,
 		selected_id = selected_id(nodes, selected),
-		has_kinds = has_kinds,
+		has_types = has_types,
 	}
 end
 

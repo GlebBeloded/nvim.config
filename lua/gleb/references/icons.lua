@@ -3,15 +3,13 @@ local M = {}
 
 local palette = require("gleb.colors.gruvbox-material.palette")
 local color = require("gleb.colors.gruvbox-material.util")
+local usage_types = require("gleb.references.usage_types")
 local has_devicons, devicons = pcall(require, "nvim-web-devicons")
 
 local LABEL_PALENESS = 0.7
 local PRODUCTION_ICON = ""
 local TEST_ICON = ""
 local FOLDER_ICON = "󰉖"
-local WRITE_ICON = "󰏫"
-local READ_ICON = "󰈈"
-local USAGE_ICON = "󰈙"
 
 ---@class gleb.references.Icon
 ---@field icon string
@@ -34,6 +32,13 @@ local function file_label_group(icon_group)
 	return "ReferencesFileLabel" .. icon_group:gsub("[^%w_]", "_")
 end
 
+---@param type_id string
+---@return string
+local function usage_type_group(type_id)
+	local suffix = type_id:gsub("^%l", string.upper):gsub("_(%l)", string.upper)
+	return "ReferencesUsageType" .. suffix
+end
+
 local function setup_highlights()
 	local foreground = palette.foreground
 	local background = palette.background
@@ -41,9 +46,10 @@ local function setup_highlights()
 		ReferencesProduction = foreground.aqua,
 		ReferencesTest = foreground.yellow,
 		ReferencesFolder = background.bg5,
-		ReferencesWrite = foreground.blue,
-		ReferencesRead = foreground.yellow,
 	}
+	for type_id, entry in pairs(usage_types) do
+		groups[usage_type_group(type_id)] = foreground[entry.colour] or background[entry.colour]
+	end
 
 	for group, icon_color in pairs(groups) do
 		vim.api.nvim_set_hl(0, group, { fg = icon_color })
@@ -72,14 +78,10 @@ end
 ---@param node gleb.references.TreeNode
 ---@return gleb.references.Icon
 function M.for_node(node)
-	if node.kind == "kind" and node.usage_kind == "write" then
-		return { icon = WRITE_ICON, icon_group = "ReferencesWrite", label_group = "ReferencesWriteLabel" }
-	end
-	if node.kind == "kind" and node.usage_kind == "read" then
-		return { icon = READ_ICON, icon_group = "ReferencesRead", label_group = "ReferencesReadLabel" }
-	end
-	if node.kind == "kind" then
-		return { icon = USAGE_ICON, icon_group = "ReferencesProduction", label_group = "ReferencesProductionLabel" }
+	if node.kind == "type" then
+		local entry = assert(usage_types[node.usage_type], "unknown reference usage type")
+		local group = usage_type_group(node.usage_type)
+		return { icon = entry.icon, icon_group = group, label_group = group .. "Label" }
 	end
 	if node.kind == "scope" and node.label == "Production" then
 		return {
