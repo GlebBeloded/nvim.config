@@ -24,9 +24,8 @@ end
 ---@param command? string
 local function require_server(server, command)
 	command = command or child.lua_get("(vim.lsp.config[...].cmd or {})[1]", { server })
-	if type(command) ~= "string" or child.fn.executable(command) == 0 then
-		MiniTest.skip((command or server) .. " is not executable")
-	end
+	assert(type(command) == "string", server .. " has no configured command")
+	assert(child.fn.executable(command) == 1, command .. " is not executable")
 end
 
 ---@param root string
@@ -110,7 +109,59 @@ request()
 	return child.lua_get("_G.usage_kinds")
 end
 
-local go_scenario = "references: gopls kinds classify a Go variable"
+---@param root string
+---@param path string
+---@param line integer
+---@param col integer
+---@param server string
+---@param client_name? string
+---@param timeout? integer
+---@param parser? string
+---@return table[]
+local function open_references(root, path, line, col, server, client_name, timeout, parser)
+	client_name = client_name or server
+	timeout = timeout or TIMEOUT_MS
+	require_server(server)
+	child.cmd("cd " .. vim.fn.fnameescape(root) .. " | edit " .. vim.fn.fnameescape(path))
+	child.api.nvim_win_set_cursor(0, { line, col - 1 })
+	assert(
+		child.wait(([[#vim.lsp.get_clients({ bufnr = 0, name = %q }) > 0]]):format(client_name), timeout),
+		client_name .. " did not attach"
+	)
+	if parser then
+		assert(
+			child.lua_get(
+				[[(function(language) local ok = pcall(vim.treesitter.get_parser, 0, language); return ok end)(...)]],
+				{ parser }
+			),
+			parser .. " parser is not installed"
+		)
+	end
+
+	child.type_keys("gr")
+	assert(child.wait([[vim.bo.filetype == "gleb-references"]], timeout), "gr did not open the references view")
+	assert(
+		child.wait([[not require("gleb.references.view").state.classifying]], timeout),
+		"usage classification did not finish"
+	)
+
+	return child.lua_get([[
+(function()
+	local state = require("gleb.references.view").state
+	local rows = vim.api.nvim_buf_get_lines(state.tree_buf, 0, -1, false)
+	local usages = {}
+	for index, node in ipairs(state.visible_nodes) do
+		assert(rows[index]:find(node.label, 1, true), "rendered row does not contain " .. node.label)
+		if node.kind == "usage" then
+			table.insert(usages, { node.path, node.lnum, node.col, node.usage_kind })
+		end
+	end
+	return usages
+end)()
+]])
+end
+
+local go_scenario = "references: gr classifies every Go variable usage"
 T[go_scenario] = MiniTest.new_set()
 T[go_scenario]["fixture contains the exact usages"] = function()
 	local root, manifest = F.copy("gomod", vim.fn.tempname())
@@ -156,11 +207,11 @@ T[go_scenario]["fixture contains the exact usages"] = function()
 	run_go(root, { "go", "build", "./..." })
 	run_go(root, { "go", "vet", "./..." })
 end
-T[go_scenario]["classifies every usage"] = function()
-	require_server("gopls")
+T[go_scenario]["renders every usage kind"] = function()
 	local root, manifest = F.copy("gomod", vim.fn.tempname())
 	local declaration = manifest.references.Calls[1]
-	eq(classify(root, declaration.path, declaration.line, declaration.col, "gopls"), {
+	local actual = open_references(root, declaration.path, declaration.line, declaration.col, "gopls", nil, nil, "go")
+	eq(actual, {
 		{ "report/calls.go", 8, 2, "write" },
 		{ "report/calls_test.go", 6, 2, "write" },
 		{ "report/calls_test.go", 8, 5, "read" },
