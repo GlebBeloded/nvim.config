@@ -57,7 +57,7 @@ local next_view_id = 0
 local function group_segments(node)
 	local icon = icons.for_node(node)
 	local folded = M.state.folded and M.state.folded[node.id]
-	local indent = string.rep(" ", node.depth * 2)
+	local indent = string.rep(" ", math.max(node.depth, node.kind == "folder" and 1 or 0) * 2)
 	return {
 		{ text = indent .. (folded and "▸" or "▾") .. " " },
 		{ text = icon.icon, group = icon.icon_group },
