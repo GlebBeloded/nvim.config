@@ -3,6 +3,7 @@
 The Find Usages view groups usages by test scope and folder, but it can't yet tell writes from reads. The user asked for that grouping first: "conditional grouping on read/write references". LSP `textDocument/references` carries no usage kind, so the config has to derive it for every configured language.
 
 Kind: feature
+Adopt: loop/references-usage-kind
 Depends: references-languages
 
 ## What Changes
@@ -62,3 +63,19 @@ Depends: references-languages
 
 - The tsserver request comes first because vtsls' documentHighlight needs an open document. Per-file documentHighlight comes next because those servers are type-aware. Treesitter is only a fallback.
 - The `Read/write` hint only appears when it can do something, so function-only views keep the `references-view` renders and screenshots.
+
+## Rejected run
+Run on `loop/references-usage-kind` was rejected by the judge:
+- rewrites the user's ## Decision in openspec/changes/references-usage-kind/proposal.md
+- review findings:
+  [minor] Still open from pass 4: once the timeout has fired, a late documentHighlight or tsserver reply still writes `usage.kind` on the `classified` tables the view now holds (`lua/gleb/references/kind.lua:152` apply_kinds, `kind.lua:204`). The next rebuild (for example after pressing `w`) then shows server kinds where the timeout scenario promised fallback kinds. Fix: skip the apply when `finished` is set.
+  
+  [minor] Still open from pass 4: when the tsserver request fails, `kind.lua:209` calls `done()` synchronously. If nothing else is pending, `finish` runs before the callable-origin request is queued (`kind.lua:399-405`), so a function symbol skips the call-only `other` rule. Use `vim.schedule(done)`, as the highlight path does at `kind.lua:156`.
+  
+  Checked without findings:
+  - The pass-5 fix is correct. `view.lua:60` now gives every folder at least one indent level. Mixed mode shows `  ▾ 󰉖 billing` again, and grouped mode keeps `depth*2` (K1/K2 unchanged). `test_keys.lua:78` asserts the mixed folder row.
+  - The pass-4 bash fix (`get_lang` at `kind.lua:321`) is still in place.
+  - Agent decisions are consistent with the spec, design.md and both `## Decision` sections.
+  - No tests or scenarios were weakened.
+  - Every touched file is listed in the proposal Impact.
+  - fix-scope.md does not exist, and the gate (check-6) is green.
