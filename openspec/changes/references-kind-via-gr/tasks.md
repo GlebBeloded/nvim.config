@@ -26,9 +26,9 @@ Scenarios: `references: gr classifies every TypeScript variable usage`
 
 ## 5. Exercise Rust through the rendered view
 Scenarios: `references: gr classifies every Rust variable usage`
-- [ ] 5.1 Write the test `references: gr classifies every Rust variable usage` in `tests/integration/references/test_kind.lua`; press the real normal-mode `gr` on populated Rust data and see the old direct-classifier test path fail the new entry-point assertion
-- [ ] 5.2 Reuse the real-`gr` helper for rust-analyzer and assert the exact rendered write/read rows
-- [ ] 5.3 Run `make test FILE=tests/integration/references/test_kind.lua CASE="gr classifies every Rust variable usage"` and see it pass
+- [x] 5.1 Write the test `references: gr classifies every Rust variable usage` in `tests/integration/references/test_kind.lua`; press the real normal-mode `gr` on populated Rust data and see the old direct-classifier test path fail the new entry-point assertion
+- [x] 5.2 Reuse the real-`gr` helper for rust-analyzer and assert the exact rendered write/read rows
+- [x] 5.3 Run `make test FILE=tests/integration/references/test_kind.lua CASE="gr classifies every Rust variable usage"` and see it pass
 
 ## 6. Classify Bash variable reads
 Scenarios: `references: gr classifies every Bash variable usage`, `references: Treesitter fallback classifies writes where a parser exists`
@@ -53,3 +53,4 @@ Scenarios: `references: HCL fallback classifies variable labels and traversals`
 - The real-`gr` helper reads usage metadata from visible view nodes and verifies each node's label is rendered, preserving exact path, line, column and kind assertions without coupling to icons or indentation.
 - The queued behavior requires non-target variable uses to become `read`, so the existing fallback scenario's conflicting `other` expectation is changed while its title, WHEN inputs, paths and numeric values remain intact.
 - Write highlights join the request fan-out so the view receives one URI-and-range-deduplicated usage list before classification.
+- The real-`gr` helper requires two consecutive populated reference responses so rust-analyzer has reached a stable indexed state without an arbitrary sleep.

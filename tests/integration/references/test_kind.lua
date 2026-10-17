@@ -137,6 +137,35 @@ local function open_references(root, path, line, col, server, client_name, timeo
 			parser .. " parser is not installed"
 		)
 	end
+	child.lua(
+		[[
+		local server, timeout = ...
+_G.references_ready = nil
+local bufnr = vim.api.nvim_get_current_buf()
+local started = vim.uv.hrtime()
+local populated = 0
+local function request()
+	local client = vim.lsp.get_clients({ bufnr = bufnr, name = server })[1]
+	local params = vim.lsp.util.make_position_params(0, client.offset_encoding)
+	params.context = { includeDeclaration = false }
+	client:request("textDocument/references", params, function(_, result)
+		if result and #result > 0 then
+			populated = populated + 1
+		else
+			populated = 0
+		end
+		if populated >= 2 then
+			_G.references_ready = true
+		elseif (vim.uv.hrtime() - started) / 1e6 < timeout then
+			vim.defer_fn(request, 10)
+		end
+	end, bufnr)
+end
+request()
+]],
+		{ client_name, timeout }
+	)
+	assert(child.wait("_G.references_ready == true", timeout), "references did not become ready")
 
 	child.type_keys("gr")
 	assert(child.wait([[vim.bo.filetype == "gleb-references"]], timeout), "gr did not open the references view")
@@ -278,15 +307,16 @@ T[typescript_scenario]["renders every usage kind"] = function()
 	})
 end
 
-local rust_scenario = "references: rust-analyzer kinds classify a Rust variable"
+local rust_scenario = "references: gr classifies every Rust variable usage"
 T[rust_scenario] = MiniTest.new_set()
-T[rust_scenario]["classifies every usage"] = function()
-	require_server("rust_analyzer", "rust-analyzer")
+T[rust_scenario]["renders every usage kind"] = function()
 	local root = H.git_repo({
 		["Cargo.toml"] = '[package]\nname = "usage-kinds"\nversion = "0.1.0"\nedition = "2024"\n',
 		["src/main.rs"] = 'fn main() { let mut n = 0;\n    n += 1;\n    println!("{n}");\n}\n',
 	})
-	eq(classify(root, "src/main.rs", 1, 21, "rust_analyzer", "rust-analyzer", RUST_TIMEOUT_MS, 2), {
+	local actual =
+		open_references(root, "src/main.rs", 1, 21, "rust_analyzer", "rust-analyzer", RUST_TIMEOUT_MS, "rust")
+	eq(actual, {
 		{ "src/main.rs", 2, 5, "write" },
 		{ "src/main.rs", 3, 16, "read" },
 	})
