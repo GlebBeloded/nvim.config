@@ -11,6 +11,12 @@ local CLASSIFY_TIMEOUT_MS = 3000
 local DOCUMENT_HIGHLIGHT_READ = 2
 local DOCUMENT_HIGHLIGHT_WRITE = 3
 local TSSERVER_COMMAND = "typescript.tsserverRequest"
+---@type table<string, string>
+local PARSER_LANGUAGES = {
+	terraform = "hcl",
+	tf = "hcl",
+	hcl = "hcl",
+}
 local CALLABLE_SYMBOLS = {
 	[vim.lsp.protocol.SymbolKind.Function] = true,
 	[vim.lsp.protocol.SymbolKind.Method] = true,
@@ -338,7 +344,8 @@ local function fill_fallbacks(groups)
 			local positions = vim.tbl_map(function(usage)
 				return fallback_position(usage, client)
 			end, unresolved)
-			local language = vim.treesitter.language.get_lang(unresolved[1].filetype or "") or ""
+			local filetype = unresolved[1].filetype or ""
+			local language = PARSER_LANGUAGES[filetype] or vim.treesitter.language.get_lang(filetype) or ""
 			local kinds = kind_ts.classify(source, language, positions)
 			for index, usage in ipairs(unresolved) do
 				usage.kind = terraform_traversal_kind(source, positions[index], client) or kinds[index]

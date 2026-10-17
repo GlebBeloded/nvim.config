@@ -44,9 +44,9 @@ Scenarios: `references: gr classifies every Terraform variable usage`
 
 ## 8. Add HCL write/read syntax fallback
 Scenarios: `references: HCL fallback classifies variable labels and traversals`
-- [ ] 8.1 Write the test `references: HCL fallback classifies variable labels and traversals` in `tests/unit/references/test_kind_ts.lua` against populated HCL source and see both positions remain `other`
-- [ ] 8.2 Add the HCL treesitter query that classifies a `variable` block label as `write` and `var.<name>` traversals as `read`, resolving Terraform filetypes to the HCL parser language
-- [ ] 8.3 Run `make test FILE=tests/unit/references/test_kind_ts.lua CASE="HCL fallback classifies variable labels and traversals"` and see it pass
+- [x] 8.1 Write the test `references: HCL fallback classifies variable labels and traversals` in `tests/unit/references/test_kind_ts.lua` against populated HCL source and see both positions remain `other`
+- [x] 8.2 Add the HCL treesitter query that classifies a `variable` block label as `write` and `var.<name>` traversals as `read`, resolving Terraform filetypes to the HCL parser language
+- [x] 8.3 Run `make test FILE=tests/unit/references/test_kind_ts.lua CASE="HCL fallback classifies variable labels and traversals"` and see it pass
 
 ## Agent decisions
 
@@ -55,3 +55,4 @@ Scenarios: `references: HCL fallback classifies variable labels and traversals`
 - Write highlights join the request fan-out so the view receives one URI-and-range-deduplicated usage list before classification.
 - The real-`gr` helper requires two consecutive populated reference responses so rust-analyzer has reached a stable indexed state without an arbitrary sleep.
 - Unresolved terraform-ls references beginning at `var.` are reads because Terraform input variables are immutable and terraform-ls does not provide document-highlight kinds.
+- Terraform, tf and HCL filetypes resolve explicitly to the HCL parser because Neovim's filetype-to-parser mapping is not guaranteed to register those aliases.
