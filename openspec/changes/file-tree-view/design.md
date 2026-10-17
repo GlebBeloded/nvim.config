@@ -45,7 +45,7 @@ What the new tree carries over from neo-tree, and when:
      - `rows(tree, expanded, status)`: flattens the visible tree into rows `{ depth, kind, label, path, expanded, empty, status }`;
      - `parse_status(porcelain_z, prefix)`;
      - `folder_status(status, path)`.
-   - `fs.lua` scans a folder with `vim.uv.fs_scandir`. A symlink to a folder is a folder that the watchers do not follow. A broken symlink is a file.
+   - `fs.lua` scans a folder with `vim.uv.fs_scandir`, caches each result until its watcher invalidates it, and cuts traversal at the first already-seen realpath. A broken symlink is a file; an unreadable folder is an empty, harmless folder row.
    - `git.lua` runs status, `watch.lua` owns the `fs_event` handles, and `expanded.lua` handles persistence. Each module has `M.state` and `M.reset()` (rule 1.5).
    - `render.lua` turns rows into lines and extmarks and defines the highlight groups.
    - `view.lua` owns windows, buffers and autocmds (augroups `gleb_file_tree_view`, `gleb_file_tree_highlights`).
@@ -55,7 +55,7 @@ What the new tree carries over from neo-tree, and when:
    - No natural-number ordering.
 3. **Compact chains** (IntelliJ "compact middle packages"):
    - While a folder's visible entries are exactly one folder, the row takes the child's name as `a/b` and continues down the chain.
-   - Chains merge whatever their expansion. That costs one extra scan per chain member, done lazily when the row is built.
+   - Chains merge whatever their expansion. Every chain member is scanned lazily, cached, and watched because each scan can change the composed row.
    - Expansion is keyed by the relative path of the chain's last folder (`cmd/server`). Splitting a chain keeps every folder's own state.
    - "Visible" means after the later filters (ignore, nesting), so `web` stays a single row once `node_modules` is hidden.
 4. **Root row and columns:**
@@ -67,7 +67,7 @@ What the new tree carries over from neo-tree, and when:
 5. **Git status** (`git.lua`):
    - The command is `git --no-optional-locks -C <root> status --porcelain=v2 -z --untracked-files=normal`, run with `vim.system` (rule 6.4).
      - `--no-optional-locks` never takes `index.lock`, so a running `git commit` is never disturbed. VS Code does the same.
-     - The toplevel comes from one `git rev-parse --show-toplevel` per root. Porcelain paths are relative to it and are mapped to the root.
+     - The toplevel and git dir come from `git rev-parse --show-toplevel --absolute-git-dir` per normalized root. Porcelain paths are relative to the toplevel and are mapped to the root, including linked worktrees.
    - Records:
      - `1 XY`: `A` in X is added; `D` in X or Y is deleted (no row, but it tints folders); otherwise modified.
      - `2` is renamed (on the new path), `u` is conflict, `?` is untracked.
@@ -79,28 +79,32 @@ What the new tree carries over from neo-tree, and when:
      - `state.runs` and `state.last_cmd` exist for the tests.
    - Outside a repository, or on any failure, the tree has no colours and notifies nothing (rule 8.4: background work is silent).
 6. **Folder tint:** a folder takes the strongest status of any path below it, in the order conflict > modified (modified, renamed, deleted) > added > untracked. The root row is never tinted.
-7. **Live updates** (`watch.lua`):
-   - Non-recursive `fs_event` handles on the root, on every expanded folder (on the chain's last folder for a compact row) and on the git dir (`index`, `HEAD`, refs).
-   - Events are debounced per folder by `WATCH_DEBOUNCE_MS = 100`, then the folder is rescanned and redrawn. Worktree and git-dir events request a git status run.
+7. **Live updates and shared roots** (`watch.lua`):
+   - Non-recursive `fs_event` handles cover the root, every folder whose cached scan feeds a visible row (including every compact-chain member), every expanded folder and the absolute git dir (`index`, `HEAD`, refs).
+   - Events are debounced per folder by `WATCH_DEBOUNCE_MS = 100`, invalidate that folder's scan cache, then rescan and redraw. Worktree and git-dir events request a git status run.
    - Git status also reruns on `BufWritePost` under the root and on `FocusGained`.
-   - Handles close when their folder collapses, when the last tree window for the root closes, on re-root and on `VimLeavePre` (rule 6.5).
-   - `M.state.handles` maps folder paths to handles, and `M.stop_all()` closes them all. `file-tree-ops` tests use it to show that `R` does not depend on the watchers.
+   - Git and watcher state are keyed by normalized root and reference-counted across tabs. Handles close when no tree for that root needs the scan, when the last tree for the root closes, on re-root and on `VimLeavePre` (rule 6.5).
+   - `MAX_WATCH_HANDLES` caps folder handles. Rows still render from scans beyond the cap and refresh through explicit actions and parent events.
+   - `M.state.roots[root].handles` maps folder paths to handles, and `M.stop_root(root)` closes one root. `file-tree-ops` tests use it to show that `R` does not depend on watchers.
 8. **Following:**
-   - `BufEnter` of a normal buffer whose real path lies under the root reveals that path in the current tab's tree: expand the ancestors, redraw, move the tree cursor. Focus does not move.
-   - `scheme://` buffers and files outside the root are ignored.
+   - One `normalize(path)` resolves with `fs_realpath`, falling back through the nearest existing parent and reattaching a deleted leaf. It is used for roots, buffers, git toplevels and HOME shortening.
+   - `BufEnter` of a normal file buffer whose normalized path lies under the root reveals that path in the current tab's tree: expand the ancestors, redraw, move the tree cursor. Focus does not move.
+   - Directory buffers, `scheme://` buffers and files outside the root are ignored. A file deleted during follow, toggle or reveal selects the root without raising or notifying.
    - `file_tree.reveal` does the same after opening and focusing the tree. Without a file on disk the cursor goes to the root row.
    - `file_tree.toggle` reveals the current file when it opens the tree, like today's `tree.toggle_filesystem`.
 9. **Window:**
    - Opened with `topleft vertical 35 split`.
-   - Window options: `winfixwidth`, `cursorline`, `nonumber`, `norelativenumber`, `signcolumn=no`, `foldcolumn=0`, `nowrap`, `nolist`, `nospell`, `winhighlight=Normal:FileTreeNormal,CursorLine:FileTreeCursorLine`.
-   - Buffer: `buftype=nofile`, `bufhidden=wipe`, `noswapfile`, `nomodifiable`, unlisted, named `gleb-file-tree://<root>#<tabnr>`.
-   - The cursor is hidden while the tree is focused: `guicursor` gets the blended `FileTreeHiddenCursor` group on `WinEnter` and is restored on `WinLeave`. The cursor line marks the selection.
-   - Close-if-last: on `QuitPre`, if the quitting window is the tab's last non-floating, non-tree window, the tab's tree windows close first. `:q` then exits or closes the tab, as without a tree.
+   - Window options: `winfixwidth`, `cursorline`, `nonumber`, `norelativenumber`, `signcolumn=no`, `foldcolumn=0`, `foldenable=false`, `foldmethod=manual`, `statuscolumn=""`, `nowrap`, `nolist`, `nospell`, `winhighlight=Normal:FileTreeNormal,CursorLine:FileTreeCursorLine`; ufo is detached.
+   - Buffer: `buftype=nofile`, `bufhidden=wipe`, `noswapfile`, `nomodifiable`, unlisted, named `gleb-file-tree://<root>#<tabpage-handle>`.
+   - View state and autocmd groups are keyed by tabpage handle, never tab number. Teardown deletes only that view's autocmds; it never clears the shared group.
+   - File opens execute from the most recently used normal editor window, skipping neo-tree, quickfix, terminal, floating and diff-view windows. If `:edit` replaces the tree buffer, the file is moved into an eligible editor window and the tree is restored. New split/tab windows keep editor options (`number`, no `winfixwidth`).
+   - The original `guicursor` is captured once. The cursor is hidden only in normal and visual modes while the tree is focused and restored on mode change, leave and close.
+   - Close-if-last: on `QuitPre`, project-tree and neo-tree windows both count as trees. If `:q` or `:close` targets the tab's last editor, all tree windows close first, including when both tree types are open.
 10. **Persistence** (`expanded.lua`):
     - `stdpath("state")/file_tree/expanded.json` holds `{ "<root>": ["cmd/server", "internal", …] }`, sorted.
-    - Writes are debounced by 500 ms and flushed on tree close and on `VimLeavePre`.
+   - Writes merge the latest state for every normalized root, are debounced by 500 ms, use a temporary sibling plus atomic rename, and flush on tree close and on `VimLeavePre`.
     - Missing folders are dropped when the tree opens.
-    - On `DirChanged` with scope `global` the tree re-roots and loads the new root's set.
+   - On `DirChanged` with scope `global` the current tab's tree re-roots, loads the new root's set, and refreshes both git toplevel and absolute git dir.
 11. **Actions and keys:**
     - New entries in `file_tree/actions.lua`, category `Project`, so descs read `Project: <title>` (rule 3.3).
     - `file_tree.toggle` ("Toggle Project Tree") and `file_tree.reveal` ("Reveal in Project Tree") have no `ft` and stay unbound until `tree-diff-cutover`.
@@ -109,7 +113,8 @@ What the new tree carries over from neo-tree, and when:
     - The find-action test fixture that used `file_tree.open` as its adapter example switches to a `neo_tree.` id. Its assertion is unchanged.
 12. **Folds:**
     - `file_tree.unfold_all` expands breadth-first and stops at `UNFOLD_ALL_MAX_ROWS = 5000` with the WARN `Unfold all stopped at 5000 rows`. Before `file-tree-ignored`, `node_modules` would otherwise be walked in full.
-    - `file_tree.fold_all` clears the expanded set except the root.
+   - `file_tree.fold_all` clears the expanded set except the root.
+   - A single manual expansion uses the same 5000-row bound and warns `Expansion stopped at 5000 rows`, so it cannot bypass the unfold-all safety limit.
 13. **Highlights** (`render.lua`, rule 8.7, redefined on `ColorScheme`):
 
     | Group | Colour |
@@ -132,7 +137,11 @@ What the new tree carries over from neo-tree, and when:
 14. **Coexistence:**
     - neo-tree, its keys and its scenarios are untouched.
     - Both trees may be open at once. Each filetype has its own bufferline offset entry.
-    - The directory hijack stays with neo-tree until `tree-diff-cutover`, which also moves it to the new tree.
+   - The directory hijack stays with neo-tree until `tree-diff-cutover`, which also moves it to the new tree.
+15. **Render proof and reuse:**
+   - The screen test compares the tree text with `renders/f1_proposed.ansi` verbatim using real glyphs, then asserts the reviewed reference screenshot and colour mask.
+   - Integration tests inspect each row's extmarks. `expect_hl_colors` pins every used `DevIcon*` group and every `FileTree*` group.
+   - `git-changes-tree` imports `model.parse_status`; it does not grow a second porcelain parser.
 
 ## Fixture
 

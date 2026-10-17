@@ -11,6 +11,7 @@
 #   build.sh tfproj  Terraform module with variable usages
 #   build.sh dirty   repo with staged, unstaged and untracked changes (differ review)
 #   build.sh diffgo  Go files with changed, inserted, deleted and moved lines
+#   build.sh treeproj Project-tree sample with modified, added, untracked and ignored files
 # Git is hermetic: no user or system config, fixed author, committer and dates.
 set -eu
 root=$(cd "$(dirname "$0")/../.." && pwd)
@@ -504,6 +505,218 @@ EOF
 		"$(identifier_locations vpc network.tf net/main.tf)" >../manifest.json
 }
 
+treeproj() {
+	git init -q
+	mkdir -p .github/workflows cmd/server internal/billing internal/money web/src
+	printf 'bin/\nnode_modules/\n.env\n' >.gitignore
+	printf 'module example.com/billing\n\ngo 1.22\n' >go.mod
+	: >go.sum
+	printf 'test:\n\tgo test ./...\n' >Makefile
+	printf '# billing\n\nInvoices, tax and money formatting.\n' >README.md
+	cat >.github/workflows/ci.yml <<'EOF'
+name: ci
+on: push
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: go test ./...
+EOF
+	cat >cmd/server/main.go <<'EOF'
+package main
+
+import (
+	"fmt"
+
+	"example.com/billing/internal/billing"
+)
+
+func main() {
+	inv := billing.Invoice{ID: "INV-1", Lines: []int{100, 250}}
+	fmt.Println(inv.Due())
+}
+EOF
+	cat >internal/billing/discount.go <<'EOF'
+package billing
+
+// Discount takes percent off an amount in cents.
+func Discount(cents, percent int) int {
+	return cents - cents*percent/100
+}
+EOF
+	cat >internal/billing/discount_test.go <<'EOF'
+package billing
+
+import "testing"
+
+func TestDiscount(t *testing.T) {
+	if got := Discount(200, 10); got != 180 {
+		t.Fatalf("Discount = %d", got)
+	}
+}
+EOF
+	cat >internal/billing/invoice.go <<'EOF'
+package billing
+
+import (
+	"fmt"
+
+	"example.com/billing/internal/money"
+)
+
+// Invoice is a list of line amounts in cents.
+type Invoice struct {
+	ID    string
+	Lines []int
+}
+
+// Total sums the lines and applies the tax rate.
+func (i Invoice) Total() int {
+	total := 0
+	for _, cents := range i.Lines {
+		total += cents
+	}
+	return total
+}
+
+// Due renders the total as dollars.
+func (i Invoice) Due() string {
+	return fmt.Sprintf("due %s", money.Format(i.Total()))
+}
+EOF
+	cat >internal/billing/invoice_test.go <<'EOF'
+package billing
+
+import "testing"
+
+func TestDue(t *testing.T) {
+	inv := Invoice{Lines: []int{100, 250}}
+	if got := inv.Due(); got != "due $3.50" {
+		t.Fatalf("Due = %q", got)
+	}
+}
+EOF
+	cat >internal/money/money.go <<'EOF'
+package money
+
+import "fmt"
+
+// Format renders cents as dollars.
+func Format(cents int) string {
+	return fmt.Sprintf("$%d.%02d", cents/100, cents%100)
+}
+EOF
+	cat >internal/money/money_test.go <<'EOF'
+package money
+
+import "testing"
+
+func TestFormat(t *testing.T) {
+	if got := Format(350); got != "$3.50" {
+		t.Fatalf("Format = %q", got)
+	}
+}
+EOF
+	printf '{\n  "name": "billing-web",\n  "private": true\n}\n' >web/package.json
+	printf '{\n  "name": "billing-web",\n  "lockfileVersion": 3,\n  "requires": true,\n  "packages": {}\n}\n' \
+		>web/package-lock.json
+	cat >web/src/cart.tsx <<'EOF'
+import { price } from "./price";
+
+export function Cart({ cents }: { cents: number }) {
+  return <span>{price(cents)}</span>;
+}
+EOF
+	printf 'export function price(cents: number): string {\n  return `$${cents / 100}`;\n}\n' >web/src/price.ts
+	printf 'export declare function price(cents: number): string;\n' >web/src/price.d.ts
+	cat >web/src/price.test.ts <<'EOF'
+import { price } from "./price";
+
+test("price", () => {
+  expect(price(350)).toBe("$3.5");
+});
+EOF
+	commit "billing service"
+	# modified (unstaged): invoice.go gains the Tax field, invoice_test.go and price.ts change
+	cat >internal/billing/invoice.go <<'EOF'
+package billing
+
+import (
+	"fmt"
+
+	"example.com/billing/internal/money"
+)
+
+// Invoice is a list of line amounts in cents.
+type Invoice struct {
+	ID    string
+	Lines []int
+	Tax   Rate
+}
+
+// Total sums the lines and applies the tax rate.
+func (i Invoice) Total() int {
+	total := 0
+	for _, cents := range i.Lines {
+		total += cents
+	}
+	return i.Tax.Apply(total)
+}
+
+// Due renders the total as dollars.
+func (i Invoice) Due() string {
+	return fmt.Sprintf("due %s", money.Format(i.Total()))
+}
+EOF
+	cat >internal/billing/invoice_test.go <<'EOF'
+package billing
+
+import "testing"
+
+func TestDue(t *testing.T) {
+	inv := Invoice{Lines: []int{100, 250}, Tax: 10}
+	if got := inv.Due(); got != "due $3.85" {
+		t.Fatalf("Due = %q", got)
+	}
+}
+EOF
+	printf 'export function price(cents: number): string {\n  return `$${(cents / 100).toFixed(2)}`;\n}\n' >web/src/price.ts
+	# added (staged)
+	cat >internal/billing/tax.go <<'EOF'
+package billing
+
+// Rate is a tax rate in percent.
+type Rate int
+
+// Apply adds the tax to an amount in cents.
+func (r Rate) Apply(cents int) int {
+	return cents + cents*int(r)/100
+}
+EOF
+	cat >internal/billing/tax_test.go <<'EOF'
+package billing
+
+import "testing"
+
+func TestApply(t *testing.T) {
+	if got := Rate(10).Apply(200); got != 220 {
+		t.Fatalf("Apply = %d", got)
+	}
+}
+EOF
+	git add internal/billing/tax.go internal/billing/tax_test.go
+	# untracked
+	printf '# notes\n\n- tax rounding\n' >notes.md
+	# ignored (.gitignore)
+	mkdir -p bin web/node_modules/left-pad
+	printf '#!/bin/sh\necho server\n' >bin/server
+	printf 'module.exports = (s) => s;\n' >web/node_modules/left-pad/index.js
+	printf 'TAX_RATE=10\n' >.env
+	printf '{"modified":["internal/billing/invoice.go","internal/billing/invoice_test.go","web/src/price.ts"],"added":["internal/billing/tax.go","internal/billing/tax_test.go"],"untracked":["notes.md"],"ignored":["bin/","web/node_modules/",".env"]}\n' \
+		>../manifest.json
+}
+
 gomod() {
 	mkdir -p internal/money billing report
 	cat >go.mod <<'EOF'
@@ -743,7 +956,7 @@ key_input() {
 }
 
 case "$name" in
-gomod | luaproj | pyproj | tsproj | rustproj | bashproj | tfproj | dirty | diffgo) ;;
+gomod | luaproj | pyproj | tsproj | rustproj | bashproj | tfproj | dirty | diffgo | treeproj) ;;
 *)
 	echo "build.sh: unknown fixture '$name'" >&2
 	exit 2
