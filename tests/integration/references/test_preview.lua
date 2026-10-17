@@ -128,18 +128,18 @@ end)()]])
 end
 
 T["references: Preview falls back to Vim syntax without a parser"] = function()
-	H.write_files(root, { ["script.py"] = "value = 1\nprint(value)\n" })
+	H.write_files(root, { Makefile = "value := 1\nall:\n\t@echo $(value)\n" })
 	child.lua(
 		[[
 require("gleb.references.view").open("value", {
-	{ uri = vim.uri_from_fname(...), path = "script.py", lnum = 1, col = 1, filetype = "python" },
+	{ uri = vim.uri_from_fname(...), path = "Makefile", lnum = 1, col = 1, filetype = "make" },
 })
 ]],
-		{ vim.fs.joinpath(root, "script.py") }
+		{ vim.fs.joinpath(root, "Makefile") }
 	)
 
 	local preview = preview_info()
-	eq(preview.syntax, "python")
+	eq(preview.syntax, "make")
 	eq(preview.treesitter, false)
 end
 

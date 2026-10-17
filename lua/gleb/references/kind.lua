@@ -11,6 +11,12 @@ local CLASSIFY_TIMEOUT_MS = 3000
 local DOCUMENT_HIGHLIGHT_READ = 2
 local DOCUMENT_HIGHLIGHT_WRITE = 3
 local TSSERVER_COMMAND = "typescript.tsserverRequest"
+---@type table<string, string>
+local PARSER_LANGUAGES = {
+	terraform = "hcl",
+	tf = "hcl",
+	hcl = "hcl",
+}
 local CALLABLE_SYMBOLS = {
 	[vim.lsp.protocol.SymbolKind.Function] = true,
 	[vim.lsp.protocol.SymbolKind.Method] = true,
@@ -32,6 +38,7 @@ local CALLABLE_SYMBOLS = {
 ---@class gleb.references.KindOrigin
 ---@field client_id integer
 ---@field params lsp.TextDocumentPositionParams
+---@field cwd string
 
 ---@param range lsp.Range
 ---@return string
@@ -106,6 +113,52 @@ local function apply_kinds(usages, kinds)
 	end
 end
 
+---@param key string
+---@return lsp.Range
+local function key_range(key)
+	local values = vim.split(key, ":", { plain = true })
+	return {
+		start = { line = tonumber(values[1]), character = tonumber(values[2]) },
+		["end"] = { line = tonumber(values[3]), character = tonumber(values[4]) },
+	}
+end
+
+---@param usages gleb.references.KindUsage[]
+---@param groups table<string, gleb.references.KindUsage[]>
+---@param origin gleb.references.KindOrigin
+---@param client vim.lsp.Client
+---@param kinds table<string, "write"|"read">
+local function append_origin_writes(usages, groups, origin, client, kinds)
+	local uri = origin.params.textDocument.uri
+	local seen = {}
+	for _, usage in ipairs(usages) do
+		seen[usage.uri .. ":" .. range_key(usage_range(usage))] = true
+	end
+	local filename = vim.uri_to_fname(uri)
+	for key, kind in pairs(kinds) do
+		local range = key_range(key)
+		local at_origin = range.start.line == origin.params.position.line
+			and range.start.character == origin.params.position.character
+		if kind == "write" and not at_origin and not seen[uri .. ":" .. key] then
+			local line = vim.fn.readfile(filename, "", range.start.line + 1)[range.start.line + 1] or ""
+			local col = vim.str_byteindex(line, client.offset_encoding, range.start.character, false) + 1
+			local usage = {
+				uri = uri,
+				path = vim.fs.relpath(origin.cwd, filename) or filename,
+				lnum = range.start.line + 1,
+				col = col,
+				filetype = vim.filetype.match({ filename = filename }),
+				range = range,
+				client_id = client.id,
+				kind = "write",
+			}
+			table.insert(usages, usage)
+			groups[uri] = groups[uri] or {}
+			table.insert(groups[uri], usage)
+		end
+	end
+end
+
 ---@param usage gleb.references.KindUsage
 ---@return vim.lsp.Client?
 local function usage_client(usage)
@@ -124,19 +177,25 @@ end
 ---@param client vim.lsp.Client
 ---@param done fun()
 ---@param active fun(): boolean
-local function request_highlights(uri, usages, client, done, active)
-	local anchor = range_key(usage_range(usages[1]))
+---@param anchor_range? lsp.Range
+---@param received? fun(kinds: table<string, "write"|"read">)
+local function request_highlights(uri, usages, client, done, active, anchor_range, received)
+	anchor_range = anchor_range or usage_range(usages[1])
+	local anchor = range_key(anchor_range)
 	local cache_key = client.id .. ":" .. anchor
 	local entry = cache_entry(uri)
 	if entry.results[cache_key] then
 		apply_kinds(usages, entry.results[cache_key])
+		if received then
+			received(entry.results[cache_key])
+		end
 		vim.schedule(done)
 		return
 	end
 
 	local params = {
 		textDocument = { uri = uri },
-		position = usage_range(usages[1]).start,
+		position = anchor_range.start,
 	}
 	local ok = client:request("textDocument/documentHighlight", params, function(err, highlights)
 		local kinds = {}
@@ -152,6 +211,9 @@ local function request_highlights(uri, usages, client, done, active)
 		entry.results[cache_key] = kinds
 		if active() then
 			apply_kinds(usages, kinds)
+			if received then
+				received(kinds)
+			end
 		end
 		done()
 	end)
@@ -229,15 +291,29 @@ local function contains(range, position)
 end
 
 --- Only hierarchical symbols carry a name range; flat `SymbolInformation` ranges span the whole body.
----@param symbols lsp.DocumentSymbol[]
+---@param symbols (lsp.DocumentSymbol|lsp.SymbolInformation)[]
 ---@param position lsp.Position
 ---@return lsp.SymbolKind?
 local function symbol_kind_at(symbols, position)
 	for _, symbol in ipairs(symbols) do
-		if symbol.selectionRange and contains(symbol.selectionRange, position) then
+		---@type lsp.Range?
+		local selection_range = rawget(symbol, "selectionRange")
+		if selection_range and contains(selection_range, position) then
 			return symbol.kind
 		end
-		local child_kind = symbol_kind_at(symbol.children or {}, position)
+		---@type lsp.Location?
+		local location = rawget(symbol, "location")
+		local location_start = location and location.range.start
+		if
+			location_start
+			and location_start.line == position.line
+			and location_start.character == position.character
+		then
+			return symbol.kind
+		end
+		---@type lsp.DocumentSymbol[]
+		local children = rawget(symbol, "children") or {}
+		local child_kind = symbol_kind_at(children, position)
 		if child_kind then
 			return child_kind
 		end
@@ -285,11 +361,7 @@ local function request_callable(origin, done)
 	end
 	local ok = client:request("textDocument/definition", origin.params, function(err, result)
 		local uri, position = definition_target(not err and result or nil)
-		if uri and position then
-			request_symbols(uri, position)
-		else
-			done(false)
-		end
+		request_symbols(uri or origin.params.textDocument.uri, position or origin.params.position)
 	end)
 	if not ok then
 		vim.schedule_wrap(done)(false)
@@ -324,7 +396,8 @@ local function fill_fallbacks(groups)
 			local positions = vim.tbl_map(function(usage)
 				return fallback_position(usage, client)
 			end, unresolved)
-			local language = vim.treesitter.language.get_lang(unresolved[1].filetype or "") or ""
+			local filetype = unresolved[1].filetype or ""
+			local language = PARSER_LANGUAGES[filetype] or vim.treesitter.language.get_lang(filetype) or ""
 			local kinds = kind_ts.classify(source, language, positions)
 			for index, usage in ipairs(unresolved) do
 				usage.kind = kinds[index]
@@ -346,7 +419,11 @@ function M.origin()
 	local bufnr = vim.api.nvim_get_current_buf()
 	for _, client in ipairs(vim.lsp.get_clients({ bufnr = bufnr, method = "textDocument/definition" })) do
 		if client:supports_method("textDocument/documentSymbol", bufnr) then
-			return { client_id = client.id, params = vim.lsp.util.make_position_params(0, client.offset_encoding) }
+			return {
+				client_id = client.id,
+				params = vim.lsp.util.make_position_params(0, client.offset_encoding),
+				cwd = vim.fn.getcwd(),
+			}
 		end
 	end
 end
@@ -391,6 +468,7 @@ function M.classify(usages, callback, origin)
 
 	local tsserver_usages = {}
 	local tsserver_client
+	local origin_highlights = false
 	for uri, file_usages in pairs(groups) do
 		local client = usage_client(file_usages[1])
 		if client and client.name == "vtsls" and has_tsserver_command(client) then
@@ -398,7 +476,35 @@ function M.classify(usages, callback, origin)
 			vim.list_extend(tsserver_usages, file_usages)
 		elseif client and client:supports_method("textDocument/documentHighlight") then
 			pending = pending + 1
-			request_highlights(uri, file_usages, client, request_done, active)
+			local anchor_range
+			local received
+			if origin and client.id == origin.client_id and uri == origin.params.textDocument.uri then
+				local matched_origin = origin
+				origin_highlights = true
+				anchor_range = { start = matched_origin.params.position, ["end"] = matched_origin.params.position }
+				received = function(kinds)
+					append_origin_writes(classified, groups, matched_origin, client, kinds)
+				end
+			end
+			request_highlights(uri, file_usages, client, request_done, active, anchor_range, received)
+		end
+	end
+	if origin and not origin_highlights then
+		local client = vim.lsp.get_client_by_id(origin.client_id)
+		if client and client:supports_method("textDocument/documentHighlight") then
+			pending = pending + 1
+			local anchor_range = { start = origin.params.position, ["end"] = origin.params.position }
+			request_highlights(
+				origin.params.textDocument.uri,
+				{},
+				client,
+				request_done,
+				active,
+				anchor_range,
+				function(kinds)
+					append_origin_writes(classified, groups, origin, client, kinds)
+				end
+			)
 		end
 	end
 	if tsserver_client and #tsserver_usages > 0 then

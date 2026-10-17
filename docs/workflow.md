@@ -29,10 +29,6 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 
 ## Loop lessons
 
-- Neo-tree source-scoped mappings override common mappings on duplicate lhs values, so ownership tests must validate the effective merged table.
-- Mask an unselected row that contains a shortcut hint so metadata-colour drift cannot hide behind selected-row coverage.
-- Inspect resolved multigrid cells for floating-window colour masks because grid 1 shows underlying cells and screen attribute numbers are arbitrary tokens.
-- Place behavior deltas and regression tests in the capability that owns the existing requirement so the change modifies one authoritative SHALL instead of adding a contradictory one.
 - Renaming a regression across capabilities drops its original scenario trace; preserve the original case and scenario when adding ownership-aligned coverage.
 - Keep source-specific sampled colours beside the source highlight setup so shared theme palettes expose only reusable colours.
 - When a palette's secondary reveal bypasses the initial visibility filter, exercise that reveal key in the catalog-label regression and validate its plugin-owned rows.
@@ -44,6 +40,10 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - Screen-mask legend groups resolve through the current window's winhighlight, so a float must not remap a legend group (CursorLineNr, LineNr) it draws; pick status-column groups per line by expression instead.
 - When a view owns companion floats and global autocmds, observe closure of its primary window and route it through the view's complete cleanup path.
 - Guard mutations of retained async result tables after timeout completion while still allowing late replies to populate caches.
+- When a fallback contract requires Treesitter, install its grammar and exercise the real query instead of masking parser absence with client-specific string matching or parser stubs.
+- When a Decision names every required Treesitter grammar, compare the complete parser list against it rather than stopping after the newly introduced language.
+- When grouping Rust references, pass source text and line positions to the cfg-test classifier instead of relying only on paths.
+- When a newly installed parser invalidates a no-parser fallback fixture, switch the fixture to a real Vim-syntax-only filetype.
 
 ## The loop
 

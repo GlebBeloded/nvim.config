@@ -254,6 +254,7 @@ T[terraform_scenario]["gr opens usages"] = function()
 	local _, manifest = open_references("tfproj", "region", "terraformls", { "terraformls" })
 	expect_tree_rows({
 		"scope:Production",
+		"kind:Value read",
 		"folder:.",
 		"usage:" .. usage_label(manifest, "region", "main.tf"),
 		"usage:" .. usage_label(manifest, "region", "outputs.tf"),

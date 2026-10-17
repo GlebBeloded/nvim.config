@@ -20,7 +20,7 @@ T["references: Treesitter fallback classifies writes where a parser exists"]["Go
 		})
 	end)()]])
 
-	eq(actual, { "write", "write", "other" })
+	eq(actual, { "write", "write", "read" })
 end
 
 T["references: Treesitter fallback classifies writes where a parser exists"]["Lua assignments"] = function()
@@ -32,7 +32,7 @@ T["references: Treesitter fallback classifies writes where a parser exists"]["Lu
 		})
 	end)()]])
 
-	eq(actual, { "write", "other" })
+	eq(actual, { "write", "read" })
 end
 
 T["references: Treesitter fallback classifies writes where a parser exists"]["Bash assignments"] = function()
@@ -44,7 +44,7 @@ T["references: Treesitter fallback classifies writes where a parser exists"]["Ba
 		})
 	end)()]])
 
-	eq(actual, { "write", "other" })
+	eq(actual, { "write", "read" })
 end
 
 T["references: Treesitter fallback classifies writes where a parser exists"]["Bash filetype resolves parser language"] = function()
@@ -69,6 +69,20 @@ T["references: Treesitter fallback classifies writes where a parser exists"]["Ba
 	eq(child.wait("_G.bash_usage_kind ~= nil", 1000), true)
 
 	eq(child.lua_get("_G.bash_usage_kind"), "write")
+end
+
+T["references: HCL fallback classifies variable labels and traversals"] = function()
+	local actual = child.lua_get([[(function()
+		local loaded, reason = vim.treesitter.language.add("hcl")
+		assert(loaded, reason or "hcl parser is not installed")
+		local source = 'variable "region" {}\nvalue = var.region'
+		return require("gleb.references.kind_ts").classify(source, "hcl", {
+			{ line = 0, character = 10 },
+			{ line = 1, character = 12 },
+		})
+	end)()]])
+
+	eq(actual, { "write", "read" })
 end
 
 T["references: Without kinds or a parser a usage is other"] = function()
