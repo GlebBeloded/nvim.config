@@ -41,6 +41,21 @@ local function neo_tree(driver)
 	driver.wait([[vim.bo.filetype == "neo-tree"]], 3000)
 end
 
+--- Owned aligned diff of the changed Go controller fixture.
+---@param driver render.Driver
+local function diff_view(driver)
+	local root, manifest = F.copy("diffgo", vim.fn.tempname())
+	driver.cmd("cd " .. vim.fn.fnameescape(root) .. " | edit " .. vim.fn.fnameescape(manifest.controller))
+	driver.lua([[
+vim.bo.tabstop = 4
+require("ibl").setup_buffer(0, { enabled = false })
+local actions = require("gleb.actions")
+local action = assert(actions.state.applicator.catalog:get("diff.open_file"))
+assert(require("gleb.actions.context").execute(action, require("gleb.actions.context").capture()))
+]])
+	assert(driver.wait([[require("gleb.diff.view").current() ~= nil]]))
+end
+
 --- TypeScript class usages grouped by their query-backed usage types.
 ---@param driver render.Driver
 local function ts_p1_class(driver)
@@ -432,6 +447,7 @@ end
 ---@type table<string, render.Case>
 return {
 	dashboard = { description = "alpha dashboard of a bare nvim", setup = dashboard },
+	["diff-view"] = { description = "aligned diff of the changed Go controller fixture", setup = diff_view },
 	["git-hunk"] = { description = "sample.lua in a temp git repo, added line 2, no LSP", setup = git_hunk },
 	["lua-file"] = { description = "small Lua file, Normal mode, no LSP, outside git", setup = lua_file },
 	["close-buffer-split"] = {

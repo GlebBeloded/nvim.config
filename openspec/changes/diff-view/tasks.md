@@ -81,3 +81,12 @@ right = { cursor = 62, topline = 52 }
 - Attempt 2 transferred the peer cursor before `winrestview` and consumed one deferred peer `WinScrolled` event. The same assertion still reported right topline 52 instead of 62.
 
 The complete second production attempt is saved in `artifacts/runs/20817010-c87a-4cc5-95db-e0c0d18840d7/stuck-attempt.diff`; production edits were reverted and the red test remains.
+
+### Task 5
+
+Task 5 is left unticked with its failing screen scenario. The word-highlight probe printed a changed-line extmark at priority 100, `DiffViewWord` ranges at priority 110, `DiffViewChange` background `4148554`, and `DiffViewWord` background `5401445`.
+
+- Attempt 1 offset both winbars, reset leaking statuscolumn highlights, filled padding rows, and normalized end-of-buffer cells. The approved text appeared, but normal gutter cells and the virtual delete gutter still had the wrong colours.
+- Attempt 2 gave normal gutter cells and each virtual-gutter segment explicit groups. The screen then reached the word assertion, where `wrap` was drawn with background `#3f4d4a` instead of `DiffViewWord` background `#526b65`, despite the higher-priority word extmark.
+
+The complete second production attempt is saved in `artifacts/runs/20817010-c87a-4cc5-95db-e0c0d18840d7/stuck-attempt.diff`; production edits were reverted and the red test remains without a self-generated reference screenshot.
