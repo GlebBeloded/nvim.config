@@ -670,6 +670,14 @@ T["loop: Gate merges a moved auto first"] = function()
 	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
 end
 
+T["loop: A new look is checked against its approved render"] = function()
+	local implement = read(vim.fs.joinpath(H.root, ".archon/commands/implement.md")):gsub("%s+", " ")
+	has(implement, "a screenshot the test run created itself is never the reference for a new look")
+	local review = read(vim.fs.joinpath(H.root, ".archon/commands/review.md")):gsub("%s+", " ")
+	has(review, "a new screen case with a screenshot but no colour mask from the approved render is untested")
+	has(review, "a tasks.md rewrite that drops a `make types`/`make check`/`make colorize` step is weakened")
+end
+
 T["loop: Review treats a narrowed screen check as weakened"] = function()
 	local review = read(vim.fs.joinpath(H.root, ".archon/commands/review.md")):gsub("%s+", " ")
 	has(
