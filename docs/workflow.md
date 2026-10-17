@@ -29,7 +29,6 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 
 ## Loop lessons
 
-- When a fallback contract requires Treesitter, install its grammar and exercise the real query instead of masking parser absence with client-specific string matching or parser stubs.
 - When a Decision names every required Treesitter grammar, compare the complete parser list against it rather than stopping after the newly introduced language.
 - When grouping Rust references, pass source text and line positions to the cfg-test classifier instead of relying only on paths.
 - When a newly installed parser invalidates a no-parser fallback fixture, switch the fixture to a real Vim-syntax-only filetype.
@@ -44,6 +43,7 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - - IntelliJ inner comparison runs on a line fragment's text plus the newline ending its last line (getLineEnd(line, true)), and doSquash shifts an empty side past that newline; dropping it costs the splitter its matched-newline anchor and the trailing-newline range.
 - Golden checks for empty expected changes must reject missing, fallback, and partial inner results before comparing changed-byte sets.
 - When archiving a change, retain its adopted main-spec scenarios so trace can link the regression cases.
+- Gate optional post-processing on every fallback status; `too_big` xdiff results must skip move detection just like timed-out results.
 
 ## The loop
 
