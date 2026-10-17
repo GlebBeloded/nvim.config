@@ -66,6 +66,45 @@ T["diff: A too big comparison falls back to xdiff"] = function()
 	})
 end
 
+T["diff: A too big fallback skips move detection"] = function()
+	local result = child.lua_get("require('gleb.diff.engine').compare_lines(...)", {
+		{
+			"local limit = 2048",
+			"local cheap = true",
+			"local count = 10",
+			"bravo",
+			"alpha",
+			"bravo",
+			"local limit = 2048",
+			"local cheap = true",
+			"local count = 10",
+			"bravo",
+			"bravo",
+			"bravo",
+		},
+		{
+			"alpha",
+			"bravo",
+			"alpha",
+			"bravo",
+			"local limit = 2048",
+			"local cheap = true",
+			"local count = 10",
+			"bravo",
+			"alpha",
+			"alpha",
+			"alpha",
+			"local limit = 2048",
+			"local cheap = true",
+			"local count = 10",
+		},
+		{ moves = true, limits = { myers_threshold = 1 } },
+	})
+
+	eq(result.too_big, true)
+	eq(result.moves, {})
+end
+
 T["diff: A missed deadline falls back to xdiff"] = function()
 	local result = child.lua_get([[(function()
 		local calls = 0

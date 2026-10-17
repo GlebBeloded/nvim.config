@@ -301,7 +301,7 @@ function M.compare_lines(lines1, lines2, opts)
 	}
 	local max_inner_bytes = limits.max_inner_bytes or MAX_INNER_BYTES
 	local result = compare_lines_with_context(lines1, lines2, highlight, comparison_policy, context, max_inner_bytes)
-	if opts.moves and not result.timed_out then
+	if opts.moves and not result.too_big and not result.timed_out then
 		compute_moves(result, lines1, lines2, highlight, comparison_policy, context, max_inner_bytes)
 	end
 	return result

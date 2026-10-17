@@ -17,11 +17,12 @@ Scenarios: `diff: Every VS Code move fixture passes`, `diff: Short moves are ign
 
 ## 3. Engine integration
 
-Scenarios: `diff: A moved block is detected`, `diff: A moved block with an edit carries its inner diff`, `diff: A block moved next to an edit is found by line windows`, `diff: Moves are off by default`, `diff: A deadline during move detection drops moves`, `diff: Move detection on a 5000-line file stays within budget`
+Scenarios: `diff: A moved block is detected`, `diff: A moved block with an edit carries its inner diff`, `diff: A block moved next to an edit is found by line windows`, `diff: Moves are off by default`, `diff: A too big fallback skips move detection`, `diff: A deadline during move detection drops moves`, `diff: Move detection on a 5000-line file stays within budget`
 
 - [x] 3.1 Write the scenarios in `tests/unit/diff/test_moves.lua` and `test_moves_perf.lua`, and see them fail. The deadline case wraps `moves.compute` to flip its fake clock.
 - [x] 3.2 Add the `moves` option, `result.moves`, the shifted inner diff per move and the shared deadline to `init.lua` (design Decisions 3 and 4)
 - [x] 3.3 Make both files pass
+- [x] 3.4 Keep `moves` empty when the line comparison falls back because it is too big
 
 ## 4. Attribution and check
 

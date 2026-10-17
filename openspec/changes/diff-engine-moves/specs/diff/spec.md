@@ -19,6 +19,10 @@ With `opts.moves`, `compare_lines` SHALL fill `result.moves` with blocks moved b
 - **WHEN** the first move scenario's lines are compared without `moves`
 - **THEN** `moves` is empty and `fragments` equal those of the first move scenario
 
+#### Scenario: A too big fallback skips move detection
+- **WHEN** a comparison exceeds its Myers threshold and falls back to xdiff with `moves = true`
+- **THEN** `too_big` is true and `moves` is empty
+
 ### Requirement: Move thresholds
 Moves SHALL keep VS Code's thresholds:
 - at least 3 lines;
