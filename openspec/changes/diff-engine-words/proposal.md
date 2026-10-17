@@ -10,7 +10,7 @@ This change ports IntelliJ's word and char levels on top of the line engine, so 
 ## What Changes
 
 - **Inner fragments.**
-  - Each line fragment from `compare_lines` gains an `inner` list of changed byte ranges, relative to the fragment's text (its lines joined with `"\n"`).
+  - Each line fragment from `compare_lines` gains an `inner` list of changed byte ranges, relative to the fragment's comparison text (its lines joined with `"\n"`, plus the `"\n"` ending its last line when another line follows on that side).
   - `inner = nil` means the whole fragment is the change: a pure insertion or deletion, or a mode without inner fragments.
   - `inner = {}` means the sides differ only in what the policy ignores, as in IntelliJ.
 - **Highlight modes** (`opts.highlight`), IntelliJ's five:

@@ -13,6 +13,7 @@ Scenarios: `diff: Every IntelliJ word case passes`, `diff: Every IntelliJ char c
 
 - Fixture rows retain their IntelliJ case kind and per-policy expectations so later golden tests can dispatch through the real engine API.
 - Unicode tables use flat start/end pairs so generated data stays compact and lookup remains a binary search.
+- Inner invariant contradiction: choose A (follow IntelliJ); fragment comparison text includes its trailing newline when another line follows, and TRIM removes whitespace for gap checks but not changed-chunk checks, because this satisfies IntelliJ's word and split goldens and `checkValidRanges` invariants.
 
 ## 2. Words, chars and splitting
 
@@ -40,13 +41,3 @@ Scenarios: `diff: Random texts keep IntelliJ's inner invariants`
 - [ ] 4.1 Write the scenario in `tests/unit/diff/test_invariants_inner.lua` (design Decision 7) and see it fail if anything breaks; fix the engine, never the invariant
 - [x] 4.2 Add the Unicode Character Database line to `NOTICE` and headers to the new files. `diff: Ported files carry their attribution` (from `diff-engine-lines`) must still pass.
 - [ ] 4.3 Run `make check`
-
-## Blocked
-
-- Question: the spec contradicts itself on what an inner range may cover, so `diff: Random texts keep IntelliJ's inner invariants` cannot pass alongside `diff: Every IntelliJ word case passes` and `diff: Every IntelliJ split case passes`.
-  - Fragment text. Requirement "Inner fragments" and design Decision 2 index ranges into the fragment's lines joined with `"\n"`, with no newline after the last line. IntelliJ compares a fragment with the newline that ends its last line (`ComparisonManagerImpl.getOffsets`, `getLineEnd(line, true)`). The splitter needs that matched newline (`SplitComparisonUtilTest.kt:67` and `:72`), and row `WordComparisonUtilTest.kt:409` expects right byte 10, the newline after `" };"`, in its `lines_inner` fragment. A split block's range then ends one byte past its joined lines, and the test's bound fails: `alphabet 1 run 1 policy default highlight by_word_split: line range 1 inner range 1 is out of bounds`.
-  - TRIM checks. The test trims both gaps and changed chunks under `trim_whitespaces`. IntelliJ's `ComparisonUtilAutoTest.checkValidRanges` compares gaps without whitespace under every non-DEFAULT policy, and changed chunks without whitespace only under IGNORE (design Decision 7 says the same for changed chunks). IntelliJ's output fails the trimmed checks: in `"j l"` vs `"j\nl"` the space is a real TRIM change but trims to `""` (`run 2 policy trim_whitespaces words: range 12 is equal`), and the gap `"l\t.\n "` vs `"\nl\t\n  \t."` is equal only without whitespace (`run 2 policy trim_whitespaces chars: gap before range 24 differs`).
-- Options:
-  - A: follow IntelliJ. A fragment's text is its lines joined with `"\n"`, plus the `"\n"` that ends its last line when another line follows. A range may cover that newline, and `inner_columns` already drops it. Restate requirement "Inner fragments" and design Decision 2 that way. `test_invariants_inner.lua` builds that text and applies `checkValidRanges`' TRIM rules. A probe with exactly these test changes passed every run, alphabet, policy and mode, and every golden passes.
-  - B: keep the joined-text bound and the trimmed checks. Clipping ranges at the joined text fails row `WordComparisonUtilTest.kt:409`. No range set satisfies both trimmed checks for `"j l"` vs `"j\nl"` without marking the unchanged words `j` and `l`, so the engine would leave IntelliJ's TRIM output.
-- Recommendation: A.
