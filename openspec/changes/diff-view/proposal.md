@@ -94,6 +94,10 @@ The user wants IntelliJ's two-side diff, built on the ported engine and with a U
 - Add scenarios: close via `:tabclose`/`:close`/`:only` with checks that autocmds, attach, timer and options are gone; keys in non-view windows; folds and fold rows after an edit plus auto-save; `show` replacing a view and two views at once; VimResized and a narrow area; empty and zero-change diffs; multibyte words; sync with closed folds, a pad at the top and `leftcol`; a statuscolumn/re-diff perf budget on a large fixture. A task updates `find-action/test_run.lua` `more_results` and `ADAPTER_PLUGINS`.
 - Split tasks 2 and 3 into 2a (source, open, notify), 2b (render, pads, gutter, words, colours) and 3a (folds, ufo isolation), 3b (sync), 3c (navigation, keys), 3d (re-diff), so each fits the 2-attempt limit.
 
+## Decision (auditor, 2026-10-17, trace duplicate)
+
+- Resolve the trace DUPLICATE `diff: Diff view maps the cursor across changes`: the integration case in tests/integration/diff/test_view_keys.lua keeps the name; the unit case in tests/unit/diff/test_layout.lua becomes `diff: Layout maps cursor rows across changes`, a scenario ADDED to this change's delta with the unit assertion as its THEN. This rename is required, not forbidden: a duplicate fails trace on every gate.
+
 ## Agent decisions
 
 - **The right pane is the real buffer, not a copy.** IntelliJ edits the document in place. This keeps LSP, autosave, undo and gitsigns, and `diff-view-actions` stages what the user sees. Decorations go in a namespace scoped to the right window (`nvim__ns_set`), so the file's other windows stay clean.
