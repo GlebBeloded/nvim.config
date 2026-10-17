@@ -23,9 +23,9 @@ Scenarios: `references: Bash query classifies every usage type`
 
 Scenarios: `references: Terraform query classifies every usage type`
 
-- [ ] 3.1 Port the Terraform cases from `drafts/verify.lua` to `tests/unit/references/usage_cases/terraform.lua` with their real sources under `usage_cases/terraform/`, add the scenario to the shared driver in `tests/unit/languages/test_contract.lua` for both the `hcl` and `terraform` parsers, run `make test FILE=tests/unit/languages/test_contract.lua CASE="Terraform query classifies every usage type"`, and see it fail against the write/read-only query
-- [ ] 3.2 Replace `queries/hcl/usages.scm` with the verified draft after applying design.md Decisions 1 and 3; keep `queries/terraform/usages.scm` as `; inherits: hcl`
-- [ ] 3.3 Run `make test FILE=tests/unit/languages/test_contract.lua CASE="Terraform query classifies every usage type"` and see it pass; also run `references: HCL fallback classifies variable labels and traversals` and `references: Every query capture is in the catalogue`
+- [x] 3.1 Port the Terraform cases from `drafts/verify.lua` to `tests/unit/references/usage_cases/terraform.lua` with their real sources under `usage_cases/terraform/`, add the scenario to the shared driver in `tests/unit/languages/test_contract.lua` for both the `hcl` and `terraform` parsers, run `make test FILE=tests/unit/languages/test_contract.lua CASE="Terraform query classifies every usage type"`, and see it fail against the write/read-only query
+- [x] 3.2 Replace `queries/hcl/usages.scm` with the verified draft after applying design.md Decisions 1 and 3; keep `queries/terraform/usages.scm` as `; inherits: hcl`
+- [x] 3.3 Run `make test FILE=tests/unit/languages/test_contract.lua CASE="Terraform query classifies every usage type"` and see it pass; also run `references: HCL fallback classifies variable labels and traversals` and `references: Every query capture is in the catalogue`
 
 ## 4. Enable the language facets
 
