@@ -29,10 +29,6 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 
 ## Loop lessons
 
-- LSP positions count `character` in the client's `offset_encoding` (UTF-16 by default): convert with `vim.str_byteindex(line, client.offset_encoding, character)` before using it as a byte column.
-- Keep generic test-directory segments additive after language-specific patterns so configured filetypes retain shared conventions.
-- Stub optional parsers with grammar-shaped nodes so parser-dependent regressions execute on every configured host.
-- Screen-mask legend groups resolve through the current window's winhighlight, so a float must not remap a legend group (CursorLineNr, LineNr) it draws; pick status-column groups per line by expression instead.
 - When a view owns companion floats and global autocmds, observe closure of its primary window and route it through the view's complete cleanup path.
 - Guard mutations of retained async result tables after timeout completion while still allowing late replies to populate caches.
 - When a fallback contract requires Treesitter, install its grammar and exercise the real query instead of masking parser absence with client-specific string matching or parser stubs.
@@ -45,6 +41,9 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - When adding a Treesitter usages query, update the exhaustive runtime query-language expectation alongside the query.
 - Adding a Treesitter usages query requires adding its language to the exhaustive runtime query-language expectation.
 - Build ordered LCS matches by appending and preserve IntelliJ's original-count recursion state so large common regions stay linear without premature fallback.
+- Golden harnesses should compare only fields declared by each fixture row so exact-range rows do not fail on redundant derived byte sets.
+- - IntelliJ inner comparison runs on a line fragment's text plus the newline ending its last line (getLineEnd(line, true)), and doSquash shifts an empty side past that newline; dropping it costs the splitter its matched-newline anchor and the trailing-newline range.
+- Golden checks for empty expected changes must reject missing, fallback, and partial inner results before comparing changed-byte sets.
 
 ## The loop
 
