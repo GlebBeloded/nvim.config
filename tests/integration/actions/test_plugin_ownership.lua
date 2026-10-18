@@ -33,12 +33,28 @@ function PluginMapped(filetype, lhs, mode)
 	end)
 end]]
 
---- Run `open` in the child and wait until a `filetype` buffer is loaded.
+--- Schedule `open` in the child and wait until `condition` is true.
 ---@param open string Lua statement
 ---@param filetype string
-local function open_surface(open, filetype)
-	child.lua(open)
-	assert(child.wait(("PluginBuffer(%q) ~= nil"):format(filetype), 10000), filetype .. " window did not open")
+---@param surface? string
+---@param condition? string
+local function open_surface(open, filetype, surface, condition)
+	child.lua("vim.schedule(function() " .. open .. " end)")
+	if child.wait(condition or ("PluginBuffer(%q) ~= nil"):format(filetype), 10000) then
+		return
+	end
+
+	local state = child.lua_get([=[{
+		mode = vim.api.nvim_get_mode().mode,
+		messages = vim.api.nvim_exec2("messages", { output = true }).output,
+	}]=])
+	error(
+		("%s window did not open (mode: %s; messages: %s)"):format(
+			surface or filetype,
+			state.mode,
+			state.messages ~= "" and state.messages or "<none>"
+		)
+	)
 end
 
 ---@param filetype string
@@ -95,13 +111,17 @@ T["actions: Plugin-window mappings are action-owned"] = function()
 	expect_audit_empty()
 	open_surface([[require("lazy.core.config").headless = function() return false end vim.cmd("Lazy")]], "lazy")
 	expect_audit_empty()
-	child.lua([[
+	open_surface(
+		[[
 		vim.api.nvim_list_uis = function()
 			return { { width = vim.o.columns, height = vim.o.lines } }
 		end
 		require("99").open()
-	]])
-	assert(child.wait([[vim.bo.filetype == "99" or vim.bo.filetype == "99prompt"]]), "99 window did not open")
+	]],
+		"99",
+		"99",
+		[[PluginBuffer("99") ~= nil or PluginBuffer("99prompt") ~= nil]]
+	)
 	expect_audit_empty()
 
 	eq(
