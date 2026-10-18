@@ -144,6 +144,32 @@ local function name_before(left, right)
 	return left < right
 end
 
+---@param parent_of table<string, string>
+---@param parent string
+---@param child string
+---@return boolean
+local function makes_cycle(parent_of, parent, child)
+	local ancestor = parent
+	while ancestor do
+		if ancestor == child then
+			return true
+		end
+		ancestor = parent_of[ancestor]
+	end
+	return false
+end
+
+---@param parent_of table<string, string>
+---@param name string
+---@return string
+local function top_parent(parent_of, name)
+	local parent = parent_of[name]
+	while parent_of[parent] do
+		parent = parent_of[parent]
+	end
+	return parent
+end
+
 --- Group files under parents selected by pattern rules.
 ---@param _dir string
 ---@param entries FileTreeEntry[]
@@ -156,32 +182,37 @@ function M.nest(_dir, entries, rules)
 			names[#names + 1] = entry.name
 		end
 	end
+	table.sort(names, name_before)
 
-	local result = {}
+	local parent_of = {}
 	for _, rule in ipairs(compile_rules(rules)) do
 		for _, parent in ipairs(names) do
 			local captures = { parent:match(rule.parent) }
 			if captures[1] then
-				local children = result[parent] or {}
-				local included = {}
-				for _, child in ipairs(children) do
-					included[child] = true
-				end
 				for _, template in ipairs(rule.children) do
 					local child_pattern = whole_pattern(substitute(template, captures))
 					for _, child in ipairs(names) do
-						if child ~= parent and not included[child] and child:match(child_pattern) then
-							children[#children + 1] = child
-							included[child] = true
+						if
+							not parent_of[child]
+							and child:match(child_pattern)
+							and not makes_cycle(parent_of, parent, child)
+						then
+							parent_of[child] = parent
 						end
 					end
 				end
-				if #children > 0 then
-					table.sort(children, name_before)
-					result[parent] = children
-				end
 			end
 		end
+	end
+
+	local result = {}
+	for child in pairs(parent_of) do
+		local parent = top_parent(parent_of, child)
+		result[parent] = result[parent] or {}
+		result[parent][#result[parent] + 1] = child
+	end
+	for _, children in pairs(result) do
+		table.sort(children, name_before)
 	end
 	return result
 end

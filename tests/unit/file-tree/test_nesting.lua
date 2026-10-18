@@ -96,4 +96,48 @@ T["file-tree: Broken nesting rules are skipped"]["warns once and continues with 
 	eq(notifications[2].message:match("^File tree nesting rule 2 skipped"), "File tree nesting rule 2 skipped")
 end
 
+T["file-tree: Earlier nesting rule wins a shared child"] = MiniTest.new_set()
+
+T["file-tree: Earlier nesting rule wins a shared child"]["lifts a claimed chain to its first parent"] = function()
+	local nesting = require("gleb.file_tree.nesting")
+	local result = nesting.nest("/project", entries({ "price.ts", "price.js", "price.d.ts", "price.js.map" }), {
+		{
+			parent = "(.+)%.ts",
+			children = { "${capture}%.d%.ts", "${capture}%.js", "${capture}%.d%.ts%.map" },
+		},
+		{
+			parent = "(.+)%.js",
+			children = { "${capture}%.js%.map", "${capture}%.d%.ts" },
+		},
+	})
+
+	eq(result, { ["price.ts"] = { "price.d.ts", "price.js", "price.js.map" } })
+end
+
+T["file-tree: Nesting cycles keep rule order"] = MiniTest.new_set()
+
+T["file-tree: Nesting cycles keep rule order"]["drops a claim back to an earlier parent"] = function()
+	local nesting = require("gleb.file_tree.nesting")
+	local result = nesting.nest("/project", entries({ "a.ts", "a.js" }), {
+		{ parent = "(.+)%.ts", children = { "${capture}%.js" } },
+		{ parent = "(.+)%.js", children = { "${capture}%.ts" } },
+	})
+
+	eq(result, { ["a.ts"] = { "a.js" } })
+end
+
+T["file-tree: Folders never nest"] = MiniTest.new_set()
+
+T["file-tree: Folders never nest"]["excludes directory children"] = function()
+	local nesting = require("gleb.file_tree.nesting")
+	local result = nesting.nest("/project", {
+		{ name = "invoice.go", path = "/repo/invoice.go", kind = "file" },
+		{ name = "invoice_test.go", path = "/repo/invoice_test.go", kind = "directory" },
+	}, {
+		{ parent = "(.+)%.go", children = { "${capture}_test%.go" } },
+	})
+
+	eq(result, {})
+end
+
 return T

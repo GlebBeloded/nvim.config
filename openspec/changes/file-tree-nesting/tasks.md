@@ -17,9 +17,9 @@ Scenarios: `file-tree: Nesting rule nests by capture`, `file-tree: Nesting patte
 
 Scenarios: `file-tree: Earlier nesting rule wins a shared child`, `file-tree: Nesting cycles keep rule order`, `file-tree: Folders never nest`
 
-- [ ] 1b.1 Add the three cases to `tests/unit/file-tree/test_nesting.lua`, call the real `nest` entry point, and run `make test FILE=tests/unit/file-tree/test_nesting.lua CASE="Earlier nesting rule wins a shared child"`; see it fail
-- [ ] 1b.2 Implement first-claim precedence, cycle rejection, chain lifting, file-only filtering and tree name order
-- [ ] 1b.3 Run each scenario with `make test FILE=tests/unit/file-tree/test_nesting.lua CASE="<scenario title>"` and see it pass
+- [x] 1b.1 Add the three cases to `tests/unit/file-tree/test_nesting.lua`, call the real `nest` entry point, and run `make test FILE=tests/unit/file-tree/test_nesting.lua CASE="Earlier nesting rule wins a shared child"`; see it fail
+- [x] 1b.2 Implement first-claim precedence, cycle rejection, chain lifting, file-only filtering and tree name order
+- [x] 1b.3 Run each scenario with `make test FILE=tests/unit/file-tree/test_nesting.lua CASE="<scenario title>"` and see it pass
 
 ## 1c. Nest cache and performance
 
