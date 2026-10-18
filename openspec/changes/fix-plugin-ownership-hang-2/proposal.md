@@ -48,3 +48,10 @@ neotest summary, Mason, Lazy, 99). Which one blocks is not known.
   process.
 - The stall diagnostics also list the child's live subprocesses (`vim.api.nvim_get_proc_children` with each command
   line), so the next real stall names the git command it waited on.
+- (gate 6, captured stall) check-5 and check-6 failed on this change's own case, not a flake:
+  `lazy surface open failed (phase: scheduled; elapsed: 10155 ms; … subprocesses: 20430: git status --porcelain=v1 -z -uall, …)`.
+  The child's main loop was blocked by a synchronous `git status -uall`, which differ.nvim runs
+  (`differ/git/init.lua:574`, `vim.system(...):wait()` without a timeout) when `:Differ` opened earlier in the case.
+  Probe which directory it ran in (the case's cwd); open the Differ surface (in both cases) in a small fixture repo,
+  and make sure no Differ git job is still running when the next surface opens (wait for Differ's open to finish, or
+  close Differ before the next surface). A pass that leaves this case red without a commit is not a fix.
