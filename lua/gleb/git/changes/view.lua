@@ -240,7 +240,9 @@ local function schedule_diff(view)
 				return
 			end
 			local row = view.rows[vim.api.nvim_win_get_cursor(view.win)[1]]
-			if row and row.kind == "file" and row.diffable and row.path ~= view.diff_path then
+			if row and row.kind == "file" and not row.diffable then
+				vim.notify("No file content: " .. row.label, vim.log.levels.INFO)
+			elseif row and row.kind == "file" and row.path ~= view.diff_path then
 				show_diff(view, row, view.generation, selection_generation)
 			end
 		end)

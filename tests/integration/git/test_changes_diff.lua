@@ -82,6 +82,14 @@ local function wait_for_shows(count)
 	eq(child.wait(("#DiffShows == %d"):format(count), ASYNC_MS), true)
 end
 
+---@param path string
+---@param content string
+local function write_binary(path, content)
+	local file = assert(vim.uv.fs_open(path, "w", 420))
+	assert(vim.uv.fs_write(file, content, 0))
+	assert(vim.uv.fs_close(file))
+end
+
 ---@param root string
 ---@param selected? string
 local function review_changes(root, selected)
@@ -186,6 +194,85 @@ T["git: Changes panel shows a deleted file"] = function()
 		require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()].diff_view.right_buf
 	]])
 	eq(child.lua_get("vim.bo[...].modifiable", { right_buf }), false)
+end
+
+T["git: Changes panel binary row uses a read-only diff"] = function()
+	local root = H.git_repo({})
+	local path = vim.fs.joinpath(root, "image.bin")
+	write_binary(path, "old\0binary")
+	H.git(root, { "add", "image.bin" })
+	H.git(root, { "commit", "-qm", "binary" })
+	write_binary(path, "new\0binary")
+	open_changes(root)
+	observe_show()
+	cursor_before("image.bin")
+
+	child.type_keys("j")
+	wait_for_shows(1)
+
+	local result = child.lua_get(
+		[[(function(path)
+		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		return {
+			actionable = DiffShows[1].actionable,
+			modifiable = vim.bo[panel.diff_view.right_buf].modifiable,
+			named_buf = vim.fn.bufnr(path, false),
+		}
+	end)(...)]],
+		{ path }
+	)
+	eq(result, { actionable = false, modifiable = false, named_buf = -1 })
+end
+
+T["git: Changes panel unmerged row uses a read-only diff"] = function()
+	local root = H.git_repo({ ["conflict.txt"] = "base\n" })
+	H.git(root, { "checkout", "-q", "-b", "other" })
+	H.write_files(root, { ["conflict.txt"] = "other\n" })
+	H.git(root, { "commit", "-qam", "other" })
+	H.git(root, { "checkout", "-q", "main" })
+	H.write_files(root, { ["conflict.txt"] = "main\n" })
+	H.git(root, { "commit", "-qam", "main" })
+	local merge = vim.system({ "git", "merge", "other" }, { cwd = root, text = true }):wait()
+	eq(merge.code ~= 0, true)
+	local path = vim.fs.joinpath(root, "conflict.txt")
+	open_changes(root)
+	observe_show()
+	cursor_before("conflict.txt")
+
+	child.type_keys("j")
+	wait_for_shows(1)
+
+	local result = child.lua_get(
+		[[(function(path)
+		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		return {
+			actionable = DiffShows[1].actionable,
+			modifiable = vim.bo[panel.diff_view.right_buf].modifiable,
+			named_buf = vim.fn.bufnr(path, false),
+		}
+	end)(...)]],
+		{ path }
+	)
+	eq(result, { actionable = false, modifiable = false, named_buf = -1 })
+end
+
+T["git: Changes panel submodule row has no diff"] = function()
+	local child_root = H.git_repo({ ["library.txt"] = "old\n" })
+	local root = H.git_repo({})
+	H.git(root, { "-c", "protocol.file.allow=always", "submodule", "add", "-q", child_root, "vendor/library" })
+	H.git(root, { "commit", "-qam", "submodule" })
+	H.write_files(vim.fs.joinpath(root, "vendor/library"), { ["library.txt"] = "new\n" })
+	open_changes(root)
+	observe_show()
+	local notifications = H.record_notify(child)
+	cursor_before("vendor/library")
+
+	child.type_keys("j")
+	eq(child.wait("#Notifications == 1", ASYNC_MS), true)
+
+	eq(child.lua_get("#DiffShows"), 0)
+	eq(child.lua_get("vim.fn.bufnr(..., false)", { vim.fs.joinpath(root, "vendor/library") }), -1)
+	eq(notifications(), { { msg = "No file content: library", level = vim.log.levels.INFO } })
 end
 
 T["git: Changes panel closes a contentless diff"] = function()

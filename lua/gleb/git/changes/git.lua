@@ -55,6 +55,15 @@ local function text_lines(text)
 	return vim.split(text:gsub("\n$", ""), "\n", { plain = true })
 end
 
+---@param path string
+---@return string[]
+local function readonly_file_lines(path)
+	return vim.tbl_map(function(line)
+		local sanitized = line:gsub("\n", "�")
+		return sanitized
+	end, vim.fn.readfile(path, "b"))
+end
+
 ---@param root string
 ---@param row ChangesRow
 ---@param callback fun(spec: gleb.diff.view.Spec)
@@ -65,25 +74,33 @@ function M.load_diff(root, row, callback)
 	local head_path = row.orig or relpath
 	local left_command = { "git", "show", "HEAD:" .. head_path }
 	local hash_command = { "git", "rev-parse", "--short=7", "HEAD" }
+	local numstat_command = { "git", "--literal-pathspecs", "diff", "--numstat", "HEAD", "--", relpath }
 	local left_result
 	local hash_result
+	local numstat_result
 
 	local function finish()
-		if not left_result or not hash_result then
+		if not left_result or not hash_result or not numstat_result then
 			return
 		end
 		vim.schedule(function()
 			local added = row.status == "added" or row.status == "untracked"
 			local deleted = row.status == "deleted"
+			local binary = (numstat_result.stdout or ""):match("^%-\t%-\t") ~= nil
+			local readonly = deleted or binary or row.status == "conflict"
 			local right = {}
 			local right_buf
 			if not deleted then
-				right_buf = vim.fn.bufnr(path, false)
-				if right_buf == -1 then
-					right_buf = vim.fn.bufadd(path)
+				if readonly then
+					right = readonly_file_lines(path)
+				else
+					right_buf = vim.fn.bufnr(path, false)
+					if right_buf == -1 then
+						right_buf = vim.fn.bufadd(path)
+					end
+					vim.fn.bufload(right_buf)
+					right = vim.api.nvim_buf_get_lines(right_buf, 0, -1, false)
 				end
-				vim.fn.bufload(right_buf)
-				right = vim.api.nvim_buf_get_lines(right_buf, 0, -1, false)
 			end
 			local left_text = left_result.stdout or ""
 			callback({
@@ -93,7 +110,7 @@ function M.load_diff(root, row, callback)
 				left = added and {} or text_lines(left_text),
 				right = right,
 				right_buf = right_buf,
-				actionable = not added and not deleted,
+				actionable = not added and not readonly,
 				head_final_newline = not added and left_text:sub(-1) == "\n",
 				filetype = vim.filetype.match({ filename = path }) or "",
 				labels = {
@@ -110,6 +127,10 @@ function M.load_diff(root, row, callback)
 	end)
 	vim.system(hash_command, { cwd = root, text = true }, function(result)
 		hash_result = result
+		finish()
+	end)
+	vim.system(numstat_command, { cwd = root, text = true }, function(result)
+		numstat_result = result
 		finish()
 	end)
 end

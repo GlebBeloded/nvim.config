@@ -120,9 +120,9 @@ Scenarios: `git: Changes panel keeps the diff on a directory row`, `git: Changes
 
 ## 5e. Non-actionable diffs
 Scenarios: `git: Changes panel binary row uses a read-only diff`, `git: Changes panel unmerged row uses a read-only diff`, `git: Changes panel submodule row has no diff`
-- [ ] 5e.1 Write the scenarios in `tests/integration/git/test_changes_diff.lua` with populated binary, conflict and submodule records and see them fail
-- [ ] 5e.2 Mark exceptional specs non-actionable, use read-only buffers without `bufadd`, and notify without loading submodule content
-- [ ] 5e.3 Run `make test FILE=tests/integration/git/test_changes_diff.lua CASE="Changes panel"` and see it pass
+- [x] 5e.1 Write the scenarios in `tests/integration/git/test_changes_diff.lua` with populated binary, conflict and submodule records and see them fail
+- [x] 5e.2 Mark exceptional specs non-actionable, use read-only buffers without `bufadd`, and notify without loading submodule content
+- [x] 5e.3 Run `make test FILE=tests/integration/git/test_changes_diff.lua CASE="Changes panel"` and see it pass
 
 ## 5f. Owned-view cleanup
 Scenarios: `git: Changes panel close preserves another diff view`, `git: Changes panel unloads its clean file buffer`
@@ -179,6 +179,7 @@ Scenarios: `git: Changes panel matches the approved render`, `git: Changes panel
 - Batch staging filters one full fresh status snapshot because Git status has no pathspec-from-file option and destination-only status loses rename origins.
 - Diff selection uses its own per-panel timer so refresh coalescing cannot cancel the 50 ms cursor debounce.
 - Project-tree toggle checks the already-loaded Changes module before handoff, avoiding a new feature load when no panel exists.
+- Binary detection uses Git numstat while conflict content uses its porcelain status, keeping both kinds in unnamed read-only buffers without guessing from file bytes.
 
 ## Stuck
 
