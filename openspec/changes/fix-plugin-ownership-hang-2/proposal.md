@@ -1,6 +1,7 @@
 ## Why
 
 Kind: bug
+Adopt: loop/fix-plugin-ownership-hang-2
 
 `actions: Plugin-window mappings are action-owned` (`tests/integration/actions/test_plugin_ownership.lua`) hangs again
 after `fix-plugin-ownership-hang` (archived 2026-10-18), and the hang kills its worker, so ~90 other cases of the full
@@ -55,3 +56,23 @@ neotest summary, Mason, Lazy, 99). Which one blocks is not known.
   Probe which directory it ran in (the case's cwd); open the Differ surface (in both cases) in a small fixture repo,
   and make sure no Differ git job is still running when the next surface opens (wait for Differ's open to finish, or
   close Differ before the next surface). A pass that leaves this case red without a commit is not a fix.
+
+## Rejected run
+Run on `loop/fix-plugin-ownership-hang-2` was rejected by the judge:
+- rewrites the user's ## Decision in openspec/changes/fix-plugin-ownership-hang-2/proposal.md
+- review findings:
+  Pass 4's must-fix is resolved. `child_subprocesses` (tests/helpers.lua:331-344) now reads each child's argv with `ps -o args=`, and both regression cases assert `sleep 30`. The dead copy inside the child is gone. check-7 is green; its only flake is the e2e VM not running.
+  
+  1. [minor] SIGKILL leaves grandchildren running. `stop_blocked_child` (tests/helpers.lua:318-319) kills only the nvim pid. The stubbed `/bin/sleep 30` (or, in a real stall, the git child) is orphaned and keeps running until it exits on its own. The Decision says "leaks no process". Fix: kill each pid from `nvim_get_proc_children` before killing nvim.
+  2. [minor] Duplicated helper, still open from pass 4. `expect_blocked_differ_diagnostic`, including its `vim.system` stub, is copied in tests/integration/actions/test_plugin_ownership.lua:49 and tests/integration/git/test_git.lua:231.
+  3. [minor] Out-of-scope edits the gate needed. tests/integration/file-tree/test_project_live.lua:123,146 and tests/screen/file-tree/test_project_ops.lua:124-130 are outside the proposal, but check-1 needed them to go green. They are not weakened: timeouts scale with load and the wait condition is stricter.
+  
+  No findings in these checks:
+  - Both agent decisions match the spec and the Decision.
+  - Test names match the scenario titles.
+  - No assertion was dropped.
+  - Delta requirements are under 500 characters.
+  - No test reads files under openspec/changes/.
+- note: flaky test cases (failed, then passed on rerun): e2e: Error: VM 'nvim-e2e' is not running
+- note: loop: sandbox: Lume still reports nvim-e2e unknown while its lume run process is alive, after one restart; giving up (/Users/hlebbeladzed/.cache/nvim-e2e-sandbox/vm.log)
+- note: loop: No test cases matched
