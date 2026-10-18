@@ -26,13 +26,14 @@ Reviewing and committing changes today goes through neo-tree's git status source
 - none
 
 ### Modified Capabilities
-- `git`: added "Changes panel window", "Changes panel outside a repository", "Changes panel rows", "Changes panel status colours", "Changes panel staging checkbox", "Changes panel staging toggle", "Changes panel stage all", "Changes panel line stats", "Changes panel nesting", "Changes panel diff view", "Changes panel review", "Changes panel diff file navigation", "Changes panel open and close", "Changes panel revert", "Changes panel commit", "Changes panel push", "Changes panel refresh", "Changes panel keys", "Changes panel shares the left side" and "Changes panel screen". Nothing is modified or removed; the neo-tree git status requirements stay until `tree-diff-cutover`.
+- `git`: adds the Changes panel requirements. Nothing is removed; the neo-tree git status requirements stay until `tree-diff-cutover`.
+- `file-tree`: adds the shared porcelain-v2 record parser used by the project tree and Changes panel; existing project-tree behaviour stays unchanged.
 
 ## Impact
 
 - Code:
   - New: `lua/gleb/git/changes/{init,model,render,git,view,actions,highlights}.lua`.
-  - Changed: `lua/gleb/git/actions.lua` (appends the `changes.*` actions), `lua/gleb/git/init.lua` (requires `gleb.git.changes` after gitlink), `settings/keymap.json` (eight view-scoped `changes.*` entries), the project tree's open path in `lua/gleb/file_tree/` (closes the changes panel first), `tests/fixtures/build.sh` (`billing`).
+  - Changed: `lua/gleb/git/actions.lua`, `lua/gleb/git/init.lua`, `lua/gleb/file_tree/model.lua`, `lua/gleb/file_tree/git.lua`, `lua/gleb/file_tree/view.lua`, `lua/gleb/file_tree/watch.lua`, `lua/gleb/diff/view/init.lua`, `lua/gleb/git/ai_commit.lua`, `settings/keymap.json`, `tests/fixtures/build.sh`.
 - Tests:
   - unit: `tests/unit/git/test_changes_model.lua` (porcelain v2 and numstat parsing, grouping, compaction, nesting, sort, checkbox states) and `test_changes_render.lua` (columns, stats, `…` cut).
   - integration: `tests/integration/git/test_changes.lua` (window, staging incl. the cwd and suffix cases, revert, commit, push, refresh, diff view link, keys) on `dirty`, `billing` and temp repos.
@@ -45,6 +46,16 @@ Reviewing and committing changes today goes through neo-tree's git status source
   - `file-tree: X reverts a file after confirmation` still holds: neo-tree's revert is untouched.
   - `file-tree: gc commits confirmed message` still holds: `gleb.git.ai_commit` is reused, not changed.
   - `git: Commit popup mappings come from git actions` still holds: the popup is opened, not changed.
+  - `file-tree: Project tree colours changed files` still holds because `parse_status` remains a compatibility wrapper over the shared records.
+  - `file-tree: Project tree folders take the strongest status below them` still holds because folder aggregation still receives the same status map.
+  - `file-tree: Project tree colours renamed and conflicted files` still holds because rename and unmerged records retain their existing project-tree statuses.
+  - `file-tree: Project tree shows files created outside Neovim` still holds because filesystem and git-dir watches keep driving project-tree redraws.
+  - `file-tree: Project tree recolours a written file` still holds because `BufWritePost` still invalidates the project-tree git status.
+  - `file-tree: Project tree recolours after staging outside Neovim` still holds because the existing git-dir watcher remains active.
+  - `file-tree: Project tree highlight colours come from the palette` still holds because no `FileTreeGit*` highlight definition changes.
+  - `file-tree: Collapsed nest parent shows a changed child` still holds because the shared parser preserves the status map consumed by nest tinting.
+  - `file-tree: Nest parent keeps its own status` still holds because status precedence and nest aggregation do not change.
+  - `file-tree: Settings-ignored entries do not tint folders or nests` still holds because ignored records remain separate from status records in the wrapper.
 - Out of scope:
   - Hunk and line staging (`diff-view-actions` owns the per-change checkbox).
   - Change lists, shelve, amend, commit history, a commit message field inside the panel.
