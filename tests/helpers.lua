@@ -433,7 +433,7 @@ function M.expect_blocked_differ_diagnostic(spec)
 	pcall(blocked.stop)
 
 	local message = tostring(diagnostic)
-	local sleep_pid_text = assert(message:match("subprocesses: (%d+): /bin/sleep 30"), message)
+	local sleep_pid_text = assert(message:match("(%d+): /bin/sleep 30"), message)
 	local sleep_pid = assert(tonumber(sleep_pid_text))
 	local sleep_stopped = vim.wait(1000, function()
 		return vim.uv.kill(sleep_pid, 0) ~= 0
