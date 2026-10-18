@@ -27,7 +27,7 @@ When no git root can be resolved, `changes.toggle` and `changes.review` SHALL no
 - **THEN** a notification starting with `Git root error:` at ERROR is emitted and no window with filetype `gleb-changes` exists
 
 ### Requirement: Changes panel rows
-The panel SHALL list `git status --porcelain=v2 -z --untracked-files=all` (argument list, run in the root) under the roots `Changes <n> files` and, when there are untracked files, `Unversioned Files <n> files` (`1 file` for one). Under a root, files are grouped by directory: directories first, then files, each sorted by name; a directory whose only child is a directory joins it as `a/b`; a directory row ends with its file count; root-level files sit under the root.
+The panel SHALL run `git --no-optional-locks status --porcelain=v2 -z --untracked-files=all` in the root and consume shared status records in one grouping pass. It SHALL draw `Changes <n> files` and an optional `Unversioned Files <n> files`, group by compacted directories, sort directories before files by name, and cap rows at the project tree's row limit.
 
 #### Scenario: Changes panel lists the dirty fixture
 - **WHEN** the changes panel is opened on a fresh copy of the `dirty` fixture
@@ -41,6 +41,22 @@ The panel SHALL list `git status --porcelain=v2 -z --untracked-files=all` (argum
 - **WHEN** the changes panel is opened on a repository whose only change is a modified tracked file `a.txt`
 - **THEN** the rows are `Changes 1 file` and `a.txt +1 -1`, and no row starts with `Unversioned Files`
 
+#### Scenario: Changes panel keeps one path in both roots
+- **WHEN** a repository reports the same path with a tracked worktree change and as an untracked path and the Changes panel opens
+- **THEN** one row for that path is under `Changes` and a second row is under `Unversioned Files`
+
+#### Scenario: Changes panel lists directory and submodule records
+- **WHEN** porcelain status reports an untracked `vendor/` directory record and a tracked submodule whose sub field starts with `S`
+- **THEN** each is a file row, selecting either opens no diff, `<CR>` opens no file, and an INFO notification explains that the row has no file content
+
+#### Scenario: Changes panel status avoids optional locks
+- **WHEN** the Changes panel refreshes in a repository
+- **THEN** its status command starts with `git --no-optional-locks status --porcelain=v2 -z --untracked-files=all`
+
+#### Scenario: Changes panel caps rows
+- **WHEN** grouping status records would produce more rows than the project tree row limit
+- **THEN** the Changes panel stops at that limit and notifies that the row limit was reached
+
 ### Requirement: Changes panel status colours
 A file name SHALL be coloured by its status alone: modified `FileTreeGitModified`, added `FileTreeGitAdded`, untracked `FileTreeGitUntracked`, deleted `FileTreeGitDeleted`, renamed `FileTreeGitRenamed` (showing the new path), unmerged `FileTreeGitConflict`. Roots use `ChangesRoot`, counts `ChangesCount`, checkboxes `ChangesCheckbox`, directories `FileTreeFolderIcon`/`FileTreeFolderName`; colours come from the palette.
 
@@ -52,6 +68,10 @@ A file name SHALL be coloured by its status alone: modified `FileTreeGitModified
 - **WHEN** the full config has loaded and the gruvbox-material colorscheme is active
 - **THEN** `ChangesRoot` is bold with the palette `fg1`, `ChangesCount` uses `grey1`, `ChangesStatAdded` uses `green` and `ChangesStatRemoved` uses `red` as foreground
 
+#### Scenario: Changes panel treats copies as renamed
+- **WHEN** porcelain status contains a copied `2` record from `old.txt` to `copy.txt`
+- **THEN** the panel shows `copy.txt` with `FileTreeGitRenamed` and keeps `old.txt` as the record's original path
+
 ### Requirement: Changes panel staging checkbox
 Each file row and the `Changes` root SHALL carry a checkbox: checked when every change is staged, mixed when staged and unstaged changes coexist, empty when nothing is staged; untracked files and the `Unversioned Files` root are always empty. The state comes from the porcelain index and worktree columns of the exact path.
 
@@ -60,7 +80,7 @@ Each file row and the `Changes` root SHALL carry a checkbox: checked when every 
 - **THEN** the checkbox of `a.txt` is checked (U+F0132), of `d.txt` mixed (U+F0856), of `b.txt`, `c.lua` and `new.txt` empty (U+F0131), and of the `Changes` root mixed
 
 ### Requirement: Changes panel staging toggle
-`<Space>` on a file row SHALL run `git reset -q -- <path>` when the exact path is fully staged (`git diff --cached --quiet -- <path>` exits 1 and `git diff --quiet -- <path>` exits 0, run in the root) and `git add -- <path>` otherwise, as argument lists with absolute paths, independent of the cwd. On a root or directory row it SHALL do the same for every file below in one call. A non-zero exit SHALL notify `Stage failed: <stderr>` or `Unstage failed: <stderr>` at ERROR.
+`<Space>` SHALL decide from one fresh porcelain-v2 status call for the selected file, directory or root, never row state or per-file processes. Every git call SHALL use `git --literal-pathspecs`. Above 100 paths it SHALL pass NUL paths through `--pathspec-from-file=- --pathspec-file-nul`. It SHALL stage unless every selected change is staged; renames unstage old and new paths. An unmerged file SHALL notify `Stage failed: resolve conflicts in the merge tool` and run no mutation.
 
 #### Scenario: Changes panel Space stages an unstaged file
 - **WHEN** the cursor is on the `b.txt` row of the changes panel on the `dirty` fixture and `<Space>` is pressed in normal mode
@@ -106,15 +126,27 @@ Each file row and the `Changes` root SHALL carry a checkbox: checked when every 
 - **WHEN** the cursor is on the mixed `Changes` root row of the changes panel on the `dirty` fixture and `<Space>` is pressed in normal mode
 - **THEN** one `git add --` call lists `a.txt`, `b.txt`, `d.txt` and `lib/c.lua`, `git diff --quiet` exits 0, `new.txt` stays untracked and the root checkbox is checked
 
+#### Scenario: Changes panel stages literal metacharacter paths
+- **WHEN** `[ab].txt` is modified, `a.txt` and `b.txt` are unchanged, and `<Space>` is pressed on `[ab].txt`
+- **THEN** only `[ab].txt` is staged and every git command used for the action starts with `git --literal-pathspecs`
+
+#### Scenario: Changes panel refuses to stage an unmerged file
+- **WHEN** `<Space>` is pressed on an unmerged file row
+- **THEN** `Stage failed: resolve conflicts in the merge tool` is notified and no staging command runs
+
+#### Scenario: Changes panel unstages a rename literally
+- **WHEN** `old.txt` is staged as renamed to `new.txt` and `<Space>` is pressed on `new.txt`
+- **THEN** one literal-pathspec reset names both `new.txt` and `old.txt`, and the rename is no longer staged
+
 ### Requirement: Changes panel stage all
-`A` in the panel SHALL run `git add -A` as an argument list in the root, notify `Stage failed: <stderr>` at ERROR on a non-zero exit, and refresh the panel.
+`A` in the panel SHALL run `git --literal-pathspecs add -A` in the root, including unmerged paths, notify `Stage failed: <stderr>` at ERROR on a non-zero exit, and refresh the panel and its diff view index.
 
 #### Scenario: Changes panel A stages everything
 - **WHEN** `A` is pressed in normal mode in the changes panel on the `dirty` fixture
 - **THEN** `git diff --quiet` exits 0, `git ls-files --others --exclude-standard` is empty, every checkbox is checked and no row starts with `Unversioned Files`
 
 ### Requirement: Changes panel line stats
-A changed tracked file's row SHALL end with right-aligned `+<added> -<removed>` from `git diff --numstat -z HEAD` (staged and unstaged together; argument list, run in the root) in `ChangesStatAdded` and `ChangesStatRemoved`. Untracked and binary files SHALL show none. A name that does not fit before the stats SHALL be cut and end with `…`.
+A changed tracked file SHALL show right-aligned `+<added> -<removed>` from `git diff --numstat -z HEAD`, keyed through its parsed status record and original path. A missing stat, untracked file, binary file or unborn `HEAD` SHALL show no stats. Names SHALL end with `…` when cut before stats.
 
 #### Scenario: Changes panel shows line stats
 - **WHEN** the changes panel is opened on a fresh copy of the `billing` fixture
@@ -123,6 +155,14 @@ A changed tracked file's row SHALL end with right-aligned `+<added> -<removed>` 
 #### Scenario: Changes panel cuts a long name before the stats
 - **WHEN** the changes panel is opened on a fresh copy of the `billing` fixture
 - **THEN** the nested `invoice_test.go` row reads `invoice_test.…` followed by `+20 -1`, which ends in the panel's last column
+
+#### Scenario: Changes panel omits unmatched numstat
+- **WHEN** status contains `a.txt` and `b.txt` but numstat contains only `a.txt`
+- **THEN** `a.txt` shows its line stats and `b.txt` shows no stats
+
+#### Scenario: Changes panel on unborn HEAD has no stats
+- **WHEN** the Changes panel opens in a repository with no commits and an added `a.txt`
+- **THEN** the `a.txt` row has no line stats and no numstat error is notified
 
 ### Requirement: Changes panel nesting
 Under one root and directory, a changed file that the file-tree nesting rules (`settings/file_tree.json`) nest under another listed file SHALL be a child row of it, one level deeper; the parent gets an expander and the nest starts expanded. `za` and `<CR>` on a root, directory or nest parent row SHALL toggle its fold, kept across refreshes.
@@ -144,7 +184,7 @@ Under one root and directory, a changed file that the file-tree nesting rules (`
 - **THEN** no row shows `price.ts` and no file is opened
 
 ### Requirement: Changes panel diff view
-When the panel cursor moves onto a file row, the panel SHALL, after a 50 ms debounce restarted per move, show that file in the diff view in the editor window: `HEAD` on the left (empty for added and untracked files), the working tree on the right (empty for deleted files). Focus SHALL stay in the panel, one diff view SHALL be reused across files without a new tab page, a stale result SHALL be dropped, and other rows keep the last diff.
+After a 50 ms debounce, the panel SHALL asynchronously build a full `gleb.diff.view.Spec` for the selected file, with normalized root, repo-relative path, filetype, final-newline state and left text from `HEAD:<orig or path>`. Root and selection generations SHALL drop stale results. One panel-owned view SHALL be reused without changing focus or tab; other rows keep the last diff.
 
 #### Scenario: Changes panel j shows the next file in the diff view
 - **WHEN** the changes panel on the `billing` fixture has its cursor on `invoice.go`, `j` is pressed in normal mode and 100 ms pass
@@ -168,7 +208,34 @@ When the panel cursor moves onto a file row, the panel SHALL, after a 50 ms debo
 
 #### Scenario: Changes panel with the diff view matches the approved render
 - **WHEN** a `100x30` screen edits `internal/billing/invoice.go` of a fresh copy of the `billing` fixture and the `changes.review` action runs
-- **THEN** screen rows 2-29 match design.md "Proposed B — changes panel with the diff view", text and colour mask
+- **THEN** columns 1-36 of screen rows 2-29 match design.md "Proposed B — changes panel with the diff view", text and colour mask, and columns 37-100 equal the same diff shown in a regular 64-column editor window
+
+#### Scenario: Changes panel drops a stale diff result
+- **WHEN** loading `a.txt` from HEAD is delayed, the panel cursor moves to `b.txt`, and both asynchronous loads finish
+- **THEN** the diff view shows `b.txt` and is never replaced by the stale `a.txt` result
+
+#### Scenario: Changes panel skips an unchanged selection
+- **WHEN** the diff view already shows `a.txt` and refresh keeps the panel cursor on the same `a.txt` path
+- **THEN** the diff view's show function is not called again
+
+### Requirement: Changes panel non-actionable diffs
+Added, untracked, deleted, binary, unmerged and submodule rows SHALL produce specs with `actionable = false`. Deleted and binary rows SHALL use read-only buffers without `bufadd`; untracked and added rows SHALL have empty left text. If `show` returns nil, the panel SHALL close only its own view and notify `No content changes: <name>`.
+
+#### Scenario: Changes panel binary row uses a read-only diff
+- **WHEN** the cursor moves onto a changed binary file row and 100 ms pass
+- **THEN** the shown spec is not actionable, its right buffer is read-only, and `bufadd` was not called for the path
+
+#### Scenario: Changes panel unmerged row uses a read-only diff
+- **WHEN** the cursor moves onto an unmerged file row and 100 ms pass
+- **THEN** the shown spec is not actionable and neither side is loaded into the file's editable buffer
+
+#### Scenario: Changes panel submodule row has no diff
+- **WHEN** the cursor moves onto a changed submodule row and 100 ms pass
+- **THEN** no file buffer is loaded and the panel notifies that the row has no file content
+
+#### Scenario: Changes panel closes a contentless diff
+- **WHEN** the diff view's `show` returns nil for `mode.txt`
+- **THEN** the panel closes its own previous view and notifies `No content changes: mode.txt`
 
 ### Requirement: Changes panel review
 The `changes.review` action SHALL open the changes panel when it is closed (cursor on the current file's row, else the first file row), focus it when open, and show the diff of the row under the cursor at once.
@@ -182,14 +249,18 @@ The `changes.review` action SHALL open the changes panel when it is closed (curs
 - **THEN** the panel cursor is on the `c.lua` row and the diff view shows `lib/c.lua`
 
 ### Requirement: Changes panel diff file navigation
-While the diff view shows a file chosen in the panel, `diff.next_file` in a diff window SHALL show the next file row of the panel (the last stays) and move the panel cursor to it.
+While the diff view shows a panel file, `diff.next_file` SHALL move the panel cursor to the next file and show it immediately; the last stays. When invoked from a diff window, completion SHALL focus the new view's `right_win`.
 
 #### Scenario: Changes panel ]f steps through every changed file
 - **WHEN** `changes.review` shows `lib/c.lua` of the `dirty` fixture, focus moves to the right diff window and `]f` is pressed four times in normal mode
 - **THEN** the diff view shows `a.txt`, `b.txt`, `d.txt` and `new.txt` in that order, once each, and the panel cursor ends on the `new.txt` row
 
+#### Scenario: Changes panel ]f keeps diff focus
+- **WHEN** focus is in the right diff window and `]f` shows the next panel file
+- **THEN** focus moves to the new diff view's `right_win`, not to the panel or the replaced window
+
 ### Requirement: Changes panel open and close
-`<CR>` on a file row SHALL close the diff view, edit the file in the editor window and focus it, keeping the panel open. `q` SHALL close the panel and the diff view, restore the buffer the editor window showed before, and focus it.
+`<CR>` on an actionable file row SHALL close the panel-owned diff view, edit the file in the editor window and focus it, keeping the panel open. `q` SHALL close the panel and only its view; editor restoration SHALL remain in `windows.restore`. Buffers loaded only by the panel SHALL be unloaded on close when unmodified.
 
 #### Scenario: Changes panel Enter opens the file
 - **WHEN** the diff view shows `b.txt` of the `dirty` fixture and `<CR>` is pressed in normal mode on the `b.txt` panel row
@@ -199,8 +270,16 @@ While the diff view shows a file chosen in the panel, `diff.next_file` in a diff
 - **WHEN** `a.txt` was edited, the changes panel was opened, the diff view shows `b.txt`, and `q` is pressed in normal mode in the panel
 - **THEN** no `gleb-changes` or `gleb-diff` window remains, the tab page count is unchanged, and the current window edits `a.txt`
 
+#### Scenario: Changes panel close preserves another diff view
+- **WHEN** another diff view exists and `q` closes a Changes panel with its own diff view
+- **THEN** the panel-owned view closes and the other diff view remains valid
+
+#### Scenario: Changes panel unloads its clean file buffer
+- **WHEN** the panel loaded an otherwise unloaded file for review, the file remains unmodified and `q` closes the panel
+- **THEN** that file buffer is unloaded
+
 ### Requirement: Changes panel revert
-`X` on a tracked file row SHALL ask `Are you sure you want to revert <name>?` and, only on `y`, run `git checkout HEAD -- <path>` (a file absent from `HEAD`: `git rm --cached -q -- <path>`, keeping it on disk) as an argument list in the root, notify `Revert failed: <stderr>` at ERROR on a non-zero exit, and refresh. On an untracked file `X` SHALL do nothing.
+`X` SHALL confirm before reverting with literal pathspecs. A tracked path SHALL use `checkout HEAD`; a rename SHALL restore the old path then remove the new index path; a path absent from HEAD SHALL use `rm --cached`, including on unborn HEAD. Untracked rows do nothing. Failures SHALL notify `Revert failed: <stderr>`.
 
 #### Scenario: Changes panel X reverts a file after confirmation
 - **WHEN** the cursor is on the `b.txt` row of the changes panel on the `dirty` fixture, `X` is pressed in normal mode and the prompt `Are you sure you want to revert b.txt?` is answered `y`
@@ -218,8 +297,16 @@ While the diff view shows a file chosen in the panel, `diff.next_file` in a diff
 - **WHEN** the cursor is on the `new.txt` row of the changes panel on the `dirty` fixture and `X` is pressed in normal mode
 - **THEN** no prompt is shown, `new.txt` still exists and no git command is run
 
+#### Scenario: Changes panel X reverts a rename
+- **WHEN** `old.txt` is staged as renamed to `new.txt`, `X` is pressed on `new.txt` and the prompt is answered `y`
+- **THEN** literal-pathspec commands check out `old.txt` from HEAD and remove `new.txt` from the index, leaving no rename staged
+
+#### Scenario: Changes panel X on unborn HEAD keeps the file
+- **WHEN** `a.txt` is staged in a repository with no commits, `X` is pressed on it and the prompt is answered `y`
+- **THEN** literal-pathspec `rm --cached` unstages `a.txt` and `a.txt` remains on disk
+
 ### Requirement: Changes panel commit
-`gc` in the panel SHALL open the AI commit popup (`gleb.git.ai_commit`) and run `git commit -m <message>` as an argument list in the root for a confirmed message; on exit 0 it SHALL refresh the panel and notify `Committed: <first line of message>` at INFO, otherwise notify `Commit failed: <stderr, else stdout, else exit code>` at ERROR.
+`gc` SHALL call `gleb.git.ai_commit.show_commit_input(on_commit, { root = root })`, so staged-diff generation and the confirmed literal-pathspec commit run in the panel repository. Its buffer-local mapping SHALL invoke the call without waiting for a longer global `gc` prefix. Success SHALL refresh and notify `Committed: <first line>`; failure SHALL notify `Commit failed: <stderr, else stdout, else exit code>`.
 
 #### Scenario: Changes panel gc commits confirmed message
 - **WHEN** `gc` is pressed in normal mode in the changes panel and the popup is confirmed with `feat: x`, then a new change is staged and `gc` is confirmed with `fix: it's $HOME`
@@ -228,6 +315,14 @@ While the diff view shows a file chosen in the panel, `diff.next_file` in a diff
 #### Scenario: Changes panel gc reports commit failure
 - **WHEN** `gc` is pressed in normal mode in the changes panel, the popup is confirmed with `feat: x` and `git commit` exits non-zero (a failing `pre-commit` hook)
 - **THEN** a notification starting with `Commit failed:` at ERROR is emitted, none starting with `Committed:`, and `git log -1 --format=%s` is unchanged
+
+#### Scenario: Changes panel gc opens without mapping delay
+- **WHEN** plain `gc` is pressed in normal mode in the changes panel while a longer global mapping starts with `gc`
+- **THEN** the commit popup exists within 200 ms, before the 1000 ms mapping timeout
+
+#### Scenario: Changes panel gc generates from the panel repository
+- **WHEN** the process cwd is outside a panel repository with a staged change and plain `gc` is pressed while a real Ollama executable records its stdin
+- **THEN** Ollama receives a prompt containing the staged diff from the panel repository
 
 ### Requirement: Changes panel push
 `P` in the panel SHALL notify `Pushing...` at INFO, run `git push` asynchronously as an argument list in the root, then notify `Pushed successfully` at INFO on exit 0 or `Push failed` at ERROR.
@@ -241,14 +336,37 @@ While the diff view shows a file chosen in the panel, `diff.next_file` in a diff
 - **THEN** notifications `Pushing...` (INFO) then `Push failed` (ERROR) are emitted
 
 ### Requirement: Changes panel refresh
-The panel SHALL re-read git after its own git commands, on `BufWritePost` of a file inside the root and on `FocusGained`, keeping the cursor on the same path while it is listed.
+The panel SHALL refresh after its git commands, `BufWritePost` in the root, `FocusGained`, and the shared watch module's git-dir event. Buffer- or window-scoped autocmds, per-panel timers and generations SHALL isolate tabs. Refresh SHALL keep the selected path and call public `diff.view.refresh_index(view)` after every panel git command.
 
 #### Scenario: Changes panel refreshes after a write
 - **WHEN** the changes panel is open on the `dirty` fixture and `e.txt` is created in the editor window with `:edit e.txt`, `:call setline(1, "x")` and `:write`
 - **THEN** within 500 ms the panel lists `e.txt` under `Unversioned Files 2 files` and the panel cursor row shows the same path as before
 
+#### Scenario: Changes panel refreshes after hunk staging
+- **WHEN** the Changes panel diff view is open and diff-view stages a hunk, changing the index without focusing another application
+- **THEN** the git-dir event refreshes the panel and its open diff view has the new index from `refresh_index`
+
+#### Scenario: Changes panels isolate two tabs
+- **WHEN** two tabs have Changes panels for different repositories and both schedule refreshes
+- **THEN** each tab keeps its own timer, generation, rows, selected path and diff view
+
+### Requirement: Changes panel window isolation
+Panel state SHALL be keyed by tab. Roots and buffer paths SHALL use `fs.normalize`. The panel SHALL use the project tree's exported eligible-editor helper with `gleb-changes` excluded and revalidate before each show. `QuitPre` and orphan-close SHALL follow the project tree. Closing one tab SHALL stop only its panel timers and generations.
+
+#### Scenario: Changes panel normalizes a private-var root
+- **WHEN** a panel opens through a `/private/var` symlink spelling of a repository root
+- **THEN** its state root and file paths use the same normalized identity as the project tree
+
+#### Scenario: Changes panel revalidates the editor window
+- **WHEN** the remembered editor window closes before an asynchronous diff is ready
+- **THEN** the panel selects another eligible editor window before calling show and never replaces a tool window
+
+#### Scenario: Changes panel closes when orphaned
+- **WHEN** the last eligible editor window closes while a Changes panel remains
+- **THEN** the panel, its timers and its panel-owned diff view close
+
 ### Requirement: Changes panel keys
-The panel keys SHALL come from registered `changes.*` actions scoped to filetype `gleb-changes` and their `settings/keymap.json` assignments: `<Space>` toggle_stage, `A` stage_all, `<CR>` open, `X` revert, `gc` commit, `P` push, `q` close, `za` toggle_fold. The panel SHALL set no buffer-local `gr`. `changes.toggle` and `changes.review` SHALL be registered for Find Action.
+The panel keys SHALL come from `changes.*` actions scoped to `gleb-changes`: `<Space>`, `A`, `<CR>`, `X`, `gc`, `P`, `q`, `za`. Those actions SHALL set no `plugin`; the panel SHALL set no local `gr`. `changes.toggle` and `changes.review` SHALL be in Find Action's approved catalog list.
 
 #### Scenario: Changes panel mappings come from the shortcut file
 - **WHEN** the changes panel is opened after `VeryLazy` and its buffer-local normal mappings are enumerated

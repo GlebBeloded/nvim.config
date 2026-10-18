@@ -10,6 +10,7 @@
 #   build.sh bashproj Bash project with production and test-script usages
 #   build.sh tfproj  Terraform module with variable usages
 #   build.sh dirty   repo with staged, unstaged and untracked changes (differ review)
+#   build.sh billing  Go/TS repo with staged, unstaged and untracked changes (changes panel)
 #   build.sh diffgo  Go files with changed, inserted, deleted and moved lines
 #   build.sh treeproj Project-tree sample with modified, added, untracked and ignored files
 # Git is hermetic: no user or system config, fixed author, committer and dates.
@@ -896,6 +897,192 @@ dirty() {
 		"$(hunk_starts b.txt)" >../manifest.json
 }
 
+billing() {
+	git init -q
+	mkdir -p cmd/server internal/billing internal/money web/src
+	printf 'module example.com/billing\n\ngo 1.23\n' >go.mod
+	printf 'bin/\n.env\nnode_modules/\n' >.gitignore
+	printf '# billing\n\nInvoices, tax and prices.\n' >README.md
+	printf 'test:\n\tgo test ./...\n' >Makefile
+	cat >cmd/server/main.go <<'GO'
+package main
+
+func main() {}
+GO
+	cat >internal/money/money.go <<'GO'
+package money
+
+import "fmt"
+
+// Format renders cents as dollars.
+func Format(cents int) string {
+	return fmt.Sprintf("$%d.%02d", cents/100, cents%100)
+}
+GO
+	cat >internal/billing/invoice.go <<'GO'
+package billing
+
+import (
+	"fmt"
+
+	"example.com/billing/internal/money"
+)
+
+// Invoice is a list of line amounts in cents.
+type Invoice struct {
+	ID    string
+	Lines []int
+	Tax   Rate
+}
+
+// Total sums the lines and applies the tax rate.
+func (i Invoice) Total() int {
+	total := 0
+	for _, cents := range i.Lines {
+		total += cents
+	}
+	return i.Tax.Apply(total)
+}
+
+// Due renders the total as dollars.
+func (i Invoice) Due() string {
+	return fmt.Sprintf("due %s", money.Format(i.Total()))
+}
+GO
+	cat >internal/billing/invoice_test.go <<'GO'
+package billing
+
+import "testing"
+
+func TestTotal(t *testing.T) {
+	inv := Invoice{Lines: []int{100, 250}}
+	if inv.Total() != 350 {
+		t.Fatal("total")
+	}
+}
+GO
+	cat >web/src/price.ts <<'TS'
+export type Price = { cents: number; currency: string };
+
+export function format(price: Price): string {
+  const units = price.cents / 100;
+  return `${units} ${price.currency}`;
+}
+
+export function add(a: Price, b: Price): Price {
+  return { cents: a.cents + b.cents, currency: a.currency };
+}
+TS
+	printf 'export function Cart() {\n  return null;\n}\n' >web/src/cart.tsx
+	commit "billing: invoices and prices"
+	# unstaged edits: invoice.go +12 -3, invoice_test.go +20 -1, price.ts +4 -4
+	cat >internal/billing/invoice.go <<'GO'
+package billing
+
+import (
+	"fmt"
+
+	"example.com/billing/internal/money"
+)
+
+// Invoice is a list of line amounts in cents, with a tax rate.
+type Invoice struct {
+	ID    string // invoice number
+	Lines []int
+	Tax   Rate
+}
+
+// Total sums the lines and applies the tax rate.
+func (i Invoice) Total() int {
+	var total int
+	for _, cents := range i.Lines {
+		total += cents
+	}
+	if i.Tax == nil {
+		return total
+	}
+	return i.Tax.Apply(total)
+}
+
+// Due renders the total as dollars.
+func (i Invoice) Due() string {
+	return fmt.Sprintf("due %s", money.Format(i.Total()))
+}
+
+// Paid reports whether nothing is due.
+func (i Invoice) Paid() bool {
+	total := i.Total()
+	return total == 0
+}
+GO
+	cat >internal/billing/invoice_test.go <<'GO'
+package billing
+
+import "testing"
+
+func TestTotal(t *testing.T) {
+	inv := Invoice{Lines: []int{100, 250}}
+	if got := inv.Total(); got != 350 {
+		t.Fatal("total")
+	}
+}
+
+func TestDue(t *testing.T) {
+	inv := Invoice{Lines: []int{100, 250}}
+	if got := inv.Due(); got != "due $3.50" {
+		t.Fatalf("due = %q", got)
+	}
+}
+
+func TestPaid(t *testing.T) {
+	if !(Invoice{}).Paid() {
+		t.Fatal("empty invoice is paid")
+	}
+}
+
+func TestTaxNil(t *testing.T) {
+	if got := (Invoice{Lines: []int{100}}).Total(); got != 100 {
+		t.Fatalf("total = %d", got)
+	}
+}
+GO
+	cat >web/src/price.ts <<'TS'
+export type Price = { cents: number; currency: "EUR" | "USD" };
+
+export function format(price: Price): string {
+  const units = (price.cents / 100).toFixed(2);
+  return `${units} ${price.currency.toLowerCase()}`;
+}
+
+export function add(a: Price, b: Price): Price {
+  return { ...a, cents: a.cents + b.cents };
+}
+TS
+	# staged new files: tax.go +41, tax_test.go +33
+	{
+		printf 'package billing\n\n'
+		printf '// Rate applies a tax to an amount in cents.\ntype Rate interface {\n\tApply(cents int) int\n}\n'
+		for name in Flat Percent Exempt; do
+			printf '\n// %s is a %s tax rate.\ntype %s struct {\n\tValue int\n}\n' "$name" "$name" "$name"
+			printf '\n// Apply implements Rate.\nfunc (r %s) Apply(cents int) int {\n\treturn cents + r.Value\n}\n' "$name"
+		done
+		printf '\n// Rates lists every known rate.\nvar Rates = []Rate{\n\tFlat{}, Percent{}, Exempt{},\n}\n'
+	} >internal/billing/tax.go
+	{
+		printf 'package billing\n\nimport "testing"\n'
+		for name in Flat Percent Exempt; do
+			printf '\nfunc Test%s(t *testing.T) {\n\trate := %s{Value: 5}\n\tif got := rate.Apply(100); got != 105 {\n\t\tt.Fatalf("%s = %%d", got)\n\t}\n\t_ = Invoice{Tax: rate}\n\t_ = rate\n\t_ = t\n}\n' "$name" "$name" "$name"
+		done
+	} >internal/billing/tax_test.go
+	git add internal/billing/tax.go internal/billing/tax_test.go
+	# untracked: notes.md (9 lines)
+	printf '# Notes\n\n- tax rates per region\n- invoice numbering\n- rounding of cents\n\nOpen questions:\n- refunds\n- currencies\n' >notes.md
+	staged=$(git diff --cached --name-only | file_entries true false)
+	unstaged=$(git diff --name-only | file_entries false false)
+	untracked=$(git ls-files --others --exclude-standard | file_entries false true)
+	printf '{"files":[%s,%s,%s]}\n' "$staged" "$unstaged" "$untracked" >../manifest.json
+}
+
 # $1 first, $2 last: one 4-line block per step (blank, func, body, close)
 ctl_steps() {
 	i=$1
@@ -956,7 +1143,7 @@ key_input() {
 }
 
 case "$name" in
-gomod | luaproj | pyproj | tsproj | rustproj | bashproj | tfproj | dirty | diffgo | treeproj) ;;
+gomod | luaproj | pyproj | tsproj | rustproj | bashproj | tfproj | dirty | billing | diffgo | treeproj) ;;
 *)
 	echo "build.sh: unknown fixture '$name'" >&2
 	exit 2

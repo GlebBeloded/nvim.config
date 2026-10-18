@@ -66,9 +66,10 @@ local function create_editor(view)
 	return win
 end
 
+--- Return whether a window can host an editor buffer.
 ---@param win integer
 ---@return boolean
-local function is_eligible_editor(win)
+function M.is_eligible_editor(win)
 	if not vim.api.nvim_win_is_valid(win) or vim.api.nvim_win_get_config(win).relative ~= "" then
 		return false
 	end
@@ -78,6 +79,7 @@ local function is_eligible_editor(win)
 	return vim.bo[buf].buftype == ""
 		and filetype ~= "neo-tree"
 		and filetype ~= "gleb-file-tree"
+		and filetype ~= "gleb-changes"
 		and not vim.startswith(filetype, "Diffview")
 		and not vim.startswith(name, "diffview://")
 		and not vim.wo[win].diff
@@ -95,20 +97,21 @@ end
 
 local function remember_editor()
 	local win = vim.api.nvim_get_current_win()
-	if is_eligible_editor(win) then
+	if M.is_eligible_editor(win) then
 		M.state.last_editor_by_tab[vim.api.nvim_get_current_tabpage()] = win
 	end
 end
 
----@param view FileTreeView
+--- Select an eligible editor window for a left-side tool view.
+---@param view { tab: integer, win: integer }
 ---@return integer
-local function eligible_editor(view)
+function M.eligible_editor(view)
 	local remembered = M.state.last_editor_by_tab[view.tab]
-	if remembered and remembered ~= view.win and is_eligible_editor(remembered) then
+	if remembered and remembered ~= view.win and M.is_eligible_editor(remembered) then
 		return remembered
 	end
 	for _, win in ipairs(vim.api.nvim_tabpage_list_wins(view.tab)) do
-		if win ~= view.win and is_eligible_editor(win) then
+		if win ~= view.win and M.is_eligible_editor(win) then
 			M.state.last_editor_by_tab[view.tab] = win
 			return win
 		end
@@ -449,7 +452,7 @@ local function open_selected(view, command)
 	if not row or row.kind ~= "file" then
 		return
 	end
-	vim.api.nvim_set_current_win(eligible_editor(view))
+	vim.api.nvim_set_current_win(M.eligible_editor(view))
 	vim.cmd(command .. " " .. vim.fn.fnameescape(row.path))
 end
 
@@ -626,7 +629,7 @@ end
 function M.close()
 	local view = M.state.by_tab[vim.api.nvim_get_current_tabpage()]
 	if view then
-		vim.api.nvim_set_current_win(eligible_editor(view))
+		vim.api.nvim_set_current_win(M.eligible_editor(view))
 		close_view(view)
 	end
 end
@@ -667,7 +670,7 @@ local function protect_tree_buffer(view)
 	if replacement == view.buf then
 		return
 	end
-	local editor = eligible_editor(view)
+	local editor = M.eligible_editor(view)
 	vim.api.nvim_win_set_buf(view.win, view.buf)
 	vim.bo[view.buf].bufhidden = "wipe"
 	vim.api.nvim_win_set_buf(editor, replacement)
@@ -838,7 +841,7 @@ end
 ---@return integer
 local function eligible_editor_count(tab)
 	return vim.iter(vim.api.nvim_tabpage_list_wins(tab)):fold(0, function(count, win)
-		return count + (is_eligible_editor(win) and 1 or 0)
+		return count + (M.is_eligible_editor(win) and 1 or 0)
 	end)
 end
 
@@ -859,7 +862,7 @@ local function on_quit_pre()
 	local tab = vim.api.nvim_get_current_tabpage()
 	if
 		M.state.by_tab[tab]
-		and is_eligible_editor(vim.api.nvim_get_current_win())
+		and M.is_eligible_editor(vim.api.nvim_get_current_win())
 		and eligible_editor_count(tab) == 1
 	then
 		close_tree_windows(tab)
@@ -910,7 +913,7 @@ function M.select_created(path, open_file)
 		select_path(view, path)
 	end
 	if open_file then
-		local editor = eligible_editor(view)
+		local editor = M.eligible_editor(view)
 		view.skip_follow_buf = vim.api.nvim_win_get_buf(editor)
 		vim.api.nvim_set_current_win(editor)
 		view.skip_follow_buf = nil
@@ -1015,6 +1018,10 @@ function M.toggle()
 			vim.api.nvim_set_current_win(view.win)
 		end
 		return
+	end
+	local changes = package.loaded["gleb.git.changes"]
+	if changes then
+		changes.close()
 	end
 	local path = vim.api.nvim_buf_get_name(0)
 	open_view(path)

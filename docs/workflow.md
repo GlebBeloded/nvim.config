@@ -44,6 +44,7 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - Pass a single asserted capture to numeric conversion; Lua assertions propagate their message argument as a second return value.
 - Close a plugin view after auditing it when its asynchronous updates can launch synchronous subprocess waits, so the next bounded open cannot inherit a blocked editor loop.
 - Match a target command anywhere in subprocess diagnostics because unrelated child processes can appear first.
+- Wait for captured subprocess content, not capture-file creation; shell redirection makes the file visible before stdin is fully consumed.
 
 ## The loop
 

@@ -1,0 +1,285 @@
+-- Changes coordinates repository discovery and one panel per tab.
+
+local M = {}
+
+local fs = require("gleb.file_tree.fs")
+local git = require("gleb.git.changes.git")
+local view = require("gleb.git.changes.view")
+
+---@class ChangesState
+---@field by_tab table<integer, ChangesView>
+
+---@type ChangesState
+M.state = { by_tab = {} }
+
+---@return string path
+---@return string dir
+local function current_location()
+	local path = vim.api.nvim_buf_get_name(0)
+	if path == "" or path:match("^%w+://") then
+		return "", fs.normalize(vim.fn.getcwd())
+	end
+	path = fs.normalize(path)
+	return path, vim.fs.dirname(path)
+end
+
+---@param dir string
+---@param selected_path string
+---@param review? boolean
+---@return nil
+local function resolve_and_open(dir, selected_path, review)
+	local tab = vim.api.nvim_get_current_tabpage()
+	git.resolve_root(dir, function(result, root)
+		if vim.api.nvim_get_current_tabpage() ~= tab then
+			return
+		end
+		if not root then
+			vim.notify("Git root error: " .. vim.trim(result.stderr or ""), vim.log.levels.ERROR)
+			return
+		end
+		view.open(root, selected_path, review)
+	end)
+end
+
+--- Toggle the current tab's Changes panel.
+---@return nil
+function M.toggle()
+	local tab = vim.api.nvim_get_current_tabpage()
+	local current = M.state.by_tab[tab]
+	if current and vim.api.nvim_win_is_valid(current.win) then
+		if vim.api.nvim_get_current_win() == current.win then
+			view.close(current)
+		else
+			vim.api.nvim_set_current_win(current.win)
+		end
+		return
+	end
+	require("gleb.file_tree.view").close()
+	local path, dir = current_location()
+	resolve_and_open(dir, path)
+end
+
+--- Open or focus the Changes panel for review.
+---@return nil
+function M.review()
+	local current = M.state.by_tab[vim.api.nvim_get_current_tabpage()]
+	if current and vim.api.nvim_win_is_valid(current.win) then
+		view.review(current)
+		return
+	end
+	local path, dir = current_location()
+	resolve_and_open(dir, path, true)
+end
+
+--- Open the Changes panel for a directory.
+---@param opts { root: string }
+---@return nil
+function M.open(opts)
+	resolve_and_open(opts.root, "")
+end
+
+--- Toggle the fold under the cursor in the current Changes panel.
+---@return nil
+function M.toggle_fold()
+	local current = M.state.by_tab[vim.api.nvim_get_current_tabpage()]
+	if current then
+		view.toggle_fold(current)
+	end
+end
+
+--- Open a file row, or fold a structural row.
+---@return nil
+function M.open_selected()
+	local current = M.state.by_tab[vim.api.nvim_get_current_tabpage()]
+	if not current then
+		return
+	end
+	local row = current.rows[vim.api.nvim_win_get_cursor(current.win)[1]]
+	if row and row.fold_id then
+		view.toggle_fold(current)
+	elseif row and row.kind == "file" then
+		view.open_file(current, row)
+	end
+end
+
+--- Close the current tab's Changes panel.
+---@return nil
+function M.close()
+	local current = M.state.by_tab[vim.api.nvim_get_current_tabpage()]
+	if current then
+		view.close(current)
+	end
+end
+
+---@param current ChangesView
+---@param row ChangesRow
+---@return string[]
+local function selected_paths(current, row)
+	local paths = {}
+	for _, candidate in ipairs(current.all_rows) do
+		local selected = row.kind == "root" and candidate.root == row.root
+			or row.kind == "directory" and candidate.root == row.root and candidate.path and (candidate.path == row.path or vim.startswith(
+				candidate.path,
+				row.path .. "/"
+			))
+			or row.kind == "file" and candidate == row
+		if selected and candidate.kind == "file" and candidate.path then
+			paths[#paths + 1] = vim.fs.joinpath(current.root, candidate.path)
+		end
+	end
+	return paths
+end
+
+--- Toggle staging for the file row under the cursor.
+---@return nil
+function M.toggle_stage()
+	local current = M.state.by_tab[vim.api.nvim_get_current_tabpage()]
+	if not current then
+		return
+	end
+	local row = current.rows[vim.api.nvim_win_get_cursor(current.win)[1]]
+	if not row then
+		return
+	end
+	local paths = selected_paths(current, row)
+	if #paths == 0 then
+		return
+	end
+	git.toggle_stage(current.root, paths, function(result)
+		if result.code ~= 0 then
+			vim.notify("Stage failed: " .. vim.trim(result.stderr or ""), vim.log.levels.ERROR)
+			return
+		end
+		if M.state.by_tab[current.tab] ~= current then
+			return
+		end
+		view.schedule_refresh(current)
+		if current.diff_view then
+			require("gleb.diff.view").refresh_index(current.diff_view)
+		end
+	end)
+end
+
+--- Stage every change in the current Changes panel.
+---@return nil
+function M.stage_all()
+	local current = M.state.by_tab[vim.api.nvim_get_current_tabpage()]
+	if not current then
+		return
+	end
+	git.stage_all(current.root, function(result)
+		if result.code ~= 0 then
+			vim.notify("Stage failed: " .. vim.trim(result.stderr or ""), vim.log.levels.ERROR)
+			return
+		end
+		if M.state.by_tab[current.tab] ~= current then
+			return
+		end
+		view.schedule_refresh(current)
+		if current.diff_view then
+			require("gleb.diff.view").refresh_index(current.diff_view)
+		end
+	end)
+end
+
+---@param current ChangesView
+---@param result vim.SystemCompleted
+---@return nil
+local function finish_revert(current, result)
+	if result.code ~= 0 then
+		vim.notify("Revert failed: " .. vim.trim(result.stderr or ""), vim.log.levels.ERROR)
+		return
+	end
+	if M.state.by_tab[current.tab] ~= current then
+		return
+	end
+	view.schedule_refresh(current)
+	if current.diff_view then
+		require("gleb.diff.view").refresh_index(current.diff_view)
+	end
+end
+
+--- Revert the file row under the cursor after confirmation.
+---@return nil
+function M.revert()
+	local current = M.state.by_tab[vim.api.nvim_get_current_tabpage()]
+	if not current then
+		return
+	end
+	local row = current.rows[vim.api.nvim_win_get_cursor(current.win)[1]]
+	if not row or row.kind ~= "file" or row.status == "untracked" then
+		return
+	end
+	local prompt = ("Are you sure you want to revert %s? y/n: "):format(row.label)
+	vim.ui.input({ prompt = prompt }, function(answer)
+		if answer == "y" or answer == "Y" then
+			git.revert(current.root, row, function(result)
+				finish_revert(current, result)
+			end)
+		end
+	end)
+end
+
+---@param current ChangesView
+---@param message string
+---@param result vim.SystemCompleted
+---@return nil
+local function finish_commit(current, message, result)
+	if result.code ~= 0 then
+		local stderr, stdout = vim.trim(result.stderr or ""), vim.trim(result.stdout or "")
+		local reason = stderr ~= "" and stderr or stdout ~= "" and stdout or ("exit " .. result.code)
+		vim.notify("Commit failed: " .. reason, vim.log.levels.ERROR)
+		return
+	end
+	vim.notify("Committed: " .. vim.split(message, "\n")[1], vim.log.levels.INFO)
+	if M.state.by_tab[current.tab] ~= current then
+		return
+	end
+	view.schedule_refresh(current)
+	if current.diff_view then
+		require("gleb.diff.view").refresh_index(current.diff_view)
+	end
+end
+
+--- Commit staged changes from the current Changes panel.
+---@return nil
+function M.commit()
+	local current = M.state.by_tab[vim.api.nvim_get_current_tabpage()]
+	if not current then
+		return
+	end
+	require("gleb.git.ai_commit").show_commit_input(function(message)
+		git.commit(current.root, message, function(result)
+			finish_commit(current, message, result)
+		end)
+	end, { root = current.root })
+end
+
+--- Push the current branch from the current Changes panel repository.
+---@return nil
+function M.push()
+	local current = M.state.by_tab[vim.api.nvim_get_current_tabpage()]
+	if not current then
+		return
+	end
+	vim.notify("Pushing...", vim.log.levels.INFO)
+	git.push(current.root, function(result)
+		vim.notify(
+			result.code == 0 and "Pushed successfully" or "Push failed",
+			result.code == 0 and vim.log.levels.INFO or vim.log.levels.ERROR
+		)
+	end)
+end
+
+--- Clear Changes panel state for tests.
+---@return nil
+function M.reset()
+	for _, current in pairs(M.state.by_tab) do
+		view.close(current)
+	end
+	M.state = { by_tab = {} }
+end
+
+require("gleb.git.changes.highlights").setup()
+
+return M

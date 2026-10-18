@@ -916,11 +916,13 @@ end
 ---@param mask string[]
 ---@param groups table<string, string> mask letter (and unmasked) -> group
 ---@param hls table<string, test.CellAttrs>
+---@param columns integer leading cells of each row to check
 ---@return test.CellMismatch?
-local function first_mismatch(cells, mask, groups, hls)
+local function first_mismatch(cells, mask, groups, hls, columns)
 	for row, line in ipairs(cells) do
 		local letters = vim.fn.split(mask[row], [[\zs]])
-		for col, cell in ipairs(line) do
+		for col = 1, math.min(columns, #line) do
+			local cell = line[col]
 			local group = groups[letters[col]]
 			if not cell_matches_group(cell, group, hls) then
 				return { row = row, col = col, letter = letters[col], group = group }
@@ -969,13 +971,17 @@ end
 
 --- Assert the drawn colors of screen rows `row ..` against a design-render
 --- mask (one string per row, `columns` cells) and legend (letter -> group).
---- `.` and space are `M.DEFAULT_GROUP`.
+--- `.` and space are `M.DEFAULT_GROUP`. `opts.columns` checks only that many
+--- leading cells of each row (a view whose neighbour another check covers).
 ---@param child MiniTest.child
 ---@param row integer as in `M.screen_rows` (negative counts from the bottom)
 ---@param mask string[]
 ---@param legend table<string, string>
-function M.expect_screen_colors(child, row, mask, legend)
-	check_width(mask, child.o.columns)
+---@param opts? { columns?: integer }
+function M.expect_screen_colors(child, row, mask, legend, opts)
+	local columns = child.o.columns
+	check_width(mask, columns)
+	columns = opts and opts.columns or columns
 	check_letters(mask, legend)
 	local args = { row, #mask, legend_groups(legend), false }
 	local screen = child.lua(SCREEN_CELLS_LUA, args) --[[@as test.ScreenCells]]
@@ -985,16 +991,26 @@ function M.expect_screen_colors(child, row, mask, legend)
 		hls[M.DEFAULT_GROUP] = {}
 	end
 	local letter_groups = vim.tbl_extend("force", { ["."] = M.DEFAULT_GROUP, [" "] = M.DEFAULT_GROUP }, legend)
-	local bad = first_mismatch(screen.cells, mask, letter_groups, hls)
+	local bad = first_mismatch(screen.cells, mask, letter_groups, hls, columns)
 	if bad then
 		args[4] = true
 		screen = child.lua(SCREEN_CELLS_LUA, args) --[[@as test.ScreenCells]]
-		bad = first_mismatch(screen.cells, mask, letter_groups, hls)
+		bad = first_mismatch(screen.cells, mask, letter_groups, hls, columns)
 	end
 	if bad then
 		local actual = actual_mask(screen.cells, legend, hls)
 		error(mismatch_message(mask, actual, screen.cells, hls, bad), 0)
 	end
+end
+
+--- The drawn cells (text and resolved attributes) of `count` screen rows from
+--- `row`, to compare two screens cell for cell.
+---@param child MiniTest.child
+---@param row integer as in `M.screen_rows` (negative counts from the bottom)
+---@param count integer
+---@return test.ScreenCell[][]
+function M.screen_cells(child, row, count)
+	return (child.lua(SCREEN_CELLS_LUA, { row, count, {}, false }) --[[@as test.ScreenCells]]).cells
 end
 
 ---@class test.HlColors
