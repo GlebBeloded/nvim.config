@@ -33,28 +33,48 @@ function PluginMapped(filetype, lhs, mode)
 	end)
 end]]
 
---- Schedule `open` in the child and wait until `condition` is true.
+--- Open a plugin surface under the process-level deadline.
 ---@param open string Lua statement
 ---@param filetype string
 ---@param surface? string
 ---@param condition? string
 local function open_surface(open, filetype, surface, condition)
-	child.lua("vim.schedule(function() " .. open .. " end)")
-	if child.wait(condition or ("PluginBuffer(%q) ~= nil"):format(filetype), 10000) then
-		return
-	end
+	H.open_surface(child, {
+		open = open,
+		condition = condition or ("PluginBuffer(%q) ~= nil"):format(filetype),
+		surface = surface or filetype,
+	})
+end
 
-	local state = child.lua_get([=[{
-		mode = vim.api.nvim_get_mode().mode,
-		messages = vim.api.nvim_exec2("messages", { output = true }).output,
-	}]=])
-	error(
-		("%s window did not open (mode: %s; messages: %s)"):format(
-			surface or filetype,
-			state.mode,
-			state.messages ~= "" and state.messages or "<none>"
-		)
-	)
+local function expect_blocked_differ_diagnostic()
+	local blocked = H.new_child()
+	blocked.start_config()
+	blocked.wait_very_lazy()
+	blocked.cmd("cd " .. vim.fn.fnameescape(repo) .. " | edit sample.go")
+	blocked.lua([[
+		local system = vim.system
+		vim.system = function(command, opts, on_exit)
+			if command[1] == "git" then
+				return system({ "/bin/sleep", "30" }, opts, on_exit)
+			end
+			return system(command, opts, on_exit)
+		end
+	]])
+
+	local started = vim.uv.hrtime()
+	local ok, diagnostic = pcall(H.open_surface, blocked, {
+		open = [[vim.cmd("Differ")]],
+		condition = [[vim.bo.filetype == "differdiff"]],
+		surface = "Differ",
+		timeout = 250,
+	})
+	local elapsed = (vim.uv.hrtime() - started) / 1000000
+
+	eq(ok, false)
+	eq(elapsed < 10000, true)
+	for _, field in ipairs({ "Differ", "phase:", "elapsed:", "mode:", "getchar:", "messages:" }) do
+		eq(tostring(diagnostic):find(field, 1, true) ~= nil, true)
+	end
 end
 
 ---@param filetype string
@@ -151,6 +171,7 @@ T["actions: Plugin-window mappings are action-owned"] = function()
 			},
 		}
 	)
+	expect_blocked_differ_diagnostic()
 end
 
 T["actions: Unconfigured defaults are absent"] = function()
