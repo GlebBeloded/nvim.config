@@ -76,9 +76,34 @@ function M.open(opts)
 	resolve_and_open(opts.root, "")
 end
 
+--- Toggle the fold under the cursor in the current Changes panel.
+---@return nil
+function M.toggle_fold()
+	local current = M.state.by_tab[vim.api.nvim_get_current_tabpage()]
+	if current then
+		view.toggle_fold(current)
+	end
+end
+
+--- Open a file row, or fold a structural row.
+---@return nil
+function M.open_selected()
+	local current = M.state.by_tab[vim.api.nvim_get_current_tabpage()]
+	if not current then
+		return
+	end
+	local row = current.rows[vim.api.nvim_win_get_cursor(current.win)[1]]
+	if row and row.fold_id then
+		view.toggle_fold(current)
+	end
+end
+
 --- Clear Changes panel state for tests.
 ---@return nil
 function M.reset()
+	for _, current in pairs(M.state.by_tab) do
+		view.close(current)
+	end
 	M.state = { by_tab = {} }
 end
 

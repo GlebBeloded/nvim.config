@@ -7,8 +7,12 @@ local git = require("gleb.git.changes.git")
 local model = require("gleb.git.changes.model")
 local render = require("gleb.git.changes.render")
 local settings = require("gleb.file_tree.settings")
+local watch = require("gleb.file_tree.watch")
 
 local WIDTH = 35
+local REFRESH_DEBOUNCE_MS = 50
+local forget
+local cleanup
 local augroup = vim.api.nvim_create_augroup("gleb_changes", { clear = true })
 
 ---@class ChangesView
@@ -18,6 +22,13 @@ local augroup = vim.api.nvim_create_augroup("gleb_changes", { clear = true })
 ---@field win integer
 ---@field editor_win integer
 ---@field rows ChangesRow[]
+---@field all_rows ChangesRow[]
+---@field collapsed table<string, boolean>
+---@field timer uv.uv_timer_t
+---@field generation integer
+---@field autocmds integer[]
+---@field diff_view? gleb.diff.view.View
+---@field initial_selected_path? string
 
 ---@param buf integer
 ---@return nil
@@ -67,20 +78,176 @@ local function select_file(view, selected_path)
 	end
 end
 
+---@param row ChangesRow?
+---@return string?
+local function row_key(row)
+	if not row then
+		return nil
+	end
+	return row.root .. ":" .. (row.path or row.fold_id or row.label)
+end
+
+---@param view ChangesView
+---@param selected_key string?
+---@return nil
+local function select_row(view, selected_key)
+	for index, row in ipairs(view.rows) do
+		if row_key(row) == selected_key then
+			vim.api.nvim_win_set_cursor(view.win, { index, 0 })
+			return
+		end
+	end
+	select_file(view, "")
+end
+
+---@param view ChangesView
+---@return ChangesRow[]
+local function visible_rows(view)
+	local rows = {}
+	local hidden_depth
+	for _, row in ipairs(view.all_rows) do
+		if hidden_depth and row.depth <= hidden_depth then
+			hidden_depth = nil
+		end
+		if not hidden_depth then
+			if row.fold_id then
+				row.expanded = not view.collapsed[row.fold_id]
+			end
+			rows[#rows + 1] = row
+			if row.fold_id and view.collapsed[row.fold_id] then
+				hidden_depth = row.depth
+			end
+		end
+	end
+	return rows
+end
+
+---@param view ChangesView
+---@param selected_key string?
+---@return nil
+local function draw(view, selected_key)
+	view.rows = visible_rows(view)
+	render.draw(view.buf, view.rows, WIDTH)
+	if vim.api.nvim_win_is_valid(view.win) then
+		select_row(view, selected_key)
+	end
+end
+
 ---@param view ChangesView
 ---@return nil
-local function forget(view)
+local function refresh_now(view)
+	local changes = require("gleb.git.changes")
+	if changes.state.by_tab[view.tab] ~= view then
+		return
+	end
+	view.generation = view.generation + 1
+	local generation = view.generation
+	local current = view.rows[vim.api.nvim_win_is_valid(view.win) and vim.api.nvim_win_get_cursor(view.win)[1] or 0]
+	local selected_key = row_key(current)
+	git.refresh(view.root, function(result)
+		if
+			changes.state.by_tab[view.tab] ~= view
+			or generation ~= view.generation
+			or not vim.api.nvim_buf_is_valid(view.buf)
+		then
+			return
+		end
+		if result.code ~= 0 then
+			vim.notify("Git status failed: " .. vim.trim(result.stderr or ""), vim.log.levels.ERROR)
+			return
+		end
+		view.all_rows = model.rows(result.stdout or "", settings.load().nesting.rules)
+		draw(view, selected_key)
+		if view.initial_selected_path then
+			select_file(view, view.initial_selected_path)
+			view.initial_selected_path = nil
+		end
+	end)
+end
+
+---@param view ChangesView
+---@return nil
+function M.schedule_refresh(view)
+	view.timer:stop()
+	view.timer:start(
+		REFRESH_DEBOUNCE_MS,
+		0,
+		vim.schedule_wrap(function()
+			refresh_now(view)
+		end)
+	)
+end
+
+---@param view ChangesView
+---@return nil
+local function refresh_from_git_dir(view)
+	M.schedule_refresh(view)
+	if view.diff_view then
+		require("gleb.diff.view").refresh_index(view.diff_view)
+	end
+end
+
+---@param view ChangesView
+---@return nil
+local function add_refresh_sources(view)
+	view.autocmds[#view.autocmds + 1] = vim.api.nvim_create_autocmd("BufWritePost", {
+		group = augroup,
+		callback = function(args)
+			local path = fs.normalize(vim.api.nvim_buf_get_name(args.buf))
+			if path:sub(1, #view.root + 1) == view.root .. "/" then
+				M.schedule_refresh(view)
+			end
+		end,
+	})
+	view.autocmds[#view.autocmds + 1] = vim.api.nvim_create_autocmd("FocusGained", {
+		group = augroup,
+		callback = function()
+			M.schedule_refresh(view)
+		end,
+	})
+	view.autocmds[#view.autocmds + 1] = vim.api.nvim_create_autocmd("WinClosed", {
+		group = augroup,
+		pattern = tostring(view.win),
+		once = true,
+		callback = function()
+			cleanup(view)
+		end,
+	})
+	watch.start_root(view.root, view.buf)
+	watch.sync(view.root, view.buf, {}, function() end, function()
+		refresh_from_git_dir(view)
+	end)
+end
+
+---@param view ChangesView
+---@return nil
+forget = function(view)
 	local changes = require("gleb.git.changes")
 	if changes.state.by_tab[view.tab] == view then
 		changes.state.by_tab[view.tab] = nil
 	end
 end
 
+---@param view ChangesView
+---@return nil
+cleanup = function(view)
+	forget(view)
+	if not view.timer:is_closing() then
+		view.timer:stop()
+		view.timer:close()
+	end
+	watch.stop_root(view.root, view.buf)
+	for _, autocmd in ipairs(view.autocmds) do
+		pcall(vim.api.nvim_del_autocmd, autocmd)
+	end
+	view.autocmds = {}
+end
+
 --- Close one Changes view.
 ---@param view ChangesView
 ---@return nil
 function M.close(view)
-	forget(view)
+	cleanup(view)
 	if vim.api.nvim_win_is_valid(view.editor_win) then
 		vim.api.nvim_set_current_win(view.editor_win)
 	end
@@ -117,32 +284,29 @@ function M.open(root, selected_path)
 		win = win,
 		editor_win = editor_win,
 		rows = {},
+		all_rows = {},
+		collapsed = {},
+		timer = assert(vim.uv.new_timer()),
+		generation = 0,
+		autocmds = {},
+		initial_selected_path = fs.normalize(selected_path),
 	}
 	changes.state.by_tab[tab] = view
-	vim.api.nvim_create_autocmd("WinClosed", {
-		group = augroup,
-		pattern = tostring(win),
-		once = true,
-		callback = function()
-			forget(view)
-		end,
-	})
-
-	git.refresh(view.root, function(result)
-		if changes.state.by_tab[tab] ~= view or not vim.api.nvim_buf_is_valid(buf) then
-			return
-		end
-		if result.code ~= 0 then
-			vim.notify("Git status failed: " .. vim.trim(result.stderr or ""), vim.log.levels.ERROR)
-			return
-		end
-		view.rows = model.rows(result.stdout or "", settings.load().nesting.rules)
-		render.draw(buf, view.rows, WIDTH)
-		if vim.api.nvim_win_is_valid(win) then
-			select_file(view, fs.normalize(selected_path))
-		end
-	end)
+	add_refresh_sources(view)
+	refresh_now(view)
 	return view
+end
+
+--- Toggle the fold under the panel cursor.
+---@param view ChangesView
+---@return nil
+function M.toggle_fold(view)
+	local row = view.rows[vim.api.nvim_win_get_cursor(view.win)[1]]
+	if not row or not row.fold_id then
+		return
+	end
+	view.collapsed[row.fold_id] = not view.collapsed[row.fold_id] or nil
+	draw(view, row_key(row))
 end
 
 return M

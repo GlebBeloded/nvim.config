@@ -258,4 +258,199 @@ T["git: Changes panel entry points are actions"] = function()
 	)
 end
 
+local function open_fixture(name)
+	local root = F.copy(name, vim.fn.tempname() .. "/" .. name)
+	child.cmd("cd " .. vim.fn.fnameescape(root))
+	child.cmd("enew")
+	toggle_changes()
+	wait_for_panel()
+	return root
+end
+
+local function panel_lines()
+	return child.api.nvim_buf_get_lines(0, 0, -1, false)
+end
+
+local function find_panel_line(text)
+	local line = child.fn.search(text, "nw")
+	assert(line > 0, "Panel row not found: " .. text)
+	child.api.nvim_win_set_cursor(0, { line, 0 })
+	return line
+end
+
+T["git: Changes panel za folds a nest"] = function()
+	open_fixture("billing")
+	find_panel_line("invoice.go")
+
+	child.type_keys("za")
+	child.cmd("checktime")
+	child.api.nvim_exec_autocmds("FocusGained", {})
+	assert(child.wait([[require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()].generation >= 2]]))
+
+	local lines = panel_lines()
+	eq(
+		vim.iter(lines):any(function(line)
+			return line:find("invoice_test.go", 1, true) ~= nil
+		end),
+		false
+	)
+	local invoice = vim.iter(lines):find(function(line)
+		return line:find("invoice.go", 1, true) ~= nil
+	end)
+	assert(invoice and invoice:find("", 1, true), "invoice.go did not show the collapsed expander")
+end
+
+T["git: Changes panel Enter folds a directory"] = function()
+	open_fixture("billing")
+	find_panel_line("web/src 1")
+	local panel_buf = child.api.nvim_get_current_buf()
+
+	child.type_keys("<CR>")
+
+	eq(child.api.nvim_get_current_buf(), panel_buf)
+	eq(
+		vim.iter(panel_lines()):any(function(line)
+			return line:find("price.ts", 1, true) ~= nil
+		end),
+		false
+	)
+end
+
+T["git: Changes panel refreshes after a write"] = function()
+	local dirty = open_fixture("dirty")
+	local selected = child.lua_get([=[(function()
+		local view = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		return view.rows[vim.api.nvim_win_get_cursor(view.win)[1]].path
+	end)()]=])
+	child.cmd("wincmd l")
+	child.cmd("edit " .. vim.fn.fnameescape(vim.fs.joinpath(dirty, "e.txt")))
+	child.cmd([[call setline(1, "x")]])
+	child.cmd("write")
+
+	assert(
+		child.wait(
+			[=[(function()
+		local view = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		for _, row in ipairs(view.rows) do
+			if row.path == "e.txt" then return true end
+		end
+		return false
+	end)()]=],
+			500 * H.load_factor()
+		),
+		"Changes panel did not refresh after the write"
+	)
+	eq(
+		child.lua_get([=[(function()
+		local view = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		return view.rows[vim.api.nvim_win_get_cursor(view.win)[1]].path
+	end)()]=]),
+		selected
+	)
+	assert(vim.iter(child.lua_get([=[(function()
+		local view = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		return vim.api.nvim_buf_get_lines(view.buf, 0, -1, false)
+	end)()]=]) or {}):any(function(line)
+		return line:find("Unversioned Files 2 files", 1, true) ~= nil
+	end))
+end
+
+T["git: Changes panel refreshes after hunk staging"] = function()
+	local dirty = open_fixture("dirty")
+	local panel_tab = child.api.nvim_get_current_tabpage()
+	child.lua("_G.changes_panel_tab = ...", { panel_tab })
+	local editor_win =
+		child.lua_get([=[require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()].editor_win]=])
+	child.api.nvim_set_current_win(editor_win)
+	child.cmd("edit " .. vim.fn.fnameescape(vim.fs.joinpath(dirty, "d.txt")))
+	child.lua([[
+		local catalog = require("gleb.actions").state.applicator.catalog
+		local action = assert(catalog:get("diff.open_file"))
+		assert(require("gleb.actions.context").execute(action, require("gleb.actions.context").capture()))
+	]])
+	local diff = child.lua_get([[require("gleb.diff.view").current()]])
+	child.api.nvim_set_current_win(diff.right_win)
+	child.api.nvim_win_set_cursor(diff.right_win, { 3, 0 })
+	child.lua(
+		[[
+		local changes = require("gleb.git.changes").state.by_tab[...]
+		changes.diff_view = require("gleb.diff.view").current()
+	]],
+		{ panel_tab }
+	)
+
+	child.type_keys("<Space>")
+
+	assert(
+		child.wait(
+			[=[(function()
+		local view = require("gleb.git.changes").state.by_tab[_G.changes_panel_tab]
+		if not view then return false end
+		for _, row in ipairs(view.rows) do
+			if row.path == "d.txt" then return row.checkbox ~= "󰄱" end
+		end
+		return false
+	end)()]=],
+			2000 * H.load_factor()
+		),
+		"Git-dir event did not refresh the panel"
+	)
+	local staged_line = vim.split(H.git(dirty, { "show", ":d.txt" }), "\n", { plain = true })[3]
+	eq(
+		child.lua_get([=[require("gleb.git.changes").state.by_tab[...].diff_view.index.lines[3]]=], { panel_tab }),
+		staged_line
+	)
+end
+
+T["git: Changes panels isolate two tabs"] = function()
+	local first = open_fixture("dirty")
+	local first_tab = child.api.nvim_get_current_tabpage()
+	child.cmd("tabnew")
+	local second = open_fixture("dirty")
+	local second_tab = child.api.nvim_get_current_tabpage()
+	child.lua("_G.changes_tabs = { ... }", { first_tab, second_tab })
+	H.write_files(first, { ["first.txt"] = "first\n" })
+	H.write_files(second, { ["second.txt"] = "second\n" })
+
+	child.api.nvim_exec_autocmds("FocusGained", {})
+
+	assert(
+		child.wait(
+			[=[(function()
+		local state = require("gleb.git.changes").state.by_tab
+		local one, two = state[_G.changes_tabs[1]], state[_G.changes_tabs[2]]
+		return one and two and one.generation > 1 and two.generation > 1
+	end)()]=],
+			2000 * H.load_factor()
+		),
+		"Both tab refreshes did not run"
+	)
+	assert(
+		child.wait(
+			[=[(function()
+		local state = require("gleb.git.changes").state.by_tab
+		local one, two = state[_G.changes_tabs[1]], state[_G.changes_tabs[2]]
+		local function has(view, path)
+			for _, row in ipairs(view.rows) do if row.path == path then return true end end
+		end
+		return one and two and has(one, "first.txt") and has(two, "second.txt")
+			and not has(one, "second.txt") and not has(two, "first.txt")
+	end)()]=],
+			2000 * H.load_factor()
+		),
+		"Tab refreshes were not isolated"
+	)
+	eq(
+		child.lua_get(
+			[=[(function(...)
+		local state = require("gleb.git.changes").state.by_tab
+		local one, two = state[(...)], state[select(2, ...)]
+		return { one.timer ~= two.timer, one.generation > 1, two.generation > 1 }
+	end)(...)]=],
+			{ first_tab, second_tab }
+		),
+		{ true, true, true }
+	)
+end
+
 return T

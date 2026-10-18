@@ -3,6 +3,7 @@
 local M = {}
 
 local EXPANDED = ""
+local COLLAPSED = ""
 local FOLDER_OPEN = ""
 local FILE = ""
 local UNCHECKED = "☐"
@@ -30,7 +31,7 @@ local function root_segments(row)
 	local suffix = row.count == 1 and " file" or " files"
 	return {
 		{ text = " " },
-		{ text = EXPANDED, group = "FileTreeExpander" },
+		{ text = row.expanded == false and COLLAPSED or EXPANDED, group = "FileTreeExpander" },
 		{ text = " " },
 		{ text = UNCHECKED, group = "ChangesCheckbox" },
 		{ text = " " },
@@ -45,7 +46,7 @@ end
 local function directory_segments(row)
 	return {
 		{ text = string.rep(" ", 1 + 2 * row.depth) },
-		{ text = EXPANDED, group = "FileTreeExpander" },
+		{ text = row.expanded == false and COLLAPSED or EXPANDED, group = "FileTreeExpander" },
 		{ text = " " },
 		{ text = FOLDER_OPEN, group = "FileTreeFolderIcon" },
 		{ text = " " },
@@ -93,7 +94,9 @@ end
 ---@return ChangesRenderSegment[]
 local function file_segments(row, width)
 	local segments = {
-		{ text = string.rep(" ", 3 + 2 * row.depth) },
+		{ text = string.rep(" ", 1 + 2 * row.depth) },
+		{ text = row.fold_id and (row.expanded == false and COLLAPSED or EXPANDED) or " " },
+		{ text = " " },
 		{ text = UNCHECKED, group = "ChangesCheckbox" },
 		{ text = " " },
 		{ text = FILE },

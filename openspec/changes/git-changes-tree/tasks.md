@@ -54,9 +54,9 @@ Scenarios: `git: Changes panel mappings come from the shortcut file`, `git: Chan
 
 ## 3c. Folds and refresh
 Scenarios: `git: Changes panel za folds a nest`, `git: Changes panel Enter folds a directory`, `git: Changes panel refreshes after a write`, `git: Changes panel refreshes after hunk staging`, `git: Changes panels isolate two tabs`
-- [ ] 3c.1 Write the scenarios in `tests/integration/git/test_changes.lua`, driving real panel mappings, writes, diff-view hunk staging and two tabs, and see them fail
-- [ ] 3c.2 Implement fold state, scoped refresh autocmds, per-tab timers and generations, the shared git-dir event, and `diff.view.refresh_index(view)` after panel git commands
-- [ ] 3c.3 Run `make test FILE=tests/integration/git/test_changes.lua CASE="Changes panel"` and see it pass
+- [x] 3c.1 Write the scenarios in `tests/integration/git/test_changes.lua`, driving real panel mappings, writes, diff-view hunk staging and two tabs, and see them fail
+- [x] 3c.2 Implement fold state, scoped refresh autocmds, per-tab timers and generations, the shared git-dir event, and `diff.view.refresh_index(view)` after panel git commands
+- [x] 3c.3 Run `make test FILE=tests/integration/git/test_changes.lua CASE="Changes panel"` and see it pass
 
 ## 3d. Left-slot swap
 Scenarios: `git: Changes panel replaces the project tree`
@@ -171,3 +171,6 @@ Scenarios: `git: Changes panel matches the approved render`, `git: Changes panel
 - `model.rows` returns a `capped` flag so the view can own the warning while the model stays pure.
 - Checkbox fields carry the approved glyphs so renderers consume one model-derived index state without a second mapping.
 - Changes panel action titles use concise verbs (`Open`, `Commit`, `Push`) so generated descriptions stay `Changes: <Title>`.
+- Fold state is a per-panel set of collapsed model fold IDs, so refreshes can rebuild rows without losing user choices.
+- Changes panels use their buffer IDs as shared-watch owners, avoiding collisions with another left view in the same tab.
+- Panel refreshes debounce for 50 ms, matching the diff-selection cadence while coalescing writes and git-dir bursts.
