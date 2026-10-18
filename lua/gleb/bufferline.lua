@@ -38,7 +38,10 @@ bufferline.setup({
 		diagnostics_update_in_insert = false,
 		-- NOTE: this will be called a lot so don't do any heavy processing here
 		custom_filter = buffer_filter,
-		offsets = { { filetype = "neo-tree", text = "", padding = 1 } },
+		offsets = {
+			{ filetype = "neo-tree", text = "", padding = 1 },
+			{ filetype = "gleb-file-tree", text = "", padding = 1 },
+		},
 		show_buffer_icons = true,
 		show_buffer_close_icons = false,
 		show_close_icon = false,
