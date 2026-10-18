@@ -527,6 +527,57 @@ T["file-tree: Project tree rename moves a symlink and not its target"] = functio
 	eq(child.api.nvim_buf_get_name(buffer), target)
 end
 
+T["file-tree: Project tree case-only rename moves a symlink by logical path"] = function()
+	local outside_dir = vim.fn.tempname() .. "-outside"
+	local outside = vim.fs.joinpath(outside_dir, "target.txt")
+	local outside_sibling = vim.fs.joinpath(outside_dir, "Link.txt")
+	local source = vim.fs.joinpath(tree_root, "link.txt")
+	local target = vim.fs.joinpath(tree_root, "Link.txt")
+	vim.fn.mkdir(outside_dir, "p")
+	vim.fn.writefile({ "outside content" }, outside)
+	child.lua([[assert(vim.uv.fs_symlink(...))]], { outside, source })
+	local buffers = child.lua_get(
+		[[(function(link_path, target_path)
+			local link_buf = vim.fn.bufadd(link_path)
+			vim.fn.bufload(link_buf)
+			assert(vim.uv.fs_unlink(link_path))
+			local target_buf = vim.fn.bufadd(target_path)
+			vim.fn.bufload(target_buf)
+			assert(vim.uv.fs_symlink(target_path, link_path))
+			return { link = link_buf, target = target_buf }
+		end)(...)]],
+		{ source, outside }
+	)
+	local outside_buffer = buffers.target
+	local link_buffer = buffers.link
+	local outside_name = child.api.nvim_buf_get_name(outside_buffer)
+	refresh()
+	eq(tree_has_path("link.txt"), true)
+
+	focus_tree_path("link.txt")
+	rename("Link.txt")
+	assert(wait_for_path("Link.txt", 2500), "case-only symlink target did not appear")
+
+	local names = vim.fn.readdir(tree_root)
+	eq(vim.tbl_contains(names, "link.txt"), false)
+	eq(vim.tbl_contains(names, "Link.txt"), true)
+	eq(vim.uv.fs_lstat(target).type, "link")
+	eq(vim.uv.fs_readlink(target), outside)
+	eq(child.api.nvim_buf_get_name(outside_buffer), outside_name)
+	eq(child.api.nvim_buf_get_name(link_buffer), target)
+	child.lua(
+		[[(function(target_buf, link_buf)
+			vim.api.nvim_buf_set_lines(target_buf, 0, -1, false, { "target buffer write" })
+			vim.api.nvim_buf_call(target_buf, function() vim.cmd("write!") end)
+			vim.api.nvim_buf_set_lines(link_buf, 0, -1, false, { "link buffer write" })
+			vim.api.nvim_buf_call(link_buf, function() vim.cmd("write!") end)
+		end)(...)]],
+		{ outside_buffer, link_buffer }
+	)
+	eq(vim.uv.fs_lstat(outside_sibling), nil)
+	eq(vim.fn.readfile(outside), { "link buffer write" })
+end
+
 T["file-tree: Project tree folder rename migrates expanded keys"] = function()
 	open_billing()
 	focus_tree_path("internal")

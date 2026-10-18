@@ -41,10 +41,16 @@ Scenarios: `file-tree: Project tree r renames a file and its buffer`, `file-tree
 - [x] 4b.3 Run `make test FILE=tests/integration/file-tree/test_project_ops.lua CASE="Project tree rename"` and see them pass
 
 ## 4c. Rename identity and filesystem edge cases
-Scenarios: `file-tree: Project tree rename reports a read-only destination`, `file-tree: Project tree supports a case-only rename`, `file-tree: Project tree rename follows a buffer opened through a symlinked root`, `file-tree: Project tree rename moves a symlink and not its target`, `file-tree: Project tree folder rename migrates expanded keys`, `file-tree: Project tree refuses a cross-device move`
+Scenarios: `file-tree: Project tree rename reports a read-only destination`, `file-tree: Project tree supports a case-only rename`, `file-tree: Project tree rename follows a buffer opened through a symlinked root`, `file-tree: Project tree rename moves a symlink and not its target`, `file-tree: Project tree folder rename migrates expanded keys`
 - [x] 4c.1 Write the tests in `tests/integration/file-tree/test_project_ops.lua` and device preflight unit in `tests/unit/file-tree/test_paths.lua`, drive real renames on populated data, and see them fail
 - [x] 4c.2 Move case-only names through a temporary sibling, match buffers by realpath, migrate expanded keys, preserve failures atomically and report cross-device exactly
 - [x] 4c.3 Run `make test FILE=tests/integration/file-tree/test_project_ops.lua CASE="Project tree"` and `make test FILE=tests/unit/file-tree/test_paths.lua` and see them pass
+
+## 4d. Cross-device move refusal
+Scenarios: `file-tree: Project tree refuses a cross-device move`
+- [x] 4d.1 Write the device preflight unit in `tests/unit/file-tree/test_paths.lua`, call the real move preflight with populated stat data, and see it fail
+- [x] 4d.2 Reject moves whose source and destination parent have different devices and report `Rename failed: cross-device` exactly
+- [x] 4d.3 Run `make test FILE=tests/unit/file-tree/test_paths.lua CASE="Project tree refuses a cross-device move"` and see it pass
 
 ## 5a. Delete selection and confirmation
 Scenarios: `file-tree: Project tree d moves a file to the Trash after confirmation`, `file-tree: Project tree d keeps the file when cancelled`, `file-tree: Project tree Visual d deletes every selected row`, `file-tree: Project tree d deletes without a trash command`, `file-tree: Project tree d closes buffers of deleted files`
@@ -84,7 +90,7 @@ Scenarios: `file-tree: Project tree folder copy recreates symlinks`, `file-tree:
 
 ## 7. Approved prompt renders
 Scenarios: `file-tree: Project tree add prompt matches the approved render`, `file-tree: Project tree rename prompt matches the approved render`
-- [x] 7.1 Write both cases in `tests/screen/file-tree/test_project_ops.lua` using the real Proposed F1 tree and mappings; assert text verbatim against `renders/g1_proposed.ansi` and `renders/g2_proposed.ansi`, plus real extmark groups and `H.expect_screen_colors` from the G1/G2 masks with no hand-made masks or self-blessed screenshots, and see them fail
+- [x] 7.1 Write both cases in `tests/screen/file-tree/test_project_ops.lua` using the real Proposed F1 tree and mappings; assert text verbatim against byte-identical `tests/screen/file-tree/g1_proposed.ansi` and `tests/screen/file-tree/g2_proposed.ansi` copies, plus real extmark groups and `H.expect_screen_colors` from the G1/G2 masks with no hand-made masks or self-blessed screenshots, and see them fail
 - [x] 7.2 Adjust `picker/input.lua` and operation previews until the real frame, query, preview, hints and highlights match
 - [x] 7.3 Run `make test FILE=tests/screen/file-tree/test_project_ops.lua` and compare the captures with both proposed ANSI artifacts
 
@@ -94,8 +100,21 @@ Scenarios: `file-tree: Project tree operation keys come from the keymap file`, `
 - [x] 8.2 Update `docs/architecture.md` only for the new `file_tree/ops.lua`, `paths.lua`, `lsp_files.lua` and `picker/input.lua` module responsibilities allowed by rule 10
 - [x] 8.3 Run `make test CAPS=find-action,actions,file-tree` (including `more_results` and neo-tree `test_tree.lua`), then run `make check`, and see both pass
 
+## 9. Case-only symlink rename identity
+Scenarios: `file-tree: Project tree case-only rename moves a symlink by logical path`
+- [x] 9.1 Write the test in `tests/integration/file-tree/test_project_ops.lua`, load the outside target and the logical symlink path, drive the real `r` mapping with a case-only name, write both buffers, and see it fail
+- [x] 9.2 Detect a symlink with lstat before the case-only branch, move it through a temporary sibling, and rename only buffers matched by logical path
+- [x] 9.3 Run `make test FILE=tests/integration/file-tree/test_project_ops.lua CASE="Project tree case-only rename moves a symlink by logical path"` and see it pass
+
+## 10. Visual clipboard mode teardown
+Scenarios: `file-tree: Project tree Visual copy and cut return to Normal mode`
+- [ ] 10.1 Write the test in `tests/integration/file-tree/test_project_ops.lua`, select populated rows with `V`, drive the real `c` and `x` mappings, assert the captured paths and Normal mode without a manual `<Esc>`, and see it fail
+- [ ] 10.2 Leave Visual mode after copy or cut captures its selection without changing the clipboard paths
+- [ ] 10.3 Run `make test FILE=tests/integration/file-tree/test_project_ops.lua CASE="Project tree Visual copy and cut return to Normal mode"` and see it pass
+
 ## Agent decisions
 
+- Case-only renames update buffer names while the source is parked at its temporary sibling, avoiding symlink resolution collisions with a separately loaded target buffer.
 - Delete confirmation uses singular `item` for one selected path, keeping the unsaved-buffer count grammatical.
 - Create invalidates the root's cached scan before redrawing, so the submitted path is selected immediately without waiting for a watcher event.
 - The input adapter wraps `frame.options`' renderer so live previews retain all shared-frame chrome without widening the frame API.

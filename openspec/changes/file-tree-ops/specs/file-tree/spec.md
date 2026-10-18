@@ -90,7 +90,7 @@
 - **THEN** a notification `Delete failed: boom` at ERROR is emitted and `tax_test.go` still exists
 
 ### Requirement: Project tree copy, cut and paste
-`file_tree.copy` and `file_tree.cut` SHALL replace the tree clipboard with the cursor row or deduplicated Visual rows. `file_tree.paste` SHALL target the folder defined by add. Copies SHALL be recursive and prompt in `Copy` with `<stem>_copy<ext>` on conflict. Cuts SHALL use the rename pipeline and clear after paste. Pasting a folder into itself or below it SHALL notify `Cannot paste <path> into itself` at ERROR.
+`file_tree.copy` and `file_tree.cut` SHALL replace the tree clipboard with the cursor row or deduplicated Visual rows, then return a Visual invocation to Normal mode. `file_tree.paste` SHALL target the folder defined by add. Copies SHALL be recursive and prompt in `Copy` with `<stem>_copy<ext>` on conflict. Cuts SHALL use the rename pipeline and clear after paste. Pasting a folder into itself or below it SHALL notify `Cannot paste <path> into itself` at ERROR.
 
 #### Scenario: Project tree c and p copy a file into another folder
 - **WHEN** `c` is pressed in normal mode on the `money.go` row and `p` on the `cmd/server` row
@@ -115,6 +115,10 @@
 #### Scenario: Project tree Visual c copies every selected row
 - **WHEN** `V` selects the `discount.go` and `invoice.go` rows, `c` is pressed, and `p` is pressed on the `money` row
 - **THEN** `internal/money/discount.go` and `internal/money/invoice.go` exist
+
+#### Scenario: Project tree Visual copy and cut return to Normal mode
+- **WHEN** multiple project-tree rows are selected with `V`, then `c` and `x` are each invoked through their Visual mappings
+- **THEN** each operation captures the selected paths in the tree clipboard and leaves Neovim in Normal mode
 
 ### Requirement: Project tree refresh and operation keys
 `file_tree.refresh` SHALL rescan every expanded folder and rerun git status at once. The operation actions SHALL be scoped to filetype `gleb-file-tree` with keys only from `settings/keymap.json`: `add` `a`, `rename` `r`, `delete` `d`, `copy` `c`, `cut` `x`, `paste` `p`, `refresh` `R`, with `delete`, `copy` and `cut` also in Visual mode.
@@ -170,7 +174,7 @@ Every submitted path SHALL normalize inside the tree root with no absolute path,
 - **THEN** `invoice.go` still exists, `bill.go` does not, and a `Rename failed:` notification at ERROR is emitted
 
 ### Requirement: Project tree move identity and state
-A case-only rename SHALL move through a temporary sibling. Buffer names SHALL follow moved files by realpath, including symlinked roots and `/private/var` aliases. Folder moves SHALL migrate every expanded relative key below the old path. Every view of the same root SHALL refresh once per successful batch, after all targets stat successfully and before `didRenameFiles`.
+A case-only rename SHALL move through a temporary sibling. Buffer names SHALL follow moved files by realpath, including symlinked roots and `/private/var` aliases; symlink rows SHALL instead move buffers opened through their logical path. Folder moves SHALL migrate every expanded relative key below the old path. Every view of the same root SHALL refresh once per successful batch, after all targets stat successfully and before `didRenameFiles`.
 
 #### Scenario: Project tree supports a case-only rename
 - **WHEN** the cursor is on `README.md`, `r` is pressed in normal mode and `<C-u>Readme.md<CR>` is typed on a case-insensitive filesystem
@@ -183,6 +187,10 @@ A case-only rename SHALL move through a temporary sibling. Buffer names SHALL fo
 #### Scenario: Project tree rename moves a symlink and not its target
 - **WHEN** a tree row is a symlink to a file outside the root and the row is renamed with `r`
 - **THEN** the symlink and a buffer opened through it move by logical path, while the outside target and its content are unchanged
+
+#### Scenario: Project tree case-only rename moves a symlink by logical path
+- **WHEN** `link.txt` is a symlink to a file outside the root, buffers are loaded for both the target and `link.txt`, and the tree row is renamed to `Link.txt` with `r` on a case-insensitive filesystem
+- **THEN** the symlink and only the buffer opened as `link.txt` move to the logical `Link.txt` path, the target buffer keeps its outside path, and writing either buffer creates no outside sibling
 
 #### Scenario: Project tree folder rename migrates expanded keys
 - **WHEN** `internal` and `internal/billing` are expanded and `internal` is renamed to `domain` with `r`

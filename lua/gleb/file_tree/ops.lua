@@ -158,12 +158,6 @@ local function rename_case_only(old, new, original_buffers)
 	if not staged then
 		return false, stage_error
 	end
-	local moved, move_error = vim.uv.fs_rename(temporary, new)
-	if not moved then
-		vim.uv.fs_rename(temporary, old)
-		return false, move_error
-	end
-
 	local renamed = {}
 	for buf, original in pairs(original_buffers) do
 		if vim.api.nvim_buf_is_valid(buf) then
@@ -173,11 +167,20 @@ local function rename_case_only(old, new, original_buffers)
 				for renamed_buf, old_name in pairs(renamed) do
 					pcall(vim.api.nvim_buf_set_name, renamed_buf, old_name)
 				end
-				vim.uv.fs_rename(new, old)
+				vim.uv.fs_rename(temporary, old)
 				return false, tostring(name_error)
 			end
 			renamed[buf] = original.name
 		end
+	end
+
+	local moved, move_error = vim.uv.fs_rename(temporary, new)
+	if not moved then
+		for renamed_buf, old_name in pairs(renamed) do
+			pcall(vim.api.nvim_buf_set_name, renamed_buf, old_name)
+		end
+		vim.uv.fs_rename(temporary, old)
+		return false, move_error
 	end
 	return true
 end
@@ -215,12 +218,15 @@ end
 ---@return boolean
 ---@return string?
 local function rename_path(old, new)
-	if old:lower() == new:lower() then
-		return rename_case_only(old, new, buffers_at(old))
-	end
 	local stat = vim.uv.fs_lstat(old)
 	if stat and stat.type == "link" then
+		if old:lower() == new:lower() then
+			return rename_case_only(old, new, buffers_at_logical_path(old))
+		end
 		return rename_symlink(old, new)
+	end
+	if old:lower() == new:lower() then
+		return rename_case_only(old, new, buffers_at(old))
 	end
 
 	return rename_once(old, new)

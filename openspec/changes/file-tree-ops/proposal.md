@@ -47,6 +47,7 @@ The project tree from `file-tree-view` can only browse. The user edits files fro
 - Code:
   - New: `lua/gleb/file_tree/ops.lua`, `lua/gleb/file_tree/paths.lua` (pure helpers), `lua/gleb/file_tree/lsp_files.lua` (will/did rename), `lua/gleb/picker/input.lua`.
   - Changed: `lua/gleb/file_tree/actions.lua`, `settings/keymap.json` (view-scoped keys only), `lua/gleb/file_tree/view.lua` (select a created or pasted entry).
+- Architecture: `lua/gleb/plugins/plugins.lua` wires the project-tree action module into the existing action registry; `docs/architecture.md` records the new module responsibilities.
 - Tests:
   - unit: `tests/unit/file-tree/test_ops.lua` (target folder, copy names, self-paste check, filter matching).
   - integration: `tests/integration/file-tree/test_project_ops.lua`, `test_project_lsp_rename.lua` (an in-process fake language server: `vim.lsp.start` with a `cmd` function), `tests/integration/picker/test_input.lua`.
@@ -120,4 +121,4 @@ Run on `loop/file-tree-ops-20261018-042709` was rejected by the judge:
   
   Fix: check lstat for a link before the case-only branch. For a link, use `buffers_at_logical_path`, and do the case-only move through a temporary sibling with `fs_rename`. Add a case-only symlink rename to the symlink scenario's test.
   
-  [minor] Visual `c`/`x` still leave Visual mode active (ops.lua:58
+  [minor] Visual `c`/`x` still leave Visual mode active. `selected_paths(ctx)` captures the range, but `set_clipboard` returns without leaving Visual mode; the existing Visual-copy test masks this by pressing `<Esc>` after `c` (`lua/gleb/file_tree/ops.lua:555`, `lua/gleb/file_tree/ops.lua:581`, `tests/integration/file-tree/test_project_ops.lua:1221`).
