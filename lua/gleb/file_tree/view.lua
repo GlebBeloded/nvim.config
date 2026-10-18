@@ -7,6 +7,7 @@ local fs = require("gleb.file_tree.fs")
 local git = require("gleb.file_tree.git")
 local model = require("gleb.file_tree.model")
 local render = require("gleb.file_tree.render")
+local settings = require("gleb.file_tree.settings")
 local watch = require("gleb.file_tree.watch")
 
 local EXPANSION_MAX_ROWS = 5000
@@ -17,6 +18,7 @@ local EXPANSION_MAX_ROWS = 5000
 ---@field buf integer
 ---@field win integer
 ---@field expanded table<string, boolean>
+---@field expanded_nests table<string, boolean>
 ---@field rows FileTreeRow[]
 ---@field autocmds integer[]
 ---@field watching boolean
@@ -196,13 +198,18 @@ local function draw(view, path)
 		end
 	end
 	local watched = {}
-	view.rows = model.rows(
-		fs.tree(view.root, function(scan_path)
-			watched[scan_path] = true
-		end),
-		view.expanded,
-		git.status(view.root)
-	)
+	local tree = fs.tree(view.root, function(scan_path)
+		watched[scan_path] = true
+	end)
+	local nesting_settings = settings.load().nesting
+	for relative in pairs(view.expanded_nests) do
+		local parent = vim.fs.joinpath(view.root, relative)
+		local stat = vim.uv.fs_stat(parent)
+		if not stat or stat.type ~= "file" or not model.has_nest(tree, parent, nesting_settings) then
+			view.expanded_nests[relative] = nil
+		end
+	end
+	view.rows = model.rows(tree, view.expanded, git.status(view.root), nesting_settings, view.expanded_nests)
 	render.draw(view.buf, view.rows)
 	local cursor = vim.api.nvim_win_get_cursor(view.win)
 	vim.api.nvim_win_set_cursor(view.win, { math.min(cursor[1], math.max(#view.rows, 1)), cursor[2] })
@@ -298,7 +305,7 @@ end
 local function expand_directory(view, row, warning)
 	local relative = row.path:sub(#view.root + 2)
 	view.expanded[relative] = true
-	local rows = model.rows(fs.tree(view.root), view.expanded, {})
+	local rows = model.rows(fs.tree(view.root), view.expanded, {}, settings.load().nesting, view.expanded_nests)
 	if #rows > EXPANSION_MAX_ROWS then
 		view.expanded[relative] = nil
 		vim.notify(warning, vim.log.levels.WARN)
@@ -386,6 +393,10 @@ function M.toggle_fold()
 	local row = selected_row(view)
 	if row and row.kind == "directory" then
 		toggle_directory(view, row)
+	elseif row and row.kind == "file" and row.nest_children then
+		local relative = row.path:sub(#view.root + 2)
+		view.expanded_nests[relative] = not view.expanded_nests[relative] or nil
+		draw(view, row.path)
 	elseif row and row.kind == "file" then
 		M.close_node()
 	end
@@ -605,6 +616,7 @@ local function open_view(path)
 		buf = buf,
 		win = win,
 		expanded = expanded.load(root),
+		expanded_nests = {},
 		rows = {},
 		autocmds = {},
 		watching = true,

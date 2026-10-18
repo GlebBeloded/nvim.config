@@ -49,9 +49,9 @@ Scenarios: `file-tree: Default nesting rules nest Go files`, `file-tree: Default
 
 Scenarios: `file-tree: Nests start collapsed under a chevron`, `file-tree: Nest children are indented under the parent`, `file-tree: Nest state survives a refresh`, `file-tree: Nest state is isolated between tabs`, `file-tree: Drawing prunes stale nest state`
 
-- [ ] 4a.1 Extend `treeproj` in `tests/fixtures/build.sh` to Decision 8's exact manifest, write the five cases in `tests/integration/file-tree/test_nesting.lua` through `file_tree.toggle`, real `za`/`R` mappings and two real tabs, then run `make test FILE=tests/integration/file-tree/test_nesting.lua CASE="Nests start collapsed under a chevron"` and see it fail
-- [ ] 4a.2 Feed folder scans through the cached nest engine in `lua/gleb/file_tree/model.lua`, render parent chevrons and child indentation in `lua/gleb/file_tree/render.lua`, and keep/prune per-tab relative `expanded_nests` in `lua/gleb/file_tree/view.lua`
-- [ ] 4a.3 Run each scenario with `make test FILE=tests/integration/file-tree/test_nesting.lua CASE="<scenario title>"` and see it pass
+- [x] 4a.1 Extend `treeproj` in `tests/fixtures/build.sh` to Decision 8's exact manifest, write the five cases in `tests/integration/file-tree/test_nesting.lua` through `file_tree.toggle`, real `za`/`R` mappings and two real tabs, then run `make test FILE=tests/integration/file-tree/test_nesting.lua CASE="Nests start collapsed under a chevron"` and see it fail
+- [x] 4a.2 Feed folder scans through the cached nest engine in `lua/gleb/file_tree/model.lua`, render parent chevrons and child indentation in `lua/gleb/file_tree/render.lua`, and keep/prune per-tab relative `expanded_nests` in `lua/gleb/file_tree/view.lua`
+- [x] 4a.3 Run each scenario with `make test FILE=tests/integration/file-tree/test_nesting.lua CASE="<scenario title>"` and see it pass
 
 ## 4b. Invalid, disabled and reloaded settings
 
@@ -122,3 +122,4 @@ Scenarios: `file-tree: File tree nests match the approved render`
 - Compiled Lua rules use a function-valued `lua` field so the model cache can exercise real rule execution before task 2 adds module loading and error handling.
 - A malformed Lua-rule result skips that whole rule and warns once, preventing a partially valid user table from making order-dependent claims.
 - Omitted settings fields default to enabled nesting with empty rule and ignore lists, preserving Decision 1's enabled-by-default contract without inventing rules.
+- Nest rows carry explicit expansion and parent metadata so rendering and later row actions do not infer structure from labels or adjacency.

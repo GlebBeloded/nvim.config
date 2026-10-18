@@ -44,6 +44,8 @@ local STATUS_STRENGTH = {
 ---@field empty boolean
 ---@field status string?
 ---@field nest_children? string[]
+---@field nest_expanded? boolean
+---@field nest_parent? string
 
 ---@param path string
 ---@return string
@@ -215,6 +217,17 @@ local function visible_entries(tree, path, nesting_settings)
 	return M.sort(entries), nest_map
 end
 
+--- Return whether a file is currently a parent in its folder's nest map.
+---@param tree FileTreeSource
+---@param path string
+---@param nesting_settings? FileTreeNestingSettings
+---@return boolean
+function M.has_nest(tree, path, nesting_settings)
+	local _, nest_map = visible_entries(tree, vim.fs.dirname(path), nesting_settings)
+	local children = nest_map[basename(path)]
+	return children ~= nil and #children > 0
+end
+
 ---@param tree FileTreeSource
 ---@param entry FileTreeEntry
 ---@param nesting_settings? FileTreeNestingSettings
@@ -240,29 +253,61 @@ end
 ---@param path string
 ---@param depth integer
 ---@param nesting_settings? FileTreeNestingSettings
-local function append_children(tree, expanded, status, rows, path, depth, nesting_settings)
+---@param expanded_nests? table<string, boolean>
+local function append_children(tree, expanded, status, rows, path, depth, nesting_settings, expanded_nests)
 	local entries, nest_map = visible_entries(tree, path, nesting_settings)
+	local entries_by_name = {}
+	local nested = {}
 	for _, entry in ipairs(entries) do
-		local label = entry.name
-		local tail = entry
-		local children = {}
-		if entry.kind == "directory" then
-			label, tail, children = compact_directory(tree, entry, nesting_settings)
+		entries_by_name[entry.name] = entry
+	end
+	for _, child_names in pairs(nest_map) do
+		for _, child_name in ipairs(child_names) do
+			nested[child_name] = true
 		end
-		local relative = relative_path(tree.root, tail.path)
-		local is_expanded = tail.kind == "directory" and expanded[relative] == true
-		rows[#rows + 1] = {
-			depth = depth,
-			kind = tail.kind,
-			label = label,
-			path = tail.path,
-			expanded = is_expanded,
-			empty = tail.kind == "directory" and #children == 0,
-			status = path_status(status, relative, tail.kind == "directory"),
-			nest_children = nest_map[entry.name],
-		}
-		if is_expanded then
-			append_children(tree, expanded, status, rows, tail.path, depth + 1, nesting_settings)
+	end
+	for _, entry in ipairs(entries) do
+		if not nested[entry.name] then
+			local label = entry.name
+			local tail = entry
+			local children = {}
+			if entry.kind == "directory" then
+				label, tail, children = compact_directory(tree, entry, nesting_settings)
+			end
+			local relative = relative_path(tree.root, tail.path)
+			local is_expanded = tail.kind == "directory" and expanded[relative] == true
+			local nest_children = nest_map[entry.name]
+			local nest_expanded = nest_children ~= nil and expanded_nests ~= nil and expanded_nests[relative] == true
+			rows[#rows + 1] = {
+				depth = depth,
+				kind = tail.kind,
+				label = label,
+				path = tail.path,
+				expanded = is_expanded,
+				empty = tail.kind == "directory" and #children == 0,
+				status = path_status(status, relative, tail.kind == "directory"),
+				nest_children = nest_children,
+				nest_expanded = nest_expanded,
+			}
+			if is_expanded then
+				append_children(tree, expanded, status, rows, tail.path, depth + 1, nesting_settings, expanded_nests)
+			elseif nest_expanded then
+				for _, child_name in ipairs(nest_children) do
+					local child = entries_by_name[child_name]
+					if child then
+						rows[#rows + 1] = {
+							depth = depth + 1,
+							kind = "file",
+							label = child.name,
+							path = child.path,
+							expanded = false,
+							empty = false,
+							status = path_status(status, relative_path(tree.root, child.path), false),
+							nest_parent = entry.path,
+						}
+					end
+				end
+			end
 		end
 	end
 end
@@ -272,8 +317,9 @@ end
 ---@param expanded table<string, boolean>
 ---@param status table<string, string>
 ---@param nesting_settings? FileTreeNestingSettings
+---@param expanded_nests? table<string, boolean>
 ---@return FileTreeRow[]
-function M.rows(tree, expanded, status, nesting_settings)
+function M.rows(tree, expanded, status, nesting_settings, expanded_nests)
 	local rows = {
 		{
 			depth = 0,
@@ -284,7 +330,7 @@ function M.rows(tree, expanded, status, nesting_settings)
 			empty = false,
 		},
 	}
-	append_children(tree, expanded, status, rows, tree.root, 0, nesting_settings)
+	append_children(tree, expanded, status, rows, tree.root, 0, nesting_settings, expanded_nests)
 	return rows
 end
 
