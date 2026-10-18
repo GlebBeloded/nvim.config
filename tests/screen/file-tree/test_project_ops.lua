@@ -149,10 +149,7 @@ local function open_prompt(mapping, typed, query)
 	if typed ~= "" then
 		child.type_keys(typed)
 	end
-	assert(
-		child.wait("table.concat(MiniPick.get_picker_query()) == " .. vim.inspect(query)),
-		"query was not rendered"
-	)
+	assert(child.wait("table.concat(MiniPick.get_picker_query()) == " .. vim.inspect(query)), "query was not rendered")
 	child.cmd("redraw")
 end
 
