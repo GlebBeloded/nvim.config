@@ -87,3 +87,13 @@ Reviewing and committing changes today goes through neo-tree's git status source
 - **Nests start expanded** here (the approved render shows them open), unlike the project tree, so no change is hidden in a review.
 - **Commit and push run in the repository root,** not the cwd, like staging already did.
 - **Renders:** the statusline chip names the filetype `gleb-changes` (the mockup said `changes`), as `file-tree-nesting` did for `gleb-file-tree`. The panel columns are the approved render, cell for cell.
+
+## Decision (auditor, 2026-10-18, after the task loop)
+
+- `gc` in the Changes panel commits at once: the panel's mapping is buffer-local with `nowait`, so a global mapping
+  starting with `gc` never makes it wait for 'timeoutlen'. The test types plain `gc` (no `<Ignore>` after it) and
+  asserts the commit popup opens without waiting.
+- Tests never stub production functions (`changes.commit = function() end` in the 6c test goes); a case drives the real
+  module.
+- Task 5b's two attempts are in tasks.md's `## Stuck` text; `$ARTIFACTS_DIR/stuck-attempt.diff` now holds task 7's
+  attempt only, so the 5b fix pass starts from the Stuck text, not from that diff.

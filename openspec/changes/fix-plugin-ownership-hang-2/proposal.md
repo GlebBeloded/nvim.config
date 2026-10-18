@@ -13,7 +13,15 @@ FAIL in tests/integration/ai/test_prompt_keys.lua | ai: Menu shows prompt: not r
 … (~90 more "not run")
 ```
 
-The case opens 10 plugin surfaces in turn through `open_surface` (neo-tree, dap-ui, Diffview, Differ, CodeDiff,
+A second case hangs the same way in another full run (loop round106 check, 2026-10-18 19:40):
+
+```
+FAIL in tests/integration/git/test_git.lua | git: Differ opens panel on the left: hung: no progress for 300 s (waiting for input or a never-met condition?)
+```
+
+Both hanging cases open `:Differ`, so probe that surface first.
+
+The plugin-ownership case opens 10 plugin surfaces in turn through `open_surface` (neo-tree, dap-ui, Diffview, Differ, CodeDiff,
 neotest summary, Mason, Lazy, 99). Which one blocks is not known.
 
 ## What Changes
@@ -27,6 +35,6 @@ neotest summary, Mason, Lazy, 99). Which one blocks is not known.
 
 ## Impact
 
-- tests/integration/actions/test_plugin_ownership.lua; the blocking surface's config under lua/gleb/ if the cause is
+- tests/integration/actions/test_plugin_ownership.lua, tests/integration/git/test_git.lua; the blocking surface's config under lua/gleb/ if the cause is
   there.
-- `actions: Plugin-window mappings are action-owned` still holds, and no longer hangs a worker under load.
+- `actions: Plugin-window mappings are action-owned` and `git: Differ opens panel on the left` still hold, and neither hangs a worker under load.
