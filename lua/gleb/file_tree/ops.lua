@@ -15,7 +15,8 @@ local paths = require("gleb.file_tree.paths")
 ---@class FileTreeCopyEntry
 ---@field source string
 ---@field target string
----@field kind "directory"|"file"
+---@field kind "directory"|"file"|"link"
+---@field link_text? string
 
 ---@type FileTreeOpsState
 M.state = {}
@@ -133,6 +134,14 @@ local function collect_copy_entries(source, target, entries)
 	if not stat then
 		return false, stat_error
 	end
+	if stat.type == "link" then
+		local link_text, link_error = vim.uv.fs_readlink(source)
+		if not link_text then
+			return false, link_error
+		end
+		entries[#entries + 1] = { source = source, target = target, kind = "link", link_text = link_text }
+		return true
+	end
 	if stat.type ~= "directory" then
 		entries[#entries + 1] = { source = source, target = target, kind = "file" }
 		return true
@@ -176,6 +185,8 @@ local function copy_path(source, target)
 		local ok, error
 		if entry.kind == "directory" then
 			ok, error = vim.uv.fs_mkdir(entry.target, 493)
+		elseif entry.kind == "link" then
+			ok, error = vim.uv.fs_symlink(assert(entry.link_text, "copy link text missing"), entry.target)
 		else
 			ok, error = vim.uv.fs_copyfile(entry.source, entry.target, {
 				excl = true,
@@ -417,13 +428,23 @@ function M.paste()
 	end
 
 	for _, source in ipairs(clipboard.paths) do
-		local target = vim.fs.joinpath(target_folder, vim.fs.basename(source))
-		if vim.uv.fs_lstat(target) then
-			prompt_copy(root, source, target_folder)
+		if not vim.uv.fs_lstat(source) then
+			vim.notify("Paste failed: " .. source:sub(#root + 2) .. ": ENOENT", vim.log.levels.ERROR)
 		else
-			finish_copy(source, target)
+			local target = vim.fs.joinpath(target_folder, vim.fs.basename(source))
+			if vim.uv.fs_lstat(target) then
+				prompt_copy(root, source, target_folder)
+			else
+				finish_copy(source, target)
+			end
 		end
 	end
+end
+
+--- Rescan the current project-tree view and refresh Git status immediately.
+---@return nil
+function M.refresh()
+	require("gleb.file_tree.view").refresh()
 end
 
 ---@return string?

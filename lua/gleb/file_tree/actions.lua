@@ -302,6 +302,10 @@ local function project_paste()
 	require("gleb.file_tree.ops").paste()
 end
 
+local function project_refresh()
+	require("gleb.file_tree.ops").refresh()
+end
+
 ---@type gleb.Action[]
 local actions = {
 	{
@@ -363,6 +367,13 @@ local actions = {
 		category = "Project",
 		ft = "gleb-file-tree",
 		run = project_paste,
+	},
+	{
+		id = "file_tree.refresh",
+		title = "Refresh",
+		category = "Project",
+		ft = "gleb-file-tree",
+		run = project_refresh,
 	},
 	{
 		id = "file_tree.open",

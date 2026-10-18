@@ -747,6 +747,19 @@ function M.refresh_moved(root, selected_path)
 	end
 end
 
+--- Rescan only the current project-tree view and request Git status without debounce.
+---@return nil
+function M.refresh()
+	local view = M.state.by_tab[vim.api.nvim_get_current_tabpage()]
+	if not view then
+		return
+	end
+	local row = selected_row(view)
+	fs.invalidate_root(view.root)
+	draw(view, row and row.path or view.root)
+	git.refresh(view.root)
+end
+
 --- Toggle the current tab page's project tree.
 ---@return nil
 function M.toggle()

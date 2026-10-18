@@ -76,6 +76,7 @@
   "file_tree.open_tab": ["t"],
   "file_tree.open_vsplit": ["v"],
   "file_tree.paste": ["p"],
+  "file_tree.refresh": ["R"],
   "file_tree.rename": ["r"],
   "file_tree.toggle_fold": ["za"],
   "file_tree.unfold_all": ["zR"],

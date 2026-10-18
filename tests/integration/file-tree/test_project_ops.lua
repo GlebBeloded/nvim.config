@@ -270,6 +270,11 @@ local function paste(relative)
 	child.type_keys("p")
 end
 
+local function refresh()
+	eq(child.lua_get([[vim.fn.maparg("R", "n", false, true).desc]]), "Project: Refresh")
+	child.type_keys("R")
+end
+
 T["file-tree: Project tree a creates a file in the folder under the cursor"] = MiniTest.new_set()
 
 T["file-tree: Project tree a creates a file in the folder under the cursor"]["drives the real mapping"] = function()
@@ -1042,6 +1047,42 @@ T["file-tree: Project tree folder copy preflights before writing"] = function()
 	eq(read_file("money_copy/money_test.go"), read_file("internal/money/money_test.go"))
 end
 
+T["file-tree: Project tree folder copy recreates symlinks"] = function()
+	expand("internal")
+	local external = vim.fn.tempname() .. "-external"
+	vim.fn.writefile({ "outside" }, external)
+	local source_link = vim.fs.joinpath(tree_root, "internal/money/external-link")
+	local target_link = vim.fs.joinpath(tree_root, "money/external-link")
+	eq(vim.uv.fs_symlink(external, source_link), true)
+
+	copy("internal/money")
+	paste("")
+
+	assert(wait_for_path("money/money.go"), "folder containing symlink was not copied")
+	eq(vim.uv.fs_lstat(target_link).type, "link")
+	eq(vim.uv.fs_readlink(target_link), external)
+	eq(vim.fn.readfile(external), { "outside" })
+end
+
+T["file-tree: Project tree paste continues after a missing clipboard path"] = function()
+	local notifications = H.record_notify(child)
+	open_billing()
+	focus_tree_path("internal/billing/discount.go")
+	child.type_keys("Vj")
+	eq(child.fn.mode(1), "V")
+	child.type_keys("c")
+	child.type_keys("<Esc>")
+	local missing = vim.fs.joinpath(tree_root, "internal/billing/discount.go")
+	eq(vim.uv.fs_unlink(missing), true)
+
+	paste("cmd/server")
+
+	assert(wait_for_path("cmd/server/discount_test.go"), "second clipboard entry was not copied")
+	local notification = notifications()[#notifications()]
+	eq(notification.msg, "Paste failed: internal/billing/discount.go: ENOENT")
+	eq(notification.level, vim.log.levels.ERROR)
+end
+
 T["file-tree: Project tree x and p move a file like a rename"] = function()
 	open_billing()
 	expand("internal/money")
@@ -1115,6 +1156,104 @@ T["file-tree: Project tree cut into its current parent is a no-op"] = function()
 	eq(read_file("internal/billing/invoice.go"), expected)
 	eq(child.lua_get([[RenameRequestCount]]), 0)
 	eq(child.lua_get([[require("gleb.file_tree.ops").state.clipboard]]), vim.NIL)
+end
+
+T["file-tree: Project tree R picks up changes at once"] = function()
+	open_billing()
+	child.lua([[require("gleb.file_tree.watch").stop_all()]])
+	vim.fn.writefile({ "package billing" }, vim.fs.joinpath(tree_root, "internal/billing/fee.go"))
+	local before = child.lua_get([[require("gleb.file_tree.git").state.runs]])
+
+	refresh()
+
+	eq(tree_has_path("internal/billing/fee.go"), true)
+	assert(
+		child.wait(([[require("gleb.file_tree.git").state.runs == %d]]):format(before + 1)),
+		"refresh did not start exactly one git status run"
+	)
+end
+
+T["file-tree: Project tree R starts at least one git status run"] = function()
+	assert(
+		child.lua_get(
+			[[(function(root)
+				return vim.wait(1000, function()
+					local state = require("gleb.file_tree.git").state.roots[root]
+					return state and not state.in_flight and state.timer == nil
+				end, 20)
+			end)(...)]],
+			{ tree_root }
+		),
+		"initial git status did not settle"
+	)
+	local before = child.lua_get([[require("gleb.file_tree.git").state.runs]])
+
+	refresh()
+
+	assert(
+		child.wait(([[require("gleb.file_tree.git").state.runs >= %d]]):format(before + 1)),
+		"refresh did not start a git status run"
+	)
+end
+
+T["file-tree: Project tree R preserves another tab's tree state"] = function()
+	local first_tab = child.api.nvim_get_current_tabpage()
+	expand("internal")
+	focus_tree_path("internal/money")
+	local other = F.copy("treeproj", vim.fn.tempname() .. "/other")
+	local other_root = assert(vim.uv.fs_realpath(other))
+	local second = child.lua_get(
+		[[(function(root)
+			vim.cmd("tabnew " .. vim.fn.fnameescape(vim.fs.joinpath(root, "README.md")))
+			vim.cmd("tcd " .. vim.fn.fnameescape(root))
+			local action = assert(require("gleb.actions").state.applicator.catalog:get("file_tree.toggle"))
+			action.run(require("gleb.actions.context").capture())
+			local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+			for index, row in ipairs(view.rows) do
+				if row.path == vim.fs.joinpath(root, "web") then
+					vim.api.nvim_win_set_cursor(view.win, { index, 0 })
+					require("gleb.file_tree.view").open()
+					break
+				end
+			end
+			vim.api.nvim_win_set_cursor(view.win, { #view.rows, 0 })
+			local selected = view.rows[#view.rows].path
+			return {
+				tab = view.tab,
+				root = view.root,
+				expanded = vim.deepcopy(view.expanded),
+				selected = selected,
+				buf = view.buf,
+				name = vim.api.nvim_buf_get_name(view.buf),
+			}
+		end)(...)]],
+		{ other_root }
+	)
+	child.api.nvim_set_current_tabpage(first_tab)
+	focus_tree_path("internal/money")
+
+	refresh()
+
+	local preserved = child.lua_get(
+		[=[(function(expected)
+			local view = assert(require("gleb.file_tree.view").state.by_tab[expected.tab])
+			return {
+				root = view.root,
+				expanded = vim.deepcopy(view.expanded),
+				selected = view.rows[vim.api.nvim_win_get_cursor(view.win)[1]].path,
+				buf = view.buf,
+				name = vim.api.nvim_buf_get_name(view.buf),
+			}
+		end)(...)]=],
+		{ second }
+	)
+	eq(preserved, {
+		root = second.root,
+		expanded = second.expanded,
+		selected = second.selected,
+		buf = second.buf,
+		name = second.name,
+	})
 end
 
 return T

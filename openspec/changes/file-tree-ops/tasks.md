@@ -78,9 +78,9 @@ Scenarios: `file-tree: Project tree x and p move a file like a rename`, `file-tr
 
 ## 6c. Symlinks, missing clipboard entries and refresh
 Scenarios: `file-tree: Project tree folder copy recreates symlinks`, `file-tree: Project tree paste continues after a missing clipboard path`, `file-tree: Project tree R picks up changes at once`, `file-tree: Project tree R starts at least one git status run`, `file-tree: Project tree R preserves another tab's tree state`
-- [ ] 6c.1 Write the tests in `tests/integration/file-tree/test_project_ops.lua`, drive real `c`, `p` and `R` with populated data and two distinct tab trees, and see them fail
-- [ ] 6c.2 Recreate symlinks without following them, continue after ENOENT clipboard entries, and refresh only the initiating view while starting at least one immediate git run
-- [ ] 6c.3 Run `make test FILE=tests/integration/file-tree/test_project_ops.lua CASE="Project tree"` and see them pass
+- [x] 6c.1 Write the tests in `tests/integration/file-tree/test_project_ops.lua`, drive real `c`, `p` and `R` with populated data and two distinct tab trees, and see them fail
+- [x] 6c.2 Recreate symlinks without following them, continue after ENOENT clipboard entries, and refresh only the initiating view while starting at least one immediate git run
+- [x] 6c.3 Run `make test FILE=tests/integration/file-tree/test_project_ops.lua CASE="Project tree"` and see them pass
 
 ## 7. Approved prompt renders
 Scenarios: `file-tree: Project tree add prompt matches the approved render`, `file-tree: Project tree rename prompt matches the approved render`
@@ -124,3 +124,4 @@ Scenarios: `file-tree: Project tree operation keys come from the keymap file`, `
 - `ops.move` derives the root from the active project-tree view and returns success so later cut paste can retain its clipboard after a failed move.
 - The case-only integration waits past the bounded LSP timeout so it observes the completed rename rather than an intermediate temporary sibling.
 - Copy traversal preflights a parent-first source/destination list before creating anything, so recursive copies cannot partially write on an existing-path conflict.
+- `watch.stop_all()` closes active handles but retains view registrations, so a manual refresh can safely rebuild the initiating view's watches.

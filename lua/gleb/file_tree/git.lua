@@ -164,6 +164,25 @@ function M.request(root)
 	)
 end
 
+--- Start one root's status refresh without the watcher debounce.
+---@param root string
+---@return nil
+function M.refresh(root)
+	root = fs.normalize(root)
+	local state = assert(M.state.roots[root], "git root was not started")
+	state.generation = state.generation + 1
+	if state.timer then
+		state.timer:stop()
+		state.timer:close()
+		state.timer = nil
+	end
+	if state.in_flight then
+		state.dirty = true
+		return
+	end
+	run(root, state)
+end
+
 --- Clear Git status state.
 ---@return nil
 function M.reset()
