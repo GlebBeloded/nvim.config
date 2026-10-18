@@ -9,7 +9,7 @@ local root
 
 local PROMPT_LEGEND = {
 	a = "DevIconGo",
-	b = "FileTreeFolderName",
+	b = "FileTreeFolderIcon",
 	c = "FileTreeExpander",
 	d = "FileTreeGitAdded",
 	e = "MiniPickNormal",

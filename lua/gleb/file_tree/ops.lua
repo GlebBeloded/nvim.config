@@ -52,6 +52,138 @@ local function notify_preflight_failure(root, reason, path)
 	vim.notify("Rename failed: " .. detail, vim.log.levels.ERROR)
 end
 
+---@param path string
+---@return string
+local function temporary_sibling(path)
+	local parent = vim.fs.dirname(path)
+	local stem = ".gleb-rename-temporary-" .. vim.fs.basename(path)
+	local candidate = vim.fs.joinpath(parent, stem)
+	local ordinal = 1
+	while vim.uv.fs_lstat(candidate) do
+		ordinal = ordinal + 1
+		candidate = vim.fs.joinpath(parent, stem .. "-" .. ordinal)
+	end
+	return candidate
+end
+
+---@class FileTreeOriginalBuffer
+---@field name string
+---@field logical_old string
+---@field suffix string
+
+---@param path string
+---@return table<integer, FileTreeOriginalBuffer>
+local function buffers_at(path)
+	local result = {}
+	local real_path = vim.uv.fs_realpath(path)
+	if not real_path then
+		return result
+	end
+	for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+		local name = vim.api.nvim_buf_get_name(buf)
+		local real_name = name ~= "" and vim.uv.fs_realpath(name) or nil
+		if real_name and (real_name == real_path or vim.startswith(real_name, real_path .. "/")) then
+			local logical_old = name
+			while logical_old ~= "/" and vim.uv.fs_realpath(logical_old) ~= real_path do
+				logical_old = vim.fs.dirname(logical_old)
+			end
+			result[buf] = {
+				name = name,
+				logical_old = logical_old,
+				suffix = real_name:sub(#real_path + 1),
+			}
+		end
+	end
+	return result
+end
+
+---@param original_buffers table<integer, FileTreeOriginalBuffer>
+local function wipe_stale_buffers(original_buffers)
+	local old_names = {}
+	for _, original in pairs(original_buffers) do
+		old_names[original.name] = true
+	end
+	for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+		if
+			vim.api.nvim_buf_is_valid(buf)
+			and not original_buffers[buf]
+			and old_names[vim.api.nvim_buf_get_name(buf)]
+		then
+			vim.api.nvim_buf_delete(buf, { force = true })
+		end
+	end
+end
+
+---@param old string
+---@param new string
+---@param opts? vim.lsp.util.rename.Opts
+---@return boolean
+---@return string?
+local function rename_once(old, new, opts)
+	local original_buffers = buffers_at(old)
+	local moved, move_error = pcall(vim.lsp.util.rename, old, new, opts)
+	if moved and vim.uv.fs_lstat(new) then
+		wipe_stale_buffers(original_buffers)
+		return true
+	end
+	return false, tostring(move_error or "move failed")
+end
+
+---@param old string
+---@param new string
+---@param original_buffers table<integer, FileTreeOriginalBuffer>
+---@return boolean
+---@return string?
+local function rename_case_only(old, new, original_buffers)
+	local temporary = temporary_sibling(old)
+	local staged, stage_error = vim.uv.fs_rename(old, temporary)
+	if not staged then
+		return false, stage_error
+	end
+	local moved, move_error = vim.uv.fs_rename(temporary, new)
+	if not moved then
+		vim.uv.fs_rename(temporary, old)
+		return false, move_error
+	end
+
+	local renamed = {}
+	for buf, original in pairs(original_buffers) do
+		if vim.api.nvim_buf_is_valid(buf) then
+			local prefix = vim.fs.joinpath(vim.fs.dirname(original.logical_old), vim.fs.basename(new))
+			local ok, name_error = pcall(vim.api.nvim_buf_set_name, buf, prefix .. original.suffix)
+			if not ok then
+				for renamed_buf, old_name in pairs(renamed) do
+					pcall(vim.api.nvim_buf_set_name, renamed_buf, old_name)
+				end
+				vim.uv.fs_rename(new, old)
+				return false, tostring(name_error)
+			end
+			renamed[buf] = original.name
+		end
+	end
+	return true
+end
+
+---@param old string
+---@param new string
+---@return boolean
+---@return string?
+local function rename_path(old, new)
+	if old:lower() == new:lower() then
+		return rename_case_only(old, new, buffers_at(old))
+	end
+
+	return rename_once(old, new)
+end
+
+---@param completed FileTreeMovePair[]
+local function rollback_moves(completed)
+	for index = #completed, 1, -1 do
+		local pair = completed[index]
+		rename_once(pair.new, pair.old)
+	end
+end
+
 --- Move a batch only after every source and target passes preflight.
 ---@param move_pairs FileTreeMovePair[]
 ---@return boolean moved
@@ -80,21 +212,25 @@ function M.move(move_pairs)
 
 	local lsp_files = require("gleb.file_tree.lsp_files")
 	lsp_files.will_rename(pending)
+	local completed = {}
 	for _, pair in ipairs(pending) do
-		local moved, error = pcall(vim.lsp.util.rename, pair.old, pair.new)
+		local moved, error = rename_path(pair.old, pair.new)
 		if not moved then
+			rollback_moves(completed)
 			vim.notify("Rename failed: " .. tostring(error), vim.log.levels.ERROR)
 			return false
 		end
+		completed[#completed + 1] = pair
 	end
 	for _, pair in ipairs(pending) do
 		if not vim.uv.fs_stat(pair.new) then
+			rollback_moves(completed)
 			vim.notify("Rename failed: target does not exist", vim.log.levels.ERROR)
 			return false
 		end
 	end
+	view.refresh_moved(root, pending[1].new, pending)
 	lsp_files.did_rename(pending)
-	view.refresh_moved(root, pending[1].new)
 	return true
 end
 
@@ -265,6 +401,17 @@ local function create(root, target_folder, query)
 	local directory = vim.endswith(query, "/")
 	local name = directory and query:sub(1, -2) or query
 	local target = vim.fs.joinpath(target_folder, name)
+	if
+		name:sub(1, 1) == "/"
+		or name:find("//", 1, true)
+		or vim.iter(vim.split(name, "/", { plain = true })):any(function(part)
+			return part == ".." or part == ""
+		end)
+		or not paths.is_inside(root, target)
+	then
+		vim.notify("Create failed: path must stay inside the project root", vim.log.levels.ERROR)
+		return
+	end
 	if vim.uv.fs_lstat(target) then
 		notify_exists(root, target)
 		return
@@ -553,20 +700,22 @@ local function delete_paths(root, path_list)
 	end
 end
 
---- Confirm and delete the selected project-tree entry.
+--- Confirm and delete the selected project-tree entries.
+---@param ctx? gleb.ActionContext
 ---@return nil
-function M.delete()
-	local view = require("gleb.file_tree.view")
-	local root, row = view.selected_path()
-	if not root or not row or row.kind == "root" then
+function M.delete(ctx)
+	local root, path_list = selected_paths(ctx)
+	if not root or #path_list == 0 then
 		return
 	end
-	local path_list = { row.path }
+	if ctx and ctx.selection then
+		vim.cmd.normal({ args = { vim.keycode("<Esc>") }, bang = true })
+	end
 	local modified = count_modified_buffers(path_list)
 	local choice = trash_path() and "Move to Trash" or "Delete"
-	local prompt = "Delete " .. row.path:sub(#root + 2) .. "?"
-	if modified > 0 then
-		prompt = ("Delete 1 item (%d unsaved)?"):format(modified)
+	local prompt = "Delete " .. path_list[1]:sub(#root + 2) .. "?"
+	if #path_list > 1 or modified > 0 then
+		prompt = ("Delete %d %s (%d unsaved)?"):format(#path_list, #path_list == 1 and "item" or "items", modified)
 	end
 	vim.ui.select({ choice, "Cancel" }, { prompt = prompt }, function(item)
 		if item == choice then

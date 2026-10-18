@@ -24,9 +24,9 @@ Scenarios: `file-tree: Project tree a creates a file in the folder under the cur
 
 ## 3b. Create safety and operation keys
 Scenarios: `file-tree: Project tree create reports a read-only destination`, `file-tree: Project tree operation keys come from the keymap file`, `file-tree: Project tree refuses operations on the root row`, `file-tree: Project tree Visual operations refuse the root row`, `file-tree: Project tree add prompt matches the approved render`
-- [ ] 3b.1 Write the integration assertions in `tests/integration/file-tree/test_project_ops.lua` and the screen case in `tests/screen/file-tree/test_project_ops.lua`, drive the real `a`, `r`, `d`, `c` and `x` mappings in Normal and Visual modes plus the key applicator, and see them fail
-- [ ] 3b.2 Validate normalized destinations, report create failures, and register `a`, `r`, `d`, `c`, `x`, `p`, `R` plus Visual `d`, `c`, `x` from `settings/keymap.json`, with no action `plugin`
-- [ ] 3b.3 Run `make test FILE=tests/integration/file-tree/test_project_ops.lua CASE="Project tree"` and `make test FILE=tests/screen/file-tree/test_project_ops.lua CASE="Project tree add prompt matches the approved render"` and see them pass
+- [x] 3b.1 Write the integration assertions in `tests/integration/file-tree/test_project_ops.lua` and the screen case in `tests/screen/file-tree/test_project_ops.lua`, drive the real `a`, `r`, `d`, `c` and `x` mappings in Normal and Visual modes plus the key applicator, and see them fail
+- [x] 3b.2 Validate normalized destinations, report create failures, and register `a`, `r`, `d`, `c`, `x`, `p`, `R` plus Visual `d`, `c`, `x` from `settings/keymap.json`, with no action `plugin`
+- [x] 3b.3 Run `make test FILE=tests/integration/file-tree/test_project_ops.lua CASE="Project tree"` and `make test FILE=tests/screen/file-tree/test_project_ops.lua CASE="Project tree add prompt matches the approved render"` and see them pass
 
 ## 4a. LSP file operations
 Scenarios: `file-tree: Project tree rename asks language servers to update references`, `file-tree: Project tree rename skips servers whose filters do not match`, `file-tree: Project tree rename waits for servers at most one second`, `file-tree: Project tree move notifies didRename only after the target exists`
@@ -42,15 +42,15 @@ Scenarios: `file-tree: Project tree r renames a file and its buffer`, `file-tree
 
 ## 4c. Rename identity and filesystem edge cases
 Scenarios: `file-tree: Project tree rename reports a read-only destination`, `file-tree: Project tree supports a case-only rename`, `file-tree: Project tree rename follows a buffer opened through a symlinked root`, `file-tree: Project tree folder rename migrates expanded keys`, `file-tree: Project tree refuses a cross-device move`
-- [ ] 4c.1 Write the tests in `tests/integration/file-tree/test_project_ops.lua` and device preflight unit in `tests/unit/file-tree/test_paths.lua`, drive real renames on populated data, and see them fail
-- [ ] 4c.2 Move case-only names through a temporary sibling, match buffers by realpath, migrate expanded keys, preserve failures atomically and report cross-device exactly
-- [ ] 4c.3 Run `make test FILE=tests/integration/file-tree/test_project_ops.lua CASE="Project tree"` and `make test FILE=tests/unit/file-tree/test_paths.lua` and see them pass
+- [x] 4c.1 Write the tests in `tests/integration/file-tree/test_project_ops.lua` and device preflight unit in `tests/unit/file-tree/test_paths.lua`, drive real renames on populated data, and see them fail
+- [x] 4c.2 Move case-only names through a temporary sibling, match buffers by realpath, migrate expanded keys, preserve failures atomically and report cross-device exactly
+- [x] 4c.3 Run `make test FILE=tests/integration/file-tree/test_project_ops.lua CASE="Project tree"` and `make test FILE=tests/unit/file-tree/test_paths.lua` and see them pass
 
 ## 5a. Delete selection and confirmation
 Scenarios: `file-tree: Project tree d moves a file to the Trash after confirmation`, `file-tree: Project tree d keeps the file when cancelled`, `file-tree: Project tree Visual d deletes every selected row`, `file-tree: Project tree d deletes without a trash command`, `file-tree: Project tree d closes buffers of deleted files`
-- [ ] 5a.1 Write the tests in `tests/integration/file-tree/test_project_ops.lua`, override `ops.state.trash_path` with a recording fake while driving the real `d` mapping and picker confirmation, and see them fail
-- [ ] 5a.2 Add normal/Visual `file_tree.delete`, fixed `/usr/bin/trash -s` selection with test override, recursive fallback only when trash is unavailable, and cross-tab unmodified-buffer cleanup that keeps windows
-- [ ] 5a.3 Run `make test FILE=tests/integration/file-tree/test_project_ops.lua CASE="Project tree d"` and see them pass
+- [x] 5a.1 Write the tests in `tests/integration/file-tree/test_project_ops.lua`, override `ops.state.trash_path` with a recording fake while driving the real `d` mapping and picker confirmation, and see them fail
+- [x] 5a.2 Add normal/Visual `file_tree.delete`, fixed `/usr/bin/trash -s` selection with test override, recursive fallback only when trash is unavailable, and cross-tab unmodified-buffer cleanup that keeps windows
+- [x] 5a.3 Run `make test FILE=tests/integration/file-tree/test_project_ops.lua CASE="Project tree d"` and see them pass
 
 ## 5b. Delete failure and path safety
 Scenarios: `file-tree: Project tree d reports a failed delete`, `file-tree: Project tree delete refuses a vanished row safely`, `file-tree: Project tree fallback delete reports a read-only destination`, `file-tree: Project tree delete removes a symlink and not its target`, `file-tree: Project tree trash failure never falls back to permanent delete`
@@ -84,23 +84,15 @@ Scenarios: `file-tree: Project tree folder copy recreates symlinks`, `file-tree:
 
 ## 7. Approved prompt renders
 Scenarios: `file-tree: Project tree add prompt matches the approved render`, `file-tree: Project tree rename prompt matches the approved render`
-- [ ] 7.1 Write both cases in `tests/screen/file-tree/test_project_ops.lua` using the real Proposed F1 tree and mappings; assert text verbatim against `renders/g1_proposed.ansi` and `renders/g2_proposed.ansi`, plus real extmark groups and `H.expect_screen_colors` from the G1/G2 masks with no hand-made masks or self-blessed screenshots, and see them fail
-- [ ] 7.2 Adjust `picker/input.lua` and operation previews until the real frame, query, preview, hints and highlights match
-- [ ] 7.3 Run `make test FILE=tests/screen/file-tree/test_project_ops.lua` and compare the captures with both proposed ANSI artifacts
+- [x] 7.1 Write both cases in `tests/screen/file-tree/test_project_ops.lua` using the real Proposed F1 tree and mappings; assert text verbatim against `renders/g1_proposed.ansi` and `renders/g2_proposed.ansi`, plus real extmark groups and `H.expect_screen_colors` from the G1/G2 masks with no hand-made masks or self-blessed screenshots, and see them fail
+- [x] 7.2 Adjust `picker/input.lua` and operation previews until the real frame, query, preview, hints and highlights match
+- [x] 7.3 Run `make test FILE=tests/screen/file-tree/test_project_ops.lua` and compare the captures with both proposed ANSI artifacts
 
 ## 8. Architecture and final gates
 Scenarios: `file-tree: Project tree operation keys come from the keymap file`, `file-tree: a creates a file`, `file-tree: r renames a file`, `diff: Diff view left window is read-only`, `diff: Diff view trim policy shows a staged checkbox`
 - [x] 8.1 Run the new focused tests and existing neo-tree `tests/integration/file-tree/test_tree.lua`; fix any regression without weakening a scenario
 - [x] 8.2 Update `docs/architecture.md` only for the new `file_tree/ops.lua`, `paths.lua`, `lsp_files.lua` and `picker/input.lua` module responsibilities allowed by rule 10
 - [ ] 8.3 Run `make test CAPS=find-action,actions,file-tree` (including `more_results` and neo-tree `test_tree.lua`), then run `make check`, and see both pass
-
-## Stuck
-
-- Task 5a remains unticked. The real Visual `d` mapping resolves to `Project: Delete` and captures the selected rows, but it still returns without opening confirmation; the new root-only Visual regression is red on the missing Visual `d` mapping in the reverted production tree.
-- Probe: the mapped selection was `start = { 7, 0 }`, `finish = { 8, 0 }` for `discount.go` and `discount_test.go`. A separate rename probe showed the first native rename hop left a stale `README.md` buffer and the second left a stale `.gleb-rename-temporary-README.md` buffer even though `Readme.md` existed on disk.
-- Attempt 1 wired Visual delete through the captured action context while adding create containment, stale-buffer cleanup, expanded-key migration, and a fresh lualine statusline overlay. Create, keys, root refusal, folder migration, symlink identity, normal deletes, and prompt text passed; case-only rename and Visual delete remained red.
-- Attempt 2 moved case-only paths through `vim.uv.fs_rename`, renamed the original buffers once, disabled MiniPick's duplicate `<CR>` action, and exited Visual mode after reading the captured range. Every integration case passed except `Project tree Visual d deletes every selected row`, which still reported that confirmation did not block.
-- The complete reverted production attempt is saved at `artifacts/runs/22b161e8-b488-477c-96ac-c5f4d88e49c8/stuck-attempt.diff`; apply it before the next probe. The durable prompt render legend and both red Visual-root/symlink regression repairs remain in the commit.
 
 ## Agent decisions
 
@@ -118,3 +110,7 @@ Scenarios: `file-tree: Project tree operation keys come from the keymap file`, `
 - The case-only integration waits past the bounded LSP timeout so it observes the completed rename rather than an intermediate temporary sibling.
 - Copy traversal preflights a parent-first source/destination list before creating anything, so recursive copies cannot partially write on an existing-path conflict.
 - `watch.stop_all()` closes active handles but retains view registrations, so a manual refresh can safely rebuild the initiating view's watches.
+- The Visual `d` regression waits for the confirmation picker, not `child.is_blocked()`: an unambiguous Visual `d` leaves MiniPick waiting in `getchar()`'s event loop, which Neovim never reports as blocking (normal `d` only blocked while the global `ds` mapping made it ambiguous).
+- The prompt render legend maps the approved `#7daea3` cells to `FileTreeFolderIcon`, the group that draws folder icons in that colour; `FileTreeFolderName` is the default foreground.
+- The input prompt keeps its hint-row padding in `MiniPickNormal` through a `PickerHintPadding` key of the frame's existing `highlight_overrides`, so other pickers' hint rows and reference screenshots stay unchanged.
+- The input prompt's statusline overlay opens only when lualine is loaded and draws an empty row when lualine returns no statusline.

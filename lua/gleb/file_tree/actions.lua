@@ -284,8 +284,9 @@ local function project_rename()
 	require("gleb.file_tree.ops").rename()
 end
 
-local function project_delete()
-	require("gleb.file_tree.ops").delete()
+---@param ctx gleb.ActionContext
+local function project_delete(ctx)
+	require("gleb.file_tree.ops").delete(ctx)
 end
 
 ---@param ctx gleb.ActionContext
@@ -343,6 +344,7 @@ local actions = {
 		title = "Delete",
 		category = "Project",
 		ft = "gleb-file-tree",
+		modes = { "n", "x" },
 		run = project_delete,
 	},
 	{

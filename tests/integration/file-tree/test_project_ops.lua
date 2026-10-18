@@ -769,15 +769,14 @@ T["file-tree: Project tree Visual d deletes every selected row"] = function()
 	eq(child.fn.mode(1), "V")
 	eq(child.lua_get([[vim.fn.maparg("d", "x", false, true).desc]]), "Project: Delete")
 	child.type_keys("d")
-	assert(vim.wait(1000, child.is_blocked, 10), "Visual delete confirmation did not block for a choice")
-	child.type_keys("<Down>")
-	child.type_keys("<CR>")
+	-- Visual `d` is unambiguous, so the picker waits in getchar()'s event loop and is never reported as blocked
 	assert(
-		vim.wait(1000, function()
-			return not child.is_blocked()
-		end, 10),
-		"Visual delete confirmation did not return"
+		child.wait([[MiniPick.is_picker_active() and (MiniPick.get_picker_matches() or {}).current ~= nil]]),
+		"Visual delete confirmation did not open for a choice"
 	)
+	eq(child.lua_get([[MiniPick.get_picker_matches().current.text]]), "Move to Trash")
+	child.type_keys("<CR>")
+	assert(child.wait([[not MiniPick.is_picker_active()]]), "Visual delete confirmation did not return")
 	wait_for_absence("internal/billing/discount.go")
 	wait_for_absence("internal/billing/discount_test.go")
 
