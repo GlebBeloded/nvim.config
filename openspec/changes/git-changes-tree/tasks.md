@@ -18,9 +18,9 @@ Scenarios: `git: Changes panel status avoids optional locks`, `git: Changes pane
 
 ## 2c. Render and status highlights
 Scenarios: `git: Changes panel colours names by status`, `git: Changes panel highlight colours`, `git: Changes panel treats copies as renamed`
-- [ ] 2c.1 Write the scenarios in `tests/unit/git/test_changes_render.lua` and `tests/integration/git/test_changes.lua`, including real extmark groups and `H.expect_hl_colors`, and see them fail
-- [ ] 2c.2 Add `lua/gleb/git/changes/render.lua` and `highlights.lua`, using palette helpers and a `gleb_changes_highlights` ColorScheme autocmd
-- [ ] 2c.3 Run `make test FILE=tests/unit/git/test_changes_render.lua CASE="Changes panel"` and `make test FILE=tests/integration/git/test_changes.lua CASE="Changes panel highlight colours"` and see them pass
+- [x] 2c.1 Write the scenarios in `tests/unit/git/test_changes_render.lua` and `tests/integration/git/test_changes.lua`, including real extmark groups and `H.expect_hl_colors`, and see them fail
+- [x] 2c.2 Add `lua/gleb/git/changes/render.lua` and `highlights.lua`, using palette helpers and a `gleb_changes_highlights` ColorScheme autocmd
+- [x] 2c.3 Run `make test FILE=tests/unit/git/test_changes_render.lua CASE="Changes panel"` and `make test FILE=tests/integration/git/test_changes.lua CASE="Changes panel highlight colours"` and see them pass
 
 ## 2d. Staging checkboxes
 Scenarios: `git: Changes panel checkboxes follow the index`

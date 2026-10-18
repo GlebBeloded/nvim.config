@@ -40,4 +40,17 @@ T["git: Changes panel status avoids optional locks"]["refreshes with the lock-fr
 	assert(child.lua_get([[_G.changes_status_result.stdout:find("tracked.txt", 1, true) ~= nil]]))
 end
 
+T["git: Changes panel highlight colours"] = MiniTest.new_set()
+
+T["git: Changes panel highlight colours"]["come from the palette after a colorscheme change"] = function()
+	child.lua([[require("gleb.git.changes.highlights").setup()]])
+	child.api.nvim_set_hl(0, "ChangesRoot", { fg = "#000000" })
+	child.api.nvim_exec_autocmds("ColorScheme", {})
+
+	H.expect_hl_colors(child, "ChangesRoot", { fg = "#ddc7a1", bold = true })
+	H.expect_hl_colors(child, "ChangesCount", { fg = "#928374" })
+	H.expect_hl_colors(child, "ChangesStatAdded", { fg = "#a9b665" })
+	H.expect_hl_colors(child, "ChangesStatRemoved", { fg = "#ea6962" })
+end
+
 return T
