@@ -590,6 +590,9 @@ local function set_clipboard(mode, ctx)
 		return
 	end
 	M.state.clipboard = { mode = mode, paths = selected }
+	if ctx and ctx.selection then
+		vim.cmd.normal({ args = { vim.keycode("<Esc>") }, bang = true })
+	end
 end
 
 --- Copy the selected project-tree entries into the tree clipboard.

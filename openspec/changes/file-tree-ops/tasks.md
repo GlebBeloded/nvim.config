@@ -108,9 +108,9 @@ Scenarios: `file-tree: Project tree case-only rename moves a symlink by logical 
 
 ## 10. Visual clipboard mode teardown
 Scenarios: `file-tree: Project tree Visual copy and cut return to Normal mode`
-- [ ] 10.1 Write the test in `tests/integration/file-tree/test_project_ops.lua`, select populated rows with `V`, drive the real `c` and `x` mappings, assert the captured paths and Normal mode without a manual `<Esc>`, and see it fail
-- [ ] 10.2 Leave Visual mode after copy or cut captures its selection without changing the clipboard paths
-- [ ] 10.3 Run `make test FILE=tests/integration/file-tree/test_project_ops.lua CASE="Project tree Visual copy and cut return to Normal mode"` and see it pass
+- [x] 10.1 Write the test in `tests/integration/file-tree/test_project_ops.lua`, select populated rows with `V`, drive the real `c` and `x` mappings, assert the captured paths and Normal mode without a manual `<Esc>`, and see it fail
+- [x] 10.2 Leave Visual mode after copy or cut captures its selection without changing the clipboard paths
+- [x] 10.3 Run `make test FILE=tests/integration/file-tree/test_project_ops.lua CASE="Project tree Visual copy and cut return to Normal mode"` and see it pass
 
 ## Agent decisions
 

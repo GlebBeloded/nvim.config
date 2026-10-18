@@ -1284,6 +1284,33 @@ T["file-tree: Project tree Visual c copies every selected row"] = function()
 	assert(wait_for_path("internal/money/invoice.go"), "last selected file was not copied")
 end
 
+T["file-tree: Project tree Visual copy and cut return to Normal mode"] = MiniTest.new_set()
+
+local function expect_visual_clipboard(key, mode)
+	open_billing()
+	focus_tree_path("internal/billing/discount.go")
+	child.type_keys("Vj")
+	eq(child.fn.mode(1), "V")
+	child.type_keys(key)
+
+	eq(child.fn.mode(1), "n")
+	eq(child.lua_get([[require("gleb.file_tree.ops").state.clipboard]]), {
+		mode = mode,
+		paths = {
+			vim.fs.joinpath(tree_root, "internal/billing/discount.go"),
+			vim.fs.joinpath(tree_root, "internal/billing/discount_test.go"),
+		},
+	})
+end
+
+T["file-tree: Project tree Visual copy and cut return to Normal mode"]["copy"] = function()
+	expect_visual_clipboard("c", "copy")
+end
+
+T["file-tree: Project tree Visual copy and cut return to Normal mode"]["cut"] = function()
+	expect_visual_clipboard("x", "cut")
+end
+
 T["file-tree: Project tree cut refuses an existing target name"] = function()
 	local notifications = H.record_notify(child)
 	open_billing()
