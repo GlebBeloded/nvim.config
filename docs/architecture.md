@@ -38,7 +38,7 @@ Feature code lives in `lua/gleb/<feature>/`; the capability name is the kebab-ca
 | `lsp/`, `cmp.lua`, `select/`, editing modules | LSP, completion, treesitter, folding, comments | |
 | `git/` | Signs, diff viewers, permalinks, AI commit popup | [git](../openspec/specs/git/spec.md) |
 | `diff/` | IntelliJ-port diff engine (pure) and owned aligned viewer | [diff](../openspec/specs/diff/spec.md) |
-| `file_tree/` | neo-tree, git status tree with live diff preview | [file-tree](../openspec/specs/file-tree/spec.md) |
+| `file_tree/` | Project tree beside neo-tree, plus its git status tree and live diff preview until `tree-diff-cutover` | [file-tree](../openspec/specs/file-tree/spec.md) |
 | `references/`, `queries/<lang>/usages.scm` | Find Usages: catalogue-backed usage types captured by language queries, grouped by test scope and folder beside a side-effect-free preview | [references](../openspec/specs/references/spec.md) |
 | `session/` | zellij-aware session save and restore | [session](../openspec/specs/session/spec.md) |
 | `statusline/`, `bufferline.lua` | Global statusline and tabline from one palette | [statusline](../openspec/specs/statusline/spec.md) |
