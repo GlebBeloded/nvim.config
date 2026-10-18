@@ -44,11 +44,7 @@ local function real_path(relative)
 end
 
 local function run_toggle()
-	child.lua([[
-		local catalog = require("gleb.actions").state.applicator.catalog
-		local action = assert(catalog:get("file_tree.toggle"), "file_tree.toggle is not registered")
-		action.run(require("gleb.actions.context").capture())
-	]])
+	child.type_keys("<M-e>")
 	local opened =
 		child.lua_get([[require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()] ~= nil]])
 	if opened then
@@ -56,6 +52,28 @@ local function run_toggle()
 			child.wait([[#require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()].rows > 0]])
 		)
 	end
+end
+
+local function open_changes_panel()
+	child.lua([[require("gleb.git.changes").open({ root = ... })]], { root })
+	assert(
+		child.wait(
+			[[(function()
+				local view = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+				return view ~= nil and #view.rows > 0
+			end)()]],
+			3000
+		),
+		"Changes panel did not draw its initial rows"
+	)
+end
+
+local function reveal_project_tree()
+	child.lua([[
+		local catalog = require("gleb.actions").state.applicator.catalog
+		local action = assert(catalog:get("file_tree.reveal"), "file_tree.reveal is not registered")
+		action.run(require("gleb.actions.context").capture())
+	]])
 end
 
 local function enable_file_tree_nesting()
@@ -352,14 +370,6 @@ T["file-tree: Project tree toggle reveals the current file"] = function()
 	eq(line:match("[^ ]+$"), "money.go")
 end
 
-T["file-tree: Project tree actions start unbound"] = function()
-	local shortcuts = child.lua_get([[require("gleb.actions").state.store.last_good]])
-	eq(shortcuts["file_tree.toggle"], nil)
-	eq(shortcuts["file_tree.reveal"], nil)
-	eq(child.lua_get([[vim.fn.maparg("<A-e>", "n", false, true).desc]]), "View | Tool Windows: Toggle File Tree")
-	eq(child.lua_get([[vim.fn.maparg("<A-G>", "n", false, true).desc]]), "View | Tool Windows: Toggle Git Status Tree")
-end
-
 T["file-tree: Project tree closes with the last window"] = function()
 	edit("README.md")
 	run_toggle()
@@ -386,24 +396,19 @@ T["file-tree: Project tree closes before last editor with close"] = function()
 	eq(project_tree_windows(), {})
 end
 
-T["file-tree: Project and neo-tree close before the last editor"] = function()
+T["file-tree: Project tree and changes panel close before the last editor"] = function()
 	edit("README.md")
 	run_toggle()
 	child.cmd("wincmd l")
-	child.cmd("Neotree filesystem dir=" .. vim.fn.fnameescape(assert(vim.uv.fs_realpath(root))))
-	assert(
-		child.wait(
-			[[(function()
-				for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
-					if vim.bo[vim.api.nvim_win_get_buf(win)].filetype == "neo-tree" then
-						return true
-					end
-				end
-				return false
-			end)()]],
-			10000
-		),
-		"neo-tree did not open"
+	open_changes_panel()
+	eq(
+		child.lua_get([[(function()
+			return #vim.iter(vim.api.nvim_tabpage_list_wins(0)):filter(function(win)
+				local filetype = vim.bo[vim.api.nvim_win_get_buf(win)].filetype
+				return filetype == "gleb-file-tree" or filetype == "gleb-changes"
+			end):totable()
+		end)()]]),
+		2
 	)
 	child.lua([[(function()
 		for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
@@ -455,16 +460,7 @@ T["file-tree: Project tree opening skips non-editor windows"] = function()
 	child.cmd("vnew | edit " .. vim.fn.fnameescape(real_path("README.md")))
 	local editor = child.api.nvim_get_current_win()
 	child.wo.number = true
-	child.cmd("Neotree filesystem")
-	assert(
-		child.wait(
-			[[vim.iter(vim.api.nvim_list_wins()):any(function(win)
-			return vim.bo[vim.api.nvim_win_get_buf(win)].filetype == "neo-tree"
-		end)]],
-			10000
-		),
-		"neo-tree did not open"
-	)
+	open_changes_panel()
 	assert(
 		child.wait(
 			[[vim.iter(vim.api.nvim_list_wins()):all(function(win)
@@ -491,7 +487,7 @@ T["file-tree: Project tree opening skips non-editor windows"] = function()
 		return vim.iter(vim.api.nvim_tabpage_list_wins(0)):filter(function(win)
 			local buf = vim.api.nvim_win_get_buf(win)
 			local name = vim.api.nvim_buf_get_name(buf)
-			return vim.bo[buf].filetype == "neo-tree"
+			return vim.bo[buf].filetype == "gleb-changes"
 				or vim.bo[buf].filetype == "DiffviewFiles"
 				or vim.bo[buf].buftype == "quickfix"
 				or vim.bo[buf].buftype == "terminal"
@@ -503,7 +499,8 @@ T["file-tree: Project tree opening skips non-editor windows"] = function()
 			return { win, buf, vim.bo[buf].filetype .. ":" .. vim.api.nvim_buf_get_name(buf) }
 		end):totable()
 	end)()]])
-	run_toggle()
+	reveal_project_tree()
+	assert(child.wait([[#require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()].rows > 0]]))
 	focus_tree_row("Makefile")
 
 	child.api.nvim_input(vim.keycode("<CR>"))

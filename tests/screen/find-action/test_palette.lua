@@ -7,7 +7,7 @@ local child = H.new_child()
 local eq = MiniTest.expect.equality
 
 local function start()
-	child.start_bare({ "gruvbox-material", "neo-tree.nvim", "smart-splits.nvim" })
+	child.start_bare({ "gruvbox-material", "smart-splits.nvim" })
 	child.cmd("colorscheme gruvbox-material")
 	child.lua([[
 		vim.wo.wrap = true
@@ -26,15 +26,15 @@ local function start()
 		end
 
 		FixtureActions = {
-			registered("gleb.git.actions", "git.open_differ"),
+			action("changes.review", "Open Differ", "Git | Diff", { modes = { "n" } }),
 			registered("gleb.view.actions", "view.soft_wrap"),
 			registered("gleb.view.actions", "view.spell_check"),
 			registered("gleb.keymaps.actions", "search.live_grep"),
 			registered("gleb.find_action.actions", "find_action.open"),
 			action("navigate.find_file", "Find File...", "Navigate"),
 			action("edit.find_buffer", "Find in Buffer", "Edit | Find"),
-			registered("gleb.file_tree.actions", "tree.toggle_filesystem"),
-			registered("gleb.file_tree.actions", "tree.toggle_git_status"),
+			action("file_tree.toggle", "Toggle File Tree", "View | Tool Windows", { modes = { "n" } }),
+			action("changes.toggle", "Toggle Git Status Tree", "View | Tool Windows", { modes = { "n" } }),
 			action("git.open_diffview", "Open Diffview", "Git | Diff"),
 			action("git.blame_line", "Blame Line", "Git"),
 			action("git.copy_permalink", "Copy Permalink", "Git"),
@@ -47,19 +47,19 @@ local function start()
 		Actions.setup({ FixtureActions }, ShortcutPath)
 		Actions.state.applicator.catalog.complete_commands = function() return { "SecretCommand" } end
 		Actions.state.store:save({
-			["git.open_differ"] = { "<M-g>" },
+			["changes.review"] = { "<M-g>" },
 			["search.live_grep"] = { "<M-F>" },
 			["find_action.open"] = { "<M-A>" },
 			["navigate.find_file"] = { "<D-o>" },
 			["edit.find_buffer"] = { "/" },
-			["tree.toggle_filesystem"] = { "<M-e>" },
-			["tree.toggle_git_status"] = { "<M-G>" },
+			["file_tree.toggle"] = { "<M-e>" },
+			["changes.toggle"] = { "<M-G>" },
 		})
 		Actions.state.applicator:apply(Actions.state.store.last_good)
 		local history = require("gleb.find_action.items").history()
 		vim.fn.mkdir(vim.fs.dirname(history.path), "p")
 		vim.fn.writefile({ vim.json.encode({
-			"git.open_differ",
+			"changes.review",
 			"view.soft_wrap",
 			"view.spell_check",
 			"search.live_grep",
@@ -142,7 +142,7 @@ T["find-action: Wide palette matches reference screenshots"] = function()
 			local current = require("mini.pick").get_picker_matches().current
 			return current.action and current.action.id or vim.NIL
 		end)()]]),
-		"git.open_differ"
+		"changes.review"
 	)
 	local text = screen_text()
 	eq(text:find("recently used", 1, true) ~= nil, true)
@@ -206,7 +206,7 @@ T["find-action: Wide palette matches reference screenshots"] = function()
 	close_palette()
 
 	child.lua(
-		[[vim.fn.writefile({ vim.json.encode({ "git.open_differ", "view.soft_wrap", "view.spell_check", "search.live_grep" }) }, require("gleb.find_action.items").history().path)]]
+		[[vim.fn.writefile({ vim.json.encode({ "changes.review", "view.soft_wrap", "view.spell_check", "search.live_grep" }) }, require("gleb.find_action.items").history().path)]]
 	)
 	open_palette()
 	H.expect_screen_colors(child, 6, {

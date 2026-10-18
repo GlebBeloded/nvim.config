@@ -247,6 +247,10 @@ T["file-tree: Project tree does not follow a directory buffer"] = function()
 	run_action("file_tree.toggle")
 	child.cmd("wincmd l")
 	focus_tree_row("go.mod")
+	local before = child.lua_get([[(function()
+		local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+		return { view.root, vim.api.nvim_win_get_cursor(view.win) }
+	end)()]])
 	local notifications = H.record_notify(child)
 
 	child.lua(
@@ -258,6 +262,11 @@ T["file-tree: Project tree does not follow a directory buffer"] = function()
 		{ vim.fs.joinpath(root, "internal") }
 	)
 
+	local after = child.lua_get([[(function()
+		local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+		return { view.root, vim.api.nvim_win_get_cursor(view.win) }
+	end)()]])
+	eq(after, before)
 	eq(selected_tree_line():match("[^ ]+$"), "go.mod")
 	eq(notifications(), {})
 end

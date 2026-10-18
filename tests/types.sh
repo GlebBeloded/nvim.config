@@ -17,7 +17,7 @@ STAMP=.tests/types.ok
 key=$({
 	lua-language-server --version
 	echo "$VIMRUNTIME"
-	for lib in mini.nvim lazy.nvim vscode-diff.nvim; do
+	for lib in mini.nvim lazy.nvim; do
 		git -C ".tests/deps/$lib" rev-parse HEAD 2>/dev/null || true
 	done
 	git ls-files -z --cached --others --exclude-standard -- '*.lua' tests/luarc.types.jsonc | xargs -0 shasum

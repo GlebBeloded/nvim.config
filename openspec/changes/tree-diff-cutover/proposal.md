@@ -30,13 +30,13 @@ The queue builds an IntelliJ-style project tree (`file-tree-view` … `file-tree
 - `keymaps`: added "Changes review entry point", "Project tree and changes panel toggles" and "Pending panel work does not override a toggle"; modified "Normal-mode command maps bypass the command line" (no Ex command behind Cmd+G any more); removed "Differ entry point", "File tree and git panel toggles" and "Pending file tree work does not override a toggle".
 - `bufferline`: modified "Tabline offset for the project tree" (also the changes panel); removed "Tabline offset for the file tree".
 - `actions`: modified "Exclusive shortcut ownership" (no codediff allowlist; the new views instead of neo-tree, differ and codediff windows).
-- Every removed scenario is listed with its successor in design.md, "Removed scenarios" (77 rows).
+- Every removed scenario is listed with its successor in design.md, "Removed scenarios" (78 rows).
 
 ## Impact
 
 - Code:
   - Removed: `lua/gleb/file_tree/neo_tree.lua`, `lua/gleb/file_tree/diff_preview.lua`, `lua/gleb/git/differ.lua`, `lua/gleb/git/vscode_diff.lua`, `lua/gleb/actions/adapters/neo_tree.lua`, `differ.lua`, `codediff.lua`.
-  - Changed: `lua/gleb/file_tree/{init,actions}.lua` (hijack autocmd, old actions dropped), `lua/gleb/git/{init,actions}.lua`, `lua/gleb/plugins/plugins.lua`, the lazy.nvim setup (`disabled_plugins`), `lazy-lock.json`, `lua/gleb/bufferline.lua`, `lua/gleb/actions/{registry,audit}.lua`, `lua/gleb/find_action/assign.lua`, `lua/gleb/colors/gruvbox-material/git.lua`, `settings/keymap.json`.
+  - Changed: `lua/gleb/file_tree/{init,actions,view}.lua` (hijack autocmd, old actions dropped), `lua/gleb/git/{init,actions}.lua`, `lua/gleb/plugins/{init,plugins}.lua` (including lazy.nvim `disabled_plugins`), `lazy-lock.json`, `lua/gleb/bufferline.lua`, `lua/gleb/actions/{registry,audit}.lua`, `lua/gleb/find_action/assign.lua`, `lua/gleb/colors/gruvbox-material/{git,init}.lua`, `lua/gleb/colors/transparency.lua`, `settings/keymap.json`.
   - Docs: docs/architecture.md, docs/testing.md; spec text: the shortcut table rows Cmd+E and Cmd+G, the `file-tree` and `git` Purpose lines.
   - Tests: cases of removed scenarios deleted with them; `tests/e2e/git/test_differ_review.lua` becomes `test_changes_review.lua`; render case `neo-tree` becomes `project-tree` plus a `changes` case; `tests/bootstrap.sh`/`tests/types.sh` drop vscode-diff.nvim; `tests/fixtures/build.sh` comment of `dirty`; the Find Action adapter fixture moves to a remaining adapter id.
 - Plugins: removed nvim-neo-tree/neo-tree.nvim, undont/differ.nvim, esmuellert/vscode-diff.nvim. None added. nui.nvim stays: `lua/gleb/git/ai_commit.lua` is its remaining user.
@@ -46,6 +46,19 @@ The queue builds an IntelliJ-style project tree (`file-tree-view` … `file-tree
   - `shortcuts: Shortcut meanings survive registry migration` still holds: bytes, routing and received keys are unchanged; each row's action id is updated with the table.
   - `find-action: Adapter assignment reports deferred application` still holds: the test's adapter fixture moves to a remaining adapter id (`lazy.`), so the message is unchanged.
   - `find-action: Saved shortcut applies immediately` still holds: `file_tree.*` and `changes.*` are no adapter ids.
+  - `diff: Diff view opens on the current file` still holds: `diff.open_file` remains registered and available through Find Action.
+  - `diff: Diff view of an unchanged file opens nothing` still holds: the standalone diff entry point and unchanged-file guard are untouched.
+  - `diff: Diff view outside a repository opens nothing` still holds: removing plugin viewers does not change the owned diff view's repository guard.
+  - `diff: Diff view of a file absent from HEAD` still holds: the owned diff engine and absent-file comparison are untouched.
+  - `diff: Diff view focuses an open view of the same file` still holds: `diff.open_file` remains unbound but callable through Find Action.
+  - `diff: Diff view matches the approved render` still holds: this change alters only the bufferline over the changes panel, not the diff-view render.
+  - `diff: Diff view marks an approximate comparison` still holds: timeout attribution belongs to the owned diff engine and is untouched.
+  - `diff: Requirement: Diff view closing` still holds: removal of external viewers does not change owned diff-view teardown or mappings.
+  - `diff: Diff view ]f without a list keeps the view` still holds: standalone `diff.open_file` remains without a next-file hook.
+  - `diff: Diff view mappings come from diff actions` still holds: the diff action adapter remains; only neo-tree, differ and codediff adapters are removed.
+  - `diff: Diff view checkboxes follow the index` still holds: index comparison and checkbox rendering are untouched.
+  - `diff: Diff view marks both ends of a moved block` still holds: move detection and its view decorations are untouched.
+  - `diff: Diff view moved block matches the approved render` still holds: the owned diff-view render is unchanged.
 - Out of scope:
   - New tree, panel or diff behaviour (their own changes), diagnostics in the tree.
   - diffview and gitsigns configuration.

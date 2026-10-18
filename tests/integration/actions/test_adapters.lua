@@ -18,8 +18,6 @@ local function start()
 			}
 		end
 		Catalog = Registry.new({ {
-			action("differ.next_hunk"),
-			action("codediff.next_hunk"),
 			action("dap_ui.expand"),
 			action("neotest.run"),
 			action("mason.install_package"),
@@ -29,8 +27,6 @@ local function start()
 			action("file_tree.open"),
 		} })
 		Shortcuts = {
-			["differ.next_hunk"] = { "]c", "[c" },
-			["codediff.next_hunk"] = { "]d" },
 			["dap_ui.expand"] = { "<CR>" },
 			["neotest.run"] = { "r", "R" },
 			["mason.install_package"] = { "i" },
@@ -57,19 +53,15 @@ T["actions: Adapter output follows current shortcuts"] = function()
 	]])
 	eq(
 		child.lua_get([[(function()
-			local differ = require("gleb.actions.adapters.differ").mappings(Catalog, Shortcuts)
-			local codediff = require("gleb.actions.adapters.codediff").mappings(Catalog, Shortcuts)
 			local dap_ui = require("gleb.actions.adapters.dap_ui").mappings(Catalog, Shortcuts)
 			local neotest = require("gleb.actions.adapters.neotest").mappings(Catalog, Shortcuts)
 			local mason = require("gleb.actions.adapters.mason").mappings(Catalog, Shortcuts)
 			local lazy = require("gleb.actions.adapters.lazy").mappings(Catalog, Shortcuts)
 			local blink = require("gleb.actions.adapters.blink").mappings(Catalog, Shortcuts)
 			local copilot = require("gleb.actions.adapters.copilot").mappings(Catalog, Shortcuts)
-			local neo_tree = require("gleb.actions.adapters.neo_tree").mappings(Catalog, Shortcuts)
 
 			lazy.q()
 			blink["<CR>"][1]()
-			neo_tree.o()
 
 			Shortcuts["mason.install_package"] = { "i", "I" }
 			local mason_accepts_multiple = pcall(require("gleb.actions.adapters.mason").mappings, Catalog, Shortcuts)
@@ -77,8 +69,6 @@ T["actions: Adapter output follows current shortcuts"] = function()
 			Shortcuts["copilot.accept"] = { "<M-l>", "<M-L>" }
 			local copilot_accepts_multiple = pcall(require("gleb.actions.adapters.copilot").mappings, Catalog, Shortcuts)
 			return {
-				differ.next_hunk,
-				codediff.keymaps.view.next_hunk,
 				dap_ui.expand,
 				neotest.run,
 				mason.install_package,
@@ -89,8 +79,6 @@ T["actions: Adapter output follows current shortcuts"] = function()
 			}
 		end)()]]),
 		{
-			{ "]c", "[c" },
-			"]d",
 			{ "<CR>", "o" },
 			{ "r", "R" },
 			"i",
@@ -100,22 +88,33 @@ T["actions: Adapter output follows current shortcuts"] = function()
 			{
 				"lazy.close",
 				"blink.accept",
-				"file_tree.open",
 			},
 		}
+	)
+	eq(
+		child.lua_get([[(function()
+			local found = {}
+			for _, name in ipairs({ "codediff", "differ", "neo_tree" }) do
+				if pcall(require, "gleb.actions.adapters." .. name) then
+					table.insert(found, name)
+				end
+			end
+			return found
+		end)()]]),
+		{}
 	)
 end
 
 T["actions: Adapter reassignment applies on reopen"] = function()
 	eq(
 		child.lua_get([[(function()
-			local adapter = require("gleb.actions.adapters.neo_tree")
+			local adapter = require("gleb.actions.adapters.lazy")
 			local first_window = OpenPluginWindow(adapter)
-			Shortcuts["file_tree.open"] = { "l" }
+			Shortcuts["lazy.close"] = { "l" }
 			vim.api.nvim_buf_delete(first_window, { force = true })
 			local reopened = OpenPluginWindow(adapter)
 			vim.api.nvim_set_current_buf(reopened)
-			local old_mapping = vim.fn.maparg("o", "n", false, true)
+			local old_mapping = vim.fn.maparg("q", "n", false, true)
 			local new_mapping = vim.fn.maparg("l", "n", false, true)
 			new_mapping.callback()
 			return {
@@ -124,7 +123,7 @@ T["actions: Adapter reassignment applies on reopen"] = function()
 				Invoked,
 			}
 		end)()]]),
-		{ true, true, { "file_tree.open" } }
+		{ true, true, { "lazy.close" } }
 	)
 end
 
