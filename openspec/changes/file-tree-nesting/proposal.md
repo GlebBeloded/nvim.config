@@ -54,6 +54,14 @@ The new project tree (`file-tree-view`) lists every file of a folder flat, so a 
 - "Also I need fold all/unfold all actions in file tree".
 - General: "I'm used to Idea".
 
+## Decision (auditor, 2026-10-18, pre-implementation audit)
+
+- Earlier suites: a shared test helper calls `settings.setup({ path = <temp file with nesting.enabled=false> })`, used by the file-tree-view and file-tree-ops integration and screen suites, so F1, G1, G2, `test_project_tree` and `test_project_live` keep passing unchanged. "Project tree folds" becomes a MODIFIED requirement (`za` on a nest parent toggles its nest). A task 0 does this and runs `make test CAPS=file-tree,picker` before any nesting code; extending the fixture never changes files those screens depend on.
+- State: `view.expanded_nests` per tab, keyed by the parent's path relative to the root, never in `view.expanded`; not persisted (`expanded.json` unchanged); cleared on reroot and by `zM`; dropped in `draw()` for a parent that is gone, not a file, or childless; migrated with folder and file rename/move in every view of the root. Engine entries use the shipped `{ name, path, kind }`. Broken-rule warnings follow the design (once per rule per load).
+- Performance: the nest map is cached per folder keyed by the `fs.scan` table (weak keys) plus a settings generation bumped by reload; git redraws never re-run rules or Lua functions; a template literal after substitution is a hash lookup; a unit test bounds 16 rules on 5000 files at ≤50 ms; the 5000-row caps count nest children.
+- Tint: a parent without its own status takes the strongest status among its listed children via a helper shared with `folder_status`'s strength table and renamed/deleted→modified folding; a deleted, unlisted child does not tint its parent (pinned by a scenario).
+- Ops and follow: one view helper `select_path(path)` expands folders, then the nest, then moves the cursor; follow, reveal, add, rename and paste use it with `fs.normalize`d paths; the target folder on a child row is `dirname(row.path)`. Scenarios: rename or paste into a collapsed nest; a folder rename with an expanded nest inside; Visual `d` over a collapsed parent (parent only); nest state isolated between two tabs; follow under a symlinked `/private/var` root; the settings `BufWritePost` matched through `fs.normalize`. The screen case asserts text verbatim against `nest_proposed.ansi` and real extmark groups (no hand-made mask, no self-blessed screenshot). Split task 4 into 4a (rows, view state, refresh) and 4b (settings: invalid, off, reload, symlinked path), task 5 into 5a (keys and the row cap) and 5b (follow/reveal and ops interplay).
+
 ## Agent decisions
 
 - **Lua patterns** are the regular expressions (Decision 2): pure Lua, captures built in, and no doubled backslashes in JSON. vim.regex has no capture API of its own, and globs can't capture more than one `*`.
