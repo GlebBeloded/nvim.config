@@ -6,9 +6,9 @@ Scenarios: `picker: Input prompt submits its query`, `picker: Input prompt start
 
 ## 1b. Picker teardown
 Scenarios: `picker: Input prompt Esc restores tree focus and cursor state`, `picker: Input prompt submits after the picker closes`
-- [ ] 1b.1 Write the tests in `tests/integration/picker/test_input.lua`, open the real prompt from a populated project tree, press `<Esc>` or `<CR>`, and see them fail
-- [ ] 1b.2 Restore the originating window and `guicursor` after teardown, and schedule `on_submit` only after the picker closes
-- [ ] 1b.3 Run `make test FILE=tests/integration/picker/test_input.lua` and see them pass
+- [x] 1b.1 Write the tests in `tests/integration/picker/test_input.lua`, open the real prompt from a populated project tree, press `<Esc>` or `<CR>`, and see them fail
+- [x] 1b.2 Restore the originating window and `guicursor` after teardown, and schedule `on_submit` only after the picker closes
+- [x] 1b.3 Run `make test FILE=tests/integration/picker/test_input.lua` and see them pass
 
 ## 2. Pure path and selection helpers
 Scenarios: `file-tree: Project tree a creates a file in the folder under the cursor`, `file-tree: Project tree refuses operations on the root row`, `file-tree: Project tree refuses a path that escapes the root`, `file-tree: Project tree move preflights the whole batch`, `file-tree: Project tree refuses a cross-device move`

@@ -38,9 +38,24 @@ local function query_characters(query)
 	return vim.fn.split(query, "\\zs")
 end
 
+---@param win integer
+---@param guicursor string
+---@param on_restored fun()
+local function after_teardown(win, guicursor, on_restored)
+	vim.schedule(function()
+		if vim.api.nvim_win_is_valid(win) then
+			vim.api.nvim_set_current_win(win)
+			vim.o.guicursor = guicursor
+		end
+		on_restored()
+	end)
+end
+
 ---@param opts gleb.picker.InputOpts
 ---@return nil
 function M.open(opts)
+	local origin_win = vim.api.nvim_get_current_win()
+	local origin_guicursor = vim.o.guicursor
 	local submitted_query
 	local picker_opts = frame.options(opts.title, opts.hint, window_config)
 	local show_frame = picker_opts.source.show
@@ -73,11 +88,11 @@ function M.open(opts)
 	end
 
 	MiniPick.start(picker_opts)
-	if submitted_query then
-		vim.schedule(function()
+	after_teardown(origin_win, origin_guicursor, function()
+		if submitted_query then
 			opts.on_submit(submitted_query --[[@as string]])
-		end)
-	end
+		end
+	end)
 end
 
 return M
