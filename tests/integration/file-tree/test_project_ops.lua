@@ -381,9 +381,10 @@ T["file-tree: Project tree r renames a file and its buffer"] = function()
 		{ buffer }
 	)
 	eq(
-		child.lua_get(
-			[=[require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()].rows[vim.api.nvim_win_get_cursor(0)[1]].path]=]
-		),
+		child.lua_get([=[(function()
+				local view = require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()]
+				return view.rows[vim.api.nvim_win_get_cursor(view.win)[1]].path
+			end)()]=]),
 		vim.fs.joinpath(tree_root, "internal/billing/bill.go")
 	)
 end
