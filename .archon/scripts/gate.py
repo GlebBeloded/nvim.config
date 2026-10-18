@@ -148,11 +148,15 @@ def e2e_infra(body: list[str]) -> str:
     return known or next((line for line in reversed(lines) if line.startswith(("sandbox: ", "Error: VM "))), "")
 
 
+STATUS = re.compile(r": (hung: no progress for \d+ s .*|not run: its worker was killed after a hung case)$")
+
+
 def case_name(file: str, label: str) -> str:
     """The case of a `FAIL in` label as `CASE=` takes it: its set chain (`<set> | <case>` in a nested set),
     with no ` + args …` (a parametrized set) and no error message after it (`<name>: <message>`, e.g. a
     readiness bound): the longest case of `file` the last part starts with, else the label itself."""
     label = re.sub(r" \+ args .*", "", label)
+    label = STATUS.sub("", label)  # tests/parallel.lua's hung/not-run note, kept when the case is not parsed (`T[var][...]`)
     *sets, last = label.split(" | ")
     try:
         names = case_names(pathlib.Path(file).read_text())

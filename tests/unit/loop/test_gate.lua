@@ -688,6 +688,11 @@ T["loop: An auditor Decision runs the spec step"] = function()
 	)
 end
 
+T["loop: Gate reruns a case a hung worker left unrun"] = function()
+	local result = H.system(child, { "python3", "-m", "unittest", "-q", "test_case_name" }, SCRIPTS)
+	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
+end
+
 T["loop: An unfinished spec pass reruns the spec step"] = function()
 	local spec = read(vim.fs.joinpath(H.root, ".archon/commands/queue-spec.md")):gsub("%s+", " ")
 	has(spec, 'Last, after everything else: `rm -f "$ARTIFACTS_DIR/spec-pending"`')
