@@ -29,7 +29,6 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 
 ## Loop lessons
 
-- Give invariant assertions diagnostic messages and remove unused test imports so Selene accepts the rendered-view implementation.
 - Derive repository-relative paths from Git's working-directory prefix; filesystem relpath fails when Git canonicalizes a symlinked repository root.
 - Map display-policy fragments to overlapping action fragments so UI-only splitting cannot erase semantic state.
 - Refresh cached comparisons before buffer-mutating actions whenever the debounce or changedtick shows stale input.
@@ -44,6 +43,7 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - Find asynchronous notifications by contract message before asserting severity; unrelated plugin warnings can arrive first.
 - Model screen masks with active capture groups across full spans; blank cells inside comments and strings still carry syntax attributes.
 - Strip optional pattern anchors by position; an unanchored substitution corrupts semantic carets inside Lua patterns.
+- Preserve current-window predicates when scheduling UI opens; loaded-buffer checks can hide focus regressions.
 
 ## The loop
 
