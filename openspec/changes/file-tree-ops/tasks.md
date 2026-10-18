@@ -96,22 +96,11 @@ Scenarios: `file-tree: Project tree operation keys come from the keymap file`, `
 
 ## Stuck
 
-- Task 3b remains unticked. The red tests prove that create accepts `../outside`, only `file_tree.add` is registered, and the add prompt does not match the approved G1 render.
-- Probe: the input picker retained an empty query, accepted multibyte `{ "å", "界" }`, resized from width 70 to 44 at 46 columns, and became inactive after its window was closed (`wins = 2`).
-- Attempt 1 added normalized create containment plus all requested actions and mappings. The integration cases passed, but G1 showed the prompt one row too high and no statusline.
-- Attempt 2 shifted the input frame down and tried retaining the originating/global statusline. The frame then matched rows 13–17, but the focused minimal float rendered first Neovim's default statusline and then a blank line instead of the approved lualine row. The saved production diff is `artifacts/runs/fce92e56-8211-40e7-9a50-95c1cdfead98/stuck-attempt.diff`.
-- Task 4c remains unticked. The red tests prove that case-only rename leaves its temporary sibling and folder rename drops the migrated expanded keys; read-only failure and symlinked-root buffer identity are covered too.
-- Probe: two isolated `vim.lsp.util.rename` hops moved `README.md` through `.gleb-rename-temporary-README.md` to `Readme.md` with no notifications, so the filesystem supports the operation.
-- Attempt 1 added the temporary hop, rollback, post-stat checks and expanded-key migration. The real mapped rename timed out in `workspace/willRenameFiles` after the first hop and left the temporary sibling.
-- Attempt 2 allowed overwrite on the second hop to replace `vim.lsp.util.rename`'s stale old-name buffer entry. Even after waiting beyond the LSP timeout, the mapped rename still left the temporary sibling. The saved production diff is `artifacts/runs/fce92e56-8211-40e7-9a50-95c1cdfead98/stuck-attempt.diff`.
-- Task 5a remains unticked. The red tests prove normal delete confirmation, cancellation, permanent fallback and buffer cleanup, while the real Visual `d` mapping captures rows 7–8 in mode `V` but never opens confirmation.
-- Probe: direct shared-selection invocation blocked awaiting picker input; the mapped Visual diagnostic captured `selection.start = { 7, 0 }`, `selection.finish = { 8, 0 }`, and the `discount.go`/`discount_test.go` rows before delete returned without a picker.
-- Attempt 1 added normal/Visual delete, trash override, recursive fallback and unmodified-buffer cleanup. All four normal `Project tree d` cases passed, but Visual `d` returned without opening confirmation.
-- Attempt 2 left the selection captured in the real mapping and exited Visual mode before `vim.ui.select`; Visual `d` still returned without opening confirmation. The saved production diff is `artifacts/runs/22b161e8-b488-477c-96ac-c5f4d88e49c8/stuck-attempt.diff`.
-- Task 7 remains unticked. The red G1/G2 screen cases use byte-identical durable render copies and prove the real input frame starts one row too high and hides the approved lualine row.
-- Probe: the focused G1 capture placed the frame on rows 12–16 with a blank row 30; after shifting it, rows 13–17 matched the approved text cell for cell.
-- Attempt 1 shifted the frame and overlaid `nvim_eval_statusline` output from the originating tree, but the inherited rounded `winborder` turned the one-row overlay into a three-row frame at rows 28–30.
-- Attempt 2 made the overlay borderless and supplied the originating buffer's known gitsigns branch before evaluation. The frame and statusline geometry matched, but lualine still omitted ` main`. The saved production diff is `artifacts/runs/22b161e8-b488-477c-96ac-c5f4d88e49c8/stuck-attempt.diff`.
+- Task 5a remains unticked. The real Visual `d` mapping resolves to `Project: Delete` and captures the selected rows, but it still returns without opening confirmation; the new root-only Visual regression is red on the missing Visual `d` mapping in the reverted production tree.
+- Probe: the mapped selection was `start = { 7, 0 }`, `finish = { 8, 0 }` for `discount.go` and `discount_test.go`. A separate rename probe showed the first native rename hop left a stale `README.md` buffer and the second left a stale `.gleb-rename-temporary-README.md` buffer even though `Readme.md` existed on disk.
+- Attempt 1 wired Visual delete through the captured action context while adding create containment, stale-buffer cleanup, expanded-key migration, and a fresh lualine statusline overlay. Create, keys, root refusal, folder migration, symlink identity, normal deletes, and prompt text passed; case-only rename and Visual delete remained red.
+- Attempt 2 moved case-only paths through `vim.uv.fs_rename`, renamed the original buffers once, disabled MiniPick's duplicate `<CR>` action, and exited Visual mode after reading the captured range. Every integration case passed except `Project tree Visual d deletes every selected row`, which still reported that confirmation did not block.
+- The complete reverted production attempt is saved at `artifacts/runs/22b161e8-b488-477c-96ac-c5f4d88e49c8/stuck-attempt.diff`; apply it before the next probe. The durable prompt render legend and both red Visual-root/symlink regression repairs remain in the commit.
 
 ## Agent decisions
 

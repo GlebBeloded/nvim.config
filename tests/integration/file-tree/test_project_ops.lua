@@ -481,10 +481,12 @@ T["file-tree: Project tree rename follows a buffer opened through a symlinked ro
 	eq(
 		child.lua_get(
 			[[
-		vim.iter(vim.api.nvim_list_bufs()):any(function(buf)
-			return vim.api.nvim_buf_get_name(buf) == ...
-		end)
-	]],
+		(function(old_name)
+			return vim.iter(vim.api.nvim_list_bufs()):any(function(buf)
+				return vim.api.nvim_buf_get_name(buf) == old_name
+			end)
+		end)(...)
+		]],
 			{ old_name }
 		),
 		false
@@ -703,6 +705,27 @@ end)()
 			end
 		end
 	end
+end
+
+T["file-tree: Project tree Visual operations refuse the root row"] = function()
+	local entries_before = vim.fn.readdir(root)
+	child.lua([[
+		RootSelectCalls = 0
+		vim.ui.select = function(_, _, callback)
+			RootSelectCalls = RootSelectCalls + 1
+			callback(nil)
+		end
+	]])
+
+	for _, key in ipairs({ "d", "c", "x" }) do
+		focus_tree_path("")
+		child.type_keys("V", key, "<Esc>")
+	end
+
+	eq(child.lua_get([[RootSelectCalls]]), 0)
+	eq(child.lua_get([[require("gleb.file_tree.ops").state.clipboard]]), vim.NIL)
+	eq(vim.uv.fs_lstat(root) ~= nil, true)
+	eq(vim.fn.readdir(root), entries_before)
 end
 
 T["file-tree: Project tree d moves a file to the Trash after confirmation"] = function()

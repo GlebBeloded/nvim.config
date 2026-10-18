@@ -18,6 +18,7 @@ local PROMPT_LEGEND = {
 	h = "PickerBorder",
 	i = "PickerCategory",
 	j = "DevIconTsx",
+	k = "@comment",
 }
 
 local PROMPT_STYLES = {
@@ -33,6 +34,7 @@ local PROMPT_STYLES = {
 	["0;38;2;69;64;61;48;2;40;40;40"] = "h",
 	["0;38;2;90;82;76;48;2;40;40;40"] = "i",
 	["0;38;2;90;82;76;48;2;50;48;47"] = "i",
+	["0;3;38;2;146;131;116;48;2;40;40;40"] = "k",
 }
 
 ---@param name string
