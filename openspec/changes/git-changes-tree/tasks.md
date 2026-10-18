@@ -6,9 +6,9 @@ Scenarios: `file-tree: Shared parser preserves rename and copy origins`, `file-t
 
 ## 2a. Status rows and fixture
 Scenarios: `git: Changes panel lists the dirty fixture`, `git: Changes panel compacts single-child directories`, `git: Changes panel hides an empty Unversioned Files root`, `git: Changes panel keeps one path in both roots`, `git: Changes panel lists directory and submodule records`
-- [ ] 2a.1 Add the scenarios to `tests/unit/git/test_changes_model.lua`, using populated porcelain-v2 records and explicitly loaded default nesting rules, and see them fail
-- [ ] 2a.2 Add the `billing` fixture to `tests/fixtures/build.sh` exactly as design.md (Fixture), including its header and fixture-name case; build it and verify its numstat and `4ccefde` HEAD, then implement single-pass grouping in `lua/gleb/git/changes/model.lua`
-- [ ] 2a.3 Run `make test FILE=tests/unit/git/test_changes_model.lua CASE="Changes panel"` and see it pass
+- [x] 2a.1 Add the scenarios to `tests/unit/git/test_changes_model.lua`, using populated porcelain-v2 records and explicitly loaded default nesting rules, and see them fail
+- [x] 2a.2 Add the `billing` fixture to `tests/fixtures/build.sh` exactly as design.md (Fixture), including its header and fixture-name case; build it and verify its numstat and `4ccefde` HEAD, then implement single-pass grouping in `lua/gleb/git/changes/model.lua`
+- [x] 2a.3 Run `make test FILE=tests/unit/git/test_changes_model.lua CASE="Changes panel"` and see it pass
 
 ## 2b. Status command and row cap
 Scenarios: `git: Changes panel status avoids optional locks`, `git: Changes panel caps rows`
@@ -164,3 +164,7 @@ Scenarios: `git: Changes panel matches the approved render`, `git: Changes panel
 - [ ] 8.1 Run `make trace` and confirm every scenario of this change is tested with no orphans or duplicates
 - [ ] 8.2 Run `make test CAPS=find-action,file-tree,git` and see it pass
 - [ ] 8.3 Run `make check` and `openspec validate git-changes-tree --strict` and see both pass
+
+## Agent decisions
+
+- `model.rows` returns flat display-order rows because rendering, cursor movement and folds consume the same ordered panel model.
