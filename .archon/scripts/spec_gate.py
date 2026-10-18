@@ -3,18 +3,24 @@
 INPUTS_CHANGE, stopping at the first failing check. Prints {ok, log} and exits 0, so a red first pass routes back to the spec step
 (`spec-retry`, which gets the log) instead of failing the run.
 
+A $ARTIFACTS_DIR/spec-pending marker left by spec_ready.py means the spec step never reached its last step
+(an idle timeout ended it): the gate is red with UNFINISHED so the retry finishes the pass.
+
 With INPUTS_FAILED_LOG set (the `spec-failed` node, after a red second pass) it prints that log to
 stderr and exits 1: the run fails with it.
 """
 
 import json
 import os
+import pathlib
 import subprocess
 import sys
 
 from pinned import check_report, pinned
 
 LOG_CHARS = 4000
+PENDING = "spec-pending"
+UNFINISHED = "the spec step did not finish (its agent stalled and hit the idle timeout): finish the spec pass"
 
 
 def checks(change: str) -> list[list[str]]:
@@ -42,4 +48,7 @@ if __name__ == "__main__":
     if failed:
         print(f"spec gate failed twice:\n{failed}", file=sys.stderr)
         sys.exit(1)
-    print(json.dumps(gate(os.environ.get("INPUTS_CHANGE", ""))))
+    if (pathlib.Path(os.environ.get("ARTIFACTS_DIR", ".")) / PENDING).exists():
+        print(json.dumps({"ok": False, "log": UNFINISHED}))
+    else:
+        print(json.dumps(gate(os.environ.get("INPUTS_CHANGE", ""))))

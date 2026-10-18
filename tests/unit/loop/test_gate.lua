@@ -688,6 +688,22 @@ T["loop: An auditor Decision runs the spec step"] = function()
 	)
 end
 
+T["loop: An unfinished spec pass reruns the spec step"] = function()
+	local spec = read(vim.fs.joinpath(H.root, ".archon/commands/queue-spec.md")):gsub("%s+", " ")
+	has(spec, 'Last, after everything else: `rm -f "$ARTIFACTS_DIR/spec-pending"`')
+	local queue = read(vim.fs.joinpath(H.root, ".archon/workflows/work-queue/work-queue.yaml"))
+	for _, node in ipairs({ "complete", "spec-retry" }) do
+		local body = queue:match("\n  %- id: " .. node:gsub("%-", "%%-") .. " .-\n  %- id:")
+		has(body, "idle_timeout: 900000")
+	end
+	local result = H.system(
+		child,
+		{ "python3", "-m", "unittest", "-q", "test_spec_ready" },
+		vim.fs.joinpath(H.root, ".archon/scripts")
+	)
+	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
+end
+
 T["loop: Each task's context pack merges a moved auto first"] = function()
 	local deliver = read(vim.fs.joinpath(H.root, ".archon/workflows/nvim-deliver/nvim-deliver.yaml"))
 	has(deliver, 'sync_base: "true" # sync_base.py: an auditor Decision on auto reaches the next task')
