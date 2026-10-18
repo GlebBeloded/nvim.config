@@ -58,6 +58,51 @@ local function has_tree_line(name)
 end
 
 ---@param name string
+---@param group string
+local function expect_tree_name_group(name, group)
+	local result = child.lua_get(
+		[[(function(name, group)
+			local actual = {}
+			local status
+			local found = vim.wait(3000, function()
+				local view = require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()]
+				if not view then
+					return false
+				end
+				for index, row in ipairs(view.rows) do
+					if row.label == name then
+						status = row.status
+						local marks = vim.api.nvim_buf_get_extmarks(
+							view.buf,
+							require("gleb.file_tree.render").namespace,
+							{ index - 1, 0 },
+							{ index - 1, -1 },
+							{ details = true }
+						)
+						for _, mark in ipairs(marks) do
+							actual[#actual + 1] = mark[4].hl_group
+							if mark[4].hl_group == group then return true end
+						end
+					end
+				end
+				return false
+			end, 20)
+			return { found = found, actual = actual, status = status }
+		end)(...)]],
+		{ name, group }
+	)
+	assert(
+		result.found,
+		("expected %s on %s name, got %s (row status %s)"):format(
+			group,
+			name,
+			vim.inspect(result.actual),
+			result.status
+		)
+	)
+end
+
+---@param name string
 local function focus_tree_row(name)
 	local found = child.lua_get(
 		[[(function(name)
@@ -614,6 +659,35 @@ T["file-tree: Visual delete on a collapsed parent deletes only the parent"] = fu
 	)
 	eq(vim.uv.fs_lstat(nested_child) ~= nil, true)
 	eq(has_tree_line("discount_test.go"), true)
+end
+
+T["file-tree: Collapsed nest parent shows a changed child"] = function()
+	focus_tree_row("discount.go")
+	H.write_files(root, {
+		["internal/billing/discount_test.go"] = "package billing\n\n// changed child\n",
+	})
+	child.type_keys("R")
+
+	expect_tree_name_group("discount.go", "FileTreeGitModified")
+	eq(has_tree_line("discount_test.go"), false)
+end
+
+T["file-tree: Nest parent keeps its own status"] = function()
+	focus_tree_row("tax.go")
+	H.git(root, { "reset", "HEAD", "--", "internal/billing/tax_test.go" })
+	child.type_keys("R")
+
+	expect_tree_name_group("tax.go", "FileTreeGitAdded")
+	assert(has_tree_line("tax_test.go") == false, "nest should remain collapsed")
+end
+
+T["file-tree: Deleted unlisted child does not tint its parent"] = function()
+	focus_tree_row("discount.go")
+	eq(vim.fn.delete(vim.fs.joinpath(root, "internal/billing/discount_test.go")), 0)
+	child.type_keys("R")
+
+	expect_tree_name_group("discount.go", "FileTreeFileName")
+	eq(has_tree_line("discount_test.go"), false)
 end
 
 return T

@@ -105,9 +105,9 @@ Scenarios: `file-tree: Project tree za on a file collapses its folder`, `file-tr
 
 Scenarios: `file-tree: Collapsed nest parent shows a changed child`, `file-tree: Nest parent keeps its own status`, `file-tree: Deleted unlisted child does not tint its parent`
 
-- [ ] 6.1 Write the three cases in `tests/integration/file-tree/test_nesting.lua` with fresh fixture copies and assert real name extmark groups, then run `make test FILE=tests/integration/file-tree/test_nesting.lua CASE="Collapsed nest parent shows a changed child"` and see it fail
-- [ ] 6.2 Share `folder_status`'s strength helper and renamed/deleted → modified folding with listed nest children; prefer the parent's own status and ignore absent children
-- [ ] 6.3 Run each scenario with `make test FILE=tests/integration/file-tree/test_nesting.lua CASE="<scenario title>"` and see it pass
+- [x] 6.1 Write the three cases in `tests/integration/file-tree/test_nesting.lua` with fresh fixture copies and assert real name extmark groups, then run `make test FILE=tests/integration/file-tree/test_nesting.lua CASE="Collapsed nest parent shows a changed child"` and see it fail
+- [x] 6.2 Share `folder_status`'s strength helper and renamed/deleted → modified folding with listed nest children; prefer the parent's own status and ignore absent children
+- [x] 6.3 Run each scenario with `make test FILE=tests/integration/file-tree/test_nesting.lua CASE="<scenario title>"` and see it pass
 
 ## 7. Approved screen
 

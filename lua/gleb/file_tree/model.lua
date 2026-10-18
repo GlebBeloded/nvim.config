@@ -26,6 +26,16 @@ local STATUS_STRENGTH = {
 	conflict = 4,
 }
 
+---@param strongest string?
+---@param candidate string?
+---@return string?
+local function stronger_descendant_status(strongest, candidate)
+	if not candidate or (STATUS_STRENGTH[candidate] or 0) <= (STATUS_STRENGTH[strongest] or 0) then
+		return strongest
+	end
+	return (candidate == "renamed" or candidate == "deleted") and "modified" or candidate
+end
+
 ---@class FileTreeEntry
 ---@field name string
 ---@field path string
@@ -155,15 +165,10 @@ end
 ---@return string?
 function M.folder_status(status, path)
 	local strongest
-	local strength = 0
 	local prefix = path:gsub("/+$", "") .. "/"
 	for candidate, value in pairs(status) do
 		if candidate == path or candidate == prefix or candidate:sub(1, #prefix) == prefix then
-			local candidate_strength = STATUS_STRENGTH[value] or 0
-			if candidate_strength > strength then
-				strength = candidate_strength
-				strongest = (value == "renamed" or value == "deleted") and "modified" or value
-			end
+			strongest = stronger_descendant_status(strongest, value)
 		end
 	end
 	return strongest
@@ -186,6 +191,28 @@ local function path_status(status, relative, directory)
 		parent = parent:match("^(.*)/[^/]+$")
 	end
 	return nil
+end
+
+---@param status table<string, string>
+---@param tree FileTreeSource
+---@param entry FileTreeEntry
+---@param child_names string[]?
+---@param entries_by_name table<string, FileTreeEntry>
+---@return string?
+local function nest_parent_status(status, tree, entry, child_names, entries_by_name)
+	local direct = path_status(status, relative_path(tree.root, entry.path), false)
+	if direct or not child_names then
+		return direct
+	end
+	local strongest
+	for _, child_name in ipairs(child_names) do
+		local child = entries_by_name[child_name]
+		if child then
+			local child_status = path_status(status, relative_path(tree.root, child.path), false)
+			strongest = stronger_descendant_status(strongest, child_status)
+		end
+	end
+	return strongest
 end
 
 ---@param tree FileTreeSource
@@ -295,6 +322,9 @@ local function append_children(tree, expanded, status, rows, path, depth, nestin
 			local is_expanded = tail.kind == "directory" and expanded[relative] == true
 			local nest_children = nest_map[entry.name]
 			local nest_expanded = nest_children ~= nil and expanded_nests ~= nil and expanded_nests[relative] == true
+			local row_status = tail.kind == "file"
+					and nest_parent_status(status, tree, tail, nest_children, entries_by_name)
+				or path_status(status, relative, tail.kind == "directory")
 			rows[#rows + 1] = {
 				depth = depth,
 				kind = tail.kind,
@@ -302,7 +332,7 @@ local function append_children(tree, expanded, status, rows, path, depth, nestin
 				path = tail.path,
 				expanded = is_expanded,
 				empty = tail.kind == "directory" and #children == 0,
-				status = path_status(status, relative, tail.kind == "directory"),
+				status = row_status,
 				nest_children = nest_children,
 				nest_expanded = nest_expanded,
 			}
