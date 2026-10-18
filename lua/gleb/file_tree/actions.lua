@@ -284,6 +284,10 @@ local function project_rename()
 	require("gleb.file_tree.ops").rename()
 end
 
+local function project_delete()
+	require("gleb.file_tree.ops").delete()
+end
+
 ---@type gleb.Action[]
 local actions = {
 	{
@@ -315,6 +319,13 @@ local actions = {
 		category = "Project",
 		ft = "gleb-file-tree",
 		run = project_rename,
+	},
+	{
+		id = "file_tree.delete",
+		title = "Delete",
+		category = "Project",
+		ft = "gleb-file-tree",
+		run = project_delete,
 	},
 	{
 		id = "file_tree.open",

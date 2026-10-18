@@ -84,7 +84,31 @@ local function install_fake_trash()
 				"/bin/rm -rf -- \"$@\"",
 			}, script)
 			assert(vim.uv.fs_chmod(script, 493))
-			require("gleb.file_tree.ops").state.trash_path = script
+			local ops = require("gleb.file_tree.ops")
+			ops.state = ops.state or {}
+			ops.state.trash_path = script
+		end)(...)]],
+		{ script, log }
+	)
+	return log
+end
+
+---@return string log
+local function install_failing_trash()
+	local script = vim.fn.tempname() .. "-trash"
+	local log = vim.fn.tempname() .. "-trash-args"
+	child.lua(
+		[[(function(script, log)
+			vim.fn.writefile({
+				"#!/bin/sh",
+				("printf '%%s\\n' \"$@\" > %s"):format(vim.fn.shellescape(log)),
+				"printf 'boom\\n' >&2",
+				"exit 1",
+			}, script)
+			assert(vim.uv.fs_chmod(script, 493))
+			local ops = require("gleb.file_tree.ops")
+			ops.state = ops.state or {}
+			ops.state.trash_path = script
 		end)(...)]],
 		{ script, log }
 	)
@@ -103,6 +127,7 @@ local function delete(choice)
 			end)
 		end
 	]])
+	eq(child.lua_get([[vim.fn.maparg("d", "n", false, true).desc]]), "Project: Delete")
 	child.type_keys("d")
 	assert(vim.wait(1000, child.is_blocked, 10), "Delete confirmation did not block for a choice")
 	child.type_keys("<Down>")
@@ -110,7 +135,12 @@ local function delete(choice)
 		child.type_keys("<Down>")
 	end
 	child.type_keys("<CR>")
-	assert(vim.wait(1000, function() return not child.is_blocked() end, 10), "Delete confirmation did not return")
+	assert(
+		vim.wait(1000, function()
+			return not child.is_blocked()
+		end, 10),
+		"Delete confirmation did not return"
+	)
 	local expected_index = choice == "cancel" and 2 or 1
 	eq(child.lua_get([[DeleteChoice.index]]), expected_index)
 end
@@ -119,9 +149,12 @@ end
 local function wait_for_absence(relative)
 	local path = vim.fs.joinpath(tree_root, relative)
 	assert(
-		child.lua_get([[(function(target)
+		child.lua_get(
+			[[(function(target)
 			return vim.wait(1000, function() return vim.uv.fs_lstat(target) == nil end, 20)
-		end)(...)]], { path }),
+		end)(...)]],
+			{ path }
+		),
 		"deleted path still exists: " .. relative
 	)
 end
@@ -647,12 +680,18 @@ T["file-tree: Project tree d moves a file to the Trash after confirmation"] = fu
 	delete("confirm")
 	wait_for_absence("internal/billing/tax_test.go")
 	local deleted_path = vim.fs.joinpath(tree_root, "internal/billing/tax_test.go")
-	assert(child.lua_get([[(function(path)
+	assert(
+		child.lua_get(
+			[[(function(path)
 		return vim.wait(1000, function()
 			local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
 			return not vim.iter(view.rows):any(function(row) return row.path == path end)
 		end, 20)
-	end)(...)]], { deleted_path }), "deleted tree row remained")
+	end)(...)]],
+			{ deleted_path }
+		),
+		"deleted tree row remained"
+	)
 
 	eq(vim.fn.readfile(log), { "-s", vim.fs.joinpath(tree_root, "internal/billing/tax_test.go") })
 end
@@ -678,7 +717,12 @@ T["file-tree: Project tree Visual d deletes every selected row"] = function()
 	assert(vim.wait(1000, child.is_blocked, 10), "Visual delete confirmation did not block for a choice")
 	child.type_keys("<Down>")
 	child.type_keys("<CR>")
-	assert(vim.wait(1000, function() return not child.is_blocked() end, 10), "Visual delete confirmation did not return")
+	assert(
+		vim.wait(1000, function()
+			return not child.is_blocked()
+		end, 10),
+		"Visual delete confirmation did not return"
+	)
 	wait_for_absence("internal/billing/discount.go")
 	wait_for_absence("internal/billing/discount_test.go")
 
@@ -690,7 +734,11 @@ T["file-tree: Project tree Visual d deletes every selected row"] = function()
 end
 
 T["file-tree: Project tree d deletes without a trash command"] = function()
-	child.lua([[require("gleb.file_tree.ops").state.trash_path = false]])
+	child.lua([[
+		local ops = require("gleb.file_tree.ops")
+		ops.state = ops.state or {}
+		ops.state.trash_path = false
+	]])
 	focus_tree_path("web")
 	delete("confirm")
 	wait_for_absence("web")
@@ -700,22 +748,115 @@ T["file-tree: Project tree d closes buffers of deleted files"] = function()
 	install_fake_trash()
 	open_billing()
 	local buffer = load_buffer("internal/billing/tax_test.go")
-	local windows_before = child.lua_get([[
+	local windows_before = child.lua_get(
+		[[
 (function(buf)
 	local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
 	local editor = assert(require("gleb.file_tree.view").state.last_editor_by_tab[view.tab])
 	vim.api.nvim_win_set_buf(editor, buf)
 	return #vim.api.nvim_tabpage_list_wins(0)
 end)(...)
-]], { buffer })
+]],
+		{ buffer }
+	)
 	focus_tree_path("internal/billing/tax_test.go")
 	delete("confirm")
 	wait_for_absence("internal/billing/tax_test.go")
-	assert(child.lua_get([[(function(buf)
+	assert(
+		child.lua_get(
+			[[(function(buf)
 		return vim.wait(1000, function() return not vim.api.nvim_buf_is_valid(buf) end, 20)
-	end)(...)]], { buffer }), "deleted file buffer remained")
+	end)(...)]],
+			{ buffer }
+		),
+		"deleted file buffer remained"
+	)
 
 	eq(child.lua_get([[#vim.api.nvim_tabpage_list_wins(0)]]), windows_before)
+end
+
+T["file-tree: Project tree d reports a failed delete"] = function()
+	local notifications = H.record_notify(child)
+	install_failing_trash()
+	open_billing()
+	focus_tree_path("internal/billing/tax_test.go")
+	delete("confirm")
+	assert(child.wait([[#Notifications > 0]]), "trash failure was not reported")
+
+	eq(vim.uv.fs_lstat(vim.fs.joinpath(root, "internal/billing/tax_test.go")) ~= nil, true)
+	eq(notifications()[#notifications()], { msg = "Delete failed: boom", level = vim.log.levels.ERROR })
+end
+
+T["file-tree: Project tree delete refuses a vanished row safely"] = function()
+	local log = install_fake_trash()
+	open_billing()
+	focus_tree_path("internal/billing/tax_test.go")
+	local tax = vim.fs.joinpath(root, "internal/billing/tax_test.go")
+	local invoice = vim.fs.joinpath(root, "internal/billing/invoice.go")
+	eq(child.lua_get([[vim.uv.fs_unlink(...)]], { tax }), true)
+	delete("confirm")
+
+	eq(vim.uv.fs_lstat(invoice) ~= nil, true)
+	eq(vim.uv.fs_lstat(log), nil)
+	eq(tree_has_path("internal/billing/tax_test.go"), false)
+end
+
+T["file-tree: Project tree fallback delete reports a read-only destination"] = function()
+	local notifications = H.record_notify(child)
+	local folder = vim.fs.joinpath(tree_root, "internal/billing")
+	local tax = vim.fs.joinpath(folder, "tax_test.go")
+	child.lua([[
+		local ops = require("gleb.file_tree.ops")
+		ops.state = ops.state or {}
+		ops.state.trash_path = false
+	]])
+	open_billing()
+	focus_tree_path("internal/billing/tax_test.go")
+	child.lua([[assert(vim.uv.fs_chmod(..., 365))]], { folder })
+	delete("confirm")
+	child.lua([[assert(vim.uv.fs_chmod(..., 493))]], { folder })
+	assert(child.wait([[#Notifications > 0]]), "fallback delete failure was not reported")
+
+	eq(vim.uv.fs_lstat(tax) ~= nil, true)
+	local notification = notifications()[#notifications()]
+	assert(notification.msg:find("Delete failed:", 1, true) == 1, "fallback failure was not reported")
+	eq(notification.level, vim.log.levels.ERROR)
+end
+
+T["file-tree: Project tree delete removes a symlink and not its target"] = function()
+	install_fake_trash()
+	local outside = vim.fn.tempname() .. "-outside.go"
+	local link = vim.fs.joinpath(tree_root, "outside.go")
+	vim.fn.writefile({ "outside content" }, outside)
+	child.lua([[assert(vim.uv.fs_symlink(...))]], { outside, link })
+	child.lua([[require("gleb.file_tree.view").refresh_moved(...)]], { tree_root, link })
+	focus_tree_path("outside.go")
+	delete("confirm")
+
+	wait_for_absence("outside.go")
+	eq(vim.fn.readfile(outside), { "outside content" })
+end
+
+T["file-tree: Project tree trash failure never falls back to permanent delete"] = function()
+	local notifications = H.record_notify(child)
+	local log = install_failing_trash()
+	open_billing()
+	focus_tree_path("internal/billing/tax_test.go")
+	child.lua([[
+		DeleteFallbackCalls = 0
+		local real_rm = vim.fs.rm
+		vim.fs.rm = function(...)
+			DeleteFallbackCalls = DeleteFallbackCalls + 1
+			return real_rm(...)
+		end
+	]])
+	delete("confirm")
+	assert(child.wait([[#Notifications > 0]]), "trash failure was not reported")
+
+	eq(vim.fn.readfile(log), { "-s", vim.fs.joinpath(tree_root, "internal/billing/tax_test.go") })
+	eq(child.lua_get([[DeleteFallbackCalls]]), 0)
+	eq(vim.uv.fs_lstat(vim.fs.joinpath(root, "internal/billing/tax_test.go")) ~= nil, true)
+	eq(notifications()[#notifications()], { msg = "Delete failed: boom", level = vim.log.levels.ERROR })
 end
 
 return T

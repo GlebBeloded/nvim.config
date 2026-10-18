@@ -4,6 +4,14 @@ local M = {}
 
 local paths = require("gleb.file_tree.paths")
 
+---@class FileTreeOpsState
+---@field trash_path string|false|nil
+
+---@type FileTreeOpsState
+M.state = {}
+
+local SYSTEM_TRASH = "/usr/bin/trash"
+
 ---@param root string
 ---@param path string
 local function notify_exists(root, path)
@@ -179,6 +187,84 @@ function M.rename()
 			M.move({ { old = row.path, new = vim.fs.joinpath(parent, query) } })
 		end,
 	})
+end
+
+---@return string?
+local function trash_path()
+	if M.state.trash_path ~= nil then
+		return M.state.trash_path or nil
+	end
+	return vim.fn.executable(SYSTEM_TRASH) == 1 and SYSTEM_TRASH or nil
+end
+
+---@param path_list string[]
+---@return boolean deleted
+local function delete_with_trash(path_list)
+	local command = { assert(trash_path()), "-s" }
+	vim.list_extend(command, path_list)
+	local result = vim.system(command, { text = true }):wait()
+	if result.code ~= 0 then
+		vim.notify("Delete failed: " .. vim.trim(result.stderr or ""), vim.log.levels.ERROR)
+		return false
+	end
+	return true
+end
+
+---@param path_list string[]
+---@return boolean deleted
+local function delete_permanently(path_list)
+	for _, path in ipairs(path_list) do
+		local ok, error = pcall(vim.fs.rm, path, { recursive = true })
+		if not ok then
+			vim.notify("Delete failed: " .. tostring(error), vim.log.levels.ERROR)
+			return false
+		end
+	end
+	return true
+end
+
+---@param root string
+---@param path_list string[]
+local function delete_paths(root, path_list)
+	local existing = vim.tbl_filter(function(path)
+		return vim.uv.fs_lstat(path) ~= nil
+	end, path_list)
+	if #existing == 0 then
+		require("gleb.file_tree.view").refresh_moved(root, root)
+		return
+	end
+
+	local deleted
+	if trash_path() then
+		deleted = delete_with_trash(existing)
+	else
+		deleted = delete_permanently(existing)
+	end
+	if deleted then
+		require("gleb.file_tree.view").refresh_moved(root, root)
+	end
+end
+
+--- Confirm and delete the selected project-tree entry.
+---@return nil
+function M.delete()
+	local view = require("gleb.file_tree.view")
+	local root, row = view.selected_path()
+	if not root or not row or row.kind == "root" then
+		return
+	end
+	local choice = trash_path() and "Move to Trash" or "Delete"
+	vim.ui.select({ choice, "Cancel" }, { prompt = "Delete " .. row.path:sub(#root + 2) .. "?" }, function(item)
+		if item == choice then
+			delete_paths(root, { row.path })
+		end
+	end)
+end
+
+--- Reset operation state owned by this module.
+---@return nil
+function M.reset()
+	M.state = {}
 end
 
 return M

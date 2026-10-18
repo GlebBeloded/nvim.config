@@ -67,6 +67,7 @@
   "file_tree.add": ["a"],
   "file_tree.close": ["q"],
   "file_tree.close_node": ["h", "<BS>"],
+  "file_tree.delete": ["d"],
   "file_tree.fold_all": ["zM"],
   "file_tree.open": ["<CR>", "o", "l"],
   "file_tree.open_split": ["s"],

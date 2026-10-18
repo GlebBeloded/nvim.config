@@ -54,9 +54,9 @@ Scenarios: `file-tree: Project tree d moves a file to the Trash after confirmati
 
 ## 5b. Delete failure and path safety
 Scenarios: `file-tree: Project tree d reports a failed delete`, `file-tree: Project tree delete refuses a vanished row safely`, `file-tree: Project tree fallback delete reports a read-only destination`, `file-tree: Project tree delete removes a symlink and not its target`, `file-tree: Project tree trash failure never falls back to permanent delete`
-- [ ] 5b.1 Write the tests in `tests/integration/file-tree/test_project_ops.lua`, use the module-state trash override and real lstat paths, drive `d`, and see them fail
-- [ ] 5b.2 Delete row paths without resolving symlinks, treat vanished rows as gone, preserve paths on trash/fallback failure, and never invoke permanent deletion after trash starts
-- [ ] 5b.3 Run `make test FILE=tests/integration/file-tree/test_project_ops.lua CASE="Project tree delete"` and see them pass
+- [x] 5b.1 Write the tests in `tests/integration/file-tree/test_project_ops.lua`, use the module-state trash override and real lstat paths, drive `d`, and see them fail
+- [x] 5b.2 Delete row paths without resolving symlinks, treat vanished rows as gone, preserve paths on trash/fallback failure, and never invoke permanent deletion after trash starts
+- [x] 5b.3 Run `make test FILE=tests/integration/file-tree/test_project_ops.lua CASE="Project tree delete"` and see them pass
 
 ## 5c. Delete modified-buffer safety
 Scenarios: `file-tree: Project tree delete does not let auto-save resurrect a file`, `file-tree: Project tree delete preserves windows across tabs`
