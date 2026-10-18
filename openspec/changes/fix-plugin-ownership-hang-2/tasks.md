@@ -13,3 +13,4 @@ Scenarios: `git: Differ opens panel on the left`
 ## Agent decisions
 
 - The blocked-Differ regression uses a 250 ms helper deadline so it proves the diagnostic path well inside the specified 10 seconds without slowing the integration file.
+- The ownership audit disables Mason's optional outdated-package refresh because it audits local mappings, not remote package metadata.

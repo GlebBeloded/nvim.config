@@ -127,7 +127,10 @@ T["actions: Plugin-window mappings are action-owned"] = function()
 	expect_audit_empty()
 	open_surface([[require("neotest").summary.open()]], "neotest-summary")
 	expect_audit_empty()
-	open_surface([[vim.cmd("Mason")]], "mason")
+	open_surface(
+		[[require("mason.settings").current.ui.check_outdated_packages_on_open = false vim.cmd("Mason")]],
+		"mason"
+	)
 	expect_audit_empty()
 	open_surface([[require("lazy.core.config").headless = function() return false end vim.cmd("Lazy")]], "lazy")
 	expect_audit_empty()
