@@ -213,6 +213,117 @@ T["git: Changes panel closes a contentless diff"] = function()
 	eq(notifications(), { { msg = "No content changes: mode.txt", level = vim.log.levels.INFO } })
 end
 
+T["git: Changes panel keeps the diff on a directory row"] = function()
+	local root = F.copy("dirty", vim.fn.tempname() .. "/dirty")
+	open_changes(root)
+	observe_show()
+	cursor_before("lib/c.lua")
+	child.type_keys("j")
+	wait_for_shows(1)
+
+	child.type_keys("k")
+	child.lua([[vim.wait(100)]])
+
+	local result = child.lua_get([=[(function()
+		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		local row = panel.rows[vim.api.nvim_win_get_cursor(panel.win)[1]]
+		return { row = row.kind, diff = panel.diff_view.relpath, shows = #DiffShows }
+	end)()]=])
+	eq(result, { row = "directory", diff = "lib/c.lua", shows = 1 })
+end
+
+T["git: Changes panel drops a stale diff result"] = function()
+	local root = F.copy("dirty", vim.fn.tempname() .. "/dirty")
+	open_changes(root)
+	observe_show()
+	child.lua([[
+		PendingDiffLoads = {}
+		local git = require("gleb.git.changes.git")
+		local load_diff = git.load_diff
+		git.load_diff = function(load_root, row, callback)
+			load_diff(load_root, row, function(spec)
+				table.insert(PendingDiffLoads, { callback = callback, spec = spec })
+			end)
+		end
+	]])
+	cursor_before("a.txt")
+	child.type_keys("j")
+	eq(child.wait("#PendingDiffLoads == 1", ASYNC_MS), true)
+
+	local generation = child.lua_get([[
+		require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()].generation
+	]])
+	child.lua([[
+		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		require("gleb.git.changes.view").schedule_refresh(panel)
+	]])
+	eq(
+		child.wait(
+			("require('gleb.git.changes').state.by_tab[vim.api.nvim_get_current_tabpage()].generation > %d"):format(
+				generation
+			),
+			ASYNC_MS
+		),
+		true
+	)
+	child.lua([[vim.wait(100)]])
+	cursor_before("b.txt")
+	child.type_keys("j")
+	eq(
+		child.wait([[vim.iter(PendingDiffLoads):any(function(load) return load.spec.relpath == "b.txt" end)]], ASYNC_MS),
+		true
+	)
+	child.lua([[vim.wait(100)]])
+
+	child.lua([[
+		local stale = assert(vim.iter(PendingDiffLoads):find(function(load) return load.spec.relpath == "a.txt" end))
+		local current
+		for index = #PendingDiffLoads, 1, -1 do
+			if PendingDiffLoads[index].spec.relpath == "b.txt" then
+				current = PendingDiffLoads[index]
+				break
+			end
+		end
+		assert(current, "missing current diff load")
+		current.callback(current.spec)
+		stale.callback(stale.spec)
+	]])
+	eq(child.lua_get("vim.iter(DiffShows):map(function(item) return item.relpath end):totable()"), { "b.txt" })
+end
+
+T["git: Changes panel skips an unchanged selection"] = function()
+	local root = F.copy("dirty", vim.fn.tempname() .. "/dirty")
+	open_changes(root)
+	observe_show()
+	cursor_before("a.txt")
+	child.type_keys("j")
+	wait_for_shows(1)
+
+	local generation = child.lua_get([[
+		require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()].generation
+	]])
+	child.lua([[
+		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		require("gleb.git.changes.view").schedule_refresh(panel)
+	]])
+	eq(
+		child.wait(
+			("require('gleb.git.changes').state.by_tab[vim.api.nvim_get_current_tabpage()].generation > %d"):format(
+				generation
+			),
+			ASYNC_MS
+		),
+		true
+	)
+	child.lua([[
+		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		vim.api.nvim_exec_autocmds("CursorMoved", { buffer = panel.buf })
+		vim.wait(100)
+	]])
+
+	eq(child.lua_get("#DiffShows"), 1)
+end
+
 T["git: Changes panel review shows the current file's diff"] = function()
 	local root = F.copy("billing", vim.fn.tempname() .. "/billing")
 	observe_show()

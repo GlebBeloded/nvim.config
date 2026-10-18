@@ -114,9 +114,9 @@ Scenarios: `git: Changes panel Enter opens the file`, `git: Changes panel q clos
 
 ## 5d. Diff generations
 Scenarios: `git: Changes panel keeps the diff on a directory row`, `git: Changes panel drops a stale diff result`, `git: Changes panel skips an unchanged selection`
-- [ ] 5d.1 Write the scenarios in `tests/integration/git/test_changes_diff.lua`, using real panel rows and controlled asynchronous completion, and see them fail
-- [ ] 5d.2 Add root and selection generation checks and same-path suppression
-- [ ] 5d.3 Run `make test FILE=tests/integration/git/test_changes_diff.lua CASE="Changes panel"` and see it pass
+- [x] 5d.1 Write the scenarios in `tests/integration/git/test_changes_diff.lua`, using real panel rows and controlled asynchronous completion, and see them fail
+- [x] 5d.2 Add root and selection generation checks and same-path suppression
+- [x] 5d.3 Run `make test FILE=tests/integration/git/test_changes_diff.lua CASE="Changes panel"` and see it pass
 
 ## 5e. Non-actionable diffs
 Scenarios: `git: Changes panel binary row uses a read-only diff`, `git: Changes panel unmerged row uses a read-only diff`, `git: Changes panel submodule row has no diff`

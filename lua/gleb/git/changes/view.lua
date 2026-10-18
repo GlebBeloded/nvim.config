@@ -29,8 +29,10 @@ local augroup = vim.api.nvim_create_augroup("gleb_changes", { clear = true })
 ---@field timer uv.uv_timer_t
 ---@field diff_timer uv.uv_timer_t
 ---@field generation integer
+---@field selection_generation integer
 ---@field autocmds integer[]
 ---@field diff_view? gleb.diff.view.View
+---@field diff_path? string
 ---@field initial_selected_path? string
 
 ---@param buf integer
@@ -192,11 +194,18 @@ end
 
 ---@param view ChangesView
 ---@param row ChangesRow
+---@param generation integer
+---@param selection_generation integer
 ---@return nil
-local function show_diff(view, row)
+local function show_diff(view, row, generation, selection_generation)
 	git.load_diff(view.root, row, function(spec)
 		local changes = require("gleb.git.changes")
-		if changes.state.by_tab[view.tab] ~= view or not vim.api.nvim_win_is_valid(view.win) then
+		if
+			changes.state.by_tab[view.tab] ~= view
+			or generation ~= view.generation
+			or selection_generation ~= view.selection_generation
+			or not vim.api.nvim_win_is_valid(view.win)
+		then
 			return
 		end
 		local diff = require("gleb.diff.view")
@@ -208,16 +217,20 @@ local function show_diff(view, row)
 				diff.close(view.diff_view)
 			end
 			view.diff_view = nil
+			view.diff_path = nil
 			vim.notify("No content changes: " .. row.label, vim.log.levels.INFO)
 			return
 		end
 		view.diff_view = shown
+		view.diff_path = row.path
 	end)
 end
 
 ---@param view ChangesView
 ---@return nil
 local function schedule_diff(view)
+	view.selection_generation = view.selection_generation + 1
+	local selection_generation = view.selection_generation
 	view.diff_timer:stop()
 	view.diff_timer:start(
 		DIFF_DEBOUNCE_MS,
@@ -227,8 +240,8 @@ local function schedule_diff(view)
 				return
 			end
 			local row = view.rows[vim.api.nvim_win_get_cursor(view.win)[1]]
-			if row and row.kind == "file" and row.diffable then
-				show_diff(view, row)
+			if row and row.kind == "file" and row.diffable and row.path ~= view.diff_path then
+				show_diff(view, row, view.generation, selection_generation)
 			end
 		end)
 	)
@@ -362,6 +375,7 @@ function M.close(view)
 	if view.diff_view then
 		require("gleb.diff.view").close(view.diff_view)
 		view.diff_view = nil
+		view.diff_path = nil
 	end
 	if vim.api.nvim_win_is_valid(view.editor_win) then
 		vim.api.nvim_set_current_win(view.editor_win)
@@ -385,6 +399,7 @@ function M.open_file(view, row)
 	if view.diff_view then
 		require("gleb.diff.view").close(view.diff_view)
 		view.diff_view = nil
+		view.diff_path = nil
 	end
 	local editor = file_tree_view.eligible_editor(view)
 	view.editor_win = editor
@@ -422,6 +437,7 @@ function M.open(root, selected_path)
 		timer = assert(vim.uv.new_timer()),
 		diff_timer = assert(vim.uv.new_timer()),
 		generation = 0,
+		selection_generation = 0,
 		autocmds = {},
 		initial_selected_path = fs.normalize(selected_path),
 	}
