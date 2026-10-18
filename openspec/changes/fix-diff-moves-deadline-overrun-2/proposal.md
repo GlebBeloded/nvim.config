@@ -21,6 +21,12 @@ moves=true 1981 ms timed_out=true
 
 The line diff takes 35 ms; the move passes spend ~1950 ms and only report the timeout at the end.
 
+A clock probe on the same input first observes the expired deadline at 1876.8 ms from
+`lua/gleb/diff/engine/moves.lua:357`. The preceding `table.sort(possible, ...)` at
+`lua/gleb/diff/engine/moves.lua:348` has no deadline check and sorts the full candidate set before control reaches
+that check. This uninterruptible candidate ordering is the demonstrated overrun; the other unchecked move loops
+must also be bounded so they cannot become the next overrun after it is fixed.
+
 ## What Changes
 
 - Time each move pass on this input (simple pass, window pass, `lines_similar`, joins, the per-move inner
@@ -31,3 +37,11 @@ The line diff takes 35 ms; the move passes spend ~1950 ms and only report the ti
 ## Impact
 
 - lua/gleb/diff/engine/moves.lua (and init.lua if the per-move inner comparison ignores the deadline)
+- `diff: Changed lines become fragments` still holds because a move timeout preserves the completed line fragments.
+- `diff: A missed deadline falls back to xdiff` still holds because line-comparison fallback is unchanged.
+- `diff: A 100000-line suffix edit meets deadline` still holds because the base comparison path is unchanged.
+- `diff: Patience reduction uses original counts` still holds because move detection runs after Patience finishes.
+- `diff: A deadline during inner comparison keeps the line diff` still holds because inner-comparison timeout handling is unchanged.
+- `diff: A deadline during move detection drops moves` still holds and guards the required empty-move timeout result.
+- `diff: Reindented blocks respect the move deadline` still holds and is the existing failing regression scenario this fix must satisfy.
+- `diff: Requirement: Diff view editing` still holds because propagated move timeouts continue to retain fragments and mark the view approximate.
