@@ -323,6 +323,9 @@ local function unchanged_moves(changes, lines1, lines2, context)
 			local current = { start_line, start_line + MIN_MOVE_LINES }
 			local next_mappings = {}
 			for _, original in ipairs(windows[key] or {}) do
+				if timed_out(context) then
+					return {}
+				end
 				local previous = last_mappings[original[2] - 1]
 				if previous and previous.modified[2] + 1 == current[2] then
 					previous.original[2] = original[2]
