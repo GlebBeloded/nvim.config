@@ -39,7 +39,7 @@ def lines(diff: str, sign: str) -> list[str]:
 _INDEX: dict[str, str] = {}
 
 
-def staged(*args: str) -> str:
+def staged(*args: str, check: bool = True) -> str:
     """`git <args>` against a private copy of the index with everything staged (ship commits everything, so new
     files count). Staging into the real index made the agent's later `git add <touched files>` commit stray files;
     gate.py imports this module, so the process environment stays untouched."""
@@ -52,7 +52,7 @@ def staged(*args: str) -> str:
         _INDEX[root] = str(copy)
     env = {**os.environ, "GIT_INDEX_FILE": _INDEX[root]}
     subprocess.run(["git", "add", "-A"], capture_output=True, text=True, check=True, env=env)
-    return subprocess.run(["git", *args], capture_output=True, text=True, check=True, env=env).stdout
+    return subprocess.run(["git", *args], capture_output=True, text=True, check=check, env=env).stdout
 
 
 def diff(*paths: str) -> str:
@@ -99,7 +99,7 @@ def scenarios() -> tuple[set[str], set[str]]:
 def capability_renames() -> dict[str, str]:
     """Old to new capability for each main spec Git sees renamed (`openspec/specs/<capability>/spec.md`)."""
     base = git("merge-base", "HEAD", BASE).strip()
-    rows = git("diff", "--cached", "-M", "--name-status", base, "--", "openspec/specs").splitlines()
+    rows = staged("diff", "--cached", "-M", "--name-status", base, "--", "openspec/specs").splitlines()
     renames = {}
     for row in rows:
         status, *paths = row.split("\t")
@@ -187,7 +187,7 @@ def case_names(text: str) -> set[str]:
 
 def moved_test_files(base: str, deleted: list[str]) -> bool:
     """Every case of the deleted test files still exists by name in a test file of the branch."""
-    kept = {path for path in git("ls-files", "--cached", "--", "tests/").split() if path.endswith(".lua")}
+    kept = {path for path in staged("ls-files", "--cached", "--", "tests/").split() if path.endswith(".lua")}
     present = set().union(*(case_names(open(path).read()) for path in kept if os.path.isfile(path)))
     return all(case_names(git("show", f"{base}:{path}")) <= present for path in deleted)
 
@@ -252,12 +252,12 @@ def xfail_refs(text: str) -> list[str]:
 
 def unqueued_xfails(base: str) -> list[str]:
     """Each changed test file's xfails must each name a queued change (openspec/changes/<id>)."""
-    changed = git("diff", "--cached", "--diff-filter=AM", "--name-only", base, "--", "tests/").split()
+    changed = staged("diff", "--cached", "--diff-filter=AM", "--name-only", base, "--", "tests/").split()
     out = []
     for path in changed:
         if not path.endswith(".lua") or not os.path.isfile(path):
             continue
-        for ref in xfail_refs(git("show", f":{path}")):
+        for ref in xfail_refs(staged("show", f":{path}")):
             if not ref or not os.path.isdir(f"openspec/changes/{ref}"):
                 out.append(f"xfail without a queued openspec change: {path} ({ref or 'unresolved reason'})")
     return out
@@ -286,16 +286,16 @@ def hard_rule_violations() -> list[str]:
     planned = planned_removals()
     removed_cases = Coverage().lost
     lost = sorted(removed_cases - planned)  # by name: an unrelated new case cannot offset a lost one
-    deleted = git("diff", "--cached", "--diff-filter=D", "--name-only", base, "--", "tests/").split()
+    deleted = staged("diff", "--cached", "--diff-filter=D", "--name-only", base, "--", "tests/").split()
     only_planned = deleted and all(case_names(git("show", f"{base}:{path}")) <= planned for path in deleted)
     if deleted and (lost or not (moved_test_files(base, deleted) or only_planned)):  # moved or spec-removed: no loss
         reasons.append("test files deleted: " + ", ".join(deleted))
     if lost:
         reasons.append(f"{len(lost)} test case(s) removed: " + ", ".join(lost))
     reasons += unqueued_xfails(base)
-    markers = subprocess.run(["git", "grep", "-n", "-E", "^(<<<<<<<|>>>>>>>) ", "--cached"], capture_output=True, text=True)
-    if markers.stdout:
-        reasons.append("conflict markers committed: " + markers.stdout.splitlines()[0][:120])
+    markers = staged("grep", "-n", "-E", "^(<<<<<<<|>>>>>>>) ", "--cached", check=False)
+    if markers:
+        reasons.append("conflict markers committed: " + markers.splitlines()[0][:120])
     return reasons
 
 

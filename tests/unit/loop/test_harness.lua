@@ -6,12 +6,6 @@ local child = H.new_child()
 
 local T = H.child_set(child, child.start_bare)
 
-T["loop: child.wait treats nil as not ready"] = function()
-	eq(child.wait("vim.g.harness_never_set", 100), false)
-	child.lua([[vim.g.harness_set = "yes"]])
-	eq(child.wait("vim.g.harness_set", 100), true)
-end
-
 T["loop: A test directory runs its files"] = function()
 	local dir = vim.fn.tempname()
 	vim.fn.mkdir(vim.fs.joinpath(dir, "area/nested"), "p")

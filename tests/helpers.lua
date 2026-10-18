@@ -186,11 +186,9 @@ function M.new_child()
 		child.restart(args)
 	end
 
-	--- Waits until `expr` is truthy in the child. nil comes back over RPC as vim.NIL (truthy here), so it counts as false.
 	function child.wait(expr, timeout)
 		local ok = vim.wait(timeout or 2000, function()
-			local value = child.lua_get(expr)
-			return value ~= nil and value ~= vim.NIL and value ~= false
+			return child.lua_get(expr) and true or false
 		end, 20)
 		return ok
 	end

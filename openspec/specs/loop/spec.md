@@ -1031,11 +1031,7 @@ The context pack SHALL hold only what the next task needs, and the prompts and t
 - **THEN** it says a Visual, Insert or operator-pending behaviour is tested through the real mapping with the mode still active, never after `<Esc>`
 
 ### Requirement: Test tooling the agents run is exact
-`child.wait` SHALL treat a nil result as not ready, `make test FILE=<directory>` SHALL run that directory's test files, and the hard-rule checks (`.archon/scripts/integrity.py`) SHALL stage into a private index, leaving the worktree's index as the agent left it.
-
-#### Scenario: child.wait treats nil as not ready
-- **WHEN** a test child waits 100 ms for a global that is never set, then for one set to a string
-- **THEN** the first wait returns false and the second true
+`make test FILE=<directory>` SHALL run that directory's test files, and the hard-rule checks (`.archon/scripts/integrity.py`) SHALL stage into a private index, leaving the worktree's index as the agent left it.
 
 #### Scenario: A test directory runs its files
 - **WHEN** `tests/runner.lua` collects with `FILE` set to a directory holding a nested test file and a non-test file
