@@ -223,6 +223,55 @@ local function delete_permanently(path_list)
 	return true
 end
 
+---@param name string
+---@param path string
+---@return boolean
+local function path_contains(name, path)
+	return name == path or vim.startswith(name, path .. "/")
+end
+
+---@param path_list string[]
+---@return integer[]
+local function affected_buffers(path_list)
+	return vim.tbl_filter(function(buf)
+		if not vim.api.nvim_buf_is_loaded(buf) then
+			return false
+		end
+		local name = vim.api.nvim_buf_get_name(buf)
+		return name ~= "" and vim.iter(path_list):any(function(path)
+			return path_contains(name, path)
+		end)
+	end, vim.api.nvim_list_bufs())
+end
+
+---@param path_list string[]
+---@return integer
+local function count_modified_buffers(path_list)
+	local count = 0
+	for _, buf in ipairs(affected_buffers(path_list)) do
+		if vim.bo[buf].modified then
+			count = count + 1
+		end
+	end
+	return count
+end
+
+---@param path_list string[]
+local function wipe_deleted_buffers(path_list)
+	for _, buf in ipairs(affected_buffers(path_list)) do
+		local name = vim.api.nvim_buf_get_name(buf)
+		if not vim.bo[buf].modified and vim.uv.fs_stat(name) == nil then
+			local fallback = vim.api.nvim_create_buf(true, false)
+			for _, win in ipairs(vim.api.nvim_list_wins()) do
+				if vim.api.nvim_win_get_buf(win) == buf then
+					vim.api.nvim_win_set_buf(win, fallback)
+				end
+			end
+			vim.api.nvim_buf_delete(buf, {})
+		end
+	end
+end
+
 ---@param root string
 ---@param path_list string[]
 local function delete_paths(root, path_list)
@@ -241,6 +290,7 @@ local function delete_paths(root, path_list)
 		deleted = delete_permanently(existing)
 	end
 	if deleted then
+		wipe_deleted_buffers(existing)
 		require("gleb.file_tree.view").refresh_moved(root, root)
 	end
 end
@@ -253,10 +303,16 @@ function M.delete()
 	if not root or not row or row.kind == "root" then
 		return
 	end
+	local path_list = { row.path }
+	local modified = count_modified_buffers(path_list)
 	local choice = trash_path() and "Move to Trash" or "Delete"
-	vim.ui.select({ choice, "Cancel" }, { prompt = "Delete " .. row.path:sub(#root + 2) .. "?" }, function(item)
+	local prompt = "Delete " .. row.path:sub(#root + 2) .. "?"
+	if modified > 0 then
+		prompt = ("Delete 1 item (%d unsaved)?"):format(modified)
+	end
+	vim.ui.select({ choice, "Cancel" }, { prompt = prompt }, function(item)
 		if item == choice then
-			delete_paths(root, { row.path })
+			delete_paths(root, path_list)
 		end
 	end)
 end

@@ -60,9 +60,9 @@ Scenarios: `file-tree: Project tree d reports a failed delete`, `file-tree: Proj
 
 ## 5c. Delete modified-buffer safety
 Scenarios: `file-tree: Project tree delete does not let auto-save resurrect a file`, `file-tree: Project tree delete preserves windows across tabs`
-- [ ] 5c.1 Write the tests in `tests/integration/file-tree/test_project_ops.lua`, populate buffers in two tabs and run the real auto-save event after `d`, and see them fail
-- [ ] 5c.2 Count unsaved buffers in confirmation, retain modified buffers, make `should_autosave` skip absent files, and ensure fallback buffers are never deleted paths
-- [ ] 5c.3 Run `make test FILE=tests/integration/file-tree/test_project_ops.lua CASE="Project tree delete"` and see them pass
+- [x] 5c.1 Write the tests in `tests/integration/file-tree/test_project_ops.lua`, populate buffers in two tabs and run the real auto-save event after `d`, and see them fail
+- [x] 5c.2 Count unsaved buffers in confirmation, retain modified buffers, make `should_autosave` skip absent files, and ensure fallback buffers are never deleted paths
+- [x] 5c.3 Run `make test FILE=tests/integration/file-tree/test_project_ops.lua CASE="Project tree delete"` and see them pass
 
 ## 6a. Copy and paste conflicts
 Scenarios: `file-tree: Project tree c and p copy a file into another folder`, `file-tree: Project tree pasting a copy over an existing name asks for a new name`, `file-tree: Project tree c and p copy a folder recursively`, `file-tree: Project tree copy conflict advances to copy2`, `file-tree: Project tree folder copy preflights before writing`
@@ -111,6 +111,7 @@ Scenarios: `file-tree: Project tree operation keys come from the keymap file`, `
 
 ## Agent decisions
 
+- Delete confirmation uses singular `item` for one selected path, keeping the unsaved-buffer count grammatical.
 - Create invalidates the root's cached scan before redrawing, so the submitted path is selected immediately without waiting for a watcher event.
 - The input adapter wraps `frame.options`' renderer so live previews retain all shared-frame chrome without widening the frame API.
 - The pre-audit PATH-worded trash scenarios remain verbatim as required; their tests also set `ops.state.trash_path` to the fake command, while production code checks only `/usr/bin/trash`.

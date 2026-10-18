@@ -859,4 +859,82 @@ T["file-tree: Project tree trash failure never falls back to permanent delete"] 
 	eq(notifications()[#notifications()], { msg = "Delete failed: boom", level = vim.log.levels.ERROR })
 end
 
+T["file-tree: Project tree delete does not let auto-save resurrect a file"] = function()
+	install_fake_trash()
+	open_billing()
+	focus_tree_path("internal/billing/tax_test.go")
+	local buffer = load_buffer("internal/billing/tax_test.go")
+	child.lua(
+		[[(function(buf)
+		vim.api.nvim_buf_set_lines(buf, 0, -1, false, { "package billing", "", "// unsaved" })
+	end)(...)]],
+		{ buffer }
+	)
+	delete("confirm")
+	wait_for_absence("internal/billing/tax_test.go")
+
+	eq(child.lua_get([[DeleteSelect.prompt]]), "Delete 1 item (1 unsaved)?")
+	eq(
+		child.lua_get(
+			[[(function(buf) return vim.api.nvim_buf_is_valid(buf) and vim.bo[buf].modified end)(...)]],
+			{ buffer }
+		),
+		true
+	)
+	eq(child.lua_get([[require("auto-save.config").opts.condition(...)]], { buffer }), false)
+	child.lua([[vim.api.nvim_exec_autocmds("BufLeave", { buffer = ... })]], { buffer })
+	eq(vim.uv.fs_lstat(vim.fs.joinpath(root, "internal/billing/tax_test.go")), nil)
+end
+
+T["file-tree: Project tree delete preserves windows across tabs"] = function()
+	install_fake_trash()
+	open_billing()
+	local buffer = load_buffer("internal/billing/tax_test.go")
+	local state = child.lua_get(
+		[[(function(buf)
+		local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+		local editor = assert(require("gleb.file_tree.view").state.last_editor_by_tab[view.tab])
+		vim.api.nvim_win_set_buf(editor, buf)
+		vim.cmd.tabnew()
+		vim.api.nvim_win_set_buf(0, buf)
+		local second_tab = vim.api.nvim_get_current_tabpage()
+		vim.api.nvim_set_current_tabpage(view.tab)
+		return {
+			first_tab = view.tab,
+			second_tab = second_tab,
+			windows = #vim.api.nvim_list_wins(),
+		}
+	end)(...)]],
+		{ buffer }
+	)
+	focus_tree_path("internal/billing/tax_test.go")
+	delete("confirm")
+	wait_for_absence("internal/billing/tax_test.go")
+
+	assert(
+		child.lua_get(
+			[[(function(buf)
+			return vim.wait(1000, function() return not vim.api.nvim_buf_is_valid(buf) end, 20)
+		end)(...)]],
+			{ buffer }
+		),
+		"deleted file buffer remained"
+	)
+	eq(child.lua_get([[#vim.api.nvim_list_wins()]]), state.windows)
+	local replacement_names = child.lua_get(
+		[[(function(first_tab, second_tab)
+		local names = {}
+		for _, tab in ipairs({ first_tab, second_tab }) do
+			for _, win in ipairs(vim.api.nvim_tabpage_list_wins(tab)) do
+				names[#names + 1] = vim.api.nvim_buf_get_name(vim.api.nvim_win_get_buf(win))
+			end
+		end
+		return names
+	end)(...)]],
+		{ state.first_tab, state.second_tab }
+	)
+	local deleted_path = vim.fs.joinpath(tree_root, "internal/billing/tax_test.go")
+	assert(not vim.tbl_contains(replacement_names, deleted_path), "replacement buffer names the deleted file")
+end
+
 return T
