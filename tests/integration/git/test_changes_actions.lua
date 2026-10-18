@@ -97,13 +97,15 @@ local function fake_ollama(input_path)
 	return dir
 end
 
---- First line of the nui border float (the title row).
----@return string
-local function popup_title()
-	return child.lua_get([[vim.iter(vim.api.nvim_list_wins())
-		:filter(function(win) return win ~= vim.api.nvim_get_current_win() and vim.api.nvim_win_get_config(win).relative ~= "" end)
-		:map(function(win) return vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(win), 0, 1, false)[1] end)
-		:find(function(line) return line:find("╭", 1, true) ~= nil end) or ""]])
+---@return boolean
+local function wait_for_commit_popup()
+	return child.wait(
+		[[vim.iter(vim.api.nvim_list_wins())
+			:filter(function(win) return win ~= vim.api.nvim_get_current_win() and vim.api.nvim_win_get_config(win).relative ~= "" end)
+			:map(function(win) return vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(win), 0, 1, false)[1] end)
+			:any(function(line) return line:find(" Commit Message ", 1, true) ~= nil end)]],
+		ASYNC_MS * H.load_factor()
+	)
 end
 
 --- Stage a change, open the real AI popup, and confirm `message`.
@@ -118,12 +120,7 @@ local function commit_from_changes(dir, message)
 	child.lua([[vim.env.PATH = ... .. ":" .. vim.env.PATH]], { fake_ollama() })
 	child.cmd("cd " .. vim.fn.fnameescape(vim.fs.dirname(dir)))
 	child.type_keys("gc")
-	eq(
-		vim.wait(ASYNC_MS, function()
-			return popup_title():find(" Commit Message ", 1, true) ~= nil
-		end, 20),
-		true
-	)
+	eq(wait_for_commit_popup(), true)
 	local win = child.api.nvim_get_current_win()
 	child.api.nvim_buf_set_lines(child.api.nvim_win_get_buf(win), 0, -1, false, { message })
 	child.type_keys("<CR>")
@@ -303,12 +300,7 @@ T["git: Changes panel gc commits confirmed message"] = function()
 	H.git(dir, { "add", "a.txt" })
 	child.lua([[Notifications = {}]])
 	child.type_keys("gc")
-	eq(
-		vim.wait(ASYNC_MS, function()
-			return popup_title():find(" Commit Message ", 1, true) ~= nil
-		end, 20),
-		true
-	)
+	eq(wait_for_commit_popup(), true)
 	local win = child.api.nvim_get_current_win()
 	child.api.nvim_buf_set_lines(child.api.nvim_win_get_buf(win), 0, -1, false, { "fix: it's $HOME" })
 	child.type_keys("<CR>")
@@ -361,13 +353,17 @@ T["git: Changes panel gc generates from the panel repository"] = function()
 
 	child.type_keys("gc")
 
+	local prompt = ""
 	eq(
 		vim.wait(ASYNC_MS, function()
-			return vim.fn.filereadable(input_path) == 1
+			if vim.fn.filereadable(input_path) == 0 then
+				return false
+			end
+			prompt = table.concat(vim.fn.readfile(input_path), "\n")
+			return prompt:find("-one", 1, true) ~= nil and prompt:find("+two", 1, true) ~= nil
 		end, 20),
 		true
 	)
-	local prompt = table.concat(vim.fn.readfile(input_path), "\n")
 	eq(prompt:find("-one", 1, true) ~= nil, true)
 	eq(prompt:find("+two", 1, true) ~= nil, true)
 end

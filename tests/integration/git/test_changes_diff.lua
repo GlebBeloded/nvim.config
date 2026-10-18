@@ -325,6 +325,8 @@ T["git: Changes panel drops a stale diff result"] = function()
 	observe_show()
 	child.lua([[
 		PendingDiffLoads = {}
+		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		require("gleb.file_tree.watch").stop_root(panel.root, panel.buf)
 		local git = require("gleb.git.changes.git")
 		local load_diff = git.load_diff
 		git.load_diff = function(load_root, row, callback)
@@ -337,23 +339,18 @@ T["git: Changes panel drops a stale diff result"] = function()
 	child.type_keys("j")
 	eq(child.wait("#PendingDiffLoads == 1", ASYNC_MS), true)
 
-	local generation = child.lua_get([[
-		require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()].generation
-	]])
 	child.lua([[
 		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		RowsBeforeRefresh = panel.rows
 		require("gleb.git.changes.view").schedule_refresh(panel)
 	]])
 	eq(
 		child.wait(
-			("require('gleb.git.changes').state.by_tab[vim.api.nvim_get_current_tabpage()].generation > %d"):format(
-				generation
-			),
+			[[require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()].rows ~= RowsBeforeRefresh]],
 			ASYNC_MS
 		),
 		true
 	)
-	child.lua([[vim.wait(100)]])
 	cursor_before("b.txt")
 	child.type_keys("j")
 	eq(
