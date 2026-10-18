@@ -57,9 +57,9 @@ Scenarios: `file-tree: Nests start collapsed under a chevron`, `file-tree: Nest 
 
 Scenarios: `file-tree: Invalid settings file disables nesting`, `file-tree: Nesting can be turned off`, `file-tree: Writing the settings file reloads nesting`, `file-tree: Writing settings through a normalized path reloads nesting`
 
-- [ ] 4b.1 Write the four cases in `tests/integration/file-tree/test_nesting.lua` with real temporary JSON buffers and `:write`, including `/var` → `/private/var` path normalization, then run `make test FILE=tests/integration/file-tree/test_nesting.lua CASE="Writing the settings file reloads nesting"` and see it fail
-- [ ] 4b.2 Add the `gleb_file_tree_settings` `BufWritePost` path match through `fs.normalize`, generation bump and redraw; disable nesting safely on invalid or disabled settings
-- [ ] 4b.3 Run each scenario with `make test FILE=tests/integration/file-tree/test_nesting.lua CASE="<scenario title>"` and see it pass
+- [x] 4b.1 Write the four cases in `tests/integration/file-tree/test_nesting.lua` with real temporary JSON buffers and `:write`, including `/var` → `/private/var` path normalization, then run `make test FILE=tests/integration/file-tree/test_nesting.lua CASE="Writing the settings file reloads nesting"` and see it fail
+- [x] 4b.2 Add the `gleb_file_tree_settings` `BufWritePost` path match through `fs.normalize`, generation bump and redraw; disable nesting safely on invalid or disabled settings
+- [x] 4b.3 Run each scenario with `make test FILE=tests/integration/file-tree/test_nesting.lua CASE="<scenario title>"` and see it pass
 
 ## 4c. Nest-state clearing and migration
 
@@ -123,3 +123,4 @@ Scenarios: `file-tree: File tree nests match the approved render`
 - A malformed Lua-rule result skips that whole rule and warns once, preventing a partially valid user table from making order-dependent claims.
 - Omitted settings fields default to enabled nesting with empty rule and ignore lists, preserving Decision 1's enabled-by-default contract without inventing rules.
 - Nest rows carry explicit expansion and parent metadata so rendering and later row actions do not infer structure from labels or adjacency.
+- Settings reload redraws each tree at its selected path so configuration changes do not move the cursor.

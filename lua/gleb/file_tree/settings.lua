@@ -1,9 +1,11 @@
 -- File-tree settings state keeps test and user configuration paths separate.
 
+local fs = require("gleb.file_tree.fs")
+
 local M = {}
 
 ---@class FileTreeSettingsOptions
----@field path string
+---@field path? string
 
 ---@class FileTreeSettingsState
 ---@field path? string
@@ -82,21 +84,34 @@ local function invalid_settings(reason)
 	return disabled_settings()
 end
 
+local function reload_written_settings(args)
+	if fs.normalize(args.file) ~= M.state.path then
+		return
+	end
+	M.reload()
+	local ok, view = pcall(require, "gleb.file_tree.view")
+	if ok then
+		view.redraw_all()
+	end
+end
+
 --- Select the settings file used by the file tree.
 ---@param opts FileTreeSettingsOptions
 ---@return nil
 function M.setup(opts)
-	M.state.path = opts.path
+	M.state.path = fs.normalize(opts.path or default_path())
 	M.state.generation = M.state.generation + 1
 	M.state.loaded_path = nil
 	M.state.settings = nil
+	local group = vim.api.nvim_create_augroup("gleb_file_tree_settings", { clear = true })
+	vim.api.nvim_create_autocmd("BufWritePost", { group = group, callback = reload_written_settings })
 end
 
 --- Load and validate the file-tree settings.
 ---@param path? string
 ---@return FileTreeSettings
 function M.load(path)
-	local selected_path = path or M.state.path or default_path()
+	local selected_path = fs.normalize(path or M.state.path or default_path())
 	if M.state.settings and M.state.loaded_path == selected_path then
 		return M.state.settings
 	end

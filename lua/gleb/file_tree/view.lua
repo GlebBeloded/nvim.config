@@ -795,6 +795,17 @@ function M.refresh()
 	git.refresh(view.root)
 end
 
+--- Redraw every open project tree after shared configuration changes.
+---@return nil
+function M.redraw_all()
+	for _, view in pairs(M.state.by_tab) do
+		if vim.api.nvim_win_is_valid(view.win) and vim.api.nvim_buf_is_valid(view.buf) then
+			local row = selected_row(view)
+			draw(view, row and row.path or view.root)
+		end
+	end
+end
+
 --- Toggle the current tab page's project tree.
 ---@return nil
 function M.toggle()

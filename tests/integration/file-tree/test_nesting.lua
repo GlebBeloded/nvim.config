@@ -6,6 +6,8 @@ local eq = MiniTest.expect.equality
 local child = H.new_child()
 
 local root
+local default_settings =
+	vim.json.decode(table.concat(vim.fn.readfile(vim.fs.joinpath(H.root, "settings", "file_tree.json")), "\n"))
 
 local function start()
 	root = F.copy("treeproj", vim.fn.tempname() .. "/billing")
@@ -81,6 +83,73 @@ local function nest_is_expanded()
 	end)()]])
 end
 
+---@param enabled boolean
+---@param include_go_rule boolean
+---@return string
+local function settings_json(enabled, include_go_rule)
+	local value = vim.deepcopy(default_settings)
+	value.nesting.enabled = enabled
+	if not include_go_rule then
+		table.remove(value.nesting.rules, 1)
+	end
+	return vim.json.encode(value)
+end
+
+---@param path string
+---@param text string
+local function write_settings_buffer(path, text)
+	child.lua([[
+		for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+			if vim.bo[vim.api.nvim_win_get_buf(win)].filetype ~= "gleb-file-tree" then
+				vim.api.nvim_set_current_win(win)
+				break
+			end
+		end
+	]])
+	child.cmd("edit " .. vim.fn.fnameescape(path))
+	child.api.nvim_buf_set_lines(0, 0, -1, false, { text })
+	child.cmd("write")
+end
+
+---@param text string
+---@return string
+local function use_temporary_settings(text)
+	local path = child.lua_get([[vim.fn.tempname() .. ".json"]])
+	write_settings_buffer(path, text)
+	child.lua([[require("gleb.file_tree.settings").setup({ path = ... })]], { path })
+	child.lua([[require("gleb.file_tree.view").refresh()]])
+	return path
+end
+
+---@return table[]
+local function billing_file_rows()
+	local directory = child.lua_get([[require("gleb.file_tree.fs").normalize(...)]], {
+		vim.fs.joinpath(root, "internal", "billing"),
+	})
+	return child.lua_get(
+		[[(function(directory)
+			local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+			local rows = {}
+			for _, row in ipairs(view.rows) do
+				if row.kind == "file" and vim.fs.dirname(row.path) == directory then
+					rows[#rows + 1] = { row.label, row.nest_children ~= nil }
+				end
+			end
+			return rows
+		end)(...)]],
+		{ directory }
+	)
+end
+
+local sibling_rows = {
+	{ "discount.go", false },
+	{ "discount_test.go", false },
+	{ "invoice.go", false },
+	{ "invoice_test.go", false },
+	{ "tax.go", false },
+	{ "tax_test.go", false },
+}
+
 T["file-tree: Nests start collapsed under a chevron"] = function()
 	local invoice = assert(tree_line("invoice.go"))
 	eq(invoice:find("", 1, true) ~= nil, true)
@@ -137,6 +206,44 @@ T["file-tree: Drawing prunes stale nest state"] = function()
 	eq(nest_is_expanded(), false)
 	eq(invoice:find("", 1, true), nil)
 	eq(invoice:find("", 1, true), nil)
+end
+
+T["file-tree: Invalid settings file disables nesting"] = function()
+	local notifications = H.record_notify(child)
+	use_temporary_settings('{ "nesting": ')
+
+	eq(vim.inspect(billing_file_rows()), vim.inspect(sibling_rows))
+	local notice = notifications()[1]
+	eq(notice.level, vim.log.levels.ERROR)
+	eq(vim.startswith(notice.msg, "File tree settings invalid"), true)
+end
+
+T["file-tree: Nesting can be turned off"] = function()
+	use_temporary_settings(settings_json(false, true))
+
+	eq(vim.inspect(billing_file_rows()), vim.inspect(sibling_rows))
+end
+
+T["file-tree: Writing the settings file reloads nesting"] = function()
+	local path = use_temporary_settings(settings_json(true, true))
+	eq(assert(tree_line("invoice.go")):find("", 1, true) ~= nil, true)
+
+	write_settings_buffer(path, settings_json(true, false))
+	assert(child.wait([[require("gleb.file_tree.settings").generation() > 2]], 1000), "settings did not reload")
+
+	eq(vim.inspect(billing_file_rows()), vim.inspect(sibling_rows))
+end
+
+T["file-tree: Writing settings through a normalized path reloads nesting"] = function()
+	local path = use_temporary_settings(settings_json(true, true))
+	local normalized = child.lua_get([[require("gleb.file_tree.fs").normalize(...)]], { path })
+	eq(vim.startswith(path, "/var/"), true)
+	eq(vim.startswith(normalized, "/private/var/"), true)
+
+	write_settings_buffer(normalized, settings_json(true, false))
+	assert(child.wait([[require("gleb.file_tree.settings").generation() > 2]], 1000), "settings did not reload")
+
+	eq(vim.inspect(billing_file_rows()), vim.inspect(sibling_rows))
 end
 
 return T
