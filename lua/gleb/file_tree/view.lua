@@ -13,7 +13,6 @@ local state = require("gleb.file_tree.state")
 local watch = require("gleb.file_tree.watch")
 
 local EXPANSION_MAX_ROWS = 5000
-local IGNORE_WAIT_MS = 300
 
 ---@class FileTreeView
 ---@field tab integer
@@ -27,7 +26,7 @@ local IGNORE_WAIT_MS = 300
 ---@field watching boolean
 ---@field directory_hijacks table<integer, boolean>
 ---@field skip_follow_buf? integer
----@field initial_draw_timer? uv.uv_timer_t
+---@field initial_draw_pending? boolean
 
 ---@class FileTreeViewState
 ---@field by_tab table<integer, FileTreeView>
@@ -128,11 +127,7 @@ local function forget(view)
 		watch.stop_root(view.root, view.tab)
 		git.stop_root(view.root, view.tab)
 	end
-	if view.initial_draw_timer then
-		view.initial_draw_timer:stop()
-		view.initial_draw_timer:close()
-		view.initial_draw_timer = nil
-	end
+	view.initial_draw_pending = nil
 	for _, autocmd in ipairs(view.autocmds) do
 		pcall(vim.api.nvim_del_autocmd, autocmd)
 	end
@@ -334,13 +329,10 @@ end
 ---@param path string
 ---@return boolean
 local function finish_initial_draw(view, path)
-	local timer = view.initial_draw_timer
-	if not timer then
+	if not view.initial_draw_pending then
 		return false
 	end
-	timer:stop()
-	timer:close()
-	view.initial_draw_timer = nil
+	view.initial_draw_pending = nil
 	if M.state.by_tab[view.tab] == view and vim.api.nvim_buf_is_valid(view.buf) then
 		select_path(view, path)
 	end
@@ -793,14 +785,7 @@ local function open_view(path)
 	end)
 	add_teardown_autocmds(view)
 	if watch.toplevel(root) then
-		view.initial_draw_timer = assert(vim.uv.new_timer())
-		view.initial_draw_timer:start(
-			IGNORE_WAIT_MS,
-			0,
-			vim.schedule_wrap(function()
-				finish_initial_draw(view, initial_path)
-			end)
-		)
+		view.initial_draw_pending = true
 		git.refresh(root)
 	else
 		select_path(view, initial_path)

@@ -120,8 +120,8 @@ end
 ---@return boolean
 local function wait_for_tree_highlight(name, group)
 	return child.lua_get(
-		[[(function(name, group)
-			return vim.wait(1000, function()
+		[[(function(name, group, timeout)
+			return vim.wait(timeout, function()
 				local view = require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()]
 				if not view then
 					return false
@@ -143,7 +143,7 @@ local function wait_for_tree_highlight(name, group)
 				return false
 			end, 20)
 		end)(...)]],
-		{ name, group }
+		{ name, group, math.ceil(3000 * H.load_factor()) }
 	)
 end
 
