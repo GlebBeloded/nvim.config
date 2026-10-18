@@ -32,7 +32,7 @@ PATH_RE = re.compile(r"(?<![\w./-])((?:lua|tests|plugins|terminal|ops|settings|\
 PROBING = (
     "- `make probe SCRIPT=<file.lua>` (or `PROBE='lua code'`) runs Lua in the tests' full-config child "
     "and sandbox, prints its output and return values, exits non-zero on error (docs/testing.md).\n"
-    "- LSP restart and neo-tree renders are async: wait for the end state, not for attachment."
+    "- LSP restart and tree and panel renders are async: wait for the end state, not for attachment."
 )
 
 
