@@ -9,9 +9,9 @@ Scenarios: `file-tree: Project tree opens on the left at width 35`, `file-tree: 
 
 Scenarios: `file-tree: Nesting rule nests by capture`, `file-tree: Nesting patterns match whole names`, `file-tree: Nesting captures are inserted literally`, `file-tree: Broken nesting rules are skipped`
 
-- [ ] 1a.1 Write the four cases in `tests/unit/file-tree/test_nesting.lua`, driving `require("gleb.file_tree.nesting").nest` with shipped `{ name, path, kind }` entries and captured `vim.notify`, then run `make test FILE=tests/unit/file-tree/test_nesting.lua CASE="Nesting rule nests by capture"` and see it fail
-- [ ] 1a.2 Add the typed pure engine in `lua/gleb/file_tree/nesting.lua`: whole-name Lua patterns, capture validation and literal substitution, with one WARN per broken rule per load
-- [ ] 1a.3 Run each scenario with `make test FILE=tests/unit/file-tree/test_nesting.lua CASE="<scenario title>"` and see it pass
+- [x] 1a.1 Write the four cases in `tests/unit/file-tree/test_nesting.lua`, driving `require("gleb.file_tree.nesting").nest` with shipped `{ name, path, kind }` entries and captured `vim.notify`, then run `make test FILE=tests/unit/file-tree/test_nesting.lua CASE="Nesting rule nests by capture"` and see it fail
+- [x] 1a.2 Add the typed pure engine in `lua/gleb/file_tree/nesting.lua`: whole-name Lua patterns, capture validation and literal substitution, with one WARN per broken rule per load
+- [x] 1a.3 Run each scenario with `make test FILE=tests/unit/file-tree/test_nesting.lua CASE="<scenario title>"` and see it pass
 
 ## 1b. Rule precedence
 
