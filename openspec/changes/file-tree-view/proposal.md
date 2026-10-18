@@ -1,6 +1,7 @@
 ## Why
 
 Kind: feature
+Adopt: loop/file-tree-view-20261018-005322
 Depends: diff-view-actions
 
 The user wants a project tree that looks and behaves like IntelliJ's Project view ("I'm used to Idea"): name colour only for git status, changed folders tinted, compact single-child folder chains, no indent guides, a bold project root row. neo-tree cannot draw that: it has no folder tint, no compact chains, and draws guides and right-hand git symbols (Current render in design.md). The later changes need a tree they own: file nesting (`file-tree-nesting`), Show Ignored (`file-tree-ignored`) and the commit tree (`git-changes-tree`) reuse its model, rows and colours.
@@ -105,3 +106,14 @@ This change adds the new tree beside neo-tree. It opens only from new, unbound a
 - **Persistence:** expanded folders are saved per root in the state dir, because IntelliJ keeps them per project.
 - **Statusline:** unchanged. The language chip shows `gleb-file-tree` while the tree is focused, as it shows `neo-tree` today.
 - **Cursor:** hidden while the tree is focused. The cursor line marks the selection.
+
+## Rejected run
+Run on `loop/file-tree-view-20261018-005322` was rejected by the judge:
+- fix loop exhausted with gates still red: review
+- review findings:
+  [must-fix] lua/gleb/file_tree/render.lua:136-143 with lua/gleb/file_tree/view.lua:402-404 (fold_all). The bug: `render.draw` clears the buffer to one empty line and inserts each row before it, so the tree buffer always has one blank line after the last row. In the probe on treeproj, `lines 14, rows 13`. When the cursor is on that line (`G`), `view.rows[index]` is nil. `zM` then fails with `E5108: view.lua:404: attempt to index local 'row' (a nil value)`, which breaks "Project tree folds", scenario "Project tree zM collapses every folder", and the requirement's "no error" expectation for tree keys. The other keys (`<CR> h l za v s t zR`) don't fail on that line, but each of them selects a row that doesn't exist. Earlier passes missed this because they never put the cursor past the last row. The trailing line has been there since e32d9e4, and the `fold_all` loop changed in d56128a. Fix: make `render.draw` write exactly `#rows` lines, for example by setting all the lines at once and then adding the extmarks. Also add an integration case for `G` followed by `zM`, and assert `nvim_buf_line_count(view.buf) == #view.rows`.
+  
+  [minor] tests/e2e/find-action/screens.lua:92,106: neither proposal.md nor tasks.md covers this file. The palette count goes from 45 to 47 because of the new global `file_tree.toggle` and `file_tree.reveal` actions. The gate needed this edit to go green.
+  
+  [minor] The fix-scope edit to specs/file-tree/spec.md adds the scenario "Project tree opens from non-project b
+- note: loop: No test cases matched
