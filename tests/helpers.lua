@@ -226,6 +226,20 @@ local started = vim.uv.hrtime()
 local finished = false
 local timer
 
+local function subprocesses(pid)
+	local ok_children, children = pcall(vim.api.nvim_get_proc_children, pid)
+	if not ok_children then
+		return "<unavailable>"
+	end
+	local commands = {}
+	for _, child_pid in ipairs(children) do
+		local ok_process, process = pcall(vim.api.nvim_get_proc, child_pid)
+		local command = ok_process and type(process) == "table" and process.name or "<unavailable>"
+		table.insert(commands, ("%d: %s"):format(child_pid, command))
+	end
+	return #commands > 0 and table.concat(commands, ", ") or "<none>"
+end
+
 local function write_state(phase, err)
 	local ok_mode, mode = pcall(vim.api.nvim_get_mode)
 	local ok_getchar, getchar = pcall(vim.fn.getchar, 1)
@@ -236,6 +250,7 @@ local function write_state(phase, err)
 		mode = ok_mode and mode.mode or "<unavailable>",
 		getchar = ok_getchar and vim.inspect(getchar) or "<unavailable>",
 		messages = ok_messages and messages.output or "<unavailable>",
+		subprocesses = subprocesses(vim.uv.os_getpid()),
 		error = err and tostring(err) or nil,
 	}
 	pcall(vim.fn.writefile, { vim.json.encode(state) }, spec.state_file)
@@ -325,6 +340,22 @@ local function stop_blocked_child(child, pid)
 	M.delete_debug_log(pid)
 end
 
+---@param pid integer
+---@return string
+local function child_subprocesses(pid)
+	local ok_children, children = pcall(vim.api.nvim_get_proc_children, pid)
+	if not ok_children then
+		return "<unavailable>"
+	end
+	local commands = {}
+	for _, child_pid in ipairs(children) do
+		local ok_process, process = pcall(vim.api.nvim_get_proc, child_pid)
+		local command = ok_process and type(process) == "table" and process.name or "<unavailable>"
+		table.insert(commands, ("%d: %s"):format(child_pid, command))
+	end
+	return #commands > 0 and table.concat(commands, ", ") or "<none>"
+end
+
 --- Open a child surface without making a blocking RPC request while waiting.
 ---@param child MiniTest.child
 ---@param spec tests.SurfaceOpen
@@ -348,6 +379,8 @@ function M.open_surface(child, spec)
 		return state ~= nil and state.phase ~= "scheduled" and state.phase ~= "opening" and state.phase ~= "waiting"
 	end, 20)
 	local elapsed = math.floor((vim.uv.hrtime() - started) / 1000000)
+	state = state or {}
+	state.subprocesses = child_subprocesses(pid)
 	vim.fn.delete(state_file)
 
 	if completed and state.phase == "ready" then
@@ -357,15 +390,15 @@ function M.open_surface(child, spec)
 		stop_blocked_child(child, pid)
 	end
 
-	state = state or {}
 	error(
-		("%s surface open failed (phase: %s; elapsed: %d ms; mode: %s; getchar: %s; messages: %s%s)"):format(
+		("%s surface open failed (phase: %s; elapsed: %d ms; mode: %s; getchar: %s; messages: %s; subprocesses: %s%s)"):format(
 			spec.surface,
 			state.phase or "no-state",
 			elapsed,
 			state.mode or "<unavailable>",
 			state.getchar or "<unavailable>",
 			state.messages ~= "" and (state.messages or "<unavailable>") or "<none>",
+			state.subprocesses or "<unavailable>",
 			state.error and "; error: " .. state.error or ""
 		)
 	)

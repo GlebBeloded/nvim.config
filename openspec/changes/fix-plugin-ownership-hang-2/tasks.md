@@ -10,7 +10,13 @@ Scenarios: `git: Differ opens panel on the left`
 - [x] 2.2 Keep the panel position, width, and tree-content assertions unchanged
 - [x] 2.3 Run `make test FILE=tests/integration/git/test_git.lua CASE="Differ opens panel on the left"` and see it pass
 
+## 3. Tighten blocked-Differ diagnostics
+Scenarios: `actions: Plugin-window mappings are action-owned`, `git: Differ opens panel on the left`
+- [x] 3.1 Require the blocked-Differ diagnostic phase to be `opening`, proving the stubbed git call was reached
+- [x] 3.2 Always stop each blocked-Differ child after the bounded open attempt
+- [x] 3.3 Record live child subprocess commands in surface state and failure diagnostics, and require the regression diagnostic to name `sleep`
+
 ## Agent decisions
 
-- The blocked-Differ regression uses a 250 ms helper deadline so it proves the diagnostic path well inside the specified 10 seconds without slowing the integration file.
+- The blocked-Differ regressions use helper deadlines of at most one second so they reach the stubbed git call and prove the diagnostic path well inside the specified 10 seconds.
 - The ownership audit disables Mason's optional outdated-package refresh because it audits local mappings, not remote package metadata.

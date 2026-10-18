@@ -244,13 +244,14 @@ local function expect_blocked_differ_diagnostic()
 	]])
 
 	local started = vim.uv.hrtime()
-	local ok, diagnostic = pcall(open_differ, blocked, 250)
+	local ok, diagnostic = pcall(open_differ, blocked, 1000)
 	local elapsed = (vim.uv.hrtime() - started) / 1000000
+	pcall(blocked.stop)
 
 	eq(ok, false)
 	eq(elapsed < 10000, true)
-	for _, field in ipairs({ "Differ", "phase:", "elapsed:", "mode:", "getchar:", "messages:" }) do
-		eq(tostring(diagnostic):find(field, 1, true) ~= nil, true)
+	for _, field in ipairs({ "Differ", "phase: opening", "elapsed:", "mode:", "getchar:", "messages:", "sleep" }) do
+		assert(tostring(diagnostic):find(field, 1, true), ("missing %q in %s"):format(field, diagnostic))
 	end
 end
 
