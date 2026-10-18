@@ -103,3 +103,7 @@ Scenarios: `diff: Diff view opens on the current file`, `diff: Diff view mapping
 ## Agent decisions
 
 - Kept the existing tree identity guards and changes timer cleanup because the replacement race tests showed they already preserve a close; task 2 only needed the retired tests and action table updated.
+
+## Stuck
+
+- Task 3: the red integration test is committed, but the existing-tree cursor case still fails after two production attempts. Attempt 1 added the netrw disablement and a synchronous directory `BufEnter` hijack with an explicit root for a new tree; the new-tree case passed, while the populated existing tree moved from `go.mod`. Attempt 2 put an empty buffer in the directory's editor window before focusing the existing tree and guarded the per-view callback from the wiped buffer; the populated-tree case still moved from `go.mod`. The corrected sandbox probe with a committed git root reported `before = 3`, `after = 3`, `line = "go.mod"`, `current_is_tree = true`, and the original root, while the `treeproj` integration fixture still fails the same cursor assertion after its initial draw timer is nil. The second production attempt is saved at `/Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/3f6b4fd0-a502-433d-b01e-a9323b75d5c1/stuck-attempt-3.diff`; production edits were reverted.
