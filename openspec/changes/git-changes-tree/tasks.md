@@ -96,9 +96,9 @@ Scenarios: `git: Changes panel A stages everything`
 
 ## 5a. Show, debounce and exceptional content
 Scenarios: `git: Changes panel j shows the next file in the diff view`, `git: Changes panel debounces rapid moves`, `git: Changes panel shows an untracked file as added`, `git: Changes panel shows a deleted file`, `git: Changes panel closes a contentless diff`
-- [ ] 5a.1 Write the scenarios in `tests/integration/git/test_changes_diff.lua`, driving panel cursor movement and the real picker with populated files while wrapping `diff.view.show` only to observe calls, and see them fail
-- [ ] 5a.2 Build full diff specs asynchronously with the 50 ms debounce, panel-owned view handle, empty added side, read-only deleted side, and nil-show close notification
-- [ ] 5a.3 Run `make test FILE=tests/integration/git/test_changes_diff.lua CASE="Changes panel"` and see it pass
+- [x] 5a.1 Write the scenarios in `tests/integration/git/test_changes_diff.lua`, driving panel cursor movement and the real picker with populated files while wrapping `diff.view.show` only to observe calls, and see them fail
+- [x] 5a.2 Build full diff specs asynchronously with the 50 ms debounce, panel-owned view handle, empty added side, read-only deleted side, and nil-show close notification
+- [x] 5a.3 Run `make test FILE=tests/integration/git/test_changes_diff.lua CASE="Changes panel"` and see it pass
 
 ## 5b. Review and next-file navigation
 Scenarios: `git: Changes panel review shows the current file's diff`, `git: Changes panel review without a changed current file`, `git: Changes panel ]f steps through every changed file`, `git: Changes panel ]f keeps diff focus`
@@ -177,3 +177,4 @@ Scenarios: `git: Changes panel matches the approved render`, `git: Changes panel
 - The shared editor-window selector also exports its eligibility predicate so Changes can mirror orphan detection without duplicating tool-window exclusions.
 - Repository-relative staging needed no production edit because task 4a already rooted both status and mutation calls and propagated their failures.
 - Batch staging filters one full fresh status snapshot because Git status has no pathspec-from-file option and destination-only status loses rename origins.
+- Diff selection uses its own per-panel timer so refresh coalescing cannot cancel the 50 ms cursor debounce.

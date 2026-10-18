@@ -12,6 +12,7 @@ local watch = require("gleb.file_tree.watch")
 
 local WIDTH = 35
 local REFRESH_DEBOUNCE_MS = 50
+local DIFF_DEBOUNCE_MS = 50
 local forget
 local cleanup
 local augroup = vim.api.nvim_create_augroup("gleb_changes", { clear = true })
@@ -26,6 +27,7 @@ local augroup = vim.api.nvim_create_augroup("gleb_changes", { clear = true })
 ---@field all_rows ChangesRow[]
 ---@field collapsed table<string, boolean>
 ---@field timer uv.uv_timer_t
+---@field diff_timer uv.uv_timer_t
 ---@field generation integer
 ---@field autocmds integer[]
 ---@field diff_view? gleb.diff.view.View
@@ -188,6 +190,50 @@ local function refresh_from_git_dir(view)
 	end
 end
 
+---@param view ChangesView
+---@param row ChangesRow
+---@return nil
+local function show_diff(view, row)
+	git.load_diff(view.root, row, function(spec)
+		local changes = require("gleb.git.changes")
+		if changes.state.by_tab[view.tab] ~= view or not vim.api.nvim_win_is_valid(view.win) then
+			return
+		end
+		local diff = require("gleb.diff.view")
+		local editor = file_tree_view.eligible_editor(view)
+		view.editor_win = editor
+		local shown = diff.show(editor, spec)
+		if not shown then
+			if view.diff_view then
+				diff.close(view.diff_view)
+			end
+			view.diff_view = nil
+			vim.notify("No content changes: " .. row.label, vim.log.levels.INFO)
+			return
+		end
+		view.diff_view = shown
+	end)
+end
+
+---@param view ChangesView
+---@return nil
+local function schedule_diff(view)
+	view.diff_timer:stop()
+	view.diff_timer:start(
+		DIFF_DEBOUNCE_MS,
+		0,
+		vim.schedule_wrap(function()
+			if not vim.api.nvim_win_is_valid(view.win) then
+				return
+			end
+			local row = view.rows[vim.api.nvim_win_get_cursor(view.win)[1]]
+			if row and row.kind == "file" and row.diffable then
+				show_diff(view, row)
+			end
+		end)
+	)
+end
+
 ---@param tab integer
 ---@return integer
 local function eligible_editor_count(tab)
@@ -232,6 +278,13 @@ end
 ---@param view ChangesView
 ---@return nil
 local function add_refresh_sources(view)
+	view.autocmds[#view.autocmds + 1] = vim.api.nvim_create_autocmd("CursorMoved", {
+		group = augroup,
+		buffer = view.buf,
+		callback = function()
+			schedule_diff(view)
+		end,
+	})
 	view.autocmds[#view.autocmds + 1] = vim.api.nvim_create_autocmd("BufWritePost", {
 		group = augroup,
 		callback = function(args)
@@ -252,7 +305,7 @@ local function add_refresh_sources(view)
 		pattern = tostring(view.win),
 		once = true,
 		callback = function()
-			cleanup(view)
+			M.close(view)
 		end,
 	})
 	view.autocmds[#view.autocmds + 1] = vim.api.nvim_create_autocmd("QuitPre", {
@@ -289,6 +342,10 @@ cleanup = function(view)
 	if not view.timer:is_closing() then
 		view.timer:stop()
 		view.timer:close()
+	end
+	if not view.diff_timer:is_closing() then
+		view.diff_timer:stop()
+		view.diff_timer:close()
 	end
 	watch.stop_root(view.root, view.buf)
 	for _, autocmd in ipairs(view.autocmds) do
@@ -345,6 +402,7 @@ function M.open(root, selected_path)
 		all_rows = {},
 		collapsed = {},
 		timer = assert(vim.uv.new_timer()),
+		diff_timer = assert(vim.uv.new_timer()),
 		generation = 0,
 		autocmds = {},
 		initial_selected_path = fs.normalize(selected_path),

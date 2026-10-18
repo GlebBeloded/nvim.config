@@ -1,0 +1,201 @@
+local MiniTest = require("mini.test")
+local F = require("tests.fixtures")
+local H = require("tests.helpers")
+
+local eq = MiniTest.expect.equality
+local child = H.new_child()
+
+local ASYNC_MS = 3000
+
+local function start()
+	child.start_config()
+	child.wait_very_lazy()
+end
+
+local T = H.child_set(child, start)
+
+---@param root string
+---@param selected? string
+local function open_changes(root, selected)
+	child.cmd("cd " .. vim.fn.fnameescape(root))
+	if selected then
+		child.cmd("edit " .. vim.fn.fnameescape(vim.fs.joinpath(root, selected)))
+	else
+		child.cmd("enew")
+	end
+	child.lua([[
+		local action = assert(require("gleb.actions").state.applicator.catalog:get("changes.toggle"))
+		action.run(require("gleb.actions.context").capture())
+	]])
+	eq(
+		child.wait(
+			[[(function()
+			local view = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+			return view ~= nil and #view.rows > 0
+		end)()]],
+			ASYNC_MS
+		),
+		true
+	)
+end
+
+local function observe_show()
+	child.lua([[
+		DiffShows = {}
+		local diff = require("gleb.diff.view")
+		local show = diff.show
+		diff.show = function(win, spec)
+			table.insert(DiffShows, {
+				path = spec.path,
+				relpath = spec.relpath,
+				left = spec.left,
+				right = spec.right,
+				actionable = spec.actionable,
+				head_final_newline = spec.head_final_newline,
+				filetype = spec.filetype,
+			})
+			return show(win, spec)
+		end
+	]])
+end
+
+---@param path string
+local function cursor_before(path)
+	child.lua(
+		[[
+		local path = ...
+		local view = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		for index, row in ipairs(view.rows) do
+			if row.path == path then
+				assert(index > 1, "target has no preceding row")
+				vim.api.nvim_win_set_cursor(view.win, { index - 1, 0 })
+				return
+			end
+		end
+		error("missing row: " .. path)
+	]],
+		{ path }
+	)
+end
+
+local function wait_for_shows(count)
+	eq(child.wait(("#DiffShows == %d"):format(count), ASYNC_MS), true)
+end
+
+T["git: Changes panel j shows the next file in the diff view"] = function()
+	local root = F.copy("billing", vim.fn.tempname() .. "/billing")
+	open_changes(root, "internal/billing/invoice.go")
+	observe_show()
+	local tabs = #child.api.nvim_list_tabpages()
+
+	child.type_keys("j")
+	wait_for_shows(1)
+
+	local result = child.lua_get([[(function()
+		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		local diff = panel.diff_view
+		return {
+			show = DiffShows[1],
+			left = vim.api.nvim_buf_get_lines(diff.left_buf, 0, -1, false),
+			right = vim.api.nvim_buf_get_lines(diff.right_buf, 0, -1, false),
+			filetype = vim.bo[vim.api.nvim_win_get_buf(vim.api.nvim_get_current_win())].filetype,
+		}
+	end)()]])
+	eq(result.show.relpath, "internal/billing/invoice_test.go")
+	assert(
+		vim.iter(result.left):any(function(line)
+			return line:find("TestTotal", 1, true) ~= nil
+		end),
+		"HEAD side is not invoice_test.go"
+	)
+	assert(
+		vim.iter(result.right):any(function(line)
+			return line:find("TestDue", 1, true) ~= nil
+		end),
+		"working side is not invoice_test.go"
+	)
+	eq({ #child.api.nvim_list_tabpages(), result.filetype }, { tabs, "gleb-changes" })
+end
+
+T["git: Changes panel debounces rapid moves"] = function()
+	local root = F.copy("billing", vim.fn.tempname() .. "/billing")
+	open_changes(root, "internal/billing/invoice.go")
+	observe_show()
+
+	child.type_keys("jj")
+	wait_for_shows(1)
+
+	eq(child.lua_get("DiffShows[1].relpath"), "internal/billing/tax.go")
+	local seen_invoice_test = child.lua_get([[
+		vim.iter(DiffShows):any(function(item) return item.relpath == "internal/billing/invoice_test.go" end)
+	]])
+	eq(seen_invoice_test, false)
+end
+
+T["git: Changes panel shows an untracked file as added"] = function()
+	local root = F.copy("dirty", vim.fn.tempname() .. "/dirty")
+	open_changes(root)
+	observe_show()
+	cursor_before("new.txt")
+
+	child.type_keys("j")
+	wait_for_shows(1)
+
+	local shown = child.lua_get("DiffShows[1]")
+	eq({ shown.relpath, shown.left, shown.right, shown.actionable }, {
+		"new.txt",
+		{},
+		{ "new", "untracked", "file" },
+		false,
+	})
+end
+
+T["git: Changes panel shows a deleted file"] = function()
+	local root = H.git_repo({ ["a.txt"] = "one\n" })
+	vim.fn.delete(vim.fs.joinpath(root, "a.txt"))
+	open_changes(root)
+	observe_show()
+	cursor_before("a.txt")
+
+	child.type_keys("j")
+	wait_for_shows(1)
+
+	local shown = child.lua_get("DiffShows[1]")
+	eq({ shown.relpath, shown.left, shown.right, shown.actionable }, {
+		"a.txt",
+		{ "one" },
+		{},
+		false,
+	})
+	local right_buf = child.lua_get([[
+		require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()].diff_view.right_buf
+	]])
+	eq(child.lua_get("vim.bo[...].modifiable", { right_buf }), false)
+end
+
+T["git: Changes panel closes a contentless diff"] = function()
+	local root = H.git_repo({ ["a.txt"] = "old\n", ["mode.txt"] = "same\n" })
+	H.write_files(root, { ["a.txt"] = "new\n" })
+	assert(vim.uv.fs_chmod(vim.fs.joinpath(root, "mode.txt"), 493))
+	open_changes(root)
+	observe_show()
+	local notifications = H.record_notify(child)
+	cursor_before("a.txt")
+	child.type_keys("j")
+	wait_for_shows(1)
+	cursor_before("mode.txt")
+
+	child.type_keys("j")
+	wait_for_shows(2)
+
+	eq(
+		child.lua_get([[(function()
+		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		return panel.diff_view == nil
+	end)()]]),
+		true
+	)
+	eq(notifications(), { { msg = "No content changes: mode.txt", level = vim.log.levels.INFO } })
+end
+
+return T

@@ -46,6 +46,74 @@ function M.refresh(root, callback)
 	end)
 end
 
+---@param text string
+---@return string[]
+local function text_lines(text)
+	if text == "" then
+		return {}
+	end
+	return vim.split(text:gsub("\n$", ""), "\n", { plain = true })
+end
+
+---@param root string
+---@param row ChangesRow
+---@param callback fun(spec: gleb.diff.view.Spec)
+---@return nil
+function M.load_diff(root, row, callback)
+	local relpath = assert(row.path, "file row path missing")
+	local path = vim.fs.joinpath(root, relpath)
+	local head_path = row.orig or relpath
+	local left_command = { "git", "show", "HEAD:" .. head_path }
+	local hash_command = { "git", "rev-parse", "--short=7", "HEAD" }
+	local left_result
+	local hash_result
+
+	local function finish()
+		if not left_result or not hash_result then
+			return
+		end
+		vim.schedule(function()
+			local added = row.status == "added" or row.status == "untracked"
+			local deleted = row.status == "deleted"
+			local right = {}
+			local right_buf
+			if not deleted then
+				right_buf = vim.fn.bufnr(path, false)
+				if right_buf == -1 then
+					right_buf = vim.fn.bufadd(path)
+				end
+				vim.fn.bufload(right_buf)
+				right = vim.api.nvim_buf_get_lines(right_buf, 0, -1, false)
+			end
+			local left_text = left_result.stdout or ""
+			callback({
+				path = path,
+				root = root,
+				relpath = relpath,
+				left = added and {} or text_lines(left_text),
+				right = right,
+				right_buf = right_buf,
+				actionable = not added and not deleted,
+				head_final_newline = not added and left_text:sub(-1) == "\n",
+				filetype = vim.filetype.match({ filename = path }) or "",
+				labels = {
+					left = (hash_result.code == 0 and vim.trim(hash_result.stdout or "") or "HEAD") .. " · HEAD",
+					right = "Your version",
+				},
+			})
+		end)
+	end
+
+	vim.system(left_command, { cwd = root, text = true }, function(result)
+		left_result = result
+		finish()
+	end)
+	vim.system(hash_command, { cwd = root, text = true }, function(result)
+		hash_result = result
+		finish()
+	end)
+end
+
 ---@param records FileTreeStatusRecord[]
 ---@return boolean
 local function fully_staged(records)
