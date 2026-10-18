@@ -56,7 +56,7 @@ Scenarios: `file-tree: Unfold all leaves ignored folders collapsed`, `file-tree:
 Scenarios: `file-tree: Show Ignored matches the approved render`
 - [x] 5.1 Write the 100x30 case in `tests/screen/file-tree/test_ignored.lua`, pass `H.GIT_ENV` to the child, compare text verbatim with a byte-identical `tests/screen/file-tree/ign_proposed.ansi`, assert real extmark groups without a mask or self-blessed screenshot, and run `make test FILE=tests/screen/file-tree/test_ignored.lua CASE="Show Ignored matches the approved render"` to see it fail
 - [x] 5.2 Make the rendered text and groups match `Proposed — after Show Ignored`, then run `make test FILE=tests/screen/file-tree/test_ignored.lua CASE="Show Ignored matches the approved render"` and see it pass
-- [ ] 5.3 Run `make check`
+- [x] 5.3 Run `make check`
 
 ## Agent decisions
 
