@@ -5,7 +5,7 @@ local eq = MiniTest.expect.equality
 
 local T = MiniTest.new_set()
 
-local ASYNC = "LSP restart and neo-tree renders are async: wait for the end state, not for attachment."
+local ASYNC = "LSP restart and tree and panel renders are async: wait for the end state, not for attachment."
 
 --- `make -s probe` in this checkout with `env` (outer make's jobserver flags dropped).
 ---@param env table<string, string>

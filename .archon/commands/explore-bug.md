@@ -23,7 +23,7 @@ openspec/specs/<capability>/spec.md and the queued changes in openspec/changes/.
 openspec/changes/<id>/ first.
 
 Start from the files and functions the bug names (`rg -n` and line ranges read once with `nl -ba`, not whole files; narrow `rg` patterns); plugin source is under `~/.local/share/nvim/lazy/<plugin>`. Reproduce in a headless child Neovim where possible (`make test CASE=…`, or a throwaway mini.test
-case you delete afterwards). Do not change code, specs or tests. Ad-hoc headless runs: write the probe to a scratch file and run `make probe SCRIPT=$ARTIFACTS_DIR/probe.lua` (the tests' full-config child and sandbox, prints its output and return values, non-zero on error, `PROBE_TIMEOUT` ms); do not hand-build rtp or XDG dirs. LSP restart and neo-tree renders are async: wait for the end state, not for attachment. Visual marks need `exe "normal! V2j\<Esc>"` or `nvim_buf_set_mark`.
+case you delete afterwards). Do not change code, specs or tests. Ad-hoc headless runs: write the probe to a scratch file and run `make probe SCRIPT=$ARTIFACTS_DIR/probe.lua` (the tests' full-config child and sandbox, prints its output and return values, non-zero on error, `PROBE_TIMEOUT` ms); do not hand-build rtp or XDG dirs. LSP restart and tree and panel renders are async: wait for the end state, not for attachment. Visual marks need `exe "normal! V2j\<Esc>"` or `nvim_buf_set_mark`.
 
 Write `$ARTIFACTS_DIR/root-cause.md`: symptom, reproduction, root cause with file:line evidence,
 affected capability, and the correct behaviour as a WHEN/THEN sentence. Drop anything you could not
