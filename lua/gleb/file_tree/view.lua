@@ -9,6 +9,7 @@ local ignore = require("gleb.file_tree.ignore")
 local model = require("gleb.file_tree.model")
 local render = require("gleb.file_tree.render")
 local settings = require("gleb.file_tree.settings")
+local state = require("gleb.file_tree.state")
 local watch = require("gleb.file_tree.watch")
 
 local EXPANSION_MAX_ROWS = 5000
@@ -204,7 +205,7 @@ local function row_options(view, loaded_settings)
 		status = git.status(view.root),
 		ignored = git.ignored(view.root),
 		ignored_generation = git.ignored_generation(view.root),
-		show_ignored = false,
+		show_ignored = state.show_ignored(),
 		matcher = loaded_settings.matcher,
 	}
 end
@@ -739,6 +740,7 @@ end
 ---@param path string
 ---@return FileTreeView
 local function open_view(path)
+	state.load()
 	local tab = vim.api.nvim_get_current_tabpage()
 	local root = fs.normalize(vim.fn.getcwd())
 	local buf = vim.api.nvim_create_buf(false, true)
@@ -983,7 +985,25 @@ function M.redraw_all()
 	for _, view in pairs(M.state.by_tab) do
 		if vim.api.nvim_win_is_valid(view.win) and vim.api.nvim_buf_is_valid(view.buf) then
 			local row = selected_row(view)
+			local cursor_line = vim.api.nvim_win_get_cursor(view.win)[1]
+			local rows_before = view.rows
 			draw(view, row and row.path or view.root)
+			if
+				row and not vim.iter(view.rows):any(function(candidate)
+					return candidate.path == row.path
+				end)
+			then
+				for index = cursor_line - 1, 1, -1 do
+					local previous_path = rows_before[index].path
+					local new_index = vim.iter(view.rows):enumerate():find(function(_, candidate)
+						return candidate.path == previous_path
+					end)
+					if new_index then
+						vim.api.nvim_win_set_cursor(view.win, { new_index, 0 })
+						break
+					end
+				end
+			end
 		end
 	end
 end

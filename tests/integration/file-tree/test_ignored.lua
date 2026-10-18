@@ -547,4 +547,122 @@ T["file-tree: Ignore patterns apply outside a git repository"]["filters without 
 	eq(notifications(), {})
 end
 
+T["file-tree: I toggles ignored entries"] = MiniTest.new_set()
+
+T["file-tree: I toggles ignored entries"]["shows and hides ignored rows through the tree mapping"] = function()
+	local project = F.copy("treeproj", vim.fn.tempname() .. "/billing")
+	open_tree(project, settings_file({}))
+	wait_for_git()
+	expand("web")
+
+	child.type_keys("I")
+	wait_for_label("bin", true)
+	eq(has_label("node_modules"), true)
+	eq(has_label(".env"), true)
+	local shown = labels()
+	eq(vim.fn.index(shown, "bin") + 1, vim.fn.index(shown, ".github/workflows") + 2)
+	eq(vim.fn.index(shown, "node_modules") + 1, vim.fn.index(shown, "src") + 0)
+	eq(vim.fn.index(shown, ".env") + 1, vim.fn.index(shown, ".gitignore") + 0)
+
+	child.type_keys("I")
+	wait_for_label("bin", false)
+	eq(has_label("node_modules"), false)
+	eq(has_label(".env"), false)
+end
+
+T["file-tree: Show Ignored is a Find Action toggle"] = MiniTest.new_set()
+
+T["file-tree: Show Ignored is a Find Action toggle"]["toggles in place through the real picker"] = function()
+	local project = F.copy("treeproj", vim.fn.tempname() .. "/billing")
+	open_tree(project, settings_file({}))
+	wait_for_git()
+	expand("web")
+
+	child.type_keys("<M-A>")
+	assert(child.wait([[MiniPick.is_picker_active()]]), "Find Action did not open")
+	child.type_keys("show ignored")
+	assert(
+		child.wait([[(MiniPick.get_picker_matches().current or {}).action.id == "file_tree.show_ignored"]]),
+		"Show Ignored did not match"
+	)
+	child.type_keys("<CR>")
+	assert(child.wait([[MiniPick.is_picker_active()]]), "toggle closed Find Action")
+	eq(child.lua_get([[MiniPick.get_picker_matches().current.glyph]]), true)
+	eq(
+		child.lua_get([[(function()
+			local state = MiniPick.get_picker_state()
+			local line = vim.api.nvim_buf_get_lines(state.buffers.main, 0, 1, false)[1]
+			return line:find("●", 1, true) ~= nil
+		end)()]]),
+		true
+	)
+	child.type_keys("<Esc>")
+	wait_for_label("bin", true)
+	eq(has_label("node_modules"), true)
+	eq(has_label(".env"), true)
+end
+
+T["file-tree: Show Ignored persists"] = MiniTest.new_set()
+
+T["file-tree: Show Ignored persists"]["saves and survives closing the tree"] = function()
+	local project = F.copy("treeproj", vim.fn.tempname() .. "/billing")
+	open_tree(project, settings_file({}))
+	wait_for_git()
+
+	child.type_keys("I")
+	wait_for_label("bin", true)
+	child.type_keys("q")
+	assert(child.wait([[require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()] == nil]]))
+	child.lua([[
+		local action = assert(require("gleb.actions").state.applicator.catalog:get("file_tree.toggle"))
+		action.run(require("gleb.actions.context").capture())
+	]])
+	wait_for_label("bin", true)
+	eq(
+		child.lua_get([[(function()
+		local path = vim.fs.joinpath(vim.fn.stdpath("state"), "file_tree", "view.json")
+		return vim.json.decode(table.concat(vim.fn.readfile(path), "\n"))
+	end)()]]),
+		{ show_ignored = true }
+	)
+end
+
+T["file-tree: Saved Show Ignored state is restored"] = MiniTest.new_set()
+
+T["file-tree: Saved Show Ignored state is restored"]["loads the saved value on first open"] = function()
+	child.lua([[
+		local path = vim.fs.joinpath(vim.fn.stdpath("state"), "file_tree", "view.json")
+		vim.fn.mkdir(vim.fs.dirname(path), "p")
+		vim.fn.writefile({ '{"show_ignored":true}' }, path)
+	]])
+	local project = F.copy("treeproj", vim.fn.tempname() .. "/billing")
+	open_tree(project, settings_file({}))
+	wait_for_git()
+	wait_for_label("bin", true)
+
+	eq(has_label("bin"), true)
+	eq(has_label(".env"), true)
+end
+
+T["file-tree: Hiding the selected ignored row moves upward"] = MiniTest.new_set()
+
+T["file-tree: Hiding the selected ignored row moves upward"]["selects the nearest listed row above"] = function()
+	local project = F.copy("treeproj", vim.fn.tempname() .. "/billing")
+	open_tree(project, settings_file({}))
+	wait_for_git()
+	expand("web")
+	child.type_keys("I")
+	wait_for_label("node_modules", true)
+	focus_tree_path("web/node_modules")
+	local above = child.lua_get([[(function()
+		local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+		local line = vim.api.nvim_win_get_cursor(view.win)[1]
+		return view.rows[line - 1].path
+	end)()]])
+
+	child.type_keys("I")
+	wait_for_label("node_modules", false)
+	eq(tree_state().selected, above)
+end
+
 return T

@@ -36,9 +36,9 @@ Scenarios: `file-tree: Hidden ignored file is not revealed`
 
 ## 3. Add Show Ignored action and state
 Scenarios: `file-tree: I toggles ignored entries`, `file-tree: Show Ignored is a Find Action toggle`, `file-tree: Show Ignored persists`, `file-tree: Saved Show Ignored state is restored`, `file-tree: Hiding the selected ignored row moves upward`
-- [ ] 3.1 Write the five scenarios in `tests/integration/file-tree/test_ignored.lua`, driving `I`, `<M-A>` and the real picker with populated tree data, and run `make test FILE=tests/integration/file-tree/test_ignored.lua` to see them fail
-- [ ] 3.2 Add `lua/gleb/file_tree/state.lua`, the `file_tree.show_ignored` toggle with a real `run`, and `"file_tree.show_ignored": ["I"]` in `settings/keymap.json`; redraw every view and select the nearest listed row above when the current row disappears
-- [ ] 3.3 Run `make test FILE=tests/integration/file-tree/test_ignored.lua`, then `make quick`, and see them pass
+- [x] 3.1 Write the five scenarios in `tests/integration/file-tree/test_ignored.lua`, driving `I`, `<M-A>` and the real picker with populated tree data, and run `make test FILE=tests/integration/file-tree/test_ignored.lua` to see them fail
+- [x] 3.2 Add `lua/gleb/file_tree/state.lua`, the `file_tree.show_ignored` toggle with a real `run`, and `"file_tree.show_ignored": ["I"]` in `settings/keymap.json`; redraw every view and select the nearest listed row above when the current row disappears
+- [x] 3.3 Run `make test FILE=tests/integration/file-tree/test_ignored.lua`, then `make quick`, and see them pass
 
 ## 4a. Draw ignored rows
 Scenarios: `file-tree: Ignored rows are grey italic`

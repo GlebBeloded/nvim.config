@@ -366,7 +366,7 @@ local function append_children(tree, expanded, opts, rows, path, depth, nesting_
 			local label = entry.name
 			local tail = entry
 			local children = {}
-			if entry.kind == "directory" then
+			if entry.kind == "directory" and not ignored_entries[entry.name] then
 				label, tail, children = compact_directory(tree, entry, nesting_settings, opts)
 			end
 			local relative = relative_path(tree.root, tail.path)
