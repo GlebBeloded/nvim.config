@@ -761,7 +761,7 @@ The loop SHALL keep the user's contract unasked: no step changes a requirement's
 
 #### Scenario: Queue spec prompt keeps the user's contract
 - **WHEN** `.archon/commands/queue-spec.md` is read
-- **THEN** it forbids changing a requirement's numbers or bounds, removing a requirement to add it again and rewording `## Decision`, and settles any `## Blocked` section left
+- **THEN** it forbids changing a requirement's numbers or bounds, removing a requirement to add it again, rewording `## Decision` and dropping, narrowing or scoping out a `## What Changes` item, and settles any `## Blocked` section left
 
 #### Scenario: Judge rejects a change that re-adds a removed requirement
 - **WHEN** `.archon/scripts/escalation.py` runs on a branch whose change delta REMOVES requirement `Server readiness` and ADDS `Server readiness.` (a near name)

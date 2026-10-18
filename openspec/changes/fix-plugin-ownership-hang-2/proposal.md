@@ -51,3 +51,13 @@ neotest summary, Mason, Lazy, 99). Which one blocks is not known.
 
 - `tests/helpers.lua`, `tests/integration/actions/test_plugin_ownership.lua`, and `tests/integration/git/test_git.lua`.
 - `actions: Plugin-window mappings are action-owned` and `git: Differ opens panel on the left` still hold, and neither hangs a worker under load.
+
+## Decision (auditor, 2026-10-18, after the task loop)
+
+- The fail-fast deadline with diagnostics is accepted as this change's fix: a stalled surface fails in seconds instead of
+  hanging a worker for 300 s.
+- The blocked-`:Differ` regression case asserts the diagnostics' phase is `opening` (the stubbed git call was hit, not a
+  slow start) and always stops its blocked child (also when the open returns before the deadline), so it leaks no
+  process.
+- The stall diagnostics also list the child's live subprocesses (`vim.api.nvim_get_proc_children` with each command
+  line), so the next real stall names the git command it waited on.
