@@ -9,7 +9,9 @@ import json
 import os
 import pathlib
 import re
+import shutil
 import subprocess
+import tempfile
 
 BASE = os.environ.get("BASE_BRANCH") or "auto"
 PLUGIN_NAME = re.compile(r'"([\w.-]+/[\w.-]+)"')
@@ -34,16 +36,34 @@ def lines(diff: str, sign: str) -> list[str]:
     return [l[1:] for l in diff.splitlines() if l.startswith(sign) and not l.startswith(sign * 3)]
 
 
+_INDEX: dict[str, str] = {}
+
+
+def staged(*args: str) -> str:
+    """`git <args>` against a private copy of the index with everything staged (ship commits everything, so new
+    files count). Staging into the real index made the agent's later `git add <touched files>` commit stray files;
+    gate.py imports this module, so the process environment stays untouched."""
+    root = git("rev-parse", "--show-toplevel").strip()
+    if root not in _INDEX:
+        index = pathlib.Path(git("rev-parse", "--path-format=absolute", "--git-path", "index").strip())
+        copy = pathlib.Path(tempfile.mkdtemp(prefix="integrity-")) / "index"
+        if index.is_file():
+            shutil.copyfile(index, copy)
+        _INDEX[root] = str(copy)
+    env = {**os.environ, "GIT_INDEX_FILE": _INDEX[root]}
+    subprocess.run(["git", "add", "-A"], capture_output=True, text=True, check=True, env=env)
+    return subprocess.run(["git", *args], capture_output=True, text=True, check=True, env=env).stdout
+
+
 def diff(*paths: str) -> str:
-    git("add", "-A")  # ship commits everything; stage so new files count
     base = git("merge-base", "HEAD", BASE).strip()
-    return git("diff", "--cached", base, "--", *paths)
+    return staged("diff", "--cached", base, "--", *paths)
 
 
 def changed_files(pattern: str) -> list[str]:
     """Active-change files matching `pattern` that the branch changed and that still exist."""
     base = git("merge-base", "HEAD", BASE).strip()
-    names = git("diff", "--cached", "--name-only", base, "--", "openspec/changes").split()
+    names = staged("diff", "--cached", "--name-only", base, "--", "openspec/changes").split()
     return [n for n in names if re.fullmatch(pattern, n) and "/archive/" not in n and os.path.isfile(n)]
 
 

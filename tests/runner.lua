@@ -1,7 +1,7 @@
 -- mini.test entry point used by the Makefile.
 --   nvim --headless --noplugin -u tests/minimal_init.lua -c "lua require('tests.runner').run('unit')"
 -- Layers are directories under tests/ ("unit,integration" runs several).
--- FILE=<path> narrows to one file, CAPS=<cap>[,<cap>] to tests/<layer>/<cap>/,
+-- FILE=<path> narrows to one file (or a directory's test files), CAPS=<cap>[,<cap>] to tests/<layer>/<cap>/,
 -- CASE=<substring> to matching case names. tests/parallel.lua shards a run:
 -- TEST_SHARD_CASES lists the indices (among the matched cases) this process
 -- runs, and the results are written as JSON to TEST_SHARD_OUT instead of the
@@ -21,7 +21,12 @@ local SERIAL_FILES = {
 ---@return string[]
 function M.find_files(layer)
 	if vim.env.FILE and vim.env.FILE ~= "" then
-		return { vim.env.FILE }
+		if vim.fn.isdirectory(vim.env.FILE) == 0 then
+			return { vim.env.FILE }
+		end
+		local files = vim.fn.globpath(vim.env.FILE, "**/test_*.lua", false, true)
+		table.sort(files)
+		return files
 	end
 	local layers = (layer and layer ~= "") and vim.split(layer, ",", { trimempty = true }) or M.DEFAULT_LAYERS
 	local caps = vim.split(vim.env.CAPS or "", ",", { trimempty = true })
