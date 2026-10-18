@@ -31,9 +31,9 @@ Scenarios: `file-tree: Project tree opening skips non-editor windows`, `file-tre
 
 ## 4c. Replace neo-tree in follow and close isolation
 Scenarios: `file-tree: Project tree opens from non-project buffers`, `file-tree: Project tree does not follow a directory buffer`, `file-tree: Project tree closes before last editor with close`, `file-tree: Project tree and changes panel close before the last editor`
-- [ ] 4c.1 Tighten `tests/integration/file-tree/test_project_live.lua` and `test_project_tree.lua` to preserve root and cursor for a directory buffer and to use a real changes panel in the close-if-last case; run `make test FILE=tests/integration/file-tree/test_project_tree.lua CASE="Project tree and changes panel close before the last editor"` and see it fail
-- [ ] 4c.2 Update project-tree follow and QuitPre handling to treat directory buffers as non-followable and the changes panel as the other sidebar
-- [ ] 4c.3 Run the four named cases and see them pass
+- [x] 4c.1 Tighten `tests/integration/file-tree/test_project_live.lua` and `test_project_tree.lua` to preserve root and cursor for a directory buffer and to use a real changes panel in the close-if-last case; run `make test FILE=tests/integration/file-tree/test_project_tree.lua CASE="Project tree and changes panel close before the last editor"` and see it fail
+- [x] 4c.2 Update project-tree follow and QuitPre handling to treat directory buffers as non-followable and the changes panel as the other sidebar
+- [x] 4c.3 Run the four named cases and see them pass
 
 ## 5a. Update git and action retirement tests
 Scenarios: `git: Missing optional git plugins are tolerated`, `git: Git commands are available after startup`, `git: Removed diff plugins are not registered`, `actions: Every configured mapping is action-owned`, `actions: Plugin-window mappings are action-owned`
@@ -106,6 +106,7 @@ Scenarios: `diff: Diff view opens on the current file`, `diff: Diff view mapping
 - Made no production change for task 4a because task 1 already supplied reveal-on-toggle; the five retained scenarios pass through the real mapping, which replaces the retired unbound-action case.
 - The converted editor-window test was already green because `git-changes-tree` had added the changes-panel eligibility guard; this task removed the remaining neo-tree exclusions.
 - Opened the populated changes panel through its public entry point in shared-window tests so it can coexist with the project tree despite the user-facing toggles enforcing one left tool window.
+- Kept the directory-follow and shared-sidebar production paths already supplied by earlier project-tree work; the tightened 4c assertions proved both contracts without duplicate code.
 
 ## Stuck
 

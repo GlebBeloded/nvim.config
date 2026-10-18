@@ -396,11 +396,20 @@ T["file-tree: Project tree closes before last editor with close"] = function()
 	eq(project_tree_windows(), {})
 end
 
-T["file-tree: Project and neo-tree close before the last editor"] = function()
+T["file-tree: Project tree and changes panel close before the last editor"] = function()
 	edit("README.md")
 	run_toggle()
 	child.cmd("wincmd l")
 	open_changes_panel()
+	eq(
+		child.lua_get([[(function()
+			return #vim.iter(vim.api.nvim_tabpage_list_wins(0)):filter(function(win)
+				local filetype = vim.bo[vim.api.nvim_win_get_buf(win)].filetype
+				return filetype == "gleb-file-tree" or filetype == "gleb-changes"
+			end):totable()
+		end)()]]),
+		2
+	)
 	child.lua([[(function()
 		for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
 			if vim.bo[vim.api.nvim_win_get_buf(win)].filetype == "markdown" then
