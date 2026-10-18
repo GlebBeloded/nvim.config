@@ -132,4 +132,25 @@ T["git: Changes panel caps rows"]["stops at the project tree row limit"] = funct
 	eq(capped, true)
 end
 
+T["git: Changes panel checkboxes follow the index"] = MiniTest.new_set()
+
+T["git: Changes panel checkboxes follow the index"]["derives file and root states from porcelain columns"] = function()
+	local output = records({
+		status_record("M.", "a.txt"),
+		status_record(".M", "b.txt"),
+		status_record(".M", "lib/c.lua"),
+		status_record("MM", "d.txt"),
+		"? new.txt",
+	})
+	local rows = model.rows(output, default_nesting_rules())
+
+	eq(row_with_path(rows, "a.txt").checkbox, "󰄲")
+	eq(row_with_path(rows, "b.txt").checkbox, "󰄱")
+	eq(row_with_path(rows, "lib/c.lua").checkbox, "󰄱")
+	eq(row_with_path(rows, "d.txt").checkbox, "󰡖")
+	eq(row_with_path(rows, "new.txt").checkbox, "󰄱")
+	eq({ rows[1].kind, rows[1].checkbox }, { "root", "󰡖" })
+	eq({ rows[7].kind, rows[7].checkbox }, { "root", "󰄱" })
+end
+
 return T

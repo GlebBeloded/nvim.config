@@ -5,11 +5,16 @@ local M = {}
 local file_tree_model = require("gleb.file_tree.model")
 
 local MAX_ROWS = 5000
+local CHECKBOX_EMPTY = "󰄱"
+local CHECKBOX_CHECKED = "󰄲"
+local CHECKBOX_MIXED = "󰡖"
 
 ---@class ChangesTreeNode
 ---@field name string
 ---@field path string
 ---@field count integer
+---@field staged boolean
+---@field unstaged boolean
 ---@field directories table<string, ChangesTreeNode>
 ---@field files ChangesRow[]
 
@@ -28,6 +33,7 @@ local MAX_ROWS = 5000
 ---@field submodule? boolean
 ---@field directory_record? boolean
 ---@field diffable? boolean
+---@field checkbox? string
 
 local ROOTS = {
 	changes = { label = "Changes" },
@@ -38,7 +44,31 @@ local ROOTS = {
 ---@param path string
 ---@return ChangesTreeNode
 local function tree_node(name, path)
-	return { name = name, path = path, count = 0, directories = {}, files = {} }
+	return { name = name, path = path, count = 0, staged = false, unstaged = false, directories = {}, files = {} }
+end
+
+---@param staged boolean
+---@param unstaged boolean
+---@return string
+local function checkbox(staged, unstaged)
+	if staged and unstaged then
+		return CHECKBOX_MIXED
+	end
+	if staged then
+		return CHECKBOX_CHECKED
+	end
+	return CHECKBOX_EMPTY
+end
+
+---@param record FileTreeStatusRecord
+---@return boolean staged
+---@return boolean unstaged
+local function record_index_state(record)
+	if record.kind == "?" then
+		return false, true
+	end
+	local xy = record.xy or ".."
+	return xy:sub(1, 1) ~= ".", xy:sub(2, 2) ~= "."
 end
 
 ---@param left { name?: string, label?: string }
@@ -85,10 +115,13 @@ end
 ---@param record FileTreeStatusRecord
 ---@return nil
 local function insert_record(root, root_name, record)
+	local staged, unstaged = record_index_state(record)
 	local display_path = record.path:gsub("/+$", "")
 	local parts = vim.split(display_path, "/", { plain = true, trimempty = true })
 	local node = root
 	node.count = node.count + 1
+	node.staged = node.staged or staged
+	node.unstaged = node.unstaged or unstaged
 	for index = 1, #parts - 1 do
 		local name = parts[index]
 		local child = node.directories[name]
@@ -115,6 +148,7 @@ local function insert_record(root, root_name, record)
 		submodule = submodule,
 		directory_record = directory_record,
 		diffable = not directory_record and not submodule,
+		checkbox = checkbox(staged, unstaged),
 	}
 end
 
@@ -205,6 +239,7 @@ local function append_root(rows, root, root_name)
 		count = root.count,
 		fold_id = root_name,
 		expanded = true,
+		checkbox = checkbox(root.staged, root.unstaged),
 	}
 	for _, directory in ipairs(sorted_directories(root.directories)) do
 		if not append_directory(rows, directory, root_name, 1) then

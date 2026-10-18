@@ -24,9 +24,9 @@ Scenarios: `git: Changes panel colours names by status`, `git: Changes panel hig
 
 ## 2d. Staging checkboxes
 Scenarios: `git: Changes panel checkboxes follow the index`
-- [ ] 2d.1 Write the scenario in `tests/unit/git/test_changes_model.lua` with populated staged, unstaged and mixed records and see it fail
-- [ ] 2d.2 Derive file and root checkbox states from the porcelain index and worktree columns
-- [ ] 2d.3 Run `make test FILE=tests/unit/git/test_changes_model.lua CASE="Changes panel checkboxes follow the index"` and see it pass
+- [x] 2d.1 Write the scenario in `tests/unit/git/test_changes_model.lua` with populated staged, unstaged and mixed records and see it fail
+- [x] 2d.2 Derive file and root checkbox states from the porcelain index and worktree columns
+- [x] 2d.3 Run `make test FILE=tests/unit/git/test_changes_model.lua CASE="Changes panel checkboxes follow the index"` and see it pass
 
 ## 2e. Line statistics
 Scenarios: `git: Changes panel shows line stats`, `git: Changes panel cuts a long name before the stats`, `git: Changes panel omits unmatched numstat`, `git: Changes panel on unborn HEAD has no stats`
@@ -169,3 +169,4 @@ Scenarios: `git: Changes panel matches the approved render`, `git: Changes panel
 
 - `model.rows` returns flat display-order rows because rendering, cursor movement and folds consume the same ordered panel model.
 - `model.rows` returns a `capped` flag so the view can own the warning while the model stays pure.
+- Checkbox fields carry the approved glyphs so renderers consume one model-derived index state without a second mapping.
