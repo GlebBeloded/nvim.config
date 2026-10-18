@@ -1,7 +1,7 @@
 ## MODIFIED Requirements
 
 ### Requirement: Action ordering and matching
-With an empty query, the palette SHALL list recently used actions saved across sessions before curated actions, retaining at most the last 20 action ids. Recent history SHALL record catalog actions run from the palette or a configured shortcut. With a query, the palette SHALL fuzzy-match action titles, categories, and aliases. For a multi-word query, it SHALL also fuzzy-match the combined `<Category> <Title>` value in that order; single-word matching of the separate fields SHALL remain unchanged. Section rows SHALL be display-only; after opening or replacing results, the first actionable match SHALL be current.
+With no query, the palette SHALL put persisted recent actions before curated actions, most recent first, retaining at most 20 ids. It SHALL record catalog actions run from the palette or a configured shortcut. Queries SHALL fuzzy-match titles, categories, aliases, and, when multi-word, combined `<Category> <Title>` in that order; separate-field matching SHALL remain unchanged. Section rows SHALL be display-only. On open or replacement, the first actionable match SHALL be current.
 
 #### Scenario: Empty query puts recent actions first
 - **WHEN** catalog actions are run from a configured shortcut and from the palette, then the palette is reopened with no query

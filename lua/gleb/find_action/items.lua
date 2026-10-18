@@ -37,6 +37,9 @@ local function action_matches(action, query)
 	if fuzzy_matches(action.title, query) or fuzzy_matches(action.category, query) then
 		return true
 	end
+	if query:find("%s") and fuzzy_matches(action.category .. " " .. action.title, query) then
+		return true
+	end
 	for _, alias in ipairs(action.aliases or {}) do
 		if fuzzy_matches(alias, query) then
 			return true

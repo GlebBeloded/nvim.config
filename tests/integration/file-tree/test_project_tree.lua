@@ -776,9 +776,8 @@ end)()
 		),
 		"Find Action picker did not open"
 	)
-	child.type_keys("open")
-	assert(child.wait([[table.concat(MiniPick.get_picker_query()) == "open"]], 5000), "query was not processed")
-	child.type_keys("<C-n><C-n>")
+	child.type_keys("project open")
+	assert(child.wait([[table.concat(MiniPick.get_picker_query()) == "project open"]], 5000), "query was not processed")
 	assert(
 		child.wait(
 			[[
