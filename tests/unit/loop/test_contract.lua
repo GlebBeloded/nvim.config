@@ -82,6 +82,7 @@ T["loop: Queue spec prompt keeps the user's contract"] = function()
 	has(prompt, "never change a number or bound")
 	has(prompt, "never REMOVE a requirement to ADD it again")
 	has(prompt, "never reword the `## Decision` text")
+	has(prompt, "never drop, narrow or mark out of scope an item of the proposal's `## What Changes`")
 	has(prompt, "settle any `## Blocked` section left")
 end
 
