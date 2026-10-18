@@ -469,7 +469,7 @@ T["file-tree: Project tree prunes a deleted expanded folder"] = function()
 				and _G.file_tree_deleted_handle:is_closing()
 		end, 20)
 	end)(...)]],
-		{ math.ceil(1000 * H.load_factor()) }
+		{ 1000 }
 	)
 	eq(pruned, true)
 end
