@@ -181,4 +181,81 @@ T["git: Changes panel highlight colours"]["come from the palette after a colorsc
 	H.expect_hl_colors(child, "ChangesStatRemoved", { fg = "#ea6962" })
 end
 
+T["git: Changes panel mappings come from the shortcut file"] = function()
+	child.cmd("cd " .. vim.fn.fnameescape(repo))
+	toggle_changes()
+	wait_for_panel()
+
+	local mappings = child.lua_get([[
+		(function()
+			local context = require("gleb.actions.context")
+			local original = context.execute
+			local invoked
+			context.execute = function(action)
+				invoked = action.id
+				return true
+			end
+			local result = {}
+			for _, mapping in ipairs(vim.api.nvim_buf_get_keymap(0, "n")) do
+				invoked = nil
+				mapping.callback()
+				table.insert(result, { mapping.lhs, mapping.desc, invoked })
+			end
+			context.execute = original
+			table.sort(result, function(a, b) return a[1] < b[1] end)
+			return result
+		end)()
+	]])
+	eq(mappings, {
+		{ " ", "Changes: Toggle Stage", "changes.toggle_stage" },
+		{ "<CR>", "Changes: Open", "changes.open" },
+		{ "A", "Changes: Stage All", "changes.stage_all" },
+		{ "P", "Changes: Push", "changes.push" },
+		{ "X", "Changes: Revert", "changes.revert" },
+		{ "gc", "Changes: Commit", "changes.commit" },
+		{ "q", "Changes: Close", "changes.close" },
+		{ "za", "Changes: Toggle Fold", "changes.toggle_fold" },
+	})
+end
+
+T["git: Changes panel leaves gr global"] = function()
+	child.cmd("cd " .. vim.fn.fnameescape(repo))
+	toggle_changes()
+	wait_for_panel()
+
+	local mapping = child.lua_get([[
+		(function()
+			local references = require("gleb.references")
+			local original = references.open
+			local invoked = false
+			references.open = function() invoked = true end
+			local current = vim.fn.maparg("gr", "n", false, true)
+			current.callback()
+			references.open = original
+			return { current.buffer, current.desc, invoked }
+		end)()
+	]])
+	eq(mapping, { 0, "LSP: Find References", true })
+end
+
+T["git: Changes panel entry points are actions"] = function()
+	eq(
+		child.lua_get([[
+			(function()
+				local catalog = require("gleb.actions").state.applicator.catalog
+				local result = {}
+				for _, id in ipairs({ "changes.toggle", "changes.review" }) do
+					local action = assert(catalog:get(id), id .. " is not registered")
+					result[id] = { action.title, action.category, action.plugin }
+				end
+				return result
+			end)()
+		]]),
+		{
+			["changes.toggle"] = { "Toggle Changes", "View | Tool Windows" },
+			["changes.review"] = { "Review Changes", "View | Tool Windows" },
+		}
+	)
+end
+
 return T

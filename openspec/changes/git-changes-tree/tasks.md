@@ -48,9 +48,9 @@ Scenarios: `git: Changes panel opens on the left at width 35`, `git: Changes pan
 
 ## 3b. Keys and action catalog
 Scenarios: `git: Changes panel mappings come from the shortcut file`, `git: Changes panel leaves gr global`, `git: Changes panel entry points are actions`
-- [ ] 3b.1 Write the scenarios in `tests/integration/git/test_changes.lua`, opening a real `gleb-changes` buffer and reading the real action catalog, and see them fail
-- [ ] 3b.2 Add the eight view-scoped `changes.*` entries to `settings/keymap.json` with no `plugin`, preserve global `gr`, and add `changes.toggle` and `changes.review` to Find Action's approved list
-- [ ] 3b.3 Run `make test FILE=tests/integration/git/test_changes.lua CASE="Changes panel"` and see it pass
+- [x] 3b.1 Write the scenarios in `tests/integration/git/test_changes.lua`, opening a real `gleb-changes` buffer and reading the real action catalog, and see them fail
+- [x] 3b.2 Add the eight view-scoped `changes.*` entries to `settings/keymap.json` with no `plugin`, preserve global `gr`, and add `changes.toggle` and `changes.review` to Find Action's approved list
+- [x] 3b.3 Run `make test FILE=tests/integration/git/test_changes.lua CASE="Changes panel"` and see it pass
 
 ## 3c. Folds and refresh
 Scenarios: `git: Changes panel za folds a nest`, `git: Changes panel Enter folds a directory`, `git: Changes panel refreshes after a write`, `git: Changes panel refreshes after hunk staging`, `git: Changes panels isolate two tabs`
@@ -170,3 +170,4 @@ Scenarios: `git: Changes panel matches the approved render`, `git: Changes panel
 - `model.rows` returns flat display-order rows because rendering, cursor movement and folds consume the same ordered panel model.
 - `model.rows` returns a `capped` flag so the view can own the warning while the model stays pure.
 - Checkbox fields carry the approved glyphs so renderers consume one model-derived index state without a second mapping.
+- Changes panel action titles use concise verbs (`Open`, `Commit`, `Push`) so generated descriptions stay `Changes: <Title>`.
