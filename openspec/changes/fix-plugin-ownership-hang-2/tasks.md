@@ -6,9 +6,9 @@ Scenarios: `actions: Plugin-window mappings are action-owned`
 
 ## 2. Bound the Differ viewer scenario
 Scenarios: `git: Differ opens panel on the left`
-- [ ] 2.1 Use `FAIL in tests/integration/git/test_git.lua | git: Differ opens panel on the left: hung: no progress for 300 s (waiting for input or a never-met condition?)` as the failing evidence, then update `tests/integration/git/test_git.lua` to drive the real `:Differ` command with populated working-tree changes through the bounded helper and require its named diagnostic within 10 seconds when blocked
-- [ ] 2.2 Keep the panel position, width, and tree-content assertions unchanged
-- [ ] 2.3 Run `make test FILE=tests/integration/git/test_git.lua CASE="Differ opens panel on the left"` and see it pass
+- [x] 2.1 Use `FAIL in tests/integration/git/test_git.lua | git: Differ opens panel on the left: hung: no progress for 300 s (waiting for input or a never-met condition?)` as the failing evidence, then update `tests/integration/git/test_git.lua` to drive the real `:Differ` command with populated working-tree changes through the bounded helper and require its named diagnostic within 10 seconds when blocked
+- [x] 2.2 Keep the panel position, width, and tree-content assertions unchanged
+- [x] 2.3 Run `make test FILE=tests/integration/git/test_git.lua CASE="Differ opens panel on the left"` and see it pass
 
 ## Agent decisions
 
