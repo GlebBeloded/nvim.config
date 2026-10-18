@@ -19,9 +19,9 @@ Scenarios: `file-tree: Directory argument opens the project tree`, `file-tree: n
 
 ## 4a. Retain the project-tree sidebar contract
 Scenarios: `file-tree: Project tree opens on the left at width 35`, `file-tree: Project tree toggle closes a focused tree`, `file-tree: Project tree toggle focuses an open tree`, `file-tree: Project tree closes with the last window`, `file-tree: Project tree toggle reveals the current file`
-- [ ] 4a.1 Update `tests/integration/file-tree/test_project_tree.lua` to exercise the real `file_tree.toggle` action after the binding cutover; run `make test FILE=tests/integration/file-tree/test_project_tree.lua CASE="Project tree toggle reveals the current file"` and see it fail
-- [ ] 4a.2 Make the smallest `lua/gleb/file_tree/` changes needed to preserve all five sidebar behaviours without neo-tree
-- [ ] 4a.3 Run the five named cases and see them pass
+- [x] 4a.1 Update `tests/integration/file-tree/test_project_tree.lua` to exercise the real `file_tree.toggle` action after the binding cutover; run `make test FILE=tests/integration/file-tree/test_project_tree.lua CASE="Project tree toggle reveals the current file"` and see it fail
+- [x] 4a.2 Make the smallest `lua/gleb/file_tree/` changes needed to preserve all five sidebar behaviours without neo-tree
+- [x] 4a.3 Run the five named cases and see them pass
 
 ## 4b. Replace neo-tree in editor-window hygiene
 Scenarios: `file-tree: Project tree opening skips non-editor windows`, `file-tree: A file cannot replace the project tree buffer`, `file-tree: Project tree split windows keep editor options`, `file-tree: Project tree tab windows keep editor options`
@@ -103,6 +103,7 @@ Scenarios: `diff: Diff view opens on the current file`, `diff: Diff view mapping
 ## Agent decisions
 
 - Kept the existing tree identity guards and changes timer cleanup because the replacement race tests showed they already preserve a close; task 2 only needed the retired tests and action table updated.
+- Made no production change for task 4a because task 1 already supplied reveal-on-toggle; the five retained scenarios pass through the real mapping, which replaces the retired unbound-action case.
 
 ## Stuck
 

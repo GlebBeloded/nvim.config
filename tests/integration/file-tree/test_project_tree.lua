@@ -44,11 +44,7 @@ local function real_path(relative)
 end
 
 local function run_toggle()
-	child.lua([[
-		local catalog = require("gleb.actions").state.applicator.catalog
-		local action = assert(catalog:get("file_tree.toggle"), "file_tree.toggle is not registered")
-		action.run(require("gleb.actions.context").capture())
-	]])
+	child.type_keys("<M-e>")
 	local opened =
 		child.lua_get([[require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()] ~= nil]])
 	if opened then
@@ -350,14 +346,6 @@ T["file-tree: Project tree toggle reveals the current file"] = function()
 	local cursor = child.api.nvim_win_get_cursor(0)
 	local line = child.api.nvim_buf_get_lines(0, cursor[1] - 1, cursor[1], false)[1]
 	eq(line:match("[^ ]+$"), "money.go")
-end
-
-T["file-tree: Project tree actions start unbound"] = function()
-	local shortcuts = child.lua_get([[require("gleb.actions").state.store.last_good]])
-	eq(shortcuts["file_tree.toggle"], nil)
-	eq(shortcuts["file_tree.reveal"], nil)
-	eq(child.lua_get([[vim.fn.maparg("<A-e>", "n", false, true).desc]]), "View | Tool Windows: Toggle File Tree")
-	eq(child.lua_get([[vim.fn.maparg("<A-G>", "n", false, true).desc]]), "View | Tool Windows: Toggle Git Status Tree")
 end
 
 T["file-tree: Project tree closes with the last window"] = function()
