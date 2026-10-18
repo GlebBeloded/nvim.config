@@ -6,10 +6,14 @@ local M = {}
 ---@field parent string
 ---@field children string[]
 
+---@alias FileTreeNestingChildPart string|integer
+
 ---@class FileTreeCompiledNestingRule
 ---@field parent? string
+---@field parent_literal? string
 ---@field capture_count? integer
 ---@field children? string[]
+---@field child_parts? (FileTreeNestingChildPart[]|false)[]
 ---@field lua? fun(dir: string, names: string[]): table<string, string[]>
 ---@field rule_index? integer
 ---@field failed? boolean
@@ -76,6 +80,55 @@ local function highest_capture(template)
 	return highest
 end
 
+---@param pattern string
+---@return string?
+local function literal_pattern(pattern)
+	local literal = {}
+	local index = 1
+	while index <= #pattern do
+		local character = pattern:sub(index, index)
+		if character == "%" then
+			local escaped = pattern:sub(index + 1, index + 1)
+			if escaped == "" or escaped:match("%w") then
+				return nil
+			end
+			literal[#literal + 1] = escaped
+			index = index + 2
+		elseif character:find("[().%[%]*+%-?^$]") then
+			return nil
+		else
+			literal[#literal + 1] = character
+			index = index + 1
+		end
+	end
+	return table.concat(literal)
+end
+
+--- Split a child template into literal text and capture indexes, or false when it needs pattern matching.
+---@param template string
+---@return FileTreeNestingChildPart[]|false
+local function literal_parts(template)
+	local parts = {}
+	local position = 1
+	for start, name, after in template:gmatch("()%${(%w+)}()") do
+		local literal = literal_pattern(template:sub(position, start - 1))
+		local digit = name:match("^[1-9]$")
+		local capture = name == "capture" and 1 or (digit and tonumber(digit))
+		if not literal or not capture then
+			return false
+		end
+		parts[#parts + 1] = literal
+		parts[#parts + 1] = capture
+		position = after
+	end
+	local tail = literal_pattern(template:sub(position))
+	if not tail then
+		return false
+	end
+	parts[#parts + 1] = tail
+	return parts
+end
+
 ---@param rules table[]
 ---@return FileTreeCompiledNestingRule[]
 local function compile_rules(rules)
@@ -107,6 +160,7 @@ local function compile_rules(rules)
 			else
 				local captures = capture_count(rule.parent)
 				local children = {}
+				local child_parts = {}
 				for _, child in ipairs(rule.children) do
 					if type(child) ~= "string" then
 						reason = "children must be strings"
@@ -119,9 +173,16 @@ local function compile_rules(rules)
 						break
 					end
 					children[#children + 1] = child
+					child_parts[#child_parts + 1] = literal_parts(child)
 				end
 				if not reason then
-					compiled[#compiled + 1] = { parent = parent, capture_count = captures, children = children }
+					compiled[#compiled + 1] = {
+						parent = parent,
+						parent_literal = literal_pattern(rule.parent),
+						capture_count = captures,
+						children = children,
+						child_parts = child_parts,
+					}
 				end
 			end
 		end
@@ -185,28 +246,15 @@ local function substitute(template, captures)
 	return substituted
 end
 
----@param pattern string
----@return string?
-local function literal_pattern(pattern)
-	local literal = {}
-	local index = 1
-	while index <= #pattern do
-		local character = pattern:sub(index, index)
-		if character == "%" then
-			local escaped = pattern:sub(index + 1, index + 1)
-			if escaped == "" or escaped:match("%w") then
-				return nil
-			end
-			literal[#literal + 1] = escaped
-			index = index + 2
-		elseif character:find("[().%[%]*+%-?^$]") then
-			return nil
-		else
-			literal[#literal + 1] = character
-			index = index + 1
-		end
+---@param parts FileTreeNestingChildPart[]
+---@param captures string[]
+---@return string
+local function literal_child(parts, captures)
+	local pieces = {}
+	for index, part in ipairs(parts) do
+		pieces[index] = type(part) == "number" and tostring(captures[part]) or part
 	end
-	return table.concat(literal)
+	return table.concat(pieces)
 end
 
 ---@param left string
@@ -255,13 +303,23 @@ end
 function M.nest(_dir, entries, rules)
 	local names = {}
 	local name_set = {}
+	local folded_names = {}
 	for _, entry in ipairs(entries) do
 		if entry.kind == "file" then
 			names[#names + 1] = entry.name
 			name_set[entry.name] = true
+			folded_names[entry.name] = entry.name:lower()
 		end
 	end
-	table.sort(names, name_before)
+	local function cached_name_before(left, right)
+		local left_folded = folded_names[left]
+		local right_folded = folded_names[right]
+		if left_folded ~= right_folded then
+			return left_folded < right_folded
+		end
+		return left < right
+	end
+	table.sort(names, cached_name_before)
 
 	local parent_of = {}
 	local function claim(parent, child)
@@ -272,6 +330,37 @@ function M.nest(_dir, entries, rules)
 			and not makes_cycle(parent_of, parent, child)
 		then
 			parent_of[child] = parent
+		end
+	end
+	---@param parent string
+	---@param substituted string
+	local function claim_substituted(parent, substituted)
+		local literal = literal_pattern(substituted)
+		if literal then
+			claim(parent, literal)
+			return
+		end
+		local child_pattern = whole_pattern(substituted)
+		for _, child in ipairs(names) do
+			if child:match(child_pattern) then
+				claim(parent, child)
+			end
+		end
+	end
+	---@param rule FileTreeCompiledNestingRule
+	---@param parent string
+	local function apply_pattern_rule(rule, parent)
+		local captures = { parent:match(rule.parent) }
+		if not captures[1] then
+			return
+		end
+		for index, template in ipairs(rule.children) do
+			local parts = rule.child_parts[index]
+			if parts then
+				claim(parent, literal_child(parts, captures))
+			else
+				claim_substituted(parent, substitute(template, captures))
+			end
 		end
 	end
 	for _, rule in ipairs(compile_rules(rules)) do
@@ -286,25 +375,13 @@ function M.nest(_dir, entries, rules)
 					end
 				end
 			end
+		elseif rule.parent_literal then
+			if name_set[rule.parent_literal] then
+				apply_pattern_rule(rule, rule.parent_literal)
+			end
 		else
 			for _, parent in ipairs(names) do
-				local captures = { parent:match(rule.parent) }
-				if captures[1] then
-					for _, template in ipairs(rule.children) do
-						local substituted = substitute(template, captures)
-						local literal = literal_pattern(substituted)
-						if literal then
-							claim(parent, literal)
-						else
-							local child_pattern = whole_pattern(substituted)
-							for _, child in ipairs(names) do
-								if child:match(child_pattern) then
-									claim(parent, child)
-								end
-							end
-						end
-					end
-				end
+				apply_pattern_rule(rule, parent)
 			end
 		end
 	end

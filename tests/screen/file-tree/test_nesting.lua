@@ -48,7 +48,7 @@ local LEGEND = {
 
 local MASK = {
 	"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabcabbbbbbbbbbbbaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-	"dd.e.fffffff..gggggggggggggg.......hiiiiijjjjjjj....................................................",
+	".d.e.fffffff..gggggggggggggg.......hiiiiijjjjjjj....................................................",
 	"...d.e.kkkkkkkkkkkkkkkkk...........hiiiii...........................................................",
 	"...d.e.kkkkkkkkkk..................hiiiiijjjjjj.....................................................",
 	".......c.lllllll...................hiiiii....mmmmm..................................................",

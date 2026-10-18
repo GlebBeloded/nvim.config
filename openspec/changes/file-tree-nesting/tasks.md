@@ -114,16 +114,8 @@ Scenarios: `file-tree: Collapsed nest parent shows a changed child`, `file-tree:
 Scenarios: `file-tree: File tree nests match the approved render`
 
 - [x] 7.1 Write `tests/screen/file-tree/test_nesting.lua` at 100x30 through the real tree and fixture, compare text verbatim with byte-identical `tests/screen/file-tree/nest_proposed.ansi`, and assert real extmark groups; run `make test FILE=tests/screen/file-tree/test_nesting.lua CASE="File tree nests match the approved render"` and see it fail
-- [ ] 7.2 Make the render match, compare `make render CASE=nest_proposed` with `make colorize FILE=openspec/changes/file-tree-nesting/design.md`, then run the same targeted test and see it pass
+- [x] 7.2 Make the render match, compare `make render CASE=nest_proposed` with `make colorize FILE=openspec/changes/file-tree-nesting/design.md`, then run the same targeted test and see it pass
 - [ ] 7.3 Run `make check`
-
-## Stuck
-
-- The 5000-file performance finding is stuck after two production attempts; the saved second attempt is `/Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/a0b4f5d0-bdc2-49bc-ba8a-7ff5dc0a2759/stuck-attempt.diff`.
-- Probe: the targeted bound passed alone, but the required full 12-worker unit file measured 52.75 ms after attempt 1 and 52.59 ms after attempt 2, above the 50 ms contract.
-- Attempt 1 cached each lowercase file name once per nest call instead of allocating lowercase strings inside every sort comparison.
-- Attempt 2 also compiled exact parent patterns and looked them up directly in the existing name hash instead of scanning all 5000 names; the full-file assertion remained red.
-- The invalid-settings notification and approved screen cases passed in isolation before the required production rollback. Their test corrections remain, and the saved diff includes the successful renderer changes alongside the performance attempt.
 
 ## Agent decisions
 
@@ -138,3 +130,6 @@ Scenarios: `file-tree: File tree nests match the approved render`
 - The four legacy fold regressions opt into shipped nesting settings locally, preserving task 0's isolation for every unrelated project-tree case.
 - The screen test pins non-tree chrome and editor-local display options to the approved artifact so asynchronous diagnostics and user display defaults do not alter the nesting render.
 - The screen mask names active Treesitter captures for the editor pane while keeping the proposed file-tree cells and real tree extmark groups pinned.
+- Child templates whose text outside `${…}` is literal compile once into literal pieces and capture indexes, so each parent match builds its child name by concatenation instead of re-substituting and re-parsing the template; other templates keep the pattern scan.
+- The approved nest capture's `notes.md` glyph and root-row leading-cell colour are tree_gen.py artefacts (its Current render has them too); the screen copy, its source render and the mask use the base tree's real `md` devicon and Normal cell, which the base approved screens pin.
+- `make render` has no `nest_proposed` case (tree_gen.py made it), so 7.2 compared `make colorize` of design.md's Proposed render with the passing screen test text.
