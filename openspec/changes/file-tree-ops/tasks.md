@@ -91,7 +91,7 @@ Scenarios: `file-tree: Project tree add prompt matches the approved render`, `fi
 ## 8. Architecture and final gates
 Scenarios: `file-tree: Project tree operation keys come from the keymap file`, `file-tree: a creates a file`, `file-tree: r renames a file`, `diff: Diff view left window is read-only`, `diff: Diff view trim policy shows a staged checkbox`
 - [ ] 8.1 Run the new focused tests and existing neo-tree `tests/integration/file-tree/test_tree.lua`; fix any regression without weakening a scenario
-- [ ] 8.2 Update `docs/architecture.md` only for the new `file_tree/ops.lua`, `paths.lua`, `lsp_files.lua` and `picker/input.lua` module responsibilities allowed by rule 10
+- [x] 8.2 Update `docs/architecture.md` only for the new `file_tree/ops.lua`, `paths.lua`, `lsp_files.lua` and `picker/input.lua` module responsibilities allowed by rule 10
 - [ ] 8.3 Run `make test CAPS=find-action,actions,file-tree` (including `more_results` and neo-tree `test_tree.lua`), then run `make check`, and see both pass
 
 ## Stuck
