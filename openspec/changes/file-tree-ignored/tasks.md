@@ -10,6 +10,12 @@ Scenarios: `file-tree: Settings ignore patterns hide entries`, `file-tree: Ignor
 - [ ] 1.2 Add the pure `lua/gleb/file_tree/ignore.lua`, validate and compile the `ignore` list once per settings generation in `settings.lua`, and filter entries before nesting without treating the tree root or its ancestors as ignored
 - [ ] 1.3 Run `make test FILE=tests/integration/file-tree/test_ignored.lua` and see the five scenarios pass
 
+## Blocked
+
+- **Question:** Should the two git-derived scenarios in task 1 move to task 2a, or should task 1 implement task 2a's porcelain `!` parsing and ignored-set lifecycle early?
+- **Options:** Move `Nested gitignore and negation are honoured` and `Tree root inside an ignored folder stays visible` to task 2a; or expand task 1 to parse, store and map git ignored state before task 2a.
+- **Recommendation:** Move both scenarios to task 2a. Decision 2 assigns git ignored-state parsing, storage and root mapping to task 2a, while task 1.2 only supplies settings matching and filtering. Without task 2a, the nested-negation scenario cannot pass through the real tree, and the ignored-folder-root scenario passes before implementation because no ignored set exists, so it cannot be a valid red test.
+
 ## 2a. Parse and map git ignored state
 Scenarios: `file-tree: Ignored entries are hidden by default`, `file-tree: Tracked files matching gitignore stay listed`, `file-tree: Editing gitignore updates ignored entries`, `file-tree: Folder with only ignored content stays listed`, `file-tree: Ignored sets follow normalized roots across tabs`
 - [ ] 2a.1 Write the five scenarios in `tests/integration/file-tree/test_ignored.lua` with populated fixture copies, including repo and `web/` tabs under a symlink-normalized `/private/var` root, and run `make test FILE=tests/integration/file-tree/test_ignored.lua` to see them fail
