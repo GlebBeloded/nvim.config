@@ -414,6 +414,19 @@ T["file-tree: Project tree r reports an existing name"] = function()
 	eq(vim.fn.readfile(tax), tax_before)
 end
 
+T["file-tree: Project tree r creates missing destination folders"] = function()
+	local notifications = H.record_notify(child)
+	local original = read_file("internal/billing/tax.go")
+	open_billing()
+	focus_tree_path("internal/billing/tax.go")
+	rename("sub/tax2.go")
+
+	assert(wait_for_path("internal/billing/sub/tax2.go"), "nested rename target did not appear")
+	eq(read_file("internal/billing/sub/tax2.go"), original)
+	eq(vim.uv.fs_stat(vim.fs.joinpath(root, "internal/billing/tax.go")), nil)
+	eq(notifications(), {})
+end
+
 T["file-tree: Project tree rename reports a read-only destination"] = function()
 	local notifications = H.record_notify(child)
 	local folder = vim.fs.joinpath(tree_root, "internal/billing")
@@ -827,6 +840,56 @@ end)(...)
 	)
 
 	eq(child.lua_get([[#vim.api.nvim_tabpage_list_wins(0)]]), windows_before)
+
+	expand("internal/money")
+	local hidden_buffer = load_buffer("internal/money/money.go")
+	local unnamed_before = child.lua_get([[
+		vim.iter(vim.api.nvim_list_bufs()):filter(function(buf)
+			return vim.bo[buf].buflisted and vim.api.nvim_buf_get_name(buf) == ""
+		end):totable()
+	]])
+	focus_tree_path("internal/money/money.go")
+	delete("confirm")
+	wait_for_absence("internal/money/money.go")
+	eq(child.api.nvim_buf_is_valid(hidden_buffer), false)
+	eq(
+		child.lua_get([[
+			vim.iter(vim.api.nvim_list_bufs()):filter(function(buf)
+				return vim.bo[buf].buflisted and vim.api.nvim_buf_get_name(buf) == ""
+			end):totable()
+		]]),
+		unnamed_before
+	)
+end
+
+T["file-tree: Project tree refuses unsafe submitted names"] = function()
+	local notifications = H.record_notify(child)
+	local invoice = vim.fs.joinpath(root, "internal/billing/invoice.go")
+	local invoice_before = vim.fn.readfile(invoice)
+	open_billing()
+
+	for _, query in ipairs({ "../moved.go", "/absolute.go", "sub//moved.go" }) do
+		focus_tree_path("internal/billing/invoice.go")
+		rename(query)
+		local notification = notifications()[#notifications()]
+		assert(notification.msg:find("Rename failed:", 1, true) == 1, "unsafe rename was not rejected")
+		eq(notification.level, vim.log.levels.ERROR)
+	end
+
+	eq(vim.fn.readfile(invoice), invoice_before)
+	eq(vim.uv.fs_lstat(vim.fs.joinpath(root, "internal/moved.go")), nil)
+	eq(vim.uv.fs_lstat(vim.fs.joinpath(root, "internal/billing/sub/moved.go")), nil)
+
+	expand("internal/money")
+	copy("internal/money/money.go")
+	paste("internal/money")
+	assert(child.wait([[MiniPick.is_picker_active()]]), "Copy picker did not open")
+	child.type_keys("<C-u>", "../../../escaped.go", "<CR>")
+	assert(child.wait([[not MiniPick.is_picker_active()]]), "Copy picker did not close")
+	local notification = notifications()[#notifications()]
+	assert(notification.msg:find("Paste failed:", 1, true) == 1, "unsafe copy was not rejected")
+	eq(notification.level, vim.log.levels.ERROR)
+	eq(vim.uv.fs_lstat(vim.fs.joinpath(vim.fs.dirname(root), "escaped.go")), nil)
 end
 
 T["file-tree: Project tree d reports a failed delete"] = function()

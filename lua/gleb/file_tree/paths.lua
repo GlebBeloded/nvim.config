@@ -100,6 +100,24 @@ function M.is_inside(root, path)
 	return path == root or is_descendant(root, path)
 end
 
+--- Validate and resolve a name submitted by a project-tree prompt.
+---@param root string
+---@param parent string
+---@param name string
+---@return string? path
+function M.validate_submitted_name(root, parent, name)
+	if name == "" or name:sub(1, 1) == "/" then
+		return nil
+	end
+	for _, part in ipairs(vim.split(name, "/", { plain = true, trimempty = false })) do
+		if part == "" or part == ".." then
+			return nil
+		end
+	end
+	local target = vim.fs.joinpath(parent, name)
+	return M.is_inside(root, target) and target or nil
+end
+
 --- Remove duplicate paths and descendants of another selected path.
 ---@param selected string[]
 ---@return string[]
@@ -157,6 +175,9 @@ end
 ---@return boolean
 local function target_is_available(pair, fs)
 	local parent = dirname(pair.new)
+	if not fs.stat(parent) then
+		return true
+	end
 	local wanted = basename(pair.new):lower()
 	for _, name in ipairs(fs.read_dir(parent)) do
 		if name:lower() == wanted and normalize(parent .. "/" .. name) ~= normalize(pair.old) then
@@ -164,6 +185,24 @@ local function target_is_available(pair, fs)
 		end
 	end
 	return true
+end
+
+---@param path string
+---@param fs FileTreePreflightFs
+---@return table? stat
+local function nearest_existing_stat(path, fs)
+	local candidate = path
+	while true do
+		local stat = fs.stat(candidate)
+		if stat then
+			return stat
+		end
+		local parent = dirname(candidate)
+		if parent == candidate then
+			return nil
+		end
+		candidate = parent
+	end
 end
 
 --- Validate every move pair without changing filesystem state.
@@ -191,7 +230,7 @@ function M.preflight_moves(root, move_pairs, fs)
 			return nil, "missing", old
 		end
 		local parent = dirname(new)
-		local destination = fs.stat(parent)
+		local destination = nearest_existing_stat(parent, fs)
 		if not destination then
 			return nil, "missing", parent
 		end

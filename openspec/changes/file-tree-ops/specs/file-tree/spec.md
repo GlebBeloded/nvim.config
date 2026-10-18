@@ -54,6 +54,10 @@
 - **WHEN** the cursor is on the `invoice.go` row, `r` is pressed in normal mode and `<C-u>tax.go<CR>` is typed
 - **THEN** a notification `Already exists: internal/billing/tax.go` at ERROR is emitted and both `invoice.go` and `tax.go` keep their content
 
+#### Scenario: Project tree r creates missing destination folders
+- **WHEN** the cursor is on the `tax.go` row, `r` is pressed in normal mode and `<C-u>sub/tax2.go<CR>` is typed
+- **THEN** `internal/billing/sub/tax2.go` exists with the content of `tax.go`, `internal/billing/tax.go` does not, and no error is emitted
+
 #### Scenario: Project tree rename prompt matches the approved render
 - **WHEN** the tree is shown as in "Proposed F1 — project tree" and `r` is pressed on the `invoice.go` row
 - **THEN** the screen matches the approved render "Proposed G2 — rename prompt" (design.md) in text and in the colours of the prompt
@@ -78,8 +82,8 @@
 - **THEN** the `web` folder no longer exists on disk
 
 #### Scenario: Project tree d closes buffers of deleted files
-- **WHEN** `internal/billing/tax_test.go` is shown unmodified in the editor window, the fake `trash` is on `PATH`, and it is deleted from its tree row with `d` and `Move to Trash`
-- **THEN** no buffer is named after `tax_test.go` and the tab has the same number of windows as before
+- **WHEN** `internal/billing/tax_test.go` is shown unmodified in the editor window and deleted, then hidden loaded `internal/money/money.go` is deleted, using `d` and `Move to Trash` with the fake `trash` on `PATH`
+- **THEN** no buffer is named after either deleted file, the tab has the same number of windows as before, and deleting the hidden buffer creates no listed unnamed buffer
 
 #### Scenario: Project tree d reports a failed delete
 - **WHEN** a fake `trash` that prints `boom` on stderr and exits 1 is on `PATH`, and `tax_test.go` is deleted with `d` and `Move to Trash`
@@ -137,6 +141,10 @@ Every submitted path SHALL normalize inside the tree root with no absolute path,
 #### Scenario: Project tree refuses a path that escapes the root
 - **WHEN** the cursor is on the `billing` row, `r` is pressed in normal mode and `<C-u>../../../outside<CR>` is typed
 - **THEN** `internal/billing` still exists, no path named `outside` is created beyond the root, and a `Rename failed:` notification at ERROR is emitted
+
+#### Scenario: Project tree refuses unsafe submitted names
+- **WHEN** rename is submitted for `invoice.go` with `../moved.go`, `/absolute.go` and `sub//moved.go`, then `money.go` is copied onto its folder and the Copy prompt is submitted with `../../../escaped.go`
+- **THEN** neither source changes, no submitted target is created inside or outside the root, and each submission emits its operation-specific ERROR notification
 
 #### Scenario: Project tree create reports a read-only destination
 - **WHEN** the root has mode `0555`, the cursor is on its row, `a` is pressed in normal mode and `blocked.go<CR>` is typed

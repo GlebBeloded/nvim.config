@@ -48,7 +48,8 @@ local function notify_preflight_failure(root, reason, path)
 		notify_exists(root, path)
 		return
 	end
-	local detail = reason == "cross-device" and reason or (path .. ": " .. reason)
+	local relative = paths.is_inside(root, path) and path:sub(#root + 2) or "path"
+	local detail = reason == "cross-device" and reason or (relative .. ": " .. reason)
 	vim.notify("Rename failed: " .. detail, vim.log.levels.ERROR)
 end
 
@@ -184,6 +185,18 @@ local function rollback_moves(completed)
 	end
 end
 
+---@param move_pairs FileTreeMovePair[]
+---@return boolean
+local function create_move_parents(move_pairs)
+	for _, pair in ipairs(move_pairs) do
+		local parent = vim.fs.dirname(pair.new)
+		if vim.fn.mkdir(parent, "p") == 0 and not vim.uv.fs_stat(parent) then
+			return false
+		end
+	end
+	return true
+end
+
 --- Move a batch only after every source and target passes preflight.
 ---@param move_pairs FileTreeMovePair[]
 ---@return boolean moved
@@ -207,6 +220,10 @@ function M.move(move_pairs)
 	})
 	if not ok then
 		notify_preflight_failure(root, reason or "unknown", failed_path or root)
+		return false
+	end
+	if not create_move_parents(pending) then
+		notify_preflight_failure(root, "missing", vim.fs.dirname(pending[1].new))
 		return false
 	end
 
@@ -384,7 +401,11 @@ local function prompt_copy(root, source, target_folder)
 			return { text = vim.fs.joinpath(target_folder, query):sub(#root + 2) }
 		end,
 		on_submit = function(query)
-			local target = vim.fs.joinpath(target_folder, query)
+			local target = paths.validate_submitted_name(root, target_folder, query)
+			if not target then
+				vim.notify("Paste failed: path must stay inside the project root", vim.log.levels.ERROR)
+				return
+			end
 			if vim.uv.fs_lstat(target) then
 				prompt_copy(root, source, target_folder)
 				return
@@ -400,15 +421,8 @@ end
 local function create(root, target_folder, query)
 	local directory = vim.endswith(query, "/")
 	local name = directory and query:sub(1, -2) or query
-	local target = vim.fs.joinpath(target_folder, name)
-	if
-		name:sub(1, 1) == "/"
-		or name:find("//", 1, true)
-		or vim.iter(vim.split(name, "/", { plain = true })):any(function(part)
-			return part == ".." or part == ""
-		end)
-		or not paths.is_inside(root, target)
-	then
+	local target = paths.validate_submitted_name(root, target_folder, name)
+	if not target then
 		vim.notify("Create failed: path must stay inside the project root", vim.log.levels.ERROR)
 		return
 	end
@@ -476,7 +490,12 @@ function M.rename()
 			}
 		end,
 		on_submit = function(query)
-			M.move({ { old = row.path, new = vim.fs.joinpath(parent, query) } })
+			local target = paths.validate_submitted_name(root, parent, query)
+			if not target then
+				vim.notify("Rename failed: path must stay inside the project root", vim.log.levels.ERROR)
+				return
+			end
+			M.move({ { old = row.path, new = target } })
 		end,
 	})
 end
@@ -666,11 +685,12 @@ local function wipe_deleted_buffers(path_list)
 	for _, buf in ipairs(affected_buffers(path_list)) do
 		local name = vim.api.nvim_buf_get_name(buf)
 		if not vim.bo[buf].modified and vim.uv.fs_stat(name) == nil then
-			local fallback = vim.api.nvim_create_buf(true, false)
-			for _, win in ipairs(vim.api.nvim_list_wins()) do
-				if vim.api.nvim_win_get_buf(win) == buf then
-					vim.api.nvim_win_set_buf(win, fallback)
-				end
+			local windows = vim.tbl_filter(function(win)
+				return vim.api.nvim_win_get_buf(win) == buf
+			end, vim.api.nvim_list_wins())
+			local fallback = #windows > 0 and vim.api.nvim_create_buf(true, false) or nil
+			for _, win in ipairs(windows) do
+				vim.api.nvim_win_set_buf(win, assert(fallback, "visible deleted buffer has no replacement"))
 			end
 			vim.api.nvim_buf_delete(buf, {})
 		end
