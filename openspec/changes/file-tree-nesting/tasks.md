@@ -25,9 +25,9 @@ Scenarios: `file-tree: Earlier nesting rule wins a shared child`, `file-tree: Ne
 
 Scenarios: `file-tree: Default nesting rules meet the large-folder bound`, `file-tree: Git redraw reuses the nest map`
 
-- [ ] 1c.1 Add both cases to `tests/unit/file-tree/test_nesting.lua`, using the real 16-rule settings and a counting Lua rule through the real model draw path, then run `make test FILE=tests/unit/file-tree/test_nesting.lua CASE="Git redraw reuses the nest map"` and see it fail
-- [ ] 1c.2 Cache by weak `fs.scan` table keys plus settings generation, bump generation on reload, and use a file-name hash for substituted children
-- [ ] 1c.3 Run both cases with `make test FILE=tests/unit/file-tree/test_nesting.lua CASE="<scenario title>"` and see them pass, including the 5000-file ≤50 ms bound
+- [x] 1c.1 Add both cases to `tests/unit/file-tree/test_nesting.lua`, using the real 16-rule settings and a counting Lua rule through the real model draw path, then run `make test FILE=tests/unit/file-tree/test_nesting.lua CASE="Git redraw reuses the nest map"` and see it fail
+- [x] 1c.2 Cache by weak `fs.scan` table keys plus settings generation, bump generation on reload, and use a file-name hash for substituted children
+- [x] 1c.3 Run both cases with `make test FILE=tests/unit/file-tree/test_nesting.lua CASE="<scenario title>"` and see them pass, including the 5000-file ≤50 ms bound
 
 ## 2. Programmable rules
 
@@ -116,3 +116,7 @@ Scenarios: `file-tree: File tree nests match the approved render`
 - [ ] 7.1 Write `tests/screen/file-tree/test_nesting.lua` at 100x30 through the real tree and fixture, compare text verbatim with byte-identical `tests/screen/file-tree/nest_proposed.ansi`, and assert real extmark groups; run `make test FILE=tests/screen/file-tree/test_nesting.lua CASE="File tree nests match the approved render"` and see it fail
 - [ ] 7.2 Make the render match, compare `make render CASE=nest_proposed` with `make colorize FILE=openspec/changes/file-tree-nesting/design.md`, then run the same targeted test and see it pass
 - [ ] 7.3 Run `make check`
+
+## Agent decisions
+
+- Compiled Lua rules use a function-valued `lua` field so the model cache can exercise real rule execution before task 2 adds module loading and error handling.

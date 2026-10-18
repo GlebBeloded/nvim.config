@@ -7,9 +7,10 @@ local M = {}
 ---@field children string[]
 
 ---@class FileTreeCompiledNestingRule
----@field parent string
----@field capture_count integer
----@field children string[]
+---@field parent? string
+---@field capture_count? integer
+---@field children? string[]
+---@field lua? fun(dir: string, names: string[]): table<string, string[]>
 
 ---@type table<table, FileTreeCompiledNestingRule[]>
 local compiled_rule_sets = setmetatable({}, { __mode = "k" })
@@ -84,7 +85,9 @@ local function compile_rules(rules)
 	local compiled = {}
 	for rule_index, rule in ipairs(rules) do
 		local reason
-		if type(rule.parent) ~= "string" or type(rule.children) ~= "table" then
+		if type(rule.lua) == "function" then
+			compiled[#compiled + 1] = { lua = rule.lua }
+		elseif type(rule.parent) ~= "string" or type(rule.children) ~= "table" then
 			reason = "parent and children are required"
 		else
 			local parent = whole_pattern(rule.parent)
@@ -132,6 +135,30 @@ local function substitute(template, captures)
 	return substituted
 end
 
+---@param pattern string
+---@return string?
+local function literal_pattern(pattern)
+	local literal = {}
+	local index = 1
+	while index <= #pattern do
+		local character = pattern:sub(index, index)
+		if character == "%" then
+			local escaped = pattern:sub(index + 1, index + 1)
+			if escaped == "" or escaped:match("%w") then
+				return nil
+			end
+			literal[#literal + 1] = escaped
+			index = index + 2
+		elseif character:find("[().%[%]*+%-?^$]") then
+			return nil
+		else
+			literal[#literal + 1] = character
+			index = index + 1
+		end
+	end
+	return table.concat(literal)
+end
+
 ---@param left string
 ---@param right string
 ---@return boolean
@@ -177,27 +204,52 @@ end
 ---@return table<string, string[]>
 function M.nest(_dir, entries, rules)
 	local names = {}
+	local name_set = {}
 	for _, entry in ipairs(entries) do
 		if entry.kind == "file" then
 			names[#names + 1] = entry.name
+			name_set[entry.name] = true
 		end
 	end
 	table.sort(names, name_before)
 
 	local parent_of = {}
+	local function claim(parent, child)
+		if
+			name_set[parent]
+			and name_set[child]
+			and not parent_of[child]
+			and not makes_cycle(parent_of, parent, child)
+		then
+			parent_of[child] = parent
+		end
+	end
 	for _, rule in ipairs(compile_rules(rules)) do
-		for _, parent in ipairs(names) do
-			local captures = { parent:match(rule.parent) }
-			if captures[1] then
-				for _, template in ipairs(rule.children) do
-					local child_pattern = whole_pattern(substitute(template, captures))
-					for _, child in ipairs(names) do
-						if
-							not parent_of[child]
-							and child:match(child_pattern)
-							and not makes_cycle(parent_of, parent, child)
-						then
-							parent_of[child] = parent
+		if rule.lua then
+			local proposed = rule.lua(_dir, names)
+			local parents = vim.tbl_keys(proposed)
+			table.sort(parents, name_before)
+			for _, parent in ipairs(parents) do
+				for _, child in ipairs(proposed[parent]) do
+					claim(parent, child)
+				end
+			end
+		else
+			for _, parent in ipairs(names) do
+				local captures = { parent:match(rule.parent) }
+				if captures[1] then
+					for _, template in ipairs(rule.children) do
+						local substituted = substitute(template, captures)
+						local literal = literal_pattern(substituted)
+						if literal then
+							claim(parent, literal)
+						else
+							local child_pattern = whole_pattern(substituted)
+							for _, child in ipairs(names) do
+								if child:match(child_pattern) then
+									claim(parent, child)
+								end
+							end
 						end
 					end
 				end

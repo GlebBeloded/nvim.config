@@ -8,6 +8,64 @@ local function entries(names)
 	end, names)
 end
 
+local function default_rules()
+	return {
+		{ parent = "(.+)%.go", children = { "${capture}_test%.go", "${capture}_mock%.go", "${capture}_string%.go" } },
+		{ parent = "(.+)%.proto", children = { "${capture}%.pb%.go", "${capture}_grpc%.pb%.go" } },
+		{ parent = "go%.mod", children = { "go%.sum" } },
+		{ parent = "go%.work", children = { "go%.work%.sum" } },
+		{
+			parent = "(.+)%.ts",
+			children = {
+				"${capture}%.test%.ts",
+				"${capture}%.spec%.ts",
+				"${capture}%.d%.ts",
+				"${capture}%.js",
+				"${capture}%.d%.ts%.map",
+			},
+		},
+		{
+			parent = "(.+)%.tsx",
+			children = { "${capture}%.test%.tsx", "${capture}%.stories%.tsx", "${capture}%.module%.css" },
+		},
+		{ parent = "(.+)%.js", children = { "${capture}%.js%.map", "${capture}%.min%.js", "${capture}%.d%.ts" } },
+		{
+			parent = "package%.json",
+			children = {
+				"package%-lock%.json",
+				"yarn%.lock",
+				"pnpm%-lock%.yaml",
+				"bun%.lock",
+				"bun%.lockb",
+				"%.npmrc",
+				"%.nvmrc",
+			},
+		},
+		{ parent = "tsconfig%.json", children = { "tsconfig%..+%.json" } },
+		{ parent = "(.+)%.py", children = { "${capture}%.pyi", "test_${capture}%.py", "${capture}_test%.py" } },
+		{
+			parent = "pyproject%.toml",
+			children = {
+				"uv%.lock",
+				"poetry%.lock",
+				"pdm%.lock",
+				"requirements.*%.txt",
+				"setup%.cfg",
+				"setup%.py",
+				"%.python%-version",
+			},
+		},
+		{
+			parent = "Cargo%.toml",
+			children = { "Cargo%.lock", "rust%-toolchain%.toml", "rustfmt%.toml", "%.rustfmt%.toml", "clippy%.toml" },
+		},
+		{ parent = "(.+)%.lua", children = { "${capture}_spec%.lua" } },
+		{ parent = "%.gitignore", children = { "%.gitattributes", "%.gitmodules" } },
+		{ parent = "README.*", children = { "CHANGELOG.*", "LICENSE.*" } },
+		{ parent = "Makefile", children = { ".+%.mk" } },
+	}
+end
+
 local T = MiniTest.new_set()
 
 T["file-tree: Nesting rule nests by capture"] = MiniTest.new_set()
@@ -138,6 +196,66 @@ T["file-tree: Folders never nest"]["excludes directory children"] = function()
 	})
 
 	eq(result, {})
+end
+
+T["file-tree: Default nesting rules meet the large-folder bound"] = MiniTest.new_set()
+
+T["file-tree: Default nesting rules meet the large-folder bound"]["groups 5000 files within 50 ms"] = function()
+	local nesting = require("gleb.file_tree.nesting")
+	local names = {}
+	for index = 1, 2500 do
+		names[#names + 1] = ("file_%04d.go"):format(index)
+		names[#names + 1] = ("file_%04d_test.go"):format(index)
+	end
+	local folder_entries = entries(names)
+	local rules = default_rules()
+
+	nesting.nest("/project", folder_entries, rules)
+	local started = vim.uv.hrtime()
+	local result = nesting.nest("/project", folder_entries, rules)
+	local elapsed_ms = (vim.uv.hrtime() - started) / 1000000
+
+	eq(#vim.tbl_keys(result), 2500)
+	if elapsed_ms > 50 then
+		error(("expected nesting to finish within 50 ms, took %.2f ms"):format(elapsed_ms))
+	end
+end
+
+T["file-tree: Git redraw reuses the nest map"] = MiniTest.new_set()
+
+T["file-tree: Git redraw reuses the nest map"]["runs a Lua rule once for an unchanged scan"] = function()
+	local model = require("gleb.file_tree.model")
+	local settings = require("gleb.file_tree.settings")
+	local scan = entries({ "invoice.go", "invoice_test.go" })
+	local calls = 0
+	local rules = {
+		{
+			lua = function()
+				calls = calls + 1
+				return { ["invoice.go"] = { "invoice_test.go" } }
+			end,
+		},
+	}
+	local tree = {
+		root = "/project",
+		scan = function()
+			return scan
+		end,
+	}
+	local generation = settings.generation()
+
+	model.rows(tree, {}, {}, { enabled = true, rules = rules, generation = generation })
+	model.rows(tree, {}, { ["invoice_test.go"] = "modified" }, {
+		enabled = true,
+		rules = rules,
+		generation = generation,
+	})
+
+	eq(calls, 1)
+	settings.reload()
+	if settings.generation() <= generation then
+		error("expected settings reload to bump the generation")
+	end
 end
 
 return T
