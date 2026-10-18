@@ -946,7 +946,7 @@ The work-queue spec gate (`spec_gate.py`) SHALL print `{ok, log}` and exit 0. A 
 - **THEN** `spec-retry` runs queue-spec with `$spec-gate.output.log` when the gate is red, `spec-gate-2` follows, `spec-failed` fails the run on a second red gate, and preview and design-decide wait for `spec-ok`
 
 ### Requirement: Probe runs Lua in a test child
-`make probe` SHALL run a Lua snippet (`SCRIPT=<file>` or `PROBE=<code>`) in a headless full-config child started like the tests' (`H.new_child` + `start_config`), print its prints and return values, exit non-zero on error and after a timeout. implement, fix and explore-bug prompts and the context pack SHALL point probes at it and say LSP restart and neo-tree renders are async: wait for the end state.
+`make probe` SHALL run a Lua snippet (`SCRIPT=<file>` or `PROBE=<code>`) in a headless full-config child started like the tests' (`H.new_child` + `start_config`), print its prints and return values, exit non-zero on error and after a timeout. implement, fix and explore-bug prompts and the context pack SHALL point probes at it and say LSP restart and tree and panel renders are async: wait for the end state.
 
 #### Scenario: Probe prints the snippet's return value
 - **WHEN** `make probe PROBE='return vim.g.mapleader'` runs
@@ -958,7 +958,7 @@ The work-queue spec gate (`spec_gate.py`) SHALL print `{ok, log}` and exit 0. A 
 
 #### Scenario: Agent prompts and context pack point probes at make probe
 - **WHEN** implement.md, fix.md, explore-bug.md and a built context pack are read
-- **THEN** each names `make probe` and says LSP restart and neo-tree renders are async: wait for the end state, not for attachment
+- **THEN** each names `make probe` and says LSP restart and tree and panel renders are async: wait for the end state, not for attachment
 
 ### Requirement: Rejections say what to fix
 A red pass SHALL tell the next fix pass, and a rejection the re-queued run, what to fix: verdict.py sends only blocking review findings to fix and never lists a skipped review as a failed gate; an exhausted judge quotes the first lines of the last gate failures; gate.py names dropped cases with their remedy while the judge still never ships them; an `## Unblocked` answer is kept until the spec step records it.

@@ -78,7 +78,7 @@ Every child gets its own sandbox (`tests/helpers.lua`), so tests never touch you
 
 ## Probing
 
-`make probe SCRIPT=<file.lua>` (or `PROBE='lua code'`) runs Lua in a child started like a test's: `H.new_child()` + `start_config()` (same rtp, XDG sandbox and plugin data, copilot off), then `wait_very_lazy()`. It prints what the snippet `print`s, then each return value through `vim.inspect`, and exits 1 on a load or runtime error (message on stderr, after the prints), 124 after `PROBE_TIMEOUT` ms (default 30000). Use it instead of hand-building `nvim -l` with rtp or XDG dirs. LSP restart and neo-tree renders are async: wait for the end state (`vim.wait`), not for attachment.
+`make probe SCRIPT=<file.lua>` (or `PROBE='lua code'`) runs Lua in a child started like a test's: `H.new_child()` + `start_config()` (same rtp, XDG sandbox and plugin data, copilot off), then `wait_very_lazy()`. It prints what the snippet `print`s, then each return value through `vim.inspect`, and exits 1 on a load or runtime error (message on stderr, after the prints), 124 after `PROBE_TIMEOUT` ms (default 30000). Use it instead of hand-building `nvim -l` with rtp or XDG dirs. LSP restart and tree and panel renders are async: wait for the end state (`vim.wait`), not for attachment.
 
 ## Naming rule = traceability
 
