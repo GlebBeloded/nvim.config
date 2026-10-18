@@ -30,9 +30,9 @@ Scenarios: `file-tree: File under hidden node_modules is not revealed`, `file-tr
 
 ## 2d. Keep direct hidden follow stable
 Scenarios: `file-tree: Hidden ignored file is not revealed`
-- [ ] 2d.1 Write the scenario in `tests/integration/file-tree/test_ignored.lua`, drive `:edit .env`, and run `make test FILE=tests/integration/file-tree/test_ignored.lua CASE="Hidden ignored file is not revealed"` to see it fail
-- [ ] 2d.2 Apply the shared hidden-path gate to the follow callback without moving the tree cursor
-- [ ] 2d.3 Run `make test FILE=tests/integration/file-tree/test_ignored.lua CASE="Hidden ignored file is not revealed"` and see it pass
+- [x] 2d.1 Write the scenario in `tests/integration/file-tree/test_ignored.lua`, drive `:edit .env`, and run `make test FILE=tests/integration/file-tree/test_ignored.lua CASE="Hidden ignored file is not revealed"` to see it fail
+- [x] 2d.2 Apply the shared hidden-path gate to the follow callback without moving the tree cursor
+- [x] 2d.3 Run `make test FILE=tests/integration/file-tree/test_ignored.lua CASE="Hidden ignored file is not revealed"` and see it pass
 
 ## 3. Add Show Ignored action and state
 Scenarios: `file-tree: I toggles ignored entries`, `file-tree: Show Ignored is a Find Action toggle`, `file-tree: Show Ignored persists`, `file-tree: Saved Show Ignored state is restored`, `file-tree: Hiding the selected ignored row moves upward`

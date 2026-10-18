@@ -681,7 +681,7 @@ local function follow_buffer(view, buf)
 		view.directory_hijacks[win] = nil
 		return
 	end
-	if vim.bo[buf].buftype == "" then
+	if vim.bo[buf].buftype == "" and not is_hidden(view, path) then
 		reveal_path(view, path, false)
 	end
 end

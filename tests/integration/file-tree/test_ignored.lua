@@ -192,6 +192,29 @@ T["file-tree: File under hidden node_modules is not revealed"]["keeps tree state
 	eq(tree_state(), before)
 end
 
+T["file-tree: Hidden ignored file is not revealed"] = MiniTest.new_set()
+
+T["file-tree: Hidden ignored file is not revealed"]["keeps rows and cursor while editing the hidden file"] = function()
+	local project = F.copy("treeproj", vim.fn.tempname() .. "/billing")
+	open_tree(project, settings_file({}))
+	wait_for_git()
+	expand("internal")
+	expand("internal/billing")
+	child.cmd("wincmd l")
+	child.cmd("edit " .. vim.fn.fnameescape(vim.fs.joinpath(project, "internal/billing/invoice.go")))
+	focus_tree_path("internal/billing/invoice.go")
+	local rows_before = labels()
+	local state_before = tree_state()
+	local target = vim.fs.joinpath(project, ".env")
+
+	child.cmd("wincmd l")
+	child.cmd("edit " .. vim.fn.fnameescape(target))
+
+	eq(child.api.nvim_buf_get_name(0), assert(vim.uv.fs_realpath(target)))
+	eq(labels(), rows_before)
+	eq(tree_state(), state_before)
+end
+
 T["file-tree: Created or renamed ignored target is not selected"] = MiniTest.new_set()
 
 T["file-tree: Created or renamed ignored target is not selected"]["keeps tree state after the real create action"] = function()
