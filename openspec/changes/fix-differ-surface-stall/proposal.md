@@ -2,7 +2,7 @@
 
 Kind: bug
 
-Depends: fix-plugin-ownership-hang-2
+Depends: fix-plugin-ownership-hang-2, tree-diff-cutover
 
 `fix-plugin-ownership-hang-2` made a stalled plugin surface fail in ~10 s with diagnostics instead of hanging a worker
 for 300 s, but did not remove the stall. Its gates captured it (run 36516373, check-5 and check-6):
@@ -19,6 +19,9 @@ Also, `stop_blocked_child` (tests/helpers.lua) SIGKILLs only the child nvim, lea
 running.
 
 ## What Changes
+
+- `tree-diff-cutover` removes differ.nvim: if `:Differ` and its surface cases are gone, the Differ items below no longer
+  apply; keep only the `stop_blocked_child` process-tree item (it holds for any blocked surface).
 
 - Probe the directory Differ's `git status -uall` runs in for both cases (the case's cwd) and how long it takes there
   under a full parallel `make test`; record the measurement.
