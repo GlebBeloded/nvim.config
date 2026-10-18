@@ -83,40 +83,37 @@ end
 ---@param root string
 ---@param state FileTreeWatchRoot
 local function watch_git_dir(root, state)
-	vim.system(
+	local result = vim.system(
 		{ "git", "-C", root, "rev-parse", "--show-toplevel", "--absolute-git-dir" },
-		{ text = true },
-		function(result)
+		{ text = true }
+	)
+		:wait()
+	if result.code ~= 0 then
+		return
+	end
+	local lines = vim.split(vim.trim(result.stdout or ""), "\n", { plain = true })
+	local path = lines[2]
+	if not path then
+		return
+	end
+	state.toplevel = lines[1]
+	state.git_dir = path
+	local handle = assert(vim.uv.new_fs_event())
+	local ok = handle:start(path, {}, function(error)
+		if not error then
 			vim.schedule(function()
-				if M.state.roots[root] ~= state or result.code ~= 0 or state.git_handle then
-					return
-				end
-				local lines = vim.split(vim.trim(result.stdout or ""), "\n", { plain = true })
-				local path = lines[2]
-				if not path then
-					return
-				end
-				state.toplevel = lines[1]
-				state.git_dir = path
-				local handle = assert(vim.uv.new_fs_event())
-				local ok = handle:start(path, {}, function(error)
-					if not error then
-						vim.schedule(function()
-							local _, client = next(state.clients)
-							if client then
-								client.refresh_git()
-							end
-						end)
-					end
-				end)
-				if ok then
-					state.git_handle = handle
-				else
-					handle:close()
+				local _, client = next(state.clients)
+				if client then
+					client.refresh_git()
 				end
 			end)
 		end
-	)
+	end)
+	if ok then
+		state.git_handle = handle
+	else
+		handle:close()
+	end
 end
 
 ---@param state FileTreeWatchRoot

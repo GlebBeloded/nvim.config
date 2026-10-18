@@ -226,9 +226,4 @@ Scenarios: `file-tree: Project tree has no trailing blank row`
 - Expansion writes use a PID-and-sequence temporary sibling, avoiding collisions while retaining atomic same-directory replacement.
 - Porcelain untracked-directory keys retain their trailing slash, so row lookup can colour descendants without filesystem-dependent parser work.
 - Git status parsing uses `rev-parse --show-prefix` because porcelain paths remain repository-top-relative when the tree root is a subfolder.
-
-## Stuck
-
-- Probe: the compact row had cached scans and active handles for the root, `cmd`, and `cmd/server`, but an immediate `cmd/worker` creation produced no redraw and left `changed=false`; a raw `uv_fs_event` probe delivered the same immediate creation with both scan-then-watch and watch-then-scan ordering.
-- Attempt 1 scheduled one cache reconciliation after newly started handles. The target file first passed, but the required area rerun still lost the compact-chain event and also failed to prune a deleted expanded folder.
-- Attempt 2 registered each directory watch before scanning it. The compact-chain scenarios passed, but `file-tree: Project tree isolates tabpage state` failed because the expected shared-root watch and Git refcounts disappeared. The reverted attempt is saved in `/Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/0f98b5ef-72a2-478b-8d9c-b93a9220b31d/stuck-attempt.diff`.
+- Git metadata and its directory watch are resolved synchronously when a root starts, preventing later handle registration from recreating macOS's shared FSEvents stream after rows exist.
