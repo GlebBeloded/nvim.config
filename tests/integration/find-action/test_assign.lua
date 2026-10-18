@@ -25,7 +25,7 @@ local function start()
 				run = function() end,
 			},
 			{
-				id = "file_tree.open",
+				id = "neo_tree.open",
 				title = "Adapter Action",
 				category = "Test",
 				run = function() end,
@@ -35,7 +35,7 @@ local function start()
 		Actions.state.store:save({
 			["test.target"] = {},
 			["test.other"] = { "<F21>" },
-			["file_tree.open"] = {},
+			["neo_tree.open"] = {},
 		})
 		Actions.state.applicator:apply(Actions.state.store.last_good)
 		vim.keymap.set("n", "<M-A>", require("gleb.find_action").open)
@@ -66,7 +66,7 @@ local function reset_shortcuts()
 		actions.state.store:save({
 			["test.target"] = {},
 			["test.other"] = { "<F21>" },
-			["file_tree.open"] = {},
+			["neo_tree.open"] = {},
 		})
 		actions.state.applicator:apply(actions.state.store.last_good)
 	]])
@@ -118,7 +118,7 @@ T["find-action: Conflict choices have distinct outcomes"] = function()
 	)
 	eq(shortcut_map(), {
 		["test.target"] = { "<F21>" },
-		["file_tree.open"] = {},
+		["neo_tree.open"] = {},
 	})
 
 	child.type_keys("<Esc>")
@@ -132,7 +132,7 @@ T["find-action: Conflict choices have distinct outcomes"] = function()
 	eq(shortcut_map(), {
 		["test.target"] = { "<F21>" },
 		["test.other"] = { "<F21>" },
-		["file_tree.open"] = {},
+		["neo_tree.open"] = {},
 	})
 
 	child.type_keys("<Esc>")
@@ -147,10 +147,10 @@ T["find-action: Conflict choices have distinct outcomes"] = function()
 	eq(conflict_text:find("Other Action", 1, true) ~= nil, true)
 	child.type_keys("r")
 	assert(
-		child.wait([[require("gleb.actions").state.store.last_good["file_tree.open"][1] == "<F21>"]], 5000),
+		child.wait([[require("gleb.actions").state.store.last_good["neo_tree.open"][1] == "<F21>"]], 5000),
 		"Multi-conflict removal did not save"
 	)
-	eq(shortcut_map(), { ["file_tree.open"] = { "<F21>" } })
+	eq(shortcut_map(), { ["neo_tree.open"] = { "<F21>" } })
 
 	child.type_keys("<Esc>")
 	reset_shortcuts()
@@ -163,7 +163,7 @@ T["find-action: Conflict choices have distinct outcomes"] = function()
 	eq(shortcut_map(), {
 		["test.target"] = {},
 		["test.other"] = { "<F21>" },
-		["file_tree.open"] = {},
+		["neo_tree.open"] = {},
 	})
 end
 
@@ -186,7 +186,7 @@ T["find-action: Adapter assignment reports deferred application"] = function()
 	assign("<F23><CR>")
 	assert(child.wait("#Notifications > 0", 5000), "Adapter notice was not reported")
 
-	eq(shortcut_map()["file_tree.open"], { "<F23>" })
+	eq(shortcut_map()["neo_tree.open"], { "<F23>" })
 	eq(child.lua_get([=[Notifications[#Notifications]]=]), {
 		message = "Shortcut saved; applies when neo-tree reopens",
 		level = vim.log.levels.INFO,

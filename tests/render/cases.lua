@@ -41,6 +41,56 @@ local function neo_tree(driver)
 	driver.wait([[vim.bo.filetype == "neo-tree"]], 3000)
 end
 
+--- Approved project-tree render on the populated billing fixture.
+---@param driver render.Driver
+local function project_tree(driver)
+	local home = vim.fn.tempname()
+	local root = F.copy("treeproj", vim.fs.joinpath(home, "work", "billing"))
+	vim.fn.delete(vim.fs.joinpath(root, "bin"), "rf")
+	vim.fn.delete(vim.fs.joinpath(root, "web", "node_modules"), "rf")
+	vim.fn.delete(vim.fs.joinpath(root, ".env"))
+	driver.lua(
+		[[
+		vim.env.HOME = ...
+		vim.lsp.enable("gopls", false)
+		require("null-ls").disable({})
+		vim.diagnostic.enable(false)
+	]],
+		{ home }
+	)
+	driver.cmd("cd " .. vim.fn.fnameescape(root) .. " | edit internal/billing/invoice.go")
+	assert(driver.wait([[vim.b.gitsigns_head == "main"]], 5000), "gitsigns branch did not load")
+	driver.lua([[
+		local action = assert(require("gleb.actions").state.applicator.catalog:get("file_tree.toggle"))
+		action.run(require("gleb.actions.context").capture())
+	]])
+	assert(
+		driver.wait(
+			[[(function()
+		local view = require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		return view and next(require("gleb.file_tree.git").status(view.root)) ~= nil
+	end)()]],
+			5000
+		),
+		"project-tree git status did not load"
+	)
+	for _, name in ipairs({ "cmd/server", "web", "src" }) do
+		driver.lua(
+			[[
+			for row, line in ipairs(vim.api.nvim_buf_get_lines(0, 0, -1, false)) do
+				if line:find(..., 1, true) then
+					vim.api.nvim_win_set_cursor(0, { row, 0 })
+					return
+				end
+			end
+		]],
+			{ name }
+		)
+		driver.type_keys("<CR>")
+	end
+	driver.lua([[vim.fn.search("invoice.go", "w")]])
+end
+
 --- Owned aligned diff of the changed Go controller fixture.
 ---@param driver render.Driver
 local function diff_view(driver)
@@ -495,6 +545,7 @@ return {
 		setup = close_buffer_split,
 	},
 	["neo-tree"] = { description = "neo-tree filesystem tree of this checkout", setup = neo_tree },
+	["f1-proposed"] = { description = "approved project-tree render", setup = project_tree },
 	["lua_l1_apply"] = { description = "Lua function usages grouped by usage type", setup = lua_l1_apply },
 	["bash_b1_rate"] = { description = "Bash variable usages grouped by usage type", setup = bash_b1_rate },
 	["terraform_h1_vpc"] = { description = "Terraform module usages grouped by usage type", setup = terraform_h1_vpc },

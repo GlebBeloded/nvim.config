@@ -29,10 +29,6 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 
 ## Loop lessons
 
-- When adding a Treesitter usages query, update the exhaustive runtime query-language expectation alongside the query.
-- Adding a Treesitter usages query requires adding its language to the exhaustive runtime query-language expectation.
-- Build ordered LCS matches by appending and preserve IntelliJ's original-count recursion state so large common regions stay linear without premature fallback.
-- Compare a symlink's normalized raw target for ownership; realpath can hide an out-of-tree alias by resolving it into the expected tree.
 - Golden harnesses should compare only fields declared by each fixture row so exact-range rows do not fail on redundant derived byte sets.
 - - IntelliJ inner comparison runs on a line fragment's text plus the newline ending its last line (getLineEnd(line, true)), and doSquash shifts an empty side past that newline; dropping it costs the splitter its matched-newline anchor and the trailing-newline range.
 - Golden checks for empty expected changes must reject missing, fallback, and partial inner results before comparing changed-byte sets.
@@ -44,6 +40,10 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - Map display-policy fragments to overlapping action fragments so UI-only splitting cannot erase semantic state.
 - Refresh cached comparisons before buffer-mutating actions whenever the debounce or changedtick shows stale input.
 - Keep package aggregators requires-only by loading persisted defaults in the owning implementation part.
+- Render all view rows in one buffer replacement before adding extmarks, so Neovim's mandatory initial line cannot survive as an extra selectable row.
+- Map EndOfBuffer to the view normal highlight when removing a trailing buffer line, so empty viewport cells retain the approved view colour.
+- Skip unchanged move matching when fewer than two unmatched change regions remain; every same-change candidate is discarded and pathological duplicate windows can overrun the deadline.
+- Start macOS filesystem handles needed by a view before its first draw; adding a late handle can recreate the shared FSEvents stream and drop an intervening directory event.
 
 ## The loop
 

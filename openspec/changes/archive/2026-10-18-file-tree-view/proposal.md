@@ -43,7 +43,7 @@ This change adds the new tree beside neo-tree. It opens only from new, unbound a
 
 ### Modified Capabilities
 - `file-tree`: added requirements for the project tree: window and toggle, rows, compact chains, opening, folds, git colours, following, live updates, persistence, keys and the approved render. The neo-tree requirements stay until `tree-diff-cutover`.
-- `bufferline`: added "Tabline offset for the project tree".
+- `bufferline`: modified "Tabline offset for the file tree" to cover the project tree while preserving neo-tree.
 
 ## Impact
 
@@ -54,6 +54,7 @@ This change adds the new tree beside neo-tree. It opens only from new, unbound a
   - unit: `tests/unit/file-tree/test_model.lua` (rows, sort, chains, porcelain v2 parsing, tint).
   - integration: `tests/integration/file-tree/test_project_tree.lua`, `test_project_git.lua`, `test_project_live.lua`.
   - screen: `tests/screen/file-tree/test_project_tree.lua`, `tests/screen/bufferline/` (new offset case).
+  - e2e fixture: `tests/e2e/find-action/screens.lua` (the two new global actions raise the populated catalog count from 45 to 47).
 - Plugins: none added or removed. nvim-web-devicons (installed) gives the file icons. The tree is our own code by user decision. Alternatives considered for the base:
   - nvim-tree.lua (8.7k stars, pushed 2026-10-16) and neo-tree have no folder tint or compact chains in their renderers.
   - oil.nvim (7.0k stars, pushed 2026-10-12) is a buffer editor, not a sidebar tree.
@@ -65,6 +66,7 @@ This change adds the new tree beside neo-tree. It opens only from new, unbound a
   - `bufferline: tabs start after the open tree` still holds: the neo-tree offset entry is kept.
   - `autocommands: q closes special buffers through an action` still holds: the tree's `q` is a buffer-local mapping of the `gleb-file-tree` buffer only.
   - `git: q closes diffview from file panel` still holds: diffview's keys and filetypes are untouched; the new keys are local to `gleb-file-tree` buffers.
+  - `diff: Diff view q closes the tab page` still holds: the project tree has its own filetype and buffer-local `q`, so the diff view's closing action, mappings and tab lifecycle are untouched.
   - `git: s stages entry from file panel` still holds: the tree's `s` exists only in `gleb-file-tree` buffers.
   - `git: Enter confirms message` still holds: the commit popup's buffer and keys are untouched.
   - `git: Enter on empty buffer does nothing` still holds: the commit popup is untouched.
@@ -115,5 +117,5 @@ Run on `loop/file-tree-view-20261018-005322` was rejected by the judge:
   
   [minor] tests/e2e/find-action/screens.lua:92,106: neither proposal.md nor tasks.md covers this file. The palette count goes from 45 to 47 because of the new global `file_tree.toggle` and `file_tree.reveal` actions. The gate needed this edit to go green.
   
-  [minor] The fix-scope edit to specs/file-tree/spec.md adds the scenario "Project tree opens from non-project b
+  [minor] The fix-scope edit to the file-tree delta adds the scenario "Project tree opens from non-project buffers", but tasks.md does not cover it.
 - note: loop: No test cases matched
