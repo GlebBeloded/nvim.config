@@ -276,6 +276,37 @@ local function project_unfold_all()
 	require("gleb.file_tree.view").unfold_all()
 end
 
+local function project_add()
+	require("gleb.file_tree.ops").add()
+end
+
+local function project_rename()
+	require("gleb.file_tree.ops").rename()
+end
+
+---@param ctx gleb.ActionContext
+local function project_delete(ctx)
+	require("gleb.file_tree.ops").delete(ctx)
+end
+
+---@param ctx gleb.ActionContext
+local function project_copy(ctx)
+	require("gleb.file_tree.ops").copy(ctx)
+end
+
+---@param ctx gleb.ActionContext
+local function project_cut(ctx)
+	require("gleb.file_tree.ops").cut(ctx)
+end
+
+local function project_paste()
+	require("gleb.file_tree.ops").paste()
+end
+
+local function project_refresh()
+	require("gleb.file_tree.ops").refresh()
+end
+
 ---@type gleb.Action[]
 local actions = {
 	{
@@ -293,6 +324,58 @@ local actions = {
 		run = function()
 			require("gleb.file_tree.view").reveal()
 		end,
+	},
+	{
+		id = "file_tree.add",
+		title = "New File or Directory",
+		category = "Project",
+		ft = "gleb-file-tree",
+		run = project_add,
+	},
+	{
+		id = "file_tree.rename",
+		title = "Rename",
+		category = "Project",
+		ft = "gleb-file-tree",
+		run = project_rename,
+	},
+	{
+		id = "file_tree.delete",
+		title = "Delete",
+		category = "Project",
+		ft = "gleb-file-tree",
+		modes = { "n", "x" },
+		run = project_delete,
+	},
+	{
+		id = "file_tree.copy",
+		title = "Copy",
+		category = "Project",
+		ft = "gleb-file-tree",
+		modes = { "n", "x" },
+		run = project_copy,
+	},
+	{
+		id = "file_tree.cut",
+		title = "Cut",
+		category = "Project",
+		ft = "gleb-file-tree",
+		modes = { "n", "x" },
+		run = project_cut,
+	},
+	{
+		id = "file_tree.paste",
+		title = "Paste",
+		category = "Project",
+		ft = "gleb-file-tree",
+		run = project_paste,
+	},
+	{
+		id = "file_tree.refresh",
+		title = "Refresh",
+		category = "Project",
+		ft = "gleb-file-tree",
+		run = project_refresh,
 	},
 	{
 		id = "file_tree.open",

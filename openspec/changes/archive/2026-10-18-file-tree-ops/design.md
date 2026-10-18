@@ -32,7 +32,7 @@ Research (2026-10-17):
 1. **Modules:**
    - `file_tree/ops.lua`:
      - The operations, including target-folder resolution and the copy-name rule.
-     - `M.state.clipboard = { mode = "copy"|"cut", paths = string[] }?`, with `M.reset()`.
+     - `M.state.clipboard = { mode = "copy"|"cut", paths = string[] }?` and a test-only `trash_path` override, with `M.reset()`.
    - `file_tree/paths.lua` is pure (rule 1.3): `target_folder`, `copy_name`, `is_inside`, `dedupe` and `filter_matches` (the LSP filter test).
    - `file_tree/lsp_files.lua`: `will_rename(pairs)` and `did_rename(pairs)` for a list of `{ old, new }` absolute paths.
    - `picker/input.lua`: the prompt (Decision 7).
@@ -41,16 +41,18 @@ Research (2026-10-17):
    - The query is split on `/`. A trailing `/` makes the last part a folder.
    - Folders are created with `vim.fn.mkdir(path, "p")`. A file is created with `vim.uv.fs_open(path, "wx", 420)`, which fails on an existing path.
    - An existing path notifies `Already exists: <path relative to the root>` at ERROR. Other failures notify `Create failed: <err>`.
+   - Every submitted path is normalized and must stay inside the root, with no `..`, absolute path or empty segment. The root row remains a valid create target, but is never itself operated on.
    - A new file opens in the most recently used editor window (as `file_tree.open` does), and that window takes focus.
 4. **Rename and move:**
    - Rename resolves the new path relative to the entry's folder, so `sub/x.go` moves into `sub`. A move (cut + paste) resolves it relative to the target folder.
-   - Steps, all on the main loop:
-     1. Check the target does not exist (`Already exists: …`).
-     2. `lsp_files.will_rename`.
-     3. `vim.lsp.util.rename(old, new)` in a `pcall`. On failure, notify `Rename failed: <err>` and skip step 4.
-     4. `lsp_files.did_rename`.
-     5. Refresh the tree and git status, and select the new path.
-   - `vim.lsp.util.rename` reports its own errors as `<path> already exists. Skipping rename.` Our existence check runs first, so the user sees our message.
+   - `ops.move(pairs)` runs one complete preflight before any LSP traffic or filesystem mutation. Every source must exist by `lstat`; every normalized target must remain inside the root, contain no empty or `..` segments, be absent under a case-insensitive comparison except for its own source, and have the same `dev` as its destination parent. Root rows are rejected. Cross-device moves notify `Rename failed: cross-device`.
+   - Steps, all on the main loop after the picker closes (`on_submit` schedules the operation):
+     1. Run the complete batch preflight.
+     2. Send one batched `lsp_files.will_rename` request set, bounded to 1000 ms total.
+     3. Move every pair. A case-only rename first moves through a unique temporary sibling. Failure notifies `Rename failed: <err>` and skips step 4.
+     4. Confirm every target with `stat`, then send one batched `lsp_files.did_rename` notification set.
+     5. Rename loaded buffers matched by realpath, migrate expanded keys, refresh every view of the root once, and select the new path in the initiating view.
+   - The realpath match makes buffers opened through a symlinked root or macOS `/private/var` alias follow the move without changing which path is moved on disk.
 5. **LSP file operations** (`lsp_files.lua`):
    - For each client of `vim.lsp.get_clients()` whose `server_capabilities.workspace.fileOperations.willRename.filters` match either path:
      - scheme `file`;
@@ -63,18 +65,18 @@ Research (2026-10-17):
 6. **Delete:**
    - The rows come from the cursor, or the Visual selection (`'<`/`'>` rows, root excluded, deduplicated so a path inside a selected folder is dropped).
    - Confirmation:
-     - `vim.ui.select({ "Move to Trash", "Cancel" }, { prompt = "Delete <relative path>?" })`, or `"Delete <n> items?"` for several.
+     - `vim.ui.select({ "Move to Trash", "Cancel" }, { prompt = "Delete <relative path>?" })`, or `"Delete <n> items (<m> unsaved)?"` when several or unsaved buffers are involved.
      - Without `trash` the first choice reads `Delete`.
-   - With `vim.fn.exepath("trash") ~= ""`, the delete runs `vim.system({ trash, "-s", paths… })` (rule 6.4). A non-zero exit notifies `Delete failed: <stderr trimmed>` at ERROR.
+   - With executable `/usr/bin/trash`, the delete runs `vim.system({ "/usr/bin/trash", "-s", paths… })` (rule 6.4). Tests replace this through `ops.state.trash_path`; PATH is never consulted. A non-zero exit notifies `Delete failed: <stderr trimmed>` at ERROR and never falls back to permanent deletion.
    - Otherwise each path is removed with `vim.fs.rm(path, { recursive = true })` in a `pcall`, with the same error message.
-   - Afterwards, every loaded, unmodified buffer whose file was removed is wiped. Its windows first switch to the alternate buffer, or to a new empty buffer, so the layout stays (like `buffer.close`). Modified buffers stay open.
+   - Each selected row's lstat path is deleted, never its realpath target. Afterwards, only paths whose `stat` confirms absence have their unmodified buffers wiped across all tabs. Windows switch to an alternate buffer or a new empty buffer that is not one of the deleted files. Modified buffers stay open, and auto-save's `should_autosave` skips their now-missing paths.
 7. **Picker input prompt** (`picker/input.lua`), the shared frame with rule 8.9 chrome:
    - A `mini.pick` session through `gleb.picker` with one item, whose `match` always keeps that item and whose `show` draws `preview(query)` as a picker row (primary, secondary, category).
    - The prompt window is the frame's width (`MAX_WIDTH` 70) with an inner height of 3 (row, joined rule, hints), centred like other pickers.
    - The title is `<title> › <query>`.
    - Mappings:
      - `<CR>` submits a non-blank, trimmed query.
-     - `<Esc>` cancels.
+     - `<Esc>` cancels, returns focus to the originating tree and restores its hidden-cursor `guicursor` state after the picker closes.
      - `<C-u>` clears the query (mini.pick's `delete_left`).
    - `default` is set with `MiniPick.set_picker_query` after the start.
    - Prompts in this change:
@@ -88,14 +90,14 @@ Research (2026-10-17):
    - `copy`/`cut` replace the clipboard with the selected paths (deduplicated as in Decision 6).
    - `paste` with an empty clipboard does nothing.
    - Copy:
-     - A file is copied with `vim.uv.fs_copyfile(src, dst, { excl = true })`. A folder is copied by a recursive walk (`vim.fs.dir(src, { depth = math.huge })`), creating folders, then copying files.
-     - The conflict prompt (Decision 7) runs per conflicting entry.
+     - A file is copied with `vim.uv.fs_copyfile(src, dst, { excl = true })`. A folder copy preflights the complete destination tree before writing; directories are created, regular files copied, and symlinks recreated without following them.
+     - The conflict prompt (Decision 7) runs per conflicting entry. If the prefilled `_copy` name also exists it re-prompts with `_copy2`, then increasing suffixes.
      - Failures notify `Paste failed: <err>` at ERROR.
    - Cut:
-     - Each entry moves through Decision 4 with the target folder as base, so buffers and language servers follow.
+     - Each entry moves through Decision 4 with the target folder as base, so buffers and language servers follow. An existing target reports `Already exists` and is never overwritten; cutting into its current parent is a no-op.
      - The clipboard is cleared after the last move.
-   - Pasting a folder into itself or below it notifies `Cannot paste <relative path> into itself` at ERROR and stops.
-9. **Refresh** (`R`): rescan every expanded folder, then request git status without the debounce. It is also the fallback when a watcher misses an event on a network volume.
+   - Pasting a folder into itself or below it notifies `Cannot paste <relative path> into itself` at ERROR and stops. A missing clipboard source reports `Paste failed: <path>: ENOENT`; remaining clipboard entries continue.
+9. **Refresh** (`R`): rescan every expanded folder, then request git status without the debounce. It refreshes only the current view while preserving another tab's distinct view state, and starts at least one new git-status run. It is also the fallback when a watcher misses an event on a network volume.
 10. **Keys** (`settings/keymap.json`, filetype `gleb-file-tree`):
     - `file_tree.add` `a`, `file_tree.rename` `r`, `file_tree.paste` `p`, `file_tree.refresh` `R`.
     - `file_tree.delete` `d`, `file_tree.copy` `c` and `file_tree.cut` `x` also have `modes = { "n", "x" }`.
@@ -390,6 +392,6 @@ Legend: `a` [FileTreeNormal] · `b` [FileTreeExpander] · `c` [FileTreeFolderIco
 ## Risks / Trade-offs
 
 - **`vim.wait` during willRename** blocks input for up to 1 s when a server is slow. Accepted: IntelliJ also blocks a rename on refactoring, and the timeout bounds it.
-- **`:saveas!` in `vim.lsp.util.rename`** writes modified buffers to the new path. With auto-save on, that is the expected state anyway.
+- **Realpath buffer matching** makes symlinked paths follow a move, but keeps the user's buffer spelling where possible. Modified buffers remain modified at the new name; deleted modified buffers are excluded from auto-save.
 - **Folder glob matching** follows the LSP spec loosely: servers usually register `**/*.{ts,tsx}` for files and `**/` for folders. The unit table covers both.
 - **`trash` absent** (macOS before 15) means a permanent delete. The choice label then reads `Delete`, so the user knows.

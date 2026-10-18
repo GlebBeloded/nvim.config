@@ -29,7 +29,6 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 
 ## Loop lessons
 
-- Golden checks for empty expected changes must reject missing, fallback, and partial inner results before comparing changed-byte sets.
 - When archiving a change, retain its adopted main-spec scenarios so trace can link the regression cases.
 - Gate optional post-processing on every fallback status; `too_big` xdiff results must skip move detection just like timed-out results.
 - Diff viewport sync must neutralize window-local scrolloff and ignore only peer events whose cursor or view still matches the programmatic target, preventing deferred echoes from remapping the source.
@@ -44,6 +43,7 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - Start macOS filesystem handles needed by a view before its first draw; adding a late handle can recreate the shared FSEvents stream and drop an intervening directory event.
 - Batch deadline polls in hot candidate loops and maintain claimed ranges in sorted order so deadline enforcement does not dominate move detection.
 - When archiving a change, update tests that read its approved render to the archive path so the durable artifact remains available.
+- Check symlink identity before case-only handling, and rename logical buffers while the symlink is parked at its temporary path so a loaded target buffer remains untouched.
 
 ## The loop
 

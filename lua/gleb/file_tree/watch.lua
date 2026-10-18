@@ -233,6 +233,21 @@ function M.stop_root(root, owner)
 	fs.invalidate_root(root)
 end
 
+--- Stop every active filesystem handle while retaining registered views.
+---@return nil
+function M.stop_all()
+	for _, state in pairs(M.state.roots) do
+		for path in pairs(state.handles) do
+			close_folder(state, path)
+		end
+		if state.git_handle then
+			state.git_handle:stop()
+			state.git_handle:close()
+			state.git_handle = nil
+		end
+	end
+end
+
 --- Stop and remove every watch.
 ---@return nil
 function M.reset()
