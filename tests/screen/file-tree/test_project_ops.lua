@@ -121,7 +121,13 @@ local function start()
 	)
 	child.cmd("cd " .. vim.fn.fnameescape(root))
 	child.cmd("edit " .. vim.fn.fnameescape(vim.fs.joinpath(root, "internal/billing/invoice.go")))
-	assert(child.wait([[vim.b.gitsigns_head == "main"]], 5000), "gitsigns branch did not load")
+	assert(
+		child.wait(
+			[[vim.b.gitsigns_head == "main" and vim.b.gitsigns_status_dict.changed == 1]],
+			math.ceil(5000 * H.load_factor())
+		),
+		"gitsigns did not load the changed line"
+	)
 	run_toggle()
 	assert(
 		child.wait(
