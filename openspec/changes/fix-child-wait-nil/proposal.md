@@ -37,8 +37,9 @@ Full `make check` with only the helper fix (loop round104, 2026-10-18): that is 
 	end
 ```
 
-- Find why the typed query does not select `file_tree.open` in that case (the test's keys, the picker's input
-  handling, or the palette's matching) and fix the cause. The case's assertions stay as they are.
+- Make multi-word Find Action queries fuzzy-match the combined `Category Title` value so `project open` selects
+  `file_tree.open`; keep single-word title, category, and alias matching unchanged. Add the Find Action spec delta
+  and matcher regression coverage. The existing file-tree case's input and assertions stay as they are.
 
 ## Impact
 
