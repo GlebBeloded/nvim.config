@@ -55,6 +55,7 @@ STUCK_TASKS = "stuck-tasks.json"  # {"stuck": tasks.md's Stuck text when recorde
 
 
 STUCK_HEADING = re.compile(r"^#{2,4} Stuck\b[^\n]*\n\s*(?!#)\S", re.MULTILINE)  # a Stuck section with a body
+NAMED_TASK = re.compile(r"\b[Tt]ask (\d+[a-z0-9]*)\b")
 NUMBERED = re.compile(r"^#{2,4} \d+[a-z0-9]*\..*$", re.MULTILINE)  # `## 3.` and split tasks `## 3a.`, `## 5a1.`
 
 
@@ -75,6 +76,11 @@ def stuck_tasks(text: str, artifacts: pathlib.Path) -> list[str]:
         heading = heading or (left[0] if left else "")
         if heading:
             held.append(heading)
+    for mark in STUCK.finditer(text):  # one Stuck section naming several tasks (`Task 3b`, `task 4c`) holds each of them
+        for task_id in NAMED_TASK.findall(mark.group(0)):
+            heading = next((h for h in open_tasks if h.split(" ", 2)[1] == task_id + "."), "")
+            if heading and heading not in held:
+                held.append(heading)
     held += [h for h in record["tasks"] if h not in held and h in open_tasks]
     stuck = "\n\n".join(m.group(0).strip() for m in STUCK.finditer(text))
     if held != record["tasks"] or stuck != record["stuck"]:
