@@ -188,3 +188,9 @@ Scenarios: `git: Changes panel matches the approved render`, `git: Changes panel
 - Screen legends name nvim-web-devicons' `DevIconTypeScript` for `.ts` icons: the installed plugin defines no `DevIconTs`, and both name the same `#519aba` icon colour.
 - Render unit cases expect the model's unchecked glyph `󰄱`: the `☐` they pinned is design.md's stand-in, and the renderer now draws each row's index state.
 - Task 7 screen comparison: keep Proposed B's stated full-width approved render text and colour mask (option 3), with byte-identical text copies under `tests/screen/git/`, because narrowing it would weaken the delta's bound and recapturing the current screen would violate the auditor Decision.
+
+## Stuck
+
+- Probe: the panel renderer is correct (`ChangesCheckbox` and `FileTreeExpander` are `#928374`; the root-row checkbox extmark spans bytes 5–9). The editor starts with `signcolumn` decorations and indent-blankline extmarks, and the approved diff assumes four-cell Go tabs.
+- Attempt 1: saved/restored editor window options, removed the sign column, selected the current line number, and tried window-local indent highlight remapping. The sign/number mismatch cleared, but `winhighlight` did not affect indent-blankline extmarks.
+- Attempt 2 (`stuck-attempt.diff`): used `ibl.setup_buffer` to disable/restore guides and saved/restored `tabstop=4` for every panel-owned content buffer. Both screen cases advanced past layout mismatches, then Proposed B still failed at row 8, column 43: `Invoice` expected `@type` green (`#a9b665`) but Tree-sitter drew `#ddc7a1`.
