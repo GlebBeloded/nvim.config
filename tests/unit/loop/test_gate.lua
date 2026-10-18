@@ -713,6 +713,11 @@ T["loop: Gate merges a moved auto first"] = function()
 	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
 end
 
+T["loop: Review flags a test reading a change folder"] = function()
+	local review = read(vim.fs.joinpath(H.root, ".archon/commands/review.md")):gsub("%s+", " ")
+	has(review, "a test that reads a file under `openspec/changes/` at runtime breaks when the change is archived")
+end
+
 T["loop: A new look is checked against its approved render"] = function()
 	local implement = read(vim.fs.joinpath(H.root, ".archon/commands/implement.md")):gsub("%s+", " ")
 	has(implement, "a screenshot the test run created itself is never the reference for a new look")
