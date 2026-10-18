@@ -147,9 +147,28 @@ end
 
 --- New child Neovim with config/bare start helpers.
 ---@return test.Child
+--- Polls the parent every second; once it is gone (the child was reparented), stops the LSP clients (their
+--- servers exit with them) and quits, then kills itself if a blocking wait keeps it from quitting.
+M.WATCHDOG = "lua local p = vim.uv.os_getppid() local t = vim.uv.new_timer() "
+	.. "t:start(1000, 1000, function() if vim.uv.os_getppid() == p then return end t:stop() "
+	.. "vim.schedule(function() pcall(vim.lsp.stop_client, vim.lsp.get_clients(), true) vim.cmd('qa!') end) "
+	.. "vim.uv.new_timer():start(3000, 0, function() vim.uv.kill(vim.uv.os_getpid(), 'sigkill') end) end)"
+
 function M.new_child()
 	M.isolate()
 	local child = MiniTest.new_child_neovim() --[[@as test.Child]]
+	local start = child.start
+
+	--- Every child gets WATCHDOG: a child whose test worker was killed (a hung case, an interrupted run) exits
+	--- instead of living on with its `--listen` socket and LSP servers.
+	function child.start(args, opts)
+		args = args or {}
+		if args[2] ~= M.WATCHDOG then
+			args = vim.list_extend({ "--cmd", M.WATCHDOG }, args)
+		end
+		start(args, opts)
+	end
+
 	local stop = child.stop
 
 	function child.stop()
