@@ -78,9 +78,9 @@ Scenarios: `git: Changes panel Space stages an unstaged file`, `git: Changes pan
 
 ## 4b. Repository-relative staging
 Scenarios: `git: Changes panel stages when cwd is outside the repository`, `git: Changes panel unstages when cwd is outside the repository`, `git: Changes panel stages from a subdirectory cwd`, `git: Changes panel unstages from a subdirectory cwd`, `git: Changes panel reports a staging failure`
-- [ ] 4b.1 Write the scenarios in `tests/integration/git/test_changes_stage.lua`, driving `<Space>` in real panels with populated repositories, and see them fail
-- [ ] 4b.2 Run every status and mutation in the panel root and surface staging failures
-- [ ] 4b.3 Run `make test FILE=tests/integration/git/test_changes_stage.lua CASE="Changes panel"` and see it pass
+- [x] 4b.1 Write the scenarios in `tests/integration/git/test_changes_stage.lua`, driving `<Space>` in real panels with populated repositories, and see them fail
+- [x] 4b.2 Run every status and mutation in the panel root and surface staging failures
+- [x] 4b.3 Run `make test FILE=tests/integration/git/test_changes_stage.lua CASE="Changes panel"` and see it pass
 
 ## 4c. Batch and conflict staging
 Scenarios: `git: Changes panel Space on the Changes root stages every tracked file`, `git: Changes panel stages literal metacharacter paths`, `git: Changes panel refuses to stage an unmerged file`, `git: Changes panel unstages a rename literally`
@@ -175,3 +175,4 @@ Scenarios: `git: Changes panel matches the approved render`, `git: Changes panel
 - Changes panels use their buffer IDs as shared-watch owners, avoiding collisions with another left view in the same tab.
 - Panel refreshes debounce for 50 ms, matching the diff-selection cadence while coalescing writes and git-dir bursts.
 - The shared editor-window selector also exports its eligibility predicate so Changes can mirror orphan detection without duplicating tool-window exclusions.
+- Repository-relative staging needed no production edit because task 4a already rooted both status and mutation calls and propagated their failures.

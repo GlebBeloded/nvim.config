@@ -28,6 +28,18 @@ local function open_changes(dir)
 	)
 end
 
+---@param root string
+---@param cwd string
+local function open_changes_at(root, cwd)
+	child.cmd("cd " .. vim.fn.fnameescape(cwd))
+	child.cmd("enew")
+	child.lua(([[require("gleb.git.changes").open({ root = %q })]]):format(root))
+	eq(
+		child.wait([[require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()] ~= nil]], ASYNC_MS),
+		true
+	)
+end
+
 ---@param path string
 local function press_space_on(path)
 	eq(
@@ -153,6 +165,74 @@ T["git: Changes panel Space stages a file whose name is a suffix of a staged fil
 
 	eq(wait_staged(dir, "a.lua", true), true)
 	eq(staged(dir), { "a.lua", "aa.lua" })
+end
+
+T["git: Changes panel stages when cwd is outside the repository"] = function()
+	local dir = H.git_repo({ ["a.lua"] = "one\n" })
+	local outside = vim.fn.tempname()
+	vim.fn.mkdir(outside, "p")
+	H.write_files(dir, { ["a.lua"] = "two\n" })
+	open_changes_at(dir, outside)
+
+	press_space_on("a.lua")
+
+	eq(wait_staged(dir, "a.lua", true), true)
+end
+
+T["git: Changes panel unstages when cwd is outside the repository"] = function()
+	local dir = H.git_repo({ ["a.lua"] = "one\n" })
+	local outside = vim.fn.tempname()
+	vim.fn.mkdir(outside, "p")
+	H.write_files(dir, { ["a.lua"] = "two\n" })
+	H.git(dir, { "add", "--", "a.lua" })
+	open_changes_at(dir, outside)
+
+	press_space_on("a.lua")
+
+	eq(wait_staged(dir, "a.lua", false), true)
+end
+
+T["git: Changes panel stages from a subdirectory cwd"] = function()
+	local dir = H.git_repo({ ["sub/x.lua"] = "one\n" })
+	H.write_files(dir, { ["sub/x.lua"] = "two\n" })
+	open_changes(vim.fs.joinpath(dir, "sub"))
+
+	press_space_on("sub/x.lua")
+
+	eq(wait_staged(dir, "sub/x.lua", true), true)
+end
+
+T["git: Changes panel unstages from a subdirectory cwd"] = function()
+	local dir = H.git_repo({ ["sub/x.lua"] = "one\n" })
+	H.write_files(dir, { ["sub/x.lua"] = "two\n" })
+	H.git(dir, { "add", "--", "sub/x.lua" })
+	open_changes(vim.fs.joinpath(dir, "sub"))
+
+	press_space_on("sub/x.lua")
+
+	eq(wait_staged(dir, "sub/x.lua", false), true)
+end
+
+T["git: Changes panel reports a staging failure"] = function()
+	local dir = H.git_repo({ ["a.lua"] = "one\n" })
+	H.write_files(dir, { ["a.lua"] = "two\n" })
+	open_changes(dir)
+	local notifications = H.record_notify(child)
+	vim.fn.writefile({}, vim.fs.joinpath(dir, ".git", "index.lock"))
+
+	press_space_on("a.lua")
+
+	eq(
+		child.wait(
+			[[vim.iter(Notifications):any(function(notification)
+				return notification.level == vim.log.levels.ERROR
+					and vim.startswith(notification.msg, "Stage failed:")
+			end)]],
+			ASYNC_MS
+		),
+		true
+	)
+	eq(vim.startswith(notifications()[1].msg, "Stage failed:"), true)
 end
 
 return T
