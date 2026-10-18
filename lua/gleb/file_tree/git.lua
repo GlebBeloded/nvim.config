@@ -25,9 +25,10 @@ local GIT_DEBOUNCE_MS = 150
 M.state = { roots = {}, runs = 0 }
 
 ---@param output string
+---@param prefix string
 ---@return table<string, string>
-local function parse_status(output)
-	local status = model.parse_status(output, "")
+local function parse_status(output, prefix)
+	local status = model.parse_status(output, prefix)
 	local folders = {}
 	for path in pairs(status) do
 		local current = path:gsub("/+$", ""):match("^(.*)/[^/]+$")
@@ -110,22 +111,25 @@ local function run(root, state)
 		{ "git", "--no-optional-locks", "-C", root, "status", "--porcelain=v2", "-z", "--untracked-files=normal" }
 	M.state.last_cmd = command
 	M.state.runs = M.state.runs + 1
-	vim.system(command, { text = true }, function(result)
-		vim.schedule(function()
-			if M.state.roots[root] ~= state then
-				return
-			end
-			state.in_flight = false
-			if result.code == 0 and generation == state.generation then
-				state.status = parse_status(result.stdout or "")
-				for _, callback in pairs(state.callbacks) do
-					callback()
+	vim.system({ "git", "-C", root, "rev-parse", "--show-prefix" }, { text = true }, function(prefix_result)
+		local prefix = vim.trim(prefix_result.stdout or "")
+		vim.system(command, { text = true }, function(result)
+			vim.schedule(function()
+				if M.state.roots[root] ~= state then
+					return
 				end
-			end
-			if state.dirty then
-				state.dirty = false
-				run(root, state)
-			end
+				state.in_flight = false
+				if prefix_result.code == 0 and result.code == 0 and generation == state.generation then
+					state.status = parse_status(result.stdout or "", prefix)
+					for _, callback in pairs(state.callbacks) do
+						callback()
+					end
+				end
+				if state.dirty then
+					state.dirty = false
+					run(root, state)
+				end
+			end)
 		end)
 	end)
 end

@@ -174,6 +174,8 @@ T["file-tree: Project tree ignores files outside the root"] = function()
 	child.cmd("edit " .. vim.fn.fnameescape(outside))
 
 	eq(selected_tree_line():match("[^ ]+$"), "go.mod")
+	child.cmd("edit " .. vim.fn.fnameescape(outside .. "-missing"))
+	eq(selected_tree_line():match("[^ ]+$"), "go.mod")
 end
 
 T["file-tree: Project tree reveal focuses the current file"] = function()

@@ -191,7 +191,8 @@ Scenarios: `file-tree: Project tree matches the approved render`, `file-tree: Pr
 - `fs.tree` passes a root and scan function into `model.rows`, keeping the row model pure while sharing the filesystem cache.
 - Task 2a introduces `view.setup()` only as the render-highlight owner required by the entry-point order; task 2b extends it with per-tab windows.
 - Eligible editor selection remembers the latest valid `WinEnter` per tab and falls back to another valid editor, so special windows never become targets.
-- Cursor hiding queries the current mode and keeps one original `guicursor`; per-view window and mode events restore it whenever the tree is not focused in normal or visual mode.
+- When no editor target remains, selection creates a clean vertical editor split to the tree's right so open, close and buffer protection share one fallback.
+- Cursor hiding queries the current window and mode and keeps one original `guicursor`, so global events from inactive views cannot restore it.
 - `:q` closes both tree types in `QuitPre`; `:close` schedules the same guarded cleanup from `WinClosed` because Neovim has no pre-close event and rejects closing the final tree inside that autocmd.
 - Unfold-all queues displayed directory rows breadth-first and rolls back the first expansion over 5000 rows, preserving a bounded visible tree.
 - A tree scan assigns each real directory to its first lexical path while allowing that same path to be rescanned, so compact-row construction can reuse scans without traversing aliases or loops.
@@ -200,3 +201,4 @@ Scenarios: `file-tree: Project tree matches the approved render`, `file-tree: Pr
 - Shared-root watchers union each tab's scan set and fan events out by tabpage handle, so closing one view cannot strand another view's live updates.
 - Expansion writes use a PID-and-sequence temporary sibling, avoiding collisions while retaining atomic same-directory replacement.
 - Porcelain untracked-directory keys retain their trailing slash, so row lookup can colour descendants without filesystem-dependent parser work.
+- Git status parsing uses `rev-parse --show-prefix` because porcelain paths remain repository-top-relative when the tree root is a subfolder.

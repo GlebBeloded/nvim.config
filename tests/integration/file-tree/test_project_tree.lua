@@ -376,6 +376,26 @@ T["file-tree: Project and neo-tree close before the last editor"] = function()
 end
 
 T["file-tree: Project tree opening skips non-editor windows"] = function()
+	edit("README.md")
+	run_toggle()
+	local tree = child.api.nvim_get_current_win()
+	child.cmd("wincmd l")
+	child.cmd("terminal")
+	local terminal = child.api.nvim_get_current_win()
+	child.api.nvim_set_current_win(tree)
+	focus_tree_row("Makefile")
+	child.type_keys("<CR>")
+
+	eq(child.api.nvim_buf_get_name(0), real_path("Makefile"))
+	assert(
+		child.api.nvim_win_get_position(0)[2] > child.api.nvim_win_get_position(tree)[2],
+		"editor was not created right of tree"
+	)
+	eq(child.bo.buftype, "")
+	eq(child.api.nvim_win_is_valid(terminal), true)
+
+	child.cmd("tabnew")
+	child.cmd("tabprevious | tabclose!")
 	child.cmd("cd " .. vim.fn.fnameescape(root))
 	child.cmd("DiffviewOpen")
 	assert(
@@ -462,6 +482,13 @@ T["file-tree: A file cannot replace the project tree buffer"] = function()
 	eq(child.bo.filetype, "make")
 	eq(child.api.nvim_win_get_buf(tree_win), tree_buf)
 	eq(child.lua_get([[vim.bo[...].filetype]], { tree_buf }), "gleb-file-tree")
+
+	child.cmd("terminal")
+	child.api.nvim_set_current_win(tree_win)
+	child.cmd("edit " .. vim.fn.fnameescape(real_path("README.md")))
+
+	eq(child.api.nvim_buf_get_name(0), real_path("README.md"))
+	eq(child.api.nvim_win_get_buf(tree_win), tree_buf)
 end
 
 T["file-tree: Project tree split windows keep editor options"] = MiniTest.new_set()
@@ -544,6 +571,15 @@ T["file-tree: Project tree preserves the original cursor setting"] = function()
 	eq(child.o.guicursor, "a:FileTreeHiddenCursor")
 	run_toggle()
 	eq(child.o.guicursor, original)
+
+	child.cmd("tabnew")
+	edit("Makefile")
+	run_toggle()
+	child.cmd("tabprevious")
+	run_toggle()
+	child.cmd("tabnext")
+	eq(child.bo.filetype, "gleb-file-tree")
+	eq(child.o.guicursor, "a:FileTreeHiddenCursor")
 end
 
 T["file-tree: Project tree Enter toggles a folder"] = function()
@@ -612,6 +648,17 @@ T["file-tree: Project tree q closes the tree"] = function()
 
 	eq(project_tree_windows(), {})
 	eq(child.api.nvim_get_current_win(), editor_win)
+
+	run_toggle()
+	local tree_win = child.api.nvim_get_current_win()
+	child.cmd("wincmd l | terminal")
+	local terminal_win = child.api.nvim_get_current_win()
+	child.api.nvim_set_current_win(tree_win)
+	child.type_keys("q")
+
+	eq(project_tree_windows(), {})
+	eq(child.bo.buftype, "")
+	eq(child.api.nvim_win_is_valid(terminal_win), true)
 end
 
 local function assert_registered_action(id)

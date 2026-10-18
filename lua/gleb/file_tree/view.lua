@@ -32,9 +32,10 @@ M.state = { by_tab = {}, last_editor_by_tab = {} }
 local view_group
 local original_guicursor
 
----@param view FileTreeView
-local function update_cursor(view)
-	local tree_focused = vim.api.nvim_win_is_valid(view.win) and vim.api.nvim_get_current_win() == view.win
+local function update_cursor()
+	local current = vim.api.nvim_get_current_win()
+	local tree_focused = vim.api.nvim_win_is_valid(current)
+		and vim.bo[vim.api.nvim_win_get_buf(current)].filetype == "gleb-file-tree"
 	local mode = vim.api.nvim_get_mode().mode
 	local hidden = tree_focused and (mode == "n" or mode == "v" or mode == "V" or mode == "\22")
 	if hidden then
@@ -43,6 +44,19 @@ local function update_cursor(view)
 	elseif original_guicursor then
 		vim.o.guicursor = original_guicursor
 	end
+end
+
+---@param view FileTreeView
+---@return integer
+local function create_editor(view)
+	vim.api.nvim_set_current_win(view.win)
+	vim.cmd("rightbelow vnew")
+	vim.cmd(
+		"setlocal winfixwidth< cursorline< number< relativenumber< signcolumn< foldcolumn< foldenable< foldmethod< statuscolumn< wrap< list< spell< winhighlight<"
+	)
+	local win = vim.api.nvim_get_current_win()
+	M.state.last_editor_by_tab[view.tab] = win
+	return win
 end
 
 ---@param win integer
@@ -92,7 +106,7 @@ local function eligible_editor(view)
 			return win
 		end
 	end
-	error("project tree requires an editor window")
+	return create_editor(view)
 end
 
 ---@param view FileTreeView
@@ -115,9 +129,6 @@ end
 
 ---@param view FileTreeView
 local function close_view(view)
-	if original_guicursor then
-		vim.o.guicursor = original_guicursor
-	end
 	forget(view)
 	if vim.api.nvim_win_is_valid(view.win) then
 		vim.api.nvim_win_close(view.win, true)
@@ -125,6 +136,7 @@ local function close_view(view)
 	if vim.api.nvim_buf_is_valid(view.buf) then
 		vim.api.nvim_buf_delete(view.buf, { force = true })
 	end
+	update_cursor()
 end
 
 ---@param root string
@@ -147,6 +159,9 @@ local function reveal_target(view, path, missing_is_root)
 		return missing_is_root and view.root or nil
 	end
 	local normalized = fs.normalize(path)
+	if not vim.startswith(normalized, view.root .. "/") then
+		return nil
+	end
 	local stat = vim.uv.fs_stat(normalized)
 	if not stat then
 		return view.root
@@ -532,7 +547,7 @@ local function add_teardown_autocmds(view)
 			group = view_group,
 			pattern = tostring(view.win),
 			callback = function()
-				update_cursor(view)
+				update_cursor()
 				if vim.api.nvim_buf_is_valid(view.buf) then
 					vim.bo[view.buf].bufhidden = "wipe"
 				end
@@ -541,7 +556,7 @@ local function add_teardown_autocmds(view)
 		vim.api.nvim_create_autocmd({ "WinEnter", "ModeChanged" }, {
 			group = view_group,
 			callback = function()
-				update_cursor(view)
+				update_cursor()
 			end,
 		}),
 		vim.api.nvim_create_autocmd("BufEnter", {
@@ -606,7 +621,7 @@ local function open_view(path)
 	add_teardown_autocmds(view)
 	reveal_path(view, path, true)
 	git.request(root)
-	update_cursor(view)
+	update_cursor()
 	return view
 end
 

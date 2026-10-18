@@ -115,6 +115,12 @@ T["file-tree: Project tree folders take the strongest status below them"]["colou
 	expect_tree_highlight("notes.md", "FileTreeGitUntracked")
 	expect_tree_highlight("discount.go", "FileTreeFileName")
 	expect_tree_highlight("go.mod", "FileTreeFileName")
+
+	run_toggle()
+	child.cmd("cd " .. vim.fn.fnameescape(vim.fs.joinpath(root, "internal")))
+	child.cmd("edit " .. vim.fn.fnameescape(vim.fs.joinpath(root, "internal/billing/invoice.go")))
+	run_toggle()
+	expect_tree_highlight("invoice.go", "FileTreeGitModified")
 end
 
 T["file-tree: Project tree folders take the strongest status below them"]["uses the strongest descendant"] = function()
