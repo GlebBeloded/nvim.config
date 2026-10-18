@@ -216,6 +216,18 @@ local function tree_rows(lines)
 	return rows
 end
 
+---@param target test.Child
+---@param timeout? integer
+local function open_differ(target, timeout)
+	H.open_surface(target, {
+		open = [[vim.cmd("Differ")]],
+		condition = [[TopLeftWindow().filetype == "differpanel"
+			and table.concat(TopLeftWindow().lines, "\n"):find("b.txt", 1, true) ~= nil]],
+		surface = "Differ",
+		timeout = timeout,
+	})
+end
+
 --- Change the middle line of `name` ("top", "base", "bottom") to "ours" on
 --- main and "theirs" on branch `other`, then merge `other` so that line is
 --- left in conflict.
@@ -293,11 +305,16 @@ end
 T["git: Differ opens panel on the left"] = function()
 	use_repo({ ["a.txt"] = "a\n", ["dir/b.txt"] = "b\n" })
 	change({ ["a.txt"] = "a2\n", ["dir/b.txt"] = "b2\n" })
+	H.expect_blocked_differ_diagnostic({
+		repo = repo,
+		file = "a.txt",
+		setup = WINDOW_PROBES_LUA,
+		condition = [[TopLeftWindow().filetype == "differpanel"
+			and table.concat(TopLeftWindow().lines, "\n"):find("b.txt", 1, true) ~= nil]],
+	})
 	child.lua(WINDOW_PROBES_LUA)
 	local windows = #child.api.nvim_tabpage_list_wins(0)
-	child.cmd("Differ")
-	eq(child.wait("TopLeftWindow().filetype == 'differpanel'", ASYNC_MS), true)
-	eq(child.wait([[table.concat(TopLeftWindow().lines, "\n"):find("b.txt", 1, true)]], ASYNC_MS), true)
+	open_differ(child)
 
 	local panel = child.lua_get("TopLeftWindow()")
 	eq(#child.api.nvim_tabpage_list_wins(0) > windows, true)

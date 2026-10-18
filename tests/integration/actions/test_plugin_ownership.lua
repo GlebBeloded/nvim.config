@@ -33,28 +33,17 @@ function PluginMapped(filetype, lhs, mode)
 	end)
 end]]
 
---- Schedule `open` in the child and wait until `condition` is true.
+--- Open a plugin surface under the process-level deadline.
 ---@param open string Lua statement
 ---@param filetype string
 ---@param surface? string
 ---@param condition? string
 local function open_surface(open, filetype, surface, condition)
-	child.lua("vim.schedule(function() " .. open .. " end)")
-	if child.wait(condition or ("PluginBuffer(%q) ~= nil"):format(filetype), 10000) then
-		return
-	end
-
-	local state = child.lua_get([=[{
-		mode = vim.api.nvim_get_mode().mode,
-		messages = vim.api.nvim_exec2("messages", { output = true }).output,
-	}]=])
-	error(
-		("%s window did not open (mode: %s; messages: %s)"):format(
-			surface or filetype,
-			state.mode,
-			state.messages ~= "" and state.messages or "<none>"
-		)
-	)
+	H.open_surface(child, {
+		open = open,
+		condition = condition or ("PluginBuffer(%q) ~= nil"):format(filetype),
+		surface = surface or filetype,
+	})
 end
 
 ---@param filetype string
@@ -103,11 +92,15 @@ T["actions: Plugin-window mappings are action-owned"] = function()
 	expect_audit_empty()
 	open_surface([[vim.cmd("Differ")]], "differdiff")
 	expect_audit_empty()
+	child.lua([[pcall(vim.cmd, "tabclose")]])
 	open_surface([[vim.cmd("CodeDiff")]], "codediff-explorer")
 	expect_audit_empty()
 	open_surface([[require("neotest").summary.open()]], "neotest-summary")
 	expect_audit_empty()
-	open_surface([[vim.cmd("Mason")]], "mason")
+	open_surface(
+		[[require("mason.settings").current.ui.check_outdated_packages_on_open = false vim.cmd("Mason")]],
+		"mason"
+	)
 	expect_audit_empty()
 	open_surface([[require("lazy.core.config").headless = function() return false end vim.cmd("Lazy")]], "lazy")
 	expect_audit_empty()
@@ -151,6 +144,7 @@ T["actions: Plugin-window mappings are action-owned"] = function()
 			},
 		}
 	)
+	H.expect_blocked_differ_diagnostic({ repo = repo, file = "sample.go" })
 end
 
 T["actions: Unconfigured defaults are absent"] = function()
