@@ -48,7 +48,7 @@ def staged(*args: str, check: bool = True) -> str:
         index = pathlib.Path(git("rev-parse", "--path-format=absolute", "--git-path", "index").strip())
         copy = pathlib.Path(tempfile.mkdtemp(prefix="integrity-")) / "index"
         if index.is_file():
-            shutil.copyfile(index, copy)
+            shutil.copy2(index, copy)  # keep its mtime: git re-hashes files changed in the index's own second (racy git)
         _INDEX[root] = str(copy)
     env = {**os.environ, "GIT_INDEX_FILE": _INDEX[root]}
     subprocess.run(["git", "add", "-A"], capture_output=True, text=True, check=True, env=env)

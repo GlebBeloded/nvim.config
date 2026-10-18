@@ -119,8 +119,20 @@ def loop_done(tasks: pathlib.Path, artifacts: pathlib.Path) -> bool:
     passes = int(counter.read_text()) + 1 if counter.exists() else 1
     counter.write_text(str(passes))
     text = tasks.read_text() if tasks.exists() else ""
-    left = without(text, stuck_tasks(text, artifacts))
+    stuck = stuck_tasks(text, artifacts)
+    left = without(text, stuck)
+    if stuck:  # final gates cannot pass while a stuck task is red (run 0334b5f5: task 8 took 3 passes of ~9 min)
+        left = without(left, [sec.splitlines()[0] for sec in task_sections(left) if verification_only(sec)])
     return unchecked(left) == 0 or blocks(text) or passes >= MAX_PASSES or idle(text, artifacts)
+
+
+RUN_ITEM = re.compile(r"^\s*[-*] \[[ x]\] [\w.]+ (Re-?run|Run) `make [^\n]*$", re.MULTILINE)
+
+
+def verification_only(section: str) -> bool:
+    """A task that names no scenario and whose every item only runs `make` targets (a final gates task)."""
+    items = re.findall(r"^\s*[-*] \[[ x]\] .*$", section, re.MULTILINE)
+    return "Scenarios:" not in section and bool(items) and len(RUN_ITEM.findall(section)) == len(items)
 
 
 IDLE_PASSES = 2  # passes in a row that tick nothing: what is left waits on Stuck tasks (e.g. final gates), so the fix passes take over

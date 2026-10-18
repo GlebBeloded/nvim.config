@@ -545,18 +545,22 @@ gate.py SHALL check for a blocking `## Blocked` section (blocked.py) before anyt
 - **THEN** `green` is false, `blocked` is true, failures quote the Blocked section, make never ran, a second run reports the same `attempt`, and the review node's `when:` requires `$gate.output.blocked == false`
 
 ### Requirement: Stuck attempts keep the red test
-The fix and implement commands SHALL run one headless probe before editing for a non-obvious failure and cap attempts at 2; when the second fails they SHALL save its non-test diff to `$ARTIFACTS_DIR/stuck-attempt.diff` for the next pass, revert only non-test edits, write `## Stuck` with the probe output and both attempts, and commit the failing test with it.
+The fix and implement commands SHALL run one headless probe before editing for a non-obvious failure and cap attempts at 2; when the second fails they SHALL save its non-test diff to `$ARTIFACTS_DIR/stuck-attempt-<task>.diff` (one file per stuck task) for the next pass, revert only non-test edits, write `## Stuck` with the probe output and both attempts, and commit the failing test with it.
+
+#### Scenario: The task loop ends when only gates wait on a stuck task
+- **WHEN** `tasks.py`'s loop check runs on a tasks.md whose only unticked work besides a stuck task is a task with no `Scenarios:` line whose every item runs `make` (a final gates task), then on the same file without the Stuck section
+- **THEN** the first ends the task loop and the second does not
 
 #### Scenario: Stuck attempts keep the red test
 - **WHEN** `.archon/commands/fix.md` and `implement.md` are read
-- **THEN** each asks for the probe first, caps attempts at 2, saves the second attempt, new files included (`git add -N`), to `stuck-attempt.diff` (fix may `git apply` it), never stubs a task that needs the stuck task's code, reverts only non-test edits, writes `## Stuck` with the probe output and both attempts, commits the failing test with tasks.md, and no longer says to revert the uncommitted edits
+- **THEN** each asks for the probe first, caps attempts at 2, saves the second attempt, new files included (`git add -N`), to `stuck-attempt-<task>.diff` (fix may `git apply` that task's file), never stubs a task that needs the stuck task's code, reverts only non-test edits, writes `## Stuck` with the probe output and both attempts, commits the failing test with tasks.md, and no longer says to revert the uncommitted edits
 
 ### Requirement: Fix pass probes before it edits
 The fix command SHALL run one headless scratch-file probe logging the relevant state before editing code for a non-obvious failure, allow at most 2 implementation attempts per pass and then write `## Stuck` with the probe evidence, and forbid production timers or sleeps that race a plugin's internals unless the proposal's `## Decision` allows them.
 
 #### Scenario: Fix prompt probes first and caps attempts
 - **WHEN** `.archon/commands/fix.md` is read
-- **THEN** it asks for one headless probe before editing a non-obvious failure, caps attempts at 2 per pass then `## Stuck` with the probe output, and forbids timers or sleeps against plugin internals without a `## Decision`
+- **THEN** it asks for one headless probe before editing a non-obvious failure, caps attempts at 2 per pass then `## Stuck` with the probe output, forbids timers or sleeps against plugin internals without a `## Decision`, and lets a `## Decision` override any review finding it covers, carried-over ones too
 
 ### Requirement: Bug root cause carries evidence
 The spec prompts SHALL give a bug proposal an `## Evidence` section of `file:line` refs or probe output for its root cause; context_pack.py SHALL carry that section into context.md, and the implement prompt SHALL not re-read plugin source the Evidence covers.
@@ -757,7 +761,7 @@ The loop SHALL keep the user's contract unasked: no step changes a requirement's
 
 #### Scenario: Queue spec prompt keeps the user's contract
 - **WHEN** `.archon/commands/queue-spec.md` is read
-- **THEN** it forbids changing a requirement's numbers or bounds, removing a requirement to add it again and rewording `## Decision`, and settles any `## Blocked` section left
+- **THEN** it forbids changing a requirement's numbers or bounds, removing a requirement to add it again, rewording `## Decision` and dropping, narrowing or scoping out a `## What Changes` item, and settles any `## Blocked` section left
 
 #### Scenario: Judge rejects a change that re-adds a removed requirement
 - **WHEN** `.archon/scripts/escalation.py` runs on a branch whose change delta REMOVES requirement `Server readiness` and ADDS `Server readiness.` (a near name)
