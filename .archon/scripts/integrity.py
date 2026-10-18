@@ -277,8 +277,28 @@ def planned_removals(changes: str = "openspec/changes") -> set[str]:
         marks = list(DELTA_SECTION.finditer(text))
         for mark, end in zip(marks, [m.start() for m in marks[1:]] + [len(text)]):
             if mark.group(1) == "REMOVED":
-                found |= {f"{spec.parent.name}: {t}" for t in SCENARIO_LINE.findall(text[mark.end() : end])}
+                block = text[mark.end() : end]
+                found |= {f"{spec.parent.name}: {t}" for t in SCENARIO_LINE.findall(block)}
+                # an OpenSpec REMOVED requirement names only its title (Reason/Migration, no scenarios): its scenarios
+                # are the main spec's (run 3f6b4fd0: self-check flagged 6 spec-removed keymaps cases on every pass)
+                main = pathlib.Path("openspec/specs") / spec.parent.name / "spec.md"
+                main_text = main.read_text() if main.is_file() else ""
+                for title in REQUIREMENT_LINE.findall(block):
+                    if not SCENARIO_LINE.search(requirement_body(block, title)):  # listed scenarios are the removal
+                        found |= {f"{spec.parent.name}: {t}" for t in SCENARIO_LINE.findall(requirement_body(main_text, title))}
     return found
+
+
+REQUIREMENT_LINE = re.compile(r"^### Requirement:\s*(.+?)\s*$", re.MULTILINE)
+
+
+def requirement_body(text: str, title: str) -> str:
+    """The `### Requirement: <title>` section of a spec, up to the next requirement or `##` heading; empty when absent."""
+    match = re.search(rf"^### Requirement:\s*{re.escape(title)}\s*$", text, re.MULTILINE)
+    if not match:
+        return ""
+    end = re.compile(r"^#{2,3} ", re.MULTILINE).search(text, match.end())
+    return text[match.end() : end.start() if end else len(text)]
 
 
 SCENARIO_LINE = re.compile(r"^#### Scenario:\s*(.+?)\s*$", re.MULTILINE)

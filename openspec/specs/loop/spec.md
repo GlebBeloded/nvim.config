@@ -473,6 +473,10 @@ The delivery loop SHALL implement one task per fresh agent session from a script
 - **WHEN** `.archon/scripts/escalation.py` runs on a branch that deletes a test file whose case `c: kept` now lives in another test file, and on one where the other file holds only `c: other`
 - **THEN** the first `decision` is `ship`; the second is `reject` with `test files deleted:` naming the file
 
+#### Scenario: A title-only REMOVED requirement plans its main-spec scenarios
+- **WHEN** `integrity.planned_removals` reads a change delta whose `## REMOVED Requirements` names a requirement by title with only Reason and Migration lines
+- **THEN** it returns that requirement's scenarios from the main spec as `<capability>: <scenario>`, and no other requirement's; a REMOVED requirement that lists scenarios removes only those
+
 #### Scenario: Judge ships a test the change's spec delta removes
 - **WHEN** `.archon/scripts/escalation.py` runs on a branch that deletes a test file whose only case `c: dropped` is a scenario a change's spec delta lists under `## REMOVED Requirements`, and on one where the deleted file also held `c: kept`
 - **THEN** the first has neither `test files deleted` nor `test case(s) removed`; the second is `reject` naming `c: kept` and not `c: dropped`
