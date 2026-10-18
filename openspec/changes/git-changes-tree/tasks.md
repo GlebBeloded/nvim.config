@@ -30,9 +30,9 @@ Scenarios: `git: Changes panel checkboxes follow the index`
 
 ## 2e. Line statistics
 Scenarios: `git: Changes panel shows line stats`, `git: Changes panel cuts a long name before the stats`, `git: Changes panel omits unmatched numstat`, `git: Changes panel on unborn HEAD has no stats`
-- [ ] 2e.1 Write the scenarios in `tests/unit/git/test_changes_model.lua` and `tests/unit/git/test_changes_render.lua` with populated numstat data and see them fail
-- [ ] 2e.2 Parse and join numstat by status record, omit missing and binary stats, skip unborn HEAD, and implement the approved columns and `…` cut
-- [ ] 2e.3 Run `make test FILE=tests/unit/git/test_changes_render.lua CASE="Changes panel"` and see it pass
+- [x] 2e.1 Write the scenarios in `tests/unit/git/test_changes_model.lua` and `tests/unit/git/test_changes_render.lua` with populated numstat data and see them fail
+- [x] 2e.2 Parse and join numstat by status record, omit missing and binary stats, skip unborn HEAD, and implement the approved columns and `…` cut
+- [x] 2e.3 Run `make test FILE=tests/unit/git/test_changes_render.lua CASE="Changes panel"` and see it pass
 
 ## 2f. File nesting
 Scenarios: `git: Changes panel nests tests under their file`, `git: Changes panel keeps a lone test file flat`

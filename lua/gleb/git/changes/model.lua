@@ -34,6 +34,13 @@ local CHECKBOX_MIXED = "󰡖"
 ---@field directory_record? boolean
 ---@field diffable? boolean
 ---@field checkbox? string
+---@field added? integer
+---@field removed? integer
+
+---@class ChangesNumstat
+---@field added integer
+---@field removed integer
+---@field orig? string
 
 local ROOTS = {
 	changes = { label = "Changes" },
@@ -110,11 +117,40 @@ local function record_status(record)
 	return "modified"
 end
 
+---@param numstat_z? string
+---@return table<string, ChangesNumstat>
+local function parse_numstat(numstat_z)
+	local stats = {}
+	if not numstat_z then
+		return stats
+	end
+
+	local fields = vim.split(numstat_z, "\0", { plain = true })
+	local index = 1
+	while index <= #fields do
+		local added, removed, path = fields[index]:match("^([^\t]+)\t([^\t]+)\t(.*)$")
+		local orig
+		if path == "" then
+			orig = fields[index + 1]
+			path = fields[index + 2]
+			index = index + 2
+		end
+		local added_number = tonumber(added)
+		local removed_number = tonumber(removed)
+		if path and added_number and removed_number then
+			stats[path] = { added = added_number, removed = removed_number, orig = orig }
+		end
+		index = index + 1
+	end
+	return stats
+end
+
 ---@param root ChangesTreeNode
 ---@param root_name "changes"|"unversioned"
 ---@param record FileTreeStatusRecord
+---@param stats table<string, ChangesNumstat>
 ---@return nil
-local function insert_record(root, root_name, record)
+local function insert_record(root, root_name, record, stats)
 	local staged, unstaged = record_index_state(record)
 	local display_path = record.path:gsub("/+$", "")
 	local parts = vim.split(display_path, "/", { plain = true, trimempty = true })
@@ -136,6 +172,10 @@ local function insert_record(root, root_name, record)
 
 	local directory_record = record.kind == "?" and record.path:sub(-1) == "/"
 	local submodule = record.sub ~= nil and record.sub:sub(1, 1) == "S"
+	local stat = record.kind ~= "?" and stats[record.path] or nil
+	if stat and stat.orig and stat.orig ~= record.orig then
+		stat = nil
+	end
 	node.files[#node.files + 1] = {
 		kind = "file",
 		root = root_name,
@@ -149,6 +189,8 @@ local function insert_record(root, root_name, record)
 		directory_record = directory_record,
 		diffable = not directory_record and not submodule,
 		checkbox = checkbox(staged, unstaged),
+		added = stat and stat.added or nil,
+		removed = stat and stat.removed or nil,
 	}
 end
 
@@ -260,17 +302,19 @@ end
 --- Build compact Changes panel rows from porcelain-v2 output.
 ---@param porcelain_z string
 ---@param _nesting_rules table[]
+---@param numstat_z? string Output is absent when HEAD is unborn.
 ---@return ChangesRow[] rows
 ---@return boolean capped
-function M.rows(porcelain_z, _nesting_rules)
+function M.rows(porcelain_z, _nesting_rules, numstat_z)
 	local roots = {
 		changes = tree_node("", ""),
 		unversioned = tree_node("", ""),
 	}
+	local stats = parse_numstat(numstat_z)
 	for _, record in ipairs(file_tree_model.parse_status_records(porcelain_z)) do
 		if record.kind ~= "!" then
 			local root_name = record.kind == "?" and "unversioned" or "changes"
-			insert_record(roots[root_name], root_name, record)
+			insert_record(roots[root_name], root_name, record, stats)
 		end
 	end
 

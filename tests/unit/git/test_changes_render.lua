@@ -15,14 +15,19 @@ end
 
 local T = H.child_set(child, start)
 
-local function rendered_names(porcelain)
+local function draw(porcelain, numstat, width)
 	child.lua(
 		[[
-		local rows = ChangesModel.rows(..., {})
-		ChangesRender.draw(ChangesBuffer, rows, 35)
+		local porcelain, numstat, width = ...
+		local rows = ChangesModel.rows(porcelain, {}, numstat)
+		ChangesRender.draw(ChangesBuffer, rows, width or 35)
 	]],
-		{ porcelain }
+		{ porcelain, numstat, width }
 	)
+end
+
+local function rendered_names(porcelain)
+	draw(porcelain)
 	return child.lua_get([[
 		(function()
 			local result = {}
@@ -33,6 +38,29 @@ local function rendered_names(porcelain)
 				local details = mark[4]
 				if details.hl_group:find("^FileTreeGit") then
 					result[lines[mark[2] + 1]:sub(mark[3] + 1, details.end_col)] = details.hl_group
+				end
+			end
+			return result
+		end)()
+	]])
+end
+
+local function rendered_lines(porcelain, numstat, width)
+	draw(porcelain, numstat, width)
+	return child.lua_get([[vim.api.nvim_buf_get_lines(ChangesBuffer, 0, -1, false)]])
+end
+
+local function rendered_stat_groups()
+	return child.lua_get([[
+		(function()
+			local result = {}
+			local lines = vim.api.nvim_buf_get_lines(ChangesBuffer, 0, -1, false)
+			for _, mark in ipairs(vim.api.nvim_buf_get_extmarks(
+				ChangesBuffer, ChangesRender.namespace, 0, -1, { details = true }
+			)) do
+				local details = mark[4]
+				if details.hl_group:find("^ChangesStat") then
+					result[details.hl_group] = lines[mark[2] + 1]:sub(mark[3] + 1, details.end_col)
 				end
 			end
 			return result
@@ -77,6 +105,34 @@ T["git: Changes panel treats copies as renamed"]["renders the destination and pr
 	end)]]),
 		false
 	)
+end
+
+T["git: Changes panel cuts a long name before the stats"] = MiniTest.new_set()
+
+T["git: Changes panel cuts a long name before the stats"]["right aligns populated stats and leaves untracked rows plain"] = function()
+	local porcelain = table.concat({
+		"1 .M N... 100644 100644 100644 abcdef1 abcdef2 invoice.go",
+		"? notes.md",
+	}, "\0") .. "\0"
+	local lines = rendered_lines(porcelain, "12\t3\tinvoice.go\0", 35)
+
+	eq(lines[2], "     ☐  invoice.go         +12 -3")
+	eq(lines[4], "     ☐  notes.md")
+	eq(rendered_stat_groups(), { ChangesStatAdded = "+12", ChangesStatRemoved = "-3" })
+end
+
+T["git: Changes panel cuts a long name before the stats"]["uses an ellipsis and keeps stats in the approved columns"] = function()
+	local porcelain = table.concat({
+		"1 .M N... 100644 100644 100644 abcdef1 abcdef2 internal/billing/invoice_test.go",
+		"1 .M N... 100644 100644 100644 abcdef1 abcdef2 internal/other/helper.go",
+	}, "\0") .. "\0"
+	local numstat = table.concat({
+		"20\t1\tinternal/billing/invoice_test.go",
+		"1\t0\tinternal/other/helper.go",
+	}, "\0") .. "\0"
+	local lines = rendered_lines(porcelain, numstat, 35)
+
+	eq(lines[4], "         ☐  invoice_test.… +20 -1")
 end
 
 return T

@@ -153,4 +153,78 @@ T["git: Changes panel checkboxes follow the index"]["derives file and root state
 	eq({ rows[7].kind, rows[7].checkbox }, { "root", "󰄱" })
 end
 
+T["git: Changes panel shows line stats"] = MiniTest.new_set()
+
+T["git: Changes panel shows line stats"]["joins populated numstat records to tracked files"] = function()
+	local output = records({
+		status_record(".M", "internal/billing/invoice.go"),
+		status_record(".M", "internal/billing/invoice_test.go"),
+		status_record("A.", "internal/billing/tax.go"),
+		status_record("A.", "internal/billing/tax_test.go"),
+		status_record(".M", "web/src/price.ts"),
+		"? notes.md",
+	})
+	local numstat = table.concat({
+		"12\t3\tinternal/billing/invoice.go",
+		"20\t1\tinternal/billing/invoice_test.go",
+		"41\t0\tinternal/billing/tax.go",
+		"33\t0\tinternal/billing/tax_test.go",
+		"4\t4\tweb/src/price.ts",
+	}, "\0") .. "\0"
+	local rows = model.rows(output, default_nesting_rules(), numstat)
+
+	eq({
+		row_with_path(rows, "internal/billing/invoice.go").added,
+		row_with_path(rows, "internal/billing/invoice.go").removed,
+	}, { 12, 3 })
+	eq({
+		row_with_path(rows, "internal/billing/invoice_test.go").added,
+		row_with_path(rows, "internal/billing/invoice_test.go").removed,
+	}, { 20, 1 })
+	eq(
+		{ row_with_path(rows, "internal/billing/tax.go").added, row_with_path(rows, "internal/billing/tax.go").removed },
+		{ 41, 0 }
+	)
+	eq({
+		row_with_path(rows, "internal/billing/tax_test.go").added,
+		row_with_path(rows, "internal/billing/tax_test.go").removed,
+	}, { 33, 0 })
+	eq({ row_with_path(rows, "web/src/price.ts").added, row_with_path(rows, "web/src/price.ts").removed }, { 4, 4 })
+	eq(row_with_path(rows, "notes.md").added, nil)
+end
+
+T["git: Changes panel shows line stats"]["keys rename stats by destination and origin"] = function()
+	local output = records({
+		"2 R. N... 100644 100644 100644 abcdef1 abcdef2 R100 new.txt",
+		"old.txt",
+	})
+	local numstat = "5\t2\t\0old.txt\0new.txt\0"
+	local renamed = row_with_path(model.rows(output, default_nesting_rules(), numstat), "new.txt")
+
+	eq({ renamed.orig, renamed.added, renamed.removed }, { "old.txt", 5, 2 })
+end
+
+T["git: Changes panel omits unmatched numstat"] = MiniTest.new_set()
+
+T["git: Changes panel omits unmatched numstat"]["leaves missing and binary records without stats"] = function()
+	local output = records({
+		status_record(".M", "a.txt"),
+		status_record(".M", "b.txt"),
+		status_record(".M", "image.png"),
+	})
+	local rows = model.rows(output, default_nesting_rules(), "2\t1\ta.txt\0-\t-\timage.png\0")
+
+	eq({ row_with_path(rows, "a.txt").added, row_with_path(rows, "a.txt").removed }, { 2, 1 })
+	eq(row_with_path(rows, "b.txt").added, nil)
+	eq(row_with_path(rows, "image.png").added, nil)
+end
+
+T["git: Changes panel on unborn HEAD has no stats"] = MiniTest.new_set()
+
+T["git: Changes panel on unborn HEAD has no stats"]["accepts skipped numstat output"] = function()
+	local rows = model.rows(records({ status_record("A.", "a.txt") }), default_nesting_rules(), nil)
+
+	eq({ row_with_path(rows, "a.txt").added, row_with_path(rows, "a.txt").removed }, { nil, nil })
+end
+
 return T

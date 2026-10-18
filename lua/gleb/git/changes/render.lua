@@ -6,6 +6,7 @@ local EXPANDED = ""
 local FOLDER_OPEN = ""
 local FILE = ""
 local UNCHECKED = "☐"
+local RIGHT_MARGIN = 1
 
 ---@type table<string, string>
 local STATUS_GROUPS = {
@@ -54,29 +55,82 @@ local function directory_segments(row)
 	}
 end
 
+---@param segments ChangesRenderSegment[]
+---@return integer
+local function segments_width(segments)
+	return vim.iter(segments):fold(0, function(width, segment)
+		return width + vim.fn.strdisplaywidth(segment.text)
+	end)
+end
+
+---@param text string
+---@param width integer
+---@return string
+local function truncate(text, width)
+	if vim.fn.strdisplaywidth(text) <= width then
+		return text
+	end
+	if width <= 1 then
+		return width == 1 and "…" or ""
+	end
+
+	local result = {}
+	local result_width = 0
+	for index = 0, vim.fn.strchars(text) - 1 do
+		local character = vim.fn.strcharpart(text, index, 1)
+		local character_width = vim.fn.strdisplaywidth(character)
+		if result_width + character_width > width - 1 then
+			break
+		end
+		result[#result + 1] = character
+		result_width = result_width + character_width
+	end
+	return table.concat(result) .. "…"
+end
+
 ---@param row ChangesRow
+---@param width integer
 ---@return ChangesRenderSegment[]
-local function file_segments(row)
-	return {
+local function file_segments(row, width)
+	local segments = {
 		{ text = string.rep(" ", 3 + 2 * row.depth) },
 		{ text = UNCHECKED, group = "ChangesCheckbox" },
 		{ text = " " },
 		{ text = FILE },
 		{ text = " " },
-		{ text = row.label, group = STATUS_GROUPS[row.status] or "FileTreeFileName" },
 	}
+	local name_group = STATUS_GROUPS[row.status] or "FileTreeFileName"
+	if row.added == nil or row.removed == nil then
+		segments[#segments + 1] = { text = row.label, group = name_group }
+		return segments
+	end
+
+	local added = "+" .. row.added
+	local removed = "-" .. row.removed
+	local stat_width = vim.fn.strdisplaywidth(added) + 1 + vim.fn.strdisplaywidth(removed)
+	local name_width = math.max(1, width - RIGHT_MARGIN - segments_width(segments) - stat_width - 1)
+	local name = truncate(row.label, name_width)
+	local padding =
+		math.max(1, width - RIGHT_MARGIN - segments_width(segments) - vim.fn.strdisplaywidth(name) - stat_width)
+	segments[#segments + 1] = { text = name, group = name_group }
+	segments[#segments + 1] = { text = string.rep(" ", padding) }
+	segments[#segments + 1] = { text = added, group = "ChangesStatAdded" }
+	segments[#segments + 1] = { text = " " }
+	segments[#segments + 1] = { text = removed, group = "ChangesStatRemoved" }
+	return segments
 end
 
 ---@param row ChangesRow
+---@param width integer
 ---@return ChangesRenderSegment[]
-local function segments_for(row)
+local function segments_for(row, width)
 	if row.kind == "root" then
 		return root_segments(row)
 	end
 	if row.kind == "directory" then
 		return directory_segments(row)
 	end
-	return file_segments(row)
+	return file_segments(row, width)
 end
 
 ---@param buf integer
@@ -99,13 +153,13 @@ end
 --- Draw Changes rows and their semantic highlights into a buffer.
 ---@param buf integer
 ---@param rows ChangesRow[]
----@param _width integer
+---@param width integer
 ---@return nil
-function M.draw(buf, rows, _width)
+function M.draw(buf, rows, width)
 	local rendered = {}
 	local lines = {}
 	for index, row in ipairs(rows) do
-		local segments = segments_for(row)
+		local segments = segments_for(row, width)
 		rendered[index] = segments
 		lines[index] = vim.iter(segments):fold("", function(line, segment)
 			return line .. segment.text
