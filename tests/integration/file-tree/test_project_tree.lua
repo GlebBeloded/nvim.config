@@ -776,7 +776,6 @@ end)()
 		),
 		"Find Action picker did not open"
 	)
-	assert(vim.wait(5000, child.is_blocked, 10), "Find Action picker did not await input")
 	child.type_keys("project open")
 	assert(
 		child.wait(

@@ -34,7 +34,9 @@ end
 ---@param query string
 ---@return boolean
 local function action_matches(action, query)
-	if fuzzy_matches(action.title, query) or fuzzy_matches(action.category, query) then
+	local description = action.category .. " " .. action.title
+	local matches_description = query:find("%s") ~= nil and fuzzy_matches(description, query)
+	if fuzzy_matches(action.title, query) or fuzzy_matches(action.category, query) or matches_description then
 		return true
 	end
 	for _, alias in ipairs(action.aliases or {}) do
