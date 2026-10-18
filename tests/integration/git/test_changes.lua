@@ -24,6 +24,14 @@ local function toggle_changes()
 	]])
 end
 
+local function toggle_project_tree()
+	child.lua([[
+		local catalog = require("gleb.actions").state.applicator.catalog
+		local action = assert(catalog:get("file_tree.toggle"), "file_tree.toggle is not registered")
+		action.run(require("gleb.actions.context").capture())
+	]])
+end
+
 local function wait_for_panel()
 	assert(
 		child.wait(
@@ -115,6 +123,44 @@ T["git: Changes panel toggle focuses an open panel"] = function()
 		"gleb-changes",
 		window_count,
 	})
+end
+
+T["git: Changes panel replaces the project tree"] = function()
+	child.cmd("cd " .. vim.fn.fnameescape(repo))
+	child.cmd("edit " .. vim.fn.fnameescape(vim.fs.joinpath(repo, "tracked.txt")))
+	toggle_project_tree()
+	assert(child.wait([[vim.bo.filetype == "gleb-file-tree"]]), "Project tree did not open")
+
+	local opened = child.lua_get([[
+		(function()
+			local catalog = require("gleb.actions").state.applicator.catalog
+			local action = assert(catalog:get("changes.toggle"), "changes.toggle is not registered")
+			local ok, err = pcall(action.run, require("gleb.actions.context").capture())
+			return { ok, err }
+		end)()
+	]])
+	assert(opened[1], opened[2])
+	wait_for_panel()
+
+	eq(
+		child.lua_get([[
+		(function()
+			local wins = vim.api.nvim_tabpage_list_wins(0)
+			local current = vim.api.nvim_get_current_win()
+			local tree_open = false
+			for _, win in ipairs(wins) do
+				tree_open = tree_open or vim.bo[vim.api.nvim_win_get_buf(win)].filetype == "gleb-file-tree"
+			end
+			return {
+				tree_open,
+				wins[1] == current,
+				vim.bo[vim.api.nvim_win_get_buf(current)].filetype,
+				vim.api.nvim_win_get_width(current),
+			}
+		end)()
+	]]),
+		{ false, true, "gleb-changes", 35 }
+	)
 end
 
 T["git: Changes panel outside a repository"] = function()

@@ -60,9 +60,9 @@ Scenarios: `git: Changes panel za folds a nest`, `git: Changes panel Enter folds
 
 ## 3d. Left-slot swap
 Scenarios: `git: Changes panel replaces the project tree`
-- [ ] 3d.1 Write the scenario in `tests/integration/git/test_changes.lua`, driving the real `changes.toggle` action with the project tree open, and see it fail
-- [ ] 3d.2 Close the project tree when the Changes panel opens
-- [ ] 3d.3 Run `make test FILE=tests/integration/git/test_changes.lua CASE="replaces"` and see it pass
+- [x] 3d.1 Write the scenario in `tests/integration/git/test_changes.lua`, driving the real `changes.toggle` action with the project tree open, and see it fail
+- [x] 3d.2 Close the project tree when the Changes panel opens
+- [x] 3d.3 Run `make test FILE=tests/integration/git/test_changes.lua CASE="replaces"` and see it pass
 
 ## 3e. Window isolation
 Scenarios: `git: Changes panel normalizes a private-var root`, `git: Changes panel revalidates the editor window`, `git: Changes panel closes when orphaned`

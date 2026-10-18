@@ -53,6 +53,7 @@ function M.toggle()
 		end
 		return
 	end
+	require("gleb.file_tree.view").close()
 	local path, dir = current_location()
 	resolve_and_open(dir, path)
 end
