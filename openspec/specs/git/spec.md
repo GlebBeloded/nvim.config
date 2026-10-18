@@ -36,11 +36,11 @@ The config SHALL show git hunk signs in the sign column using `┃` for added, u
 - **THEN** screen rows 2-5 match the reference screenshot of design.md "Proposed": the sign column of line 2 draws `┃` in [GitSignsAdd] and no other line has a sign
 
 ### Requirement: Differ viewer
-The config SHALL set up differ.nvim with split (side-by-side) layout, 3 lines of context, word-granularity deep diff, and a file panel on the left, 35 columns wide, listing files as a tree.
+The config SHALL set up differ.nvim with split (side-by-side) layout, 3 lines of context, word-granularity deep diff, and a file panel on the left, 35 columns wide, listing files as a tree. A blocked `:Differ` open SHALL fail its test within 10 seconds with recorded child state instead of blocking the worker.
 
 #### Scenario: Differ opens panel on the left
 - **WHEN** `:Differ` is executed in a repository with working-tree changes
-- **THEN** a new panel window is the leftmost window of the current tab with width 35 listing the changed files as a tree
+- **THEN** a new panel window is the leftmost window of the current tab with width 35 listing the changed files as a tree; if opening blocks, the test fails within 10 seconds with recorded child state; the blocked-open regression reports phase `opening` and live subprocess command lines, then stops its Neovim child and descendants even if the open returns before the deadline
 
 ### Requirement: Diffview viewer
 The config SHALL set up diffview.nvim with enhanced diff highlighting, `diff2_horizontal` layout for diffs, `diff3_mixed` for merges, and a left file panel 35 columns wide with tree listing, flattened directories and folder statuses only when folded.
