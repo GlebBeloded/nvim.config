@@ -86,3 +86,8 @@ Reviewing and committing changes today goes through neo-tree's git status source
   module.
 - Task 5b's two attempts are in tasks.md's `## Stuck` text; `$ARTIFACTS_DIR/stuck-attempt.diff` now holds task 7's
   attempt only, so the 5b fix pass starts from the Stuck text, not from that diff.
+- (task 7 screen cases) The Changes screen cases assert the panel's columns (1–36 at 120 columns: rows, checkboxes,
+  expanders, names, stats) against the approved renders' full colour masks, cell for cell. The editor/diff pane to the
+  right shows content owned by treesitter, indent-blankline and the shipped diff view (`diff: … screenshot` cases cover
+  it); there the case asserts it equals the same file rendered in a regular window of that width, not the approved
+  render's highlight of each token. Never edit editor plugins' state (ibl setup, tabstop) from the panel to match a render.
