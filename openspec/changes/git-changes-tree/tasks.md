@@ -156,8 +156,8 @@ Scenarios: `git: Changes panel P pushes successfully`, `git: Changes panel P rep
 
 ## 7. Approved screens
 Scenarios: `git: Changes panel matches the approved render`, `git: Changes panel with the diff view matches the approved render`
-- [ ] 7.1 Write both `100x30` cases in `tests/screen/git/test_changes_screen.lua` against populated `billing`, compare byte-identical references under `tests/screenshots/`, and assert real extmark groups with the masks and legends from design.md; see them fail
-- [ ] 7.2 Adjust render and highlights until both pass, then compare the real captures with `make colorize FILE=openspec/changes/git-changes-tree/design.md`
+- [ ] 7.1 Write both `100x30` cases in `tests/screen/git/test_changes_screen.lua` against populated `billing`, compare byte-identical copies under `tests/screen/git/` of the approved real-glyph render text, and assert real extmark groups with the masks and legends from design.md; see them fail
+- [ ] 7.2 Adjust the panel and diff-view rendering, Tree-sitter colours and indent guides until both approved scenario bounds pass, then compare the real captures with `make colorize FILE=openspec/changes/git-changes-tree/design.md`
 - [ ] 7.3 Run `make test FILE=tests/screen/git/test_changes_screen.lua CASE="Changes panel"` and see it pass
 
 ## 8. Gate
@@ -187,10 +187,4 @@ Scenarios: `git: Changes panel matches the approved render`, `git: Changes panel
 - Refresh line stats come from plumbing `git diff-index -M --numstat -z HEAD` beside status: porcelain `git diff` rewrites the index under `index.lock` in a stat-dirty checkout, racing panel stage and revert; its failure on an unborn HEAD yields no stats without a separate HEAD probe.
 - Screen legends name nvim-web-devicons' `DevIconTypeScript` for `.ts` icons: the installed plugin defines no `DevIconTs`, and both name the same `#519aba` icon colour.
 - Render unit cases expect the model's unchecked glyph `󰄱`: the `☐` they pinned is design.md's stand-in, and the renderer now draws each row's index state.
-
-## Blocked
-
-- Task 7: both screen scenarios fail only outside the panel, where the approved renders are generator mockups of UI this change does not draw. What should they compare there, and against which text?
-- Evidence (this pass): with the panel's wait predicate fixed (a nil result crossed RPC as truthy `vim.NIL`, so captures ran before the panel opened) and line stats loaded, columns 1-36 match both approved colour masks cell for cell, and match `renders/proposed_a_changes_panel.ansi` text except the `notes.md` icon (installed nvim-web-devicons draws U+F48A, the render U+F00BA). Proposed A differs only in the editor area: the config draws a 2-cell sign column and a 4-cell number, and treesitter colours fields `#ddc7a1` where the mock says `@type`. Proposed B differs only in the diff area: the same treesitter colours, diff-view's word spans on lines 9 and 18, and indent-blankline `▏` guides in the real file buffer on the right.
-- Options: (1) both scenarios compare columns 1-36 only (A rows 2-12, as its THEN already says; B rows 2-29), colours against design.md's masks and text against a copy under `tests/screen/git/` of the approved real-glyph panel columns with the installed `notes.md` glyph, leaving the diff area to diff-view's own render scenario; (2) keep B full width with a mask and text re-captured from the real screen, a self-blessed reference the auditor Decision forbids; (3) restyle diff-view, treesitter colours and indent guides to match the mock, which changes other capabilities to fit a generator's approximation.
-- Recommendation: (1).
+- Task 7 screen comparison: keep Proposed B's stated full-width approved render text and colour mask (option 3), with byte-identical text copies under `tests/screen/git/`, because narrowing it would weaken the delta's bound and recapturing the current screen would violate the auditor Decision.
