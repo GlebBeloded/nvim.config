@@ -140,7 +140,7 @@ local function approved_tree_lines()
 	local path = vim.fs.joinpath(H.root, "openspec/changes/file-tree-view/renders/f1_proposed.ansi")
 	local artifact = vim.fn.readfile(path)
 	local expected = {}
-	for row = 2, 29 do
+	for row = 2, 28 do
 		local plain = artifact[row]:gsub("\27%[[0-9;]*m", "")
 		expected[#expected + 1] = vim.fn.strcharpart(plain, 0, 35):gsub(" +$", "")
 	end

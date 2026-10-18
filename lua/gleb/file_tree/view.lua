@@ -273,7 +273,7 @@ local function configure_window(win)
 	vim.wo[win].wrap = false
 	vim.wo[win].list = false
 	vim.wo[win].spell = false
-	vim.wo[win].winhighlight = "Normal:FileTreeNormal,CursorLine:FileTreeCursorLine"
+	vim.wo[win].winhighlight = "Normal:FileTreeNormal,CursorLine:FileTreeCursorLine,EndOfBuffer:FileTreeNormal"
 	vim.api.nvim_win_set_width(win, 35)
 end
 
