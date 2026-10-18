@@ -99,6 +99,32 @@ function M.open_selected()
 	end
 end
 
+--- Toggle staging for the file row under the cursor.
+---@return nil
+function M.toggle_stage()
+	local current = M.state.by_tab[vim.api.nvim_get_current_tabpage()]
+	if not current then
+		return
+	end
+	local row = current.rows[vim.api.nvim_win_get_cursor(current.win)[1]]
+	if not row or row.kind ~= "file" or not row.path then
+		return
+	end
+	git.toggle_stage(current.root, vim.fs.joinpath(current.root, row.path), function(result)
+		if result.code ~= 0 then
+			vim.notify("Stage failed: " .. vim.trim(result.stderr or ""), vim.log.levels.ERROR)
+			return
+		end
+		if M.state.by_tab[current.tab] ~= current then
+			return
+		end
+		view.schedule_refresh(current)
+		if current.diff_view then
+			require("gleb.diff.view").refresh_index(current.diff_view)
+		end
+	end)
+end
+
 --- Clear Changes panel state for tests.
 ---@return nil
 function M.reset()

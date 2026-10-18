@@ -72,9 +72,9 @@ Scenarios: `git: Changes panel normalizes a private-var root`, `git: Changes pan
 
 ## 4a. File staging
 Scenarios: `git: Changes panel Space stages an unstaged file`, `git: Changes panel Space unstages a staged file`, `git: Changes panel Space stages a partially staged file`, `git: Changes panel Space stages an untracked file`, `git: Changes panel Space stages a file whose name is a suffix of a staged file`
-- [ ] 4a.1 Write the scenarios in `tests/integration/git/test_changes_stage.lua`, porting populated setups from `tests/integration/file-tree/test_stage.lua`, and see them fail
-- [ ] 4a.2 Implement `changes.toggle_stage` from one fresh porcelain-v2 status decision with literal pathspecs
-- [ ] 4a.3 Run `make test FILE=tests/integration/git/test_changes_stage.lua CASE="Changes panel Space"` and see it pass
+- [x] 4a.1 Write the scenarios in `tests/integration/git/test_changes_stage.lua`, porting populated setups from `tests/integration/file-tree/test_stage.lua`, and see them fail
+- [x] 4a.2 Implement `changes.toggle_stage` from one fresh porcelain-v2 status decision with literal pathspecs
+- [x] 4a.3 Run `make test FILE=tests/integration/git/test_changes_stage.lua CASE="Changes panel Space"` and see it pass
 
 ## 4b. Repository-relative staging
 Scenarios: `git: Changes panel stages when cwd is outside the repository`, `git: Changes panel unstages when cwd is outside the repository`, `git: Changes panel stages from a subdirectory cwd`, `git: Changes panel unstages from a subdirectory cwd`, `git: Changes panel reports a staging failure`
