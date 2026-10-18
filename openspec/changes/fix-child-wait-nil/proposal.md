@@ -55,3 +55,7 @@ Full `make check` with only the helper fix (loop round104, 2026-10-18): that is 
   `openspec/specs/find-action/spec.md:43`, restated in full, with a scenario for the multi-word query) and set
   `skip_specs: false`. Cover it with a unit case on the matcher (multi-word hit, a word order that should still
   match or not per the requirement, single-word unchanged) named after that scenario.
+- (pass 4) This Decision supersedes review pass 1's `[must-fix]` on `lua/gleb/find_action/items.lua`: keep the multi-word
+  category+title matching from 71f79eae with its find-action delta and unit cases (5d819b20 removed them; restore them).
+  `file-tree: Project tree keys come from the keymap file` types `project open` as before; replacing it with `open`
+  plus `<C-n><C-n>` changes the case's input and is a weakened test.
