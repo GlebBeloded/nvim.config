@@ -2,6 +2,10 @@
 tasks, no Blocked/Unblocked section left to settle) and which already passes the spec gate (spec_gate.gate)
 skips the AI spec step, which otherwise rewrote the user's concrete scenarios into vaguer ones.
 Prints {ok, log} for INPUTS_CHANGE under LOOP_CHANGES_DIR (fixtures) or openspec/changes; exits 0.
+
+When the spec step will run (not ready) it writes $ARTIFACTS_DIR/spec-pending, which queue-spec removes as its
+last step: an agent stalled by a sleeping Mac was ended by Archon's idle timeout and counted as done (run d2fd2377),
+so spec_gate.py treats a left marker as an unfinished pass.
 """
 
 import json
@@ -9,7 +13,7 @@ import os
 import pathlib
 import re
 
-from spec_gate import gate
+from spec_gate import PENDING, gate
 
 TASK = re.compile(r"^- \[[ x]\] \d", re.MULTILINE)
 UNSETTLED = re.compile(r"^## (Blocked|Unblocked)\b", re.MULTILINE)
@@ -30,5 +34,17 @@ def ready(change: str) -> dict:
     return gate(change)
 
 
+def mark(result: dict, artifacts: pathlib.Path) -> None:
+    """Writes the spec-pending marker when the spec step will run, removes it otherwise."""
+    marker = artifacts / PENDING
+    if result["ok"]:
+        marker.unlink(missing_ok=True)
+    else:
+        artifacts.mkdir(parents=True, exist_ok=True)
+        marker.write_text("the spec step has not finished\n")
+
+
 if __name__ == "__main__":
-    print(json.dumps(ready(os.environ.get("INPUTS_CHANGE", ""))))
+    result = ready(os.environ.get("INPUTS_CHANGE", ""))
+    mark(result, pathlib.Path(os.environ.get("ARTIFACTS_DIR", ".")))
+    print(json.dumps(result))
