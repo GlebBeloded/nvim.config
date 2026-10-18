@@ -116,8 +116,8 @@ T["git: Changes panel cuts a long name before the stats"]["right aligns populate
 	}, "\0") .. "\0"
 	local lines = rendered_lines(porcelain, "12\t3\tinvoice.go\0", 35)
 
-	eq(lines[2], "     ☐  invoice.go         +12 -3")
-	eq(lines[4], "     ☐  notes.md")
+	eq(lines[2], "     󰄱  invoice.go         +12 -3")
+	eq(lines[4], "     󰄱  notes.md")
 	eq(rendered_stat_groups(), { ChangesStatAdded = "+12", ChangesStatRemoved = "-3" })
 end
 
@@ -132,7 +132,7 @@ T["git: Changes panel cuts a long name before the stats"]["uses an ellipsis and 
 	}, "\0") .. "\0"
 	local lines = rendered_lines(porcelain, numstat, 35)
 
-	eq(lines[4], "         ☐  invoice_test.… +20 -1")
+	eq(lines[4], "         󰄱  invoice_test.… +20 -1")
 end
 
 return T

@@ -491,25 +491,22 @@ T["git: Changes panel refreshes after hunk staging"] = function()
 	local dirty = open_fixture("dirty")
 	local panel_tab = child.api.nvim_get_current_tabpage()
 	child.lua("_G.changes_panel_tab = ...", { panel_tab })
-	local editor_win =
-		child.lua_get([=[require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()].editor_win]=])
-	child.api.nvim_set_current_win(editor_win)
-	child.cmd("edit " .. vim.fn.fnameescape(vim.fs.joinpath(dirty, "d.txt")))
-	child.lua([[
-		local catalog = require("gleb.actions").state.applicator.catalog
-		local action = assert(catalog:get("diff.open_file"))
-		assert(require("gleb.actions.context").execute(action, require("gleb.actions.context").capture()))
-	]])
-	local diff = child.lua_get([[require("gleb.diff.view").current()]])
-	child.api.nvim_set_current_win(diff.right_win)
-	child.api.nvim_win_set_cursor(diff.right_win, { 3, 0 })
-	child.lua(
-		[[
-		local changes = require("gleb.git.changes").state.by_tab[...]
-		changes.diff_view = require("gleb.diff.view").current()
-	]],
-		{ panel_tab }
+	find_panel_line("b.txt")
+	child.type_keys("j")
+	assert(
+		child.wait(
+			[=[(function()
+		local view = require("gleb.git.changes").state.by_tab[_G.changes_panel_tab]
+		return view ~= nil and view.diff_view ~= nil and view.diff_view.relpath == "d.txt"
+	end)()]=],
+			2000 * H.load_factor()
+		),
+		"Changes panel did not show d.txt"
 	)
+	local right_win =
+		child.lua_get([=[require("gleb.git.changes").state.by_tab[...].diff_view.right_win]=], { panel_tab })
+	child.api.nvim_set_current_win(right_win)
+	child.api.nvim_win_set_cursor(right_win, { 3, 0 })
 
 	child.type_keys("<Space>")
 

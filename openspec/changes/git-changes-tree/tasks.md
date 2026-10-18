@@ -102,9 +102,9 @@ Scenarios: `git: Changes panel j shows the next file in the diff view`, `git: Ch
 
 ## 5b. Review and next-file navigation
 Scenarios: `git: Changes panel review shows the current file's diff`, `git: Changes panel review without a changed current file`, `git: Changes panel ]f steps through every changed file`, `git: Changes panel ]f keeps diff focus`
-- [ ] 5b.1 Write the scenarios in `tests/integration/git/test_changes_diff.lua`, driving `changes.review` and `]f` in the real diff view, and see them fail
-- [ ] 5b.2 Implement immediate review and `on_next_file`, refocusing the replacement view's `right_win` when navigation starts in a diff window
-- [ ] 5b.3 Run `make test FILE=tests/integration/git/test_changes_diff.lua CASE="Changes panel"` and see it pass
+- [x] 5b.1 Write the scenarios in `tests/integration/git/test_changes_diff.lua`, driving `changes.review` and `]f` in the real diff view, and see them fail
+- [x] 5b.2 Implement immediate review and `on_next_file`, refocusing the replacement view's `right_win` when navigation starts in a diff window
+- [x] 5b.3 Run `make test FILE=tests/integration/git/test_changes_diff.lua CASE="Changes panel"` and see it pass
 
 ## 5c. Enter, close and project-tree swap
 Scenarios: `git: Changes panel Enter opens the file`, `git: Changes panel q closes the panel and the diff view`, `git: Project tree replaces the changes panel`
@@ -183,16 +183,14 @@ Scenarios: `git: Changes panel matches the approved render`, `git: Changes panel
 - Panel diff loading reports an initially unloaded file buffer to its owning panel, so close can unload clean owned buffers without touching preloaded or modified buffers.
 - Revert uses `vim.ui.input` so the standalone Changes panel keeps the existing prompt without requiring neo-tree UI setup.
 - Unborn-HEAD revert reuses the added-file path because every staged path without a commit is added, and that path already runs literal-pathspec `rm --cached`.
+- A diff load outdated only by a refresh reloads the row under the panel cursor, because git-dir refreshes during `]f` otherwise drop the selection's only show.
+- Refresh line stats come from plumbing `git diff-index -M --numstat -z HEAD` beside status: porcelain `git diff` rewrites the index under `index.lock` in a stat-dirty checkout, racing panel stage and revert; its failure on an unborn HEAD yields no stats without a separate HEAD probe.
+- Screen legends name nvim-web-devicons' `DevIconTypeScript` for `.ts` icons: the installed plugin defines no `DevIconTs`, and both name the same `#519aba` icon colour.
+- Render unit cases expect the model's unchecked glyph `󰄱`: the `☐` they pinned is design.md's stand-in, and the renderer now draws each row's index state.
 
-## Stuck
+## Blocked
 
-- Task 5b is left unticked. The first probe confirmed the real diff-local `]f` mapping was installed but its view had no `on_next_file`; review also needed a later `CursorMoved` event before its first show.
-- This pass's attempt 1 added immediate review, `on_next_file`, right-window refocus, event-time row capture, and one in-flight path. The focus case passed, but the four-step case timed out. The probe then showed `lib/c.lua`, `a.txt`, `b.txt`, `d.txt`; after showing `d.txt`, an async refresh restored the panel cursor to `b.txt`, so the fourth key selected `d.txt` again.
-- This pass's attempt 2 made refresh preserve the row current when its result completed instead of the row captured when it started. The focus case still passed, but the four-step case still timed out.
-- The second production attempt is saved at `/Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/0334b5f5-8041-4ae0-91d8-5a73c4c951ac/stuck-attempt.diff`; production edits were reverted and the failing 5b scenarios remain for the next fix pass.
-- Task 7 is left unticked. Its two `100x30` screen scenarios fail against the approved masks before reference screenshots can be created.
-- The headless probe reported `price.ts` as icon `` in `DevIconTypeScript`; `DevIconTs` resolved to an empty highlight while `DevIconTypeScript` resolved to foreground `5348026` and cterm foreground `74`.
-- Attempt 1 made rendering consume model checkbox glyphs and nvim-web-devicons groups. Both cases still failed because the approved `DevIconTs` group did not exist.
-- Attempt 2 added a `DevIconTs` compatibility link, mapped the TypeScript icon to it, and highlighted file-nest expanders. The mask still failed at the first panel expander (`FileTreeExpander` expected, `FileTreeNormal` drawn), while the review capture's editor area did not match the approved diff mask.
-- Reapplying that attempt showed the screen capture can contain only the full-width editor after the panel first reaches ten rows; the apparent expander mismatch is therefore downstream of a panel-lifecycle race, not evidence that the expander extmark is absent.
-- Task 7's second production attempt is included in the saved diff above; production edits were reverted and both failing screen scenarios remain for the next fix pass.
+- Task 7: both screen scenarios fail only outside the panel, where the approved renders are generator mockups of UI this change does not draw. What should they compare there, and against which text?
+- Evidence (this pass): with the panel's wait predicate fixed (a nil result crossed RPC as truthy `vim.NIL`, so captures ran before the panel opened) and line stats loaded, columns 1-36 match both approved colour masks cell for cell, and match `renders/proposed_a_changes_panel.ansi` text except the `notes.md` icon (installed nvim-web-devicons draws U+F48A, the render U+F00BA). Proposed A differs only in the editor area: the config draws a 2-cell sign column and a 4-cell number, and treesitter colours fields `#ddc7a1` where the mock says `@type`. Proposed B differs only in the diff area: the same treesitter colours, diff-view's word spans on lines 9 and 18, and indent-blankline `▏` guides in the real file buffer on the right.
+- Options: (1) both scenarios compare columns 1-36 only (A rows 2-12, as its THEN already says; B rows 2-29), colours against design.md's masks and text against a copy under `tests/screen/git/` of the approved real-glyph panel columns with the installed `notes.md` glyph, leaving the diff area to diff-view's own render scenario; (2) keep B full width with a mask and text re-captured from the real screen, a self-blessed reference the auditor Decision forbids; (3) restyle diff-view, treesitter colours and indent guides to match the mock, which changes other capabilities to fit a generator's approximation.
+- Recommendation: (1).

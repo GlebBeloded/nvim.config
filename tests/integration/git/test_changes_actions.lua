@@ -164,7 +164,7 @@ T["git: Changes panel X reverts a file after confirmation"] = function()
 
 	eq(
 		vim.wait(ASYNC_MS, function()
-			return H.git(dir, { "status", "--porcelain", "--", "b.txt" }) == ""
+			return H.git(dir, { "--no-optional-locks", "status", "--porcelain", "--", "b.txt" }) == ""
 		end, 50),
 		true
 	)
@@ -228,11 +228,13 @@ T["git: Changes panel X reverts a rename"] = function()
 	revert_with_answer("y")
 
 	local expected_status = "?? new.txt\n"
+	-- A plain status holds index.lock while it runs, which fails the child's concurrent checkout.
+	local status = { "--no-optional-locks", "status", "--porcelain", "--", "old.txt", "new.txt" }
 	local reverted = vim.wait(ASYNC_MS, function()
-		return H.git(dir, { "status", "--porcelain", "--", "old.txt", "new.txt" }) == expected_status
+		return H.git(dir, status) == expected_status
 	end, 50)
 	if not reverted then
-		eq(H.git(dir, { "status", "--porcelain", "--", "old.txt", "new.txt" }), expected_status)
+		eq(H.git(dir, status), expected_status)
 	end
 	eq(vim.fn.readfile(vim.fs.joinpath(dir, "old.txt")), { "content" })
 	eq(vim.fn.readfile(vim.fs.joinpath(dir, "new.txt")), { "content" })

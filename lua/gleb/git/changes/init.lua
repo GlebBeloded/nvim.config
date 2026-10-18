@@ -25,8 +25,9 @@ end
 
 ---@param dir string
 ---@param selected_path string
+---@param review? boolean
 ---@return nil
-local function resolve_and_open(dir, selected_path)
+local function resolve_and_open(dir, selected_path, review)
 	local tab = vim.api.nvim_get_current_tabpage()
 	git.resolve_root(dir, function(result, root)
 		if vim.api.nvim_get_current_tabpage() ~= tab then
@@ -36,7 +37,7 @@ local function resolve_and_open(dir, selected_path)
 			vim.notify("Git root error: " .. vim.trim(result.stderr or ""), vim.log.levels.ERROR)
 			return
 		end
-		view.open(root, selected_path)
+		view.open(root, selected_path, review)
 	end)
 end
 
@@ -63,11 +64,11 @@ end
 function M.review()
 	local current = M.state.by_tab[vim.api.nvim_get_current_tabpage()]
 	if current and vim.api.nvim_win_is_valid(current.win) then
-		vim.api.nvim_set_current_win(current.win)
+		view.review(current)
 		return
 	end
 	local path, dir = current_location()
-	resolve_and_open(dir, path)
+	resolve_and_open(dir, path, true)
 end
 
 --- Open the Changes panel for a directory.

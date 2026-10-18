@@ -25,9 +25,11 @@ function M.resolve_root(dir, callback)
 	end)
 end
 
---- Refresh porcelain status for one Changes panel.
+--- Refresh porcelain status and line stats for one Changes panel.
+--- Stats come from plumbing `diff-index`, which never takes the index lock that a concurrent
+--- stage or revert needs; they are nil when it fails, as it does on an unborn HEAD.
 ---@param root string
----@param callback fun(result: vim.SystemCompleted)
+---@param callback fun(result: vim.SystemCompleted, numstat_z: string?)
 ---@return nil
 function M.refresh(root, callback)
 	local command = {
@@ -38,11 +40,29 @@ function M.refresh(root, callback)
 		"-z",
 		"--untracked-files=all",
 	}
-	M.state.last_cmd = command
-	vim.system(command, { cwd = fs.normalize(root), text = true }, function(result)
+	local numstat_command =
+		{ "git", "--no-optional-locks", "--literal-pathspecs", "diff-index", "-M", "--numstat", "-z", "HEAD" }
+	local cwd = fs.normalize(root)
+	local status_result
+	local numstat_result
+
+	local function finish()
+		if not status_result or not numstat_result then
+			return
+		end
 		vim.schedule(function()
-			callback(result)
+			callback(status_result, numstat_result.code == 0 and numstat_result.stdout or nil)
 		end)
+	end
+
+	M.state.last_cmd = command
+	vim.system(command, { cwd = cwd, text = true }, function(result)
+		status_result = result
+		finish()
+	end)
+	vim.system(numstat_command, { cwd = cwd, text = true }, function(result)
+		numstat_result = result
+		finish()
 	end)
 end
 

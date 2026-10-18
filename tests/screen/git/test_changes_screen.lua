@@ -23,7 +23,7 @@ local PANEL_LEGEND = {
 	r = "ChangesStatRemoved",
 	s = "@string",
 	t = "FileTreeGitAdded",
-	u = "DevIconTs",
+	u = "DevIconTypeScript",
 	v = "@comment",
 	w = "DevIconMd",
 	x = "FileTreeGitUntracked",
@@ -80,7 +80,7 @@ local DIFF_LEGEND = vim.tbl_extend("force", PANEL_LEGEND, {
 	w = "@comment",
 	x = "DiffViewArrowChange",
 	y = "DiffViewGutterChange",
-	z = "DevIconTs",
+	z = "DevIconTypeScript",
 	A = "@keyword",
 	B = "@type",
 	C = "@type.builtin",
@@ -147,7 +147,6 @@ local function start()
 		vim.lsp.enable("gopls", false)
 		require("null-ls").disable({})
 		vim.diagnostic.enable(false)
-		require("nvim-web-devicons").get_icon("price.ts", "ts", { default = true })
 	]],
 		{ home }
 	)
@@ -160,7 +159,7 @@ local function wait_for_panel()
 		child.wait(
 			[[(function()
 		local view = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
-		return view and #view.rows == 10
+		return view ~= nil and #view.rows == 10
 	end)()]],
 			5000
 		),
@@ -185,7 +184,7 @@ T["git: Changes panel with the diff view matches the approved render"] = functio
 		child.wait(
 			[[(function()
 		local view = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
-		return view and view.diff_view ~= nil
+		return view ~= nil and view.diff_view ~= nil
 	end)()]],
 			5000
 		),

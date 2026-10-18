@@ -15,6 +15,7 @@ local REFRESH_DEBOUNCE_MS = 50
 local DIFF_DEBOUNCE_MS = 50
 local forget
 local cleanup
+local request_diff
 local augroup = vim.api.nvim_create_augroup("gleb_changes", { clear = true })
 
 ---@class ChangesView
@@ -33,7 +34,9 @@ local augroup = vim.api.nvim_create_augroup("gleb_changes", { clear = true })
 ---@field autocmds integer[]
 ---@field diff_view? gleb.diff.view.View
 ---@field diff_path? string
+---@field diff_pending_path? string
 ---@field initial_selected_path? string
+---@field review_on_refresh boolean
 ---@field loaded_buffers table<integer, boolean>
 
 ---@param buf integer
@@ -148,9 +151,7 @@ local function refresh_now(view)
 	end
 	view.generation = view.generation + 1
 	local generation = view.generation
-	local current = view.rows[vim.api.nvim_win_is_valid(view.win) and vim.api.nvim_win_get_cursor(view.win)[1] or 0]
-	local selected_key = row_key(current)
-	git.refresh(view.root, function(result)
+	git.refresh(view.root, function(result, numstat_z)
 		if
 			changes.state.by_tab[view.tab] ~= view
 			or generation ~= view.generation
@@ -162,11 +163,16 @@ local function refresh_now(view)
 			vim.notify("Git status failed: " .. vim.trim(result.stderr or ""), vim.log.levels.ERROR)
 			return
 		end
-		view.all_rows = model.rows(result.stdout or "", settings.load().nesting.rules)
-		draw(view, selected_key)
+		local current = view.rows[vim.api.nvim_win_get_cursor(view.win)[1]]
+		view.all_rows = model.rows(result.stdout or "", settings.load().nesting.rules, numstat_z)
+		draw(view, row_key(current))
 		if view.initial_selected_path then
 			select_file(view, view.initial_selected_path)
 			view.initial_selected_path = nil
+		end
+		if view.review_on_refresh then
+			view.review_on_refresh = false
+			request_diff(view, view.rows[vim.api.nvim_win_get_cursor(view.win)[1]], false)
 		end
 	end)
 end
@@ -201,22 +207,33 @@ local function unload_clean_buffer(buf)
 	end
 end
 
+--- Reload the selected row after a refresh outdated its in-flight diff.
+---@param view ChangesView
+---@param focus_right boolean
+---@return nil
+local function reload_outdated_diff(view, focus_right)
+	request_diff(view, view.rows[vim.api.nvim_win_get_cursor(view.win)[1]], focus_right)
+end
+
 ---@param view ChangesView
 ---@param row ChangesRow
 ---@param generation integer
 ---@param selection_generation integer
+---@param focus_right boolean
 ---@return nil
-local function show_diff(view, row, generation, selection_generation)
+local function show_diff(view, row, generation, selection_generation, focus_right)
 	git.load_diff(view.root, row, function(spec, loaded_buf)
 		local changes = require("gleb.git.changes")
-		if
-			changes.state.by_tab[view.tab] ~= view
-			or generation ~= view.generation
-			or selection_generation ~= view.selection_generation
-			or not vim.api.nvim_win_is_valid(view.win)
-		then
+		local selected = changes.state.by_tab[view.tab] == view
+			and selection_generation == view.selection_generation
+			and vim.api.nvim_win_is_valid(view.win)
+		if not selected or generation ~= view.generation then
 			if loaded_buf then
 				unload_clean_buffer(loaded_buf)
+			end
+			if selected then
+				view.diff_pending_path = nil
+				reload_outdated_diff(view, focus_right)
 			end
 			return
 		end
@@ -226,7 +243,11 @@ local function show_diff(view, row, generation, selection_generation)
 		local diff = require("gleb.diff.view")
 		local editor = file_tree_view.eligible_editor(view)
 		view.editor_win = editor
+		spec.on_next_file = function()
+			M.next_file(view)
+		end
 		local shown = diff.show(editor, spec)
+		view.diff_pending_path = nil
 		if not shown then
 			if view.diff_view then
 				diff.close(view.diff_view)
@@ -238,14 +259,42 @@ local function show_diff(view, row, generation, selection_generation)
 		end
 		view.diff_view = shown
 		view.diff_path = row.path
+		if focus_right and vim.api.nvim_win_is_valid(shown.right_win) then
+			vim.api.nvim_set_current_win(shown.right_win)
+		end
 	end)
+end
+
+---@param view ChangesView
+---@param row ChangesRow?
+---@param focus_right boolean
+---@return nil
+request_diff = function(view, row, focus_right)
+	if not row or row.kind ~= "file" then
+		return
+	end
+	if not row.diffable then
+		vim.notify("No file content: " .. row.label, vim.log.levels.INFO)
+		return
+	end
+	if row.path == view.diff_pending_path then
+		return
+	end
+	if row.path == view.diff_path then
+		if focus_right and view.diff_view and vim.api.nvim_win_is_valid(view.diff_view.right_win) then
+			vim.api.nvim_set_current_win(view.diff_view.right_win)
+		end
+		return
+	end
+	view.selection_generation = view.selection_generation + 1
+	view.diff_pending_path = row.path
+	show_diff(view, row, view.generation, view.selection_generation, focus_right)
 end
 
 ---@param view ChangesView
 ---@return nil
 local function schedule_diff(view)
-	view.selection_generation = view.selection_generation + 1
-	local selection_generation = view.selection_generation
+	local row = view.rows[vim.api.nvim_win_get_cursor(view.win)[1]]
 	view.diff_timer:stop()
 	view.diff_timer:start(
 		DIFF_DEBOUNCE_MS,
@@ -254,12 +303,7 @@ local function schedule_diff(view)
 			if not vim.api.nvim_win_is_valid(view.win) then
 				return
 			end
-			local row = view.rows[vim.api.nvim_win_get_cursor(view.win)[1]]
-			if row and row.kind == "file" and not row.diffable then
-				vim.notify("No file content: " .. row.label, vim.log.levels.INFO)
-			elseif row and row.kind == "file" and row.path ~= view.diff_path then
-				show_diff(view, row, view.generation, selection_generation)
-			end
+			request_diff(view, row, false)
 		end)
 	)
 end
@@ -393,6 +437,7 @@ function M.close(view)
 		require("gleb.diff.view").close(view.diff_view)
 		view.diff_view = nil
 		view.diff_path = nil
+		view.diff_pending_path = nil
 	end
 	for buf in pairs(view.loaded_buffers) do
 		unload_clean_buffer(buf)
@@ -431,8 +476,9 @@ end
 --- Open and populate a Changes view in the current tab.
 ---@param root string
 ---@param selected_path string
+---@param review? boolean
 ---@return ChangesView
-function M.open(root, selected_path)
+function M.open(root, selected_path, review)
 	local changes = require("gleb.git.changes")
 	local tab = vim.api.nvim_get_current_tabpage()
 	local editor_win = vim.api.nvim_get_current_win()
@@ -462,11 +508,42 @@ function M.open(root, selected_path)
 		autocmds = {},
 		loaded_buffers = {},
 		initial_selected_path = fs.normalize(selected_path),
+		review_on_refresh = review == true,
 	}
 	changes.state.by_tab[tab] = view
 	add_refresh_sources(view)
 	refresh_now(view)
 	return view
+end
+
+--- Focus a Changes panel and show its selected file without debounce.
+---@param view ChangesView
+---@return nil
+function M.review(view)
+	vim.api.nvim_set_current_win(view.win)
+	request_diff(view, view.rows[vim.api.nvim_win_get_cursor(view.win)[1]], false)
+end
+
+--- Move a panel-owned diff to the next diffable file.
+---@param view ChangesView
+---@return nil
+function M.next_file(view)
+	if require("gleb.git.changes").state.by_tab[view.tab] ~= view or not vim.api.nvim_win_is_valid(view.win) then
+		return
+	end
+	local current_win = vim.api.nvim_get_current_win()
+	local diff_view = view.diff_view
+	local focus_right = diff_view ~= nil and (current_win == diff_view.left_win or current_win == diff_view.right_win)
+	local current_row = vim.api.nvim_win_get_cursor(view.win)[1]
+	for index = current_row + 1, #view.rows do
+		local row = view.rows[index]
+		if row.kind == "file" and row.diffable then
+			view.diff_timer:stop()
+			vim.api.nvim_win_set_cursor(view.win, { index, 0 })
+			request_diff(view, row, focus_right)
+			return
+		end
+	end
 end
 
 --- Toggle the fold under the panel cursor.

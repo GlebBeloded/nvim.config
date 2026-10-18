@@ -2,11 +2,13 @@
 
 local M = {}
 
+local has_devicons, devicons = pcall(require, "nvim-web-devicons")
+
 local EXPANDED = ""
 local COLLAPSED = ""
 local FOLDER_OPEN = ""
 local FILE = ""
-local UNCHECKED = "☐"
+local ELLIPSIS = "…"
 local RIGHT_MARGIN = 1
 
 ---@type table<string, string>
@@ -33,12 +35,25 @@ local function root_segments(row)
 		{ text = " " },
 		{ text = row.expanded == false and COLLAPSED or EXPANDED, group = "FileTreeExpander" },
 		{ text = " " },
-		{ text = UNCHECKED, group = "ChangesCheckbox" },
+		{ text = row.checkbox or "", group = "ChangesCheckbox" },
 		{ text = " " },
 		{ text = row.label, group = "ChangesRoot" },
 		{ text = " " },
 		{ text = tostring(row.count) .. suffix, group = "ChangesCount" },
 	}
+end
+
+---@param row ChangesRow
+---@return string icon
+---@return string group
+local function file_icon(row)
+	if has_devicons then
+		local icon, group = devicons.get_icon(row.label, nil, { default = true })
+		if icon and group then
+			return icon, group
+		end
+	end
+	return FILE, "FileTreeFileName"
 end
 
 ---@param row ChangesRow
@@ -66,13 +81,14 @@ end
 
 ---@param text string
 ---@param width integer
----@return string
+---@return string kept text without the ellipsis
+---@return boolean cut whether an ellipsis follows the kept text
 local function truncate(text, width)
 	if vim.fn.strdisplaywidth(text) <= width then
-		return text
+		return text, false
 	end
 	if width <= 1 then
-		return width == 1 and "…" or ""
+		return "", width == 1
 	end
 
 	local result = {}
@@ -86,20 +102,24 @@ local function truncate(text, width)
 		result[#result + 1] = character
 		result_width = result_width + character_width
 	end
-	return table.concat(result) .. "…"
+	return table.concat(result), true
 end
 
 ---@param row ChangesRow
 ---@param width integer
 ---@return ChangesRenderSegment[]
 local function file_segments(row, width)
+	local icon, icon_group = file_icon(row)
 	local segments = {
 		{ text = string.rep(" ", 1 + 2 * row.depth) },
-		{ text = row.fold_id and (row.expanded == false and COLLAPSED or EXPANDED) or " " },
+		{
+			text = row.fold_id and (row.expanded == false and COLLAPSED or EXPANDED) or " ",
+			group = row.fold_id and "FileTreeExpander" or nil,
+		},
 		{ text = " " },
-		{ text = UNCHECKED, group = "ChangesCheckbox" },
+		{ text = row.checkbox or "", group = "ChangesCheckbox" },
 		{ text = " " },
-		{ text = FILE },
+		{ text = icon, group = icon_group },
 		{ text = " " },
 	}
 	local name_group = STATUS_GROUPS[row.status] or "FileTreeFileName"
@@ -112,10 +132,13 @@ local function file_segments(row, width)
 	local removed = "-" .. row.removed
 	local stat_width = vim.fn.strdisplaywidth(added) + 1 + vim.fn.strdisplaywidth(removed)
 	local name_width = math.max(1, width - RIGHT_MARGIN - segments_width(segments) - stat_width - 1)
-	local name = truncate(row.label, name_width)
-	local padding =
-		math.max(1, width - RIGHT_MARGIN - segments_width(segments) - vim.fn.strdisplaywidth(name) - stat_width)
+	local name, cut = truncate(row.label, name_width)
+	local name_cells = vim.fn.strdisplaywidth(name) + (cut and vim.fn.strdisplaywidth(ELLIPSIS) or 0)
+	local padding = math.max(1, width - RIGHT_MARGIN - segments_width(segments) - name_cells - stat_width)
 	segments[#segments + 1] = { text = name, group = name_group }
+	if cut then
+		segments[#segments + 1] = { text = ELLIPSIS, group = "ChangesCount" }
+	end
 	segments[#segments + 1] = { text = string.rep(" ", padding) }
 	segments[#segments + 1] = { text = added, group = "ChangesStatAdded" }
 	segments[#segments + 1] = { text = " " }
