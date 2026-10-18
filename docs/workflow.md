@@ -29,8 +29,6 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 
 ## Loop lessons
 
-- Map EndOfBuffer to the view normal highlight when removing a trailing buffer line, so empty viewport cells retain the approved view colour.
-- Skip unchanged move matching when fewer than two unmatched change regions remain; every same-change candidate is discarded and pathological duplicate windows can overrun the deadline.
 - Start macOS filesystem handles needed by a view before its first draw; adding a late handle can recreate the shared FSEvents stream and drop an intervening directory event.
 - Batch deadline polls in hot candidate loops and maintain claimed ranges in sorted order so deadline enforcement does not dominate move detection.
 - When archiving a change, update tests that read its approved render to the archive path so the durable artifact remains available.
@@ -45,6 +43,7 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - Close a plugin view after auditing it when its asynchronous updates can launch synchronous subprocess waits, so the next bounded open cannot inherit a blocked editor loop.
 - Match a target command anywhere in subprocess diagnostics because unrelated child processes can appear first.
 - Wait for captured subprocess content, not capture-file creation; shell redirection makes the file visible before stdin is fully consumed.
+- Keep child-wait stabilization isolated from file-tree behavior; preserve the first-paint deadline and per-result Git callbacks as independent contracts.
 
 ## The loop
 
