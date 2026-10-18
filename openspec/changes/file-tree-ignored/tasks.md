@@ -24,9 +24,9 @@ Scenarios: `file-tree: First paint waits for ignored status`
 
 ## 2c. Block every hidden-path reveal
 Scenarios: `file-tree: File under hidden node_modules is not revealed`, `file-tree: Created or renamed ignored target is not selected`
-- [ ] 2c.1 Write the two scenarios in `tests/integration/file-tree/test_ignored.lua`, driving `:edit`, the real create action and the real rename action, and run `make test FILE=tests/integration/file-tree/test_ignored.lua` to see them fail
-- [ ] 2c.2 Add one `is_hidden(view, path)` gate before `expand_to` in follow, reveal, `select_created` and `refresh_moved`, so hidden targets change no expansion, nest, persisted state or cursor
-- [ ] 2c.3 Run `make test FILE=tests/integration/file-tree/test_ignored.lua` and see the two scenarios pass
+- [x] 2c.1 Write the two scenarios in `tests/integration/file-tree/test_ignored.lua`, driving `:edit`, the real create action and the real rename action, and run `make test FILE=tests/integration/file-tree/test_ignored.lua` to see them fail
+- [x] 2c.2 Add one `is_hidden(view, path)` gate before `expand_to` in follow, reveal, `select_created` and `refresh_moved`, so hidden targets change no expansion, nest, persisted state or cursor
+- [x] 2c.3 Run `make test FILE=tests/integration/file-tree/test_ignored.lua` and see the two scenarios pass
 
 ## 2d. Keep direct hidden follow stable
 Scenarios: `file-tree: Hidden ignored file is not revealed`
@@ -64,3 +64,4 @@ Scenarios: `file-tree: Show Ignored matches the approved render`
 - The compiled settings matcher is an optional model argument until task 2a replaces the row inputs with the designed options table, keeping filtering independent of nesting configuration.
 - Row options carry `ignored_generation` in addition to the designed snapshots so the nest cache invalidates only when the ignored set changes.
 - Initial-paint readiness uses the watch's discovered top level, and the view owns the timeout so closing it cancels pending work.
+- Create selection skips the editor's transitional `BufEnter`, because the action already selects its target and that event would follow the editor's previous buffer.

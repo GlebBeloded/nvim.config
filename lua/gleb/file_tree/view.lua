@@ -5,6 +5,7 @@ local M = {}
 local expanded = require("gleb.file_tree.expanded")
 local fs = require("gleb.file_tree.fs")
 local git = require("gleb.file_tree.git")
+local ignore = require("gleb.file_tree.ignore")
 local model = require("gleb.file_tree.model")
 local render = require("gleb.file_tree.render")
 local settings = require("gleb.file_tree.settings")
@@ -24,6 +25,7 @@ local IGNORE_WAIT_MS = 300
 ---@field autocmds integer[]
 ---@field watching boolean
 ---@field directory_hijacks table<integer, boolean>
+---@field skip_follow_buf? integer
 ---@field initial_draw_timer? uv.uv_timer_t
 
 ---@class FileTreeViewState
@@ -209,6 +211,39 @@ end
 
 ---@param view FileTreeView
 ---@param path string
+---@return boolean
+local function is_hidden(view, path)
+	local normalized = fs.normalize(path)
+	if normalized == view.root or not vim.startswith(normalized, view.root .. "/") then
+		return false
+	end
+	local opts = row_options(view, settings.load())
+	if opts.show_ignored then
+		return false
+	end
+	local relative = normalized:sub(#view.root + 2)
+	local current = ""
+	local parent_ignored = false
+	for part in relative:gmatch("[^/]+") do
+		current = current == "" and part or current .. "/" .. part
+		local stat = vim.uv.fs_stat(vim.fs.joinpath(view.root, current))
+		parent_ignored = part == ".git"
+			or ignore.is_ignored(
+				opts.ignored,
+				opts.matcher,
+				current,
+				stat ~= nil and stat.type == "directory",
+				parent_ignored
+			)
+		if parent_ignored then
+			return true
+		end
+	end
+	return false
+end
+
+---@param view FileTreeView
+---@param path string
 local function draw(view, path)
 	expand_to(view, path)
 	for relative in pairs(view.expanded) do
@@ -303,7 +338,7 @@ end
 ---@param missing_is_root boolean
 local function reveal_path(view, path, missing_is_root)
 	local target = reveal_target(view, path, missing_is_root)
-	if target then
+	if target and not is_hidden(view, target) then
 		select_path(view, target)
 	end
 end
@@ -631,6 +666,10 @@ local function follow_buffer(view, buf)
 	if vim.api.nvim_get_current_tabpage() ~= view.tab or buf == view.buf then
 		return
 	end
+	if view.skip_follow_buf == buf then
+		view.skip_follow_buf = nil
+		return
+	end
 	local win = vim.api.nvim_get_current_win()
 	local path = vim.api.nvim_buf_get_name(buf)
 	local stat = path ~= "" and vim.uv.fs_stat(path) or nil
@@ -849,9 +888,17 @@ function M.select_created(path, open_file)
 		return
 	end
 	fs.invalidate_root(view.root)
-	select_path(view, path)
+	if is_hidden(view, path) then
+		local row = selected_row(view)
+		draw(view, row and row.path or view.root)
+	else
+		select_path(view, path)
+	end
 	if open_file then
-		vim.api.nvim_set_current_win(eligible_editor(view))
+		local editor = eligible_editor(view)
+		view.skip_follow_buf = vim.api.nvim_win_get_buf(editor)
+		vim.api.nvim_set_current_win(editor)
+		view.skip_follow_buf = nil
 		vim.cmd("edit " .. vim.fn.fnameescape(path))
 	else
 		vim.api.nvim_set_current_win(view.win)
@@ -905,7 +952,11 @@ function M.refresh_moved(root, selected_path, _move_pairs)
 		if view.root == root and vim.api.nvim_win_is_valid(view.win) then
 			local row = selected_row(view)
 			local target = tab == current_tab and selected_path or (row and row.path or root)
-			select_path(view, target)
+			if is_hidden(view, target) then
+				draw(view, row and row.path or root)
+			else
+				select_path(view, target)
+			end
 		end
 	end
 	if initiating_view and vim.api.nvim_win_is_valid(initiating_view.win) then

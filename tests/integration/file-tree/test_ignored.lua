@@ -134,6 +134,102 @@ local function row_for(relative)
 	)
 end
 
+---@return table
+local function tree_state()
+	return child.lua_get([=[(function()
+		local expanded = require("gleb.file_tree.expanded")
+		expanded.flush()
+		local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+		local cursor = vim.api.nvim_win_get_cursor(view.win)
+		local state_path = vim.fs.joinpath(vim.fn.stdpath("state"), "file_tree", "expanded.json")
+		local stored = vim.uv.fs_stat(state_path)
+			and vim.json.decode(table.concat(vim.fn.readfile(state_path), "\n"))[view.root]
+			or nil
+		return {
+			cursor_line = cursor[1],
+			expanded = vim.deepcopy(view.expanded),
+			expanded_nests = vim.deepcopy(view.expanded_nests),
+			selected = view.rows[cursor[1]].path,
+			stored = stored,
+		}
+	end)()]=])
+end
+
+---@param query string
+local function add(query)
+	child.type_keys("a")
+	assert(child.wait([[MiniPick.is_picker_active()]]), "Add picker did not open")
+	child.type_keys(query, "<CR>")
+	assert(child.wait([[not MiniPick.is_picker_active()]]), "Add picker did not close")
+end
+
+---@param query string
+local function rename(query)
+	child.type_keys("r")
+	assert(child.wait([[MiniPick.is_picker_active()]]), "Rename picker did not open")
+	child.type_keys("<C-u>", query, "<CR>")
+	assert(child.wait([[not MiniPick.is_picker_active()]]), "Rename picker did not close")
+end
+
+T["file-tree: File under hidden node_modules is not revealed"] = MiniTest.new_set()
+
+T["file-tree: File under hidden node_modules is not revealed"]["keeps tree state while editing the hidden file"] = function()
+	local project = F.copy("treeproj", vim.fn.tempname() .. "/billing")
+	open_tree(project, settings_file({}))
+	wait_for_git()
+	expand("web")
+	expand("web/src")
+	child.cmd("wincmd l")
+	child.cmd("edit " .. vim.fn.fnameescape(vim.fs.joinpath(project, "web/src/cart.tsx")))
+	focus_tree_path("web/src/cart.tsx")
+	local before = tree_state()
+	local target = vim.fs.joinpath(project, "web/node_modules/left-pad/index.js")
+
+	child.cmd("wincmd l")
+	child.cmd("edit " .. vim.fn.fnameescape(target))
+
+	eq(child.api.nvim_buf_get_name(0), assert(vim.uv.fs_realpath(target)))
+	eq(tree_state(), before)
+end
+
+T["file-tree: Created or renamed ignored target is not selected"] = MiniTest.new_set()
+
+T["file-tree: Created or renamed ignored target is not selected"]["keeps tree state after the real create action"] = function()
+	local project = F.copy("treeproj", vim.fn.tempname() .. "/billing")
+	open_tree(project, settings_file({}))
+	wait_for_git()
+	expand("web")
+	focus_tree_path("web")
+	local before = tree_state()
+	local target = vim.fs.joinpath(project, "web/node_modules/left-pad/new.js")
+
+	add("node_modules/left-pad/new.js")
+
+	assert(vim.uv.fs_stat(target), "create action did not create the ignored target")
+	eq(tree_state(), before)
+end
+
+T["file-tree: Created or renamed ignored target is not selected"]["keeps tree state after the real rename action"] = function()
+	local project = F.copy("treeproj", vim.fn.tempname() .. "/billing")
+	H.write_files(project, { ["web/pending.js"] = "pending\n" })
+	open_tree(project, settings_file({}))
+	wait_for_git()
+	expand("web")
+	focus_tree_path("web/pending.js")
+	local before = tree_state()
+	local target = vim.fs.joinpath(project, "web/node_modules/left-pad/new.js")
+
+	rename("node_modules/left-pad/new.js")
+
+	assert(vim.uv.fs_stat(target), "rename action did not create the ignored target")
+	local after = tree_state()
+	eq(after.cursor_line, before.cursor_line)
+	eq(after.expanded, before.expanded)
+	eq(after.expanded_nests, before.expanded_nests)
+	eq(after.stored, before.stored)
+	assert(after.selected ~= assert(vim.uv.fs_realpath(target)), "ignored rename target was selected")
+end
+
 T["file-tree: First paint waits for ignored status"] = MiniTest.new_set()
 
 T["file-tree: First paint waits for ignored status"]["omits ignored entries from the first frame"] = function()
