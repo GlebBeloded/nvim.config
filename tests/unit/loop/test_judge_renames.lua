@@ -164,6 +164,15 @@ T["loop: Judge ships a deleted test file whose cases all moved"] = function()
 	eq({ deleted.decision, has(deleted.reasons, "test files deleted: " .. C_TEST) }, { "reject", true })
 end
 
+T["loop: A title-only REMOVED requirement plans its main-spec scenarios"] = function()
+	local result = H.system(
+		child,
+		{ "python3", "-m", "unittest", "-q", "test_planned_removals" },
+		vim.fs.joinpath(H.root, ".archon/scripts")
+	)
+	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
+end
+
 T["loop: Judge ships a test the change's spec delta removes"] = function()
 	local base = { [C_SPEC] = spec("c", { "kept", "dropped" }), [C_TEST] = cases({ "c: dropped" }) }
 	local removed = table.concat({
