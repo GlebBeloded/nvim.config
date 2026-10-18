@@ -510,8 +510,10 @@ function M.compute(changes, lines1, lines2, context)
 			filtered[#filtered + 1] = change
 		end
 	end
-	for _, current in ipairs(unchanged_moves(filtered, lines1, lines2, context)) do
-		moves[#moves + 1] = current
+	if #filtered >= 2 then
+		for _, current in ipairs(unchanged_moves(filtered, lines1, lines2, context)) do
+			moves[#moves + 1] = current
+		end
 	end
 	moves = join_close_moves(moves)
 	local kept = {}
