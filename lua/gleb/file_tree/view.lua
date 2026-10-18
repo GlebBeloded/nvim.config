@@ -77,7 +77,6 @@ function M.is_eligible_editor(win)
 	local filetype = vim.bo[buf].filetype
 	local name = vim.api.nvim_buf_get_name(buf)
 	return vim.bo[buf].buftype == ""
-		and filetype ~= "neo-tree"
 		and filetype ~= "gleb-file-tree"
 		and filetype ~= "gleb-changes"
 		and not vim.startswith(filetype, "Diffview")
@@ -87,12 +86,12 @@ end
 
 ---@param win integer
 ---@return boolean
-local function is_tree_window(win)
+local function is_sidebar_window(win)
 	if not vim.api.nvim_win_is_valid(win) then
 		return false
 	end
 	local filetype = vim.bo[vim.api.nvim_win_get_buf(win)].filetype
-	return filetype == "gleb-file-tree" or filetype == "neo-tree"
+	return filetype == "gleb-file-tree" or filetype == "gleb-changes"
 end
 
 local function remember_editor()
@@ -849,7 +848,7 @@ end
 local function close_tree_windows(tab)
 	local view = M.state.by_tab[tab]
 	for _, win in ipairs(vim.api.nvim_tabpage_list_wins(tab)) do
-		if is_tree_window(win) and (not view or win ~= view.win) and vim.api.nvim_win_is_valid(win) then
+		if is_sidebar_window(win) and (not view or win ~= view.win) and vim.api.nvim_win_is_valid(win) then
 			vim.api.nvim_win_close(win, true)
 		end
 	end

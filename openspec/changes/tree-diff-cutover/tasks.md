@@ -25,9 +25,9 @@ Scenarios: `file-tree: Project tree opens on the left at width 35`, `file-tree: 
 
 ## 4b. Replace neo-tree in editor-window hygiene
 Scenarios: `file-tree: Project tree opening skips non-editor windows`, `file-tree: A file cannot replace the project tree buffer`, `file-tree: Project tree split windows keep editor options`, `file-tree: Project tree tab windows keep editor options`
-- [ ] 4b.1 Change the two `:Neotree` setups in `tests/integration/file-tree/test_project_tree.lua` to a populated changes panel and run `make test FILE=tests/integration/file-tree/test_project_tree.lua CASE="Project tree opening skips non-editor windows"` to see the old `file_tree/view.lua` filter fail
-- [ ] 4b.2 Replace the neo-tree exclusions at the current `lua/gleb/file_tree/view.lua` call sites with changes-panel exclusions while preserving quickfix, terminal, floating and diff-view handling
-- [ ] 4b.3 Run the four named cases and see them pass
+- [x] 4b.1 Change the two `:Neotree` setups in `tests/integration/file-tree/test_project_tree.lua` to a populated changes panel and run `make test FILE=tests/integration/file-tree/test_project_tree.lua CASE="Project tree opening skips non-editor windows"` to see the old `file_tree/view.lua` filter fail
+- [x] 4b.2 Replace the neo-tree exclusions at the current `lua/gleb/file_tree/view.lua` call sites with changes-panel exclusions while preserving quickfix, terminal, floating and diff-view handling
+- [x] 4b.3 Run the four named cases and see them pass
 
 ## 4c. Replace neo-tree in follow and close isolation
 Scenarios: `file-tree: Project tree opens from non-project buffers`, `file-tree: Project tree does not follow a directory buffer`, `file-tree: Project tree closes before last editor with close`, `file-tree: Project tree and changes panel close before the last editor`
@@ -104,6 +104,8 @@ Scenarios: `diff: Diff view opens on the current file`, `diff: Diff view mapping
 
 - Kept the existing tree identity guards and changes timer cleanup because the replacement race tests showed they already preserve a close; task 2 only needed the retired tests and action table updated.
 - Made no production change for task 4a because task 1 already supplied reveal-on-toggle; the five retained scenarios pass through the real mapping, which replaces the retired unbound-action case.
+- The converted editor-window test was already green because `git-changes-tree` had added the changes-panel eligibility guard; this task removed the remaining neo-tree exclusions.
+- Opened the populated changes panel through its public entry point in shared-window tests so it can coexist with the project tree despite the user-facing toggles enforcing one left tool window.
 
 ## Stuck
 
