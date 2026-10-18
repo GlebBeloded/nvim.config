@@ -34,6 +34,7 @@ local function apply_highlights()
 	vim.api.nvim_set_hl(0, "FileTreeFolderIcon", { fg = foreground.blue })
 	vim.api.nvim_set_hl(0, "FileTreeFolderName", { fg = foreground.fg0 })
 	vim.api.nvim_set_hl(0, "FileTreeFileName", { fg = foreground.fg0 })
+	vim.api.nvim_set_hl(0, "FileTreeIgnored", { fg = foreground.grey0, italic = true })
 	vim.api.nvim_set_hl(0, "FileTreeGitModified", { fg = foreground.blue })
 	vim.api.nvim_set_hl(0, "FileTreeGitAdded", { fg = foreground.green })
 	vim.api.nvim_set_hl(0, "FileTreeGitUntracked", { fg = foreground.orange })
@@ -68,13 +69,15 @@ end
 local function directory_segments(row)
 	local expander = row.empty and " " or row.expanded and EXPANDED or COLLAPSED
 	local icon = row.empty and FOLDER_EMPTY or row.expanded and FOLDER_OPEN or FOLDER_CLOSED
+	local icon_group = row.ignored and "FileTreeIgnored" or "FileTreeFolderIcon"
+	local name_group = row.ignored and "FileTreeIgnored" or STATUS_GROUPS[row.status] or "FileTreeFolderName"
 	return {
 		{ text = string.rep(" ", 3 + 2 * row.depth) },
 		{ text = expander, group = row.empty and nil or "FileTreeExpander" },
 		{ text = " " },
-		{ text = icon, group = "FileTreeFolderIcon" },
+		{ text = icon, group = icon_group },
 		{ text = " " },
-		{ text = row.label, group = STATUS_GROUPS[row.status] or "FileTreeFolderName" },
+		{ text = row.label, group = name_group },
 	}
 end
 
@@ -95,6 +98,10 @@ end
 ---@return FileTreeRenderSegment[]
 local function file_segments(row)
 	local icon, icon_group = file_icon(row)
+	if row.ignored then
+		icon_group = "FileTreeIgnored"
+	end
+	local name_group = row.ignored and "FileTreeIgnored" or STATUS_GROUPS[row.status] or "FileTreeFileName"
 	if row.nest_children then
 		return {
 			{ text = string.rep(" ", 3 + 2 * row.depth) },
@@ -102,14 +109,14 @@ local function file_segments(row)
 			{ text = " " },
 			{ text = icon, group = icon_group },
 			{ text = " " },
-			{ text = row.label, group = STATUS_GROUPS[row.status] or "FileTreeFileName" },
+			{ text = row.label, group = name_group },
 		}
 	end
 	return {
 		{ text = string.rep(" ", 5 + 2 * row.depth) },
 		{ text = icon, group = icon_group },
 		{ text = " " },
-		{ text = row.label, group = STATUS_GROUPS[row.status] or "FileTreeFileName" },
+		{ text = row.label, group = name_group },
 	}
 end
 

@@ -42,9 +42,9 @@ Scenarios: `file-tree: I toggles ignored entries`, `file-tree: Show Ignored is a
 
 ## 4a. Draw ignored rows
 Scenarios: `file-tree: Ignored rows are grey italic`
-- [ ] 4a.1 Write the scenario in `tests/integration/file-tree/test_ignored.lua` with real extmark groups and `H.expect_hl_colors`, and run `make test FILE=tests/integration/file-tree/test_ignored.lua CASE="Ignored rows are grey italic"` to see it fail
-- [ ] 4a.2 Define `FileTreeIgnored` as palette grey0 italic, draw ignored icons and names with it, and exclude ignored rows from git colour and folder tint
-- [ ] 4a.3 Run `make test FILE=tests/integration/file-tree/test_ignored.lua CASE="Ignored rows are grey italic"` and see it pass
+- [x] 4a.1 Write the scenario in `tests/integration/file-tree/test_ignored.lua` with real extmark groups and `H.expect_hl_colors`, and run `make test FILE=tests/integration/file-tree/test_ignored.lua CASE="Ignored rows are grey italic"` to see it fail
+- [x] 4a.2 Define `FileTreeIgnored` as palette grey0 italic, draw ignored icons and names with it, and exclude ignored rows from git colour and folder tint
+- [x] 4a.3 Run `make test FILE=tests/integration/file-tree/test_ignored.lua CASE="Ignored rows are grey italic"` and see it pass
 
 ## 4b. Prevent descent through ignored folders
 Scenarios: `file-tree: Unfold all leaves ignored folders collapsed`, `file-tree: Expanded ignored folder lists ignored children`, `file-tree: Ignored folders do not compact or consume unfold budget`

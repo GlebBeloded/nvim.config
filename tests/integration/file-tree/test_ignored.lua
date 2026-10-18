@@ -134,6 +134,31 @@ local function row_for(relative)
 	)
 end
 
+---@param relative string
+---@return string[]
+local function row_groups(relative)
+	return child.lua_get(
+		[[(function(path)
+			local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+			for index, row in ipairs(view.rows) do
+				if row.path == path then
+					return vim.tbl_map(function(mark)
+						return mark[4].hl_group
+					end, vim.api.nvim_buf_get_extmarks(
+						view.buf,
+						require("gleb.file_tree.render").namespace,
+						{ index - 1, 0 },
+						{ index - 1, -1 },
+						{ details = true }
+					))
+				end
+			end
+			return {}
+		end)(...)]],
+		{ vim.fs.joinpath(assert(vim.uv.fs_realpath(root)), relative) }
+	)
+end
+
 ---@return table
 local function tree_state()
 	return child.lua_get([=[(function()
@@ -663,6 +688,23 @@ T["file-tree: Hiding the selected ignored row moves upward"]["selects the neares
 	child.type_keys("I")
 	wait_for_label("node_modules", false)
 	eq(tree_state().selected, above)
+end
+
+T["file-tree: Ignored rows are grey italic"] = MiniTest.new_set()
+
+T["file-tree: Ignored rows are grey italic"]["uses the ignored group for names and icons"] = function()
+	local project = F.copy("treeproj", vim.fn.tempname() .. "/billing")
+	open_tree(project, settings_file({}))
+	wait_for_git()
+	expand("web")
+	child.type_keys("I")
+	wait_for_label("node_modules", true)
+
+	eq(row_groups("bin"), { "FileTreeExpander", "FileTreeIgnored", "FileTreeIgnored" })
+	eq(row_groups("web/node_modules"), { "FileTreeExpander", "FileTreeIgnored", "FileTreeIgnored" })
+	eq(row_groups(".env"), { "FileTreeIgnored", "FileTreeIgnored" })
+	H.expect_hl_colors(child, "FileTreeIgnored", { fg = "#7c6f64" })
+	eq(child.lua_get([[vim.api.nvim_get_hl(0, { name = "FileTreeIgnored", link = false }).italic]]), true)
 end
 
 return T
