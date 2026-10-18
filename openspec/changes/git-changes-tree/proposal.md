@@ -33,7 +33,7 @@ Reviewing and committing changes today goes through neo-tree's git status source
 
 - Code:
   - New: `lua/gleb/git/changes/{init,model,render,git,view,actions,highlights}.lua`.
-  - Changed: `lua/gleb/git/actions.lua`, `lua/gleb/git/init.lua`, `lua/gleb/file_tree/model.lua`, `lua/gleb/file_tree/git.lua`, `lua/gleb/file_tree/view.lua`, `lua/gleb/file_tree/watch.lua`, `lua/gleb/diff/view/init.lua`, `lua/gleb/git/ai_commit.lua`, `settings/keymap.json`, `tests/fixtures/build.sh`.
+  - Changed: `lua/gleb/actions/apply.lua`, `lua/gleb/actions/registry.lua`, `lua/gleb/git/actions.lua`, `lua/gleb/git/init.lua`, `lua/gleb/file_tree/model.lua`, `lua/gleb/file_tree/git.lua`, `lua/gleb/file_tree/view.lua`, `lua/gleb/file_tree/watch.lua`, `lua/gleb/diff/view/init.lua`, `lua/gleb/git/ai_commit.lua`, `settings/keymap.json`, `tests/fixtures/build.sh`.
 - Tests:
   - unit: `tests/unit/git/test_changes_model.lua` (porcelain v2 and numstat parsing, grouping, compaction, nesting, sort, checkbox states) and `test_changes_render.lua` (columns, stats, `…` cut).
   - integration: `tests/integration/git/test_changes.lua` (window, staging incl. the cwd and suffix cases, revert, commit, push, refresh, diff view link, keys) on `dirty`, `billing` and temp repos.

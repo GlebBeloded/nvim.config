@@ -31,6 +31,7 @@
 ---@field aliases? string[]
 ---@field hidden? boolean
 ---@field plugin? string Plugin adapter owns this action's mappings
+---@field nowait? boolean Execute an exact mapping without waiting for longer mappings
 ---@field neo_tree_scope? "common"|"filesystem"|"git_status"
 ---@field diffview_scopes? string[]
 

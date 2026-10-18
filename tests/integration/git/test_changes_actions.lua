@@ -96,8 +96,6 @@ local function commit_from_changes(dir, message)
 	child.lua(
 		[[CommitMessage = ...
 CommitRoot = nil
-local changes = require("gleb.git.changes")
-if not changes.commit then changes.commit = function() end end
 require("gleb.git.ai_commit").show_commit_input = function(callback, opts)
 	CommitRoot = opts and opts.root
 	callback(CommitMessage)
@@ -105,7 +103,8 @@ end]],
 		{ message }
 	)
 	child.cmd("cd " .. vim.fn.fnameescape(vim.fs.dirname(dir)))
-	child.type_keys("gc", "<Ignore>")
+	child.type_keys("gc")
+	eq(child.lua_get("CommitRoot"), vim.fs.normalize(dir))
 end
 
 ---@param dir string
@@ -281,8 +280,9 @@ T["git: Changes panel gc commits confirmed message"] = function()
 
 	vim.fn.writefile({ "three" }, vim.fs.joinpath(dir, "a.txt"))
 	H.git(dir, { "add", "a.txt" })
-	child.lua([[Notifications, CommitMessage = {}, "fix: it's $HOME"]])
-	child.type_keys("gc", "<Ignore>")
+	child.lua([[Notifications, CommitMessage, CommitRoot = {}, "fix: it's $HOME", nil]])
+	child.type_keys("gc")
+	eq(child.lua_get("CommitRoot"), vim.fs.normalize(dir))
 	eq(wait_notification("Committed:"), true)
 	eq(last_subject(dir), "fix: it's $HOME")
 end

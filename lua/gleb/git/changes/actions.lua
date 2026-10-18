@@ -55,6 +55,7 @@ local actions = {
 		title = "Commit",
 		category = "Changes",
 		ft = "gleb-changes",
+		nowait = true,
 		run = run("commit"),
 	},
 	{

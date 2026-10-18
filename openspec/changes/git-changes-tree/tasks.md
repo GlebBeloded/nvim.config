@@ -162,8 +162,8 @@ Scenarios: `git: Changes panel matches the approved render`, `git: Changes panel
 
 ## 8. Gate
 - [x] 8.1 Run `make trace` and confirm every scenario of this change is tested with no orphans or duplicates
-- [ ] 8.2 Run `make test CAPS=find-action,file-tree,git` and see it pass
-- [ ] 8.3 Run `make check` and `openspec validate git-changes-tree --strict` and see both pass
+- [x] 8.2 Run `make test CAPS=find-action,file-tree,git` and see it pass
+- [x] 8.3 Run `make check` and `openspec validate git-changes-tree --strict` and see both pass
 
 ## Agent decisions
 

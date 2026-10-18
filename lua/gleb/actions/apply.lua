@@ -56,7 +56,7 @@ local function set_mapping(mode, lhs, action, buf)
 		mode,
 		lhs,
 		target,
-		{ buffer = buf, desc = Registry.description(action), remap = remap, silent = true }
+		{ buffer = buf, desc = Registry.description(action), remap = remap, silent = true, nowait = action.nowait }
 	)
 end
 
