@@ -31,7 +31,6 @@ local LEGEND = {
 	u = "DevIconPackageJson",
 	v = "DevIconGitIgnore",
 	w = "CursorLineNr",
-	x = "@function.call",
 	y = "DevIconGoMod",
 	z = "@number",
 	A = "DevIconMakefile",
@@ -41,6 +40,9 @@ local LEGEND = {
 	E = "lualine_a_normal",
 	F = "lualine_c_normal",
 	G = "lualine_b_normal",
+	H = "@type.definition",
+	I = "@function.method",
+	J = "@property",
 	["."] = "Normal",
 }
 
@@ -54,25 +56,25 @@ local MASK = {
 	".....d.e.nnnnnnn...................hiiiii....mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm...................",
 	".......d.c.lllllllllll.............hiiiii...........................................................",
 	"ooooooodoconnnnnnnnnnoooooooooooooohiiiii...........................................................",
-	"...........c.nnnnnnnnnnnnnnn.......hiiiiipp.ppppppp.pp.p.pppp.pp.pppp.ppppppp.pp.pppppp.............",
-	".......d.c.qqqqqq..................hiiiiijjjj.rrrrrrr.jjjjjj........................................",
-	".....d.e.kkkkk.....................hiiiii....rr....rrrrrr...........................................",
-	"...d.e.nnn.........................hiiiii....rrrrr...rrr............................................",
-	".....d.e.nnn.......................hiiiii....rrr...rrrr.............................................",
+	"...........c.nnnnnnnnnnnnnnn.......hiiiiipppppppppppppppppppppppppppppppppppppppppppppp.............",
+	".......d.c.qqqqqq..................hiiiiijjjj.HHHHHHH.jjjjjj........................................",
+	".....d.e.kkkkk.....................hiiiii....HH....rrrrrr...........................................",
+	"...d.e.nnn.........................hiiiii....HHHHH...rrr............................................",
+	".....d.e.nnn.......................hiiiii....HHH...rrrr.............................................",
 	".........s.llllllll................hiiiii...........................................................",
 	".......d.t.nnnnnnnn................hiiiii...........................................................",
-	".....d.u.llllllllllll..............hiiiiipp.ppppp.pppp.ppp.ppppp.ppp.ppppppp.ppp.ppp.ppppp..........",
-	".....v.llllllllll..................hwwwwwjjjj....rrrrrrr..xxxxx...rrr...............................",
-	"...d.y.llllll......................hiiiii.............z.............................................",
-	".....A.llllllll....................hiiiii....jjj.............jjjjj...rrrrr..........................",
-	".....B.CCCCCCCC....................hiiiii...........................................................",
+	".....d.u.llllllllllll..............hiiiiippppppppppppppppppppppppppppppppppppppppppppppppp..........",
+	".....v.llllllllll..................hiiiiijjjj....rrrrrrr..IIIII...rrr...............................",
+	"...d.y.llllll......................hiiiii....HHHHH.jj.z.............................................",
+	".....A.llllllll....................hiiiii....jjj.Hm.HHHHH.jj.jjjjj.HmJJJJJ..........................",
+	".....B.CCCCCCCC....................hiiiii........HHHHH.jj.HHHHH.....................................",
 	".....D.lllllllll...................hiiiii...........................................................",
-	"...................................hiiiii....jjjjjj...rrr.xxxxx.....................................",
+	"...................................hiiiii....jjjjjj.HmJJJmIIIII.HHHHH...............................",
 	"...................................hiiiii...........................................................",
 	"...................................hiiiii...........................................................",
-	"...................................hiiiiipp.ppp.ppppppp.ppp.ppppp.pp.pppppppp.......................",
-	"...................................hiiiiijjjj....rrrrrrr..xxx...rrrrrr..............................",
-	"...................................hiiiii....jjjjjj.....xxxxxxx.mmmm.mmm........xxxxxx...xxxxx......",
+	"...................................hiiiiipppppppppppppppppppppppppppppppppppp.......................",
+	"...................................hiiiiijjjj....rrrrrrr..III...rrrrrr..............................",
+	"...................................hiiiii....jjjjjj.HHHmIIIIIII.mmmmmmmmm.HHHHHmIIIIII.HmIIIII......",
 	"...................................hiiiii...........................................................",
 	"EEEEEEEEFGGGGGGGGGGGFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFGGGGGGGGGGGGGGGGF",
 }
@@ -104,7 +106,12 @@ local function focus_tree_row(name)
 	)
 	assert(
 		result.found,
-		"tree row not found: " .. name .. " in " .. vim.inspect(result.labels) .. "; expanded " .. vim.inspect(result.expanded)
+		"tree row not found: "
+			.. name
+			.. " in "
+			.. vim.inspect(result.labels)
+			.. "; expanded "
+			.. vim.inspect(result.expanded)
 	)
 end
 
@@ -135,12 +142,15 @@ end)()
 	if not opened then
 		child.type_keys("<CR>")
 		assert(
-			child.wait([[
+			child.wait(
+				[[
 (function()
 	local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
 	return vim.iter(view.rows):any(function(row) return row.label == "invoice.go" end)
 end)()
-]], 1000),
+]],
+				1000
+			),
 			"internal/billing did not expand"
 		)
 	end

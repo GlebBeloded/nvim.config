@@ -333,9 +333,12 @@ T["file-tree: Invalid settings file disables nesting"] = function()
 	use_temporary_settings('{ "nesting": ')
 
 	eq(vim.inspect(billing_file_rows()), vim.inspect(sibling_rows))
-	local notice = notifications()[1]
+	local notices = notifications()
+	local notice = vim.iter(notices):find(function(item)
+		return vim.startswith(item.msg, "File tree settings invalid")
+	end)
+	assert(notice, "invalid-settings notification not found: " .. vim.inspect(notices))
 	eq(notice.level, vim.log.levels.ERROR)
-	eq(vim.startswith(notice.msg, "File tree settings invalid"), true)
 end
 
 T["file-tree: Nesting can be turned off"] = function()

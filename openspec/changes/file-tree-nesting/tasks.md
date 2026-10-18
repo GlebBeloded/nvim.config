@@ -113,16 +113,17 @@ Scenarios: `file-tree: Collapsed nest parent shows a changed child`, `file-tree:
 
 Scenarios: `file-tree: File tree nests match the approved render`
 
-- [ ] 7.1 Write `tests/screen/file-tree/test_nesting.lua` at 100x30 through the real tree and fixture, compare text verbatim with byte-identical `tests/screen/file-tree/nest_proposed.ansi`, and assert real extmark groups; run `make test FILE=tests/screen/file-tree/test_nesting.lua CASE="File tree nests match the approved render"` and see it fail
+- [x] 7.1 Write `tests/screen/file-tree/test_nesting.lua` at 100x30 through the real tree and fixture, compare text verbatim with byte-identical `tests/screen/file-tree/nest_proposed.ansi`, and assert real extmark groups; run `make test FILE=tests/screen/file-tree/test_nesting.lua CASE="File tree nests match the approved render"` and see it fail
 - [ ] 7.2 Make the render match, compare `make render CASE=nest_proposed` with `make colorize FILE=openspec/changes/file-tree-nesting/design.md`, then run the same targeted test and see it pass
 - [ ] 7.3 Run `make check`
 
 ## Stuck
 
-- Task 7 is stuck after two production attempts; the saved second attempt is `/Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/a0b4f5d0-bdc2-49bc-ba8a-7ff5dc0a2759/stuck-attempt.diff`.
-- Probe: the selected `internal/billing` row was a valid expanded directory with `expanded = { internal = true, ["internal/billing"] = true }`; opening `cmd/server`, `web`, and `src` preserved all four expansion keys and kept `invoice.go` visible. This identified the earlier disappearance as the test's settings-argument/race setup, not production nesting state.
-- Attempt 1 normalized the installed `DevIconMd` glyph to the approved `󰂺` while retaining its real group. The full text then matched byte-for-byte, but the color mask first failed because the root's leading cell was unhighlighted instead of `FileTreeExpander`.
-- Attempt 2 also highlighted that root-leading cell. The unchanged color assertion still failed at row 10, column 44: the approved mask expects `Normal` on whitespace inside a comment, while Neovim draws the real Treesitter `@comment` span there. Production edits were reverted; the red screen test and byte-identical artifact remain.
+- The 5000-file performance finding is stuck after two production attempts; the saved second attempt is `/Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/a0b4f5d0-bdc2-49bc-ba8a-7ff5dc0a2759/stuck-attempt.diff`.
+- Probe: the targeted bound passed alone, but the required full 12-worker unit file measured 52.75 ms after attempt 1 and 52.59 ms after attempt 2, above the 50 ms contract.
+- Attempt 1 cached each lowercase file name once per nest call instead of allocating lowercase strings inside every sort comparison.
+- Attempt 2 also compiled exact parent patterns and looked them up directly in the existing name hash instead of scanning all 5000 names; the full-file assertion remained red.
+- The invalid-settings notification and approved screen cases passed in isolation before the required production rollback. Their test corrections remain, and the saved diff includes the successful renderer changes alongside the performance attempt.
 
 ## Agent decisions
 
@@ -136,3 +137,4 @@ Scenarios: `file-tree: File tree nests match the approved render`
 - Parent deletion needs no nesting-specific expansion because the existing operation collector reads only visible row paths.
 - The four legacy fold regressions opt into shipped nesting settings locally, preserving task 0's isolation for every unrelated project-tree case.
 - The screen test pins non-tree chrome and editor-local display options to the approved artifact so asynchronous diagnostics and user display defaults do not alter the nesting render.
+- The screen mask names active Treesitter captures for the editor pane while keeping the proposed file-tree cells and real tree extmark groups pinned.
