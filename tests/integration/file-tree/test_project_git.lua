@@ -177,6 +177,7 @@ T["file-tree: Project tree reads git status without optional locks"] = function(
 		"--porcelain=v2",
 		"-z",
 		"--untracked-files=normal",
+		"--ignored=matching",
 	})
 end
 

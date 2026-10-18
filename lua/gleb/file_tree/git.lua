@@ -107,8 +107,17 @@ local function run(root, state)
 	state.timer = nil
 	state.in_flight = true
 	local generation = state.generation
-	local command =
-		{ "git", "--no-optional-locks", "-C", root, "status", "--porcelain=v2", "-z", "--untracked-files=normal" }
+	local command = {
+		"git",
+		"--no-optional-locks",
+		"-C",
+		root,
+		"status",
+		"--porcelain=v2",
+		"-z",
+		"--untracked-files=normal",
+		"--ignored=matching",
+	}
 	M.state.last_cmd = command
 	M.state.runs = M.state.runs + 1
 	vim.system({ "git", "-C", root, "rev-parse", "--show-prefix" }, { text = true }, function(prefix_result)
