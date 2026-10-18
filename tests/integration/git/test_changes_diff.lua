@@ -82,6 +82,21 @@ local function wait_for_shows(count)
 	eq(child.wait(("#DiffShows == %d"):format(count), ASYNC_MS), true)
 end
 
+---@param root string
+---@param selected? string
+local function review_changes(root, selected)
+	child.cmd("cd " .. vim.fn.fnameescape(root))
+	if selected then
+		child.cmd("edit " .. vim.fn.fnameescape(vim.fs.joinpath(root, selected)))
+	else
+		child.cmd("enew")
+	end
+	child.lua([[
+		local action = assert(require("gleb.actions").state.applicator.catalog:get("changes.review"))
+		action.run(require("gleb.actions.context").capture())
+	]])
+end
+
 T["git: Changes panel j shows the next file in the diff view"] = function()
 	local root = F.copy("billing", vim.fn.tempname() .. "/billing")
 	open_changes(root, "internal/billing/invoice.go")
@@ -196,6 +211,103 @@ T["git: Changes panel closes a contentless diff"] = function()
 		true
 	)
 	eq(notifications(), { { msg = "No content changes: mode.txt", level = vim.log.levels.INFO } })
+end
+
+T["git: Changes panel review shows the current file's diff"] = function()
+	local root = F.copy("billing", vim.fn.tempname() .. "/billing")
+	observe_show()
+
+	review_changes(root, "internal/billing/invoice.go")
+	wait_for_shows(1)
+
+	local result = child.lua_get([=[(function()
+		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		local row = panel.rows[vim.api.nvim_win_get_cursor(panel.win)[1]]
+		return {
+			current_win = vim.api.nvim_get_current_win(),
+			panel_win = panel.win,
+			row = row.path,
+			diff = panel.diff_view.relpath,
+		}
+	end)()]=])
+	eq(result, {
+		current_win = result.panel_win,
+		panel_win = result.panel_win,
+		row = "internal/billing/invoice.go",
+		diff = "internal/billing/invoice.go",
+	})
+end
+
+T["git: Changes panel review without a changed current file"] = function()
+	local root = F.copy("dirty", vim.fn.tempname() .. "/dirty")
+	observe_show()
+
+	review_changes(root)
+	wait_for_shows(1)
+
+	local result = child.lua_get([=[(function()
+		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		local row = panel.rows[vim.api.nvim_win_get_cursor(panel.win)[1]]
+		return { row = row.path, diff = panel.diff_view.relpath }
+	end)()]=])
+	eq(result, { row = "lib/c.lua", diff = "lib/c.lua" })
+end
+
+T["git: Changes panel ]f steps through every changed file"] = function()
+	local root = F.copy("dirty", vim.fn.tempname() .. "/dirty")
+	observe_show()
+	review_changes(root)
+	wait_for_shows(1)
+	child.lua([[
+		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		vim.api.nvim_set_current_win(panel.diff_view.right_win)
+	]])
+
+	for count = 2, 5 do
+		child.type_keys("]f")
+		wait_for_shows(count)
+	end
+
+	local result = child.lua_get([=[(function()
+		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		local row = panel.rows[vim.api.nvim_win_get_cursor(panel.win)[1]]
+		return {
+			shown = vim.iter(DiffShows):map(function(item) return item.relpath end):totable(),
+			row = row.path,
+		}
+	end)()]=])
+	eq(result, {
+		shown = { "lib/c.lua", "a.txt", "b.txt", "d.txt", "new.txt" },
+		row = "new.txt",
+	})
+end
+
+T["git: Changes panel ]f keeps diff focus"] = function()
+	local root = F.copy("dirty", vim.fn.tempname() .. "/dirty")
+	observe_show()
+	review_changes(root)
+	wait_for_shows(1)
+	child.lua([[
+		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		vim.api.nvim_set_current_win(panel.diff_view.right_win)
+	]])
+
+	child.type_keys("]f")
+	wait_for_shows(2)
+
+	local result = child.lua_get([[(function()
+		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		return {
+			current_win = vim.api.nvim_get_current_win(),
+			right_win = panel.diff_view.right_win,
+			relpath = panel.diff_view.relpath,
+		}
+	end)()]])
+	eq(result, {
+		current_win = result.right_win,
+		right_win = result.right_win,
+		relpath = "a.txt",
+	})
 end
 
 return T

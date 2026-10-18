@@ -178,3 +178,10 @@ Scenarios: `git: Changes panel matches the approved render`, `git: Changes panel
 - Repository-relative staging needed no production edit because task 4a already rooted both status and mutation calls and propagated their failures.
 - Batch staging filters one full fresh status snapshot because Git status has no pathspec-from-file option and destination-only status loses rename origins.
 - Diff selection uses its own per-panel timer so refresh coalescing cannot cancel the 50 ms cursor debounce.
+
+## Stuck
+
+- Task 5b is left unticked. The headless probe opened review on `lib/c.lua` with `review_on_refresh = false`, one real show, and a buffer-local `]f` mapping; sequential navigation then reported `a.txt`, `b.txt`, `d.txt`, `d.txt`, exposing a duplicate replacement around the final step.
+- Attempt 1 added immediate review, an `on_next_file` callback, right-window reuse, and right-window refocus. The navigation cases timed out; a focused rerun showed Vim's native `]f` running on the panel checkbox after a delayed duplicate diff stole focus.
+- Attempt 2 suppressed the cursor-debounce event associated with immediate review/navigation. Focus passed, but the full case still showed `lib/c.lua`, `a.txt`, `b.txt`, `d.txt`, `d.txt` and left the panel cursor on `d.txt` instead of reaching `new.txt`.
+- The second production attempt is saved at `/Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/0334b5f5-8041-4ae0-91d8-5a73c4c951ac/stuck-attempt.diff`; production edits were reverted and the failing 5b scenarios remain for the fix pass.
