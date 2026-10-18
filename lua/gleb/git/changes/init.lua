@@ -181,6 +181,44 @@ function M.stage_all()
 	end)
 end
 
+---@param current ChangesView
+---@param result vim.SystemCompleted
+---@return nil
+local function finish_revert(current, result)
+	if result.code ~= 0 then
+		vim.notify("Revert failed: " .. vim.trim(result.stderr or ""), vim.log.levels.ERROR)
+		return
+	end
+	if M.state.by_tab[current.tab] ~= current then
+		return
+	end
+	view.schedule_refresh(current)
+	if current.diff_view then
+		require("gleb.diff.view").refresh_index(current.diff_view)
+	end
+end
+
+--- Revert the file row under the cursor after confirmation.
+---@return nil
+function M.revert()
+	local current = M.state.by_tab[vim.api.nvim_get_current_tabpage()]
+	if not current then
+		return
+	end
+	local row = current.rows[vim.api.nvim_win_get_cursor(current.win)[1]]
+	if not row or row.kind ~= "file" or row.status == "untracked" then
+		return
+	end
+	local prompt = ("Are you sure you want to revert %s? y/n: "):format(row.label)
+	vim.ui.input({ prompt = prompt }, function(answer)
+		if answer == "y" or answer == "Y" then
+			git.revert(current.root, row, function(result)
+				finish_revert(current, result)
+			end)
+		end
+	end)
+end
+
 --- Clear Changes panel state for tests.
 ---@return nil
 function M.reset()

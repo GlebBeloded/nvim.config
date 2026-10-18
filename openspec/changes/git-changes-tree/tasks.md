@@ -132,9 +132,9 @@ Scenarios: `git: Changes panel close preserves another diff view`, `git: Changes
 
 ## 6a. Revert tracked and local files
 Scenarios: `git: Changes panel X reverts a file after confirmation`, `git: Changes panel X keeps a file when revert is declined`, `git: Changes panel X unstages a new file and keeps it`, `git: Changes panel X ignores an unversioned file`, `git: Changes panel X reverts a rename`
-- [ ] 6a.1 Write the scenarios in `tests/integration/git/test_changes_actions.lua`, driving `X` in populated repositories and the real confirmation callback, and see them fail
-- [ ] 6a.2 Implement literal-pathspec revert, decline, added-file, unversioned and rename paths with the existing prompt and failure text
-- [ ] 6a.3 Run `make test FILE=tests/integration/git/test_changes_actions.lua CASE="Changes panel X"` and see it pass
+- [x] 6a.1 Write the scenarios in `tests/integration/git/test_changes_actions.lua`, driving `X` in populated repositories and the real confirmation callback, and see them fail
+- [x] 6a.2 Implement literal-pathspec revert, decline, added-file, unversioned and rename paths with the existing prompt and failure text
+- [x] 6a.3 Run `make test FILE=tests/integration/git/test_changes_actions.lua CASE="Changes panel X"` and see it pass
 
 ## 6b. Revert on unborn HEAD
 Scenarios: `git: Changes panel X on unborn HEAD keeps the file`
@@ -181,6 +181,7 @@ Scenarios: `git: Changes panel matches the approved render`, `git: Changes panel
 - Project-tree toggle checks the already-loaded Changes module before handoff, avoiding a new feature load when no panel exists.
 - Binary detection uses Git numstat while conflict content uses its porcelain status, keeping both kinds in unnamed read-only buffers without guessing from file bytes.
 - Panel diff loading reports an initially unloaded file buffer to its owning panel, so close can unload clean owned buffers without touching preloaded or modified buffers.
+- Revert uses `vim.ui.input` so the standalone Changes panel keeps the existing prompt without requiring neo-tree UI setup.
 
 ## Stuck
 

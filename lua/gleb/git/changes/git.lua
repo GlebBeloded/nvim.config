@@ -268,4 +268,45 @@ function M.stage_all(root, callback)
 	end)
 end
 
+---@param root string
+---@param row ChangesRow
+---@param callback fun(result: vim.SystemCompleted)
+---@return nil
+function M.revert(root, row, callback)
+	root = fs.normalize(root)
+	local relpath = assert(row.path, "file row path missing")
+	local path = vim.fs.joinpath(root, relpath)
+	local command
+	if row.orig then
+		command = {
+			"git",
+			"--literal-pathspecs",
+			"checkout",
+			"HEAD",
+			"--",
+			vim.fs.joinpath(root, row.orig),
+		}
+	elseif row.status == "added" then
+		command = { "git", "--literal-pathspecs", "rm", "--cached", "--", path }
+	else
+		command = { "git", "--literal-pathspecs", "checkout", "HEAD", "--", path }
+	end
+	M.state.last_cmd = command
+	vim.system(command, { cwd = root, text = true }, function(result)
+		if result.code ~= 0 or not row.orig then
+			vim.schedule(function()
+				callback(result)
+			end)
+			return
+		end
+		local remove = { "git", "--literal-pathspecs", "rm", "--cached", "--", path }
+		M.state.last_cmd = remove
+		vim.system(remove, { cwd = root, text = true }, function(remove_result)
+			vim.schedule(function()
+				callback(remove_result)
+			end)
+		end)
+	end)
+end
+
 return M
