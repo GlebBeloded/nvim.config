@@ -5,8 +5,7 @@ Scenarios: `file-tree: Project tree keys come from the keymap file`, `file-tree:
 ## Agent decisions
 
 - Complete the first project-tree draw when the initial Git request finishes, because a fixed fallback deadline can render ignored rows under load.
-- Should Find Action make combined `Category Title` text searchable? Choose option 1: require combined matching, restore the `Multi-word query spans category and title` scenario and regression case, and keep `project open` in the integration case, because this preserves the existing Decision and its required scenario without weakening the integration test.
 
-## 2. Match multi-word queries across category and title
-Scenarios: `find-action: Multi-word query spans category and title`, `file-tree: Project tree keys come from the keymap file`
-- [ ] 2.1 Restore combined `Category Title` matching and the unit regression case named after the scenario, covering `project open`, reversed word order, and unchanged single-word title, category, and alias matching; keep `project open` and the existing assertions in the integration case
+## Blocked
+
+- Should combined `Category Title` matching become a Find Action requirement? Option 1: add that requirement with its own scenario and regression test so `project open` selects `file_tree.open`. Option 2: keep title, category, and aliases as separate fields and choose another product-level way to make `file_tree.open` current. Recommend option 1 because no query matching only `file_tree.open`'s title (`Open`), category (`Project`), or absent aliases can exclude the earlier `Open ...` actions.

@@ -36,12 +36,12 @@ Full `make check` with only the helper fix (loop round104, 2026-10-18): that is 
 	end
 ```
 
-- Make Find Action fuzzy-match the combined `Category Title` text so `project open` selects
-  `file_tree.open`; preserve single-field matching and keep the integration case's query and assertions unchanged.
+- Find why the typed query does not select `file_tree.open` in that case (the test's keys, the picker's input
+  handling, or the palette's matching) and fix the cause. The case's assertions stay as they are.
 
 ## Impact
 
-- tests/helpers.lua; the Find Action matcher and its unit coverage.
+- tests/helpers.lua; the Find Action palette or the case's input path, whichever the probe shows.
 - `file-tree: Project tree keys come from the keymap file` still holds, now with a real wait.
 - `file-tree: Requirement: Project tree open and close keys` still holds because the wait fix changes only test
   readiness handling, not any project-tree open or close action.
