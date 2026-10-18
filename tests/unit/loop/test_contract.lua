@@ -390,7 +390,16 @@ T["loop: Judge hands the review findings to the follow-up"] = function()
 		"- review: test weakened\n- review findings:\n  ## Removed assert\n  tests/unit/x.lua drops the eq"
 	)
 	local quoted = out.reasons:match("%- review findings:\n(.*)$")
-	eq(#quoted:gsub("\n  ", "\n") <= 1500 + 2, true, { fail_reason = ("%d chars"):format(#quoted) })
+	eq(#quoted:gsub("\n  ", "\n") <= 4000 + 60, true, { fail_reason = ("%d chars"):format(#quoted) })
+	-- several findings over the cap are cut between findings, never inside one
+	local many = {}
+	for i = 1, 12 do
+		table.insert(many, ("[must-fix] finding %d: %s end-%d"):format(i, ("z"):rep(400), i))
+	end
+	local cut =
+		run("escalation.py", repo, { INPUTS_WEAKENED_TEST = "true", INPUTS_REVIEW_FINDINGS = table.concat(many, "\n") })
+	local last = cut.reasons:match("finding (%d+): z+ end%-%d+\n  … %(more findings in the run's reviews%.md%)$")
+	eq(last ~= nil, true, { fail_reason = cut.reasons:sub(-300) })
 	eq(out.reasons:find("\n## ", 1, true), nil)
 	local shipped = run("escalation.py", repo, { INPUTS_REVIEW_FINDINGS = findings })
 	eq({ shipped.decision, shipped.reasons:find("review findings", 1, true) }, { "ship", nil })

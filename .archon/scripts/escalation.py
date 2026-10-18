@@ -21,7 +21,16 @@ from findings import minor_findings
 from integrity import breaking_changes, hard_rule_violations, readded_requirements, rewritten_decisions, still_dropped
 from lessons import persist_lessons
 
-FINDINGS_CHARS = 1500  # indented: no finding line reads as a markdown heading of the proposal
+FINDINGS_CHARS = 4000  # indented: no finding line reads as a markdown heading of the proposal
+
+
+def clip(text: str, limit: int) -> str:
+    """`text` cut at the last finding boundary (`\n[` or a blank line) before `limit`, never mid-finding (run 0334b5f5
+    handed its follow-up a finding cut mid-sentence)."""
+    if len(text) <= limit:
+        return text
+    cut = max(text.rfind("\n[", 0, limit), text.rfind("\n\n", 0, limit))
+    return text[: cut if cut > 0 else limit].rstrip() + "\n… (more findings in the run's reviews.md)"
 FAILURE_LINES = 12  # of the last pass's failures, quoted under an exhausted loop's reason
 
 
@@ -60,7 +69,7 @@ if stuck_text(os.environ.get("INPUTS_CHANGE", "")) and decision != "ship":  # th
 failed = [line for line in os.environ.get("INPUTS_FAILURES", "").splitlines() if line.strip()][:FAILURE_LINES]
 if failed and flag("exhausted"):
     summary += "\n- last failures:\n" + "\n".join("  " + line for line in failed)
-findings = os.environ.get("INPUTS_REVIEW_FINDINGS", "").strip()[:FINDINGS_CHARS]
+findings = clip(os.environ.get("INPUTS_REVIEW_FINDINGS", "").strip(), FINDINGS_CHARS)
 if findings and decision != "ship":  # followup.py writes the reasons under `## Rejected run`: say what to fix
     summary += "\n- review findings:\n" + "\n".join("  " + line for line in findings.splitlines())
 if decision == "ship":  # the auditor sees what the review let through
