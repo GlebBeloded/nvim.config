@@ -1011,11 +1011,13 @@ end
 function M.toggle()
 	local tab = vim.api.nvim_get_current_tabpage()
 	local view = M.state.by_tab[tab]
+	local path = vim.api.nvim_buf_get_name(0)
 	if view and vim.api.nvim_win_is_valid(view.win) then
 		if vim.api.nvim_get_current_win() == view.win then
 			close_view(view)
 		else
 			vim.api.nvim_set_current_win(view.win)
+			reveal_path(view, path, true)
 		end
 		return
 	end
@@ -1023,7 +1025,6 @@ function M.toggle()
 	if changes then
 		changes.close()
 	end
-	local path = vim.api.nvim_buf_get_name(0)
 	open_view(path)
 end
 

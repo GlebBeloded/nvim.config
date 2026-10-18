@@ -337,8 +337,8 @@ Columns of the table the "Shortcut table" requirement refers to:
 
 | Shortcut | Source | Alacritty sends | zellij | Neovim receives | Mapping |
 |---|---|---|---|---|---|
-| Cmd+E | chars | `\ee` | pass | `<M-e>` | tree.toggle_filesystem |
-| Cmd+G | chars | `\eg` | pass | `<M-g>` | git.open_differ |
+| Cmd+E | chars | `\ee` | pass | `<M-e>` | file_tree.toggle |
+| Cmd+G | chars | `\eg` | pass | `<M-g>` | changes.review |
 | Cmd+B | chars | `\eb` | pass | `<M-b>` | none |
 | Cmd+Q | chars | `\eq` | pass | `<M-q>` | none |
 | Cmd+Shift+Q | chars | `\eQ` | pass | `<M-Q>` | none |

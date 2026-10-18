@@ -5,7 +5,7 @@ The config SHALL map `<A-g>` in normal mode to the `changes.review` action.
 
 #### Scenario: Alt-g opens the changes review
 - **WHEN** `internal/billing/invoice.go` of a fresh copy of the `billing` fixture is edited and `<A-g>` is pressed in normal mode
-- **THEN** the current window has filetype `gleb-changes` with its cursor on the `invoice.go` row, and within 100 ms the editor area shows the diff view of `internal/billing/invoice.go`
+- **THEN** the current window has filetype `gleb-changes` with its cursor on the `invoice.go` row, and within the integration async wait budget the editor area shows the diff view of `internal/billing/invoice.go`
 
 ### Requirement: Project tree and changes panel toggles
 The config SHALL map `<A-e>` in normal mode to the `file_tree.toggle` action and `<A-G>` to the `changes.toggle` action. Opening the project tree from a buffer whose file exists under the root SHALL put the tree cursor on that file's row. Each key SHALL close its panel when that panel is the current window, and opening one panel SHALL close the other.

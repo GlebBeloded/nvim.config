@@ -1,4 +1,5 @@
 local MiniTest = require("mini.test")
+local F = require("tests.fixtures")
 local H = require("tests.helpers")
 
 local eq = MiniTest.expect.equality
@@ -61,10 +62,49 @@ GrOpensReferencesView = called
 	return child.lua_get("GrOpensReferencesView")
 end
 
---- Wait budget for async plugins (neo-tree, telescope, differ).
+--- Wait budget for asynchronous views and plugins.
 ---@return integer
 local function async_ms()
 	return math.ceil(10000 * H.load_factor())
+end
+
+--- Wait until the populated project tree has focus.
+---@return boolean
+local function wait_project_tree_focused()
+	return child.wait(
+		[[(function()
+		local view = require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		return view ~= nil
+			and vim.api.nvim_win_is_valid(view.win)
+			and vim.api.nvim_get_current_win() == view.win
+			and #view.rows > 0
+	end)()]],
+		async_ms()
+	)
+end
+
+--- Path of the project-tree row under the cursor.
+---@return string
+local function project_tree_cursor_path()
+	return child.lua_get([=[(function()
+		local view = require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		return view.rows[vim.api.nvim_win_get_cursor(view.win)[1]].path
+	end)()]=])
+end
+
+--- Wait until the populated Changes panel has focus.
+---@return boolean
+local function wait_changes_focused()
+	return child.wait(
+		[[(function()
+		local view = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		return view ~= nil
+			and vim.api.nvim_win_is_valid(view.win)
+			and vim.api.nvim_get_current_win() == view.win
+			and #view.rows > 0
+	end)()]],
+		async_ms()
+	)
 end
 
 ---@param expr string
@@ -133,16 +173,6 @@ local function finish_filesystem_render()
 		pending.original(unpack(pending.args, 1, pending.args.n))
 	]])
 	assert(child.wait("_G.pending_filesystem_render_complete == true", async_ms()), "filesystem render did not finish")
-end
-
---- Path of the filesystem tree node under the cursor (nil if none).
----@return string?
-local function tree_cursor_path()
-	return child.lua_get([[(function()
-		local state = require("neo-tree.sources.manager").get_state("filesystem")
-		local node = state.tree and state.tree:get_node()
-		return node and node.path or vim.NIL
-	end)()]])
 end
 
 local function set_diagnostics_on_lines_2_and_4()
@@ -741,23 +771,23 @@ T["keymaps: Diagnostic jump opens float"] = function()
 	eq(child.wait(FLOAT_WITH_FIRST, 1000), true)
 end
 
--- Neo-tree, Differ, Telescope ------------------------------------------------
+-- Project tree, Changes, Neo-tree, Differ, Telescope -------------------------
 
 T["keymaps: Alt-e reveals current file"] = function()
 	local repo = edit_repo_file()
 	child.type_keys("<M-e>")
 
-	eq(wait_tree_focused("filesystem"), true)
-	eq(wait_neotree([[vim.api.nvim_get_current_line():find("foo.lua", 1, true) ~= nil]]), true)
-	eq(tree_cursor_path(), vim.fs.joinpath(repo, "foo.lua"))
+	eq(wait_project_tree_focused(), true)
+	eq(project_tree_cursor_path(), vim.fs.joinpath(repo, "foo.lua"))
 end
 
-T["keymaps: Alt-e on URI buffer focuses filesystem"] = function()
-	edit_repo_file()
-	child.cmd("enew | file vscodediff://x | messages clear")
+T["keymaps: Alt-e on URI buffer focuses the project tree"] = function()
+	local repo = edit_repo_file()
+	child.cmd("enew | file diffview:///x | messages clear")
 	child.type_keys("<M-e>")
 
-	eq(wait_tree_focused("filesystem"), true)
+	eq(wait_project_tree_focused(), true)
+	eq(project_tree_cursor_path(), repo)
 	eq({ child.v.errmsg, child.cmd_capture("messages") }, { "", "" })
 end
 
@@ -767,7 +797,8 @@ T["keymaps: Alt-e tolerates a deleted current file"] = function()
 	child.cmd("messages clear")
 	child.type_keys("<M-e>")
 
-	eq(wait_tree_focused("filesystem"), true)
+	eq(wait_project_tree_focused(), true)
+	eq(project_tree_cursor_path(), repo)
 	eq({ child.v.errmsg, child.cmd_capture("messages") }, { "", "" })
 end
 
@@ -779,12 +810,20 @@ T["keymaps: Alt-e closes focused filesystem tree"] = function()
 	eq(wait_no_tree(), true)
 end
 
-T["keymaps: Alt-G switches tree to git status"] = function()
-	edit_repo_file()
-	focus_tree("filesystem")
+T["keymaps: Alt-G replaces the project tree with the changes panel"] = function()
+	local repo = edit_repo_file()
+	H.write_files(repo, { ["foo.lua"] = "return 2\n" })
+	child.type_keys("<M-e>")
+	eq(wait_project_tree_focused(), true)
 	child.type_keys("<M-G>")
 
-	eq(wait_tree_focused("git_status"), true)
+	eq(wait_changes_focused(), true)
+	eq(
+		child.lua_get([[vim.iter(vim.api.nvim_list_wins()):any(function(win)
+		return vim.bo[vim.api.nvim_win_get_buf(win)].filetype == "gleb-file-tree"
+	end)]]),
+		false
+	)
 end
 
 T["keymaps: Alt-G closes focused git status tree"] = function()
@@ -812,14 +851,29 @@ T["keymaps: Toggle wins over pending filesystem render"] = function()
 	eq(wait_tree_focused("git_status"), true)
 end
 
-T["keymaps: Alt-g opens Differ"] = function()
-	local repo = edit_repo_file()
-	H.write_files(repo, { ["foo.lua"] = "return 2\n" })
+T["keymaps: Alt-g opens the changes review"] = function()
+	local repo = F.copy("billing", vim.fn.tempname() .. "/billing")
+	local invoice = vim.fs.joinpath(repo, "internal/billing/invoice.go")
+	child.cmd("cd " .. vim.fn.fnameescape(repo) .. " | edit " .. vim.fn.fnameescape(invoice))
 	child.type_keys("<M-g>")
 
-	-- :Differ opens its own tab with the file panel leftmost
-	eq(child.wait([[vim.api.nvim_buf_get_name(vim.fn.winbufnr(1)) == "differ://panel"]], async_ms()), true)
-	eq(#child.api.nvim_list_tabpages(), 2)
+	eq(
+		child.wait(
+			[=[(function()
+		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		if not panel or not panel.diff_view then
+			return false
+		end
+		local row = panel.rows[vim.api.nvim_win_get_cursor(panel.win)[1]]
+		return vim.api.nvim_get_current_win() == panel.win
+			and row ~= nil
+			and row.path == "internal/billing/invoice.go"
+			and panel.diff_view.relpath == "internal/billing/invoice.go"
+	end)()]=],
+			async_ms()
+		),
+		true
+	)
 end
 
 T["keymaps: Alt-F opens live grep"] = function()
