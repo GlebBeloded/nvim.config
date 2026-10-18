@@ -161,7 +161,7 @@ Scenarios: `git: Changes panel matches the approved render`, `git: Changes panel
 - [ ] 7.3 Run `make test FILE=tests/screen/git/test_changes_screen.lua CASE="Changes panel"` and see it pass
 
 ## 8. Gate
-- [ ] 8.1 Run `make trace` and confirm every scenario of this change is tested with no orphans or duplicates
+- [x] 8.1 Run `make trace` and confirm every scenario of this change is tested with no orphans or duplicates
 - [ ] 8.2 Run `make test CAPS=find-action,file-tree,git` and see it pass
 - [ ] 8.3 Run `make check` and `openspec validate git-changes-tree --strict` and see both pass
 
