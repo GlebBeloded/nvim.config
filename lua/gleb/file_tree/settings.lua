@@ -1,6 +1,7 @@
 -- File-tree settings state keeps test and user configuration paths separate.
 
 local fs = require("gleb.file_tree.fs")
+local ignore = require("gleb.file_tree.ignore")
 
 local M = {}
 
@@ -16,6 +17,7 @@ local M = {}
 ---@class FileTreeSettings
 ---@field nesting FileTreeNestingSettings
 ---@field ignore string[]
+---@field matcher FileTreeIgnoreMatcher
 
 ---@type FileTreeSettingsState
 M.state = { generation = 0 }
@@ -30,6 +32,7 @@ local function disabled_settings()
 	return {
 		nesting = { enabled = false, rules = {}, generation = M.state.generation },
 		ignore = {},
+		matcher = ignore.matcher({}),
 	}
 end
 
@@ -67,13 +70,19 @@ local function validate(decoded)
 	if decoded.ignore ~= nil and not string_list(decoded.ignore) then
 		return nil, "ignore must be an array of strings"
 	end
+	local globs = decoded.ignore or {}
+	local matcher, errors = ignore.matcher(globs)
+	for _, item in ipairs(errors) do
+		vim.notify(("File tree ignore pattern %d skipped: %s"):format(item.index, item.reason), vim.log.levels.WARN)
+	end
 	return {
 		nesting = {
 			enabled = nesting.enabled ~= false,
 			rules = nesting.rules or {},
 			generation = M.state.generation,
 		},
-		ignore = decoded.ignore or {},
+		ignore = globs,
+		matcher = matcher,
 	}
 end
 

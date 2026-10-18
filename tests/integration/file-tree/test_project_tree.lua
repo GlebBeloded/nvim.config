@@ -22,7 +22,7 @@ local function start()
 		local rows = model.rows(fs.tree(...), {
 			internal = true,
 			["internal/billing"] = true,
-		}, {})
+		}, { status = {}, ignored = {}, ignored_generation = 0, show_ignored = false })
 		render.draw(ProjectTreeBuf, rows)
 	]],
 		{ root }
@@ -49,6 +49,13 @@ local function run_toggle()
 		local action = assert(catalog:get("file_tree.toggle"), "file_tree.toggle is not registered")
 		action.run(require("gleb.actions.context").capture())
 	]])
+	local opened =
+		child.lua_get([[require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()] ~= nil]])
+	if opened then
+		assert(
+			child.wait([[#require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()].rows > 0]])
+		)
+	end
 end
 
 local function enable_file_tree_nesting()

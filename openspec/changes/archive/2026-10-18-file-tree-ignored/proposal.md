@@ -8,7 +8,7 @@ The new project tree lists everything on disk, so build output, dependency folde
 ## What Changes
 
 - **What is ignored** (`lua/gleb/file_tree/ignore.lua`):
-  - untracked paths git reports as ignored, from one async `git ls-files --others --ignored --exclude-standard --directory -z` at the repository root per refresh;
+  - untracked paths git marks `!` in the existing async porcelain-v2 status request, extended with `--ignored=matching`;
   - everything below an ignored folder;
   - entries that match a glob of the new `ignore` list in `settings/file_tree.json`.
   - Tracked files are never ignored. The `.git` folder, which `file-tree-view` already hides, stays hidden even with Show Ignored.
@@ -36,7 +36,7 @@ The new project tree lists everything on disk, so build output, dependency folde
   - New: `lua/gleb/file_tree/ignore.lua` (pure: glob and ignored-set matching), `lua/gleb/file_tree/state.lua` (Show Ignored, persisted in `stdpath("state")/file_tree/view.json`), the `FileTreeIgnored` group.
   - Changed:
     - `settings/file_tree.json` (`ignore` list) and `settings.lua` (validates it);
-    - `git.lua` (the async ignored query beside the status query, stale results dropped);
+    - `git.lua` and `model.lua` (the existing async status query also returns a generation-scoped ignored set);
     - `model.lua` (filter before nesting, no descent);
     - `render.lua` (ignored groups);
     - `view.lua` (follow skips hidden files);
@@ -49,7 +49,9 @@ The new project tree lists everything on disk, so build output, dependency folde
 - Plugins: none added or removed.
 - Core keymaps: none. `I` is a buffer-local key of the new tree's filetype only.
 - Unchanged scenarios:
+  - `diff: Diff view embedding` still holds because the new Show Ignored state and action do not change `gleb.diff.view.show`.
   - `file-tree: Dotfiles and gitignored files are listed` still holds: it is about neo-tree's filesystem source, which this change doesn't touch and which stays until `tree-diff-cutover`.
+  - `bufferline: tabs start after the open project tree` still holds because filtering tree rows does not change the project-tree window width or tabline offset.
 - Out of scope:
   - A hidden-count hint or summary row (the user declined it).
   - IntelliJ's separate "excluded" state, and per-folder exclude actions.
@@ -75,9 +77,7 @@ The new project tree lists everything on disk, so build output, dependency folde
 ## Agent decisions
 
 - **`.git` is never listed.** `file-tree-view` already hides it, and Show Ignored does not show it either, as in IntelliJ. The approved `ign_dim` render shows no `.git` row after Show Ignored either.
-- **Git query:** `git ls-files --others --ignored --exclude-standard --directory -z` from the repository root.
-  - It lists ignored folders once (`bin/`) without their content and never names tracked files. `git check-ignore` would need every path piped in.
-  - `git status --ignored` would mix with the status call of `file-tree-view` and its untracked mode.
+- **Git query:** the auditor's single `git --no-optional-locks -C <root> status --porcelain=v2 -z --untracked-files=normal --ignored=matching` request supersedes the earlier separate `git ls-files` choice; `!` records populate only the ignored set.
 - **Globs** use `vim.glob.to_lpeg`, a built-in. A pattern without `/` matches a name at any depth, and one with `/` matches the path from the tree root, as in `.gitignore`.
 - **First paint** waits up to 300 ms for the first ignored result, so `node_modules` doesn't flash and vanish.
 - **Ignored folder icons** use `FileTreeIgnored` (grey0) like file icons. The approved mockup drew folder icons a shade lighter (grey1). One group keeps "grey icons" simple, and the difference is 2 cells.

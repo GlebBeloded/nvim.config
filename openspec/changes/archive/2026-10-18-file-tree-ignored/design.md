@@ -9,14 +9,7 @@ Research (2026-10-17):
 
   The user picked hiding with one Show Ignored action and grey italic (`ign_dim`) over olive (`ign_olive`).
 - **VS Code** has `files.exclude` (never shown) and `explorer.excludeGitIgnore`. Gitignored files that are shown are dimmed.
-- **Git queries**, checked with git 2.50.1 on a probe repo holding `bin/`, `web/node_modules/`, `.env`, `*.log` and a tracked `build/keep.txt` under an ignored `build/`:
-  - `git ls-files --others --ignored --exclude-standard --directory -z` prints `.env`, `bin/`, `build/out.bin`, `internal/debug.log`, `web/node_modules/`:
-    - ignored folders appear once, with a trailing `/`;
-    - a folder that holds a tracked file is not ignored as a whole (only `build/out.bin` is);
-    - tracked files never appear.
-  - Run from a subfolder, it lists only that subtree, with paths relative to it. So it runs at the top level.
-  - `git status --ignored=matching` gives the same set, but it can't be combined with `-uno` ("Unsupported combination") and would change the status query of `file-tree-view`.
-  - `git check-ignore --stdin` answers per path, so every listed path would have to be piped in.
+- **Git query**, measured during audit: extending the shipped porcelain-v2 status request with `--ignored=matching` keeps one work-tree walk and is approximately as fast as plain status; traditional `--ignored` was about three times slower. Porcelain `!` records provide the ignored paths without entering `status` or `folder_status`.
 - **Globs:** `vim.glob.to_lpeg` (built in since Neovim 0.10) handles `*`, `**`, `?`, `{a,b}` and `[…]`.
 
 ## Goals / Non-Goals
@@ -37,37 +30,36 @@ Research (2026-10-17):
      - a pattern without `/` is matched against the entry name;
      - one with `/` is matched against the path relative to the tree root;
      - a trailing `/` matches folders only.
-   - `M.is_ignored(set, matcher, rel_path, is_dir)` is true when any of these holds:
-     - `rel_path` or one of its parent folders is in `set` (the git paths, mapped from the top level to the tree root);
-     - the matcher matches it or one of its parent folders.
+   - `M.is_ignored(set, matcher, rel_path, is_dir, parent_ignored)` accepts inherited ignored state from the parent instead of walking ancestors per row; the tree root and its ancestors are never ignored.
+   - Git paths use the shipped repository-prefix stripping, so repository-root and subdirectory-root views under symlink-normalized paths each map the right snapshot.
    - `.git` (a folder, or a file in worktrees) is already dropped in the listing by `file-tree-view`. It stays dropped with Show Ignored on.
    - `settings.lua` validates `ignore` as a list of strings. A bad entry is skipped with WARN `File tree ignore pattern <n> skipped: <reason>`, as for nesting rules.
-2. **The git query** (`git.lua`):
-   - Per refresh of a tree inside a repository, one `vim.system({ "git", "ls-files", "--others", "--ignored", "--exclude-standard", "--directory", "-z" }, { cwd = toplevel })` runs next to the status query, on the same triggers: watcher event, `BufWritePost`, `FocusGained` and `file_tree.refresh`.
-   - The NUL-separated output becomes a set. A trailing `/` marks a folder.
-   - Results carry the refresh generation, and a stale result is dropped (rule 6.3).
-   - A non-zero exit keeps the previous set. It is silent, because it is background work (rule 8.4).
-   - Outside a repository (no top level from `file-tree-view`'s root detection) the query is never spawned.
+2. **The git query** (`git.lua`, `model.lua`):
+   - The shipped command becomes `git --no-optional-locks -C <root> status --porcelain=v2 -z --untracked-files=normal --ignored=matching`; there is no second work-tree query.
+   - `model.parse_status` returns status and ignored sets. `!` records use the existing prefix stripping and enter only ignored; `status` and `folder_status` never receive them.
+   - `FileTreeGitRoot` owns both snapshots under the same generation, in-flight and dirty flags. Its ignored generation changes only when the ignored set changes.
+   - Outside a repository no git command runs.
 3. **Hiding.**
    - The model filters each folder listing before nesting. Ignored children therefore never join a nest, and a parent left without visible children loses its chevron.
    - No hint, count or summary row exists.
-   - Follow and reveal skip a hidden ignored file: the tree keeps its cursor and expansion.
-   - Ops (`file-tree-ops`) still work on paths the user types. A new file that is ignored just isn't listed.
+   - One `is_hidden(view, path)` gate runs before `expand_to` for follow, reveal, `select_created` and `refresh_moved`. A hidden target changes no expansion, nest, persisted expansion or cursor state; ignored wins over nest reveal.
+   - When filtering removes the selected row, selection moves to the nearest listed row above.
 4. **First paint.**
-   - When a tree root is first listed, rendering waits for the first ignored result, up to `IGNORE_WAIT_MS = 300`. After that it renders anyway, and re-renders when the result arrives. So `node_modules` doesn't flash on open in a normal repo.
-   - Later refreshes never wait.
+   - Only when watch has established `toplevel`, the first request skips debounce and drawing waits for its result for at most `IGNORE_WAIT_MS = 300`.
+   - Later refreshes and roots outside git never wait. A watcher event that adds an ignored path after the initial result may briefly draw it before git responds; that risk is accepted.
 5. **Show Ignored.**
    - `file_tree.show_ignored` in `lua/gleb/file_tree/actions.lua`: title "Show Ignored", category "Project" (the category of every `file_tree.*` action), `ft = "gleb-file-tree"`.
    - Its `toggle` reads and writes the state, and `run` flips it. Shortcut key and palette do the same thing (loop lesson: toggles get a real `run`).
    - `settings/keymap.json` gets `"file_tree.show_ignored": ["I"]`.
    - State: `lua/gleb/file_tree/state.lua` (pattern of `references/state.lua`) reads and writes `stdpath("state")/file_tree/view.json` (next to `file-tree-view`'s `expanded.json`) as `{ "show_ignored": boolean }`. A missing or invalid file means off. The value is saved on every toggle and read when a tree opens.
-   - Toggling re-renders every open tree and keeps the cursor on the same path when it is still listed.
+   - Toggling re-renders every open tree and keeps the cursor on the same path when it is still listed; otherwise it selects the nearest listed row above.
 6. **Look and no descent.**
    - `FileTreeIgnored = { fg = palette.grey0, italic = true }`, defined with the other `FileTree*` groups and re-applied on `ColorScheme` (rule 8.7).
    - On an ignored row, the folder icon or devicon and the name use it, and the expander keeps `FileTreeExpander`. The approved mockup drew folder icons in grey1. One group for every ignored icon is the agent's simplification (proposal).
    - Ignored rows skip the git colour lookup, and the folder tint ignores them. Git never reports status inside ignored folders anyway.
+   - Every call site uses `model.rows(tree, expanded, opts)` where `opts = { status, ignored, show_ignored, matcher }`; row limits count only listed rows. Filtering precedes compaction, which never enters or crosses an ignored folder. The nest-cache key includes ignored-set generation and `show_ignored`.
    - No descent:
-     - An ignored folder is listed with its name only. Its `fs_scandir` and watcher start only when the user expands it.
+     - An ignored folder is listed with its name only. Its `fs_scandir` and watcher start only when the user expands it. A non-ignored folder whose children are all ignored remains listed and expands to no rows.
      - `file_tree.unfold_all` skips ignored folders.
      - Children of an ignored folder are ignored by Decision 1's parent check, with no git call.
 7. **Fixture.** `treeproj` (`file-tree-view`, with the files of `file-tree-nesting` Decision 8) already has ignored entries. This change relies on exactly these and adds whatever is missing. None of them is tracked:
@@ -79,12 +71,12 @@ Research (2026-10-17):
 
 ## Risks / Trade-offs
 
-- **Large repositories.** `ls-files --others` walks the work tree like `git status` does. It runs async and no more often than the status query, and `--directory` stops at ignored folders.
+- **Large repositories.** `--ignored=matching` extends the one async status walk instead of adding another work-tree query.
 - **Untracked nested repositories** are reported by git as untracked folders, not ignored ones, so they stay listed.
 - **The 300 ms wait** delays first paint in very slow repositories. After it, entries may still appear and then hide once.
 - **Glob semantics** follow `vim.glob`, not every `.gitignore` detail (no negation `!`). Negation belongs in `.gitignore`.
 
-## Renders
+## Current render
 
 - Stand-ins: `▸ ▾` expander and nest chevron, `■ □` folder closed/open, `◆` devicon, `⎇` branch.
 - The real-glyph, real-colour renders are `renders/ign_current.ansi` and `renders/ign_proposed.ansi`; view them with `command cat`.
@@ -160,6 +152,8 @@ EEEEEEEEFGGGGGGGGGGGFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
 ```
 
 Legend: `a` [BufferLineFill] · `b` [BufferLineBufferSelected] · `c` [DevIconGo] · `d` [FileTreeExpander] · `e` [FileTreeFolderIcon] · `f` [FileTreeRoot] · `g` [FileTreeRootPath] · `h` [WinSeparator] · `i` [LineNr] · `j` [@keyword] · `k` [FileTreeFolderName] · `l` [FileTreeFileName] · `m` [@string] · `n` [FileTreeGitModified] · `o` [FileTreeCursorLine] · `p` [@comment] · `q` [FileTreeGitAdded] · `r` [@type] · `s` [DevIconTsx] · `t` [DevIconTypeScript] · `u` [DevIconPackageJson] · `v` [DevIconGitIgnore] · `w` [CursorLineNr] · `x` [@function.call] · `y` [DevIconGoMod] · `z` [@number] · `A` [DevIconMakefile] · `B` [DevIconMd] · `C` [FileTreeGitUntracked] · `D` [DevIconReadme] · `E` [lualine_a_normal] · `F` [lualine_c_normal] · `G` [lualine_b_normal] · `.` [Normal]
+
+## Proposed render
 
 **Proposed — after Show Ignored**: the same state after `I` (`file_tree.show_ignored` on). Ignored rows are grey italic with grey icons. Equals the approved `ign_dim` screen, except that ignored folder icons use `FileTreeIgnored` too.
 

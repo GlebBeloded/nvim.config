@@ -21,7 +21,10 @@ local function start()
 		local action = assert(catalog:get("file_tree.toggle"), "file_tree.toggle is not registered")
 		action.run(require("gleb.actions.context").capture())
 	]])
-	assert(child.wait([[vim.bo.filetype == "gleb-file-tree"]]), "Project tree did not open")
+	assert(
+		child.wait([[#require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()].rows > 0]]),
+		"Project tree did not draw its initial rows"
+	)
 end
 
 local T = H.child_set(child, start)
@@ -378,9 +381,10 @@ T["file-tree: Project tree r renames a file and its buffer"] = function()
 		{ buffer }
 	)
 	eq(
-		child.lua_get(
-			[=[require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()].rows[vim.api.nvim_win_get_cursor(0)[1]].path]=]
-		),
+		child.lua_get([=[(function()
+				local view = require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()]
+				return view.rows[vim.api.nvim_win_get_cursor(view.win)[1]].path
+			end)()]=]),
 		vim.fs.joinpath(tree_root, "internal/billing/bill.go")
 	)
 end
@@ -1388,11 +1392,15 @@ T["file-tree: Project tree R preserves another tab's tree state"] = function()
 	local other = F.copy("treeproj", vim.fn.tempname() .. "/other")
 	local other_root = assert(vim.uv.fs_realpath(other))
 	local second = child.lua_get(
-		[[(function(root)
+		[[(function(root, timeout)
 			vim.cmd("tabnew " .. vim.fn.fnameescape(vim.fs.joinpath(root, "README.md")))
 			vim.cmd("tcd " .. vim.fn.fnameescape(root))
 			local action = assert(require("gleb.actions").state.applicator.catalog:get("file_tree.toggle"))
 			action.run(require("gleb.actions.context").capture())
+			assert(vim.wait(timeout, function()
+				local current = require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()]
+				return current and #current.rows > 0
+			end, 20), "second file tree did not draw its initial rows")
 			local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
 			for index, row in ipairs(view.rows) do
 				if row.path == vim.fs.joinpath(root, "web") then
@@ -1412,7 +1420,7 @@ T["file-tree: Project tree R preserves another tab's tree state"] = function()
 				name = vim.api.nvim_buf_get_name(view.buf),
 			}
 		end)(...)]],
-		{ other_root }
+		{ other_root, math.ceil(3000 * H.load_factor()) }
 	)
 	child.api.nvim_set_current_tabpage(first_tab)
 	focus_tree_path("internal/money")

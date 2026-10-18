@@ -331,8 +331,17 @@ T["file-tree: Git redraw reuses the nest map"]["runs a Lua rule once for an unch
 	}
 	local generation = settings.generation()
 
-	model.rows(tree, {}, {}, { enabled = true, rules = rules, generation = generation })
-	model.rows(tree, {}, { ["invoice_test.go"] = "modified" }, {
+	model.rows(tree, {}, { status = {}, ignored = {}, ignored_generation = 0, show_ignored = false }, {
+		enabled = true,
+		rules = rules,
+		generation = generation,
+	})
+	model.rows(tree, {}, {
+		status = { ["invoice_test.go"] = "modified" },
+		ignored = {},
+		ignored_generation = 0,
+		show_ignored = false,
+	}, {
 		enabled = true,
 		rules = rules,
 		generation = generation,

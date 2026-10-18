@@ -6,9 +6,15 @@ local eq = MiniTest.expect.equality
 local model = require("gleb.file_tree.model")
 local fs = require("gleb.file_tree.fs")
 
+---@param status? table<string, string>
+---@return FileTreeRowOptions
+local function options(status)
+	return { status = status or {}, ignored = {}, ignored_generation = 0, show_ignored = false }
+end
+
 local function fixture_rows()
 	local root = F.copy("treeproj", vim.fn.tempname())
-	return model.rows(fs.tree(root), {}, {})
+	return model.rows(fs.tree(root), {}, options())
 end
 
 local function entry_summaries(rows)
@@ -74,7 +80,7 @@ T["file-tree: Expanding a compact row shows the last folder's entries"] = MiniTe
 
 T["file-tree: Expanding a compact row shows the last folder's entries"]["expands the chain tail"] = function()
 	local root = F.copy("treeproj", vim.fn.tempname())
-	local rows = model.rows(fs.tree(root), { ["cmd/server"] = true }, {})
+	local rows = model.rows(fs.tree(root), { ["cmd/server"] = true }, options())
 	local compact_index
 	for index, row in ipairs(rows) do
 		if row.label == "cmd/server" then
@@ -105,14 +111,17 @@ T["file-tree: Project tree colours changed files"]["parses tracked and untracked
 		"1 A. N... 000000 100644 100644 0000000 abcdef2 internal/tax.go",
 		"1 .D N... 100644 100644 000000 abcdef3 abcdef3 old.go",
 		"? notes.md",
+		"! build/",
 	}, "\0") .. "\0"
 
-	eq(model.parse_status(output, ""), {
+	local status, ignored = model.parse_status(output, "")
+	eq(status, {
 		["internal/invoice.go"] = "modified",
 		["internal/tax.go"] = "added",
 		["old.go"] = "deleted",
 		["notes.md"] = "untracked",
 	})
+	eq(ignored, { ["build/"] = true })
 end
 
 T["file-tree: Project tree colours changed files"]["parses rename and unmerged records"] = function()
@@ -159,7 +168,7 @@ T["file-tree: Project tree colours changed files"]["marks files below an untrack
 			return { { name = "todo.txt", path = "/project/scratch/todo.txt", kind = "file" } }
 		end,
 	}
-	local rows = model.rows(tree, { scratch = true }, { ["scratch/"] = "untracked" })
+	local rows = model.rows(tree, { scratch = true }, options({ ["scratch/"] = "untracked" }))
 
 	eq({ rows[2].status, rows[3].status }, { "untracked", "untracked" })
 end

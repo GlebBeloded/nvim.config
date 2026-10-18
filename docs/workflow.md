@@ -29,8 +29,6 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 
 ## Loop lessons
 
-- Derive repository-relative paths from Git's working-directory prefix; filesystem relpath fails when Git canonicalizes a symlinked repository root.
-- Map display-policy fragments to overlapping action fragments so UI-only splitting cannot erase semantic state.
 - Refresh cached comparisons before buffer-mutating actions whenever the debounce or changedtick shows stale input.
 - Keep package aggregators requires-only by loading persisted defaults in the owning implementation part.
 - Render all view rows in one buffer replacement before adding extmarks, so Neovim's mandatory initial line cannot survive as an extra selectable row.
@@ -44,6 +42,8 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - Model screen masks with active capture groups across full spans; blank cells inside comments and strings still carry syntax attributes.
 - Strip optional pattern anchors by position; an unanchored substitution corrupts semantic carets inside Lua patterns.
 - Preserve current-window predicates when scheduling UI opens; loaded-buffer checks can hide focus regressions.
+- Pass the same visibility snapshot to drawing and nest actions so toggled ignored children remain actionable.
+- Keep source statuses raw until display policy is available, then exclude hidden descendants before folder and nest aggregation.
 
 ## The loop
 

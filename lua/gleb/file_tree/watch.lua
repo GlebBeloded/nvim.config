@@ -155,6 +155,14 @@ function M.start_root(root, owner)
 	watch_git_dir(root, state)
 end
 
+--- Return the repository top level discovered for a watched root.
+---@param root string
+---@return string?
+function M.toplevel(root)
+	local state = M.state.roots[root]
+	return state and state.toplevel or nil
+end
+
 ---@param root string
 ---@param state FileTreeWatchRoot
 local function sync_handles(root, state)

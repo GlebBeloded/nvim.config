@@ -307,6 +307,23 @@ local function project_refresh()
 	require("gleb.file_tree.ops").refresh()
 end
 
+---@return boolean
+local function show_ignored()
+	return require("gleb.file_tree.state").show_ignored()
+end
+
+---@param _ gleb.ActionContext
+---@param value boolean
+local function set_show_ignored(_, value)
+	require("gleb.file_tree.state").set_show_ignored(value)
+	require("gleb.file_tree.view").redraw_all()
+end
+
+---@param ctx gleb.ActionContext
+local function toggle_show_ignored(ctx)
+	set_show_ignored(ctx, not show_ignored())
+end
+
 ---@type gleb.Action[]
 local actions = {
 	{
@@ -316,6 +333,17 @@ local actions = {
 		run = function()
 			require("gleb.file_tree.view").toggle()
 		end,
+	},
+	{
+		id = "file_tree.show_ignored",
+		title = "Show Ignored",
+		category = "Project",
+		ft = "gleb-file-tree",
+		run = toggle_show_ignored,
+		toggle = {
+			get = show_ignored,
+			set = set_show_ignored,
+		},
 	},
 	{
 		id = "file_tree.reveal",

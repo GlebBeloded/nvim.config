@@ -78,6 +78,7 @@
   "file_tree.paste": ["p"],
   "file_tree.refresh": ["R"],
   "file_tree.rename": ["r"],
+  "file_tree.show_ignored": ["I"],
   "file_tree.toggle_fold": ["za"],
   "file_tree.unfold_all": ["zR"],
   "edit.indent_selection": [">"],

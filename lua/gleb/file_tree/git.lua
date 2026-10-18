@@ -9,6 +9,8 @@ local GIT_DEBOUNCE_MS = 150
 
 ---@class FileTreeGitRoot
 ---@field status table<string, string>
+---@field ignored table<string, boolean>
+---@field ignored_generation integer
 ---@field refs integer
 ---@field callbacks table<integer, fun()>
 ---@field generation integer
@@ -26,24 +28,27 @@ M.state = { roots = {}, runs = 0 }
 
 ---@param output string
 ---@param prefix string
----@return table<string, string>
+---@return table<string, string> status
+---@return table<string, boolean> ignored
 local function parse_status(output, prefix)
-	local status = model.parse_status(output, prefix)
-	local folders = {}
-	for path in pairs(status) do
-		local current = path:gsub("/+$", ""):match("^(.*)/[^/]+$")
-		while current and current ~= "" do
-			folders[current] = true
-			current = current:match("^(.*)/[^/]+$")
-		end
-		if path:sub(-1) == "/" then
-			folders[path:sub(1, -2)] = true
+	return model.parse_status(output, prefix)
+end
+
+---@param left table<string, boolean>
+---@param right table<string, boolean>
+---@return boolean
+local function equal_sets(left, right)
+	for path in pairs(left) do
+		if not right[path] then
+			return false
 		end
 	end
-	for folder in pairs(folders) do
-		status[folder] = model.folder_status(status, folder)
+	for path in pairs(right) do
+		if not left[path] then
+			return false
+		end
 	end
-	return status
+	return true
 end
 
 --- Return the latest status snapshot for a root.
@@ -53,6 +58,24 @@ function M.status(root)
 	root = fs.normalize(root)
 	local state = M.state.roots[root]
 	return state and state.status or {}
+end
+
+--- Return the latest ignored snapshot for a root.
+---@param root string
+---@return table<string, boolean>
+function M.ignored(root)
+	root = fs.normalize(root)
+	local state = M.state.roots[root]
+	return state and state.ignored or {}
+end
+
+--- Return the ignored snapshot generation for a root.
+---@param root string
+---@return integer
+function M.ignored_generation(root)
+	root = fs.normalize(root)
+	local state = M.state.roots[root]
+	return state and state.ignored_generation or 0
 end
 
 --- Retain one view's ownership of a root snapshot.
@@ -66,6 +89,8 @@ function M.start_root(root, owner, callback)
 	if not state then
 		state = {
 			status = {},
+			ignored = {},
+			ignored_generation = 0,
 			refs = 0,
 			callbacks = {},
 			generation = 0,
@@ -107,8 +132,17 @@ local function run(root, state)
 	state.timer = nil
 	state.in_flight = true
 	local generation = state.generation
-	local command =
-		{ "git", "--no-optional-locks", "-C", root, "status", "--porcelain=v2", "-z", "--untracked-files=normal" }
+	local command = {
+		"git",
+		"--no-optional-locks",
+		"-C",
+		root,
+		"status",
+		"--porcelain=v2",
+		"-z",
+		"--untracked-files=normal",
+		"--ignored=matching",
+	}
 	M.state.last_cmd = command
 	M.state.runs = M.state.runs + 1
 	vim.system({ "git", "-C", root, "rev-parse", "--show-prefix" }, { text = true }, function(prefix_result)
@@ -120,7 +154,12 @@ local function run(root, state)
 				end
 				state.in_flight = false
 				if prefix_result.code == 0 and result.code == 0 and generation == state.generation then
-					state.status = parse_status(result.stdout or "", prefix)
+					local status, ignored = parse_status(result.stdout or "", prefix)
+					state.status = status
+					if not equal_sets(state.ignored, ignored) then
+						state.ignored = ignored
+						state.ignored_generation = state.ignored_generation + 1
+					end
 					for _, callback in pairs(state.callbacks) do
 						callback()
 					end
