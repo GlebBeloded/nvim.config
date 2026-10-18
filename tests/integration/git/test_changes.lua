@@ -163,6 +163,92 @@ T["git: Changes panel replaces the project tree"] = function()
 	)
 end
 
+T["git: Changes panel normalizes a private-var root"] = function()
+	local linked_root = vim.fn.tempname() .. "-linked"
+	child.lua([[assert(vim.uv.fs_symlink(...))]], { repo, linked_root })
+	child.cmd("cd " .. vim.fn.fnameescape(linked_root))
+	child.cmd("edit " .. vim.fn.fnameescape(vim.fs.joinpath(linked_root, "tracked.txt")))
+
+	toggle_changes()
+	wait_for_panel()
+
+	local normalized = assert(vim.uv.fs_realpath(repo))
+	eq(
+		child.lua_get([[
+			(function()
+				local view = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+				return {
+					view.root,
+					vim.api.nvim_buf_get_name(view.buf),
+					vim.api.nvim_buf_get_name(vim.api.nvim_win_get_buf(view.editor_win)),
+				}
+			end)()
+		]]),
+		{
+			normalized,
+			("gleb-changes://%s#%d"):format(normalized, child.api.nvim_get_current_tabpage()),
+			vim.fs.joinpath(normalized, "tracked.txt"),
+		}
+	)
+end
+
+T["git: Changes panel revalidates the editor window"] = function()
+	child.cmd("cd " .. vim.fn.fnameescape(repo))
+	child.cmd("edit " .. vim.fn.fnameescape(vim.fs.joinpath(repo, "tracked.txt")))
+	toggle_changes()
+	wait_for_panel()
+	local panel = child.api.nvim_get_current_win()
+	child.cmd("wincmd l")
+	local stale = child.api.nvim_get_current_win()
+	child.cmd("vsplit")
+	local replacement = child.api.nvim_get_current_win()
+	child.api.nvim_win_close(stale, true)
+
+	local selected = child.lua_get([[
+		(function()
+			local view = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+			return require("gleb.file_tree.view").eligible_editor(view)
+		end)()
+	]])
+
+	eq(selected, replacement)
+	assert(selected ~= panel, "Changes panel was selected as its own editor window")
+end
+
+T["git: Changes panel closes when orphaned"] = function()
+	child.cmd("tabnew")
+	child.cmd("cd " .. vim.fn.fnameescape(repo))
+	child.cmd("edit " .. vim.fn.fnameescape(vim.fs.joinpath(repo, "tracked.txt")))
+	local panel_tab = child.api.nvim_get_current_tabpage()
+	toggle_changes()
+	wait_for_panel()
+	child.lua(
+		[[
+		local view = require("gleb.git.changes").state.by_tab[...]
+		_G.orphaned_changes_tab = ...
+		_G.orphaned_changes = { win = view.win, timer = view.timer }
+	]],
+		{ panel_tab }
+	)
+	child.cmd("wincmd l")
+
+	child.cmd("close")
+
+	assert(
+		child.wait([[require("gleb.git.changes").state.by_tab[_G.orphaned_changes_tab] == nil]], 1000),
+		"Orphaned Changes panel did not close"
+	)
+	eq(
+		child.lua_get([[
+			{
+				vim.api.nvim_win_is_valid(_G.orphaned_changes.win),
+				_G.orphaned_changes.timer:is_closing(),
+			}
+		]]),
+		{ false, true }
+	)
+end
+
 T["git: Changes panel outside a repository"] = function()
 	local outside = vim.fn.tempname()
 	vim.fn.mkdir(outside, "p")

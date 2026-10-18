@@ -3,6 +3,7 @@
 local M = {}
 
 local fs = require("gleb.file_tree.fs")
+local file_tree_view = require("gleb.file_tree.view")
 local git = require("gleb.git.changes.git")
 local model = require("gleb.git.changes.model")
 local render = require("gleb.git.changes.render")
@@ -187,6 +188,47 @@ local function refresh_from_git_dir(view)
 	end
 end
 
+---@param tab integer
+---@return integer
+local function eligible_editor_count(tab)
+	return vim.iter(vim.api.nvim_tabpage_list_wins(tab)):fold(0, function(count, win)
+		return count + (file_tree_view.is_eligible_editor(win) and 1 or 0)
+	end)
+end
+
+---@param view ChangesView
+---@return nil
+local function close_if_orphaned(view)
+	local changes = require("gleb.git.changes")
+	if
+		vim.api.nvim_tabpage_is_valid(view.tab)
+		and changes.state.by_tab[view.tab] == view
+		and eligible_editor_count(view.tab) == 0
+	then
+		M.close(view)
+	end
+end
+
+---@param view ChangesView
+---@return nil
+local function schedule_orphan_check(view)
+	vim.schedule(function()
+		close_if_orphaned(view)
+	end)
+end
+
+---@param view ChangesView
+---@return nil
+local function close_before_last_editor(view)
+	if
+		vim.api.nvim_get_current_tabpage() == view.tab
+		and file_tree_view.is_eligible_editor(vim.api.nvim_get_current_win())
+		and eligible_editor_count(view.tab) == 1
+	then
+		M.close(view)
+	end
+end
+
 ---@param view ChangesView
 ---@return nil
 local function add_refresh_sources(view)
@@ -211,6 +253,18 @@ local function add_refresh_sources(view)
 		once = true,
 		callback = function()
 			cleanup(view)
+		end,
+	})
+	view.autocmds[#view.autocmds + 1] = vim.api.nvim_create_autocmd("QuitPre", {
+		group = augroup,
+		callback = function()
+			close_before_last_editor(view)
+		end,
+	})
+	view.autocmds[#view.autocmds + 1] = vim.api.nvim_create_autocmd("WinClosed", {
+		group = augroup,
+		callback = function()
+			schedule_orphan_check(view)
 		end,
 	})
 	watch.start_root(view.root, view.buf)
@@ -248,6 +302,10 @@ end
 ---@return nil
 function M.close(view)
 	cleanup(view)
+	if view.diff_view then
+		require("gleb.diff.view").close(view.diff_view)
+		view.diff_view = nil
+	end
 	if vim.api.nvim_win_is_valid(view.editor_win) then
 		vim.api.nvim_set_current_win(view.editor_win)
 	end

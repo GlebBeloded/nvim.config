@@ -66,9 +66,9 @@ Scenarios: `git: Changes panel replaces the project tree`
 
 ## 3e. Window isolation
 Scenarios: `git: Changes panel normalizes a private-var root`, `git: Changes panel revalidates the editor window`, `git: Changes panel closes when orphaned`
-- [ ] 3e.1 Write the scenarios in `tests/integration/git/test_changes.lua`, using the symlinked root and real window lifecycle, and see them fail
-- [ ] 3e.2 Export the project-tree eligible-editor helper, exclude `gleb-changes`, normalize identities, revalidate before show, and mirror QuitPre and orphan-close
-- [ ] 3e.3 Run `make test FILE=tests/integration/git/test_changes.lua CASE="Changes panel"` and see it pass
+- [x] 3e.1 Write the scenarios in `tests/integration/git/test_changes.lua`, using the symlinked root and real window lifecycle, and see them fail
+- [x] 3e.2 Export the project-tree eligible-editor helper, exclude `gleb-changes`, normalize identities, revalidate before show, and mirror QuitPre and orphan-close
+- [x] 3e.3 Run `make test FILE=tests/integration/git/test_changes.lua CASE="Changes panel"` and see it pass
 
 ## 4a. File staging
 Scenarios: `git: Changes panel Space stages an unstaged file`, `git: Changes panel Space unstages a staged file`, `git: Changes panel Space stages a partially staged file`, `git: Changes panel Space stages an untracked file`, `git: Changes panel Space stages a file whose name is a suffix of a staged file`
@@ -174,3 +174,4 @@ Scenarios: `git: Changes panel matches the approved render`, `git: Changes panel
 - Fold state is a per-panel set of collapsed model fold IDs, so refreshes can rebuild rows without losing user choices.
 - Changes panels use their buffer IDs as shared-watch owners, avoiding collisions with another left view in the same tab.
 - Panel refreshes debounce for 50 ms, matching the diff-selection cadence while coalescing writes and git-dir bursts.
+- The shared editor-window selector also exports its eligibility predicate so Changes can mirror orphan detection without duplicating tool-window exclusions.
