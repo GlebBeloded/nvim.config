@@ -180,6 +180,10 @@ A case-only rename SHALL move through a temporary sibling. Buffer names SHALL fo
 - **WHEN** `invoice.go` is loaded through a symlink to the project root and its tree row is renamed to `bill.go` with `r`
 - **THEN** the loaded buffer is named through the symlink as `internal/billing/bill.go`, writes to the moved file, and no buffer retains the old realpath
 
+#### Scenario: Project tree rename moves a symlink and not its target
+- **WHEN** a tree row is a symlink to a file outside the root and the row is renamed with `r`
+- **THEN** the symlink and a buffer opened through it move by logical path, while the outside target and its content are unchanged
+
 #### Scenario: Project tree folder rename migrates expanded keys
 - **WHEN** `internal` and `internal/billing` are expanded and `internal` is renamed to `domain` with `r`
 - **THEN** the tree remains expanded through `domain/billing`, expanded state contains `domain` and `domain/billing`, and contains no key below `internal`

@@ -506,6 +506,27 @@ T["file-tree: Project tree rename follows a buffer opened through a symlinked ro
 	)
 end
 
+T["file-tree: Project tree rename moves a symlink and not its target"] = function()
+	local outside = vim.fn.tempname() .. "-outside.go"
+	local source = vim.fs.joinpath(tree_root, "outside-link.go")
+	local target = vim.fs.joinpath(tree_root, "renamed-link.go")
+	vim.fn.writefile({ "outside content" }, outside)
+	child.lua([[assert(vim.uv.fs_symlink(...))]], { outside, source })
+	refresh()
+	eq(tree_has_path("outside-link.go"), true)
+	local buffer = load_buffer("outside-link.go")
+
+	focus_tree_path("outside-link.go")
+	rename("renamed-link.go")
+	assert(wait_for_path("renamed-link.go"), "renamed symlink did not appear")
+
+	eq(vim.uv.fs_lstat(source), nil)
+	eq(vim.uv.fs_lstat(target).type, "link")
+	eq(vim.uv.fs_readlink(target), outside)
+	eq(vim.fn.readfile(outside), { "outside content" })
+	eq(child.api.nvim_buf_get_name(buffer), target)
+end
+
 T["file-tree: Project tree folder rename migrates expanded keys"] = function()
 	open_billing()
 	focus_tree_path("internal")

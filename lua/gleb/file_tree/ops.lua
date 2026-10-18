@@ -98,6 +98,23 @@ local function buffers_at(path)
 	return result
 end
 
+---@param path string
+---@return table<integer, FileTreeOriginalBuffer>
+local function buffers_at_logical_path(path)
+	local result = {}
+	for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+		local name = vim.api.nvim_buf_get_name(buf)
+		if name == path or vim.startswith(name, path .. "/") then
+			result[buf] = {
+				name = name,
+				logical_old = path,
+				suffix = name:sub(#path + 1),
+			}
+		end
+	end
+	return result
+end
+
 ---@param original_buffers table<integer, FileTreeOriginalBuffer>
 local function wipe_stale_buffers(original_buffers)
 	local old_names = {}
@@ -169,9 +186,41 @@ end
 ---@param new string
 ---@return boolean
 ---@return string?
+local function rename_symlink(old, new)
+	local original_buffers = buffers_at_logical_path(old)
+	local moved, move_error = vim.uv.fs_rename(old, new)
+	if not moved then
+		return false, move_error
+	end
+
+	local renamed = {}
+	for buf, original in pairs(original_buffers) do
+		if vim.api.nvim_buf_is_valid(buf) then
+			local ok, name_error = pcall(vim.api.nvim_buf_set_name, buf, new .. original.suffix)
+			if not ok then
+				for renamed_buf, old_name in pairs(renamed) do
+					pcall(vim.api.nvim_buf_set_name, renamed_buf, old_name)
+				end
+				vim.uv.fs_rename(new, old)
+				return false, tostring(name_error)
+			end
+			renamed[buf] = original.name
+		end
+	end
+	return true
+end
+
+---@param old string
+---@param new string
+---@return boolean
+---@return string?
 local function rename_path(old, new)
 	if old:lower() == new:lower() then
 		return rename_case_only(old, new, buffers_at(old))
+	end
+	local stat = vim.uv.fs_lstat(old)
+	if stat and stat.type == "link" then
+		return rename_symlink(old, new)
 	end
 
 	return rename_once(old, new)
@@ -181,7 +230,7 @@ end
 local function rollback_moves(completed)
 	for index = #completed, 1, -1 do
 		local pair = completed[index]
-		rename_once(pair.new, pair.old)
+		rename_path(pair.new, pair.old)
 	end
 end
 

@@ -41,7 +41,7 @@ Scenarios: `file-tree: Project tree r renames a file and its buffer`, `file-tree
 - [x] 4b.3 Run `make test FILE=tests/integration/file-tree/test_project_ops.lua CASE="Project tree rename"` and see them pass
 
 ## 4c. Rename identity and filesystem edge cases
-Scenarios: `file-tree: Project tree rename reports a read-only destination`, `file-tree: Project tree supports a case-only rename`, `file-tree: Project tree rename follows a buffer opened through a symlinked root`, `file-tree: Project tree folder rename migrates expanded keys`, `file-tree: Project tree refuses a cross-device move`
+Scenarios: `file-tree: Project tree rename reports a read-only destination`, `file-tree: Project tree supports a case-only rename`, `file-tree: Project tree rename follows a buffer opened through a symlinked root`, `file-tree: Project tree rename moves a symlink and not its target`, `file-tree: Project tree folder rename migrates expanded keys`, `file-tree: Project tree refuses a cross-device move`
 - [x] 4c.1 Write the tests in `tests/integration/file-tree/test_project_ops.lua` and device preflight unit in `tests/unit/file-tree/test_paths.lua`, drive real renames on populated data, and see them fail
 - [x] 4c.2 Move case-only names through a temporary sibling, match buffers by realpath, migrate expanded keys, preserve failures atomically and report cross-device exactly
 - [x] 4c.3 Run `make test FILE=tests/integration/file-tree/test_project_ops.lua CASE="Project tree"` and `make test FILE=tests/unit/file-tree/test_paths.lua` and see them pass
