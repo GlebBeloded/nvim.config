@@ -220,6 +220,236 @@ function M.new_child()
 	return child
 end
 
+local SURFACE_OPEN_LUA = [[
+local spec = ...
+local started = vim.uv.hrtime()
+local finished = false
+local timer
+
+local function write_state(phase, err)
+	local ok_mode, mode = pcall(vim.api.nvim_get_mode)
+	local ok_getchar, getchar = pcall(vim.fn.getchar, 1)
+	local ok_messages, messages = pcall(vim.api.nvim_exec2, "messages", { output = true })
+	local state = {
+		phase = phase,
+		elapsed = math.floor((vim.uv.hrtime() - started) / 1000000),
+		mode = ok_mode and mode.mode or "<unavailable>",
+		getchar = ok_getchar and vim.inspect(getchar) or "<unavailable>",
+		messages = ok_messages and messages.output or "<unavailable>",
+		error = err and tostring(err) or nil,
+	}
+	pcall(vim.fn.writefile, { vim.json.encode(state) }, spec.state_file)
+end
+
+local function finish(phase, err)
+	finished = true
+	if timer then
+		timer:stop()
+		timer:close()
+	end
+	write_state(phase, err)
+end
+
+local condition, condition_error = loadstring("return " .. spec.condition)
+if not condition then
+	finish("condition-error", condition_error)
+	return
+end
+
+local function poll()
+	if finished then
+		return
+	end
+	local ok, ready = pcall(condition)
+	if not ok then
+		finish("condition-error", ready)
+	elseif ready then
+		finish("ready")
+	else
+		write_state("waiting")
+	end
+end
+
+write_state("scheduled")
+vim.schedule(function()
+	write_state("opening")
+	local open, open_error = loadstring(spec.open)
+	if not open then
+		finish("open-error", open_error)
+		return
+	end
+	local ok, err = pcall(open)
+	if not ok then
+		finish("open-error", err)
+		return
+	end
+	poll()
+	if not finished then
+		timer = vim.uv.new_timer()
+		timer:start(20, 20, function()
+			vim.schedule(poll)
+		end)
+	end
+end)
+]]
+
+---@class tests.SurfaceOpen
+---@field open string Lua statement that opens the surface in the child.
+---@field condition string Lua expression that is truthy once the surface is ready.
+---@field surface string Diagnostic name for the surface.
+---@field timeout? integer Process-level deadline in milliseconds.
+
+---@param path string
+---@return table?
+local function read_surface_state(path)
+	if not vim.uv.fs_stat(path) then
+		return nil
+	end
+	local lines = vim.fn.readfile(path)
+	if #lines == 0 then
+		return nil
+	end
+	local ok, state = pcall(vim.json.decode, table.concat(lines, "\n"))
+	return ok and state or nil
+end
+
+---@param child MiniTest.child
+---@param pid integer
+---@param subprocess_pids integer[]
+local function stop_blocked_child(child, pid, subprocess_pids)
+	for _, subprocess_pid in ipairs(subprocess_pids) do
+		pcall(vim.uv.kill, subprocess_pid, "sigkill")
+	end
+	vim.uv.kill(pid, "sigkill")
+	vim.fn.jobwait({ child.job.id }, 1000)
+	pcall(vim.fn.chanclose, child.job.channel)
+	pcall(vim.fn.chanclose, child.job.id)
+	pcall(vim.fn.delete, child.job.address)
+	child.job = nil
+	M.delete_debug_log(pid)
+end
+
+---@param pid integer
+---@return string commands
+---@return integer[] pids
+local function child_subprocesses(pid)
+	local ok_children, children = pcall(vim.api.nvim_get_proc_children, pid)
+	if not ok_children then
+		return "<unavailable>", {}
+	end
+	local commands = {}
+	for _, child_pid in ipairs(children) do
+		local process = vim.system({ "ps", "-o", "args=", "-p", tostring(child_pid) }, { text = true }):wait()
+		local command = process.code == 0 and vim.trim(process.stdout or "") or "<unavailable>"
+		table.insert(commands, ("%d: %s"):format(child_pid, command))
+	end
+	return #commands > 0 and table.concat(commands, ", ") or "<none>", children
+end
+
+--- Open a child surface without making a blocking RPC request while waiting.
+---@param child MiniTest.child
+---@param spec tests.SurfaceOpen
+function M.open_surface(child, spec)
+	local state_file = vim.fn.tempname()
+	local timeout = spec.timeout or 10000
+	local started = vim.uv.hrtime()
+	local state
+	local pid = vim.fn.jobpid(child.job.id)
+	child.lua_notify(
+		SURFACE_OPEN_LUA,
+		{ {
+			condition = spec.condition,
+			open = spec.open,
+			state_file = state_file,
+		} }
+	)
+
+	local completed = vim.wait(timeout, function()
+		state = read_surface_state(state_file) or state
+		return state ~= nil and state.phase ~= "scheduled" and state.phase ~= "opening" and state.phase ~= "waiting"
+	end, 20)
+	local elapsed = math.floor((vim.uv.hrtime() - started) / 1000000)
+	state = state or {}
+	local subprocess_pids
+	state.subprocesses, subprocess_pids = child_subprocesses(pid)
+	vim.fn.delete(state_file)
+
+	if completed and state.phase == "ready" then
+		return
+	end
+	if not completed and child.job then
+		stop_blocked_child(child, pid, subprocess_pids)
+	end
+
+	error(
+		("%s surface open failed (phase: %s; elapsed: %d ms; mode: %s; getchar: %s; messages: %s; subprocesses: %s%s)"):format(
+			spec.surface,
+			state.phase or "no-state",
+			elapsed,
+			state.mode or "<unavailable>",
+			state.getchar or "<unavailable>",
+			state.messages ~= "" and (state.messages or "<unavailable>") or "<none>",
+			state.subprocesses or "<unavailable>",
+			state.error and "; error: " .. state.error or ""
+		)
+	)
+end
+
+---@class tests.BlockedDiffer
+---@field repo string Populated Git repository.
+---@field file string File to edit before opening Differ.
+---@field setup? string Child-side Lua needed by the readiness condition.
+---@field condition? string Lua expression that is truthy once Differ is ready.
+
+--- Require a blocked real `:Differ` open to report child state and clean up its process tree.
+---@param spec tests.BlockedDiffer
+---@return nil
+function M.expect_blocked_differ_diagnostic(spec)
+	local blocked = M.new_child()
+	blocked.start_config()
+	blocked.wait_very_lazy()
+	blocked.cmd("cd " .. vim.fn.fnameescape(spec.repo) .. " | edit " .. vim.fn.fnameescape(spec.file))
+	if spec.setup then
+		blocked.lua(spec.setup)
+	end
+	blocked.lua([[
+		local system = vim.system
+		vim.system = function(command, opts, on_exit)
+			if command[1] == "git" then
+				return system({ "/bin/sleep", "30" }, opts, on_exit)
+			end
+			return system(command, opts, on_exit)
+		end
+	]])
+
+	local started = vim.uv.hrtime()
+	local ok, diagnostic = pcall(M.open_surface, blocked, {
+		open = [[vim.cmd("Differ")]],
+		condition = spec.condition or [[vim.bo.filetype == "differdiff"]],
+		surface = "Differ",
+		timeout = 1000,
+	})
+	local elapsed = (vim.uv.hrtime() - started) / 1000000
+	pcall(blocked.stop)
+
+	local message = tostring(diagnostic)
+	local sleep_pid_text = assert(message:match("(%d+): /bin/sleep 30"), message)
+	local sleep_pid = assert(tonumber(sleep_pid_text))
+	local sleep_stopped = vim.wait(1000, function()
+		return vim.uv.kill(sleep_pid, 0) ~= 0
+	end, 20)
+	if not sleep_stopped then
+		vim.uv.kill(sleep_pid, "sigkill")
+	end
+
+	MiniTest.expect.equality(ok, false)
+	MiniTest.expect.equality(elapsed < 10000, true)
+	MiniTest.expect.equality(sleep_stopped, true)
+	for _, field in ipairs({ "Differ", "phase: opening", "elapsed:", "mode:", "getchar:", "messages:", "sleep 30" }) do
+		assert(message:find(field, 1, true), ("missing %q in %s"):format(field, message))
+	end
+end
+
 --- Test set whose cases each get a fresh child started by `start`.
 ---@param child test.Child
 ---@param start fun()
