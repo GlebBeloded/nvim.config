@@ -66,7 +66,7 @@ local function expect_blocked_differ_diagnostic()
 		open = [[vim.cmd("Differ")]],
 		condition = [[vim.bo.filetype == "differdiff"]],
 		surface = "Differ",
-		timeout = 250,
+		timeout = 1000,
 	})
 	local elapsed = (vim.uv.hrtime() - started) / 1000000
 	pcall(blocked.stop)
