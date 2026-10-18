@@ -286,16 +286,10 @@ end
 ---@param tree FileTreeSource
 ---@param path string
 ---@param nesting_settings? FileTreeNestingSettings
----@param matcher? FileTreeIgnoreMatcher
+---@param opts FileTreeRowOptions
 ---@return boolean
-function M.has_nest(tree, path, nesting_settings, matcher)
-	local _, nest_map = visible_entries(tree, vim.fs.dirname(path), nesting_settings, {
-		status = {},
-		ignored = {},
-		ignored_generation = 0,
-		show_ignored = false,
-		matcher = matcher,
-	})
+function M.has_nest(tree, path, nesting_settings, opts)
+	local _, nest_map = visible_entries(tree, vim.fs.dirname(path), nesting_settings, opts)
 	local children = nest_map[basename(path)]
 	return children ~= nil and #children > 0
 end
@@ -304,17 +298,11 @@ end
 ---@param tree FileTreeSource
 ---@param path string
 ---@param nesting_settings? FileTreeNestingSettings
----@param matcher? FileTreeIgnoreMatcher
+---@param opts FileTreeRowOptions
 ---@return string?
-function M.nest_parent(tree, path, nesting_settings, matcher)
+function M.nest_parent(tree, path, nesting_settings, opts)
 	local directory = vim.fs.dirname(path)
-	local _, nest_map = visible_entries(tree, directory, nesting_settings, {
-		status = {},
-		ignored = {},
-		ignored_generation = 0,
-		show_ignored = false,
-		matcher = matcher,
-	})
+	local _, nest_map = visible_entries(tree, directory, nesting_settings, opts)
 	local name = basename(path)
 	for parent, children in pairs(nest_map) do
 		if vim.tbl_contains(children, name) then

@@ -3,7 +3,6 @@
 local M = {}
 
 local palette = require("gleb.colors.gruvbox-material.palette")
-local state = require("gleb.file_tree.state")
 local has_devicons, devicons = pcall(require, "nvim-web-devicons")
 
 local EXPANDED = ""
@@ -12,7 +11,6 @@ local FOLDER_OPEN = ""
 local FOLDER_CLOSED = ""
 local FOLDER_EMPTY = "󰉖"
 local FILE = ""
-local SHOWN_IGNORED_MARKDOWN_ICON = "󰂺"
 
 ---@type table<string, string>
 local STATUS_GROUPS = {
@@ -90,9 +88,6 @@ local function file_icon(row)
 	if has_devicons then
 		local icon, group = devicons.get_icon(row.label, nil, { default = true })
 		if icon and group then
-			if group == "DevIconMd" and state.show_ignored() then
-				icon = SHOWN_IGNORED_MARKDOWN_ICON
-			end
 			return icon, group
 		end
 	end

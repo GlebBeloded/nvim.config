@@ -259,19 +259,15 @@ local function draw(view, path)
 	end)
 	local loaded_settings = settings.load()
 	local nesting_settings = loaded_settings.nesting
+	local opts = row_options(view, loaded_settings)
 	for relative in pairs(view.expanded_nests) do
 		local parent = vim.fs.joinpath(view.root, relative)
 		local stat = vim.uv.fs_stat(parent)
-		if
-			not stat
-			or stat.type ~= "file"
-			or not model.has_nest(tree, parent, nesting_settings, loaded_settings.matcher)
-		then
+		if not stat or stat.type ~= "file" or not model.has_nest(tree, parent, nesting_settings, opts) then
 			view.expanded_nests[relative] = nil
 		end
 	end
-	view.rows =
-		model.rows(tree, view.expanded, row_options(view, loaded_settings), nesting_settings, view.expanded_nests)
+	view.rows = model.rows(tree, view.expanded, opts, nesting_settings, view.expanded_nests)
 	render.draw(view.buf, view.rows)
 	local cursor = vim.api.nvim_win_get_cursor(view.win)
 	vim.api.nvim_win_set_cursor(view.win, { math.min(cursor[1], math.max(#view.rows, 1)), cursor[2] })
@@ -310,7 +306,8 @@ local function select_path(view, path)
 	expand_to(view, normalized)
 	local loaded_settings = settings.load()
 	local nesting_settings = loaded_settings.nesting
-	local parent = model.nest_parent(fs.tree(view.root), normalized, nesting_settings, loaded_settings.matcher)
+	local parent =
+		model.nest_parent(fs.tree(view.root), normalized, nesting_settings, row_options(view, loaded_settings))
 	if parent then
 		view.expanded_nests[parent:sub(#view.root + 2)] = true
 	end

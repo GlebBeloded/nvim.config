@@ -595,6 +595,38 @@ T["file-tree: I toggles ignored entries"]["shows and hides ignored rows through 
 	eq(has_label(".env"), false)
 end
 
+T["file-tree: I toggles ignored entries"]["expands a settings-ignored nest child through the tree mapping"] = function()
+	local project = F.copy("treeproj", vim.fn.tempname() .. "/billing")
+	open_tree(project, settings_file({ "package-lock.json" }))
+	expand("web")
+	focus_tree_path("web/package.json")
+
+	child.type_keys("I")
+	child.type_keys("za")
+
+	eq(has_label("package-lock.json"), true)
+end
+
+T["file-tree: I toggles ignored entries"]["reveals a settings-ignored nest child from the editor"] = function()
+	local project = F.copy("treeproj", vim.fn.tempname() .. "/billing")
+	open_tree(project, settings_file({ "package-lock.json" }))
+	expand("web")
+	child.type_keys("I")
+
+	child.cmd("wincmd l")
+	child.cmd("edit " .. vim.fn.fnameescape(vim.fs.joinpath(project, "web/package-lock.json")))
+
+	eq(has_label("package-lock.json"), true)
+	eq(
+		child.lua_get([[(function()
+			local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+			local index = vim.api.nvim_win_get_cursor(view.win)[1]
+			return view.rows[index].label
+		end)()]]),
+		"package-lock.json"
+	)
+end
+
 T["file-tree: Show Ignored is a Find Action toggle"] = MiniTest.new_set()
 
 T["file-tree: Show Ignored is a Find Action toggle"]["toggles in place through the real picker"] = function()

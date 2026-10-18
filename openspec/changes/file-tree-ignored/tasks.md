@@ -65,4 +65,7 @@ Scenarios: `file-tree: Show Ignored matches the approved render`
 - Row options carry `ignored_generation` in addition to the designed snapshots so the nest cache invalidates only when the ignored set changes.
 - Initial-paint readiness uses the watch's discovered top level, and the view owns the timeout so closing it cancels pending work.
 - Create selection skips the editor's transitional `BufEnter`, because the action already selects its target and that event would follow the editor's previous buffer.
-- Show Ignored pins the approved generic Markdown glyph while retaining `DevIconMd`, because the approved ANSI differs from the installed devicons glyph.
+
+## Blocked
+
+- **Re-approve the Show Ignored render:** `ign_proposed.ansi` pins `notes.md` to the generic Markdown glyph while the design requires real devicons and the same file uses the installed `DevIconMd` glyph in `nest_proposed.ansi`. Options are to re-approve `ign_proposed.ansi` with the real glyph or expand the specification to let Show Ignored change non-ignored file icons. Recommendation: re-approve it with the real glyph because Show Ignored has no specified effect on non-ignored rows.
