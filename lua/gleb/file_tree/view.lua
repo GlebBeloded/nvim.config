@@ -11,6 +11,7 @@ local settings = require("gleb.file_tree.settings")
 local watch = require("gleb.file_tree.watch")
 
 local EXPANSION_MAX_ROWS = 5000
+local IGNORE_WAIT_MS = 300
 
 ---@class FileTreeView
 ---@field tab integer
@@ -23,6 +24,7 @@ local EXPANSION_MAX_ROWS = 5000
 ---@field autocmds integer[]
 ---@field watching boolean
 ---@field directory_hijacks table<integer, boolean>
+---@field initial_draw_timer? uv.uv_timer_t
 
 ---@class FileTreeViewState
 ---@field by_tab table<integer, FileTreeView>
@@ -122,6 +124,11 @@ local function forget(view)
 		expanded.flush()
 		watch.stop_root(view.root, view.tab)
 		git.stop_root(view.root, view.tab)
+	end
+	if view.initial_draw_timer then
+		view.initial_draw_timer:stop()
+		view.initial_draw_timer:close()
+		view.initial_draw_timer = nil
 	end
 	for _, autocmd in ipairs(view.autocmds) do
 		pcall(vim.api.nvim_del_autocmd, autocmd)
@@ -272,6 +279,23 @@ local function select_path(view, path)
 		view.expanded_nests[parent:sub(#view.root + 2)] = true
 	end
 	draw(view, normalized)
+end
+
+---@param view FileTreeView
+---@param path string
+---@return boolean
+local function finish_initial_draw(view, path)
+	local timer = view.initial_draw_timer
+	if not timer then
+		return false
+	end
+	timer:stop()
+	timer:close()
+	view.initial_draw_timer = nil
+	if M.state.by_tab[view.tab] == view and vim.api.nvim_buf_is_valid(view.buf) then
+		select_path(view, path)
+	end
+	return true
 end
 
 ---@param view FileTreeView
@@ -703,15 +727,30 @@ local function open_view(path)
 	}
 	M.state.by_tab[tab] = view
 	watch.start_root(root, tab)
+	local initial_path = reveal_target(view, path, true) or root
 	git.start_root(root, tab, function()
+		if finish_initial_draw(view, initial_path) then
+			return
+		end
 		if M.state.by_tab[tab] == view and vim.api.nvim_buf_is_valid(buf) then
 			local selected = view.rows[vim.api.nvim_win_get_cursor(win)[1]]
 			draw(view, selected and selected.path or root)
 		end
 	end)
 	add_teardown_autocmds(view)
-	select_path(view, reveal_target(view, path, true) or root)
-	git.request(root)
+	if watch.toplevel(root) then
+		view.initial_draw_timer = assert(vim.uv.new_timer())
+		view.initial_draw_timer:start(
+			IGNORE_WAIT_MS,
+			0,
+			vim.schedule_wrap(function()
+				finish_initial_draw(view, initial_path)
+			end)
+		)
+		git.refresh(root)
+	else
+		select_path(view, initial_path)
+	end
 	update_cursor()
 	return view
 end

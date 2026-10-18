@@ -18,9 +18,9 @@ Scenarios: `file-tree: Ignored entries are hidden by default`, `file-tree: Track
 
 ## 2b. Gate first paint on initial ignored state
 Scenarios: `file-tree: First paint waits for ignored status`
-- [ ] 2b.1 Write the scenario in `tests/integration/file-tree/test_ignored.lua` against the real `file_tree.toggle` entry point and run `make test FILE=tests/integration/file-tree/test_ignored.lua CASE="First paint waits for ignored status"` to see it fail
-- [ ] 2b.2 Once watch has `toplevel`, skip debounce for only the first request and delay only the first git-backed draw until the result or 300 ms; never wait on later refreshes or outside git
-- [ ] 2b.3 Run `make test FILE=tests/integration/file-tree/test_ignored.lua CASE="First paint waits for ignored status"` and see it pass
+- [x] 2b.1 Write the scenario in `tests/integration/file-tree/test_ignored.lua` against the real `file_tree.toggle` entry point and run `make test FILE=tests/integration/file-tree/test_ignored.lua CASE="First paint waits for ignored status"` to see it fail
+- [x] 2b.2 Once watch has `toplevel`, skip debounce for only the first request and delay only the first git-backed draw until the result or 300 ms; never wait on later refreshes or outside git
+- [x] 2b.3 Run `make test FILE=tests/integration/file-tree/test_ignored.lua CASE="First paint waits for ignored status"` and see it pass
 
 ## 2c. Block every hidden-path reveal
 Scenarios: `file-tree: File under hidden node_modules is not revealed`, `file-tree: Created or renamed ignored target is not selected`
@@ -63,3 +63,4 @@ Scenarios: `file-tree: Show Ignored matches the approved render`
 - The two git-derived scenarios move from task 1 to task 2a because Decision 2 assigns their required porcelain ignored-set parsing, storage and root mapping there.
 - The compiled settings matcher is an optional model argument until task 2a replaces the row inputs with the designed options table, keeping filtering independent of nesting configuration.
 - Row options carry `ignored_generation` in addition to the designed snapshots so the nest cache invalidates only when the ignored set changes.
+- Initial-paint readiness uses the watch's discovered top level, and the view owns the timeout so closing it cancels pending work.

@@ -37,6 +37,16 @@ local function open_tree(project_root, settings_path)
 		local action = assert(require("gleb.actions").state.applicator.catalog:get("file_tree.toggle"))
 		action.run(require("gleb.actions.context").capture())
 	]])
+	assert(
+		child.wait(
+			[[(function()
+				local view = require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()]
+				return view and #view.rows > 0
+			end)()]],
+			3000
+		),
+		"file tree did not draw its initial rows"
+	)
 end
 
 ---@param relative string
@@ -122,6 +132,59 @@ local function row_for(relative)
 		end)(...)]],
 		{ vim.fs.joinpath(assert(vim.uv.fs_realpath(root)), relative) }
 	)
+end
+
+T["file-tree: First paint waits for ignored status"] = MiniTest.new_set()
+
+T["file-tree: First paint waits for ignored status"]["omits ignored entries from the first frame"] = function()
+	local project = F.copy("treeproj", vim.fn.tempname() .. "/billing")
+	local status = vim.system({
+		"git",
+		"--no-optional-locks",
+		"-C",
+		project,
+		"status",
+		"--porcelain=v2",
+		"-z",
+		"--untracked-files=normal",
+		"--ignored=matching",
+	}, { text = true }):wait()
+	eq(status.code, 0)
+	child.lua([[require("gleb.file_tree.expanded").save(assert(vim.uv.fs_realpath(...)), { web = true })]], { project })
+	child.lua(
+		[[
+		local status_output = ...
+		local original_system = vim.system
+		vim.system = function(command, options, callback)
+			if callback and command[4] == "rev-parse" and command[5] == "--show-prefix" then
+				vim.schedule(function() callback({ code = 0, stdout = "", stderr = "" }) end)
+				return {}
+			end
+			if callback and command[4] == "status" then
+				vim.schedule(function() callback({ code = 0, stdout = status_output, stderr = "" }) end)
+				return {}
+			end
+			return original_system(command, options, callback)
+		end
+		_G.file_tree_draw_frames = {}
+		local render = require("gleb.file_tree.render")
+		local original_draw = render.draw
+		render.draw = function(buf, rows)
+			_G.file_tree_draw_frames[#_G.file_tree_draw_frames + 1] =
+				vim.tbl_map(function(row) return row.label end, rows)
+			original_draw(buf, rows)
+		end
+	]],
+		{ status.stdout }
+	)
+	open_tree(project, settings_file({}))
+	wait_for_git()
+
+	local first_frame = child.lua_get([=[_G.file_tree_draw_frames[1]]=])
+	assert(first_frame, "file tree did not draw")
+	eq(vim.tbl_contains(first_frame, "bin"), false)
+	eq(vim.tbl_contains(first_frame, "node_modules"), false)
+	eq(vim.tbl_contains(first_frame, ".env"), false)
 end
 
 T["file-tree: Ignored entries are hidden by default"] = MiniTest.new_set()
