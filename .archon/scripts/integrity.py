@@ -171,10 +171,12 @@ def decision(text: str) -> str:
 
 
 def rewritten_decisions() -> list[str]:
-    """A proposal whose user `## Decision` text differs from the base branch's version."""
+    """A proposal whose user `## Decision` text differs from its version where the branch forked (the merge base): a
+    Decision the auditor extended on the base after the last sync is not the branch's rewrite (run 36516373)."""
     reasons = []
+    fork = git("merge-base", "HEAD", BASE).strip()
     for path in changed_files(r"openspec/changes/[^/]+/proposal\.md"):
-        show = subprocess.run(["git", "show", f"{BASE}:{path}"], capture_output=True, text=True)
+        show = subprocess.run(["git", "show", f"{fork}:{path}"], capture_output=True, text=True)
         before = decision(show.stdout) if show.returncode == 0 else ""
         if before and decision(open(path).read()) != before:
             reasons.append(f"rewrites the user's ## Decision in {path}")

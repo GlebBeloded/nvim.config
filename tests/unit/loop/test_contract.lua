@@ -121,6 +121,14 @@ T["loop: Judge rejects a change that rewrites the user's Decision"] = function()
 	has(out.reasons, "rewrites the user's ## Decision in openspec/changes/c/proposal.md")
 	local why_only = branch_repo(base, { ["openspec/changes/c/proposal.md"] = proposal:gsub("slow", "very slow") })
 	eq(run("escalation.py", why_only).decision, "ship")
+	-- the auditor extends the Decision on auto after the branch's last sync: not the branch's rewrite
+	local extended = branch_repo(base, { ["openspec/changes/c/proposal.md"] = proposal:gsub("slow", "very slow") })
+	commit_all(extended, "run edits")
+	git_ok({ "checkout", "-q", "auto" }, extended)
+	write(extended, { ["openspec/changes/c/proposal.md"] = proposal .. "- a later auditor bullet\n" })
+	commit_all(extended, "auditor extends the Decision")
+	git_ok({ "checkout", "-q", "run" }, extended)
+	eq(run("escalation.py", extended).decision, "ship")
 end
 
 T["loop: Adopt reverts main spec edits"] = function()
