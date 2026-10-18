@@ -54,8 +54,8 @@ Scenarios: `file-tree: Unfold all leaves ignored folders collapsed`, `file-tree:
 
 ## 5. Pin the approved screen
 Scenarios: `file-tree: Show Ignored matches the approved render`
-- [ ] 5.1 Write the 100x30 case in `tests/screen/file-tree/test_ignored.lua`, pass `H.GIT_ENV` to the child, compare text verbatim with a byte-identical `tests/screen/file-tree/ign_proposed.ansi`, assert real extmark groups without a mask or self-blessed screenshot, and run `make test FILE=tests/screen/file-tree/test_ignored.lua CASE="Show Ignored matches the approved render"` to see it fail
-- [ ] 5.2 Make the rendered text and groups match `Proposed — after Show Ignored`, then run `make test FILE=tests/screen/file-tree/test_ignored.lua CASE="Show Ignored matches the approved render"` and see it pass
+- [x] 5.1 Write the 100x30 case in `tests/screen/file-tree/test_ignored.lua`, pass `H.GIT_ENV` to the child, compare text verbatim with a byte-identical `tests/screen/file-tree/ign_proposed.ansi`, assert real extmark groups without a mask or self-blessed screenshot, and run `make test FILE=tests/screen/file-tree/test_ignored.lua CASE="Show Ignored matches the approved render"` to see it fail
+- [x] 5.2 Make the rendered text and groups match `Proposed — after Show Ignored`, then run `make test FILE=tests/screen/file-tree/test_ignored.lua CASE="Show Ignored matches the approved render"` and see it pass
 - [ ] 5.3 Run `make check`
 
 ## Agent decisions
@@ -65,3 +65,4 @@ Scenarios: `file-tree: Show Ignored matches the approved render`
 - Row options carry `ignored_generation` in addition to the designed snapshots so the nest cache invalidates only when the ignored set changes.
 - Initial-paint readiness uses the watch's discovered top level, and the view owns the timeout so closing it cancels pending work.
 - Create selection skips the editor's transitional `BufEnter`, because the action already selects its target and that event would follow the editor's previous buffer.
+- Show Ignored pins the approved generic Markdown glyph while retaining `DevIconMd`, because the approved ANSI differs from the installed devicons glyph.
