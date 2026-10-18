@@ -160,13 +160,14 @@ local function run(root, state)
 						state.ignored = ignored
 						state.ignored_generation = state.ignored_generation + 1
 					end
-					for _, callback in pairs(state.callbacks) do
-						callback()
-					end
 				end
 				if state.dirty then
 					state.dirty = false
 					run(root, state)
+					return
+				end
+				for _, callback in pairs(state.callbacks) do
+					callback()
 				end
 			end)
 		end)

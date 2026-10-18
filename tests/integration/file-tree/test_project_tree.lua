@@ -769,8 +769,16 @@ end)()
 	end
 
 	child.type_keys("<M-A>")
-	assert(child.wait([[MiniPick.is_picker_active()]], 5000), "Find Action picker did not open")
-	child.type_keys("project open")
+	assert(
+		child.wait(
+			[[MiniPick.is_picker_active() and vim.api.nvim_get_current_win() == MiniPick.get_picker_state().windows.main]],
+			5000
+		),
+		"Find Action picker did not open"
+	)
+	child.type_keys("open")
+	assert(child.wait([[table.concat(MiniPick.get_picker_query()) == "open"]], 5000), "query was not processed")
+	child.type_keys("<C-n><C-n>")
 	assert(
 		child.wait(
 			[[
