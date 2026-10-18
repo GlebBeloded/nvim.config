@@ -18,7 +18,7 @@ Change: openspec/changes/$INPUTS.change/
 Findings of the previous pass (check failures, untested scenarios, hard rules, review):
 $LOOP_PREV.verdict.output.feedback
 
-Fix exactly these findings and nothing else, smallest change first. A `## Decision` in proposal.md overrides any review finding it covers, also one carried over from an earlier review: never undo what a Decision settled to satisfy an older finding (run 1202d6e0 reverted a decided behaviour for a stale must-fix). A finding about a contract several
+Fix exactly these findings and nothing else, smallest change first. A failing case this change owns (its own or one it edited) is never dismissed as transient or flaky with no commit: when it passes alone, rerun it 5 times next to its whole directory (`make test FILE=<its dir>`) and fix what that shows, or write `## Stuck` with those runs (run 36516373: a no-change pass let the same case fail the next gate). A `## Decision` in proposal.md overrides any review finding it covers, also one carried over from an earlier review: never undo what a Decision settled to satisfy an older finding (run 1202d6e0 reverted a decided behaviour for a stale must-fix). A finding about a contract several
 units implement (each adapter, caller or plugin integration) is fixed in every unit it applies to, each checked
 against its own native API (installed plugin source), not one rule for all. Stay on the listed findings:
 never edit the change's proposal.md, .openspec.yaml or spec deltas unless a finding is about them (the

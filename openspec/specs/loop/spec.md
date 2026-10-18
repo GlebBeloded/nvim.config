@@ -558,6 +558,10 @@ The fix and implement commands SHALL run one headless probe before editing for a
 ### Requirement: Fix pass probes before it edits
 The fix command SHALL run one headless scratch-file probe logging the relevant state before editing code for a non-obvious failure, allow at most 2 implementation attempts per pass and then write `## Stuck` with the probe evidence, and forbid production timers or sleeps that race a plugin's internals unless the proposal's `## Decision` allows them.
 
+#### Scenario: Fix feedback keeps a failing case's message
+- **WHEN** `check_log.summarize` reads a red test section with 30 passed nested sets (`: oooo`) and one `FAIL in` line whose message runs past 160 characters, and `.archon/commands/fix.md` is read
+- **THEN** the summary holds the whole message and none of the passed sets, and fix.md never lets an owned failing case pass as transient without a commit: it reruns it 5 times next to its directory or writes `## Stuck`
+
 #### Scenario: Fix prompt probes first and caps attempts
 - **WHEN** `.archon/commands/fix.md` is read
 - **THEN** it asks for one headless probe before editing a non-obvious failure, caps attempts at 2 per pass then `## Stuck` with the probe output, forbids timers or sleeps against plugin internals without a `## Decision`, and lets a `## Decision` override any review finding it covers, carried-over ones too
