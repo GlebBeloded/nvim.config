@@ -89,9 +89,9 @@ Scenarios: `file-tree: Followed nested file expands its nest`, `file-tree: Added
 
 Scenarios: `file-tree: Deleting a nest parent keeps its children`, `file-tree: Visual delete on a collapsed parent deletes only the parent`
 
-- [ ] 5c.1 Write both cases in `tests/integration/file-tree/test_nesting.lua`, driving the real `d` mapping and confirmation on a populated fixture, then run `make test FILE=tests/integration/file-tree/test_nesting.lua CASE="Visual delete on a collapsed parent deletes only the parent"` and see it fail
-- [ ] 5c.2 Keep visual selection row-based and make delete operate only on each selected row path, never implied nest children
-- [ ] 5c.3 Run both cases with `make test FILE=tests/integration/file-tree/test_nesting.lua CASE="<scenario title>"` and see them pass
+- [x] 5c.1 Write both cases in `tests/integration/file-tree/test_nesting.lua`, driving the real `d` mapping and confirmation on a populated fixture, then run `make test FILE=tests/integration/file-tree/test_nesting.lua CASE="Visual delete on a collapsed parent deletes only the parent"` and see it fail
+- [x] 5c.2 Keep visual selection row-based and make delete operate only on each selected row path, never implied nest children
+- [x] 5c.3 Run both cases with `make test FILE=tests/integration/file-tree/test_nesting.lua CASE="<scenario title>"` and see them pass
 
 ## 5d. Existing fold behavior includes nests
 
@@ -126,3 +126,4 @@ Scenarios: `file-tree: File tree nests match the approved render`
 - Settings reload redraws each tree at its selected path so configuration changes do not move the cursor.
 - Move expansion keys before the filesystem rename so watcher redraws cannot prune them; reverse the keys if the move rolls back.
 - Nested target lookup lives in the model so selection reuses the cached nest map instead of rebuilding engine logic in the view.
+- Parent deletion needs no nesting-specific expansion because the existing operation collector reads only visible row paths.

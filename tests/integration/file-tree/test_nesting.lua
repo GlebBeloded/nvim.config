@@ -136,6 +136,21 @@ local function add(query)
 	assert(child.wait([[not MiniPick.is_picker_active()]]), "Add picker did not close")
 end
 
+---@param visual? boolean
+local function confirm_delete(visual)
+	if visual then
+		assert(
+			child.wait([[MiniPick.is_picker_active() and (MiniPick.get_picker_matches() or {}).current ~= nil]]),
+			"Delete confirmation did not open"
+		)
+	else
+		assert(vim.wait(1000, child.is_blocked, 10), "Delete confirmation did not block")
+		child.type_keys("<Down>")
+	end
+	child.type_keys("<CR>")
+	assert(child.wait([[not MiniPick.is_picker_active()]]), "Delete confirmation did not close")
+end
+
 local function nest_is_expanded()
 	return child.lua_get([[(function()
 		local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
@@ -560,6 +575,45 @@ T["file-tree: Following under a symlinked root expands the nest"] = function()
 
 	eq(has_tree_line("invoice_test.go"), true)
 	expect_selected("internal/billing/invoice_test.go")
+end
+
+T["file-tree: Deleting a nest parent keeps its children"] = function()
+	focus_tree_path("internal/billing/discount.go")
+	child.type_keys("d")
+	confirm_delete()
+
+	local parent = vim.fs.joinpath(root, "internal/billing/discount.go")
+	local nested_child = vim.fs.joinpath(root, "internal/billing/discount_test.go")
+	assert(
+		vim.wait(1000, function()
+			return vim.uv.fs_lstat(parent) == nil
+		end),
+		"nest parent was not deleted"
+	)
+	eq(vim.uv.fs_lstat(nested_child) ~= nil, true)
+	eq(has_tree_line("discount_test.go"), true)
+	local child_line = assert(tree_line("discount_test.go"))
+	eq(child_line:find("", 1, true), nil)
+	eq(child_line:find("", 1, true), nil)
+end
+
+T["file-tree: Visual delete on a collapsed parent deletes only the parent"] = function()
+	focus_tree_path("internal/billing/discount.go")
+	child.type_keys("V")
+	eq(child.fn.mode(1), "V")
+	child.type_keys("d")
+	confirm_delete(true)
+
+	local parent = vim.fs.joinpath(root, "internal/billing/discount.go")
+	local nested_child = vim.fs.joinpath(root, "internal/billing/discount_test.go")
+	assert(
+		vim.wait(1000, function()
+			return vim.uv.fs_lstat(parent) == nil
+		end),
+		"nest parent was not deleted"
+	)
+	eq(vim.uv.fs_lstat(nested_child) ~= nil, true)
+	eq(has_tree_line("discount_test.go"), true)
 end
 
 return T
