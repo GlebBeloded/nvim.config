@@ -508,7 +508,7 @@ EOF
 treeproj() {
 	git init -q
 	mkdir -p .github/workflows cmd/server internal/billing internal/money web/src
-	printf 'bin/\nnode_modules/\n.env\n' >.gitignore
+	printf 'bin/\nnode_modules/\n.env\n*.log\n' >.gitignore
 	printf 'module example.com/billing\n\ngo 1.22\n' >go.mod
 	: >go.sum
 	printf 'test:\n\tgo test ./...\n' >Makefile
@@ -712,7 +712,7 @@ EOF
 	mkdir -p bin web/node_modules/left-pad
 	printf '#!/bin/sh\necho server\n' >bin/server
 	printf 'module.exports = (s) => s;\n' >web/node_modules/left-pad/index.js
-	printf 'TAX_RATE=10\n' >.env
+	printf 'TAX_RATE=0.2\n' >.env
 	printf '{"modified":["internal/billing/invoice.go","internal/billing/invoice_test.go","web/src/price.ts"],"added":["internal/billing/tax.go","internal/billing/tax_test.go"],"untracked":["notes.md"],"ignored":["bin/","web/node_modules/",".env"]}\n' \
 		>../manifest.json
 }

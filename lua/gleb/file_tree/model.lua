@@ -3,6 +3,7 @@
 local M = {}
 
 local nesting = require("gleb.file_tree.nesting")
+local ignore = require("gleb.file_tree.ignore")
 
 ---@class FileTreeNestingSettings
 ---@field enabled boolean
@@ -13,6 +14,7 @@ local nesting = require("gleb.file_tree.nesting")
 ---@field generation integer
 ---@field rules table[]
 ---@field map table<string, string[]>
+---@field matcher? FileTreeIgnoreMatcher
 
 ---@type table<table, FileTreeNestCacheEntry>
 local nest_cache = setmetatable({}, { __mode = "k" })
@@ -218,23 +220,34 @@ end
 ---@param tree FileTreeSource
 ---@param path string
 ---@param nesting_settings? FileTreeNestingSettings
+---@param matcher? FileTreeIgnoreMatcher
 ---@return FileTreeEntry[]
 ---@return table<string, string[]>
-local function visible_entries(tree, path, nesting_settings)
+local function visible_entries(tree, path, nesting_settings, matcher)
 	local scan = tree.scan(path)
 	local entries = {}
 	for _, entry in ipairs(scan) do
-		if entry.name ~= ".git" then
+		local relative = relative_path(tree.root, entry.path)
+		if
+			entry.name ~= ".git"
+			and (not matcher or not ignore.is_ignored({}, matcher, relative, entry.kind == "directory", false))
+		then
 			entries[#entries + 1] = entry
 		end
 	end
 	local nest_map = {}
 	if nesting_settings and nesting_settings.enabled then
 		local cached = nest_cache[scan]
-		if not cached or cached.generation ~= nesting_settings.generation or cached.rules ~= nesting_settings.rules then
+		if
+			not cached
+			or cached.generation ~= nesting_settings.generation
+			or cached.rules ~= nesting_settings.rules
+			or cached.matcher ~= matcher
+		then
 			cached = {
 				generation = nesting_settings.generation,
 				rules = nesting_settings.rules,
+				matcher = matcher,
 				map = nesting.nest(path, entries, nesting_settings.rules),
 			}
 			nest_cache[scan] = cached
@@ -248,9 +261,10 @@ end
 ---@param tree FileTreeSource
 ---@param path string
 ---@param nesting_settings? FileTreeNestingSettings
+---@param matcher? FileTreeIgnoreMatcher
 ---@return boolean
-function M.has_nest(tree, path, nesting_settings)
-	local _, nest_map = visible_entries(tree, vim.fs.dirname(path), nesting_settings)
+function M.has_nest(tree, path, nesting_settings, matcher)
+	local _, nest_map = visible_entries(tree, vim.fs.dirname(path), nesting_settings, matcher)
 	local children = nest_map[basename(path)]
 	return children ~= nil and #children > 0
 end
@@ -259,10 +273,11 @@ end
 ---@param tree FileTreeSource
 ---@param path string
 ---@param nesting_settings? FileTreeNestingSettings
+---@param matcher? FileTreeIgnoreMatcher
 ---@return string?
-function M.nest_parent(tree, path, nesting_settings)
+function M.nest_parent(tree, path, nesting_settings, matcher)
 	local directory = vim.fs.dirname(path)
-	local _, nest_map = visible_entries(tree, directory, nesting_settings)
+	local _, nest_map = visible_entries(tree, directory, nesting_settings, matcher)
 	local name = basename(path)
 	for parent, children in pairs(nest_map) do
 		if vim.tbl_contains(children, name) then
@@ -275,17 +290,18 @@ end
 ---@param tree FileTreeSource
 ---@param entry FileTreeEntry
 ---@param nesting_settings? FileTreeNestingSettings
+---@param matcher? FileTreeIgnoreMatcher
 ---@return string label
 ---@return FileTreeEntry tail
 ---@return FileTreeEntry[] children
-local function compact_directory(tree, entry, nesting_settings)
+local function compact_directory(tree, entry, nesting_settings, matcher)
 	local names = { entry.name }
 	local tail = entry
-	local children = visible_entries(tree, tail.path, nesting_settings)
+	local children = visible_entries(tree, tail.path, nesting_settings, matcher)
 	while #children == 1 and children[1].kind == "directory" do
 		tail = children[1]
 		names[#names + 1] = tail.name
-		children = visible_entries(tree, tail.path, nesting_settings)
+		children = visible_entries(tree, tail.path, nesting_settings, matcher)
 	end
 	return table.concat(names, "/"), tail, children
 end
@@ -298,8 +314,9 @@ end
 ---@param depth integer
 ---@param nesting_settings? FileTreeNestingSettings
 ---@param expanded_nests? table<string, boolean>
-local function append_children(tree, expanded, status, rows, path, depth, nesting_settings, expanded_nests)
-	local entries, nest_map = visible_entries(tree, path, nesting_settings)
+---@param matcher? FileTreeIgnoreMatcher
+local function append_children(tree, expanded, status, rows, path, depth, nesting_settings, expanded_nests, matcher)
+	local entries, nest_map = visible_entries(tree, path, nesting_settings, matcher)
 	local entries_by_name = {}
 	local nested = {}
 	for _, entry in ipairs(entries) do
@@ -316,7 +333,7 @@ local function append_children(tree, expanded, status, rows, path, depth, nestin
 			local tail = entry
 			local children = {}
 			if entry.kind == "directory" then
-				label, tail, children = compact_directory(tree, entry, nesting_settings)
+				label, tail, children = compact_directory(tree, entry, nesting_settings, matcher)
 			end
 			local relative = relative_path(tree.root, tail.path)
 			local is_expanded = tail.kind == "directory" and expanded[relative] == true
@@ -337,7 +354,17 @@ local function append_children(tree, expanded, status, rows, path, depth, nestin
 				nest_expanded = nest_expanded,
 			}
 			if is_expanded then
-				append_children(tree, expanded, status, rows, tail.path, depth + 1, nesting_settings, expanded_nests)
+				append_children(
+					tree,
+					expanded,
+					status,
+					rows,
+					tail.path,
+					depth + 1,
+					nesting_settings,
+					expanded_nests,
+					matcher
+				)
 			elseif nest_expanded then
 				for _, child_name in ipairs(nest_children) do
 					local child = entries_by_name[child_name]
@@ -365,8 +392,9 @@ end
 ---@param status table<string, string>
 ---@param nesting_settings? FileTreeNestingSettings
 ---@param expanded_nests? table<string, boolean>
+---@param matcher? FileTreeIgnoreMatcher
 ---@return FileTreeRow[]
-function M.rows(tree, expanded, status, nesting_settings, expanded_nests)
+function M.rows(tree, expanded, status, nesting_settings, expanded_nests, matcher)
 	local rows = {
 		{
 			depth = 0,
@@ -377,7 +405,7 @@ function M.rows(tree, expanded, status, nesting_settings, expanded_nests)
 			empty = false,
 		},
 	}
-	append_children(tree, expanded, status, rows, tree.root, 0, nesting_settings, expanded_nests)
+	append_children(tree, expanded, status, rows, tree.root, 0, nesting_settings, expanded_nests, matcher)
 	return rows
 end
 

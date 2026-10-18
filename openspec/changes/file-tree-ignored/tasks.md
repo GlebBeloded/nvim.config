@@ -6,9 +6,9 @@ Scenarios: `file-tree: Project tree reads git status without optional locks`
 
 ## 1. Match settings and repository ignore rules
 Scenarios: `file-tree: Settings ignore patterns hide entries`, `file-tree: Ignored nest children leave no chevron`, `file-tree: Ignore patterns apply outside a git repository`
-- [ ] 1.1 Extend `treeproj` in `tests/fixtures/build.sh` per design Decision 7, write the three scenarios in `tests/integration/file-tree/test_ignored.lua` using the real tree and settings file, and run `make test FILE=tests/integration/file-tree/test_ignored.lua` to see them fail
-- [ ] 1.2 Add the pure `lua/gleb/file_tree/ignore.lua`, validate and compile the `ignore` list once per settings generation in `settings.lua`, and filter entries before nesting without treating the tree root or its ancestors as ignored
-- [ ] 1.3 Run `make test FILE=tests/integration/file-tree/test_ignored.lua` and see the three scenarios pass
+- [x] 1.1 Extend `treeproj` in `tests/fixtures/build.sh` per design Decision 7, write the three scenarios in `tests/integration/file-tree/test_ignored.lua` using the real tree and settings file, and run `make test FILE=tests/integration/file-tree/test_ignored.lua` to see them fail
+- [x] 1.2 Add the pure `lua/gleb/file_tree/ignore.lua`, validate and compile the `ignore` list once per settings generation in `settings.lua`, and filter entries before nesting without treating the tree root or its ancestors as ignored
+- [x] 1.3 Run `make test FILE=tests/integration/file-tree/test_ignored.lua` and see the three scenarios pass
 
 ## 2a. Parse and map git ignored state
 Scenarios: `file-tree: Ignored entries are hidden by default`, `file-tree: Tracked files matching gitignore stay listed`, `file-tree: Editing gitignore updates ignored entries`, `file-tree: Nested gitignore and negation are honoured`, `file-tree: Tree root inside an ignored folder stays visible`, `file-tree: Folder with only ignored content stays listed`, `file-tree: Ignored sets follow normalized roots across tabs`
@@ -61,3 +61,4 @@ Scenarios: `file-tree: Show Ignored matches the approved render`
 ## Agent decisions
 
 - The two git-derived scenarios move from task 1 to task 2a because Decision 2 assigns their required porcelain ignored-set parsing, storage and root mapping there.
+- The compiled settings matcher is an optional model argument until task 2a replaces the row inputs with the designed options table, keeping filtering independent of nesting configuration.

@@ -201,15 +201,27 @@ local function draw(view, path)
 	local tree = fs.tree(view.root, function(scan_path)
 		watched[scan_path] = true
 	end)
-	local nesting_settings = settings.load().nesting
+	local loaded_settings = settings.load()
+	local nesting_settings = loaded_settings.nesting
 	for relative in pairs(view.expanded_nests) do
 		local parent = vim.fs.joinpath(view.root, relative)
 		local stat = vim.uv.fs_stat(parent)
-		if not stat or stat.type ~= "file" or not model.has_nest(tree, parent, nesting_settings) then
+		if
+			not stat
+			or stat.type ~= "file"
+			or not model.has_nest(tree, parent, nesting_settings, loaded_settings.matcher)
+		then
 			view.expanded_nests[relative] = nil
 		end
 	end
-	view.rows = model.rows(tree, view.expanded, git.status(view.root), nesting_settings, view.expanded_nests)
+	view.rows = model.rows(
+		tree,
+		view.expanded,
+		git.status(view.root),
+		nesting_settings,
+		view.expanded_nests,
+		loaded_settings.matcher
+	)
 	render.draw(view.buf, view.rows)
 	local cursor = vim.api.nvim_win_get_cursor(view.win)
 	vim.api.nvim_win_set_cursor(view.win, { math.min(cursor[1], math.max(#view.rows, 1)), cursor[2] })
@@ -246,8 +258,9 @@ end
 local function select_path(view, path)
 	local normalized = fs.normalize(path)
 	expand_to(view, normalized)
-	local nesting_settings = settings.load().nesting
-	local parent = model.nest_parent(fs.tree(view.root), normalized, nesting_settings)
+	local loaded_settings = settings.load()
+	local nesting_settings = loaded_settings.nesting
+	local parent = model.nest_parent(fs.tree(view.root), normalized, nesting_settings, loaded_settings.matcher)
 	if parent then
 		view.expanded_nests[parent:sub(#view.root + 2)] = true
 	end
@@ -318,7 +331,15 @@ end
 local function expand_directory(view, row, warning)
 	local relative = row.path:sub(#view.root + 2)
 	view.expanded[relative] = true
-	local rows = model.rows(fs.tree(view.root), view.expanded, {}, settings.load().nesting, view.expanded_nests)
+	local loaded_settings = settings.load()
+	local rows = model.rows(
+		fs.tree(view.root),
+		view.expanded,
+		{},
+		loaded_settings.nesting,
+		view.expanded_nests,
+		loaded_settings.matcher
+	)
 	if #rows > EXPANSION_MAX_ROWS then
 		view.expanded[relative] = nil
 		vim.notify(warning, vim.log.levels.WARN)
@@ -479,9 +500,10 @@ function M.unfold_all()
 	local selected = selected_row(view)
 	view.expanded = {}
 	view.expanded_nests = {}
-	local nesting_settings = settings.load().nesting
+	local loaded_settings = settings.load()
+	local nesting_settings = loaded_settings.nesting
 	local tree = fs.tree(view.root)
-	local rows = model.rows(tree, view.expanded, {}, nesting_settings, view.expanded_nests)
+	local rows = model.rows(tree, view.expanded, {}, nesting_settings, view.expanded_nests, loaded_settings.matcher)
 	local queue = {}
 	for _, row in ipairs(rows) do
 		if row.kind == "directory" then
