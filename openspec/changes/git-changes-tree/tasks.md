@@ -186,12 +186,13 @@ Scenarios: `git: Changes panel matches the approved render`, `git: Changes panel
 
 ## Stuck
 
-- Task 5b is left unticked. The headless probe opened review on `lib/c.lua` with `review_on_refresh = false`, one real show, and a buffer-local `]f` mapping; sequential navigation then reported `a.txt`, `b.txt`, `d.txt`, `d.txt`, exposing a duplicate replacement around the final step.
-- Attempt 1 added immediate review, an `on_next_file` callback, right-window reuse, and right-window refocus. The navigation cases timed out; a focused rerun showed Vim's native `]f` running on the panel checkbox after a delayed duplicate diff stole focus.
-- Attempt 2 suppressed the cursor-debounce event associated with immediate review/navigation. Focus passed, but the full case still showed `lib/c.lua`, `a.txt`, `b.txt`, `d.txt`, `d.txt` and left the panel cursor on `d.txt` instead of reaching `new.txt`.
-- The second production attempt is saved at `/Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/0334b5f5-8041-4ae0-91d8-5a73c4c951ac/stuck-attempt.diff`; production edits were reverted and the failing 5b scenarios remain for the fix pass.
+- Task 5b is left unticked. The first probe confirmed the real diff-local `]f` mapping was installed but its view had no `on_next_file`; review also needed a later `CursorMoved` event before its first show.
+- This pass's attempt 1 added immediate review, `on_next_file`, right-window refocus, event-time row capture, and one in-flight path. The focus case passed, but the four-step case timed out. The probe then showed `lib/c.lua`, `a.txt`, `b.txt`, `d.txt`; after showing `d.txt`, an async refresh restored the panel cursor to `b.txt`, so the fourth key selected `d.txt` again.
+- This pass's attempt 2 made refresh preserve the row current when its result completed instead of the row captured when it started. The focus case still passed, but the four-step case still timed out.
+- The second production attempt is saved at `/Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/0334b5f5-8041-4ae0-91d8-5a73c4c951ac/stuck-attempt.diff`; production edits were reverted and the failing 5b scenarios remain for the next fix pass.
 - Task 7 is left unticked. Its two `100x30` screen scenarios fail against the approved masks before reference screenshots can be created.
 - The headless probe reported `price.ts` as icon `` in `DevIconTypeScript`; `DevIconTs` resolved to an empty highlight while `DevIconTypeScript` resolved to foreground `5348026` and cterm foreground `74`.
 - Attempt 1 made rendering consume model checkbox glyphs and nvim-web-devicons groups. Both cases still failed because the approved `DevIconTs` group did not exist.
 - Attempt 2 added a `DevIconTs` compatibility link, mapped the TypeScript icon to it, and highlighted file-nest expanders. The mask still failed at the first panel expander (`FileTreeExpander` expected, `FileTreeNormal` drawn), while the review capture's editor area did not match the approved diff mask.
-- Task 7's second production attempt is saved at `/Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/0334b5f5-8041-4ae0-91d8-5a73c4c951ac/stuck-attempt.diff`; production edits were reverted and both failing screen scenarios remain for the fix pass.
+- Reapplying that attempt showed the screen capture can contain only the full-width editor after the panel first reaches ten rows; the apparent expander mismatch is therefore downstream of a panel-lifecycle race, not evidence that the expander extmark is absent.
+- Task 7's second production attempt is included in the saved diff above; production edits were reverted and both failing screen scenarios remain for the next fix pass.
