@@ -19,7 +19,10 @@ local function start()
 		local action = assert(require("gleb.actions").state.applicator.catalog:get("file_tree.toggle"))
 		action.run(require("gleb.actions.context").capture())
 	]])
-	assert(child.wait([[vim.bo.filetype == "gleb-file-tree"]]), "Project tree did not open")
+	assert(
+		child.wait([[#require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()].rows > 0]]),
+		"Project tree did not draw its initial rows"
+	)
 end
 
 local T = H.child_set(child, start)

@@ -33,6 +33,17 @@ local function run_action(id)
 		end)(...)]],
 		{ id }
 	)
+	if id == "file_tree.toggle" or id == "file_tree.reveal" then
+		local opened =
+			child.lua_get([[require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()] ~= nil]])
+		if opened then
+			assert(
+				child.wait(
+					[[#require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()].rows > 0]]
+				)
+			)
+		end
+	end
 end
 
 ---@return integer[]
@@ -92,15 +103,15 @@ end
 ---@return boolean
 local function wait_for_tree_row(name)
 	return child.lua_get(
-		[[(function(name)
-			return vim.wait(1000, function()
+		[[(function(name, timeout)
+			return vim.wait(timeout, function()
 				local view = require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()]
 				return view and vim.iter(view.rows):any(function(row)
 					return row.label == name
 				end)
 			end, 20)
 		end)(...)]],
-		{ name }
+		{ name, math.ceil(1000 * H.load_factor()) }
 	)
 end
 
@@ -342,12 +353,15 @@ T["file-tree: Every compact chain member is watched"] = function()
 	eq(wait_for_tree_row("cmd/server"), true)
 
 	local watched = child.lua_get(
-		[[(function(root)
+		[[(function(root, timeout)
 			root = require("gleb.file_tree.fs").normalize(root)
-			local handles = assert(require("gleb.file_tree.watch").state.roots[root]).handles
-			return { handles[root .. "/cmd"] ~= nil, handles[root .. "/cmd/server"] ~= nil }
+			local ready = vim.wait(timeout, function()
+				local handles = assert(require("gleb.file_tree.watch").state.roots[root]).handles
+				return handles[root .. "/cmd"] ~= nil and handles[root .. "/cmd/server"] ~= nil
+			end, 20)
+			return { ready, ready }
 		end)(...)]],
-		{ root }
+		{ root, math.ceil(3000 * H.load_factor()) }
 	)
 	eq(watched, { true, true })
 
@@ -442,8 +456,9 @@ T["file-tree: Project tree prunes a deleted expanded folder"] = function()
 	local result = H.system(child, { "rm", "-r", vim.fs.joinpath(root, "internal/billing") }, root)
 	eq(result.code, 0)
 
-	local pruned = child.lua_get([[(function()
-		return vim.wait(1000, function()
+	local pruned = child.lua_get(
+		[[(function(timeout)
+		return vim.wait(timeout, function()
 			local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
 			local cursor = vim.api.nvim_win_get_cursor(view.win)[1]
 			return view.expanded["internal/billing"] == nil
@@ -453,7 +468,9 @@ T["file-tree: Project tree prunes a deleted expanded folder"] = function()
 				and cursor <= #view.rows
 				and _G.file_tree_deleted_handle:is_closing()
 		end, 20)
-	end)()]])
+	end)(...)]],
+		{ math.ceil(3000 * H.load_factor()) }
+	)
 	eq(pruned, true)
 end
 

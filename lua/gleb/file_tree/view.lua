@@ -908,12 +908,12 @@ function M.select_created(path, open_file)
 end
 
 ---@param root string
----@param state table<string, boolean>
+---@param values table<string, boolean>
 ---@param move_pairs FileTreeMovePair[]
 ---@return table<string, boolean>
-local function migrate_state(root, state, move_pairs)
+local function migrate_state(root, values, move_pairs)
 	local migrated = {}
-	for relative, value in pairs(state) do
+	for relative, value in pairs(values) do
 		local target = relative
 		for _, pair in ipairs(move_pairs) do
 			local old = pair.old:sub(#root + 2)

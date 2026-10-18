@@ -23,6 +23,16 @@ local function start()
 		local action = assert(catalog:get("file_tree.toggle"), "file_tree.toggle is not registered")
 		action.run(require("gleb.actions.context").capture())
 	]])
+	assert(
+		child.wait(
+			[[(function()
+				local view = require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()]
+				return view and #view.rows > 0
+			end)()]],
+			3000
+		),
+		"file tree did not draw its initial rows"
+	)
 end
 
 local T = H.child_set(child, start)
@@ -158,6 +168,17 @@ local function run_action(id)
 	]],
 		{ id }
 	)
+	if id == "file_tree.toggle" or id == "file_tree.reveal" then
+		local opened =
+			child.lua_get([[require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()] ~= nil]])
+		if opened then
+			assert(
+				child.wait(
+					[[#require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()].rows > 0]]
+				)
+			)
+		end
+	end
 end
 
 ---@param relative string
@@ -414,7 +435,7 @@ T["file-tree: Renaming a nest parent migrates its state"] = function()
 		return view.expanded_nests["internal/billing/bill.go"] == true
 			and vim.iter(view.rows):any(function(row) return row.label == "bill_test.go" end)
 	end)()]],
-			1600
+			1600 * H.load_factor()
 		),
 		"rename did not migrate nest state"
 	)
@@ -441,6 +462,10 @@ T["file-tree: Renaming a folder migrates nest state in every view"] = function()
 		local action = assert(require("gleb.actions").state.applicator.catalog:get("file_tree.toggle"))
 		action.run(require("gleb.actions.context").capture())
 	]])
+	assert(
+		child.wait([[#require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()].rows > 0]]),
+		"second file tree did not draw its initial rows"
+	)
 	focus_tree_row("invoice.go")
 	child.type_keys("za")
 	focus_tree_path("internal/billing")
