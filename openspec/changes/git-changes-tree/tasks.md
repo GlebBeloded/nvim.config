@@ -156,9 +156,9 @@ Scenarios: `git: Changes panel P pushes successfully`, `git: Changes panel P rep
 
 ## 7. Approved screens
 Scenarios: `git: Changes panel matches the approved render`, `git: Changes panel with the diff view matches the approved render`
-- [ ] 7.1 Write both `100x30` cases in `tests/screen/git/test_changes_screen.lua` against populated `billing`, compare byte-identical copies under `tests/screen/git/` of the approved real-glyph render text, and assert real extmark groups with the masks and legends from design.md; see them fail
-- [ ] 7.2 Adjust the panel and diff-view rendering, Tree-sitter colours and indent guides until both approved scenario bounds pass, then compare the real captures with `make colorize FILE=openspec/changes/git-changes-tree/design.md`
-- [ ] 7.3 Run `make test FILE=tests/screen/git/test_changes_screen.lua CASE="Changes panel"` and see it pass
+- [x] 7.1 Write both `100x30` cases in `tests/screen/git/test_changes_screen.lua` against populated `billing`, compare byte-identical copies under `tests/screen/git/` of the approved real-glyph render text, and assert real extmark groups with the masks and legends from design.md; see them fail
+- [x] 7.2 Adjust the panel and diff-view rendering, Tree-sitter colours and indent guides until both approved scenario bounds pass, then compare the real captures with `make colorize FILE=openspec/changes/git-changes-tree/design.md`
+- [x] 7.3 Run `make test FILE=tests/screen/git/test_changes_screen.lua CASE="Changes panel"` and see it pass
 
 ## 8. Gate
 - [x] 8.1 Run `make trace` and confirm every scenario of this change is tested with no orphans or duplicates
@@ -187,10 +187,8 @@ Scenarios: `git: Changes panel matches the approved render`, `git: Changes panel
 - Refresh line stats come from plumbing `git diff-index -M --numstat -z HEAD` beside status: porcelain `git diff` rewrites the index under `index.lock` in a stat-dirty checkout, racing panel stage and revert; its failure on an unborn HEAD yields no stats without a separate HEAD probe.
 - Screen legends name nvim-web-devicons' `DevIconTypeScript` for `.ts` icons: the installed plugin defines no `DevIconTs`, and both name the same `#519aba` icon colour.
 - Render unit cases expect the model's unchecked glyph `󰄱`: the `☐` they pinned is design.md's stand-in, and the renderer now draws each row's index state.
-- Task 7 screen comparison: keep Proposed B's stated full-width approved render text and colour mask (option 3), with byte-identical text copies under `tests/screen/git/`, because narrowing it would weaken the delta's bound and recapturing the current screen would violate the auditor Decision.
-
-## Stuck
-
-- Probe: the real `changes.review` entry point gives the declaration `Invoice` overlapping `@type` (`#a9b665`) and `@type.definition` (`#ddc7a1`) captures. Applying a window highlight namespace that links the latter to the former and preserves the diff's four `winhighlight` mappings changed only the fourteen `Invoice` cells across both panes in a 100x30 screen probe.
-- Attempt 1: restored the saved indent-guide, tabstop and editor-window isolation, then applied the type link through editor and diff window highlight namespaces. Neovim gives a highlight namespace precedence over `winhighlight`, so the diff header, folds and end-of-buffer colours regressed.
-- Attempt 2 (`stuck-attempt.diff`): added separate editor/diff namespaces, copied all four diff window mappings into the diff namespace, and saved/restored it through the diff view. The isolated probe remained exact, but the real screen case still lost the window remaps and drew `Invoice` as `#ddc7a1` with the diff background; the diff renderer's later namespace activation still wins on the production path.
+- Task 7 screen comparison follows the auditor's task 7 Decision: the panel columns keep the full approved masks and the byte-identical render text copies under `tests/screen/git/`, the editor pane equals a regular window, and Proposed B's scenario states that bound.
+- Screen cases check devicon cells against the glyph nvim-web-devicons defines for the masked `DevIcon*` group: design.md's `◆` stand-in is a devicon, and the mockup's README glyph for `notes.md` is not the `.md` icon the plugin and the approved project-tree render draw.
+- The regular-window reference puts a fixed-width 35-column scratch window where the panel goes: Proposed A captures it before the panel opens, Proposed B after closing the panel, showing the panel's own diff spec with `diff.view.show`, so only the panel's presence differs between the two screens.
+- Screen captures wait for gitsigns hunks and Tree-sitter parses, because Neovim 0.12 highlights asynchronously and both screens must carry the same plugin state.
+- A cursor move off the loading row drops its in-flight diff at once rather than when the debounce ends, so a late load never replaces another view of the same path.

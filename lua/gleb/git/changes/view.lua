@@ -291,10 +291,23 @@ request_diff = function(view, row, focus_right)
 	show_diff(view, row, view.generation, view.selection_generation, focus_right)
 end
 
+--- Drop an in-flight diff once the cursor leaves its row: waiting for the debounce
+--- would let the stale load land and replace a view showing the same path.
+---@param view ChangesView
+---@param row ChangesRow?
+---@return nil
+local function drop_pending_diff(view, row)
+	if view.diff_pending_path and (not row or row.path ~= view.diff_pending_path) then
+		view.selection_generation = view.selection_generation + 1
+		view.diff_pending_path = nil
+	end
+end
+
 ---@param view ChangesView
 ---@return nil
 local function schedule_diff(view)
 	local row = view.rows[vim.api.nvim_win_get_cursor(view.win)[1]]
+	drop_pending_diff(view, row)
 	view.diff_timer:stop()
 	view.diff_timer:start(
 		DIFF_DEBOUNCE_MS,

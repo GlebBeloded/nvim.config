@@ -208,7 +208,7 @@ After a 50 ms debounce, the panel SHALL asynchronously build a full `gleb.diff.v
 
 #### Scenario: Changes panel with the diff view matches the approved render
 - **WHEN** a `100x30` screen edits `internal/billing/invoice.go` of a fresh copy of the `billing` fixture and the `changes.review` action runs
-- **THEN** screen rows 2-29 match design.md "Proposed B — changes panel with the diff view", text and colour mask
+- **THEN** columns 1-36 of screen rows 2-29 match design.md "Proposed B — changes panel with the diff view", text and colour mask, and columns 37-100 equal the same diff shown in a regular 64-column editor window
 
 #### Scenario: Changes panel drops a stale diff result
 - **WHEN** loading `a.txt` from HEAD is delayed, the panel cursor moves to `b.txt`, and both asynchronous loads finish

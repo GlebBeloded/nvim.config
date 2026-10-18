@@ -570,6 +570,21 @@ end
 
 T["git: Changes panel close preserves another diff view"] = function()
 	local root = F.copy("dirty", vim.fn.tempname() .. "/dirty")
+	-- Hold the panel's initial a.txt load so it lands after the cursor left a.txt.
+	child.lua([[
+		HeldDiffLoads = {}
+		local git = require("gleb.git.changes.git")
+		local load_diff = git.load_diff
+		git.load_diff = function(load_root, row, callback)
+			load_diff(load_root, row, function(...)
+				if vim.fs.basename(row.path) == "a.txt" then
+					table.insert(HeldDiffLoads, { callback = callback, args = vim.F.pack_len(...) })
+				else
+					callback(...)
+				end
+			end)
+		end
+	]])
 	open_changes(root, "a.txt")
 	local handles = child.lua_get([[(function()
 		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
@@ -581,9 +596,14 @@ T["git: Changes panel close preserves another diff view"] = function()
 		vim.api.nvim_set_current_win(panel.win)
 		return { other_left = other.left_win, other_right = other.right_win }
 	end)()]])
+	eq(child.wait("#HeldDiffLoads == 1", ASYNC_MS), true)
 	observe_show()
 	cursor_before("b.txt")
 	child.type_keys("j")
+	child.lua([[
+		local held = HeldDiffLoads[1]
+		held.callback(vim.F.unpack_len(held.args))
+	]])
 	wait_for_shows(1)
 	local owned = child.lua_get([[(function()
 		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
