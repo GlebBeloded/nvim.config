@@ -37,15 +37,24 @@ Full `make check` with only the helper fix (loop round104, 2026-10-18): that is 
 	end
 ```
 
-- Find why the typed query does not select `file_tree.open` in that case (the test's keys, the picker's input
-  handling, or the palette's matching) and fix the cause. The case's assertions stay as they are.
+- Make multi-word Find Action queries fuzzy-match the combined `Category Title` value so `project open` selects
+  `file_tree.open`; keep single-word title, category, and alias matching unchanged. Add the Find Action spec delta
+  and matcher regression coverage. The existing file-tree case's input and assertions stay as they are.
 
 ## Impact
 
-- tests/helpers.lua; the Find Action palette or the case's input path, whichever the probe shows.
+- `tests/helpers.lua` rejects RPC nil sentinels while waiting; `lua/gleb/find_action/items.lua` gains combined
+  category-title matching, covered in `tests/unit/find-action/test_items.lua` and the unchanged real-picker input in
+  `tests/integration/file-tree/test_project_tree.lua`.
 - `file-tree: Project tree keys come from the keymap file` still holds, now with a real wait.
+- `file-tree: Requirement: Project tree open and close keys` still holds because the wait fix changes only test
+  readiness handling, not any project-tree open or close action.
+- `file-tree: Requirement: File tree nest actions` still holds because the wait fix changes only test readiness
+  handling, not any nest action.
 - Every case using `child.wait` keeps passing with the real wait; a case that newly fails is fixed at its cause,
   never by loosening the wait or the assertion.
+- No plugin dependency or core keymap changes. Module layout, load order, plugin wiring, and picker rendering are out
+  of scope.
 
 ## Decision (auditor, 2026-10-18, review pass 1)
 

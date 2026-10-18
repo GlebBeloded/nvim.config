@@ -77,4 +77,40 @@ T["find-action: Query matches all searchable fields"] = function()
 	)
 end
 
+T["find-action: Multi-word query spans category and title"] = function()
+	eq(
+		child.lua_get([[
+			(function()
+				local actions = {
+					{
+						id = "file_tree.open",
+						title = "Open",
+						category = "Project",
+						aliases = { "browse" },
+						run = function() end,
+					},
+					{ id = "edit.open", title = "Open", category = "Edit", run = function() end },
+				}
+				local ids = function(query)
+					return vim.tbl_map(function(action) return action.id end, FindActionItems.match(actions, query))
+				end
+				return {
+					combined = ids("project open"),
+					reversed = ids("open project"),
+					title = ids("open"),
+					category = ids("project"),
+					alias = ids("browse"),
+				}
+			end)()
+		]]),
+		{
+			combined = { "file_tree.open" },
+			reversed = {},
+			title = { "file_tree.open", "edit.open" },
+			category = { "file_tree.open" },
+			alias = { "file_tree.open" },
+		}
+	)
+end
+
 return T

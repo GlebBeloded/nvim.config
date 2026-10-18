@@ -207,7 +207,8 @@ function M.new_child()
 
 	function child.wait(expr, timeout)
 		local ok = vim.wait(timeout or 2000, function()
-			return child.lua_get(expr) and true or false
+			local value = child.lua_get(expr)
+			return value ~= nil and value ~= vim.NIL and value ~= false
 		end, 20)
 		return ok
 	end

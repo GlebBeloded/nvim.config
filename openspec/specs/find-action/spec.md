@@ -40,7 +40,7 @@ Each catalog action row SHALL show a standalone Title Case title, two spaces bef
 - **THEN** every known shortcut shows its corresponding physical label instead of raw Vim notation
 
 ### Requirement: Action ordering and matching
-With an empty query, the palette SHALL list recently used actions saved across sessions before curated actions, retaining at most the last 20 action ids. Recent history SHALL record catalog actions run from the palette or a configured shortcut. With a query, the palette SHALL fuzzy-match action titles, categories, and aliases. Section rows SHALL be display-only; after opening or replacing results, the first actionable match SHALL be current.
+With no query, the palette SHALL put persisted recent actions before curated actions, most recent first, retaining at most 20 ids. It SHALL record catalog actions run from the palette or a configured shortcut. Queries SHALL fuzzy-match titles, categories, aliases, and, when multi-word, combined `<Category> <Title>` in that order; separate-field matching SHALL remain unchanged. Section rows SHALL be display-only. On open or replacement, the first actionable match SHALL be current.
 
 #### Scenario: Empty query puts recent actions first
 - **WHEN** catalog actions are run from a configured shortcut and from the palette, then the palette is reopened with no query
@@ -61,6 +61,10 @@ With an empty query, the palette SHALL list recently used actions saved across s
 #### Scenario: Query matches all searchable fields
 - **WHEN** a query fuzzy-matches an action title, category, or alias
 - **THEN** that action appears in the matching results
+
+#### Scenario: Multi-word query spans category and title
+- **WHEN** `project open` is queried for an action titled `Open` in category `Project`
+- **THEN** that action appears by matching category before title, the reverse query gains no combined-field match, and existing single-word title, category, and alias matches are unchanged
 
 #### Scenario: Selection skips section rows
 - **WHEN** the palette opens or Show hidden or a query makes a section row the first match
