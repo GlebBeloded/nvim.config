@@ -1,6 +1,7 @@
 ## Why
 
 Kind: feature
+Adopt: loop/tree-diff-cutover-20261018-235135
 Depends: git-changes-tree
 
 The queue builds an IntelliJ-style project tree (`file-tree-view` … `file-tree-ignored`), a commit tree (`git-changes-tree`) and an own diff view (`diff-engine-*`, `diff-view*`), all reachable only from Find Action so the old flows keep working meanwhile. The user decided to own the UI ("is diffbanding perfect? I want to own ui 100%") and to work as in IntelliJ ("I'm used to Idea", "I like IDEA IDE diff more"). This change makes the new UIs the default on the existing keys and removes the three plugins they replace. It is a breaking change: neo-tree, differ and codediff behaviour goes away.
@@ -74,3 +75,11 @@ The queue builds an IntelliJ-style project tree (`file-tree-view` … `file-tree
 - **Directory buffers open the sidebar,** not a tree in the current window as neo-tree's `open_current` did: there is one kind of tree window.
 - **nui.nvim stays** for the commit popup; plenary and devicons stay for their other users.
 - **Requirements that lose a scenario are replaced** (removed and added under a new name) because OpenSpec refuses a MODIFIED block that drops one; surviving scenario titles are kept so their tests keep their names.
+
+## Rejected run
+Run on `loop/tree-diff-cutover-20261018-235135` was rejected by the judge:
+- removes and re-adds requirement 'Tabline offset for the file tree' as 'Tabline offset for the project tree' (openspec/changes/tree-diff-cutover/specs/bufferline/spec.md): check its bounds
+- removes and re-adds requirement 'Project tree close-if-last isolation' as 'Project tree and changes panel close-if-last isolation' (openspec/changes/tree-diff-cutover/specs/file-tree/spec.md): check its bounds
+- removes and re-adds requirement 'Pending file tree work does not override a toggle' as 'Pending panel work does not override a toggle' (openspec/changes/tree-diff-cutover/specs/keymaps/spec.md): check its bounds
+- stuck: tasks.md `## Stuck` (earlier attempts, kept on the branch: not quoted here)
+- note: loop: sandbox: Lume still reports nvim-e2e unknown while its lume run process is alive, after one restart; giving up (/Users/hlebbeladzed/.cache/nvim-e2e-sandbox/vm.log)
