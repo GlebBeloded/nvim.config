@@ -41,9 +41,9 @@ Scenarios: `file-tree: Lua nesting rule nests by function`, `file-tree: Failing 
 
 Scenarios: `file-tree: Default nesting rules nest Go files`, `file-tree: Default nesting rules nest web files`, `file-tree: Default nesting rules nest Python and Rust files`, `file-tree: Default nesting rules nest project files`
 
-- [ ] 3.1 Write the four cases in `tests/unit/file-tree/test_nesting.lua`, loading the real `settings/file_tree.json` through `require("gleb.file_tree.settings").load()`, then run `make test FILE=tests/unit/file-tree/test_nesting.lua CASE="Default nesting rules nest Go files"` and see it fail
-- [ ] 3.2 Complete `lua/gleb/file_tree/settings.lua` validation and add `settings/file_tree.json` with Decision 5's ordered 16 rules, `nesting.enabled = true` and `ignore = []`
-- [ ] 3.3 Run each scenario with `make test FILE=tests/unit/file-tree/test_nesting.lua CASE="<scenario title>"` and see it pass
+- [x] 3.1 Write the four cases in `tests/unit/file-tree/test_nesting.lua`, loading the real `settings/file_tree.json` through `require("gleb.file_tree.settings").load()`, then run `make test FILE=tests/unit/file-tree/test_nesting.lua CASE="Default nesting rules nest Go files"` and see it fail
+- [x] 3.2 Complete `lua/gleb/file_tree/settings.lua` validation and add `settings/file_tree.json` with Decision 5's ordered 16 rules, `nesting.enabled = true` and `ignore = []`
+- [x] 3.3 Run each scenario with `make test FILE=tests/unit/file-tree/test_nesting.lua CASE="<scenario title>"` and see it pass
 
 ## 4a. Rows, view state and refresh
 
@@ -121,3 +121,4 @@ Scenarios: `file-tree: File tree nests match the approved render`
 
 - Compiled Lua rules use a function-valued `lua` field so the model cache can exercise real rule execution before task 2 adds module loading and error handling.
 - A malformed Lua-rule result skips that whole rule and warns once, preventing a partially valid user table from making order-dependent claims.
+- Omitted settings fields default to enabled nesting with empty rule and ignore lists, preserving Decision 1's enabled-by-default contract without inventing rules.

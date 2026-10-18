@@ -1,0 +1,24 @@
+{
+  "nesting": {
+    "enabled": true,
+    "rules": [
+      { "parent": "(.+)%.go", "children": ["${capture}_test%.go", "${capture}_mock%.go", "${capture}_string%.go"] },
+      { "parent": "(.+)%.proto", "children": ["${capture}%.pb%.go", "${capture}_grpc%.pb%.go"] },
+      { "parent": "go%.mod", "children": ["go%.sum"] },
+      { "parent": "go%.work", "children": ["go%.work%.sum"] },
+      { "parent": "(.+)%.ts", "children": ["${capture}%.test%.ts", "${capture}%.spec%.ts", "${capture}%.d%.ts", "${capture}%.js", "${capture}%.d%.ts%.map"] },
+      { "parent": "(.+)%.tsx", "children": ["${capture}%.test%.tsx", "${capture}%.stories%.tsx", "${capture}%.module%.css"] },
+      { "parent": "(.+)%.js", "children": ["${capture}%.js%.map", "${capture}%.min%.js", "${capture}%.d%.ts"] },
+      { "parent": "package%.json", "children": ["package%-lock%.json", "yarn%.lock", "pnpm%-lock%.yaml", "bun%.lock", "bun%.lockb", "%.npmrc", "%.nvmrc"] },
+      { "parent": "tsconfig%.json", "children": ["tsconfig%..+%.json"] },
+      { "parent": "(.+)%.py", "children": ["${capture}%.pyi", "test_${capture}%.py", "${capture}_test%.py"] },
+      { "parent": "pyproject%.toml", "children": ["uv%.lock", "poetry%.lock", "pdm%.lock", "requirements.*%.txt", "setup%.cfg", "setup%.py", "%.python%-version"] },
+      { "parent": "Cargo%.toml", "children": ["Cargo%.lock", "rust%-toolchain%.toml", "rustfmt%.toml", "%.rustfmt%.toml", "clippy%.toml"] },
+      { "parent": "(.+)%.lua", "children": ["${capture}_spec%.lua"] },
+      { "parent": "%.gitignore", "children": ["%.gitattributes", "%.gitmodules"] },
+      { "parent": "README.*", "children": ["CHANGELOG.*", "LICENSE.*"] },
+      { "parent": "Makefile", "children": [".+%.mk"] }
+    ]
+  },
+  "ignore": []
+}

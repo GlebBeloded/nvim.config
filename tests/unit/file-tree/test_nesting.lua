@@ -1,4 +1,5 @@
 local MiniTest = require("mini.test")
+local H = require("tests.helpers")
 
 local eq = MiniTest.expect.equality
 
@@ -9,61 +10,9 @@ local function entries(names)
 end
 
 local function default_rules()
-	return {
-		{ parent = "(.+)%.go", children = { "${capture}_test%.go", "${capture}_mock%.go", "${capture}_string%.go" } },
-		{ parent = "(.+)%.proto", children = { "${capture}%.pb%.go", "${capture}_grpc%.pb%.go" } },
-		{ parent = "go%.mod", children = { "go%.sum" } },
-		{ parent = "go%.work", children = { "go%.work%.sum" } },
-		{
-			parent = "(.+)%.ts",
-			children = {
-				"${capture}%.test%.ts",
-				"${capture}%.spec%.ts",
-				"${capture}%.d%.ts",
-				"${capture}%.js",
-				"${capture}%.d%.ts%.map",
-			},
-		},
-		{
-			parent = "(.+)%.tsx",
-			children = { "${capture}%.test%.tsx", "${capture}%.stories%.tsx", "${capture}%.module%.css" },
-		},
-		{ parent = "(.+)%.js", children = { "${capture}%.js%.map", "${capture}%.min%.js", "${capture}%.d%.ts" } },
-		{
-			parent = "package%.json",
-			children = {
-				"package%-lock%.json",
-				"yarn%.lock",
-				"pnpm%-lock%.yaml",
-				"bun%.lock",
-				"bun%.lockb",
-				"%.npmrc",
-				"%.nvmrc",
-			},
-		},
-		{ parent = "tsconfig%.json", children = { "tsconfig%..+%.json" } },
-		{ parent = "(.+)%.py", children = { "${capture}%.pyi", "test_${capture}%.py", "${capture}_test%.py" } },
-		{
-			parent = "pyproject%.toml",
-			children = {
-				"uv%.lock",
-				"poetry%.lock",
-				"pdm%.lock",
-				"requirements.*%.txt",
-				"setup%.cfg",
-				"setup%.py",
-				"%.python%-version",
-			},
-		},
-		{
-			parent = "Cargo%.toml",
-			children = { "Cargo%.lock", "rust%-toolchain%.toml", "rustfmt%.toml", "%.rustfmt%.toml", "clippy%.toml" },
-		},
-		{ parent = "(.+)%.lua", children = { "${capture}_spec%.lua" } },
-		{ parent = "%.gitignore", children = { "%.gitattributes", "%.gitmodules" } },
-		{ parent = "README.*", children = { "CHANGELOG.*", "LICENSE.*" } },
-		{ parent = "Makefile", children = { ".+%.mk" } },
-	}
+	local path = vim.fs.joinpath(H.root, "settings", "file_tree.json")
+	local settings = require("gleb.file_tree.settings").load(path)
+	return settings.nesting.rules
 end
 
 local T = MiniTest.new_set()
@@ -196,6 +145,140 @@ T["file-tree: Folders never nest"]["excludes directory children"] = function()
 	})
 
 	eq(result, {})
+end
+
+T["file-tree: Default nesting rules nest Go files"] = MiniTest.new_set()
+
+T["file-tree: Default nesting rules nest Go files"]["groups Go companions"] = function()
+	local nesting = require("gleb.file_tree.nesting")
+	local result = nesting.nest(
+		"/project",
+		entries({
+			"invoice.go",
+			"invoice_test.go",
+			"invoice_mock.go",
+			"invoice_string.go",
+			"api.proto",
+			"api.pb.go",
+			"api_grpc.pb.go",
+			"go.mod",
+			"go.sum",
+			"go.work",
+			"go.work.sum",
+		}),
+		default_rules()
+	)
+
+	eq(result, {
+		["api.proto"] = { "api.pb.go", "api_grpc.pb.go" },
+		["go.mod"] = { "go.sum" },
+		["go.work"] = { "go.work.sum" },
+		["invoice.go"] = { "invoice_mock.go", "invoice_string.go", "invoice_test.go" },
+	})
+end
+
+T["file-tree: Default nesting rules nest web files"] = MiniTest.new_set()
+
+T["file-tree: Default nesting rules nest web files"]["groups web companions"] = function()
+	local nesting = require("gleb.file_tree.nesting")
+	local result = nesting.nest(
+		"/project",
+		entries({
+			"price.ts",
+			"price.test.ts",
+			"price.spec.ts",
+			"price.d.ts",
+			"price.js",
+			"price.d.ts.map",
+			"price.js.map",
+			"cart.tsx",
+			"cart.test.tsx",
+			"cart.stories.tsx",
+			"cart.module.css",
+			"util.js",
+			"util.min.js",
+			"util.d.ts",
+			"package.json",
+			"package-lock.json",
+			"yarn.lock",
+			".npmrc",
+			".nvmrc",
+			"tsconfig.json",
+			"tsconfig.build.json",
+		}),
+		default_rules()
+	)
+
+	eq(result, {
+		["cart.tsx"] = { "cart.module.css", "cart.stories.tsx", "cart.test.tsx" },
+		["package.json"] = { ".npmrc", ".nvmrc", "package-lock.json", "yarn.lock" },
+		["price.ts"] = { "price.d.ts", "price.d.ts.map", "price.js", "price.js.map", "price.spec.ts", "price.test.ts" },
+		["tsconfig.json"] = { "tsconfig.build.json" },
+		["util.js"] = { "util.d.ts", "util.min.js" },
+	})
+end
+
+T["file-tree: Default nesting rules nest Python and Rust files"] = MiniTest.new_set()
+
+T["file-tree: Default nesting rules nest Python and Rust files"]["groups Python and Rust companions"] = function()
+	local nesting = require("gleb.file_tree.nesting")
+	local result = nesting.nest(
+		"/project",
+		entries({
+			"money.py",
+			"money.pyi",
+			"test_money.py",
+			"money_test.py",
+			"pyproject.toml",
+			"uv.lock",
+			"requirements-dev.txt",
+			"setup.cfg",
+			"setup.py",
+			".python-version",
+			"Cargo.toml",
+			"Cargo.lock",
+			"rust-toolchain.toml",
+			"rustfmt.toml",
+			".rustfmt.toml",
+			"clippy.toml",
+		}),
+		default_rules()
+	)
+
+	eq(result, {
+		["Cargo.toml"] = { ".rustfmt.toml", "Cargo.lock", "clippy.toml", "rust-toolchain.toml", "rustfmt.toml" },
+		["money.py"] = { "money.pyi", "money_test.py", "test_money.py" },
+		["pyproject.toml"] = { ".python-version", "requirements-dev.txt", "setup.cfg", "setup.py", "uv.lock" },
+	})
+end
+
+T["file-tree: Default nesting rules nest project files"] = MiniTest.new_set()
+
+T["file-tree: Default nesting rules nest project files"]["groups project companions"] = function()
+	local nesting = require("gleb.file_tree.nesting")
+	local result = nesting.nest(
+		"/project",
+		entries({
+			"init.lua",
+			"init_spec.lua",
+			".gitignore",
+			".gitattributes",
+			".gitmodules",
+			"README.md",
+			"CHANGELOG.md",
+			"LICENSE",
+			"Makefile",
+			"rules.mk",
+		}),
+		default_rules()
+	)
+
+	eq(result, {
+		[".gitignore"] = { ".gitattributes", ".gitmodules" },
+		["init.lua"] = { "init_spec.lua" },
+		Makefile = { "rules.mk" },
+		["README.md"] = { "CHANGELOG.md", "LICENSE" },
+	})
 end
 
 T["file-tree: Default nesting rules meet the large-folder bound"] = MiniTest.new_set()
