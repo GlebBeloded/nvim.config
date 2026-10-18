@@ -84,7 +84,27 @@ local function add_upstream(dir)
 	H.git(dir, { "push", "-q", "-u", "origin", "HEAD" })
 end
 
---- Stage a change, stub the AI popup to confirm `message`, and press the real mapping.
+--- Dir with an executable `ollama` stub.
+---@return string dir
+local function fake_ollama()
+	local dir = vim.fn.tempname()
+	vim.fn.mkdir(dir, "p")
+	local script = vim.fs.joinpath(dir, "ollama")
+	vim.fn.writefile({ "#!/bin/sh", "cat >/dev/null", "printf 'generated\\n'" }, script)
+	vim.fn.setfperm(script, "rwxr-xr-x")
+	return dir
+end
+
+--- First line of the nui border float (the title row).
+---@return string
+local function popup_title()
+	return child.lua_get([[vim.iter(vim.api.nvim_list_wins())
+		:filter(function(win) return win ~= vim.api.nvim_get_current_win() and vim.api.nvim_win_get_config(win).relative ~= "" end)
+		:map(function(win) return vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(win), 0, 1, false)[1] end)
+		:find(function(line) return line:find("╭", 1, true) ~= nil end) or ""]])
+end
+
+--- Stage a change, open the real AI popup, and confirm `message`.
 ---@param dir string
 ---@param message string
 local function commit_from_changes(dir, message)
@@ -93,18 +113,18 @@ local function commit_from_changes(dir, message)
 	H.git(dir, { "add", "a.txt" })
 	open_changes(dir)
 	H.record_notify(child)
-	child.lua(
-		[[CommitMessage = ...
-CommitRoot = nil
-require("gleb.git.ai_commit").show_commit_input = function(callback, opts)
-	CommitRoot = opts and opts.root
-	callback(CommitMessage)
-end]],
-		{ message }
-	)
+	child.lua([[vim.env.PATH = ... .. ":" .. vim.env.PATH]], { fake_ollama() })
 	child.cmd("cd " .. vim.fn.fnameescape(vim.fs.dirname(dir)))
 	child.type_keys("gc")
-	eq(child.lua_get("CommitRoot"), vim.fs.normalize(dir))
+	eq(
+		vim.wait(ASYNC_MS, function()
+			return popup_title():find(" Commit Message ", 1, true) ~= nil
+		end, 20),
+		true
+	)
+	local win = child.api.nvim_get_current_win()
+	child.api.nvim_buf_set_lines(child.api.nvim_win_get_buf(win), 0, -1, false, { message })
+	child.type_keys("<CR>")
 end
 
 ---@param dir string
@@ -275,14 +295,21 @@ T["git: Changes panel gc commits confirmed message"] = function()
 
 	eq(wait_notification("Committed:"), true)
 	eq(notifications_with("Committed:"), { { msg = "Committed: feat: x", level = vim.log.levels.INFO } })
-	eq(child.lua_get("CommitRoot"), vim.fs.normalize(dir))
 	eq(last_subject(dir), "feat: x")
 
 	vim.fn.writefile({ "three" }, vim.fs.joinpath(dir, "a.txt"))
 	H.git(dir, { "add", "a.txt" })
-	child.lua([[Notifications, CommitMessage, CommitRoot = {}, "fix: it's $HOME", nil]])
+	child.lua([[Notifications = {}]])
 	child.type_keys("gc")
-	eq(child.lua_get("CommitRoot"), vim.fs.normalize(dir))
+	eq(
+		vim.wait(ASYNC_MS, function()
+			return popup_title():find(" Commit Message ", 1, true) ~= nil
+		end, 20),
+		true
+	)
+	local win = child.api.nvim_get_current_win()
+	child.api.nvim_buf_set_lines(child.api.nvim_win_get_buf(win), 0, -1, false, { "fix: it's $HOME" })
+	child.type_keys("<CR>")
 	eq(wait_notification("Committed:"), true)
 	eq(last_subject(dir), "fix: it's $HOME")
 end
