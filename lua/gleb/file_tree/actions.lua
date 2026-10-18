@@ -288,8 +288,14 @@ local function project_delete()
 	require("gleb.file_tree.ops").delete()
 end
 
-local function project_copy()
-	require("gleb.file_tree.ops").copy()
+---@param ctx gleb.ActionContext
+local function project_copy(ctx)
+	require("gleb.file_tree.ops").copy(ctx)
+end
+
+---@param ctx gleb.ActionContext
+local function project_cut(ctx)
+	require("gleb.file_tree.ops").cut(ctx)
 end
 
 local function project_paste()
@@ -340,7 +346,16 @@ local actions = {
 		title = "Copy",
 		category = "Project",
 		ft = "gleb-file-tree",
+		modes = { "n", "x" },
 		run = project_copy,
+	},
+	{
+		id = "file_tree.cut",
+		title = "Cut",
+		category = "Project",
+		ft = "gleb-file-tree",
+		modes = { "n", "x" },
+		run = project_cut,
 	},
 	{
 		id = "file_tree.paste",

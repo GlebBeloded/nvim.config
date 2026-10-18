@@ -323,21 +323,75 @@ function M.rename()
 	})
 end
 
---- Copy the selected project-tree entry into the tree clipboard.
----@return nil
-function M.copy()
-	local _, row = require("gleb.file_tree.view").selected_path()
-	if not row or row.kind == "root" then
-		return
+---@param ctx? gleb.ActionContext
+---@return string? root
+---@return string[] selected
+local function selected_paths(ctx)
+	local view_module = require("gleb.file_tree.view")
+	local root, row = view_module.selected_path()
+	if not root or not row then
+		return nil, {}
 	end
-	M.state.clipboard = { mode = "copy", paths = { row.path } }
+	if not ctx or not ctx.selection then
+		return root, row.kind == "root" and {} or { row.path }
+	end
+
+	local view = view_module.state.by_tab[vim.api.nvim_get_current_tabpage()]
+	local selected = {}
+	if not view then
+		return root, selected
+	end
+	for line = ctx.selection.start[1], ctx.selection.finish[1] do
+		local selected_row = view.rows[line]
+		if selected_row and selected_row.kind ~= "root" then
+			selected[#selected + 1] = selected_row.path
+		end
+	end
+	return root, paths.dedupe(selected)
 end
 
---- Paste copied project-tree entries into the selected folder.
+---@param mode "copy"|"cut"
+---@param ctx? gleb.ActionContext
+local function set_clipboard(mode, ctx)
+	local _, selected = selected_paths(ctx)
+	if #selected == 0 then
+		return
+	end
+	M.state.clipboard = { mode = mode, paths = selected }
+end
+
+--- Copy the selected project-tree entries into the tree clipboard.
+---@param ctx? gleb.ActionContext
+---@return nil
+function M.copy(ctx)
+	set_clipboard("copy", ctx)
+end
+
+--- Cut the selected project-tree entries into the tree clipboard.
+---@param ctx? gleb.ActionContext
+---@return nil
+function M.cut(ctx)
+	set_clipboard("cut", ctx)
+end
+
+---@param root string
+---@param source string
+---@param target_folder string
+---@return boolean
+local function refuses_self_paste(root, source, target_folder)
+	local stat = vim.uv.fs_lstat(source)
+	if stat and stat.type == "directory" and paths.is_inside(source, target_folder) then
+		vim.notify("Cannot paste " .. source:sub(#root + 2) .. " into itself", vim.log.levels.ERROR)
+		return true
+	end
+	return false
+end
+
+--- Paste copied or cut project-tree entries into the selected folder.
 ---@return nil
 function M.paste()
 	local clipboard = M.state.clipboard
-	if not clipboard or clipboard.mode ~= "copy" then
+	if not clipboard then
 		return
 	end
 	local view = require("gleb.file_tree.view")
@@ -346,6 +400,22 @@ function M.paste()
 		return
 	end
 	local target_folder = paths.target_folder(root, row)
+	for _, source in ipairs(clipboard.paths) do
+		if refuses_self_paste(root, source, target_folder) then
+			return
+		end
+	end
+
+	if clipboard.mode == "cut" then
+		local move_pairs = vim.tbl_map(function(source)
+			return { old = source, new = vim.fs.joinpath(target_folder, vim.fs.basename(source)) }
+		end, clipboard.paths)
+		if M.move(move_pairs) then
+			M.state.clipboard = nil
+		end
+		return
+	end
+
 	for _, source in ipairs(clipboard.paths) do
 		local target = vim.fs.joinpath(target_folder, vim.fs.basename(source))
 		if vim.uv.fs_lstat(target) then

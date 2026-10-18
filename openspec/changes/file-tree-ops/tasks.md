@@ -72,9 +72,9 @@ Scenarios: `file-tree: Project tree c and p copy a file into another folder`, `f
 
 ## 6b. Cut and move safety
 Scenarios: `file-tree: Project tree x and p move a file like a rename`, `file-tree: Project tree refuses to paste a folder into itself`, `file-tree: Project tree Visual c copies every selected row`, `file-tree: Project tree cut refuses an existing target name`, `file-tree: Project tree cut into its current parent is a no-op`
-- [ ] 6b.1 Write the tests in `tests/integration/file-tree/test_project_ops.lua`, drive normal and Visual `x`, `c`, `p` on populated trees, and see them fail
-- [ ] 6b.2 Route cuts through `ops.move`, reject self-paste and existing targets, make same-parent cuts no-ops, deduplicate Visual selections and clear cut state after paste
-- [ ] 6b.3 Run `make test FILE=tests/integration/file-tree/test_project_ops.lua CASE="Project tree"` and see them pass
+- [x] 6b.1 Write the tests in `tests/integration/file-tree/test_project_ops.lua`, drive normal and Visual `x`, `c`, `p` on populated trees, and see them fail
+- [x] 6b.2 Route cuts through `ops.move`, reject self-paste and existing targets, make same-parent cuts no-ops, deduplicate Visual selections and clear cut state after paste
+- [x] 6b.3 Run `make test FILE=tests/integration/file-tree/test_project_ops.lua CASE="Project tree"` and see them pass
 
 ## 6c. Symlinks, missing clipboard entries and refresh
 Scenarios: `file-tree: Project tree folder copy recreates symlinks`, `file-tree: Project tree paste continues after a missing clipboard path`, `file-tree: Project tree R picks up changes at once`, `file-tree: Project tree R starts at least one git status run`, `file-tree: Project tree R preserves another tab's tree state`

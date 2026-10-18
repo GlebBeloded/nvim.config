@@ -257,6 +257,13 @@ local function copy(relative)
 end
 
 ---@param relative string
+local function cut(relative)
+	focus_tree_path(relative)
+	eq(child.lua_get([[vim.fn.maparg("x", "n", false, true).desc]]), "Project: Cut")
+	child.type_keys("x", "<Esc>")
+end
+
+---@param relative string
 local function paste(relative)
 	focus_tree_path(relative)
 	eq(child.lua_get([[vim.fn.maparg("p", "n", false, true).desc]]), "Project: Paste")
@@ -1033,6 +1040,81 @@ T["file-tree: Project tree folder copy preflights before writing"] = function()
 	assert(wait_for_path("money_copy/money.go"), "preflighted folder copy did not appear")
 	eq(read_file("money/money_test.go"), existing)
 	eq(read_file("money_copy/money_test.go"), read_file("internal/money/money_test.go"))
+end
+
+T["file-tree: Project tree x and p move a file like a rename"] = function()
+	open_billing()
+	expand("internal/money")
+	local buffer = load_buffer("internal/billing/discount.go")
+	local source = vim.fs.joinpath(tree_root, "internal/billing/discount.go")
+	local target = vim.fs.joinpath(tree_root, "internal/money/discount.go")
+
+	cut("internal/billing/discount.go")
+	paste("internal/money")
+
+	assert(wait_for_path("internal/money/discount.go"), "cut file did not move")
+	eq(vim.uv.fs_stat(source), nil)
+	eq(child.lua_get([[vim.api.nvim_buf_get_name(...)]], { buffer }), target)
+	eq(child.lua_get([[require("gleb.file_tree.ops").state.clipboard]]), vim.NIL)
+end
+
+T["file-tree: Project tree refuses to paste a folder into itself"] = function()
+	local notifications = H.record_notify(child)
+	open_billing()
+
+	cut("internal")
+	paste("internal/billing")
+
+	eq(vim.uv.fs_stat(vim.fs.joinpath(tree_root, "internal/billing/invoice.go")) ~= nil, true)
+	local notification = notifications()[#notifications()]
+	eq(notification.msg, "Cannot paste internal into itself")
+	eq(notification.level, vim.log.levels.ERROR)
+end
+
+T["file-tree: Project tree Visual c copies every selected row"] = function()
+	open_billing()
+	expand("internal/money")
+	focus_tree_path("internal/billing/discount.go")
+	eq(child.lua_get([[vim.fn.maparg("c", "x", false, true).desc]]), "Project: Copy")
+	child.type_keys("V2j")
+	eq(child.fn.mode(1), "V")
+	child.type_keys("c")
+	child.type_keys("<Esc>")
+	paste("internal/money")
+
+	assert(wait_for_path("internal/money/discount.go"), "first selected file was not copied")
+	assert(wait_for_path("internal/money/invoice.go"), "last selected file was not copied")
+end
+
+T["file-tree: Project tree cut refuses an existing target name"] = function()
+	local notifications = H.record_notify(child)
+	open_billing()
+	expand("internal/money")
+	local source_content = read_file("internal/billing/invoice.go")
+	local target_content = "existing invoice"
+	vim.fn.writefile({ target_content }, vim.fs.joinpath(tree_root, "internal/money/invoice.go"))
+
+	cut("internal/billing/invoice.go")
+	paste("internal/money")
+
+	eq(read_file("internal/billing/invoice.go"), source_content)
+	eq(read_file("internal/money/invoice.go"), target_content)
+	local notification = notifications()[#notifications()]
+	eq(notification.msg, "Already exists: internal/money/invoice.go")
+	eq(notification.level, vim.log.levels.ERROR)
+end
+
+T["file-tree: Project tree cut into its current parent is a no-op"] = function()
+	open_billing()
+	attach_rename_recorder()
+	local expected = read_file("internal/billing/invoice.go")
+
+	cut("internal/billing/invoice.go")
+	paste("internal/billing")
+
+	eq(read_file("internal/billing/invoice.go"), expected)
+	eq(child.lua_get([[RenameRequestCount]]), 0)
+	eq(child.lua_get([[require("gleb.file_tree.ops").state.clipboard]]), vim.NIL)
 end
 
 return T
