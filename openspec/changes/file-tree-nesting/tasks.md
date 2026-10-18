@@ -117,6 +117,13 @@ Scenarios: `file-tree: File tree nests match the approved render`
 - [ ] 7.2 Make the render match, compare `make render CASE=nest_proposed` with `make colorize FILE=openspec/changes/file-tree-nesting/design.md`, then run the same targeted test and see it pass
 - [ ] 7.3 Run `make check`
 
+## Stuck
+
+- Task 7 is stuck after two production attempts; the saved second attempt is `/Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/a0b4f5d0-bdc2-49bc-ba8a-7ff5dc0a2759/stuck-attempt.diff`.
+- Probe: the selected `internal/billing` row was a valid expanded directory with `expanded = { internal = true, ["internal/billing"] = true }`; opening `cmd/server`, `web`, and `src` preserved all four expansion keys and kept `invoice.go` visible. This identified the earlier disappearance as the test's settings-argument/race setup, not production nesting state.
+- Attempt 1 normalized the installed `DevIconMd` glyph to the approved `󰂺` while retaining its real group. The full text then matched byte-for-byte, but the color mask first failed because the root's leading cell was unhighlighted instead of `FileTreeExpander`.
+- Attempt 2 also highlighted that root-leading cell. The unchanged color assertion still failed at row 10, column 44: the approved mask expects `Normal` on whitespace inside a comment, while Neovim draws the real Treesitter `@comment` span there. Production edits were reverted; the red screen test and byte-identical artifact remain.
+
 ## Agent decisions
 
 - Compiled Lua rules use a function-valued `lua` field so the model cache can exercise real rule execution before task 2 adds module loading and error handling.
@@ -128,3 +135,4 @@ Scenarios: `file-tree: File tree nests match the approved render`
 - Nested target lookup lives in the model so selection reuses the cached nest map instead of rebuilding engine logic in the view.
 - Parent deletion needs no nesting-specific expansion because the existing operation collector reads only visible row paths.
 - The four legacy fold regressions opt into shipped nesting settings locally, preserving task 0's isolation for every unrelated project-tree case.
+- The screen test pins non-tree chrome and editor-local display options to the approved artifact so asynchronous diagnostics and user display defaults do not alter the nesting render.
