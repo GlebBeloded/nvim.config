@@ -587,6 +587,10 @@ When `make check` fails only in `test`, `test-readiness` or `e2e`, gate.py SHALL
 - **WHEN** gate.py runs with a `make` stub whose check fails in `test-readiness` on one case and whose rerun passes, then one whose rerun fails
 - **THEN** the first gate reruns `make test-readiness CASE=<name>` and is green with the case in `flaky` and the check log; the second is red
 
+#### Scenario: Gate reruns a case a hung worker left unrun
+- **WHEN** gate.py's `case_name` gets a `FAIL in` label ending in tests/parallel.lua's `hung: no progress …` or `not run: its worker was killed after a hung case` note, for a case whose set is keyed by a variable
+- **THEN** the rerun's `CASE=` is the set chain and case name without the note
+
 #### Scenario: Gate reruns a readiness case whose label carries its error
 - **WHEN** gate.py's check log has `FAIL in tests/integration/lsp/test_readiness.lua | lsp: slow case: ready after 3157 ms, bound 2500 ms` and that file defines the case `lsp: slow case`
 - **THEN** the rerun command is `make test-readiness CASE=lsp: slow case`
