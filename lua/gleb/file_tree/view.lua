@@ -340,6 +340,19 @@ local function open_selected(view, command)
 	vim.cmd(command .. " " .. vim.fn.fnameescape(row.path))
 end
 
+---@param view FileTreeView
+---@param row FileTreeRow
+---@return boolean
+local function close_nest(view, row)
+	local parent = row.nest_parent or (row.nest_expanded and row.path or nil)
+	if not parent then
+		return false
+	end
+	view.expanded_nests[parent:sub(#view.root + 2)] = nil
+	draw(view, parent)
+	return true
+end
+
 --- Open the selected project-tree file in the most recent editor window.
 ---@return nil
 function M.open()
@@ -364,6 +377,9 @@ function M.close_node()
 	local index = vim.api.nvim_win_get_cursor(view.win)[1]
 	local row = view.rows[index]
 	if not row or row.kind == "root" then
+		return
+	end
+	if close_nest(view, row) then
 		return
 	end
 	local target = row
@@ -397,6 +413,8 @@ function M.toggle_fold()
 		local relative = row.path:sub(#view.root + 2)
 		view.expanded_nests[relative] = not view.expanded_nests[relative] or nil
 		draw(view, row.path)
+	elseif row and row.kind == "file" and row.nest_parent then
+		close_nest(view, row)
 	elseif row and row.kind == "file" then
 		M.close_node()
 	end
@@ -447,7 +465,10 @@ function M.unfold_all()
 	end
 	local selected = selected_row(view)
 	view.expanded = {}
-	local rows = model.rows(fs.tree(view.root), view.expanded, {})
+	view.expanded_nests = {}
+	local nesting_settings = settings.load().nesting
+	local tree = fs.tree(view.root)
+	local rows = model.rows(tree, view.expanded, {}, nesting_settings, view.expanded_nests)
 	local queue = {}
 	for _, row in ipairs(rows) do
 		if row.kind == "directory" then
@@ -455,16 +476,31 @@ function M.unfold_all()
 		end
 	end
 	local queue_index = 1
+	local stopped = false
 	while queue_index <= #queue do
 		local row = queue[queue_index]
 		queue_index = queue_index + 1
 		if not row.empty then
 			local expanded_rows = expand_directory(view, row, "Unfold all stopped at 5000 rows")
 			if not expanded_rows then
+				stopped = true
 				break
 			end
 			rows = expanded_rows
 			append_directory_children(rows, row, queue)
+		end
+	end
+	if not stopped then
+		local visible_count = #rows
+		for _, row in ipairs(rows) do
+			if row.nest_children then
+				if visible_count + #row.nest_children > EXPANSION_MAX_ROWS then
+					vim.notify("Unfold all stopped at 5000 rows", vim.log.levels.WARN)
+					break
+				end
+				view.expanded_nests[row.path:sub(#view.root + 2)] = true
+				visible_count = visible_count + #row.nest_children
+			end
 		end
 	end
 	redraw_at(view, selected and selected.path or view.root)

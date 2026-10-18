@@ -73,9 +73,9 @@ Scenarios: `file-tree: Fold all and reroot clear nest state`, `file-tree: Renami
 
 Scenarios: `file-tree: za toggles a nest`, `file-tree: h on a nested file closes its nest`, `file-tree: Enter on a nest parent opens the file`, `file-tree: Fold all and unfold all include nests`, `file-tree: Unfold all counts nested children toward the row limit`
 
-- [ ] 5a.1 Write the five cases in `tests/integration/file-tree/test_nesting.lua`, driving real `za`, `h`, `<CR>`, `zR` and `zM` mappings on populated rows, then run `make test FILE=tests/integration/file-tree/test_nesting.lua CASE="za toggles a nest"` and see it fail
-- [ ] 5a.2 Extend the existing fold actions for parent/child nest rows and count visible nest children in both 5000-row guards while keeping open separate from expansion
-- [ ] 5a.3 Run each scenario with `make test FILE=tests/integration/file-tree/test_nesting.lua CASE="<scenario title>"` and see it pass
+- [x] 5a.1 Write the five cases in `tests/integration/file-tree/test_nesting.lua`, driving real `za`, `h`, `<CR>`, `zR` and `zM` mappings on populated rows, then run `make test FILE=tests/integration/file-tree/test_nesting.lua CASE="za toggles a nest"` and see it fail
+- [x] 5a.2 Extend the existing fold actions for parent/child nest rows and count visible nest children in both 5000-row guards while keeping open separate from expansion
+- [x] 5a.3 Run each scenario with `make test FILE=tests/integration/file-tree/test_nesting.lua CASE="<scenario title>"` and see it pass
 
 ## 5b. Follow, reveal and ops interplay
 

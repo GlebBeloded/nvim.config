@@ -384,4 +384,94 @@ T["file-tree: Renaming a folder migrates nest state in every view"] = function()
 	eq(states, { { new = true, child = true }, { new = true, child = true } })
 end
 
+T["file-tree: za toggles a nest"] = function()
+	focus_tree_row("invoice.go")
+	child.type_keys("za")
+	eq(has_tree_line("invoice_test.go"), true)
+
+	child.type_keys("za")
+	eq(has_tree_line("invoice_test.go"), false)
+end
+
+T["file-tree: h on a nested file closes its nest"] = function()
+	focus_tree_row("invoice.go")
+	child.type_keys("za")
+	focus_tree_row("invoice_test.go")
+
+	child.type_keys("h")
+
+	eq(has_tree_line("invoice_test.go"), false)
+	eq(child.lua_get([[vim.api.nvim_get_current_line():find("invoice.go", 1, true) ~= nil]]), true)
+end
+
+T["file-tree: Enter on a nest parent opens the file"] = function()
+	focus_tree_row("invoice.go")
+
+	child.type_keys("<CR>")
+
+	eq(
+		child.lua_get([[require("gleb.file_tree.fs").normalize(vim.api.nvim_buf_get_name(0))]]),
+		child.lua_get([[require("gleb.file_tree.fs").normalize(...)]], {
+			vim.fs.joinpath(root, "internal/billing/invoice.go"),
+		})
+	)
+	eq(nest_is_expanded(), false)
+	eq(has_tree_line("invoice_test.go"), false)
+end
+
+T["file-tree: Fold all and unfold all include nests"] = function()
+	child.type_keys("zR")
+	for _, name in ipairs({
+		"discount_test.go",
+		"invoice_test.go",
+		"tax_test.go",
+		"money_test.go",
+		"price.test.ts",
+		"price.d.ts",
+		"package-lock.json",
+		"go.sum",
+	}) do
+		eq(has_tree_line(name), true)
+	end
+
+	child.type_keys("zM")
+	for _, name in ipairs({
+		"discount_test.go",
+		"invoice_test.go",
+		"tax_test.go",
+		"money_test.go",
+		"price.test.ts",
+		"price.d.ts",
+		"package-lock.json",
+		"go.sum",
+	}) do
+		eq(has_tree_line(name), false)
+	end
+end
+
+T["file-tree: Unfold all counts nested children toward the row limit"] = function()
+	local oversized = vim.fs.joinpath(root, "oversized")
+	vim.fn.mkdir(oversized, "p")
+	for index = 1, 2500 do
+		for _, suffix in ipairs({ ".go", "_test.go" }) do
+			local path = vim.fs.joinpath(oversized, ("file-%04d%s"):format(index, suffix))
+			local file = assert(vim.uv.fs_open(path, "w", 420))
+			assert(vim.uv.fs_close(file))
+		end
+	end
+	child.lua([[require("gleb.file_tree.fs").reset()]])
+	local notifications = H.record_notify(child)
+
+	child.type_keys("zR")
+
+	local row_count = child.lua_get([[(function()
+		local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+		return #view.rows
+	end)()]])
+	assert(row_count <= 5001, "unfold all exceeded the row limit")
+	eq(notifications(), {
+		{ msg = "Unfold all stopped at 5000 rows", level = vim.log.levels.WARN },
+	})
+end
+
 return T
