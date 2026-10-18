@@ -227,4 +227,40 @@ T["git: Changes panel on unborn HEAD has no stats"]["accepts skipped numstat out
 	eq({ row_with_path(rows, "a.txt").added, row_with_path(rows, "a.txt").removed }, { nil, nil })
 end
 
+T["git: Changes panel nests tests under their file"] = MiniTest.new_set()
+
+T["git: Changes panel nests tests under their file"]["starts default Go nests expanded"] = function()
+	local output = records({
+		status_record(".M", "internal/billing/invoice.go"),
+		status_record(".M", "internal/billing/invoice_test.go"),
+		status_record("A.", "internal/billing/tax.go"),
+		status_record("A.", "internal/billing/tax_test.go"),
+	})
+	local rows = model.rows(output, default_nesting_rules())
+
+	eq(summaries(rows), {
+		{ "root", "Changes", 0, nil, 4 },
+		{ "directory", "internal/billing", 1, "internal/billing", 4 },
+		{ "file", "invoice.go", 2, "internal/billing/invoice.go", nil },
+		{ "file", "invoice_test.go", 3, "internal/billing/invoice_test.go", nil },
+		{ "file", "tax.go", 2, "internal/billing/tax.go", nil },
+		{ "file", "tax_test.go", 3, "internal/billing/tax_test.go", nil },
+	})
+	eq({ rows[3].expanded, rows[3].fold_id }, { true, "changes:internal/billing/invoice.go" })
+	eq({ rows[5].expanded, rows[5].fold_id }, { true, "changes:internal/billing/tax.go" })
+end
+
+T["git: Changes panel keeps a lone test file flat"] = MiniTest.new_set()
+
+T["git: Changes panel keeps a lone test file flat"]["does not create a missing nest parent"] = function()
+	local rows = model.rows(records({ status_record(".M", "pkg/a_test.go") }), default_nesting_rules())
+
+	eq(summaries(rows), {
+		{ "root", "Changes", 0, nil, 1 },
+		{ "directory", "pkg", 1, "pkg", 1 },
+		{ "file", "a_test.go", 2, "pkg/a_test.go", nil },
+	})
+	eq({ rows[3].expanded, rows[3].fold_id }, { nil, nil })
+end
+
 return T

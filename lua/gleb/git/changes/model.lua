@@ -3,6 +3,7 @@
 local M = {}
 
 local file_tree_model = require("gleb.file_tree.model")
+local nesting = require("gleb.file_tree.nesting")
 
 local MAX_ROWS = 5000
 local CHECKBOX_EMPTY = "󰄱"
@@ -219,11 +220,64 @@ local function only_directory(node)
 end
 
 ---@param rows ChangesRow[]
+---@param files ChangesRow[]
+---@param directory string
+---@param root_name "changes"|"unversioned"
+---@param depth integer
+---@param nesting_rules table[]
+---@return boolean complete
+local function append_files(rows, files, directory, root_name, depth, nesting_rules)
+	table.sort(files, named_before)
+	local entries = {}
+	local files_by_name = {}
+	for _, file in ipairs(files) do
+		entries[#entries + 1] = { kind = "file", name = file.label, path = file.path }
+		files_by_name[file.label] = file
+	end
+	local nests = nesting.nest(directory, entries, nesting_rules)
+	local nested = {}
+	for _, children in pairs(nests) do
+		for _, child_name in ipairs(children) do
+			nested[child_name] = true
+		end
+	end
+
+	local function append_file(file, file_depth)
+		if #rows >= MAX_ROWS then
+			return false
+		end
+		file.depth = file_depth
+		rows[#rows + 1] = file
+		return true
+	end
+
+	for _, file in ipairs(files) do
+		if not nested[file.label] then
+			local children = nests[file.label]
+			if children then
+				file.expanded = true
+				file.fold_id = root_name .. ":" .. file.path
+			end
+			if not append_file(file, depth) then
+				return false
+			end
+			for _, child_name in ipairs(children or {}) do
+				if not append_file(files_by_name[child_name], depth + 1) then
+					return false
+				end
+			end
+		end
+	end
+	return true
+end
+
+---@param rows ChangesRow[]
 ---@param node ChangesTreeNode
 ---@param root_name "changes"|"unversioned"
 ---@param depth integer
+---@param nesting_rules table[]
 ---@return boolean complete
-local function append_directory(rows, node, root_name, depth)
+local function append_directory(rows, node, root_name, depth, nesting_rules)
 	local labels = { node.name }
 	local tail = node
 	local child = #tail.files == 0 and only_directory(tail) or nil
@@ -247,26 +301,19 @@ local function append_directory(rows, node, root_name, depth)
 	}
 
 	for _, directory in ipairs(sorted_directories(tail.directories)) do
-		if not append_directory(rows, directory, root_name, depth + 1) then
+		if not append_directory(rows, directory, root_name, depth + 1, nesting_rules) then
 			return false
 		end
 	end
-	table.sort(tail.files, named_before)
-	for _, file in ipairs(tail.files) do
-		if #rows >= MAX_ROWS then
-			return false
-		end
-		file.depth = depth + 1
-		rows[#rows + 1] = file
-	end
-	return true
+	return append_files(rows, tail.files, tail.path, root_name, depth + 1, nesting_rules)
 end
 
 ---@param rows ChangesRow[]
 ---@param root ChangesTreeNode
 ---@param root_name "changes"|"unversioned"
+---@param nesting_rules table[]
 ---@return boolean complete
-local function append_root(rows, root, root_name)
+local function append_root(rows, root, root_name, nesting_rules)
 	if root.count == 0 then
 		return true
 	end
@@ -284,28 +331,20 @@ local function append_root(rows, root, root_name)
 		checkbox = checkbox(root.staged, root.unstaged),
 	}
 	for _, directory in ipairs(sorted_directories(root.directories)) do
-		if not append_directory(rows, directory, root_name, 1) then
+		if not append_directory(rows, directory, root_name, 1, nesting_rules) then
 			return false
 		end
 	end
-	table.sort(root.files, named_before)
-	for _, file in ipairs(root.files) do
-		if #rows >= MAX_ROWS then
-			return false
-		end
-		file.depth = 1
-		rows[#rows + 1] = file
-	end
-	return true
+	return append_files(rows, root.files, "", root_name, 1, nesting_rules)
 end
 
 --- Build compact Changes panel rows from porcelain-v2 output.
 ---@param porcelain_z string
----@param _nesting_rules table[]
+---@param nesting_rules table[]
 ---@param numstat_z? string Output is absent when HEAD is unborn.
 ---@return ChangesRow[] rows
 ---@return boolean capped
-function M.rows(porcelain_z, _nesting_rules, numstat_z)
+function M.rows(porcelain_z, nesting_rules, numstat_z)
 	local roots = {
 		changes = tree_node("", ""),
 		unversioned = tree_node("", ""),
@@ -319,9 +358,9 @@ function M.rows(porcelain_z, _nesting_rules, numstat_z)
 	end
 
 	local rows = {}
-	local complete = append_root(rows, roots.changes, "changes")
+	local complete = append_root(rows, roots.changes, "changes", nesting_rules)
 	if complete then
-		complete = append_root(rows, roots.unversioned, "unversioned")
+		complete = append_root(rows, roots.unversioned, "unversioned", nesting_rules)
 	end
 	return rows, not complete
 end

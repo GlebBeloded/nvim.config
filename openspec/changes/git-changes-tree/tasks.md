@@ -36,9 +36,9 @@ Scenarios: `git: Changes panel shows line stats`, `git: Changes panel cuts a lon
 
 ## 2f. File nesting
 Scenarios: `git: Changes panel nests tests under their file`, `git: Changes panel keeps a lone test file flat`
-- [ ] 2f.1 Write the scenarios in `tests/unit/git/test_changes_model.lua`, explicitly loading the default nesting rules, and see them fail
-- [ ] 2f.2 Apply the file-tree nesting engine while building Changes rows
-- [ ] 2f.3 Run `make test FILE=tests/unit/git/test_changes_model.lua CASE="Changes panel nests"` and see it pass
+- [x] 2f.1 Write the scenarios in `tests/unit/git/test_changes_model.lua`, explicitly loading the default nesting rules, and see them fail
+- [x] 2f.2 Apply the file-tree nesting engine while building Changes rows
+- [x] 2f.3 Run `make test FILE=tests/unit/git/test_changes_model.lua CASE="Changes panel nests"` and see it pass
 
 ## 3a. Window, toggle and repository detection
 Scenarios: `git: Changes panel opens on the left at width 35`, `git: Changes panel cursor starts on the first file`, `git: Changes panel toggle closes the focused panel`, `git: Changes panel toggle focuses an open panel`, `git: Changes panel outside a repository`
