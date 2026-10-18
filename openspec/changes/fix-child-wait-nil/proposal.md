@@ -43,5 +43,9 @@ Full `make check` with only the helper fix (loop round104, 2026-10-18): that is 
 
 - tests/helpers.lua; the Find Action palette or the case's input path, whichever the probe shows.
 - `file-tree: Project tree keys come from the keymap file` still holds, now with a real wait.
+- `file-tree: Requirement: Project tree open and close keys` still holds because the wait fix changes only test
+  readiness handling, not any project-tree open or close action.
+- `file-tree: Requirement: File tree nest actions` still holds because the wait fix changes only test readiness
+  handling, not any nest action.
 - Every case using `child.wait` keeps passing with the real wait; a case that newly fails is fixed at its cause,
   never by loosening the wait or the assertion.
