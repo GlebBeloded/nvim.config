@@ -13,7 +13,7 @@ Scenarios: `keymaps: Alt-e closes the focused project tree`, `keymaps: Alt-G clo
 
 ## 3. Hijack directory buffers
 Scenarios: `file-tree: Directory argument opens the project tree`, `file-tree: netrw is not loaded`, `file-tree: Directory buffer focuses an open project tree`
-- [ ] 3.1 Write the three cases in `tests/integration/file-tree/test_project_hijack.lua` using `:edit <dir>` and an already populated project tree; run `make test FILE=tests/integration/file-tree/test_project_hijack.lua CASE="Directory argument opens the project tree"` and see it fail
+- [x] 3.1 Write the three cases in `tests/integration/file-tree/test_project_hijack.lua` using `:edit <dir>` and an already populated project tree; run `make test FILE=tests/integration/file-tree/test_project_hijack.lua CASE="Directory argument opens the project tree"` and see it fail
 - [ ] 3.2 Add `netrwPlugin` to `lua/gleb/plugins/init.lua`'s lazy.nvim `disabled_plugins` and add the `gleb_file_tree_hijack` `BufEnter` autocmd: only a newly opened tree takes the directory as root; an existing tree is focused without changing root or cursor
 - [ ] 3.3 Run `make test FILE=tests/integration/file-tree/test_project_hijack.lua` and see it pass
 
@@ -38,7 +38,7 @@ Scenarios: `file-tree: Project tree opens from non-project buffers`, `file-tree:
 ## 5a. Update git and action retirement tests
 Scenarios: `git: Missing optional git plugins are tolerated`, `git: Git commands are available after startup`, `git: Removed diff plugins are not registered`, `actions: Every configured mapping is action-owned`, `actions: Plugin-window mappings are action-owned`
 - [x] 5a.1 Update `tests/unit/git/test_modules.lua`, `tests/integration/git/test_git.lua` and `tests/integration/actions/{test_ownership,test_plugin_ownership,test_adapters}.lua` to assert the retired commands, plugins, adapters and mappings are absent; run `make test FILE=tests/integration/git/test_git.lua CASE="Removed diff plugins are not registered"` and see it fail
-- [x] 5a.2 Keep the tests on real populated project-tree, changes-panel, diff-view and diffview windows and remove only expectations for neo-tree, differ and codediff
+- [x] 5a.2 Keep the tests on real populated project-tree, changes-panel, diff-view and diffview windows, preserve the 10-second blocked-open diagnostics and descendant cleanup, and remove only expectations for neo-tree, differ and codediff
 - [ ] 5a.3 Run the five named cases and see them pass after tasks 5c and 5d
 
 ## 5b. Remove retired file-tree tests only after successor checks
@@ -108,7 +108,8 @@ Scenarios: `diff: Diff view opens on the current file`, `diff: Diff view mapping
 - The converted editor-window test was already green because `git-changes-tree` had added the changes-panel eligibility guard; this task removed the remaining neo-tree exclusions.
 - Opened the populated changes panel through its public entry point in shared-window tests so it can coexist with the project tree despite the user-facing toggles enforcing one left tool window.
 - Kept the directory-follow and shared-sidebar production paths already supplied by earlier project-tree work; the tightened 4c assertions proved both contracts without duplicate code.
+- Compared changed-file navigation by path in the ported e2e case because the owned review model combines staged and unstaged entries for the same file.
 
 ## Stuck
 
-- Task 3: the red integration test is committed, but the existing-tree cursor case still fails after two production attempts. Attempt 1 added the netrw disablement and a synchronous directory `BufEnter` hijack with an explicit root for a new tree; the new-tree case passed, while the populated existing tree moved from `go.mod`. Attempt 2 put an empty buffer in the directory's editor window before focusing the existing tree and guarded the per-view callback from the wiped buffer; the populated-tree case still moved from `go.mod`. The corrected sandbox probe with a committed git root reported `before = 3`, `after = 3`, `line = "go.mod"`, `current_is_tree = true`, and the original root, while the `treeproj` integration fixture still fails the same cursor assertion after its initial draw timer is nil. The second production attempt is saved at `/Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/3f6b4fd0-a502-433d-b01e-a9323b75d5c1/stuck-attempt-3.diff`; production edits were reverted.
+- Task 5c: removing neo-tree exposes a deterministic macOS watcher race in `file-tree: Project tree shows files created outside Neovim`. The probe showed that opening the initial tree starts seven folder handles without `internal/billing`; expanding `internal` adds `internal/billing` and `internal/money`, and the immediate external write then creates `fee.go` but delivers zero folder or Git callbacks. Attempt 1 attached folder handles before rendering; attempt 2 also watched child directories one draw ahead. The exact integration case still failed at `test_project_live.lua:390` after each attempt. The second production attempt is saved at `/Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/c070db55-0327-4f41-8533-199585c5cb53/stuck-attempt-5c.diff`; production edits were reverted and the red regression remains.

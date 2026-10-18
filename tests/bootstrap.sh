@@ -28,4 +28,3 @@ fetch_pinned() {
 fetch_pinned mini.nvim https://github.com/nvim-mini/mini.nvim "$MINI_COMMIT"
 # Type libraries for LuaLS (`make types`), at the commits of lazy-lock.json.
 fetch_pinned lazy.nvim https://github.com/folke/lazy.nvim "$(lock_commit lazy.nvim)"
-fetch_pinned vscode-diff.nvim https://github.com/esmuellert/vscode-diff.nvim "$(lock_commit vscode-diff.nvim)"

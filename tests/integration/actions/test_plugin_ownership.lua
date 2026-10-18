@@ -166,8 +166,6 @@ end
 T["actions: Unconfigured defaults are absent"] = function()
 	child.lua(PLUGIN_MAPPED)
 	local found = {}
-	open_surface([[vim.cmd("Neotree filesystem")]], "neo-tree")
-	found.neo_tree = plugin_mapped("neo-tree", "C")
 	open_surface(
 		[[require("lazy").load({ plugins = { "nvim-dap" } }) require("dapui.windows").layouts[1]:open()]],
 		"dapui_scopes"
@@ -175,12 +173,6 @@ T["actions: Unconfigured defaults are absent"] = function()
 	found.dap_ui = plugin_mapped("dapui_scopes", "<CR>")
 	open_surface([[vim.cmd("DiffviewOpen")]], "DiffviewFiles")
 	found.diffview = plugin_mapped("DiffviewFiles", "-")
-	child.lua([[pcall(vim.cmd, "tabclose")]])
-	open_surface([[vim.cmd("Differ")]], "differdiff")
-	found.differ = plugin_mapped("differdiff", "dl")
-	child.lua([[pcall(vim.cmd, "tabclose")]])
-	open_surface([[vim.cmd("CodeDiff")]], "codediff-explorer")
-	found.codediff = plugin_mapped("codediff-explorer", "<CR>")
 	child.lua([[pcall(vim.cmd, "tabclose")]])
 	open_surface([[require("neotest").summary.open()]], "neotest-summary")
 	found.neotest = plugin_mapped("neotest-summary", "<CR>")
@@ -195,13 +187,10 @@ T["actions: Unconfigured defaults are absent"] = function()
 
 	eq(found, {
 		blink = false,
-		codediff = false,
 		dap_ui = false,
-		differ = false,
 		diffview = false,
 		lazy = false,
 		mason = false,
-		neo_tree = false,
 		neotest = false,
 	})
 end
