@@ -7,9 +7,9 @@ Scenarios: `keymaps: Alt-e reveals current file`, `keymaps: Alt-e on URI buffer 
 
 ## 2. Keep toggles and the core mapping table coherent
 Scenarios: `keymaps: Alt-e closes the focused project tree`, `keymaps: Alt-G closes the focused changes panel`, `keymaps: Toggle wins over a pending tree refresh`, `keymaps: Toggle wins over a pending changes refresh`, `keymaps: Core mappings resolve through actions`
-- [ ] 2.1 Replace the retired neo-tree toggle cases and extend the real-lhs table in `tests/integration/keymaps/test_keymaps.lua`; run `make test FILE=tests/integration/keymaps/test_keymaps.lua CASE="Toggle wins over a pending tree refresh"` and see it fail
-- [ ] 2.2 Make pending project-tree and changes-panel work respect a close, and update action registration so every moved key resolves through its new action id
-- [ ] 2.3 Run the five named cases and `keymaps: Command maps do not enter the command line` and see them pass
+- [x] 2.1 Replace the retired neo-tree toggle cases and extend the real-lhs table in `tests/integration/keymaps/test_keymaps.lua`; run `make test FILE=tests/integration/keymaps/test_keymaps.lua CASE="Toggle wins over a pending tree refresh"` and see it fail
+- [x] 2.2 Make pending project-tree and changes-panel work respect a close, and update action registration so every moved key resolves through its new action id
+- [x] 2.3 Run the five named cases and `keymaps: Command maps do not enter the command line` and see them pass
 
 ## 3. Hijack directory buffers
 Scenarios: `file-tree: Directory argument opens the project tree`, `file-tree: netrw is not loaded`, `file-tree: Directory buffer focuses an open project tree`
@@ -99,3 +99,7 @@ Scenarios: `diff: Diff view opens on the current file`, `diff: Diff view mapping
 - [ ] 9.1 Run `make trace VERBOSE=1` and confirm no orphans, duplicates or missing scenarios introduced by this change
 - [ ] 9.2 Run `rg -n 'neo-tree|neo_tree|NeoTree|Neotree|differ\.|Differ|codediff|vscode\.diff|diff_preview|open_differ' lua settings tests init.lua -g '!tests/unit/loop/**'`; remove every hit except an explicitly retained diffview/gitsigns/nui reference covered by the proposal
 - [ ] 9.3 Run `make check E2E=1`, `openspec validate tree-diff-cutover --strict`, and `python3 .archon/scripts/pinned.py tree-diff-cutover`; require the pinned command to print `none`
+
+## Agent decisions
+
+- Kept the existing tree identity guards and changes timer cleanup because the replacement race tests showed they already preserve a close; task 2 only needed the retired tests and action table updated.
