@@ -1,6 +1,7 @@
 ## Why
 
 Kind: feature
+Adopt: loop/git-changes-tree-20261018-161749
 Depends: file-tree-ignored
 
 Reviewing and committing changes today goes through neo-tree's git status source: a flat-ish tree with status symbols, where each `j`/`k` opens a second tab with codediff and a copy of the tree, held in place by a focus guard. Cmd+G opens a third flow, differ.nvim, with its own panel. The user is used to IntelliJ and picked its commit tool window: "Changes" and "Unversioned Files" roots, files grouped by directory, a checkbox that is the index, tests nested under their file, `+/-` per file, and the selected file's diff in the editor area, in the IntelliJ-style diff view this queue builds (`diff-view`, `diff-view-actions`).
@@ -91,3 +92,12 @@ Reviewing and committing changes today goes through neo-tree's git status source
   right shows content owned by treesitter, indent-blankline and the shipped diff view (`diff: … screenshot` cases cover
   it); there the case asserts it equals the same file rendered in a regular window of that width, not the approved
   render's highlight of each token. Never edit editor plugins' state (ibl setup, tabstop) from the panel to match a render.
+
+## Rejected run
+Run on `loop/git-changes-tree-20261018-161749` was rejected by the judge:
+- review: test weakened
+- fix loop exhausted with gates still red: review
+- review findings:
+  [must-fix] The last fix pass (98415b9a) dropped the only check that `gc` runs at once. Before, `eq(child.lua_get("CommitRoot"), …)` was read straight after `child.type_keys("gc")`, so a `gc` that waited for 'timeoutlen' failed the case (pass 8 counted this as the nowait coverage). Now tests/integration/git/test_changes_actions.lua:118-124 and :303-308 poll `vim.wait(ASYNC_MS=10000, …)` for the popup title. 'timeoutlen' is 1000 ms (lua/gleb/options.lua:20), so if `nowait` is removed from lua/gleb/git/changes/actions.lua:58 the popup still opens after 1 s and both cases stay green. The auditor Decision (proposal.md:92-94) requires asserting that "the commit popup opens without waiting". Fix: right after the plain `gc`, assert that the nui popup window exists, either with no wait or with a bound well under 'timeoutlen' (e.g. `child.wait(…, 200)`). `popup:mount()` runs synchronously (lua/gleb/git/ai_commit.lua:159). Earlier passes did not miss this: the commit that removed the check is the newest one.
+  [must-fix] The same commit also removed the check that the popup gets `{ root = root }`, which is the delta SHALL at specs/git/spec.md:309 ("staged-diff generation … run in the panel repository"). Both cases `cd` to `vim.fs.dirname(dir)` (test_changes_actions.lua:117), which is the parent of a `tempname()` repo (tests/helpers.lua:281) and is not a git repo. If `opts.root` were dropped, `git diff --cached` there would print nothing, `build_prompt` would return nil, and the popup woul
+- note: loop: sandbox: Lume still reports nvim-e2e unknown while its lume run process is alive, after one restart; giving up (/Users/hlebbeladzed/.cache/nvim-e2e-sandbox/vm.l
