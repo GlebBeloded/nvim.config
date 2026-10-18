@@ -8,9 +8,11 @@ local M = {}
 ---@type table<integer, gleb.CommitPopupSession>
 local sessions = {}
 
--- Get staged diff
-local function get_staged_diff()
-	local diff = vim.fn.system("git diff --cached")
+---@param root? string
+---@return string
+local function get_staged_diff(root)
+	local result = vim.system({ "git", "diff", "--cached" }, { cwd = root, text = true }):wait()
+	local diff = result.stdout or ""
 
 	-- Truncate diff if too long (prevents model confusion)
 	local max_lines = 200
@@ -22,9 +24,10 @@ local function get_staged_diff()
 	return diff
 end
 
--- Build prompt for AI
-local function build_prompt()
-	local diff = get_staged_diff()
+---@param root? string
+---@return string?
+local function build_prompt(root)
+	local diff = get_staged_diff(root)
 	if diff == "" then
 		return nil
 	end
@@ -120,8 +123,10 @@ end
 
 --- Show commit popup with auto-generated AI message.
 ---@param on_commit fun(message: string) called with the confirmed message
+---@param opts? { root?: string }
 ---@return nil
-function M.show_commit_input(on_commit)
+function M.show_commit_input(on_commit, opts)
+	opts = opts or {}
 	local Popup = require("nui.popup")
 	local event = require("nui.utils.autocmd").event
 
@@ -214,7 +219,7 @@ function M.show_commit_input(on_commit)
 	popup:on(event.BufLeave, close)
 
 	-- Auto-generate commit message
-	local prompt = build_prompt()
+	local prompt = build_prompt(opts.root)
 	if not prompt then
 		set_title(" Commit Message ")
 		vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { "# No staged changes" })

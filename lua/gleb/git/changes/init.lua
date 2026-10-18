@@ -219,6 +219,41 @@ function M.revert()
 	end)
 end
 
+---@param current ChangesView
+---@param message string
+---@param result vim.SystemCompleted
+---@return nil
+local function finish_commit(current, message, result)
+	if result.code ~= 0 then
+		local stderr, stdout = vim.trim(result.stderr or ""), vim.trim(result.stdout or "")
+		local reason = stderr ~= "" and stderr or stdout ~= "" and stdout or ("exit " .. result.code)
+		vim.notify("Commit failed: " .. reason, vim.log.levels.ERROR)
+		return
+	end
+	vim.notify("Committed: " .. vim.split(message, "\n")[1], vim.log.levels.INFO)
+	if M.state.by_tab[current.tab] ~= current then
+		return
+	end
+	view.schedule_refresh(current)
+	if current.diff_view then
+		require("gleb.diff.view").refresh_index(current.diff_view)
+	end
+end
+
+--- Commit staged changes from the current Changes panel.
+---@return nil
+function M.commit()
+	local current = M.state.by_tab[vim.api.nvim_get_current_tabpage()]
+	if not current then
+		return
+	end
+	require("gleb.git.ai_commit").show_commit_input(function(message)
+		git.commit(current.root, message, function(result)
+			finish_commit(current, message, result)
+		end)
+	end, { root = current.root })
+end
+
 --- Clear Changes panel state for tests.
 ---@return nil
 function M.reset()

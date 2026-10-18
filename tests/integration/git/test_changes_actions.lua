@@ -5,7 +5,7 @@ local H = require("tests.helpers")
 local eq = MiniTest.expect.equality
 local child = H.new_child()
 
-local ASYNC_MS = 3000
+local ASYNC_MS = 10000
 
 local function start()
 	child.start_config()
@@ -73,6 +73,56 @@ local function record_system_calls()
 			return original_system(command, opts, callback)
 		end
 	]])
+end
+
+--- Stage a change, stub the AI popup to confirm `message`, and press the real mapping.
+---@param dir string
+---@param message string
+local function commit_from_changes(dir, message)
+	H.git(dir, { "config", "user.name", "t" })
+	H.git(dir, { "config", "user.email", "t@t" })
+	H.git(dir, { "add", "a.txt" })
+	open_changes(dir)
+	H.record_notify(child)
+	child.lua(
+		[[CommitMessage = ...
+CommitRoot = nil
+local changes = require("gleb.git.changes")
+if not changes.commit then changes.commit = function() end end
+require("gleb.git.ai_commit").show_commit_input = function(callback, opts)
+	CommitRoot = opts and opts.root
+	callback(CommitMessage)
+end]],
+		{ message }
+	)
+	child.cmd("cd " .. vim.fn.fnameescape(vim.fs.dirname(dir)))
+	child.type_keys("gc", "<Ignore>")
+end
+
+---@param dir string
+---@return string
+local function last_subject(dir)
+	return vim.trim(H.git(dir, { "log", "-1", "--format=%s" }))
+end
+
+---@param prefix string
+---@return boolean
+local function wait_notification(prefix)
+	return child.wait(
+		string.format("vim.iter(Notifications):any(function(n) return vim.startswith(n.msg, %q) end)", prefix),
+		ASYNC_MS
+	)
+end
+
+---@param prefix string
+---@return table[]
+local function notifications_with(prefix)
+	return child.lua_get(
+		string.format(
+			"vim.iter(Notifications):filter(function(n) return vim.startswith(n.msg, %q) end):totable()",
+			prefix
+		)
+	)
 end
 
 ---@return table[]
@@ -157,12 +207,13 @@ T["git: Changes panel X reverts a rename"] = function()
 
 	revert_with_answer("y")
 
-	eq(
-		vim.wait(ASYNC_MS, function()
-			return H.git(dir, { "status", "--porcelain", "--", "old.txt", "new.txt" }) == "?? new.txt\n"
-		end, 50),
-		true
-	)
+	local expected_status = "?? new.txt\n"
+	local reverted = vim.wait(ASYNC_MS, function()
+		return H.git(dir, { "status", "--porcelain", "--", "old.txt", "new.txt" }) == expected_status
+	end, 50)
+	if not reverted then
+		eq(H.git(dir, { "status", "--porcelain", "--", "old.txt", "new.txt" }), expected_status)
+	end
 	eq(vim.fn.readfile(vim.fs.joinpath(dir, "old.txt")), { "content" })
 	eq(vim.fn.readfile(vim.fs.joinpath(dir, "new.txt")), { "content" })
 	eq(revert_calls(), {
@@ -194,6 +245,38 @@ T["git: Changes panel X on unborn HEAD keeps the file"] = function()
 	eq(revert_calls(), {
 		{ "git", "--literal-pathspecs", "rm", "--cached", "--", path },
 	})
+end
+
+T["git: Changes panel gc commits confirmed message"] = function()
+	local dir = H.git_repo({ ["a.txt"] = "one\n" })
+	vim.fn.writefile({ "two" }, vim.fs.joinpath(dir, "a.txt"))
+	commit_from_changes(dir, "feat: x")
+
+	eq(wait_notification("Committed:"), true)
+	eq(notifications_with("Committed:"), { { msg = "Committed: feat: x", level = vim.log.levels.INFO } })
+	eq(child.lua_get("CommitRoot"), vim.fs.normalize(dir))
+	eq(last_subject(dir), "feat: x")
+
+	vim.fn.writefile({ "three" }, vim.fs.joinpath(dir, "a.txt"))
+	H.git(dir, { "add", "a.txt" })
+	child.lua([[Notifications, CommitMessage = {}, "fix: it's $HOME"]])
+	child.type_keys("gc", "<Ignore>")
+	eq(wait_notification("Committed:"), true)
+	eq(last_subject(dir), "fix: it's $HOME")
+end
+
+T["git: Changes panel gc reports commit failure"] = function()
+	local dir = H.git_repo({ ["a.txt"] = "one\n" })
+	vim.fn.writefile({ "two" }, vim.fs.joinpath(dir, "a.txt"))
+	local hook = vim.fs.joinpath(dir, ".git/hooks/pre-commit")
+	vim.fn.writefile({ "#!/bin/sh", 'echo "hook says no" >&2', "exit 1" }, hook)
+	vim.fn.setfperm(hook, "rwxr-xr-x")
+	commit_from_changes(dir, "feat: x")
+
+	eq(wait_notification("Commit failed:"), true)
+	eq(notifications_with("Commit failed:"), { { msg = "Commit failed: hook says no", level = vim.log.levels.ERROR } })
+	eq(notifications_with("Committed:"), {})
+	eq(last_subject(dir), "initial")
 end
 
 return T

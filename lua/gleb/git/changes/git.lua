@@ -268,6 +268,20 @@ function M.stage_all(root, callback)
 	end)
 end
 
+--- Commit the staged changes in one Changes panel repository.
+---@param root string
+---@param message string
+---@param callback fun(result: vim.SystemCompleted)
+---@return nil
+function M.commit(root, message, callback)
+	local command = { "git", "--literal-pathspecs", "commit", "-m", message }
+	vim.system(command, { cwd = fs.normalize(root), text = true }, function(result)
+		vim.schedule(function()
+			callback(result)
+		end)
+	end)
+end
+
 ---@param root string
 ---@param row ChangesRow
 ---@param callback fun(result: vim.SystemCompleted)

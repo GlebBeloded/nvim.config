@@ -144,9 +144,9 @@ Scenarios: `git: Changes panel X on unborn HEAD keeps the file`
 
 ## 6c. Commit
 Scenarios: `git: Changes panel gc commits confirmed message`, `git: Changes panel gc reports commit failure`
-- [ ] 6c.1 Write the scenarios in `tests/integration/git/test_changes_actions.lua`, porting the real popup stub and failing pre-commit hook setup from `tests/integration/file-tree/test_tree.lua`, and see them fail
-- [ ] 6c.2 Call `gleb.git.ai_commit.show_commit_input(on_commit, { root = root })`, commit with literal pathspecs, refresh and preserve the specified notifications
-- [ ] 6c.3 Run `make test FILE=tests/integration/git/test_changes_actions.lua CASE="Changes panel gc"` and see it pass
+- [x] 6c.1 Write the scenarios in `tests/integration/git/test_changes_actions.lua`, porting the real popup stub and failing pre-commit hook setup from `tests/integration/file-tree/test_tree.lua`, and see them fail
+- [x] 6c.2 Call `gleb.git.ai_commit.show_commit_input(on_commit, { root = root })`, commit with literal pathspecs, refresh and preserve the specified notifications
+- [x] 6c.3 Run `make test FILE=tests/integration/git/test_changes_actions.lua CASE="Changes panel gc"` and see it pass
 
 ## 6d. Push
 Scenarios: `git: Changes panel P pushes successfully`, `git: Changes panel P reports push failure`
