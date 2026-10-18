@@ -10,6 +10,20 @@ local fs = require("gleb.file_tree.fs")
 ---@type ChangesGitState
 M.state = {}
 
+--- Resolve the repository containing a directory.
+---@param dir string
+---@param callback fun(result: vim.SystemCompleted, root: string?)
+---@return nil
+function M.resolve_root(dir, callback)
+	local command = { "git", "rev-parse", "--show-toplevel" }
+	vim.system(command, { cwd = fs.normalize(dir), text = true }, function(result)
+		vim.schedule(function()
+			local root = result.code == 0 and fs.normalize(vim.trim(result.stdout or "")) or nil
+			callback(result, root)
+		end)
+	end)
+end
+
 --- Refresh porcelain status for one Changes panel.
 ---@param root string
 ---@param callback fun(result: vim.SystemCompleted)

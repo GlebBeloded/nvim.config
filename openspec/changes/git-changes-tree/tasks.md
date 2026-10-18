@@ -42,9 +42,9 @@ Scenarios: `git: Changes panel nests tests under their file`, `git: Changes pane
 
 ## 3a. Window, toggle and repository detection
 Scenarios: `git: Changes panel opens on the left at width 35`, `git: Changes panel cursor starts on the first file`, `git: Changes panel toggle closes the focused panel`, `git: Changes panel toggle focuses an open panel`, `git: Changes panel outside a repository`
-- [ ] 3a.1 Write the scenarios in `tests/integration/git/test_changes.lua`, driving `changes.toggle` against populated fixtures and a real outside-repository cwd, and see them fail
-- [ ] 3a.2 Add `git.lua`, `view.lua`, `init.lua`, `actions.lua`; register the entry points from `lua/gleb/git/actions.lua` and load the module from `lua/gleb/git/init.lua`
-- [ ] 3a.3 Run `make test FILE=tests/integration/git/test_changes.lua CASE="Changes panel"` and see it pass
+- [x] 3a.1 Write the scenarios in `tests/integration/git/test_changes.lua`, driving `changes.toggle` against populated fixtures and a real outside-repository cwd, and see them fail
+- [x] 3a.2 Add `git.lua`, `view.lua`, `init.lua`, `actions.lua`; register the entry points from `lua/gleb/git/actions.lua` and load the module from `lua/gleb/git/init.lua`
+- [x] 3a.3 Run `make test FILE=tests/integration/git/test_changes.lua CASE="Changes panel"` and see it pass
 
 ## 3b. Keys and action catalog
 Scenarios: `git: Changes panel mappings come from the shortcut file`, `git: Changes panel leaves gr global`, `git: Changes panel entry points are actions`

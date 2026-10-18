@@ -128,4 +128,6 @@ local actions = {
 	viewer_action("next_hunk", "Select Next Codediff Hunk", "codediff"),
 }
 
+vim.list_extend(actions, require("gleb.git.changes.actions"))
+
 return actions
