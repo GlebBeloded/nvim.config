@@ -30,9 +30,9 @@ Scenarios: `file-tree: Project tree create reports a read-only destination`, `fi
 
 ## 4a. LSP file operations
 Scenarios: `file-tree: Project tree rename asks language servers to update references`, `file-tree: Project tree rename skips servers whose filters do not match`, `file-tree: Project tree rename waits for servers at most one second`, `file-tree: Project tree move notifies didRename only after the target exists`
-- [ ] 4a.1 Write `tests/integration/file-tree/test_project_lsp_rename.lua` with an in-process `vim.lsp.start` server whose `cmd` function records real requests, plus `tests/unit/file-tree/test_paths.lua` filter units for `**/*.go`, `**/*.{ts,tsx}`, `ignoreCase` and folder matches; drive `r` and see them fail
-- [ ] 4a.2 Add typed `lua/gleb/file_tree/lsp_files.lua` with filter matching, one ≤1000 ms batched willRename exchange, workspace-edit application, late-response rejection and post-stat didRename notification
-- [ ] 4a.3 Run `make test FILE=tests/integration/file-tree/test_project_lsp_rename.lua` and `make test FILE=tests/unit/file-tree/test_paths.lua` and see them pass
+- [x] 4a.1 Write `tests/integration/file-tree/test_project_lsp_rename.lua` with an in-process `vim.lsp.start` server whose `cmd` function records real requests, plus `tests/unit/file-tree/test_paths.lua` filter units for `**/*.go`, `**/*.{ts,tsx}`, `ignoreCase` and folder matches; drive `r` and see them fail
+- [x] 4a.2 Add typed `lua/gleb/file_tree/lsp_files.lua` with filter matching, one ≤1000 ms batched willRename exchange, workspace-edit application, late-response rejection and post-stat didRename notification
+- [x] 4a.3 Run `make test FILE=tests/integration/file-tree/test_project_lsp_rename.lua` and `make test FILE=tests/unit/file-tree/test_paths.lua` and see them pass
 
 ## 4b. Rename and move preflight
 Scenarios: `file-tree: Project tree r renames a file and its buffer`, `file-tree: Project tree r renames a folder and the buffers inside`, `file-tree: Project tree r reports an existing name`, `file-tree: Project tree rename refuses a vanished row`, `file-tree: Project tree move preflights the whole batch`
@@ -110,3 +110,4 @@ Scenarios: `file-tree: Project tree operation keys come from the keymap file`, `
 - Path move preflight takes injected `lstat`, `stat` and directory-read functions and returns a reason plus failing path, keeping the helper pure and operation error wording outside it.
 - Selection deduplication preserves the first-occurrence order of surviving top-level paths while dropping descendants regardless of selection order.
 - Copy-name generation takes an explicit directory flag and conflict ordinal so dotted folder names and `_copy2` names are unambiguous.
+- Task 4a installs only the `r` action and key needed by its real-entry-point tests; the other operation keys remain with stuck task 3b.

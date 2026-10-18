@@ -4,6 +4,25 @@ local M = {}
 
 local paths = require("gleb.file_tree.paths")
 
+---@param old_path string
+---@param new_path string
+local function rename_path(old_path, new_path)
+	local pair = { old = old_path, new = new_path }
+	local lsp_files = require("gleb.file_tree.lsp_files")
+	lsp_files.will_rename({ pair })
+	local ok, error = pcall(vim.lsp.util.rename, old_path, new_path)
+	if not ok then
+		vim.notify("Rename failed: " .. tostring(error), vim.log.levels.ERROR)
+		return
+	end
+	if not vim.uv.fs_stat(new_path) then
+		vim.notify("Rename failed: target does not exist", vim.log.levels.ERROR)
+		return
+	end
+	lsp_files.did_rename({ pair })
+	require("gleb.file_tree.view").select_created(new_path, false)
+end
+
 ---@param root string
 ---@param path string
 local function notify_exists(root, path)
@@ -81,6 +100,34 @@ function M.add()
 		end,
 		on_submit = function(query)
 			create(root, target_folder, query)
+		end,
+	})
+end
+
+--- Prompt for and rename the selected project-tree entry.
+---@return nil
+function M.rename()
+	local view = require("gleb.file_tree.view")
+	local root, row = view.selected_path()
+	if not root or not row or row.kind == "root" then
+		return
+	end
+	local parent = vim.fs.dirname(row.path)
+	local name = vim.fs.basename(row.path)
+	require("gleb.picker.input").open({
+		title = "Rename",
+		default = name,
+		hint = "Rename ↩",
+		preview = function(query)
+			local target = vim.fs.joinpath(parent, query)
+			return {
+				text = target:sub(#root + 2),
+				secondary = target == row.path and "unchanged" or nil,
+				category = row.kind == "directory" and "Folder" or "File",
+			}
+		end,
+		on_submit = function(query)
+			rename_path(row.path, vim.fs.joinpath(parent, query))
 		end,
 	})
 end

@@ -116,12 +116,18 @@ local function start()
 	child.cmd("edit " .. vim.fn.fnameescape(vim.fs.joinpath(root, "internal/billing/invoice.go")))
 	assert(child.wait([[vim.b.gitsigns_head == "main"]], 5000), "gitsigns branch did not load")
 	run_toggle()
-	assert(child.wait([[
+	assert(
+		child.wait(
+			[[
 (function()
 	local view = require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()]
 	return view and next(require("gleb.file_tree.git").status(view.root)) ~= nil
 end)()
-]], 5000), "git status did not load")
+]],
+			5000
+		),
+		"git status did not load"
+	)
 	open_row("cmd/server")
 	open_row("web")
 	open_row("src")

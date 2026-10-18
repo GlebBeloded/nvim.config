@@ -280,6 +280,10 @@ local function project_add()
 	require("gleb.file_tree.ops").add()
 end
 
+local function project_rename()
+	require("gleb.file_tree.ops").rename()
+end
+
 ---@type gleb.Action[]
 local actions = {
 	{
@@ -304,6 +308,13 @@ local actions = {
 		category = "Project",
 		ft = "gleb-file-tree",
 		run = project_add,
+	},
+	{
+		id = "file_tree.rename",
+		title = "Rename",
+		category = "Project",
+		ft = "gleb-file-tree",
+		run = project_rename,
 	},
 	{
 		id = "file_tree.open",

@@ -128,6 +128,30 @@ function M.dedupe(selected)
 	return result
 end
 
+--- Check one LSP file-operation filter against a path and filesystem kind.
+---@param filter lsp.FileOperationFilter
+---@param path string
+---@param kind string
+---@return boolean
+function M.filter_matches(filter, path, kind)
+	if filter.scheme and filter.scheme ~= "file" then
+		return false
+	end
+	local pattern = filter.pattern
+	if pattern.matches == "file" and kind ~= "file" then
+		return false
+	end
+	if pattern.matches == "folder" and kind ~= "directory" then
+		return false
+	end
+	local glob = pattern.glob
+	if pattern.options and pattern.options.ignoreCase then
+		glob = glob:lower()
+		path = path:lower()
+	end
+	return vim.glob.to_lpeg(glob):match(path) ~= nil
+end
+
 ---@param pair FileTreeMovePair
 ---@param fs FileTreePreflightFs
 ---@return boolean
