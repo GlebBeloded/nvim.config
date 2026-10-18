@@ -75,6 +75,15 @@ local function record_system_calls()
 	]])
 end
 
+--- Give `dir` a bare `origin` remote that tracks its current branch.
+---@param dir string
+local function add_upstream(dir)
+	local remote = vim.fn.tempname()
+	vim.system({ "git", "init", "-q", "--bare", remote }):wait()
+	H.git(dir, { "remote", "add", "origin", remote })
+	H.git(dir, { "push", "-q", "-u", "origin", "HEAD" })
+end
+
 --- Stage a change, stub the AI popup to confirm `message`, and press the real mapping.
 ---@param dir string
 ---@param message string
@@ -123,6 +132,17 @@ local function notifications_with(prefix)
 			prefix
 		)
 	)
+end
+
+--- Open Changes on `dir`, press the real push mapping, and wait for its result.
+---@param dir string
+---@param result_prefix string
+local function push_from_changes(dir, result_prefix)
+	open_changes(dir)
+	H.record_notify(child)
+	child.cmd("cd " .. vim.fn.fnameescape(vim.fs.dirname(dir)))
+	child.type_keys("P")
+	eq(wait_notification(result_prefix), true)
 end
 
 ---@return table[]
@@ -277,6 +297,31 @@ T["git: Changes panel gc reports commit failure"] = function()
 	eq(notifications_with("Commit failed:"), { { msg = "Commit failed: hook says no", level = vim.log.levels.ERROR } })
 	eq(notifications_with("Committed:"), {})
 	eq(last_subject(dir), "initial")
+end
+
+T["git: Changes panel P pushes successfully"] = function()
+	local dir = H.git_repo({ ["a.txt"] = "one\n" })
+	add_upstream(dir)
+	vim.fn.writefile({ "two" }, vim.fs.joinpath(dir, "a.txt"))
+
+	push_from_changes(dir, "Pushed successfully")
+
+	eq(notifications_with("Push"), {
+		{ msg = "Pushing...", level = vim.log.levels.INFO },
+		{ msg = "Pushed successfully", level = vim.log.levels.INFO },
+	})
+end
+
+T["git: Changes panel P reports push failure"] = function()
+	local dir = H.git_repo({ ["a.txt"] = "one\n" })
+	vim.fn.writefile({ "two" }, vim.fs.joinpath(dir, "a.txt"))
+
+	push_from_changes(dir, "Push failed")
+
+	eq(notifications_with("Push"), {
+		{ msg = "Pushing...", level = vim.log.levels.INFO },
+		{ msg = "Push failed", level = vim.log.levels.ERROR },
+	})
 end
 
 return T

@@ -254,6 +254,22 @@ function M.commit()
 	end, { root = current.root })
 end
 
+--- Push the current branch from the current Changes panel repository.
+---@return nil
+function M.push()
+	local current = M.state.by_tab[vim.api.nvim_get_current_tabpage()]
+	if not current then
+		return
+	end
+	vim.notify("Pushing...", vim.log.levels.INFO)
+	git.push(current.root, function(result)
+		vim.notify(
+			result.code == 0 and "Pushed successfully" or "Push failed",
+			result.code == 0 and vim.log.levels.INFO or vim.log.levels.ERROR
+		)
+	end)
+end
+
 --- Clear Changes panel state for tests.
 ---@return nil
 function M.reset()

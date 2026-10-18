@@ -282,6 +282,18 @@ function M.commit(root, message, callback)
 	end)
 end
 
+--- Push the current branch from one Changes panel repository.
+---@param root string
+---@param callback fun(result: vim.SystemCompleted)
+---@return nil
+function M.push(root, callback)
+	vim.system({ "git", "push" }, { cwd = fs.normalize(root), text = true }, function(result)
+		vim.schedule(function()
+			callback(result)
+		end)
+	end)
+end
+
 ---@param root string
 ---@param row ChangesRow
 ---@param callback fun(result: vim.SystemCompleted)

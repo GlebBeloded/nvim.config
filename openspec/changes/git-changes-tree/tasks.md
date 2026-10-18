@@ -150,9 +150,9 @@ Scenarios: `git: Changes panel gc commits confirmed message`, `git: Changes pane
 
 ## 6d. Push
 Scenarios: `git: Changes panel P pushes successfully`, `git: Changes panel P reports push failure`
-- [ ] 6d.1 Write the scenarios in `tests/integration/git/test_changes_actions.lua`, porting the populated bare-remote setup from `tests/integration/file-tree/test_tree.lua`, and see them fail
-- [ ] 6d.2 Run push asynchronously in the panel root with the existing notifications
-- [ ] 6d.3 Run `make test FILE=tests/integration/git/test_changes_actions.lua CASE="Changes panel P"` and see it pass
+- [x] 6d.1 Write the scenarios in `tests/integration/git/test_changes_actions.lua`, porting the populated bare-remote setup from `tests/integration/file-tree/test_tree.lua`, and see them fail
+- [x] 6d.2 Run push asynchronously in the panel root with the existing notifications
+- [x] 6d.3 Run `make test FILE=tests/integration/git/test_changes_actions.lua CASE="Changes panel P"` and see it pass
 
 ## 7. Approved screens
 Scenarios: `git: Changes panel matches the approved render`, `git: Changes panel with the diff view matches the approved render`
