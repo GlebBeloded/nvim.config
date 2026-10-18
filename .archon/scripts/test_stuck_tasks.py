@@ -87,6 +87,27 @@ class StuckTasks(unittest.TestCase):
             self.assertEqual([tasks.loop_done(path, artifacts) for _ in range(3)], [False, False, True])
             path.write_text(text.replace("- [ ] 8.1 c", "- [x] 8.1 c"))
             self.assertTrue(tasks.loop_done(path, artifacts))  # nothing left outside Stuck
+    def test_loop_ends_when_only_verification_tasks_are_left_beside_a_stuck_task(self):
+        """Run 0334b5f5: the final gates task ticked `make trace` and ran `make test CAPS=...` 3 times while 5b was stuck."""
+        text = (
+            "## 5b. Navigate\nScenarios: `git: Changes panel diff file navigation`\n- [ ] 5b.1 Run `make test FILE=x CASE=y` and see it fail, make the change\n\n"
+            "## 8. Gate\n- [x] 8.1 Run `make trace` and confirm every scenario is tested\n- [ ] 8.2 Run `make test CAPS=git` and see it pass\n"
+            "- [ ] 8.3 Run `make check` and see it pass\n\n## Stuck\n\n- Task 5b failed.\n"
+        )
+        with tempfile.TemporaryDirectory() as root:
+            path = pathlib.Path(root, "tasks.md")
+            path.write_text(text)
+            self.assertTrue(tasks.loop_done(path, pathlib.Path(root)))
+            path.write_text(text.replace("## Stuck\n\n- Task 5b failed.\n", ""))
+            fresh = pathlib.Path(root, "fresh")
+            fresh.mkdir()
+            self.assertFalse(tasks.loop_done(path, fresh))  # with no stuck task the gates still run
+
+    def test_a_task_with_scenarios_is_not_verification_only(self):
+        self.assertFalse(tasks.verification_only("## 4. A\nScenarios: `x: y`\n- [ ] 4.1 Run `make test FILE=a CASE=b` and see it pass"))
+        self.assertFalse(tasks.verification_only("## 9. Docs\n- [ ] 9.1 Run `make fmt`\n- [ ] 9.2 Update docs/testing.md"))
+        self.assertTrue(tasks.verification_only("## 9. Gate\n- [ ] 9.1 Run `make fmt`\n- [ ] 9.2 Run `make check` and see it pass"))
+
 
 if __name__ == "__main__":
     unittest.main()

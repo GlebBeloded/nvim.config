@@ -688,6 +688,11 @@ T["loop: An auditor Decision runs the spec step"] = function()
 	)
 end
 
+T["loop: Gate reruns a case a hung worker left unrun"] = function()
+	local result = H.system(child, { "python3", "-m", "unittest", "-q", "test_case_name" }, SCRIPTS)
+	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
+end
+
 T["loop: An unfinished spec pass reruns the spec step"] = function()
 	local spec = read(vim.fs.joinpath(H.root, ".archon/commands/queue-spec.md")):gsub("%s+", " ")
 	has(spec, 'Last, after everything else: `rm -f "$ARTIFACTS_DIR/spec-pending"`')
@@ -778,20 +783,25 @@ T["loop: Implement and fix probe UI edge cells"] = function()
 	end
 end
 
+T["loop: The task loop ends when only gates wait on a stuck task"] = function()
+	local result = H.system(child, { "python3", "-m", "unittest", "-q", "test_stuck_tasks" }, SCRIPTS)
+	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
+end
+
 T["loop: Stuck attempts keep the red test"] = function()
 	for _, name in ipairs({ "fix.md", "implement.md" }) do
 		local prompt = read(vim.fs.joinpath(H.root, ".archon/commands", name)):gsub("%s+", " ")
 		has(prompt, "run one headless probe first (the scratch-file probe rule below) that logs the relevant state")
 		has(prompt, "At most 2 implementation attempts per")
 		has(prompt, "revert only the non-test edits (`lua/` and other code; keep the new red")
-		has(prompt, "git add -N -- . ':!tests' && git diff -- . ':!tests' > $ARTIFACTS_DIR/stuck-attempt.diff")
+		has(prompt, "git add -N -- . ':!tests' && git diff -- . ':!tests' > $ARTIFACTS_DIR/stuck-attempt-<task>.diff")
 		has(prompt, "commit the failing test together with tasks.md")
 		has(prompt, "`## Stuck` in tasks.md with the probe output and both attempts")
 		eq(prompt:find("revert the uncommitted edits", 1, true), nil)
 	end
 	has(
 		read(vim.fs.joinpath(H.root, ".archon/commands/fix.md")),
-		"when `$ARTIFACTS_DIR/stuck-attempt.diff` exists, first `git apply` it"
+		"when `$ARTIFACTS_DIR/stuck-attempt-<task>.diff` for that task (or a `stuck-attempt.diff` its `## Stuck` names) exists, first `git apply` it"
 	)
 end
 
