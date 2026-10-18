@@ -97,9 +97,9 @@ Scenarios: `file-tree: Deleting a nest parent keeps its children`, `file-tree: V
 
 Scenarios: `file-tree: Project tree za on a file collapses its folder`, `file-tree: Project tree zM collapses every folder`, `file-tree: Project tree zR expands every folder`, `file-tree: Project tree unfold all stops at the row limit`
 
-- [ ] 5d.1 Update the four existing cases in `tests/integration/file-tree/test_project_tree.lua` to assert the modified requirement through real `za`, `zM` and `zR`, then run `make test FILE=tests/integration/file-tree/test_project_tree.lua CASE="Project tree za on a file collapses its folder"` and see it fail
-- [ ] 5d.2 Make the existing fold actions include nests without changing plain-file, folder, cursor-placement or warning behavior
-- [ ] 5d.3 Run each scenario with `make test FILE=tests/integration/file-tree/test_project_tree.lua CASE="<scenario title>"` and see it pass
+- [x] 5d.1 Update the four existing cases in `tests/integration/file-tree/test_project_tree.lua` to assert the modified requirement through real `za`, `zM` and `zR`, then run `make test FILE=tests/integration/file-tree/test_project_tree.lua CASE="Project tree za on a file collapses its folder"` and see it fail
+- [x] 5d.2 Make the existing fold actions include nests without changing plain-file, folder, cursor-placement or warning behavior
+- [x] 5d.3 Run each scenario with `make test FILE=tests/integration/file-tree/test_project_tree.lua CASE="<scenario title>"` and see it pass
 
 ## 6. Git tint
 
@@ -127,3 +127,4 @@ Scenarios: `file-tree: File tree nests match the approved render`
 - Move expansion keys before the filesystem rename so watcher redraws cannot prune them; reverse the keys if the move rolls back.
 - Nested target lookup lives in the model so selection reuses the cached nest map instead of rebuilding engine logic in the view.
 - Parent deletion needs no nesting-specific expansion because the existing operation collector reads only visible row paths.
+- The four legacy fold regressions opt into shipped nesting settings locally, preserving task 0's isolation for every unrelated project-tree case.
