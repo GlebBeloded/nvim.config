@@ -31,7 +31,8 @@ local function open_tree(project_root, settings_path)
 	root = project_root
 	child.lua([[require("gleb.file_tree.settings").setup({ path = ... })]], { settings_path })
 	child.cmd("cd " .. vim.fn.fnameescape(root))
-	child.cmd("edit " .. vim.fn.fnameescape(vim.fs.joinpath(root, "README.md")))
+	local initial = vim.uv.fs_stat(vim.fs.joinpath(root, "README.md")) and "README.md" or "index.js"
+	child.cmd("edit " .. vim.fn.fnameescape(vim.fs.joinpath(root, initial)))
 	child.lua([[
 		local action = assert(require("gleb.actions").state.applicator.catalog:get("file_tree.toggle"))
 		action.run(require("gleb.actions.context").capture())
@@ -75,6 +76,236 @@ end
 ---@return boolean
 local function has_label(label)
 	return vim.tbl_contains(labels(), label)
+end
+
+---@param label string
+---@param present boolean
+local function wait_for_label(label, present)
+	assert(
+		child.wait(
+			([[(function(label, present)
+				local view = require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()]
+				if not view then return false end
+				local found = vim.iter(view.rows):any(function(row) return row.label == label end)
+				return found == present
+			end)(%q, %s)]]):format(label, tostring(present)),
+			3000
+		),
+		("tree label %s did not become %s"):format(label, present and "visible" or "hidden")
+	)
+end
+
+local function wait_for_git()
+	assert(
+		child.wait(
+			[[(function()
+			local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+			local git = require("gleb.file_tree.git")
+			local state = git.state.roots[view.root]
+			return state and git.state.runs > 0 and state.timer == nil and not state.in_flight
+		end)()]],
+			3000
+		),
+		"git status did not finish"
+	)
+end
+
+---@param relative string
+---@return table?
+local function row_for(relative)
+	return child.lua_get(
+		[[(function(path)
+			local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+			for _, row in ipairs(view.rows) do
+				if row.path == path then return row end
+			end
+		end)(...)]],
+		{ vim.fs.joinpath(assert(vim.uv.fs_realpath(root)), relative) }
+	)
+end
+
+T["file-tree: Ignored entries are hidden by default"] = MiniTest.new_set()
+
+T["file-tree: Ignored entries are hidden by default"]["filters repository ignored rows without a hint"] = function()
+	local project = F.copy("treeproj", vim.fn.tempname() .. "/billing")
+	open_tree(project, settings_file({}))
+	wait_for_git()
+	wait_for_label("bin", false)
+	expand("web")
+
+	eq(has_label("bin"), false)
+	eq(has_label("node_modules"), false)
+	eq(has_label(".env"), false)
+	eq(has_label(".git"), false)
+	local web_children = child.lua_get([[(function()
+		local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+		local children = {}
+		local web_depth
+		for _, row in ipairs(view.rows) do
+			if row.path == vim.fs.joinpath(view.root, "web") then
+				web_depth = row.depth
+			elseif web_depth and row.depth <= web_depth then
+				break
+			elseif web_depth and row.depth == web_depth + 1 then
+				children[#children + 1] = row.label
+			end
+		end
+		return children
+	end)()]])
+	eq(web_children, { "src", "package.json" })
+	eq(
+		vim.iter(labels()):any(function(label)
+			return label:lower():find("ignored", 1, true) ~= nil
+		end),
+		false
+	)
+end
+
+T["file-tree: Tracked files matching gitignore stay listed"] = MiniTest.new_set()
+
+T["file-tree: Tracked files matching gitignore stay listed"]["keeps forced tracked matches and hides untracked matches"] = function()
+	local project = F.copy("treeproj", vim.fn.tempname() .. "/billing")
+	H.write_files(project, {
+		["internal/billing/audit.log"] = "tracked\n",
+		["internal/billing/debug.log"] = "ignored\n",
+	})
+	H.git(project, { "add", "-f", "internal/billing/audit.log" })
+	open_tree(project, settings_file({}))
+	wait_for_git()
+	expand("internal")
+	expand("internal/billing")
+	wait_for_label("debug.log", false)
+
+	eq(has_label("audit.log"), true)
+	eq(has_label("debug.log"), false)
+	local audit = assert(row_for("internal/billing/audit.log"))
+	eq(audit.ignored, false)
+	eq(audit.status, "added")
+end
+
+T["file-tree: Editing gitignore updates ignored entries"] = MiniTest.new_set()
+
+T["file-tree: Editing gitignore updates ignored entries"]["refreshes ignored state after writing gitignore"] = function()
+	local project = F.copy("treeproj", vim.fn.tempname() .. "/billing")
+	open_tree(project, settings_file({}))
+	wait_for_git()
+	local generation = child.lua_get([[(function()
+		local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+		return require("gleb.file_tree.git").ignored_generation(view.root)
+	end)()]])
+	local runs = child.lua_get([[require("gleb.file_tree.git").state.runs]])
+	child.lua([[
+		local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+		require("gleb.file_tree.git").refresh(view.root)
+	]])
+	assert(child.wait(([[require("gleb.file_tree.git").state.runs > %d]]):format(runs), 3000), "refresh did not run")
+	wait_for_git()
+	eq(
+		child.lua_get([[(function()
+		local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+		return require("gleb.file_tree.git").ignored_generation(view.root)
+	end)()]]),
+		generation
+	)
+	wait_for_label("notes.md", true)
+	child.lua([[
+		local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+		for _, win in ipairs(vim.api.nvim_tabpage_list_wins(view.tab)) do
+			if win ~= view.win then vim.api.nvim_set_current_win(win); break end
+		end
+	]])
+	child.cmd("edit " .. vim.fn.fnameescape(vim.fs.joinpath(project, ".gitignore")))
+	child.cmd("$put ='notes.md'")
+	child.cmd("write")
+	wait_for_label("notes.md", false)
+	eq(
+		child.lua_get(
+			[[(function(generation)
+		local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+		return require("gleb.file_tree.git").ignored_generation(view.root) > generation
+	end)(...)]],
+			{ generation }
+		),
+		true
+	)
+end
+
+T["file-tree: Nested gitignore and negation are honoured"] = MiniTest.new_set()
+
+T["file-tree: Nested gitignore and negation are honoured"]["keeps the negated nested path"] = function()
+	local project = F.copy("treeproj", vim.fn.tempname() .. "/billing")
+	H.write_files(project, {
+		["web/.gitignore"] = "generated/*\n!generated/keep.ts\n",
+		["web/generated/drop.ts"] = "drop\n",
+		["web/generated/keep.ts"] = "keep\n",
+	})
+	open_tree(project, settings_file({}))
+	wait_for_git()
+	expand("web")
+	wait_for_label("generated", true)
+	expand("web/generated")
+	wait_for_label("drop.ts", false)
+
+	eq(has_label("keep.ts"), true)
+	eq(has_label("drop.ts"), false)
+end
+
+T["file-tree: Tree root inside an ignored folder stays visible"] = MiniTest.new_set()
+
+T["file-tree: Tree root inside an ignored folder stays visible"]["does not inherit ignore state from ancestors above the root"] = function()
+	local project = F.copy("treeproj", vim.fn.tempname() .. "/billing")
+	local nested_root = vim.fs.joinpath(project, "web/node_modules/left-pad")
+	open_tree(nested_root, settings_file({}))
+	wait_for_git()
+	wait_for_label("index.js", true)
+
+	eq(labels(), { "left-pad", "index.js" })
+	eq(assert(row_for("index.js")).ignored, false)
+	eq(
+		child.lua_get(
+			[[require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()].rows[1].ignored]]
+		),
+		false
+	)
+end
+
+T["file-tree: Folder with only ignored content stays listed"] = MiniTest.new_set()
+
+T["file-tree: Folder with only ignored content stays listed"]["keeps the empty visible folder"] = function()
+	local project = F.copy("treeproj", vim.fn.tempname() .. "/billing")
+	H.write_files(project, { ["generated/debug.log"] = "ignored\n" })
+	open_tree(project, settings_file({}))
+	wait_for_git()
+	wait_for_label("generated", true)
+
+	local generated = assert(row_for("generated"))
+	eq(generated.empty, true)
+	eq(generated.ignored, false)
+	focus_tree_path("generated")
+	child.type_keys("<CR>")
+	eq(has_label("debug.log"), false)
+end
+
+T["file-tree: Ignored sets follow normalized roots across tabs"] = MiniTest.new_set()
+
+T["file-tree: Ignored sets follow normalized roots across tabs"]["maps snapshots for repository and subdirectory roots"] = function()
+	local project = F.copy("treeproj", vim.fn.tempname() .. "/billing")
+	local normalized = assert(vim.uv.fs_realpath(project))
+	assert(project:match("^/var/"), "fixture path is not under /var: " .. project)
+	assert(normalized:match("^/private/var/"), "fixture path was not normalized through /private/var: " .. normalized)
+	local settings_path = settings_file({})
+	open_tree(project, settings_path)
+	wait_for_git()
+	wait_for_label("bin", false)
+	expand("web")
+	eq(has_label("node_modules"), false)
+
+	child.cmd("tabnew")
+	open_tree(vim.fs.joinpath(project, "web"), settings_path)
+	wait_for_git()
+	wait_for_label("node_modules", false)
+	eq(has_label("package.json"), true)
+	eq(has_label("node_modules"), false)
 end
 
 T["file-tree: Settings ignore patterns hide entries"] = MiniTest.new_set()

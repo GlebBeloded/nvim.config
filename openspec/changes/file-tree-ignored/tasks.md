@@ -12,9 +12,9 @@ Scenarios: `file-tree: Settings ignore patterns hide entries`, `file-tree: Ignor
 
 ## 2a. Parse and map git ignored state
 Scenarios: `file-tree: Ignored entries are hidden by default`, `file-tree: Tracked files matching gitignore stay listed`, `file-tree: Editing gitignore updates ignored entries`, `file-tree: Nested gitignore and negation are honoured`, `file-tree: Tree root inside an ignored folder stays visible`, `file-tree: Folder with only ignored content stays listed`, `file-tree: Ignored sets follow normalized roots across tabs`
-- [ ] 2a.1 Write the seven scenarios in `tests/integration/file-tree/test_ignored.lua` with populated fixture copies, including repo and `web/` tabs under a symlink-normalized `/private/var` root, and run `make test FILE=tests/integration/file-tree/test_ignored.lua` to see them fail
-- [ ] 2a.2 Make `model.parse_status` return a separate ignored set for `!` records, store it in `FileTreeGitRoot` under the existing generation/in-flight/dirty lifecycle, map it through the shipped prefix stripping and normalized roots, and bump its generation only when the set changes
-- [ ] 2a.3 Change every `model.rows` call to pass `{ status, ignored, show_ignored, matcher }`, preserve non-ignored empty folders, and run `make test FILE=tests/integration/file-tree/test_ignored.lua` to see the seven scenarios pass
+- [x] 2a.1 Write the seven scenarios in `tests/integration/file-tree/test_ignored.lua` with populated fixture copies, including repo and `web/` tabs under a symlink-normalized `/private/var` root, and run `make test FILE=tests/integration/file-tree/test_ignored.lua` to see them fail
+- [x] 2a.2 Make `model.parse_status` return a separate ignored set for `!` records, store it in `FileTreeGitRoot` under the existing generation/in-flight/dirty lifecycle, map it through the shipped prefix stripping and normalized roots, and bump its generation only when the set changes
+- [x] 2a.3 Change every `model.rows` call to pass `{ status, ignored, show_ignored, matcher }`, preserve non-ignored empty folders, and run `make test FILE=tests/integration/file-tree/test_ignored.lua` to see the seven scenarios pass
 
 ## 2b. Gate first paint on initial ignored state
 Scenarios: `file-tree: First paint waits for ignored status`
@@ -62,3 +62,4 @@ Scenarios: `file-tree: Show Ignored matches the approved render`
 
 - The two git-derived scenarios move from task 1 to task 2a because Decision 2 assigns their required porcelain ignored-set parsing, storage and root mapping there.
 - The compiled settings matcher is an optional model argument until task 2a replaces the row inputs with the designed options table, keeping filtering independent of nesting configuration.
+- Row options carry `ignored_generation` in addition to the designed snapshots so the nest cache invalidates only when the ignored set changes.

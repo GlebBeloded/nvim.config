@@ -40,7 +40,7 @@ end
 
 --- Return whether an entry is ignored by inherited, repository, or settings state.
 ---@param set table<string, boolean>
----@param matcher FileTreeIgnoreMatcher
+---@param matcher FileTreeIgnoreMatcher?
 ---@param rel_path string
 ---@param is_dir boolean
 ---@param parent_ignored boolean
@@ -50,7 +50,7 @@ function M.is_ignored(set, matcher, rel_path, is_dir, parent_ignored)
 		return true
 	end
 	local name = rel_path:match("([^/]+)$") or rel_path
-	for _, item in ipairs(matcher.patterns) do
+	for _, item in ipairs(matcher and matcher.patterns or {}) do
 		if (not item.directory or is_dir) and item.pattern:match(item.path and rel_path or name) then
 			return true
 		end

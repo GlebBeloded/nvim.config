@@ -188,6 +188,19 @@ local function expand_to(view, path)
 end
 
 ---@param view FileTreeView
+---@param loaded_settings FileTreeSettings
+---@return FileTreeRowOptions
+local function row_options(view, loaded_settings)
+	return {
+		status = git.status(view.root),
+		ignored = git.ignored(view.root),
+		ignored_generation = git.ignored_generation(view.root),
+		show_ignored = false,
+		matcher = loaded_settings.matcher,
+	}
+end
+
+---@param view FileTreeView
 ---@param path string
 local function draw(view, path)
 	expand_to(view, path)
@@ -214,14 +227,8 @@ local function draw(view, path)
 			view.expanded_nests[relative] = nil
 		end
 	end
-	view.rows = model.rows(
-		tree,
-		view.expanded,
-		git.status(view.root),
-		nesting_settings,
-		view.expanded_nests,
-		loaded_settings.matcher
-	)
+	view.rows =
+		model.rows(tree, view.expanded, row_options(view, loaded_settings), nesting_settings, view.expanded_nests)
 	render.draw(view.buf, view.rows)
 	local cursor = vim.api.nvim_win_get_cursor(view.win)
 	vim.api.nvim_win_set_cursor(view.win, { math.min(cursor[1], math.max(#view.rows, 1)), cursor[2] })
@@ -335,10 +342,9 @@ local function expand_directory(view, row, warning)
 	local rows = model.rows(
 		fs.tree(view.root),
 		view.expanded,
-		{},
+		row_options(view, loaded_settings),
 		loaded_settings.nesting,
-		view.expanded_nests,
-		loaded_settings.matcher
+		view.expanded_nests
 	)
 	if #rows > EXPANSION_MAX_ROWS then
 		view.expanded[relative] = nil
@@ -503,7 +509,8 @@ function M.unfold_all()
 	local loaded_settings = settings.load()
 	local nesting_settings = loaded_settings.nesting
 	local tree = fs.tree(view.root)
-	local rows = model.rows(tree, view.expanded, {}, nesting_settings, view.expanded_nests, loaded_settings.matcher)
+	local rows =
+		model.rows(tree, view.expanded, row_options(view, loaded_settings), nesting_settings, view.expanded_nests)
 	local queue = {}
 	for _, row in ipairs(rows) do
 		if row.kind == "directory" then

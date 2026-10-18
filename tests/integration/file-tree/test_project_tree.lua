@@ -22,7 +22,7 @@ local function start()
 		local rows = model.rows(fs.tree(...), {
 			internal = true,
 			["internal/billing"] = true,
-		}, {})
+		}, { status = {}, ignored = {}, ignored_generation = 0, show_ignored = false })
 		render.draw(ProjectTreeBuf, rows)
 	]],
 		{ root }

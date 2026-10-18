@@ -15,6 +15,8 @@ local ignore = require("gleb.file_tree.ignore")
 ---@field rules table[]
 ---@field map table<string, string[]>
 ---@field matcher? FileTreeIgnoreMatcher
+---@field ignored_generation integer
+---@field show_ignored boolean
 
 ---@type table<table, FileTreeNestCacheEntry>
 local nest_cache = setmetatable({}, { __mode = "k" })
@@ -55,9 +57,17 @@ end
 ---@field expanded boolean
 ---@field empty boolean
 ---@field status string?
+---@field ignored boolean
 ---@field nest_children? string[]
 ---@field nest_expanded? boolean
 ---@field nest_parent? string
+
+---@class FileTreeRowOptions
+---@field status table<string, string>
+---@field ignored table<string, boolean>
+---@field ignored_generation integer
+---@field show_ignored boolean
+---@field matcher? FileTreeIgnoreMatcher
 
 ---@param path string
 ---@return string
@@ -124,9 +134,11 @@ end
 --- Parse porcelain v2 NUL-delimited status records relative to a repository prefix.
 ---@param porcelain_z string
 ---@param prefix string
----@return table<string, string>
+---@return table<string, string> status
+---@return table<string, boolean> ignored
 function M.parse_status(porcelain_z, prefix)
 	local status = {}
+	local ignored = {}
 	local offset = 1
 	while offset <= #porcelain_z do
 		local separator = porcelain_z:find("\0", offset, true) or (#porcelain_z + 1)
@@ -149,16 +161,22 @@ function M.parse_status(porcelain_z, prefix)
 		elseif kind == "?" then
 			path = record:sub(3)
 			value = "untracked"
+		elseif kind == "!" then
+			path = record:sub(3)
 		end
-		if path and value then
+		if path then
 			local relative = strip_prefix(path, prefix)
 			if relative then
-				status[relative] = value
+				if kind == "!" then
+					ignored[relative] = true
+				elseif value then
+					status[relative] = value
+				end
 			end
 		end
 		offset = separator + 1
 	end
-	return status
+	return status, ignored
 end
 
 --- Return the strongest status at or below a folder path.
@@ -220,19 +238,20 @@ end
 ---@param tree FileTreeSource
 ---@param path string
 ---@param nesting_settings? FileTreeNestingSettings
----@param matcher? FileTreeIgnoreMatcher
+---@param opts FileTreeRowOptions
 ---@return FileTreeEntry[]
 ---@return table<string, string[]>
-local function visible_entries(tree, path, nesting_settings, matcher)
+---@return table<string, boolean>
+local function visible_entries(tree, path, nesting_settings, opts)
 	local scan = tree.scan(path)
 	local entries = {}
+	local ignored_entries = {}
 	for _, entry in ipairs(scan) do
 		local relative = relative_path(tree.root, entry.path)
-		if
-			entry.name ~= ".git"
-			and (not matcher or not ignore.is_ignored({}, matcher, relative, entry.kind == "directory", false))
-		then
+		local entry_ignored = ignore.is_ignored(opts.ignored, opts.matcher, relative, entry.kind == "directory", false)
+		if entry.name ~= ".git" and (opts.show_ignored or not entry_ignored) then
 			entries[#entries + 1] = entry
+			ignored_entries[entry.name] = entry_ignored
 		end
 	end
 	local nest_map = {}
@@ -242,19 +261,23 @@ local function visible_entries(tree, path, nesting_settings, matcher)
 			not cached
 			or cached.generation ~= nesting_settings.generation
 			or cached.rules ~= nesting_settings.rules
-			or cached.matcher ~= matcher
+			or cached.matcher ~= opts.matcher
+			or cached.ignored_generation ~= opts.ignored_generation
+			or cached.show_ignored ~= opts.show_ignored
 		then
 			cached = {
 				generation = nesting_settings.generation,
 				rules = nesting_settings.rules,
-				matcher = matcher,
+				matcher = opts.matcher,
+				ignored_generation = opts.ignored_generation,
+				show_ignored = opts.show_ignored,
 				map = nesting.nest(path, entries, nesting_settings.rules),
 			}
 			nest_cache[scan] = cached
 		end
 		nest_map = cached.map
 	end
-	return M.sort(entries), nest_map
+	return M.sort(entries), nest_map, ignored_entries
 end
 
 --- Return whether a file is currently a parent in its folder's nest map.
@@ -264,7 +287,13 @@ end
 ---@param matcher? FileTreeIgnoreMatcher
 ---@return boolean
 function M.has_nest(tree, path, nesting_settings, matcher)
-	local _, nest_map = visible_entries(tree, vim.fs.dirname(path), nesting_settings, matcher)
+	local _, nest_map = visible_entries(tree, vim.fs.dirname(path), nesting_settings, {
+		status = {},
+		ignored = {},
+		ignored_generation = 0,
+		show_ignored = false,
+		matcher = matcher,
+	})
 	local children = nest_map[basename(path)]
 	return children ~= nil and #children > 0
 end
@@ -277,7 +306,13 @@ end
 ---@return string?
 function M.nest_parent(tree, path, nesting_settings, matcher)
 	local directory = vim.fs.dirname(path)
-	local _, nest_map = visible_entries(tree, directory, nesting_settings, matcher)
+	local _, nest_map = visible_entries(tree, directory, nesting_settings, {
+		status = {},
+		ignored = {},
+		ignored_generation = 0,
+		show_ignored = false,
+		matcher = matcher,
+	})
 	local name = basename(path)
 	for parent, children in pairs(nest_map) do
 		if vim.tbl_contains(children, name) then
@@ -290,33 +325,32 @@ end
 ---@param tree FileTreeSource
 ---@param entry FileTreeEntry
 ---@param nesting_settings? FileTreeNestingSettings
----@param matcher? FileTreeIgnoreMatcher
+---@param opts FileTreeRowOptions
 ---@return string label
 ---@return FileTreeEntry tail
 ---@return FileTreeEntry[] children
-local function compact_directory(tree, entry, nesting_settings, matcher)
+local function compact_directory(tree, entry, nesting_settings, opts)
 	local names = { entry.name }
 	local tail = entry
-	local children = visible_entries(tree, tail.path, nesting_settings, matcher)
+	local children = visible_entries(tree, tail.path, nesting_settings, opts)
 	while #children == 1 and children[1].kind == "directory" do
 		tail = children[1]
 		names[#names + 1] = tail.name
-		children = visible_entries(tree, tail.path, nesting_settings, matcher)
+		children = visible_entries(tree, tail.path, nesting_settings, opts)
 	end
 	return table.concat(names, "/"), tail, children
 end
 
 ---@param tree FileTreeSource
 ---@param expanded table<string, boolean>
----@param status table<string, string>
+---@param opts FileTreeRowOptions
 ---@param rows FileTreeRow[]
 ---@param path string
 ---@param depth integer
 ---@param nesting_settings? FileTreeNestingSettings
 ---@param expanded_nests? table<string, boolean>
----@param matcher? FileTreeIgnoreMatcher
-local function append_children(tree, expanded, status, rows, path, depth, nesting_settings, expanded_nests, matcher)
-	local entries, nest_map = visible_entries(tree, path, nesting_settings, matcher)
+local function append_children(tree, expanded, opts, rows, path, depth, nesting_settings, expanded_nests)
+	local entries, nest_map, ignored_entries = visible_entries(tree, path, nesting_settings, opts)
 	local entries_by_name = {}
 	local nested = {}
 	for _, entry in ipairs(entries) do
@@ -333,15 +367,22 @@ local function append_children(tree, expanded, status, rows, path, depth, nestin
 			local tail = entry
 			local children = {}
 			if entry.kind == "directory" then
-				label, tail, children = compact_directory(tree, entry, nesting_settings, matcher)
+				label, tail, children = compact_directory(tree, entry, nesting_settings, opts)
 			end
 			local relative = relative_path(tree.root, tail.path)
+			local row_ignored = ignore.is_ignored(
+				opts.ignored,
+				opts.matcher,
+				relative,
+				tail.kind == "directory",
+				ignored_entries[entry.name] == true
+			)
 			local is_expanded = tail.kind == "directory" and expanded[relative] == true
 			local nest_children = nest_map[entry.name]
 			local nest_expanded = nest_children ~= nil and expanded_nests ~= nil and expanded_nests[relative] == true
 			local row_status = tail.kind == "file"
-					and nest_parent_status(status, tree, tail, nest_children, entries_by_name)
-				or path_status(status, relative, tail.kind == "directory")
+					and nest_parent_status(opts.status, tree, tail, nest_children, entries_by_name)
+				or path_status(opts.status, relative, tail.kind == "directory")
 			rows[#rows + 1] = {
 				depth = depth,
 				kind = tail.kind,
@@ -350,21 +391,12 @@ local function append_children(tree, expanded, status, rows, path, depth, nestin
 				expanded = is_expanded,
 				empty = tail.kind == "directory" and #children == 0,
 				status = row_status,
+				ignored = row_ignored,
 				nest_children = nest_children,
 				nest_expanded = nest_expanded,
 			}
 			if is_expanded then
-				append_children(
-					tree,
-					expanded,
-					status,
-					rows,
-					tail.path,
-					depth + 1,
-					nesting_settings,
-					expanded_nests,
-					matcher
-				)
+				append_children(tree, expanded, opts, rows, tail.path, depth + 1, nesting_settings, expanded_nests)
 			elseif nest_expanded then
 				for _, child_name in ipairs(nest_children) do
 					local child = entries_by_name[child_name]
@@ -376,7 +408,8 @@ local function append_children(tree, expanded, status, rows, path, depth, nestin
 							path = child.path,
 							expanded = false,
 							empty = false,
-							status = path_status(status, relative_path(tree.root, child.path), false),
+							status = path_status(opts.status, relative_path(tree.root, child.path), false),
+							ignored = ignored_entries[child.name] == true,
 							nest_parent = entry.path,
 						}
 					end
@@ -389,12 +422,11 @@ end
 --- Flatten the visible portion of a project tree into rows.
 ---@param tree FileTreeSource
 ---@param expanded table<string, boolean>
----@param status table<string, string>
+---@param opts FileTreeRowOptions
 ---@param nesting_settings? FileTreeNestingSettings
 ---@param expanded_nests? table<string, boolean>
----@param matcher? FileTreeIgnoreMatcher
 ---@return FileTreeRow[]
-function M.rows(tree, expanded, status, nesting_settings, expanded_nests, matcher)
+function M.rows(tree, expanded, opts, nesting_settings, expanded_nests)
 	local rows = {
 		{
 			depth = 0,
@@ -403,9 +435,10 @@ function M.rows(tree, expanded, status, nesting_settings, expanded_nests, matche
 			path = tree.root,
 			expanded = true,
 			empty = false,
+			ignored = false,
 		},
 	}
-	append_children(tree, expanded, status, rows, tree.root, 0, nesting_settings, expanded_nests, matcher)
+	append_children(tree, expanded, opts, rows, tree.root, 0, nesting_settings, expanded_nests)
 	return rows
 end
 
