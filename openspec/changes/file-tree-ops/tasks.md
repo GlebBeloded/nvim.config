@@ -100,6 +100,10 @@ Scenarios: `file-tree: Project tree operation keys come from the keymap file`, `
 - Probe: the input picker retained an empty query, accepted multibyte `{ "å", "界" }`, resized from width 70 to 44 at 46 columns, and became inactive after its window was closed (`wins = 2`).
 - Attempt 1 added normalized create containment plus all requested actions and mappings. The integration cases passed, but G1 showed the prompt one row too high and no statusline.
 - Attempt 2 shifted the input frame down and tried retaining the originating/global statusline. The frame then matched rows 13–17, but the focused minimal float rendered first Neovim's default statusline and then a blank line instead of the approved lualine row. The saved production diff is `artifacts/runs/fce92e56-8211-40e7-9a50-95c1cdfead98/stuck-attempt.diff`.
+- Task 4c remains unticked. The red tests prove that case-only rename leaves its temporary sibling and folder rename drops the migrated expanded keys; read-only failure and symlinked-root buffer identity are covered too.
+- Probe: two isolated `vim.lsp.util.rename` hops moved `README.md` through `.gleb-rename-temporary-README.md` to `Readme.md` with no notifications, so the filesystem supports the operation.
+- Attempt 1 added the temporary hop, rollback, post-stat checks and expanded-key migration. The real mapped rename timed out in `workspace/willRenameFiles` after the first hop and left the temporary sibling.
+- Attempt 2 allowed overwrite on the second hop to replace `vim.lsp.util.rename`'s stale old-name buffer entry. Even after waiting beyond the LSP timeout, the mapped rename still left the temporary sibling. The saved production diff is `artifacts/runs/fce92e56-8211-40e7-9a50-95c1cdfead98/stuck-attempt.diff`.
 
 ## Agent decisions
 
@@ -113,3 +117,4 @@ Scenarios: `file-tree: Project tree operation keys come from the keymap file`, `
 - Task 4a installs only the `r` action and key needed by its real-entry-point tests; the other operation keys remain with stuck task 3b.
 - Task 4b drives batch preflight through its public `ops.move(pairs)` entry point because Visual cut/paste mappings remain part of stuck task 3b.
 - `ops.move` derives the root from the active project-tree view and returns success so later cut paste can retain its clipboard after a failed move.
+- The case-only integration waits past the bounded LSP timeout so it observes the completed rename rather than an intermediate temporary sibling.

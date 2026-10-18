@@ -128,15 +128,16 @@ local function attach_rename_recorder()
 end
 
 ---@param relative string
+---@param timeout? integer
 ---@return boolean
-local function wait_for_path(relative)
+local function wait_for_path(relative, timeout)
 	return child.lua_get(
-		[[(function(path)
-			return vim.wait(1000, function()
+		[[(function(path, wait_timeout)
+			return vim.wait(wait_timeout, function()
 				return vim.uv.fs_stat(path) ~= nil
 			end, 20)
 		end)(...)]],
-		{ vim.fs.joinpath(tree_root, relative) }
+		{ vim.fs.joinpath(tree_root, relative), timeout or 1000 }
 	)
 end
 
@@ -291,6 +292,103 @@ T["file-tree: Project tree r reports an existing name"] = function()
 	})
 	eq(vim.fn.readfile(invoice), invoice_before)
 	eq(vim.fn.readfile(tax), tax_before)
+end
+
+T["file-tree: Project tree rename reports a read-only destination"] = function()
+	local notifications = H.record_notify(child)
+	local folder = vim.fs.joinpath(tree_root, "internal/billing")
+	local invoice = vim.fs.joinpath(folder, "invoice.go")
+	local bill = vim.fs.joinpath(folder, "bill.go")
+	open_billing()
+	focus_tree_path("internal/billing/invoice.go")
+	child.lua([[assert(vim.uv.fs_chmod(..., 365))]], { folder })
+	rename("bill.go")
+	assert(child.wait([[#Notifications > 0]]), "read-only rename was not reported")
+	child.lua([[assert(vim.uv.fs_chmod(..., 493))]], { folder })
+
+	eq(vim.uv.fs_stat(invoice) ~= nil, true)
+	eq(vim.uv.fs_stat(bill), nil)
+	local notification = notifications()[#notifications()]
+	assert(notification.msg:find("Rename failed:", 1, true) == 1, "rename failure was not reported")
+	eq(notification.level, vim.log.levels.ERROR)
+end
+
+T["file-tree: Project tree supports a case-only rename"] = function()
+	local before = vim.fn.readfile(vim.fs.joinpath(root, "README.md"))
+	local notifications = H.record_notify(child)
+	focus_tree_path("README.md")
+	rename("Readme.md")
+
+	assert(
+		wait_for_path("Readme.md", 2500),
+		"case-only target did not appear: " .. vim.inspect({ vim.fn.readdir(root), notifications() })
+	)
+	eq(vim.fn.readfile(vim.fs.joinpath(root, "Readme.md")), before)
+	local names = vim.fn.readdir(root)
+	eq(vim.tbl_contains(names, "Readme.md"), true)
+	eq(vim.tbl_contains(names, "README.md"), false)
+	eq(
+		vim.tbl_filter(function(name)
+			return name:find("gleb%-rename%-temporary") ~= nil
+		end, names),
+		{}
+	)
+end
+
+T["file-tree: Project tree rename follows a buffer opened through a symlinked root"] = function()
+	open_billing()
+	local linked_root = vim.fn.tempname() .. "-billing"
+	child.lua([[assert(vim.uv.fs_symlink(...))]], { tree_root, linked_root })
+	local old_linked = vim.fs.joinpath(linked_root, "internal/billing/invoice.go")
+	local new_linked = vim.fs.joinpath(linked_root, "internal/billing/bill.go")
+	local buffer = child.lua_get(
+		[[(function(path)
+			local buf = vim.fn.bufadd(path)
+			vim.fn.bufload(buf)
+			return buf
+		end)(...)]],
+		{ old_linked }
+	)
+	local old_name = child.api.nvim_buf_get_name(buffer)
+	local expected_name = old_name:gsub("invoice%.go$", "bill.go")
+	focus_tree_path("internal/billing/invoice.go")
+	rename("bill.go")
+
+	assert(wait_for_path("internal/billing/bill.go"), "symlinked buffer target did not appear")
+	eq(child.api.nvim_buf_get_name(buffer), expected_name)
+	child.lua([[vim.api.nvim_buf_call(..., function() vim.cmd("write") end)]], { buffer })
+	eq(vim.uv.fs_stat(new_linked) ~= nil, true)
+	eq(
+		child.lua_get(
+			[[
+		vim.iter(vim.api.nvim_list_bufs()):any(function(buf)
+			return vim.api.nvim_buf_get_name(buf) == ...
+		end)
+	]],
+			{ old_name }
+		),
+		false
+	)
+end
+
+T["file-tree: Project tree folder rename migrates expanded keys"] = function()
+	open_billing()
+	focus_tree_path("internal")
+	rename("domain")
+
+	assert(wait_for_path("domain/billing/invoice.go"), "expanded folder target did not appear")
+	local actual = child.lua_get([[(function()
+		local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+		return {
+			domain = view.expanded.domain,
+			billing = view.expanded["domain/billing"],
+			old = vim.iter(vim.tbl_keys(view.expanded)):any(function(path)
+				return path == "internal" or vim.startswith(path, "internal/")
+			end),
+		}
+	end)()]])
+	eq(actual, { domain = true, billing = true, old = false })
+	eq(tree_has_path("domain/billing/invoice.go"), true)
 end
 
 T["file-tree: Project tree rename refuses a vanished row"] = function()
