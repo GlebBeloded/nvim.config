@@ -226,20 +226,6 @@ local started = vim.uv.hrtime()
 local finished = false
 local timer
 
-local function subprocesses(pid)
-	local ok_children, children = pcall(vim.api.nvim_get_proc_children, pid)
-	if not ok_children then
-		return "<unavailable>"
-	end
-	local commands = {}
-	for _, child_pid in ipairs(children) do
-		local ok_process, process = pcall(vim.api.nvim_get_proc, child_pid)
-		local command = ok_process and type(process) == "table" and process.name or "<unavailable>"
-		table.insert(commands, ("%d: %s"):format(child_pid, command))
-	end
-	return #commands > 0 and table.concat(commands, ", ") or "<none>"
-end
-
 local function write_state(phase, err)
 	local ok_mode, mode = pcall(vim.api.nvim_get_mode)
 	local ok_getchar, getchar = pcall(vim.fn.getchar, 1)
@@ -250,7 +236,6 @@ local function write_state(phase, err)
 		mode = ok_mode and mode.mode or "<unavailable>",
 		getchar = ok_getchar and vim.inspect(getchar) or "<unavailable>",
 		messages = ok_messages and messages.output or "<unavailable>",
-		subprocesses = subprocesses(vim.uv.os_getpid()),
 		error = err and tostring(err) or nil,
 	}
 	pcall(vim.fn.writefile, { vim.json.encode(state) }, spec.state_file)
@@ -349,8 +334,8 @@ local function child_subprocesses(pid)
 	end
 	local commands = {}
 	for _, child_pid in ipairs(children) do
-		local ok_process, process = pcall(vim.api.nvim_get_proc, child_pid)
-		local command = ok_process and type(process) == "table" and process.name or "<unavailable>"
+		local process = vim.system({ "ps", "-o", "args=", "-p", tostring(child_pid) }, { text = true }):wait()
+		local command = process.code == 0 and vim.trim(process.stdout or "") or "<unavailable>"
 		table.insert(commands, ("%d: %s"):format(child_pid, command))
 	end
 	return #commands > 0 and table.concat(commands, ", ") or "<none>"

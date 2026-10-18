@@ -73,7 +73,7 @@ local function expect_blocked_differ_diagnostic()
 
 	eq(ok, false)
 	eq(elapsed < 10000, true)
-	for _, field in ipairs({ "Differ", "phase: opening", "elapsed:", "mode:", "getchar:", "messages:", "sleep" }) do
+	for _, field in ipairs({ "Differ", "phase: opening", "elapsed:", "mode:", "getchar:", "messages:", "sleep 30" }) do
 		assert(tostring(diagnostic):find(field, 1, true), ("missing %q in %s"):format(field, diagnostic))
 	end
 end
