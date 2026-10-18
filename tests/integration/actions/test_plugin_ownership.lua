@@ -120,7 +120,7 @@ T["actions: Plugin-window mappings are action-owned"] = function()
 	]],
 		"99",
 		"99",
-		[[PluginBuffer("99") ~= nil or PluginBuffer("99prompt") ~= nil]]
+		[[vim.bo.filetype == "99" or vim.bo.filetype == "99prompt"]]
 	)
 	expect_audit_empty()
 
