@@ -46,38 +46,6 @@ local function open_surface(open, filetype, surface, condition)
 	})
 end
 
-local function expect_blocked_differ_diagnostic()
-	local blocked = H.new_child()
-	blocked.start_config()
-	blocked.wait_very_lazy()
-	blocked.cmd("cd " .. vim.fn.fnameescape(repo) .. " | edit sample.go")
-	blocked.lua([[
-		local system = vim.system
-		vim.system = function(command, opts, on_exit)
-			if command[1] == "git" then
-				return system({ "/bin/sleep", "30" }, opts, on_exit)
-			end
-			return system(command, opts, on_exit)
-		end
-	]])
-
-	local started = vim.uv.hrtime()
-	local ok, diagnostic = pcall(H.open_surface, blocked, {
-		open = [[vim.cmd("Differ")]],
-		condition = [[vim.bo.filetype == "differdiff"]],
-		surface = "Differ",
-		timeout = 1000,
-	})
-	local elapsed = (vim.uv.hrtime() - started) / 1000000
-	pcall(blocked.stop)
-
-	eq(ok, false)
-	eq(elapsed < 10000, true)
-	for _, field in ipairs({ "Differ", "phase: opening", "elapsed:", "mode:", "getchar:", "messages:", "sleep 30" }) do
-		assert(tostring(diagnostic):find(field, 1, true), ("missing %q in %s"):format(field, diagnostic))
-	end
-end
-
 ---@param filetype string
 ---@param lhs string
 ---@param mode? string
@@ -175,7 +143,7 @@ T["actions: Plugin-window mappings are action-owned"] = function()
 			},
 		}
 	)
-	expect_blocked_differ_diagnostic()
+	H.expect_blocked_differ_diagnostic({ repo = repo, file = "sample.go" })
 end
 
 T["actions: Unconfigured defaults are absent"] = function()

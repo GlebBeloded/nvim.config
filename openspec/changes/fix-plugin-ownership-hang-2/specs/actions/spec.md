@@ -11,7 +11,7 @@ After `VeryLazy`, every global or plugin-window mapping in modes `n`, `x`, `s`, 
 
 #### Scenario: Plugin-window mappings are action-owned
 - **WHEN** neo-tree, dap-ui, diffview, differ, codediff, neotest, mason, lazy, blink, and copilot windows are opened with populated data
-- **THEN** each mapping resolves to its registered action and current lhs, or exactly matches an allowlisted Mason navigation, lazy.nvim view, autopairs insertion, codediff mouse-selection, or 99 `q`/`<CR>` mapping; if a window blocks while opening, the test fails within 10 seconds with that surface's recorded child state
+- **THEN** each mapping resolves to its registered action and current lhs, or exactly matches an allowlisted Mason navigation, lazy.nvim view, autopairs insertion, codediff mouse-selection, or 99 `q`/`<CR>` mapping; if a window blocks while opening, the test fails within 10 seconds with that surface's recorded child state; the blocked-open regression reports phase `opening` and live subprocess command lines, then stops its Neovim child and descendants even if the open returns before the deadline
 
 #### Scenario: Unconfigured defaults are absent
 - **WHEN** the full config has fired `VeryLazy` and Neovim and plugin mappings are enumerated

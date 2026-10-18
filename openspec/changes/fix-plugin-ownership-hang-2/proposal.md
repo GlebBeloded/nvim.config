@@ -31,6 +31,8 @@ neotest summary, Mason, Lazy, 99). Which one blocks is not known.
   failure names the surface and includes its last recorded mode, pending-input state, messages, and elapsed phase.
 - Drive both affected scenarios through that bounded path, including the real `:Differ` command and populated Git
   data. Keep every surface and every existing assertion.
+- Stop every live subprocess before stopping a blocked Neovim child, and share the blocked-`:Differ` regression helper
+  between the affected scenarios while preserving teardown when the open returns before its deadline.
 - This change does not add, remove, or upgrade a plugin dependency, and it does not change core keymaps.
 - Out of scope: changing Differ's layout or mappings, skipping a plugin surface, and reproducing the flake with
   artificial host load.
@@ -50,7 +52,8 @@ neotest summary, Mason, Lazy, 99). Which one blocks is not known.
 
 ## Impact
 
-- `tests/helpers.lua`, `tests/integration/actions/test_plugin_ownership.lua`, and `tests/integration/git/test_git.lua`.
+- `tests/helpers.lua`, `tests/integration/actions/test_plugin_ownership.lua`, `tests/integration/git/test_git.lua`,
+  `tests/integration/file-tree/test_project_live.lua`, and `tests/screen/file-tree/test_project_ops.lua`.
 - `actions: Plugin-window mappings are action-owned` and `git: Differ opens panel on the left` still hold, and neither hangs a worker under load.
 
 ## Decision (auditor, 2026-10-18, after the task loop)

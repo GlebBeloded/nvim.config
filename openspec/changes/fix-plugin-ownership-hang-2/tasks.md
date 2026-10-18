@@ -16,7 +16,15 @@ Scenarios: `actions: Plugin-window mappings are action-owned`, `git: Differ open
 - [x] 3.2 Always stop each blocked-Differ child after the bounded open attempt
 - [x] 3.3 Record live child subprocess commands in surface state and failure diagnostics, and require the regression diagnostic to name `sleep`
 
+## 4. Stop blocked-Differ process trees through one regression helper
+Scenarios: `actions: Plugin-window mappings are action-owned`, `git: Differ opens panel on the left`
+- [x] 4.1 Tighten the assertions in `tests/integration/actions/test_plugin_ownership.lua` and `tests/integration/git/test_git.lua` to require the stubbed `sleep 30` process to be gone after teardown; with the temporary fault that only the Neovim PID is killed, run each scenario, see it fail, record the failures, then remove the fault
+- [x] 4.2 Update `tests/helpers.lua` to stop each captured child subprocess before stopping Neovim, and move the duplicated blocked-`:Differ` setup and diagnostic assertions there without dropping the `opening`, elapsed-time, child-state, or command-line checks
+- [x] 4.3 Run `make test FILE=tests/integration/actions/test_plugin_ownership.lua CASE="Plugin-window mappings are action-owned"` and `make test FILE=tests/integration/git/test_git.lua CASE="Differ opens panel on the left"` and see both pass
+
 ## Agent decisions
 
 - The blocked-Differ regressions use helper deadlines of at most one second so they reach the stubbed git call and prove the diagnostic path well inside the specified 10 seconds.
 - The ownership audit disables Mason's optional outdated-package refresh because it audits local mappings, not remote package metadata.
+- The adopted load-scaled waits in `tests/integration/file-tree/test_project_live.lua` and `tests/screen/file-tree/test_project_ops.lua` remain in scope because they strengthen readiness checks required for the full gate and do not weaken assertions.
+- The shared blocked-Differ helper accepts caller-specific setup and readiness expressions so each scenario retains its original invocation path.

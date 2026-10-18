@@ -315,7 +315,11 @@ end
 
 ---@param child MiniTest.child
 ---@param pid integer
-local function stop_blocked_child(child, pid)
+---@param subprocess_pids integer[]
+local function stop_blocked_child(child, pid, subprocess_pids)
+	for _, subprocess_pid in ipairs(subprocess_pids) do
+		pcall(vim.uv.kill, subprocess_pid, "sigkill")
+	end
 	vim.uv.kill(pid, "sigkill")
 	vim.fn.jobwait({ child.job.id }, 1000)
 	pcall(vim.fn.chanclose, child.job.channel)
@@ -326,11 +330,12 @@ local function stop_blocked_child(child, pid)
 end
 
 ---@param pid integer
----@return string
+---@return string commands
+---@return integer[] pids
 local function child_subprocesses(pid)
 	local ok_children, children = pcall(vim.api.nvim_get_proc_children, pid)
 	if not ok_children then
-		return "<unavailable>"
+		return "<unavailable>", {}
 	end
 	local commands = {}
 	for _, child_pid in ipairs(children) do
@@ -338,7 +343,7 @@ local function child_subprocesses(pid)
 		local command = process.code == 0 and vim.trim(process.stdout or "") or "<unavailable>"
 		table.insert(commands, ("%d: %s"):format(child_pid, command))
 	end
-	return #commands > 0 and table.concat(commands, ", ") or "<none>"
+	return #commands > 0 and table.concat(commands, ", ") or "<none>", children
 end
 
 --- Open a child surface without making a blocking RPC request while waiting.
@@ -365,14 +370,15 @@ function M.open_surface(child, spec)
 	end, 20)
 	local elapsed = math.floor((vim.uv.hrtime() - started) / 1000000)
 	state = state or {}
-	state.subprocesses = child_subprocesses(pid)
+	local subprocess_pids
+	state.subprocesses, subprocess_pids = child_subprocesses(pid)
 	vim.fn.delete(state_file)
 
 	if completed and state.phase == "ready" then
 		return
 	end
 	if not completed and child.job then
-		stop_blocked_child(child, pid)
+		stop_blocked_child(child, pid, subprocess_pids)
 	end
 
 	error(
@@ -387,6 +393,60 @@ function M.open_surface(child, spec)
 			state.error and "; error: " .. state.error or ""
 		)
 	)
+end
+
+---@class tests.BlockedDiffer
+---@field repo string Populated Git repository.
+---@field file string File to edit before opening Differ.
+---@field setup? string Child-side Lua needed by the readiness condition.
+---@field condition? string Lua expression that is truthy once Differ is ready.
+
+--- Require a blocked real `:Differ` open to report child state and clean up its process tree.
+---@param spec tests.BlockedDiffer
+---@return nil
+function M.expect_blocked_differ_diagnostic(spec)
+	local blocked = M.new_child()
+	blocked.start_config()
+	blocked.wait_very_lazy()
+	blocked.cmd("cd " .. vim.fn.fnameescape(spec.repo) .. " | edit " .. vim.fn.fnameescape(spec.file))
+	if spec.setup then
+		blocked.lua(spec.setup)
+	end
+	blocked.lua([[
+		local system = vim.system
+		vim.system = function(command, opts, on_exit)
+			if command[1] == "git" then
+				return system({ "/bin/sleep", "30" }, opts, on_exit)
+			end
+			return system(command, opts, on_exit)
+		end
+	]])
+
+	local started = vim.uv.hrtime()
+	local ok, diagnostic = pcall(M.open_surface, blocked, {
+		open = [[vim.cmd("Differ")]],
+		condition = spec.condition or [[vim.bo.filetype == "differdiff"]],
+		surface = "Differ",
+		timeout = 1000,
+	})
+	local elapsed = (vim.uv.hrtime() - started) / 1000000
+	pcall(blocked.stop)
+
+	local message = tostring(diagnostic)
+	local sleep_pid = assert(tonumber(assert(message:match("subprocesses: (%d+): /bin/sleep 30"), message)))
+	local sleep_stopped = vim.wait(1000, function()
+		return vim.uv.kill(sleep_pid, 0) ~= 0
+	end, 20)
+	if not sleep_stopped then
+		vim.uv.kill(sleep_pid, "sigkill")
+	end
+
+	MiniTest.expect.equality(ok, false)
+	MiniTest.expect.equality(elapsed < 10000, true)
+	MiniTest.expect.equality(sleep_stopped, true)
+	for _, field in ipairs({ "Differ", "phase: opening", "elapsed:", "mode:", "getchar:", "messages:", "sleep 30" }) do
+		assert(message:find(field, 1, true), ("missing %q in %s"):format(field, message))
+	end
 end
 
 --- Test set whose cases each get a fresh child started by `start`.
