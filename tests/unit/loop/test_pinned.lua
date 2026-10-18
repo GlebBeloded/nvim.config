@@ -189,6 +189,8 @@ T["loop: Fix prompt allows a delta for a contradicted pin"] = function()
 	has(fix, "add a MODIFIED delta restating that scenario to the new behaviour and update the test to the new THEN")
 	has(fix, "An edited assertion must still prove its scenario's THEN")
 	has(fix, "replacing a behaviour/callback check with metadata (desc, buffer) is weakening")
+	has(fix, "Replacing an immediate or bounded check with a wait longer than the behaviour's own bound")
+	has(fix, "removing a stub keeps every check it supported, now made against the real module")
 end
 
 T["loop: Queue spec prompt keeps skip_specs and flake tasks narrow"] = function()

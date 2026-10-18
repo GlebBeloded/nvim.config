@@ -70,7 +70,7 @@ After a judge reject, `.archon/scripts/followup.py` SHALL re-queue the work on `
 
 #### Scenario: Rejected run quotes the review findings
 - **WHEN** followup.py re-queues active change `x` with `INPUTS_REASONS` holding `- review findings:` and indented finding lines, one of them `  ## Removed assert`
-- **THEN** the proposal's `## Rejected run` section holds each finding line as given and the proposal has no heading beyond `## Why`, `## What Changes`, `## Impact` and `## Rejected run`
+- **THEN** the proposal's `## Rejected run` section holds each finding line as given and the proposal has no heading beyond `## Why`, `## What Changes`, `## Impact` and `## Rejected run`, and findings over 4000 characters are cut between findings, never inside one
 
 #### Scenario: Adopt line is added to a proposal without one
 - **WHEN** followup.py re-queues a change whose proposal has a `Kind:` line and no `Adopt:` line, and one whose proposal has neither (only `## Why` and `## What Changes`)
@@ -940,7 +940,7 @@ Every literal `lua/gleb` file path routed by `tests/quick.sh` SHALL exist in the
 
 #### Scenario: Fix prompt allows a delta for a contradicted pin
 - **WHEN** `.archon/commands/fix.md` is read
-- **THEN** it allows a MODIFIED delta when a failing test pins a main-spec scenario the change contradicts, and calls replacing a behaviour check with metadata (desc, buffer) weakening
+- **THEN** it allows a MODIFIED delta when a failing test pins a main-spec scenario the change contradicts, and calls replacing a behaviour check with metadata (desc, buffer) weakening, as is a check replaced by a wait longer than the behaviour's bound, and keeps a removed stub's checks against the real module
 
 #### Scenario: Queue spec prompt keeps skip_specs and flake tasks narrow
 - **WHEN** `.archon/commands/queue-spec.md` is read
