@@ -310,4 +310,99 @@ T["git: Changes panel ]f keeps diff focus"] = function()
 	})
 end
 
+T["git: Changes panel Enter opens the file"] = function()
+	local root = F.copy("dirty", vim.fn.tempname() .. "/dirty")
+	open_changes(root, "a.txt")
+	observe_show()
+	cursor_before("b.txt")
+	child.type_keys("j")
+	wait_for_shows(1)
+
+	child.type_keys("<CR>")
+
+	local result = child.lua_get([[(function()
+		local filetypes = {}
+		for _, win in ipairs(vim.api.nvim_list_wins()) do
+			filetypes[vim.bo[vim.api.nvim_win_get_buf(win)].filetype] = true
+		end
+		return {
+			current = vim.fs.normalize(vim.api.nvim_buf_get_name(0)),
+			changes = filetypes["gleb-changes"] or false,
+			diff = filetypes["gleb-diff"] or false,
+		}
+	end)()]])
+	eq(result, {
+		current = assert(vim.uv.fs_realpath(vim.fs.joinpath(root, "b.txt"))),
+		changes = true,
+		diff = false,
+	})
+end
+
+T["git: Changes panel q closes the panel and the diff view"] = function()
+	local root = F.copy("dirty", vim.fn.tempname() .. "/dirty")
+	open_changes(root, "a.txt")
+	observe_show()
+	local tabs = #child.api.nvim_list_tabpages()
+	cursor_before("b.txt")
+	child.type_keys("j")
+	wait_for_shows(1)
+
+	child.type_keys("q")
+
+	local result = child.lua_get([[(function()
+		local filetypes = {}
+		for _, win in ipairs(vim.api.nvim_list_wins()) do
+			filetypes[vim.bo[vim.api.nvim_win_get_buf(win)].filetype] = true
+		end
+		return {
+			current = vim.fs.normalize(vim.api.nvim_buf_get_name(0)),
+			changes = filetypes["gleb-changes"] or false,
+			diff = filetypes["gleb-diff"] or false,
+		}
+	end)()]])
+	eq({ #child.api.nvim_list_tabpages(), result }, {
+		tabs,
+		{
+			current = assert(vim.uv.fs_realpath(vim.fs.joinpath(root, "a.txt"))),
+			changes = false,
+			diff = false,
+		},
+	})
+end
+
+T["git: Project tree replaces the changes panel"] = function()
+	local root = F.copy("dirty", vim.fn.tempname() .. "/dirty")
+	open_changes(root, "a.txt")
+	observe_show()
+	cursor_before("b.txt")
+	child.type_keys("j")
+	wait_for_shows(1)
+
+	child.lua([[
+		local action = assert(require("gleb.actions").state.applicator.catalog:get("file_tree.toggle"))
+		action.run(require("gleb.actions.context").capture())
+	]])
+	eq(child.wait([[vim.bo.filetype == "gleb-file-tree"]], ASYNC_MS), true)
+
+	local result = child.lua_get([[(function()
+		local filetypes = {}
+		local leftmost
+		for _, win in ipairs(vim.api.nvim_list_wins()) do
+			local filetype = vim.bo[vim.api.nvim_win_get_buf(win)].filetype
+			filetypes[filetype] = true
+			local column = vim.api.nvim_win_get_position(win)[2]
+			if not leftmost or column < leftmost.column then
+				leftmost = { column = column, filetype = filetype, win = win }
+			end
+		end
+		return {
+			changes = filetypes["gleb-changes"] or false,
+			diff = filetypes["gleb-diff"] or false,
+			leftmost = leftmost.filetype,
+			focused = vim.api.nvim_get_current_win() == leftmost.win,
+		}
+	end)()]])
+	eq(result, { changes = false, diff = false, leftmost = "gleb-file-tree", focused = true })
+end
+
 return T

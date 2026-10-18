@@ -1019,6 +1019,10 @@ function M.toggle()
 		end
 		return
 	end
+	local changes = package.loaded["gleb.git.changes"]
+	if changes then
+		changes.close()
+	end
 	local path = vim.api.nvim_buf_get_name(0)
 	open_view(path)
 end

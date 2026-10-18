@@ -108,9 +108,9 @@ Scenarios: `git: Changes panel review shows the current file's diff`, `git: Chan
 
 ## 5c. Enter, close and project-tree swap
 Scenarios: `git: Changes panel Enter opens the file`, `git: Changes panel q closes the panel and the diff view`, `git: Project tree replaces the changes panel`
-- [ ] 5c.1 Write the scenarios in `tests/integration/git/test_changes_diff.lua`, driving `<CR>`, `q` and `file_tree.toggle` in populated views, and see them fail
-- [ ] 5c.2 Implement open and close around the panel-owned view, leaving editor restoration to `windows.restore`, and make project-tree opening close Changes first
-- [ ] 5c.3 Run `make test FILE=tests/integration/git/test_changes_diff.lua CASE="Changes panel"` and see it pass
+- [x] 5c.1 Write the scenarios in `tests/integration/git/test_changes_diff.lua`, driving `<CR>`, `q` and `file_tree.toggle` in populated views, and see them fail
+- [x] 5c.2 Implement open and close around the panel-owned view, leaving editor restoration to `windows.restore`, and make project-tree opening close Changes first
+- [x] 5c.3 Run `make test FILE=tests/integration/git/test_changes_diff.lua CASE="Changes panel"` and see it pass
 
 ## 5d. Diff generations
 Scenarios: `git: Changes panel keeps the diff on a directory row`, `git: Changes panel drops a stale diff result`, `git: Changes panel skips an unchanged selection`
@@ -178,6 +178,7 @@ Scenarios: `git: Changes panel matches the approved render`, `git: Changes panel
 - Repository-relative staging needed no production edit because task 4a already rooted both status and mutation calls and propagated their failures.
 - Batch staging filters one full fresh status snapshot because Git status has no pathspec-from-file option and destination-only status loses rename origins.
 - Diff selection uses its own per-panel timer so refresh coalescing cannot cancel the 50 ms cursor debounce.
+- Project-tree toggle checks the already-loaded Changes module before handoff, avoiding a new feature load when no panel exists.
 
 ## Stuck
 

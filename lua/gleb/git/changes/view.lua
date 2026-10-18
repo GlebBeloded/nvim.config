@@ -374,6 +374,24 @@ function M.close(view)
 	end
 end
 
+--- Close the panel-owned diff and edit a file in the editor window.
+---@param view ChangesView
+---@param row ChangesRow
+---@return nil
+function M.open_file(view, row)
+	if not row.path or not row.diffable then
+		return
+	end
+	if view.diff_view then
+		require("gleb.diff.view").close(view.diff_view)
+		view.diff_view = nil
+	end
+	local editor = file_tree_view.eligible_editor(view)
+	view.editor_win = editor
+	vim.api.nvim_set_current_win(editor)
+	vim.cmd("edit " .. vim.fn.fnameescape(vim.fs.joinpath(view.root, row.path)))
+end
+
 --- Open and populate a Changes view in the current tab.
 ---@param root string
 ---@param selected_path string

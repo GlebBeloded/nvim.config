@@ -96,6 +96,17 @@ function M.open_selected()
 	local row = current.rows[vim.api.nvim_win_get_cursor(current.win)[1]]
 	if row and row.fold_id then
 		view.toggle_fold(current)
+	elseif row and row.kind == "file" then
+		view.open_file(current, row)
+	end
+end
+
+--- Close the current tab's Changes panel.
+---@return nil
+function M.close()
+	local current = M.state.by_tab[vim.api.nvim_get_current_tabpage()]
+	if current then
+		view.close(current)
 	end
 end
 
