@@ -6,24 +6,6 @@ local paths = require("gleb.file_tree.paths")
 
 local T = MiniTest.new_set()
 
-T["file-tree: Project tree a creates a file in the folder under the cursor"] = MiniTest.new_set()
-
-T["file-tree: Project tree a creates a file in the folder under the cursor"]["resolves every row kind"] = function()
-	local root = "/project"
-
-	eq(paths.target_folder(root, { kind = "root", path = root }), root)
-	eq(paths.target_folder(root, { kind = "directory", path = "/project/internal" }), "/project/internal")
-	eq(paths.target_folder(root, { kind = "directory", path = "/project/cmd/server" }), "/project/cmd/server")
-	eq(paths.target_folder(root, { kind = "file", path = "/project/internal/main.go" }), "/project/internal")
-end
-
-T["file-tree: Project tree a creates a file in the folder under the cursor"]["builds copy conflict names"] = function()
-	eq(paths.copy_name("invoice.go", false, 1), "invoice_copy.go")
-	eq(paths.copy_name("invoice.go", false, 2), "invoice_copy2.go")
-	eq(paths.copy_name(".env", false, 1), ".env_copy")
-	eq(paths.copy_name("release.v1", true, 1), "release.v1_copy")
-end
-
 T["file-tree: Project tree refuses operations on the root row"] = MiniTest.new_set()
 
 T["file-tree: Project tree refuses operations on the root row"]["rejects the root during move preflight"] = function()

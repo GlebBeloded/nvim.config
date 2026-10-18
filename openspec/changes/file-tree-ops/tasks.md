@@ -18,9 +18,9 @@ Scenarios: `file-tree: Project tree a creates a file in the folder under the cur
 
 ## 3a. Create operations
 Scenarios: `file-tree: Project tree a creates a file in the folder under the cursor`, `file-tree: Project tree a on a file creates next to it`, `file-tree: Project tree a with a trailing slash creates a folder`, `file-tree: Project tree a creates missing parent folders`, `file-tree: Project tree a reports an existing name`
-- [ ] 3a.1 Write the tests in `tests/integration/file-tree/test_project_ops.lua`, drive `a` in a real populated project tree on a fresh `treeproj` copy, and see them fail
-- [ ] 3a.2 Add `file_tree.add` in `ops.lua` and `actions.lua`, select created paths through `view.lua`, and add the `a` key in `settings/keymap.json` with no action `plugin`
-- [ ] 3a.3 Run `make test FILE=tests/integration/file-tree/test_project_ops.lua CASE="Project tree a"` and see them pass
+- [x] 3a.1 Write the tests in `tests/integration/file-tree/test_project_ops.lua`, drive `a` in a real populated project tree on a fresh `treeproj` copy, and see them fail
+- [x] 3a.2 Add `file_tree.add` in `ops.lua` and `actions.lua`, select created paths through `view.lua`, and add the `a` key in `settings/keymap.json` with no action `plugin`
+- [x] 3a.3 Run `make test FILE=tests/integration/file-tree/test_project_ops.lua CASE="Project tree a"` and see them pass
 
 ## 3b. Create safety and operation keys
 Scenarios: `file-tree: Project tree create reports a read-only destination`, `file-tree: Project tree operation keys come from the keymap file`, `file-tree: Project tree add prompt matches the approved render`
@@ -96,6 +96,7 @@ Scenarios: `file-tree: Project tree operation keys come from the keymap file`, `
 
 ## Agent decisions
 
+- Create invalidates the root's cached scan before redrawing, so the submitted path is selected immediately without waiting for a watcher event.
 - The input adapter wraps `frame.options`' renderer so live previews retain all shared-frame chrome without widening the frame API.
 - The pre-audit PATH-worded trash scenarios remain verbatim as required; their tests also set `ops.state.trash_path` to the fake command, while production code checks only `/usr/bin/trash`.
 - The existing exact-one refresh scenario remains verbatim; the auditor's at-least-one rule is covered by a separate scenario so neither contract is dropped.

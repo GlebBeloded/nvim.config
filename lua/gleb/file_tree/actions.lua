@@ -276,6 +276,10 @@ local function project_unfold_all()
 	require("gleb.file_tree.view").unfold_all()
 end
 
+local function project_add()
+	require("gleb.file_tree.ops").add()
+end
+
 ---@type gleb.Action[]
 local actions = {
 	{
@@ -293,6 +297,13 @@ local actions = {
 		run = function()
 			require("gleb.file_tree.view").reveal()
 		end,
+	},
+	{
+		id = "file_tree.add",
+		title = "New File or Directory",
+		category = "Project",
+		ft = "gleb-file-tree",
+		run = project_add,
 	},
 	{
 		id = "file_tree.open",

@@ -61,7 +61,7 @@ end
 
 --- Resolve the folder used by create and paste for a project-tree row.
 ---@param root string
----@param row FileTreePathRow
+---@param row FileTreePathRow|FileTreeRow
 ---@return string
 function M.target_folder(root, row)
 	if row.kind == "root" then

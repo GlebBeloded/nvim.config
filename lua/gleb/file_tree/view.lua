@@ -697,6 +697,36 @@ local function close_trees_without_an_editor()
 	end
 end
 
+--- Return the active project-tree root and selected row.
+---@return string? root
+---@return FileTreeRow? row
+function M.selected_path()
+	local view = M.state.by_tab[vim.api.nvim_get_current_tabpage()]
+	if not view then
+		return nil, nil
+	end
+	return view.root, selected_row(view)
+end
+
+--- Redraw at a created path, selecting folders or opening files in the editor.
+---@param path string
+---@param open_file boolean
+---@return nil
+function M.select_created(path, open_file)
+	local view = M.state.by_tab[vim.api.nvim_get_current_tabpage()]
+	if not view then
+		return
+	end
+	fs.invalidate_root(view.root)
+	draw(view, path)
+	if open_file then
+		vim.api.nvim_set_current_win(eligible_editor(view))
+		vim.cmd("edit " .. vim.fn.fnameescape(path))
+	else
+		vim.api.nvim_set_current_win(view.win)
+	end
+end
+
 --- Toggle the current tab page's project tree.
 ---@return nil
 function M.toggle()
