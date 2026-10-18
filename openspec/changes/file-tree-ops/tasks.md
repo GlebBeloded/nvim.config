@@ -12,9 +12,9 @@ Scenarios: `picker: Input prompt Esc restores tree focus and cursor state`, `pic
 
 ## 2. Pure path and selection helpers
 Scenarios: `file-tree: Project tree a creates a file in the folder under the cursor`, `file-tree: Project tree refuses operations on the root row`, `file-tree: Project tree refuses a path that escapes the root`, `file-tree: Project tree move preflights the whole batch`, `file-tree: Project tree refuses a cross-device move`
-- [ ] 2.1 Write the scenario-backed units in `tests/unit/file-tree/test_paths.lua` for root/folder/compact/file targets, normalized containment, nested-selection dedupe, batch preflight and device checks, and see them fail
-- [ ] 2.2 Add pure `lua/gleb/file_tree/paths.lua` helpers (`target_folder`, `copy_name`, `is_inside`, `dedupe`, preflight helpers) with no plugin requires
-- [ ] 2.3 Run `make test FILE=tests/unit/file-tree/test_paths.lua` and see them pass
+- [x] 2.1 Write the scenario-backed units in `tests/unit/file-tree/test_paths.lua` for root/folder/compact/file targets, normalized containment, nested-selection dedupe, batch preflight and device checks, and see them fail
+- [x] 2.2 Add pure `lua/gleb/file_tree/paths.lua` helpers (`target_folder`, `copy_name`, `is_inside`, `dedupe`, preflight helpers) with no plugin requires
+- [x] 2.3 Run `make test FILE=tests/unit/file-tree/test_paths.lua` and see them pass
 
 ## 3a. Create operations
 Scenarios: `file-tree: Project tree a creates a file in the folder under the cursor`, `file-tree: Project tree a on a file creates next to it`, `file-tree: Project tree a with a trailing slash creates a folder`, `file-tree: Project tree a creates missing parent folders`, `file-tree: Project tree a reports an existing name`
@@ -99,3 +99,6 @@ Scenarios: `file-tree: Project tree operation keys come from the keymap file`, `
 - The input adapter wraps `frame.options`' renderer so live previews retain all shared-frame chrome without widening the frame API.
 - The pre-audit PATH-worded trash scenarios remain verbatim as required; their tests also set `ops.state.trash_path` to the fake command, while production code checks only `/usr/bin/trash`.
 - The existing exact-one refresh scenario remains verbatim; the auditor's at-least-one rule is covered by a separate scenario so neither contract is dropped.
+- Path move preflight takes injected `lstat`, `stat` and directory-read functions and returns a reason plus failing path, keeping the helper pure and operation error wording outside it.
+- Selection deduplication preserves the first-occurrence order of surviving top-level paths while dropping descendants regardless of selection order.
+- Copy-name generation takes an explicit directory flag and conflict ordinal so dotted folder names and `_copy2` names are unambiguous.
