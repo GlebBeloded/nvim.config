@@ -16,6 +16,8 @@ local JOIN_MAX_GAP = 2
 local MIN_MOVE_CHARS = 15
 local MIN_LINE_CHARS = 2
 local MIN_LONG_LINES = 2
+local DEADLINE_BATCH_SIZE = 256
+local SORT_TIMED_OUT = {}
 
 local function timed_out(context)
 	return context.clock() > context.deadline
@@ -45,10 +47,13 @@ local function move(start1, end1, start2, end2)
 	return { start1, end1, start2, end2 }
 end
 
-local function histogram(lines, start_line, end_line)
+local function histogram(lines, start_line, end_line, context)
 	local counts = {}
 	local total = 0
 	for index = start_line + 1, end_line do
+		if timed_out(context) then
+			return nil, 0
+		end
 		for _, char in ipairs(codepoints(lines[index])) do
 			counts[char] = (counts[char] or 0) + 1
 			total = total + 1
@@ -59,9 +64,12 @@ local function histogram(lines, start_line, end_line)
 	return counts, total
 end
 
-local function fragment(change, side, lines, id)
+local function fragment(change, side, lines, id, context)
 	local offset = side == 1 and 0 or 2
-	local counts, total = histogram(lines, change[offset + 1], change[offset + 2])
+	local counts, total = histogram(lines, change[offset + 1], change[offset + 2], context)
+	if not counts then
+		return nil
+	end
 	return {
 		start_line = change[offset + 1],
 		end_line = change[offset + 2],
@@ -71,14 +79,29 @@ local function fragment(change, side, lines, id)
 	}
 end
 
-local function similarity(left, right)
+local function similarity(left, right, context)
 	local difference = 0
 	local seen = {}
+	local processed = 0
 	for char, count in pairs(left.counts) do
+		processed = processed + 1
+		if processed == DEADLINE_BATCH_SIZE then
+			processed = 0
+			if timed_out(context) then
+				return 0
+			end
+		end
 		difference = difference + math.abs(count - (right.counts[char] or 0))
 		seen[char] = true
 	end
 	for char, count in pairs(right.counts) do
+		processed = processed + 1
+		if processed == DEADLINE_BATCH_SIZE then
+			processed = 0
+			if timed_out(context) then
+				return 0
+			end
+		end
 		if not seen[char] then
 			difference = difference + count
 		end
@@ -91,11 +114,22 @@ local function moves_from_simple_changes(changes, lines1, lines2, context)
 	local deletions = {}
 	local insertions = {}
 	for id, change in ipairs(changes) do
+		if timed_out(context) then
+			return {}, {}
+		end
 		if change[3] == change[4] and change[2] - change[1] >= MIN_MOVE_LINES then
-			deletions[#deletions + 1] = fragment(change, 1, lines1, id)
+			local deletion = fragment(change, 1, lines1, id, context)
+			if not deletion then
+				return {}, {}
+			end
+			deletions[#deletions + 1] = deletion
 		end
 		if change[1] == change[2] and change[4] - change[3] >= MIN_MOVE_LINES then
-			insertions[#insertions + 1] = fragment(change, 2, lines2, id)
+			local insertion = fragment(change, 2, lines2, id, context)
+			if not insertion then
+				return {}, {}
+			end
+			insertions[#insertions + 1] = insertion
 		end
 	end
 
@@ -104,7 +138,10 @@ local function moves_from_simple_changes(changes, lines1, lines2, context)
 		local highest = -1
 		local best_index
 		for index, insertion in ipairs(insertions) do
-			local score = similarity(deletion, insertion)
+			if timed_out(context) then
+				return moves, excluded
+			end
+			local score = similarity(deletion, insertion, context)
 			if score > highest then
 				highest = score
 				best_index = index
@@ -124,29 +161,38 @@ local function moves_from_simple_changes(changes, lines1, lines2, context)
 end
 
 local function add_range(ranges, range)
-	ranges[#ranges + 1] = { range[1], range[2] }
-	table.sort(ranges, function(a, b)
-		return a[1] < b[1]
-	end)
-	local merged = {}
-	for _, current in ipairs(ranges) do
-		local last = merged[#merged]
-		if last and current[1] <= last[2] then
-			last[2] = math.max(last[2], current[2])
-		else
-			merged[#merged + 1] = current
-		end
+	local start_line = range[1]
+	local end_line = range[2]
+	local first = 1
+	while first <= #ranges and ranges[first][2] < start_line do
+		first = first + 1
 	end
-	for index = #ranges, 1, -1 do
+	local after = first
+	while after <= #ranges and ranges[after][1] <= end_line do
+		start_line = math.min(start_line, ranges[after][1])
+		end_line = math.max(end_line, ranges[after][2])
+		after = after + 1
+	end
+	if first == after then
+		table.insert(ranges, first, { start_line, end_line })
+		return
+	end
+
+	ranges[first] = { start_line, end_line }
+	local removed = after - first - 1
+	for index = after, #ranges do
+		ranges[index - removed] = ranges[index]
+	end
+	for index = #ranges, #ranges - removed + 1, -1 do
 		ranges[index] = nil
-	end
-	for _, current in ipairs(merged) do
-		ranges[#ranges + 1] = current
 	end
 end
 
 local function contains(ranges, value)
 	for _, range in ipairs(ranges) do
+		if value < range[1] then
+			return false
+		end
 		if range[1] <= value and value < range[2] then
 			return true
 		end
@@ -155,43 +201,53 @@ local function contains(ranges, value)
 end
 
 local function subtract(range, claimed)
-	local result = { { range[1], range[2] } }
+	local result = {}
+	local start_line = range[1]
 	for _, used in ipairs(claimed) do
-		local next_result = {}
-		for _, section in ipairs(result) do
-			if used[2] <= section[1] or section[2] <= used[1] then
-				next_result[#next_result + 1] = section
-			else
-				if section[1] < used[1] then
-					next_result[#next_result + 1] = { section[1], used[1] }
-				end
-				if used[2] < section[2] then
-					next_result[#next_result + 1] = { used[2], section[2] }
-				end
-			end
+		if range[2] <= used[1] then
+			break
 		end
-		result = next_result
+		if start_line < used[1] then
+			result[#result + 1] = { start_line, math.min(used[1], range[2]) }
+		end
+		start_line = math.max(start_line, used[2])
+		if range[2] <= start_line then
+			break
+		end
+	end
+	if start_line < range[2] then
+		result[#result + 1] = { start_line, range[2] }
 	end
 	return result
 end
 
 local function intersections(left, right)
 	local result = {}
-	for _, a in ipairs(left) do
-		for _, b in ipairs(right) do
-			local start_line = math.max(a[1], b[1])
-			local end_line = math.min(a[2], b[2])
-			if start_line < end_line then
-				result[#result + 1] = { start_line, end_line }
-			end
+	local left_index = 1
+	local right_index = 1
+	while left_index <= #left and right_index <= #right do
+		local left_range = left[left_index]
+		local right_range = right[right_index]
+		local start_line = math.max(left_range[1], right_range[1])
+		local end_line = math.min(left_range[2], right_range[2])
+		if start_line < end_line then
+			result[#result + 1] = { start_line, end_line }
+		end
+		if left_range[2] < right_range[2] then
+			left_index = left_index + 1
+		else
+			right_index = right_index + 1
 		end
 	end
 	return result
 end
 
-local function line_hashes(lines, ids, next_id)
+local function line_hashes(lines, ids, next_id, context)
 	local hashes = {}
 	for index, line in ipairs(lines) do
+		if index % DEADLINE_BATCH_SIZE == 0 and timed_out(context) then
+			return nil, next_id
+		end
 		local key = trim(line)
 		if ids[key] == nil then
 			ids[key] = next_id
@@ -272,7 +328,7 @@ local function lines_similar(line1, line2, context)
 	-- VS Code inverts the sequence diffs up to the raw line length, then reads raw line1
 	-- at the trimmed sequence offsets. The tail beyond the truncated sequence is therefore common.
 	for index = 0, #chars1 - 1 do
-		if timed_out(context) then
+		if index % DEADLINE_BATCH_SIZE == 0 and timed_out(context) then
 			return false
 		end
 		if (index >= #sequence1 or matched[index]) and not is_space(chars1[index + 1]) then
@@ -284,7 +340,7 @@ local function lines_similar(line1, line2, context)
 	local longer_length = 0
 	-- VS Code's countNonWsChars intentionally iterates using line1's length for either string.
 	for index = 1, #chars1 do
-		if timed_out(context) then
+		if index % DEADLINE_BATCH_SIZE == 0 and timed_out(context) then
 			return false
 		end
 		if not is_space(longer[index]) then
@@ -294,13 +350,47 @@ local function lines_similar(line1, line2, context)
 	return longer_length > SIMILAR_MIN_CHARS and common_non_space / longer_length > SIMILAR_RATIO
 end
 
+local function sort_candidates(candidates, context)
+	local comparisons = 0
+	local function comes_before(left, right)
+		comparisons = comparisons + 1
+		if comparisons == DEADLINE_BATCH_SIZE then
+			comparisons = 0
+			if timed_out(context) then
+				error(SORT_TIMED_OUT, 0)
+			end
+		end
+		local left_length = range_length(left.modified)
+		local right_length = range_length(right.modified)
+		return left_length == right_length and left.order < right.order or left_length > right_length
+	end
+
+	local ok, failure = pcall(table.sort, candidates, comes_before)
+	if not ok then
+		if failure == SORT_TIMED_OUT then
+			return false
+		end
+		error(failure, 0)
+	end
+	return not timed_out(context)
+end
+
 local function unchanged_moves(changes, lines1, lines2, context)
 	local ids = {}
-	local hashes1, next_id = line_hashes(lines1, ids, 0)
-	local hashes2 = line_hashes(lines2, ids, next_id)
+	local hashes1, next_id = line_hashes(lines1, ids, 0, context)
+	if not hashes1 then
+		return {}
+	end
+	local hashes2 = line_hashes(lines2, ids, next_id, context)
+	if not hashes2 then
+		return {}
+	end
 	local windows = {}
 	for _, change in ipairs(changes) do
 		for start_line = change[1], change[2] - MIN_MOVE_LINES do
+			if start_line % DEADLINE_BATCH_SIZE == 0 and timed_out(context) then
+				return {}
+			end
 			local key = table.concat({ hashes1[start_line + 1], hashes1[start_line + 2], hashes1[start_line + 3] }, ":")
 			windows[key] = windows[key] or {}
 			windows[key][#windows[key] + 1] = { start_line, start_line + MIN_MOVE_LINES }
@@ -313,6 +403,7 @@ local function unchanged_moves(changes, lines1, lines2, context)
 	end)
 	local possible = {}
 	local order = 0
+	local scanned = 0
 	for _, change in ipairs(ordered_changes) do
 		local last_mappings = {}
 		for start_line = change[3], change[4] - MIN_MOVE_LINES do
@@ -323,8 +414,12 @@ local function unchanged_moves(changes, lines1, lines2, context)
 			local current = { start_line, start_line + MIN_MOVE_LINES }
 			local next_mappings = {}
 			for _, original in ipairs(windows[key] or {}) do
-				if timed_out(context) then
-					return {}
+				scanned = scanned + 1
+				if scanned == DEADLINE_BATCH_SIZE then
+					scanned = 0
+					if timed_out(context) then
+						return {}
+					end
 				end
 				local previous = last_mappings[original[2] - 1]
 				if previous and previous.modified[2] + 1 == current[2] then
@@ -345,16 +440,14 @@ local function unchanged_moves(changes, lines1, lines2, context)
 		end
 	end
 
-	table.sort(possible, function(a, b)
-		local left = range_length(a.modified)
-		local right = range_length(b.modified)
-		return left == right and a.order < b.order or left > right
-	end)
+	if not sort_candidates(possible, context) then
+		return {}
+	end
 	local claimed1 = {}
 	local claimed2 = {}
 	local moves = {}
-	for _, mapping in ipairs(possible) do
-		if timed_out(context) then
+	for index, mapping in ipairs(possible) do
+		if index % DEADLINE_BATCH_SIZE == 0 and timed_out(context) then
 			return {}
 		end
 		local delta = mapping.modified[1] - mapping.original[1]
@@ -377,6 +470,9 @@ local function unchanged_moves(changes, lines1, lines2, context)
 		return a[1] < b[1]
 	end)
 	for index, current in ipairs(moves) do
+		if timed_out(context) then
+			return {}
+		end
 		local first1 = find_last_change(ordered_changes, 1, function(start_line)
 			return start_line <= current[1]
 		end)
@@ -437,7 +533,7 @@ local function unchanged_moves(changes, lines1, lines2, context)
 	return moves
 end
 
-local function join_close_moves(moves)
+local function join_close_moves(moves, context)
 	if #moves == 0 then
 		return moves
 	end
@@ -446,6 +542,9 @@ local function join_close_moves(moves)
 	end)
 	local result = { moves[1] }
 	for index = 2, #moves do
+		if timed_out(context) then
+			return {}
+		end
 		local last = result[#result]
 		local current = moves[index]
 		local gap1 = current[1] - last[2]
@@ -464,12 +563,18 @@ local function join_close_moves(moves)
 	return result
 end
 
-local function remove_moves_in_same_change(changes, moves)
+local function remove_moves_in_same_change(changes, moves, context)
 	local result = {}
 	for _, current in ipairs(moves) do
+		if timed_out(context) then
+			return {}
+		end
 		local original_id
 		local modified_id
 		for id, change in ipairs(changes) do
+			if id % DEADLINE_BATCH_SIZE == 0 and timed_out(context) then
+				return {}
+			end
 			if change[1] < current[2] then
 				original_id = id
 			end
@@ -484,10 +589,13 @@ local function remove_moves_in_same_change(changes, moves)
 	return result
 end
 
-local function long_enough(current, lines1)
+local function long_enough(current, lines1, context)
 	local lines = {}
 	local long_lines = 0
 	for index = current[1] + 1, current[2] do
+		if index % DEADLINE_BATCH_SIZE == 0 and timed_out(context) then
+			return false
+		end
 		local line = trim(lines1[index])
 		lines[#lines + 1] = line
 		if text_length(line) >= MIN_LINE_CHARS then
@@ -509,6 +617,9 @@ function M.compute(changes, lines1, lines2, context)
 	end
 	local filtered = {}
 	for id, change in ipairs(changes) do
+		if timed_out(context) then
+			return {}
+		end
 		if not excluded[id] then
 			filtered[#filtered + 1] = change
 		end
@@ -518,14 +629,17 @@ function M.compute(changes, lines1, lines2, context)
 			moves[#moves + 1] = current
 		end
 	end
-	moves = join_close_moves(moves)
+	moves = join_close_moves(moves, context)
 	local kept = {}
 	for _, current in ipairs(moves) do
-		if long_enough(current, lines1) then
+		if timed_out(context) then
+			return {}
+		end
+		if long_enough(current, lines1, context) then
 			kept[#kept + 1] = current
 		end
 	end
-	return remove_moves_in_same_change(changes, kept)
+	return remove_moves_in_same_change(changes, kept, context)
 end
 
 return M

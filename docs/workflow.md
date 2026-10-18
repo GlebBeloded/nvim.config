@@ -29,8 +29,6 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 
 ## Loop lessons
 
-- Golden harnesses should compare only fields declared by each fixture row so exact-range rows do not fail on redundant derived byte sets.
-- - IntelliJ inner comparison runs on a line fragment's text plus the newline ending its last line (getLineEnd(line, true)), and doSquash shifts an empty side past that newline; dropping it costs the splitter its matched-newline anchor and the trailing-newline range.
 - Golden checks for empty expected changes must reject missing, fallback, and partial inner results before comparing changed-byte sets.
 - When archiving a change, retain its adopted main-spec scenarios so trace can link the regression cases.
 - Gate optional post-processing on every fallback status; `too_big` xdiff results must skip move detection just like timed-out results.
@@ -44,6 +42,8 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - Map EndOfBuffer to the view normal highlight when removing a trailing buffer line, so empty viewport cells retain the approved view colour.
 - Skip unchanged move matching when fewer than two unmatched change regions remain; every same-change candidate is discarded and pathological duplicate windows can overrun the deadline.
 - Start macOS filesystem handles needed by a view before its first draw; adding a late handle can recreate the shared FSEvents stream and drop an intervening directory event.
+- Batch deadline polls in hot candidate loops and maintain claimed ranges in sorted order so deadline enforcement does not dominate move detection.
+- When archiving a change, update tests that read its approved render to the archive path so the durable artifact remains available.
 
 ## The loop
 
