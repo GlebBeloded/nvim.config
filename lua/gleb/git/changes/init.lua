@@ -99,6 +99,25 @@ function M.open_selected()
 	end
 end
 
+---@param current ChangesView
+---@param row ChangesRow
+---@return string[]
+local function selected_paths(current, row)
+	local paths = {}
+	for _, candidate in ipairs(current.all_rows) do
+		local selected = row.kind == "root" and candidate.root == row.root
+			or row.kind == "directory" and candidate.root == row.root and candidate.path and (candidate.path == row.path or vim.startswith(
+				candidate.path,
+				row.path .. "/"
+			))
+			or row.kind == "file" and candidate == row
+		if selected and candidate.kind == "file" and candidate.path then
+			paths[#paths + 1] = vim.fs.joinpath(current.root, candidate.path)
+		end
+	end
+	return paths
+end
+
 --- Toggle staging for the file row under the cursor.
 ---@return nil
 function M.toggle_stage()
@@ -107,10 +126,14 @@ function M.toggle_stage()
 		return
 	end
 	local row = current.rows[vim.api.nvim_win_get_cursor(current.win)[1]]
-	if not row or row.kind ~= "file" or not row.path then
+	if not row then
 		return
 	end
-	git.toggle_stage(current.root, vim.fs.joinpath(current.root, row.path), function(result)
+	local paths = selected_paths(current, row)
+	if #paths == 0 then
+		return
+	end
+	git.toggle_stage(current.root, paths, function(result)
 		if result.code ~= 0 then
 			vim.notify("Stage failed: " .. vim.trim(result.stderr or ""), vim.log.levels.ERROR)
 			return

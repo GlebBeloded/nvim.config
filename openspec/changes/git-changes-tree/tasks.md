@@ -84,9 +84,9 @@ Scenarios: `git: Changes panel stages when cwd is outside the repository`, `git:
 
 ## 4c. Batch and conflict staging
 Scenarios: `git: Changes panel Space on the Changes root stages every tracked file`, `git: Changes panel stages literal metacharacter paths`, `git: Changes panel refuses to stage an unmerged file`, `git: Changes panel unstages a rename literally`
-- [ ] 4c.1 Write the scenarios in `tests/integration/git/test_changes_stage.lua`, including `[ab].txt`, an unmerged index and a real rename, and see them fail
-- [ ] 4c.2 Batch selected paths, switch above 100 paths to NUL pathspec input, refuse unmerged files, and reset both rename paths literally
-- [ ] 4c.3 Run `make test FILE=tests/integration/git/test_changes_stage.lua CASE="Changes panel"` and see it pass
+- [x] 4c.1 Write the scenarios in `tests/integration/git/test_changes_stage.lua`, including `[ab].txt`, an unmerged index and a real rename, and see them fail
+- [x] 4c.2 Batch selected paths, switch above 100 paths to NUL pathspec input, refuse unmerged files, and reset both rename paths literally
+- [x] 4c.3 Run `make test FILE=tests/integration/git/test_changes_stage.lua CASE="Changes panel"` and see it pass
 
 ## 4d. Stage all
 Scenarios: `git: Changes panel A stages everything`
@@ -176,3 +176,4 @@ Scenarios: `git: Changes panel matches the approved render`, `git: Changes panel
 - Panel refreshes debounce for 50 ms, matching the diff-selection cadence while coalescing writes and git-dir bursts.
 - The shared editor-window selector also exports its eligibility predicate so Changes can mirror orphan detection without duplicating tool-window exclusions.
 - Repository-relative staging needed no production edit because task 4a already rooted both status and mutation calls and propagated their failures.
+- Batch staging filters one full fresh status snapshot because Git status has no pathspec-from-file option and destination-only status loses rename origins.
