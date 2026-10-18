@@ -173,6 +173,37 @@ T["file-tree: Project tree root row names the project"] = function()
 	eq(groups_for("billing"), { "FileTreeExpander", "FileTreeFolderIcon", "FileTreeRoot", "FileTreeRootPath" })
 end
 
+T["file-tree: Project tree opens from non-project buffers"] = function()
+	local outside = vim.fn.tempname()
+	vim.fn.writefile({ "outside" }, outside)
+	child.cmd("cd " .. vim.fn.fnameescape(root))
+	child.cmd("edit " .. vim.fn.fnameescape(outside))
+
+	local function expect_project_rows()
+		local rows = child.lua_get([[(function()
+			local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+			return vim.iter(view.rows):map(function(row)
+				return { kind = row.kind, label = row.label }
+			end):totable()
+		end)()]])
+		eq(rows[1].kind, "root")
+		eq(rows[1].label, vim.fs.basename(root))
+		local labels = vim.tbl_map(function(row)
+			return row.label
+		end, vim.list_slice(rows, 2))
+		for _, label in ipairs({ ".github/workflows", "cmd/server", "internal", "web", "go.mod", "README.md" }) do
+			eq(vim.tbl_contains(labels, label), true)
+		end
+	end
+
+	run_toggle()
+	expect_project_rows()
+	run_toggle()
+	child.cmd("terminal")
+	run_toggle()
+	expect_project_rows()
+end
+
 T["file-tree: Project tree rows have icons and no guides"] = function()
 	local rendered = lines()
 	local invoice
@@ -781,9 +812,13 @@ end
 T["file-tree: Project tree zM collapses every folder"] = function()
 	edit("README.md")
 	run_toggle()
+	focus_tree_row("cmd/server")
+	child.type_keys("<CR>")
 	focus_tree_row("internal")
 	child.type_keys("<CR>")
 	focus_tree_row(" billing")
+	child.type_keys("<CR>")
+	focus_tree_row("web")
 	child.type_keys("<CR>")
 	focus_tree_row("invoice.go")
 
@@ -791,8 +826,20 @@ T["file-tree: Project tree zM collapses every folder"] = function()
 
 	eq(has_tree_line("invoice.go"), false)
 	eq(has_tree_line(" billing"), false)
-	focus_tree_row("internal")
-	eq(child.lua_get([[vim.api.nvim_get_current_line():find("", 1, true) ~= nil]]), true)
+	eq(child.lua_get([[vim.api.nvim_get_current_line():find("internal", 1, true) ~= nil]]), true)
+	eq(
+		child.lua_get([[(function()
+			local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+			local lines = vim.api.nvim_buf_get_lines(view.buf, 0, -1, false)
+			if not lines[1]:find("", 1, true) then
+				return false
+			end
+			return vim.iter(view.rows):enumerate():all(function(index, row)
+				return row.kind ~= "directory" or lines[index]:find("", 1, true) ~= nil
+			end)
+		end)()]]),
+		true
+	)
 end
 
 T["file-tree: Project tree zR expands every folder"] = function()

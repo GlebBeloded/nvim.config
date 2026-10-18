@@ -619,7 +619,7 @@ local function open_view(path)
 		end
 	end)
 	add_teardown_autocmds(view)
-	reveal_path(view, path, true)
+	draw(view, reveal_target(view, path, true) or root)
 	git.request(root)
 	update_cursor()
 	return view

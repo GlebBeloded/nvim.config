@@ -27,6 +27,10 @@ The action `file_tree.toggle` SHALL open the project tree for the cwd in a left-
 - **WHEN** no project tree is open, the current buffer is `internal/money/money.go` and the action `file_tree.toggle` runs
 - **THEN** the current window is the project tree and its cursor is on the `money.go` row
 
+#### Scenario: Project tree opens from non-project buffers
+- **WHEN** no project tree is open and `file_tree.toggle` runs from either a file outside the cwd or a terminal buffer
+- **THEN** the project tree draws its root row and top-level rows
+
 ### Requirement: Project tree rows
 The tree SHALL show a root row (expanded expander, open folder icon, the root's basename in `FileTreeRoot` and, two spaces later, its `~`-relative path in `FileTreeRootPath`), then each folder's entries indented two columns per level: folders first, then files, by name compared case-insensitively, with byte order breaking ties. Files SHALL carry their devicon. Dotfiles SHALL be listed, the `.git` folder hidden by default, and no indent guides drawn.
 
