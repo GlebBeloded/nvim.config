@@ -108,6 +108,10 @@ Scenarios: `file-tree: Project tree operation keys come from the keymap file`, `
 - Probe: direct shared-selection invocation blocked awaiting picker input; the mapped Visual diagnostic captured `selection.start = { 7, 0 }`, `selection.finish = { 8, 0 }`, and the `discount.go`/`discount_test.go` rows before delete returned without a picker.
 - Attempt 1 added normal/Visual delete, trash override, recursive fallback and unmodified-buffer cleanup. All four normal `Project tree d` cases passed, but Visual `d` returned without opening confirmation.
 - Attempt 2 left the selection captured in the real mapping and exited Visual mode before `vim.ui.select`; Visual `d` still returned without opening confirmation. The saved production diff is `artifacts/runs/22b161e8-b488-477c-96ac-c5f4d88e49c8/stuck-attempt.diff`.
+- Task 7 remains unticked. The red G1/G2 screen cases use byte-identical durable render copies and prove the real input frame starts one row too high and hides the approved lualine row.
+- Probe: the focused G1 capture placed the frame on rows 12–16 with a blank row 30; after shifting it, rows 13–17 matched the approved text cell for cell.
+- Attempt 1 shifted the frame and overlaid `nvim_eval_statusline` output from the originating tree, but the inherited rounded `winborder` turned the one-row overlay into a three-row frame at rows 28–30.
+- Attempt 2 made the overlay borderless and supplied the originating buffer's known gitsigns branch before evaluation. The frame and statusline geometry matched, but lualine still omitted ` main`. The saved production diff is `artifacts/runs/22b161e8-b488-477c-96ac-c5f4d88e49c8/stuck-attempt.diff`.
 
 ## Agent decisions
 

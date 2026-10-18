@@ -17,6 +17,7 @@ local PROMPT_LEGEND = {
 	g = "@keyword",
 	h = "PickerBorder",
 	i = "PickerCategory",
+	j = "DevIconTsx",
 }
 
 local PROMPT_STYLES = {
@@ -24,6 +25,7 @@ local PROMPT_STYLES = {
 	["0;38;2;125;174;163;48;2;40;40;40"] = "b",
 	["0;38;2;146;131;116;48;2;40;40;40"] = "c",
 	["0;38;2;169;182;101;48;2;40;40;40"] = "d",
+	["0;38;2;19;84;191;48;2;40;40;40"] = "j",
 	["0;38;2;212;190;152;48;2;40;40;40"] = ".",
 	["0;38;2;221;199;161;48;2;40;40;40"] = "e",
 	["0;38;2;221;199;161;48;2;50;48;47"] = "f",
@@ -33,8 +35,10 @@ local PROMPT_STYLES = {
 	["0;38;2;90;82;76;48;2;50;48;47"] = "i",
 }
 
-local function artifact_lines()
-	local path = vim.fs.joinpath(H.root, "openspec/changes/file-tree-ops/renders/g1_proposed.ansi")
+---@param name string
+---@return string[]
+local function artifact_lines(name)
+	local path = vim.fs.joinpath(H.root, "tests/screen/file-tree", name .. "_proposed.ansi")
 	return vim.fn.readfile(path)
 end
 
@@ -132,22 +136,34 @@ end)()
 	open_row("web")
 	open_row("src")
 	child.lua([[vim.fn.search("invoice.go", "w")]])
-	child.type_keys("a")
-	assert(child.wait([[MiniPick.is_picker_active()]]), "add prompt did not open")
-	child.type_keys("tax_rate.go")
-	assert(child.wait([[table.concat(MiniPick.get_picker_query()) == "tax_rate.go"]]), "query was not rendered")
-	child.cmd("redraw")
 end
 
 local T = H.child_set(child, start)
 
-T["file-tree: Project tree add prompt matches the approved render"] = function()
-	local artifact = artifact_lines()
+---@param mapping string
+---@param typed string
+---@param query string
+local function open_prompt(mapping, typed, query)
+	child.type_keys(mapping)
+	assert(child.wait([[MiniPick.is_picker_active()]]), mapping .. " prompt did not open")
+	if typed ~= "" then
+		child.type_keys(typed)
+	end
+	assert(
+		child.wait("table.concat(MiniPick.get_picker_query()) == " .. vim.inspect(query)),
+		"query was not rendered"
+	)
+	child.cmd("redraw")
+end
+
+---@param artifact string[]
+---@param required_groups string[]
+local function expect_prompt(artifact, required_groups)
 	local expected = vim.tbl_map(plain_line, artifact)
 	local actual = vim.tbl_map(table.concat, child.get_screenshot().text)
 	eq(actual, expected)
 
-	local groups = child.lua_get([[
+	local extmark_groups = child.lua_get([[
 (function()
 	local state = MiniPick.get_picker_state()
 	local marks = vim.api.nvim_buf_get_extmarks(state.buffers.main, -1, 0, -1, { details = true })
@@ -158,13 +174,25 @@ T["file-tree: Project tree add prompt matches the approved render"] = function()
 	end)
 end)()
 ]])
-	eq(groups.PickerCategory, true)
+	for _, group in ipairs(required_groups) do
+		eq(extmark_groups[group], true)
+	end
 
 	local mask = {}
-	for row = 11, 15 do
+	for row = 13, 17 do
 		table.insert(mask, color_mask(artifact[row]))
 	end
-	H.expect_screen_colors(child, 11, mask, PROMPT_LEGEND)
+	H.expect_screen_colors(child, 13, mask, PROMPT_LEGEND)
+end
+
+T["file-tree: Project tree add prompt matches the approved render"] = function()
+	open_prompt("a", "tax_rate.go", "tax_rate.go")
+	expect_prompt(artifact_lines("g1"), { "PickerCategory" })
+end
+
+T["file-tree: Project tree rename prompt matches the approved render"] = function()
+	open_prompt("r", "", "invoice.go")
+	expect_prompt(artifact_lines("g2"), { "PickerSecondary", "PickerCategory" })
 end
 
 return T
