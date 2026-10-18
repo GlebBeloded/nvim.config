@@ -165,6 +165,11 @@ Scenarios: `git: Changes panel matches the approved render`, `git: Changes panel
 - [x] 8.2 Run `make test CAPS=find-action,file-tree,git` and see it pass
 - [x] 8.3 Run `make check` and `openspec validate git-changes-tree --strict` and see both pass
 
+## 9. Commit popup regression assertions
+Scenarios: `git: Changes panel gc opens without mapping delay`, `git: Changes panel gc generates from the panel repository`
+- [x] 9.1 Add the assertions in `tests/integration/git/test_changes_actions.lua`; with temporary faults (remove `nowait` from `changes.commit`, then omit `{ root = current.root }` from `show_commit_input`) run `make test FILE=tests/integration/git/test_changes_actions.lua CASE="Changes panel gc"`, see each fault fail and record the failures, then remove the faults
+- [x] 9.2 Run `make test FILE=tests/integration/git/test_changes_actions.lua CASE="Changes panel gc"` and see it pass
+
 ## Agent decisions
 
 - `model.rows` returns flat display-order rows because rendering, cursor movement and folds consume the same ordered panel model.
@@ -192,3 +197,5 @@ Scenarios: `git: Changes panel matches the approved render`, `git: Changes panel
 - The regular-window reference puts a fixed-width 35-column scratch window where the panel goes: Proposed A captures it before the panel opens, Proposed B after closing the panel, showing the panel's own diff spec with `diff.view.show`, so only the panel's presence differs between the two screens.
 - Screen captures wait for gitsigns hunks and Tree-sitter parses, because Neovim 0.12 highlights asynchronously and both screens must carry the same plugin state.
 - A cursor move off the loading row drops its in-flight diff at once rather than when the debounce ends, so a late load never replaces another view of the same path.
+- Task 9's no-`nowait` mutation blocked the child before the 200 ms popup assertion, proving the delay regression is detected.
+- Task 9's missing-root mutation left the Ollama input absent, proving staged-diff generation outside the panel repository is detected.

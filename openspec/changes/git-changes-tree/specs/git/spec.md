@@ -306,7 +306,7 @@ While the diff view shows a panel file, `diff.next_file` SHALL move the panel cu
 - **THEN** literal-pathspec `rm --cached` unstages `a.txt` and `a.txt` remains on disk
 
 ### Requirement: Changes panel commit
-`gc` SHALL call `gleb.git.ai_commit.show_commit_input(on_commit, { root = root })`, so staged-diff generation and the confirmed literal-pathspec commit run in the panel repository. Success SHALL refresh and notify `Committed: <first line>`; failure SHALL notify `Commit failed: <stderr, else stdout, else exit code>`.
+`gc` SHALL call `gleb.git.ai_commit.show_commit_input(on_commit, { root = root })`, so staged-diff generation and the confirmed literal-pathspec commit run in the panel repository. Its buffer-local mapping SHALL invoke the call without waiting for a longer global `gc` prefix. Success SHALL refresh and notify `Committed: <first line>`; failure SHALL notify `Commit failed: <stderr, else stdout, else exit code>`.
 
 #### Scenario: Changes panel gc commits confirmed message
 - **WHEN** `gc` is pressed in normal mode in the changes panel and the popup is confirmed with `feat: x`, then a new change is staged and `gc` is confirmed with `fix: it's $HOME`
@@ -315,6 +315,14 @@ While the diff view shows a panel file, `diff.next_file` SHALL move the panel cu
 #### Scenario: Changes panel gc reports commit failure
 - **WHEN** `gc` is pressed in normal mode in the changes panel, the popup is confirmed with `feat: x` and `git commit` exits non-zero (a failing `pre-commit` hook)
 - **THEN** a notification starting with `Commit failed:` at ERROR is emitted, none starting with `Committed:`, and `git log -1 --format=%s` is unchanged
+
+#### Scenario: Changes panel gc opens without mapping delay
+- **WHEN** plain `gc` is pressed in normal mode in the changes panel while a longer global mapping starts with `gc`
+- **THEN** the commit popup exists within 200 ms, before the 1000 ms mapping timeout
+
+#### Scenario: Changes panel gc generates from the panel repository
+- **WHEN** the process cwd is outside a panel repository with a staged change and plain `gc` is pressed while a real Ollama executable records its stdin
+- **THEN** Ollama receives a prompt containing the staged diff from the panel repository
 
 ### Requirement: Changes panel push
 `P` in the panel SHALL notify `Pushing...` at INFO, run `git push` asynchronously as an argument list in the root, then notify `Pushed successfully` at INFO on exit 0 or `Push failed` at ERROR.

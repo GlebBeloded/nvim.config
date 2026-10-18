@@ -85,12 +85,14 @@ local function add_upstream(dir)
 end
 
 --- Dir with an executable `ollama` stub.
+---@param input_path? string
 ---@return string dir
-local function fake_ollama()
+local function fake_ollama(input_path)
 	local dir = vim.fn.tempname()
 	vim.fn.mkdir(dir, "p")
 	local script = vim.fs.joinpath(dir, "ollama")
-	vim.fn.writefile({ "#!/bin/sh", "cat >/dev/null", "printf 'generated\\n'" }, script)
+	local input = input_path and ("cat >" .. vim.fn.shellescape(input_path)) or "cat >/dev/null"
+	vim.fn.writefile({ "#!/bin/sh", input, "printf 'generated\\n'" }, script)
 	vim.fn.setfperm(script, "rwxr-xr-x")
 	return dir
 end
@@ -326,6 +328,48 @@ T["git: Changes panel gc reports commit failure"] = function()
 	eq(notifications_with("Commit failed:"), { { msg = "Commit failed: hook says no", level = vim.log.levels.ERROR } })
 	eq(notifications_with("Committed:"), {})
 	eq(last_subject(dir), "initial")
+end
+
+T["git: Changes panel gc opens without mapping delay"] = function()
+	local dir = H.git_repo({ ["a.txt"] = "one\n" })
+	vim.fn.writefile({ "two" }, vim.fs.joinpath(dir, "a.txt"))
+	H.git(dir, { "add", "a.txt" })
+	open_changes(dir)
+	child.lua([[vim.env.PATH = ... .. ":" .. vim.env.PATH]], { fake_ollama() })
+
+	child.type_keys("gc")
+
+	eq(
+		child.wait(
+			[[vim.iter(vim.api.nvim_list_wins()):any(function(win)
+		return vim.api.nvim_win_get_config(win).relative ~= ""
+	end)]],
+			200
+		),
+		true
+	)
+end
+
+T["git: Changes panel gc generates from the panel repository"] = function()
+	local dir = H.git_repo({ ["a.txt"] = "one\n" })
+	local input_path = vim.fn.tempname()
+	vim.fn.writefile({ "two" }, vim.fs.joinpath(dir, "a.txt"))
+	H.git(dir, { "add", "a.txt" })
+	open_changes(dir)
+	child.lua([[vim.env.PATH = ... .. ":" .. vim.env.PATH]], { fake_ollama(input_path) })
+	child.cmd("cd " .. vim.fn.fnameescape(vim.fs.dirname(dir)))
+
+	child.type_keys("gc")
+
+	eq(
+		vim.wait(ASYNC_MS, function()
+			return vim.fn.filereadable(input_path) == 1
+		end, 20),
+		true
+	)
+	local prompt = table.concat(vim.fn.readfile(input_path), "\n")
+	eq(prompt:find("-one", 1, true) ~= nil, true)
+	eq(prompt:find("+two", 1, true) ~= nil, true)
 end
 
 T["git: Changes panel P pushes successfully"] = function()
