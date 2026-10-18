@@ -568,6 +568,53 @@ T["git: Changes panel q closes the panel and the diff view"] = function()
 	})
 end
 
+T["git: Changes panel close preserves another diff view"] = function()
+	local root = F.copy("dirty", vim.fn.tempname() .. "/dirty")
+	open_changes(root, "a.txt")
+	local handles = child.lua_get([[(function()
+		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		vim.api.nvim_set_current_win(panel.editor_win)
+		local action = assert(require("gleb.actions").state.applicator.catalog:get("diff.open_file"))
+		assert(require("gleb.actions.context").execute(action, require("gleb.actions.context").capture()))
+		local other = assert(require("gleb.diff.view").current())
+		vim.api.nvim_set_current_tabpage(panel.tab)
+		vim.api.nvim_set_current_win(panel.win)
+		return { other_left = other.left_win, other_right = other.right_win }
+	end)()]])
+	observe_show()
+	cursor_before("b.txt")
+	child.type_keys("j")
+	wait_for_shows(1)
+	local owned = child.lua_get([[(function()
+		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		return { left = panel.diff_view.left_win, right = panel.diff_view.right_win }
+	end)()]])
+
+	child.type_keys("q")
+
+	eq(child.api.nvim_win_is_valid(owned.left), false)
+	eq(child.api.nvim_win_is_valid(owned.right), true)
+	eq(child.api.nvim_win_is_valid(handles.other_left), true)
+	eq(child.api.nvim_win_is_valid(handles.other_right), true)
+	eq(child.lua_get([[require("gleb.diff.view").state.by_win[...] ~= nil]], { handles.other_right }), true)
+end
+
+T["git: Changes panel unloads its clean file buffer"] = function()
+	local root = F.copy("dirty", vim.fn.tempname() .. "/dirty")
+	open_changes(root, "a.txt")
+	local path = assert(vim.uv.fs_realpath(vim.fs.joinpath(root, "b.txt")))
+	eq(child.fn.bufloaded(path), 0)
+	observe_show()
+	cursor_before("b.txt")
+	child.type_keys("j")
+	wait_for_shows(1)
+	eq(child.fn.bufloaded(path), 1)
+
+	child.type_keys("q")
+
+	eq(child.fn.bufloaded(path), 0)
+end
+
 T["git: Project tree replaces the changes panel"] = function()
 	local root = F.copy("dirty", vim.fn.tempname() .. "/dirty")
 	open_changes(root, "a.txt")

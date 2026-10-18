@@ -126,9 +126,9 @@ Scenarios: `git: Changes panel binary row uses a read-only diff`, `git: Changes 
 
 ## 5f. Owned-view cleanup
 Scenarios: `git: Changes panel close preserves another diff view`, `git: Changes panel unloads its clean file buffer`
-- [ ] 5f.1 Write the scenarios in `tests/integration/git/test_changes_diff.lua` with two real view handles and a panel-loaded buffer and see them fail
-- [ ] 5f.2 Close only the panel-owned view and unload only clean buffers loaded by the panel
-- [ ] 5f.3 Run `make test FILE=tests/integration/git/test_changes_diff.lua CASE="Changes panel"` and see it pass
+- [x] 5f.1 Write the scenarios in `tests/integration/git/test_changes_diff.lua` with two real view handles and a panel-loaded buffer and see them fail
+- [x] 5f.2 Close only the panel-owned view and unload only clean buffers loaded by the panel
+- [x] 5f.3 Run `make test FILE=tests/integration/git/test_changes_diff.lua CASE="Changes panel"` and see it pass
 
 ## 6a. Revert tracked and local files
 Scenarios: `git: Changes panel X reverts a file after confirmation`, `git: Changes panel X keeps a file when revert is declined`, `git: Changes panel X unstages a new file and keeps it`, `git: Changes panel X ignores an unversioned file`, `git: Changes panel X reverts a rename`
@@ -180,6 +180,7 @@ Scenarios: `git: Changes panel matches the approved render`, `git: Changes panel
 - Diff selection uses its own per-panel timer so refresh coalescing cannot cancel the 50 ms cursor debounce.
 - Project-tree toggle checks the already-loaded Changes module before handoff, avoiding a new feature load when no panel exists.
 - Binary detection uses Git numstat while conflict content uses its porcelain status, keeping both kinds in unnamed read-only buffers without guessing from file bytes.
+- Panel diff loading reports an initially unloaded file buffer to its owning panel, so close can unload clean owned buffers without touching preloaded or modified buffers.
 
 ## Stuck
 

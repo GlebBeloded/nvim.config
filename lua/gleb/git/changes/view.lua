@@ -34,6 +34,7 @@ local augroup = vim.api.nvim_create_augroup("gleb_changes", { clear = true })
 ---@field diff_view? gleb.diff.view.View
 ---@field diff_path? string
 ---@field initial_selected_path? string
+---@field loaded_buffers table<integer, boolean>
 
 ---@param buf integer
 ---@return nil
@@ -192,13 +193,21 @@ local function refresh_from_git_dir(view)
 	end
 end
 
+---@param buf integer
+---@return nil
+local function unload_clean_buffer(buf)
+	if vim.api.nvim_buf_is_valid(buf) and vim.api.nvim_buf_is_loaded(buf) and not vim.bo[buf].modified then
+		vim.api.nvim_buf_delete(buf, { unload = true })
+	end
+end
+
 ---@param view ChangesView
 ---@param row ChangesRow
 ---@param generation integer
 ---@param selection_generation integer
 ---@return nil
 local function show_diff(view, row, generation, selection_generation)
-	git.load_diff(view.root, row, function(spec)
+	git.load_diff(view.root, row, function(spec, loaded_buf)
 		local changes = require("gleb.git.changes")
 		if
 			changes.state.by_tab[view.tab] ~= view
@@ -206,7 +215,13 @@ local function show_diff(view, row, generation, selection_generation)
 			or selection_generation ~= view.selection_generation
 			or not vim.api.nvim_win_is_valid(view.win)
 		then
+			if loaded_buf then
+				unload_clean_buffer(loaded_buf)
+			end
 			return
+		end
+		if loaded_buf then
+			view.loaded_buffers[loaded_buf] = true
 		end
 		local diff = require("gleb.diff.view")
 		local editor = file_tree_view.eligible_editor(view)
@@ -379,6 +394,10 @@ function M.close(view)
 		view.diff_view = nil
 		view.diff_path = nil
 	end
+	for buf in pairs(view.loaded_buffers) do
+		unload_clean_buffer(buf)
+	end
+	view.loaded_buffers = {}
 	if vim.api.nvim_win_is_valid(view.editor_win) then
 		vim.api.nvim_set_current_win(view.editor_win)
 	end
@@ -441,6 +460,7 @@ function M.open(root, selected_path)
 		generation = 0,
 		selection_generation = 0,
 		autocmds = {},
+		loaded_buffers = {},
 		initial_selected_path = fs.normalize(selected_path),
 	}
 	changes.state.by_tab[tab] = view

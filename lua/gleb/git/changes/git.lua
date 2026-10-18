@@ -66,7 +66,7 @@ end
 
 ---@param root string
 ---@param row ChangesRow
----@param callback fun(spec: gleb.diff.view.Spec)
+---@param callback fun(spec: gleb.diff.view.Spec, loaded_buf: integer?)
 ---@return nil
 function M.load_diff(root, row, callback)
 	local relpath = assert(row.path, "file row path missing")
@@ -90,6 +90,7 @@ function M.load_diff(root, row, callback)
 			local readonly = deleted or binary or row.status == "conflict"
 			local right = {}
 			local right_buf
+			local loaded_buf
 			if not deleted then
 				if readonly then
 					right = readonly_file_lines(path)
@@ -97,6 +98,9 @@ function M.load_diff(root, row, callback)
 					right_buf = vim.fn.bufnr(path, false)
 					if right_buf == -1 then
 						right_buf = vim.fn.bufadd(path)
+					end
+					if not vim.api.nvim_buf_is_loaded(right_buf) then
+						loaded_buf = right_buf
 					end
 					vim.fn.bufload(right_buf)
 					right = vim.api.nvim_buf_get_lines(right_buf, 0, -1, false)
@@ -117,7 +121,7 @@ function M.load_diff(root, row, callback)
 					left = (hash_result.code == 0 and vim.trim(hash_result.stdout or "") or "HEAD") .. " · HEAD",
 					right = "Your version",
 				},
-			})
+			}, loaded_buf)
 		end)
 	end
 
