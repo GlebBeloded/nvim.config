@@ -49,6 +49,7 @@ The new project tree lists everything on disk, so build output, dependency folde
 - Plugins: none added or removed.
 - Core keymaps: none. `I` is a buffer-local key of the new tree's filetype only.
 - Unchanged scenarios:
+  - `diff: Diff view embedding` still holds because the new Show Ignored state and action do not change `gleb.diff.view.show`.
   - `file-tree: Dotfiles and gitignored files are listed` still holds: it is about neo-tree's filesystem source, which this change doesn't touch and which stays until `tree-diff-cutover`.
   - `bufferline: tabs start after the open project tree` still holds because filtering tree rows does not change the project-tree window width or tabline offset.
 - Out of scope:
