@@ -65,9 +65,9 @@ Scenarios: `file-tree: Invalid settings file disables nesting`, `file-tree: Nest
 
 Scenarios: `file-tree: Fold all and reroot clear nest state`, `file-tree: Renaming a nest parent migrates its state`, `file-tree: Renaming a folder migrates nest state in every view`
 
-- [ ] 4c.1 Write the three cases in `tests/integration/file-tree/test_nesting.lua`, driving real `zM`, cwd reroot and `r` across two tabs, then run `make test FILE=tests/integration/file-tree/test_nesting.lua CASE="Renaming a folder migrates nest state in every view"` and see it fail
-- [ ] 4c.2 Clear `expanded_nests` on fold-all and reroot, never pass it to `expanded.lua`, and migrate file/folder keys in every view of the moved root
-- [ ] 4c.3 Run each scenario with `make test FILE=tests/integration/file-tree/test_nesting.lua CASE="<scenario title>"` and see it pass
+- [x] 4c.1 Write the three cases in `tests/integration/file-tree/test_nesting.lua`, driving real `zM`, cwd reroot and `r` across two tabs, then run `make test FILE=tests/integration/file-tree/test_nesting.lua CASE="Renaming a folder migrates nest state in every view"` and see it fail
+- [x] 4c.2 Clear `expanded_nests` on fold-all and reroot, never pass it to `expanded.lua`, and migrate file/folder keys in every view of the moved root
+- [x] 4c.3 Run each scenario with `make test FILE=tests/integration/file-tree/test_nesting.lua CASE="<scenario title>"` and see it pass
 
 ## 5a. Nest keys and row cap
 
@@ -124,3 +124,4 @@ Scenarios: `file-tree: File tree nests match the approved render`
 - Omitted settings fields default to enabled nesting with empty rule and ignore lists, preserving Decision 1's enabled-by-default contract without inventing rules.
 - Nest rows carry explicit expansion and parent metadata so rendering and later row actions do not infer structure from labels or adjacency.
 - Settings reload redraws each tree at its selected path so configuration changes do not move the cursor.
+- Move expansion keys before the filesystem rename so watcher redraws cannot prune them; reverse the keys if the move rolls back.

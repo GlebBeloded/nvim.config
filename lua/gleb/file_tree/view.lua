@@ -418,6 +418,7 @@ function M.fold_all()
 		end
 	end
 	view.expanded = {}
+	view.expanded_nests = {}
 	redraw_at(view, path)
 end
 
@@ -649,6 +650,7 @@ local function reroot(view, root)
 	git.stop_root(view.root, view.tab)
 	view.root = root
 	view.expanded = expanded.load(root)
+	view.expanded_nests = {}
 	vim.api.nvim_buf_set_name(view.buf, ("gleb-file-tree://%s#%d"):format(root, view.tab))
 	watch.start_root(root, view.tab)
 	git.start_root(root, view.tab, function()
@@ -739,15 +741,17 @@ function M.select_created(path, open_file)
 	end
 end
 
----@param view FileTreeView
+---@param root string
+---@param state table<string, boolean>
 ---@param move_pairs FileTreeMovePair[]
-local function migrate_expanded(view, move_pairs)
+---@return table<string, boolean>
+local function migrate_state(root, state, move_pairs)
 	local migrated = {}
-	for relative, value in pairs(view.expanded) do
+	for relative, value in pairs(state) do
 		local target = relative
 		for _, pair in ipairs(move_pairs) do
-			local old = pair.old:sub(#view.root + 2)
-			local new = pair.new:sub(#view.root + 2)
+			local old = pair.old:sub(#root + 2)
+			local new = pair.new:sub(#root + 2)
 			if relative == old or vim.startswith(relative, old .. "/") then
 				target = new .. relative:sub(#old + 1)
 				break
@@ -755,23 +759,33 @@ local function migrate_expanded(view, move_pairs)
 		end
 		migrated[target] = value
 	end
-	view.expanded = migrated
+	return migrated
+end
+
+--- Migrate expansion keys before filesystem moves can trigger a pruning redraw.
+---@param root string
+---@param move_pairs FileTreeMovePair[]
+---@return nil
+function M.migrate_moved(root, move_pairs)
+	for _, view in pairs(M.state.by_tab) do
+		if view.root == root then
+			view.expanded = migrate_state(view.root, view.expanded, move_pairs)
+			view.expanded_nests = migrate_state(view.root, view.expanded_nests, move_pairs)
+		end
+	end
 end
 
 --- Refresh every project-tree view of a moved root and select the initiating target.
 ---@param root string
 ---@param selected_path string
----@param move_pairs? FileTreeMovePair[]
+---@param _move_pairs? FileTreeMovePair[]
 ---@return nil
-function M.refresh_moved(root, selected_path, move_pairs)
+function M.refresh_moved(root, selected_path, _move_pairs)
 	local current_tab = vim.api.nvim_get_current_tabpage()
 	local initiating_view = M.state.by_tab[current_tab]
 	fs.invalidate_root(root)
 	for tab, view in pairs(M.state.by_tab) do
 		if view.root == root and vim.api.nvim_win_is_valid(view.win) then
-			if move_pairs then
-				migrate_expanded(view, move_pairs)
-			end
 			local row = selected_row(view)
 			local target = tab == current_tab and selected_path or (row and row.path or root)
 			draw(view, target)

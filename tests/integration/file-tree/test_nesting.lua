@@ -76,6 +76,34 @@ local function focus_tree_row(name)
 	assert(found, "tree row not found: " .. name)
 end
 
+---@param relative string
+local function focus_tree_path(relative)
+	local found = child.lua_get(
+		[[(function(root, relative)
+			local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+			local path = vim.fs.joinpath(require("gleb.file_tree.fs").normalize(root), relative)
+			vim.api.nvim_set_current_win(view.win)
+			for index, row in ipairs(view.rows) do
+				if row.path == path then
+					vim.api.nvim_win_set_cursor(view.win, { index, 0 })
+					return true
+				end
+			end
+			return false
+		end)(...)]],
+		{ root, relative }
+	)
+	assert(found, "tree path not found: " .. relative)
+end
+
+---@param name string
+local function rename(name)
+	child.type_keys("r")
+	assert(child.wait([[MiniPick.is_picker_active()]]), "Rename picker did not open")
+	child.type_keys("<C-u>", name, "<CR>")
+	assert(child.wait([[not MiniPick.is_picker_active()]]), "Rename picker did not close")
+end
+
 local function nest_is_expanded()
 	return child.lua_get([[(function()
 		local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
@@ -244,6 +272,116 @@ T["file-tree: Writing settings through a normalized path reloads nesting"] = fun
 	assert(child.wait([[require("gleb.file_tree.settings").generation() > 2]], 1000), "settings did not reload")
 
 	eq(vim.inspect(billing_file_rows()), vim.inspect(sibling_rows))
+end
+
+T["file-tree: Fold all and reroot clear nest state"] = function()
+	focus_tree_row("invoice.go")
+	child.type_keys("za")
+	child.type_keys("zM")
+	eq(nest_is_expanded(), false)
+	eq(child.lua_get([=[require("gleb.file_tree.expanded").state.pending[...] == nil]=], { root }), true)
+
+	child.lua([[
+		local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+		view.expanded_nests["internal/billing/invoice.go"] = true
+	]])
+	local other = F.copy("treeproj", vim.fn.tempname() .. "/other")
+	child.cmd("cd " .. vim.fn.fnameescape(other))
+	assert(
+		child.wait([[(function()
+		local view = require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		return view and view.root == require("gleb.file_tree.fs").normalize(vim.fn.getcwd())
+	end)()]]),
+		"tree did not reroot"
+	)
+	eq(
+		child.lua_get(
+			[[require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()].expanded_nests]]
+		),
+		{}
+	)
+end
+
+T["file-tree: Renaming a nest parent migrates its state"] = function()
+	focus_tree_row("invoice.go")
+	child.type_keys("za")
+	assert(
+		vim.uv.fs_copyfile(
+			vim.fs.joinpath(root, "internal/billing/invoice_test.go"),
+			vim.fs.joinpath(root, "internal/billing/bill_test.go")
+		)
+	)
+	rename("bill.go")
+	assert(
+		child.wait(
+			[[(function()
+		local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+		return view.expanded_nests["internal/billing/bill.go"] == true
+			and vim.iter(view.rows):any(function(row) return row.label == "bill_test.go" end)
+	end)()]],
+			1600
+		),
+		"rename did not migrate nest state"
+	)
+
+	local state = child.lua_get([[(function()
+		local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+		return {
+			old = view.expanded_nests["internal/billing/invoice.go"],
+			new = view.expanded_nests["internal/billing/bill.go"],
+			child = vim.iter(view.rows):any(function(row) return row.label == "bill_test.go" end),
+		}
+	end)()]])
+	eq(state, { new = true, child = true })
+end
+
+T["file-tree: Renaming a folder migrates nest state in every view"] = function()
+	focus_tree_row("invoice.go")
+	child.type_keys("za")
+	local first_tab = child.api.nvim_get_current_tabpage()
+
+	child.cmd("tabnew")
+	child.cmd("edit " .. vim.fn.fnameescape(vim.fs.joinpath(root, "internal/billing/invoice.go")))
+	child.lua([[
+		local action = assert(require("gleb.actions").state.applicator.catalog:get("file_tree.toggle"))
+		action.run(require("gleb.actions.context").capture())
+	]])
+	focus_tree_row("invoice.go")
+	child.type_keys("za")
+	focus_tree_path("internal/billing")
+	rename("accounts")
+	assert(
+		child.wait(
+			([[(function(first_tab)
+			for _, tab in ipairs({ first_tab, vim.api.nvim_get_current_tabpage() }) do
+				local view = assert(require("gleb.file_tree.view").state.by_tab[tab])
+				if view.expanded_nests["internal/accounts/invoice.go"] ~= true then
+					return false
+				end
+			end
+			return true
+		end)(%d)]]):format(first_tab),
+			1600
+		),
+		"rename did not migrate every view"
+	)
+
+	local states = child.lua_get(
+		[[(function(first_tab)
+			local result = {}
+			for _, tab in ipairs({ first_tab, vim.api.nvim_get_current_tabpage() }) do
+				local view = assert(require("gleb.file_tree.view").state.by_tab[tab])
+				result[#result + 1] = {
+					old = view.expanded_nests["internal/billing/invoice.go"],
+					new = view.expanded_nests["internal/accounts/invoice.go"],
+					child = vim.iter(view.rows):any(function(row) return row.label == "invoice_test.go" end),
+				}
+			end
+			return result
+		end)(...)]],
+		{ first_tab }
+	)
+	eq(states, { { new = true, child = true }, { new = true, child = true } })
 end
 
 return T

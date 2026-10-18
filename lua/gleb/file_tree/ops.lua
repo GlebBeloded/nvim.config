@@ -241,6 +241,14 @@ local function rollback_moves(completed)
 end
 
 ---@param move_pairs FileTreeMovePair[]
+---@return FileTreeMovePair[]
+local function reverse_moves(move_pairs)
+	return vim.tbl_map(function(pair)
+		return { old = pair.new, new = pair.old }
+	end, move_pairs)
+end
+
+---@param move_pairs FileTreeMovePair[]
 ---@return boolean
 local function create_move_parents(move_pairs)
 	for _, pair in ipairs(move_pairs) do
@@ -284,11 +292,13 @@ function M.move(move_pairs)
 
 	local lsp_files = require("gleb.file_tree.lsp_files")
 	lsp_files.will_rename(pending)
+	view.migrate_moved(root, pending)
 	local completed = {}
 	for _, pair in ipairs(pending) do
 		local moved, error = rename_path(pair.old, pair.new)
 		if not moved then
 			rollback_moves(completed)
+			view.migrate_moved(root, reverse_moves(pending))
 			vim.notify("Rename failed: " .. tostring(error), vim.log.levels.ERROR)
 			return false
 		end
@@ -297,6 +307,7 @@ function M.move(move_pairs)
 	for _, pair in ipairs(pending) do
 		if not vim.uv.fs_stat(pair.new) then
 			rollback_moves(completed)
+			view.migrate_moved(root, reverse_moves(pending))
 			vim.notify("Rename failed: target does not exist", vim.log.levels.ERROR)
 			return false
 		end
