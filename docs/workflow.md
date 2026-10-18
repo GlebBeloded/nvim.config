@@ -29,9 +29,6 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 
 ## Loop lessons
 
-- When archiving a change, retain its adopted main-spec scenarios so trace can link the regression cases.
-- Gate optional post-processing on every fallback status; `too_big` xdiff results must skip move detection just like timed-out results.
-- Diff viewport sync must neutralize window-local scrolloff and ignore only peer events whose cursor or view still matches the programmatic target, preventing deferred echoes from remapping the source.
 - Give invariant assertions diagnostic messages and remove unused test imports so Selene accepts the rendered-view implementation.
 - Derive repository-relative paths from Git's working-directory prefix; filesystem relpath fails when Git canonicalizes a symlinked repository root.
 - Map display-policy fragments to overlapping action fragments so UI-only splitting cannot erase semantic state.
@@ -44,6 +41,9 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - Batch deadline polls in hot candidate loops and maintain claimed ranges in sorted order so deadline enforcement does not dominate move detection.
 - When archiving a change, update tests that read its approved render to the archive path so the durable artifact remains available.
 - Check symlink identity before case-only handling, and rename logical buffers while the symlink is parked at its temporary path so a loaded target buffer remains untouched.
+- Find asynchronous notifications by contract message before asserting severity; unrelated plugin warnings can arrive first.
+- Model screen masks with active capture groups across full spans; blank cells inside comments and strings still carry syntax attributes.
+- Strip optional pattern anchors by position; an unanchored substitution corrupts semantic carets inside Lua patterns.
 
 ## The loop
 
