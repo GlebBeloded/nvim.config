@@ -429,4 +429,28 @@ T["git: Changes panel unstages a rename literally"] = function()
 	})
 end
 
+T["git: Changes panel A stages everything"] = function()
+	local dir = F.copy("dirty", vim.fn.tempname() .. "/dirty")
+	open_changes(dir)
+	record_system_calls()
+
+	child.type_keys("A")
+
+	eq(wait_worktree_clean(dir, "."), true)
+	eq(vim.trim(H.git(dir, { "ls-files", "--others", "--exclude-standard" })), "")
+	eq(
+		child.wait(
+			[[vim.iter(require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()].rows)
+				:all(function(row)
+					return row.root ~= "unversioned" and (row.checkbox == nil or row.checkbox == "󰄲")
+				end)]],
+			ASYNC_MS
+		),
+		true
+	)
+	eq(action_calls("add"), {
+		{ command = { "git", "--literal-pathspecs", "add", "-A" } },
+	})
+end
+
 return T

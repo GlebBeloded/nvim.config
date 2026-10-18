@@ -90,9 +90,9 @@ Scenarios: `git: Changes panel Space on the Changes root stages every tracked fi
 
 ## 4d. Stage all
 Scenarios: `git: Changes panel A stages everything`
-- [ ] 4d.1 Write the scenario in `tests/integration/git/test_changes_stage.lua`, press `A` in the populated dirty fixture, and see it fail
-- [ ] 4d.2 Implement `changes.stage_all` with `git --literal-pathspecs add -A`
-- [ ] 4d.3 Run `make test FILE=tests/integration/git/test_changes_stage.lua CASE="Changes panel A stages everything"` and see it pass
+- [x] 4d.1 Write the scenario in `tests/integration/git/test_changes_stage.lua`, press `A` in the populated dirty fixture, and see it fail
+- [x] 4d.2 Implement `changes.stage_all` with `git --literal-pathspecs add -A`
+- [x] 4d.3 Run `make test FILE=tests/integration/git/test_changes_stage.lua CASE="Changes panel A stages everything"` and see it pass
 
 ## 5a. Show, debounce and exceptional content
 Scenarios: `git: Changes panel j shows the next file in the diff view`, `git: Changes panel debounces rapid moves`, `git: Changes panel shows an untracked file as added`, `git: Changes panel shows a deleted file`, `git: Changes panel closes a contentless diff`

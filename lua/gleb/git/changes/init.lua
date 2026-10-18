@@ -148,6 +148,28 @@ function M.toggle_stage()
 	end)
 end
 
+--- Stage every change in the current Changes panel.
+---@return nil
+function M.stage_all()
+	local current = M.state.by_tab[vim.api.nvim_get_current_tabpage()]
+	if not current then
+		return
+	end
+	git.stage_all(current.root, function(result)
+		if result.code ~= 0 then
+			vim.notify("Stage failed: " .. vim.trim(result.stderr or ""), vim.log.levels.ERROR)
+			return
+		end
+		if M.state.by_tab[current.tab] ~= current then
+			return
+		end
+		view.schedule_refresh(current)
+		if current.diff_view then
+			require("gleb.diff.view").refresh_index(current.diff_view)
+		end
+	end)
+end
+
 --- Clear Changes panel state for tests.
 ---@return nil
 function M.reset()

@@ -161,4 +161,18 @@ function M.toggle_stage(root, paths, callback)
 	end)
 end
 
+--- Stage every change in a repository.
+---@param root string
+---@param callback fun(result: vim.SystemCompleted)
+---@return nil
+function M.stage_all(root, callback)
+	local command = { "git", "--literal-pathspecs", "add", "-A" }
+	M.state.last_cmd = command
+	vim.system(command, { cwd = fs.normalize(root), text = true }, function(result)
+		vim.schedule(function()
+			callback(result)
+		end)
+	end)
+end
+
 return M
