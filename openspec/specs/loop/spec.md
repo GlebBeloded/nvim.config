@@ -560,7 +560,7 @@ The fix command SHALL run one headless scratch-file probe logging the relevant s
 
 #### Scenario: Fix prompt probes first and caps attempts
 - **WHEN** `.archon/commands/fix.md` is read
-- **THEN** it asks for one headless probe before editing a non-obvious failure, caps attempts at 2 per pass then `## Stuck` with the probe output, and forbids timers or sleeps against plugin internals without a `## Decision`
+- **THEN** it asks for one headless probe before editing a non-obvious failure, caps attempts at 2 per pass then `## Stuck` with the probe output, forbids timers or sleeps against plugin internals without a `## Decision`, and lets a `## Decision` override any review finding it covers, carried-over ones too
 
 ### Requirement: Bug root cause carries evidence
 The spec prompts SHALL give a bug proposal an `## Evidence` section of `file:line` refs or probe output for its root cause; context_pack.py SHALL carry that section into context.md, and the implement prompt SHALL not re-read plugin source the Evidence covers.

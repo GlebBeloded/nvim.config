@@ -668,6 +668,10 @@ T["loop: Fix prompt probes first and caps attempts"] = function()
 	has(fix, "write (or replace) `## Stuck` in tasks.md with the probe output and both attempts")
 	has(fix, "never uses timers or sleeps (`vim.defer_fn`, `vim.uv` timers, `vim.wait`) to win a race")
 	has(fix, "unless the proposal's `## Decision` allows it")
+	has(
+		fix,
+		"A `## Decision` in proposal.md overrides any review finding it covers, also one carried over from an earlier review"
+	)
 end
 
 T["loop: An auditor Decision runs the spec step"] = function()
