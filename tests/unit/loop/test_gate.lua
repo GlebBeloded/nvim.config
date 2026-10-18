@@ -661,6 +661,15 @@ T["loop: Judge ships once a dropped test case is restored"] = function()
 	eq(judge.decision, "ship", { fail_reason = judge.reasons })
 end
 
+T["loop: Fix feedback keeps a failing case's message"] = function()
+	local result = H.system(child, { "python3", "-m", "unittest", "-q", "test_check_log" }, SCRIPTS)
+	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
+	has(
+		read(vim.fs.joinpath(H.root, ".archon/commands/fix.md")):gsub("%s+", " "),
+		"A failing case this change owns (its own or one it edited) is never dismissed as transient or flaky with no commit"
+	)
+end
+
 T["loop: Fix prompt probes first and caps attempts"] = function()
 	local fix = read(vim.fs.joinpath(H.root, ".archon/commands/fix.md")):gsub("%s+", " ")
 	has(fix, "run one headless probe first (the scratch-file probe rule below) that logs the relevant state")

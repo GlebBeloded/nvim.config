@@ -10,9 +10,10 @@ ANSI = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
 STATUS = re.compile(r"^(ok  |FAIL|skip) \S+ +[\d.]+ s|^check: ")
 SECTION = re.compile(r"^===== (\S+) =====$")
 FAIL_IN = re.compile(r"^FAIL in (.+?):?$")
-NOISE = re.compile(r"^Total number of |^\S+\.lua \| .*: o$")  # mini.test counts and passed cases
+NOISE = re.compile(r"^Total number of |^\S+\.lua \| .*: o+$")  # mini.test counts and passed cases (`oo` for a set)
 SECTION_LINES = 30
 LINE_CHARS = 160
+FULL_CASES, CASE_CHARS = 5, 600  # the first failing cases keep their message (a stall's phase and subprocesses)
 MAX_CASES = 20
 BUDGET = 5000
 MIN_SECTION_CHARS = 300
@@ -55,7 +56,7 @@ def failing_cases(lines: list[str]) -> list[str]:
 def case_list(cases: list[str]) -> str:
     if not cases:
         return ""
-    shown = "\n".join("- " + c[:LINE_CHARS] for c in cases[:MAX_CASES])
+    shown = "\n".join("- " + c[: CASE_CHARS if i < FULL_CASES else LINE_CHARS] for i, c in enumerate(cases[:MAX_CASES]))
     more = f"\n- … {len(cases) - MAX_CASES} more in the full log" if len(cases) > MAX_CASES else ""
     return "failing test cases (FAIL in):\n" + shown + more
 
