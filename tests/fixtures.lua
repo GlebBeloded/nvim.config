@@ -67,4 +67,13 @@ function M.copy(name, dest)
 	return dest, vim.json.decode(manifest)
 end
 
+--- Keep pre-nesting file-tree scenarios independent of the shipped settings.
+---@param child table mini.test child Neovim
+function M.disable_file_tree_nesting(child)
+	local path = vim.fs.joinpath(vim.fn.tempname(), "settings", "file_tree.json")
+	vim.fn.mkdir(vim.fs.dirname(path), "p")
+	vim.fn.writefile({ vim.json.encode({ nesting = { enabled = false } }) }, path)
+	child.lua([[require("gleb.file_tree.settings").setup({ path = ... })]], { path })
+end
+
 return M

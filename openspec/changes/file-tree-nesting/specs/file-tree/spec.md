@@ -17,7 +17,7 @@
 
 #### Scenario: Broken nesting rules are skipped
 - **WHEN** `nest` gets the files `go.mod`, `go.sum`, `init.lua`, `init_spec.lua` and the rules `{ parent = "go%.mod", children = { "${capture}%.sum" } }`, `{ parent = "[", children = { "x" } }`, `{ parent = "(.+)%.lua", children = { "${capture}_spec%.lua" } }`
-- **THEN** it returns exactly `{ ["init.lua"] = { "init_spec.lua" } }`, and WARN notifications starting `File tree nesting rule 1 skipped` and `File tree nesting rule 2 skipped` are shown, once each per session
+- **THEN** it returns exactly `{ ["init.lua"] = { "init_spec.lua" } }`, and WARN notifications starting `File tree nesting rule 1 skipped` and `File tree nesting rule 2 skipped` are shown, once each per load
 
 #### Scenario: Invalid settings file disables nesting
 - **WHEN** the settings path holds `{ "nesting": ` and the tree opens on the `treeproj` fixture with `internal/billing` expanded
@@ -30,6 +30,10 @@
 #### Scenario: Nesting can be turned off
 - **WHEN** the settings file sets `nesting.enabled` to `false` and the tree opens on the `treeproj` fixture with `internal/billing` expanded
 - **THEN** the six Go files of `internal/billing` are sibling rows in name order, and no file row has a chevron
+
+#### Scenario: Writing settings through a normalized path reloads nesting
+- **WHEN** `settings.setup` receives a settings path under `/var`, the same file is edited through its normalized `/private/var` path to remove the `(.+)%.go` rule, and `:write` is run
+- **THEN** within 1 s `invoice_test.go` is a sibling row of `invoice.go`, and `invoice.go` has no chevron
 
 ### Requirement: File tree programmable nesting rules
 A rule `{ "lua": "<module>" }` SHALL call the function `require("<module>")` returns with the folder's absolute path and its file names. The returned parent → children map SHALL take part in precedence at the rule's position. Names that are not files of the folder SHALL be ignored. A module that fails to load, errors or returns no table SHALL be skipped with a WARN, and later rules SHALL still apply.
@@ -54,8 +58,23 @@ Nesting SHALL be one level within one folder and SHALL apply to files only. Clai
 - **THEN** it returns exactly `{ ["a.ts"] = { "a.js" } }`
 
 #### Scenario: Folders never nest
-- **WHEN** `nest` gets the entries `{ name = "invoice.go", type = "file" }`, `{ name = "invoice_test.go", type = "directory" }` and the default Go rule
+- **WHEN** `nest` gets the entries `{ name = "invoice.go", path = "/repo/invoice.go", kind = "file" }`, `{ name = "invoice_test.go", path = "/repo/invoice_test.go", kind = "directory" }` and the default Go rule
 - **THEN** it returns an empty table
+
+### Requirement: File tree nesting cache and limits
+Nest maps SHALL be cached by the folder's `fs.scan` table and the settings generation, held through weak keys. Reloading settings SHALL bump the generation. Git-only redraws SHALL not run rules again. A substituted child SHALL use a name lookup. The 16 default rules over 5000 files SHALL finish within 50 ms. The 5000-row expansion cap SHALL count nest children.
+
+#### Scenario: Default nesting rules meet the large-folder bound
+- **WHEN** `nest` runs all 16 default rules over 5000 file entries after one warm-up run
+- **THEN** the measured run finishes within 50 ms
+
+#### Scenario: Git redraw reuses the nest map
+- **WHEN** a Lua nesting rule increments a counter, the tree draws one folder, and a git-status update redraws the same unchanged `fs.scan` table without a settings reload
+- **THEN** the counter remains `1`
+
+#### Scenario: Unfold all counts nested children toward the row limit
+- **WHEN** the root has enough parent files and nested children to exceed 5000 visible rows and `zR` is pressed in normal mode
+- **THEN** the tree has at most 5001 rows and a WARN notification `Unfold all stopped at 5000 rows` is emitted
 
 ### Requirement: File tree default nesting rules
 `settings/file_tree.json` SHALL ship `nesting.enabled = true` and the default rules for Go, protobuf, `go.mod`, `go.work`, TypeScript, TSX, JavaScript, `package.json`, `tsconfig.json`, Python, `pyproject.toml`, `Cargo.toml`, Lua specs, `.gitignore`, `README*` and `Makefile`, in that order, with the children the user approved (design.md Decision 5).
@@ -91,6 +110,29 @@ A file with at least one present child SHALL show a chevron in the expander colu
 - **WHEN** the `invoice.go` nest is expanded and `R` is pressed in the tree
 - **THEN** after the refresh `invoice_test.go` is still listed under `invoice.go`, and the `discount.go` nest is still collapsed
 
+### Requirement: File tree nest state
+Each tab SHALL keep `expanded_nests` separately from `expanded`, keyed by the parent's path relative to the root. Nest state SHALL not be stored in `expanded.json`. `zM` and rerooting SHALL clear it. Drawing SHALL drop a key whose parent is gone, is not a file, or has no child. File and folder moves SHALL migrate matching keys in every view of the root.
+
+#### Scenario: Nest state is isolated between tabs
+- **WHEN** two tabs show the same root, the `invoice.go` nest is expanded in the first tab, and the second tab is focused
+- **THEN** `invoice_test.go` is listed only in the first tab and the second tab's `invoice.go` nest remains collapsed
+
+#### Scenario: Fold all and reroot clear nest state
+- **WHEN** the `invoice.go` nest is expanded, `zM` is pressed, and the tree is then rerooted by changing cwd to another fixture root
+- **THEN** `expanded_nests` is empty after `zM` and remains empty after rerooting, while `expanded.json` contains no nest-parent key
+
+#### Scenario: Drawing prunes stale nest state
+- **WHEN** `expanded_nests` contains parents that are gone, are directories, or no longer have a child and the tree draws
+- **THEN** all three parent keys are absent from `expanded_nests`
+
+#### Scenario: Renaming a nest parent migrates its state
+- **WHEN** the `invoice.go` nest is expanded and `r` renames it to `bill.go` together with a matching `bill_test.go`
+- **THEN** the old relative key is absent, the `bill.go` key is present, and `bill_test.go` is listed under `bill.go`
+
+#### Scenario: Renaming a folder migrates nest state in every view
+- **WHEN** two tabs show the same root with the `invoice.go` nest expanded and `r` renames `internal/billing` to `internal/accounts` in one tab
+- **THEN** both views replace the old nest key with `internal/accounts/invoice.go` and keep `invoice_test.go` listed
+
 ### Requirement: File tree nest actions
 `file_tree.toggle_fold` SHALL toggle the nest of a parent row. On a child row, it and `file_tree.close_node` SHALL collapse the nest and move the cursor to the parent. `file_tree.close_node` on an expanded parent SHALL collapse it. `file_tree.open` SHALL open a parent's file without toggling. `file_tree.unfold_all` and `file_tree.fold_all` SHALL also expand and collapse nests. Following the current file and revealing a new file SHALL expand their nest.
 
@@ -118,6 +160,22 @@ A file with at least one present child SHALL show a chevron in the expander colu
 - **WHEN** the cursor is on the collapsed `invoice.go` row and `file_tree.add` creates `invoice_mock.go`
 - **THEN** the `invoice.go` nest is expanded, it lists `invoice_mock.go` and `invoice_test.go` in that order, and the cursor is on `invoice_mock.go`
 
+#### Scenario: Renamed file is revealed in a collapsed nest
+- **WHEN** the `invoice.go` nest is collapsed and `r` renames `notes.go` to `invoice_mock.go`
+- **THEN** the `invoice.go` nest is expanded and the cursor is on `invoice_mock.go`
+
+#### Scenario: Pasted file is revealed in a collapsed nest
+- **WHEN** the `invoice.go` nest is collapsed and `p` pastes a copied `invoice_mock.go` into `internal/billing`
+- **THEN** the `invoice.go` nest is expanded and the cursor is on `invoice_mock.go`
+
+#### Scenario: Visual delete on a collapsed parent deletes only the parent
+- **WHEN** the `discount.go` nest is collapsed, Visual `d` selects only its parent row, and the delete is confirmed
+- **THEN** `discount.go` is deleted, `discount_test.go` still exists, and `discount_test.go` is listed as a plain row
+
+#### Scenario: Following under a symlinked root expands the nest
+- **WHEN** the tree root normalizes from `/var` to `/private/var`, every nest is collapsed, and the editor opens `internal/billing/invoice_test.go` through the `/var` spelling
+- **THEN** the `invoice.go` nest is expanded and the tree cursor is on `invoice_test.go`
+
 #### Scenario: Deleting a nest parent keeps its children
 - **WHEN** the cursor is on the `discount.go` row and `file_tree.delete` deletes it after confirmation
 - **THEN** `internal/billing/discount_test.go` still exists and is listed as a plain row of `internal/billing` without a chevron
@@ -133,9 +191,34 @@ A parent file without its own git status SHALL show its name in the status its c
 - **WHEN** in a copy of the `treeproj` fixture `git commit -m test -- internal/billing/tax_test.go` runs and a line is then appended to `tax_test.go`, so `tax.go` is added and `tax_test.go` is modified, and the tree shows `internal/billing`
 - **THEN** the `tax.go` name is drawn with `FileTreeGitAdded`, not the modified tint its child would give, and once its nest is expanded `tax_test.go` is drawn with `FileTreeGitModified`
 
+#### Scenario: Deleted unlisted child does not tint its parent
+- **WHEN** a tracked nested child is deleted so git reports it but the child is absent from the folder listing, and its unchanged parent nest is collapsed
+- **THEN** the parent name has no git-status highlight from that deleted child
+
 ### Requirement: File tree nesting screen
 With the default rules, the tree SHALL look like the approved render.
 
 #### Scenario: File tree nests match the approved render
 - **WHEN** the editor is 100x30, a copy of the `treeproj` fixture without its ignored entries is on branch `feat/tax` with design.md Decision 8's git state, `file_tree.toggle` opens the tree, `cmd/server`, `internal/billing` and `web/src` are expanded, the `invoice.go` nest is expanded, the tree cursor is on `invoice.go`, and the right window edits `internal/billing/invoice.go` at line 17
 - **THEN** the screen matches the approved render "Proposed — nests under a chevron"
+
+## MODIFIED Requirements
+
+### Requirement: Project tree folds
+In the tree, `file_tree.toggle_fold` SHALL toggle a folder or nest-parent row and, on any other file row, collapse its folder and move the cursor to it. `file_tree.fold_all` SHALL collapse every folder and nest and put the cursor on the top-level row that contained the selection. `file_tree.unfold_all` SHALL expand every folder and nest below the root, stopping after 5000 rows with the WARN notification `Unfold all stopped at 5000 rows`.
+
+#### Scenario: Project tree za on a file collapses its folder
+- **WHEN** `internal` and `billing` are expanded, the `tax.go` nest is collapsed, the cursor is on the `tax.go` row and `za` is pressed in normal mode
+- **THEN** the cursor remains on `tax.go` and `tax_test.go` is listed under it
+
+#### Scenario: Project tree zM collapses every folder
+- **WHEN** `cmd/server`, `internal`, `billing` and `web` are expanded, the cursor is on the `invoice.go` row and `zM` is pressed in normal mode
+- **THEN** every folder row shows U+F460, the root row is expanded, and the cursor is on the `internal` row
+
+#### Scenario: Project tree zR expands every folder
+- **WHEN** only the root is expanded in a copy of the `treeproj` fixture and `zR` is pressed in normal mode
+- **THEN** rows `ci.yml`, `main.go`, `invoice.go`, `money.go` and `price.ts` exist and every folder row shows U+F47C
+
+#### Scenario: Project tree unfold all stops at the row limit
+- **WHEN** the root holds 60 folders of 100 files each and `zR` is pressed in normal mode
+- **THEN** the tree has at most 5001 rows and a WARN notification `Unfold all stopped at 5000 rows` is emitted

@@ -13,6 +13,7 @@ local function start()
 	tree_root = assert(vim.uv.fs_realpath(root))
 	child.start_config({ env = F.go_env() })
 	child.wait_very_lazy()
+	F.disable_file_tree_nesting(child)
 	child.cmd("cd " .. vim.fn.fnameescape(root))
 	child.cmd("edit " .. vim.fn.fnameescape(vim.fs.joinpath(root, "README.md")))
 	child.lua([[

@@ -11,6 +11,7 @@ local function start()
 	root = F.copy("treeproj", vim.fn.tempname() .. "/billing")
 	child.start_config({ env = F.go_env() })
 	child.wait_very_lazy()
+	F.disable_file_tree_nesting(child)
 	child.cmd("cd " .. vim.fn.fnameescape(root))
 	child.lua([[require("gleb.file_tree.fs").reset()]])
 end
