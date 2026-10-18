@@ -37,8 +37,8 @@ Scenarios: `file-tree: Project tree opens from non-project buffers`, `file-tree:
 
 ## 5a. Update git and action retirement tests
 Scenarios: `git: Missing optional git plugins are tolerated`, `git: Git commands are available after startup`, `git: Removed diff plugins are not registered`, `actions: Every configured mapping is action-owned`, `actions: Plugin-window mappings are action-owned`
-- [ ] 5a.1 Update `tests/unit/git/test_modules.lua`, `tests/integration/git/test_git.lua` and `tests/integration/actions/{test_ownership,test_plugin_ownership,test_adapters}.lua` to assert the retired commands, plugins, adapters and mappings are absent; run `make test FILE=tests/integration/git/test_git.lua CASE="Removed diff plugins are not registered"` and see it fail
-- [ ] 5a.2 Keep the tests on real populated project-tree, changes-panel, diff-view and diffview windows and remove only expectations for neo-tree, differ and codediff
+- [x] 5a.1 Update `tests/unit/git/test_modules.lua`, `tests/integration/git/test_git.lua` and `tests/integration/actions/{test_ownership,test_plugin_ownership,test_adapters}.lua` to assert the retired commands, plugins, adapters and mappings are absent; run `make test FILE=tests/integration/git/test_git.lua CASE="Removed diff plugins are not registered"` and see it fail
+- [x] 5a.2 Keep the tests on real populated project-tree, changes-panel, diff-view and diffview windows and remove only expectations for neo-tree, differ and codediff
 - [ ] 5a.3 Run the five named cases and see them pass after tasks 5c and 5d
 
 ## 5b. Remove retired file-tree tests only after successor checks
@@ -102,6 +102,7 @@ Scenarios: `diff: Diff view opens on the current file`, `diff: Diff view mapping
 
 ## Agent decisions
 
+- Reused the remaining lazy.nvim adapter for the adapter-reopen contract because it has the same lhs-to-callback shape as the retired neo-tree adapter.
 - Kept the existing tree identity guards and changes timer cleanup because the replacement race tests showed they already preserve a close; task 2 only needed the retired tests and action table updated.
 - Made no production change for task 4a because task 1 already supplied reveal-on-toggle; the five retained scenarios pass through the real mapping, which replaces the retired unbound-action case.
 - The converted editor-window test was already green because `git-changes-tree` had added the changes-panel eligibility guard; this task removed the remaining neo-tree exclusions.

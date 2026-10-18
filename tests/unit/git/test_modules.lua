@@ -21,7 +21,7 @@ return errors]]
 local T = H.child_set(child, start)
 
 T["git: Missing optional git plugins are tolerated"] = function()
-	local modules = { "gleb.git.gitsigns", "gleb.git.differ", "gleb.git.diffview", "gleb.git.vscode_diff" }
+	local modules = { "gleb.git.gitsigns", "gleb.git.diffview" }
 	eq(child.lua(REQUIRE_ALL_LUA, modules), {})
 end
 

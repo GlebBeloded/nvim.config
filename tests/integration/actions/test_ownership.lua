@@ -46,6 +46,23 @@ end
 
 T["actions: Every configured mapping is action-owned"] = function()
 	eq(child.lua_get([[require("gleb.actions").audit()]]), {})
+	eq(
+		child.lua_get([[(function()
+			local retired_prefixes = { "tree.", "neo_tree.", "differ.", "codediff." }
+			local shortcuts = require("gleb.actions").state.store.last_good
+			local found = {}
+			for id in pairs(shortcuts) do
+				if id == "git.open_differ"
+					or vim.iter(retired_prefixes):any(function(prefix) return vim.startswith(id, prefix) end)
+				then
+					table.insert(found, id)
+				end
+			end
+			table.sort(found)
+			return found
+		end)()]]),
+		{}
+	)
 end
 
 return T

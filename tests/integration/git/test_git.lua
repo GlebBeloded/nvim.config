@@ -262,20 +262,31 @@ local T = H.child_set(child, start)
 
 T["git: Git commands are available after startup"] = function()
 	use_repo({ ["a.txt"] = "a\n" })
-	local commands = { "Gitsigns", "Differ", "DiffviewOpen", "Gitlink" }
+	local commands = { "Gitsigns", "DiffviewOpen", "Gitlink" }
 	local exists = vim.tbl_map(function(cmd)
 		return child.fn.exists(":" .. cmd)
 	end, commands)
-	eq(exists, { 2, 2, 2, 2 })
+	eq(exists, { 2, 2, 2 })
 end
 
-T["git: vscode-diff setup runs on plugin load"] = function()
-	child.lua([[require("lazy").load({ plugins = { "vscode-diff.nvim" } })]])
+T["git: Removed diff plugins are not registered"] = function()
+	local result = child.lua_get([[(function()
+		local commands = {}
+		for _, command in ipairs({ "Neotree", "Differ", "CodeDiff", "VscodeDiff" }) do
+			commands[command] = vim.fn.exists(":" .. command)
+		end
+		local specs = require("lazy.core.config").plugins
+		local plugins = {}
+		for _, plugin in ipairs({ "neo-tree.nvim", "differ.nvim", "vscode-diff.nvim" }) do
+			plugins[plugin] = specs[plugin] ~= nil
+		end
+		return { commands = commands, plugins = plugins }
+	end)()]])
 
-	eq(child.lua_get([[package.loaded["gleb.git.vscode_diff"] ~= nil]]), true)
-	-- the plugin defaults are width 40 and a list view, so these come from the config's setup
-	local explorer = child.lua_get([[require("codediff.config").options.explorer]])
-	eq({ explorer.position, explorer.width, explorer.view_mode }, { "left", 35, "tree" })
+	eq(result, {
+		commands = { CodeDiff = 0, Differ = 0, Neotree = 0, VscodeDiff = 0 },
+		plugins = { ["differ.nvim"] = false, ["neo-tree.nvim"] = false, ["vscode-diff.nvim"] = false },
+	})
 end
 
 T["git: Added line has no competing hunk sign"] = function()
