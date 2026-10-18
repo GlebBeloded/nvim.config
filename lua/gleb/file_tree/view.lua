@@ -697,6 +697,56 @@ local function close_trees_without_an_editor()
 	end
 end
 
+--- Return the active project-tree root and selected row.
+---@return string? root
+---@return FileTreeRow? row
+function M.selected_path()
+	local view = M.state.by_tab[vim.api.nvim_get_current_tabpage()]
+	if not view then
+		return nil, nil
+	end
+	return view.root, selected_row(view)
+end
+
+--- Redraw at a created path, selecting folders or opening files in the editor.
+---@param path string
+---@param open_file boolean
+---@return nil
+function M.select_created(path, open_file)
+	local view = M.state.by_tab[vim.api.nvim_get_current_tabpage()]
+	if not view then
+		return
+	end
+	fs.invalidate_root(view.root)
+	draw(view, path)
+	if open_file then
+		vim.api.nvim_set_current_win(eligible_editor(view))
+		vim.cmd("edit " .. vim.fn.fnameescape(path))
+	else
+		vim.api.nvim_set_current_win(view.win)
+	end
+end
+
+--- Refresh every project-tree view of a moved root and select the initiating target.
+---@param root string
+---@param selected_path string
+---@return nil
+function M.refresh_moved(root, selected_path)
+	local current_tab = vim.api.nvim_get_current_tabpage()
+	local initiating_view = M.state.by_tab[current_tab]
+	fs.invalidate_root(root)
+	for tab, view in pairs(M.state.by_tab) do
+		if view.root == root and vim.api.nvim_win_is_valid(view.win) then
+			local row = selected_row(view)
+			local target = tab == current_tab and selected_path or (row and row.path or root)
+			draw(view, target)
+		end
+	end
+	if initiating_view and vim.api.nvim_win_is_valid(initiating_view.win) then
+		vim.api.nvim_set_current_win(initiating_view.win)
+	end
+end
+
 --- Toggle the current tab page's project tree.
 ---@return nil
 function M.toggle()
