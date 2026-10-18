@@ -49,8 +49,8 @@ An entry SHALL be ignored when porcelain-v2 marks it `!`, its parent is ignored,
 - **THEN** `package.json` is listed without a chevron and `package-lock.json` is not listed
 
 #### Scenario: Editing gitignore updates ignored entries
-- **WHEN** the tree shows the `treeproj` fixture, the line `notes.md` is appended to `.gitignore` in a buffer, and `:write` is run
-- **THEN** within 2 s `notes.md` is no longer listed
+- **WHEN** the tree shows the `treeproj` fixture with its cursor on `notes.md`, the line `notes.md` is appended to `.gitignore` in a buffer, and `:write` is run
+- **THEN** within 2 s `notes.md` is no longer listed and the tree cursor is on `Makefile`, the nearest listed row above
 
 #### Scenario: Hidden ignored file is not revealed
 - **WHEN** Show Ignored is off, the tree cursor is on `invoice.go`, and `:edit .env` runs in the editor window
@@ -85,7 +85,7 @@ A hidden ignored target SHALL not expand folders or nests, write `expanded.json`
 
 #### Scenario: Created or renamed ignored target is not selected
 - **WHEN** Show Ignored is off and file-tree create or rename completes at `web/node_modules/left-pad/new.js`
-- **THEN** `select_created` or `refresh_moved` does not expand `web/node_modules`, persist expansion, or move the tree cursor
+- **THEN** `select_created` or `refresh_moved` does not expand `web/node_modules`, persist expansion, or select the hidden target; if the selected rename source vanishes, the cursor moves to the nearest listed row above
 
 ### Requirement: File tree Show Ignored action
 The toggle action `file_tree.show_ignored` (title "Show Ignored", category Project, filetype `gleb-file-tree`) SHALL show or hide ignored entries in every open tree. It SHALL be bound to `I` through `settings/keymap.json` and listed in Find Action with its state. Its state SHALL persist as `show_ignored` in `stdpath("state")/file_tree/view.json` and be read when a tree opens. The default SHALL be off.
@@ -116,6 +116,10 @@ A shown ignored entry SHALL draw its name and its file or folder icon with `File
 #### Scenario: Ignored rows are grey italic
 - **WHEN** `I` is pressed in the tree on the `treeproj` fixture
 - **THEN** the icon and name cells of the `bin`, `node_modules` and `.env` rows are drawn with `FileTreeIgnored`, and `FileTreeIgnored` has the palette's grey0 foreground and `italic = true`
+
+#### Scenario: Settings-ignored entries do not tint folders or nests
+- **WHEN** settings ignore an untracked `cmd/server/main.go.swp` and an untracked `cmd/server/main_mock.go`, and the tree shows `cmd/server` before and after Show Ignored is enabled
+- **THEN** `cmd/server` and the `main.go` nest parent are not drawn with `FileTreeGitUntracked`
 
 ### Requirement: File tree ignored folders
 The tree SHALL never scan or watch an ignored folder until the user expands it. `file_tree.unfold_all` SHALL leave ignored folders collapsed. Expanded children SHALL inherit ignored state without another git request. Filtering SHALL precede nesting; compaction SHALL not enter or cross an ignored folder. Row limits SHALL count listed rows only.

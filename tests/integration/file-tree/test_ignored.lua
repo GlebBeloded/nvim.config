@@ -265,13 +265,18 @@ T["file-tree: Created or renamed ignored target is not selected"]["keeps tree st
 	expand("web")
 	focus_tree_path("web/pending.js")
 	local before = tree_state()
+	local above = child.lua_get([[(function()
+		local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+		local line = vim.api.nvim_win_get_cursor(view.win)[1]
+		return view.rows[line - 1].path
+	end)()]])
 	local target = vim.fs.joinpath(project, "web/node_modules/left-pad/new.js")
 
 	rename("node_modules/left-pad/new.js")
 
 	assert(vim.uv.fs_stat(target), "rename action did not create the ignored target")
 	local after = tree_state()
-	eq(after.cursor_line, before.cursor_line)
+	eq(after.selected, above)
 	eq(after.expanded, before.expanded)
 	eq(after.expanded_nests, before.expanded_nests)
 	eq(after.stored, before.stored)
@@ -415,16 +420,30 @@ T["file-tree: Editing gitignore updates ignored entries"]["refreshes ignored sta
 		generation
 	)
 	wait_for_label("notes.md", true)
+	child.lua(
+		[[
+		local path = ...
+		local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+		local editor = assert(vim.iter(vim.api.nvim_tabpage_list_wins(view.tab)):find(function(win)
+			return win ~= view.win
+		end))
+		vim.api.nvim_win_call(editor, function()
+			vim.cmd.edit(vim.fn.fnameescape(path))
+			vim.api.nvim_buf_set_lines(0, -1, -1, false, { "notes.md" })
+		end)
+	]],
+		{ vim.fs.joinpath(project, ".gitignore") }
+	)
+	focus_tree_path("notes.md")
 	child.lua([[
 		local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
-		for _, win in ipairs(vim.api.nvim_tabpage_list_wins(view.tab)) do
-			if win ~= view.win then vim.api.nvim_set_current_win(win); break end
-		end
+		local editor = assert(vim.iter(vim.api.nvim_tabpage_list_wins(view.tab)):find(function(win)
+			return win ~= view.win
+		end))
+		vim.api.nvim_win_call(editor, function() vim.cmd.write() end)
 	]])
-	child.cmd("edit " .. vim.fn.fnameescape(vim.fs.joinpath(project, ".gitignore")))
-	child.cmd("$put ='notes.md'")
-	child.cmd("write")
 	wait_for_label("notes.md", false)
+	eq(tree_state().selected, vim.fs.joinpath(assert(vim.uv.fs_realpath(project)), "Makefile"))
 	eq(
 		child.lua_get(
 			[[(function(generation)
@@ -737,6 +756,24 @@ T["file-tree: Ignored rows are grey italic"]["uses the ignored group for names a
 	eq(row_groups(".env"), { "FileTreeIgnored", "FileTreeIgnored" })
 	H.expect_hl_colors(child, "FileTreeIgnored", { fg = "#7c6f64" })
 	eq(child.lua_get([[vim.api.nvim_get_hl(0, { name = "FileTreeIgnored", link = false }).italic]]), true)
+end
+
+T["file-tree: Settings-ignored entries do not tint folders or nests"] = MiniTest.new_set()
+
+T["file-tree: Settings-ignored entries do not tint folders or nests"]["keeps ignored descendants out of aggregate colours"] = function()
+	local project = F.copy("treeproj", vim.fn.tempname() .. "/billing")
+	H.write_files(project, {
+		["cmd/server/main.go.swp"] = "swap\n",
+		["cmd/server/main_mock.go"] = "package main\n",
+	})
+	open_tree(project, settings_file({ "*.swp", "main_mock.go" }))
+	wait_for_git()
+	expand("cmd/server")
+
+	eq(vim.tbl_contains(row_groups("cmd/server"), "FileTreeGitUntracked"), false)
+	child.type_keys("I")
+	eq(vim.tbl_contains(row_groups("cmd/server"), "FileTreeGitUntracked"), false)
+	eq(vim.tbl_contains(row_groups("cmd/server/main.go"), "FileTreeGitUntracked"), false)
 end
 
 T["file-tree: Unfold all leaves ignored folders collapsed"] = MiniTest.new_set()

@@ -194,18 +194,58 @@ function M.folder_status(status, path)
 	return strongest
 end
 
----@param status table<string, string>
+---@param opts FileTreeRowOptions
+---@param relative string
+---@param directory boolean
+---@return boolean
+local function ignored_status_path(opts, relative, directory)
+	local path = relative:gsub("/+$", "")
+	local current = ""
+	for part in path:gmatch("[^/]+") do
+		current = current == "" and part or current .. "/" .. part
+		local is_directory = current ~= path or directory
+		if ignore.is_ignored(opts.ignored, opts.matcher, current, is_directory, false) then
+			return true
+		end
+	end
+	return false
+end
+
+---@param opts FileTreeRowOptions
+---@param path string
+---@return string?
+local function visible_folder_status(opts, path)
+	local strongest
+	local prefix = path:gsub("/+$", "") .. "/"
+	for candidate, value in pairs(opts.status) do
+		if
+			(candidate == path or candidate == prefix or candidate:sub(1, #prefix) == prefix)
+			and not ignored_status_path(opts, candidate, candidate:sub(-1) == "/")
+		then
+			strongest = stronger_descendant_status(strongest, value)
+		end
+	end
+	return strongest
+end
+
+---@param opts FileTreeRowOptions
 ---@param relative string
 ---@param directory boolean
 ---@return string?
-local function path_status(status, relative, directory)
-	local direct = status[relative] or (directory and status[relative .. "/"] or nil)
+local function path_status(opts, relative, directory)
+	if ignored_status_path(opts, relative, directory) then
+		return nil
+	end
+	local direct = opts.status[relative] or (directory and opts.status[relative .. "/"] or nil)
 	if direct then
 		return direct
 	end
+	if directory then
+		return visible_folder_status(opts, relative)
+	end
 	local parent = relative:match("^(.*)/[^/]+$")
 	while parent do
-		if status[parent .. "/"] == "untracked" then
+		if opts.status[parent .. "/"] == "untracked" and not ignored_status_path(opts, parent, true) then
 			return "untracked"
 		end
 		parent = parent:match("^(.*)/[^/]+$")
@@ -213,14 +253,14 @@ local function path_status(status, relative, directory)
 	return nil
 end
 
----@param status table<string, string>
+---@param opts FileTreeRowOptions
 ---@param tree FileTreeSource
 ---@param entry FileTreeEntry
 ---@param child_names string[]?
 ---@param entries_by_name table<string, FileTreeEntry>
 ---@return string?
-local function nest_parent_status(status, tree, entry, child_names, entries_by_name)
-	local direct = path_status(status, relative_path(tree.root, entry.path), false)
+local function nest_parent_status(opts, tree, entry, child_names, entries_by_name)
+	local direct = path_status(opts, relative_path(tree.root, entry.path), false)
 	if direct or not child_names then
 		return direct
 	end
@@ -228,7 +268,7 @@ local function nest_parent_status(status, tree, entry, child_names, entries_by_n
 	for _, child_name in ipairs(child_names) do
 		local child = entries_by_name[child_name]
 		if child then
-			local child_status = path_status(status, relative_path(tree.root, child.path), false)
+			local child_status = path_status(opts, relative_path(tree.root, child.path), false)
 			strongest = stronger_descendant_status(strongest, child_status)
 		end
 	end
@@ -376,8 +416,8 @@ local function append_children(
 			local nest_children = nest_map[entry.name]
 			local nest_expanded = nest_children ~= nil and expanded_nests ~= nil and expanded_nests[relative] == true
 			local row_status = tail.kind == "file"
-					and nest_parent_status(opts.status, tree, tail, nest_children, entries_by_name)
-				or path_status(opts.status, relative, tail.kind == "directory")
+					and nest_parent_status(opts, tree, tail, nest_children, entries_by_name)
+				or path_status(opts, relative, tail.kind == "directory")
 			rows[#rows + 1] = {
 				depth = depth,
 				kind = tail.kind,
@@ -413,7 +453,7 @@ local function append_children(
 							path = child.path,
 							expanded = false,
 							empty = false,
-							status = path_status(opts.status, relative_path(tree.root, child.path), false),
+							status = path_status(opts, relative_path(tree.root, child.path), false),
 							ignored = ignored_entries[child.name] == true,
 							nest_parent = entry.path,
 						}

@@ -31,22 +31,7 @@ M.state = { roots = {}, runs = 0 }
 ---@return table<string, string> status
 ---@return table<string, boolean> ignored
 local function parse_status(output, prefix)
-	local status, ignored = model.parse_status(output, prefix)
-	local folders = {}
-	for path in pairs(status) do
-		local current = path:gsub("/+$", ""):match("^(.*)/[^/]+$")
-		while current and current ~= "" do
-			folders[current] = true
-			current = current:match("^(.*)/[^/]+$")
-		end
-		if path:sub(-1) == "/" then
-			folders[path:sub(1, -2)] = true
-		end
-	end
-	for folder in pairs(folders) do
-		status[folder] = model.folder_status(status, folder)
-	end
-	return status, ignored
+	return model.parse_status(output, prefix)
 end
 
 ---@param left table<string, boolean>

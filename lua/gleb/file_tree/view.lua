@@ -245,7 +245,30 @@ end
 
 ---@param view FileTreeView
 ---@param path string
+---@param rows_before FileTreeRow[]
+---@param cursor_line integer
+local function restore_cursor(view, path, rows_before, cursor_line)
+	local indices = {}
+	for index, row in ipairs(view.rows) do
+		indices[row.path] = index
+	end
+	local target = indices[path]
+	if not target then
+		for index = math.min(cursor_line - 1, #rows_before), 1, -1 do
+			target = indices[rows_before[index].path]
+			if target then
+				break
+			end
+		end
+	end
+	vim.api.nvim_win_set_cursor(view.win, { target or math.min(cursor_line, math.max(#view.rows, 1)), 0 })
+end
+
+---@param view FileTreeView
+---@param path string
 local function draw(view, path)
+	local rows_before = view.rows
+	local cursor_line = vim.api.nvim_win_get_cursor(view.win)[1]
 	expand_to(view, path)
 	for relative in pairs(view.expanded) do
 		local stat = vim.uv.fs_stat(vim.fs.joinpath(view.root, relative))
@@ -269,14 +292,7 @@ local function draw(view, path)
 	end
 	view.rows = model.rows(tree, view.expanded, opts, nesting_settings, view.expanded_nests)
 	render.draw(view.buf, view.rows)
-	local cursor = vim.api.nvim_win_get_cursor(view.win)
-	vim.api.nvim_win_set_cursor(view.win, { math.min(cursor[1], math.max(#view.rows, 1)), cursor[2] })
-	for index, row in ipairs(view.rows) do
-		if row.path == path then
-			vim.api.nvim_win_set_cursor(view.win, { index, 0 })
-			break
-		end
-	end
+	restore_cursor(view, path, rows_before, cursor_line)
 	watch.sync(view.root, view.tab, watched, function(changed_path)
 		if M.state.by_tab[view.tab] ~= view or not vim.api.nvim_buf_is_valid(view.buf) then
 			return
@@ -982,25 +998,7 @@ function M.redraw_all()
 	for _, view in pairs(M.state.by_tab) do
 		if vim.api.nvim_win_is_valid(view.win) and vim.api.nvim_buf_is_valid(view.buf) then
 			local row = selected_row(view)
-			local cursor_line = vim.api.nvim_win_get_cursor(view.win)[1]
-			local rows_before = view.rows
 			draw(view, row and row.path or view.root)
-			if
-				row and not vim.iter(view.rows):any(function(candidate)
-					return candidate.path == row.path
-				end)
-			then
-				for index = cursor_line - 1, 1, -1 do
-					local previous_path = rows_before[index].path
-					local new_index = vim.iter(view.rows):enumerate():find(function(_, candidate)
-						return candidate.path == previous_path
-					end)
-					if new_index then
-						vim.api.nvim_win_set_cursor(view.win, { new_index, 0 })
-						break
-					end
-				end
-			end
 		end
 	end
 end
