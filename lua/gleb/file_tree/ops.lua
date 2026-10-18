@@ -6,6 +6,16 @@ local paths = require("gleb.file_tree.paths")
 
 ---@class FileTreeOpsState
 ---@field trash_path string|false|nil
+---@field clipboard? FileTreeClipboard
+
+---@class FileTreeClipboard
+---@field mode "copy"|"cut"
+---@field paths string[]
+
+---@class FileTreeCopyEntry
+---@field source string
+---@field target string
+---@field kind "directory"|"file"
 
 ---@type FileTreeOpsState
 M.state = {}
@@ -113,6 +123,130 @@ local function create_directory(path)
 	return true
 end
 
+---@param source string
+---@param target string
+---@param entries FileTreeCopyEntry[]
+---@return boolean
+---@return string?
+local function collect_copy_entries(source, target, entries)
+	local stat, stat_error = vim.uv.fs_lstat(source)
+	if not stat then
+		return false, stat_error
+	end
+	if stat.type ~= "directory" then
+		entries[#entries + 1] = { source = source, target = target, kind = "file" }
+		return true
+	end
+
+	entries[#entries + 1] = { source = source, target = target, kind = "directory" }
+	local handle, scan_error = vim.uv.fs_scandir(source)
+	if not handle then
+		return false, scan_error
+	end
+	while true do
+		local name = vim.uv.fs_scandir_next(handle)
+		if not name then
+			break
+		end
+		local ok, error = collect_copy_entries(vim.fs.joinpath(source, name), vim.fs.joinpath(target, name), entries)
+		if not ok then
+			return false, error
+		end
+	end
+	return true
+end
+
+---@param source string
+---@param target string
+---@return boolean copied
+---@return string? error
+---@return boolean? conflict
+local function copy_path(source, target)
+	local entries = {}
+	local collected, collect_error = collect_copy_entries(source, target, entries)
+	if not collected then
+		return false, collect_error
+	end
+	for _, entry in ipairs(entries) do
+		if vim.uv.fs_lstat(entry.target) then
+			return false, "destination exists", true
+		end
+	end
+	for _, entry in ipairs(entries) do
+		local ok, error
+		if entry.kind == "directory" then
+			ok, error = vim.uv.fs_mkdir(entry.target, 493)
+		else
+			ok, error = vim.uv.fs_copyfile(entry.source, entry.target, {
+				excl = true,
+				ficlone = false,
+				ficlone_force = false,
+			})
+		end
+		if not ok then
+			return false, error
+		end
+	end
+	return true
+end
+
+---@param source string
+---@param target string
+local function finish_copy(source, target)
+	local copied, error = copy_path(source, target)
+	if not copied then
+		vim.notify("Paste failed: " .. (error or "unknown error"), vim.log.levels.ERROR)
+		return
+	end
+	require("gleb.file_tree.view").select_created(target, false)
+end
+
+---@param folder string
+---@param name string
+---@param is_directory boolean
+---@return string name
+---@return integer number
+local function available_copy_name(folder, name, is_directory)
+	local number = 1
+	while true do
+		local candidate = paths.copy_name(name, is_directory, number)
+		if not vim.uv.fs_lstat(vim.fs.joinpath(folder, candidate)) then
+			return candidate, number
+		end
+		number = number + 1
+	end
+end
+
+---@param root string
+---@param source string
+---@param target_folder string
+local function prompt_copy(root, source, target_folder)
+	local source_stat = vim.uv.fs_lstat(source)
+	if not source_stat then
+		vim.notify("Paste failed: " .. source .. ": ENOENT", vim.log.levels.ERROR)
+		return
+	end
+	local name = vim.fs.basename(source)
+	local is_directory = source_stat.type == "directory"
+	local default = available_copy_name(target_folder, name, is_directory)
+	require("gleb.picker.input").open({
+		title = "Copy",
+		default = default,
+		hint = "Copy ↩",
+		preview = function(query)
+			return { text = vim.fs.joinpath(target_folder, query):sub(#root + 2) }
+		end,
+		on_submit = function(query)
+			local target = vim.fs.joinpath(target_folder, query)
+			if vim.uv.fs_lstat(target) then
+				prompt_copy(root, source, target_folder)
+				return
+			end
+			finish_copy(source, target)
+		end,
+	})
+end
+
 ---@param root string
 ---@param target_folder string
 ---@param query string
@@ -187,6 +321,39 @@ function M.rename()
 			M.move({ { old = row.path, new = vim.fs.joinpath(parent, query) } })
 		end,
 	})
+end
+
+--- Copy the selected project-tree entry into the tree clipboard.
+---@return nil
+function M.copy()
+	local _, row = require("gleb.file_tree.view").selected_path()
+	if not row or row.kind == "root" then
+		return
+	end
+	M.state.clipboard = { mode = "copy", paths = { row.path } }
+end
+
+--- Paste copied project-tree entries into the selected folder.
+---@return nil
+function M.paste()
+	local clipboard = M.state.clipboard
+	if not clipboard or clipboard.mode ~= "copy" then
+		return
+	end
+	local view = require("gleb.file_tree.view")
+	local root, row = view.selected_path()
+	if not root or not row then
+		return
+	end
+	local target_folder = paths.target_folder(root, row)
+	for _, source in ipairs(clipboard.paths) do
+		local target = vim.fs.joinpath(target_folder, vim.fs.basename(source))
+		if vim.uv.fs_lstat(target) then
+			prompt_copy(root, source, target_folder)
+		else
+			finish_copy(source, target)
+		end
+	end
 end
 
 ---@return string?

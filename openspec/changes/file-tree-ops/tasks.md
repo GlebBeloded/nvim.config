@@ -66,9 +66,9 @@ Scenarios: `file-tree: Project tree delete does not let auto-save resurrect a fi
 
 ## 6a. Copy and paste conflicts
 Scenarios: `file-tree: Project tree c and p copy a file into another folder`, `file-tree: Project tree pasting a copy over an existing name asks for a new name`, `file-tree: Project tree c and p copy a folder recursively`, `file-tree: Project tree copy conflict advances to copy2`, `file-tree: Project tree folder copy preflights before writing`
-- [ ] 6a.1 Write the tests in `tests/integration/file-tree/test_project_ops.lua`, drive real `c`, `p` and the Copy picker on populated trees, and see them fail
-- [ ] 6a.2 Add recursive copy with complete destination preflight and conflict names `_copy`, `_copy2`, continuing upward without overwrites
-- [ ] 6a.3 Run `make test FILE=tests/integration/file-tree/test_project_ops.lua CASE="Project tree c and p"` and see them pass
+- [x] 6a.1 Write the tests in `tests/integration/file-tree/test_project_ops.lua`, drive real `c`, `p` and the Copy picker on populated trees, and see them fail
+- [x] 6a.2 Add recursive copy with complete destination preflight and conflict names `_copy`, `_copy2`, continuing upward without overwrites
+- [x] 6a.3 Run `make test FILE=tests/integration/file-tree/test_project_ops.lua CASE="Project tree c and p"` and see them pass
 
 ## 6b. Cut and move safety
 Scenarios: `file-tree: Project tree x and p move a file like a rename`, `file-tree: Project tree refuses to paste a folder into itself`, `file-tree: Project tree Visual c copies every selected row`, `file-tree: Project tree cut refuses an existing target name`, `file-tree: Project tree cut into its current parent is a no-op`
@@ -123,3 +123,4 @@ Scenarios: `file-tree: Project tree operation keys come from the keymap file`, `
 - Task 4b drives batch preflight through its public `ops.move(pairs)` entry point because Visual cut/paste mappings remain part of stuck task 3b.
 - `ops.move` derives the root from the active project-tree view and returns success so later cut paste can retain its clipboard after a failed move.
 - The case-only integration waits past the bounded LSP timeout so it observes the completed rename rather than an intermediate temporary sibling.
+- Copy traversal preflights a parent-first source/destination list before creating anything, so recursive copies cannot partially write on an existing-path conflict.

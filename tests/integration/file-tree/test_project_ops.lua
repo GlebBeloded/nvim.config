@@ -243,6 +243,26 @@ local function tree_has_path(relative)
 	)
 end
 
+---@param relative string
+---@return string
+local function read_file(relative)
+	return table.concat(vim.fn.readfile(vim.fs.joinpath(tree_root, relative)), "\n")
+end
+
+---@param relative string
+local function copy(relative)
+	focus_tree_path(relative)
+	eq(child.lua_get([[vim.fn.maparg("c", "n", false, true).desc]]), "Project: Copy")
+	child.type_keys("c", "<Esc>")
+end
+
+---@param relative string
+local function paste(relative)
+	focus_tree_path(relative)
+	eq(child.lua_get([[vim.fn.maparg("p", "n", false, true).desc]]), "Project: Paste")
+	child.type_keys("p")
+end
+
 T["file-tree: Project tree a creates a file in the folder under the cursor"] = MiniTest.new_set()
 
 T["file-tree: Project tree a creates a file in the folder under the cursor"]["drives the real mapping"] = function()
@@ -935,6 +955,84 @@ T["file-tree: Project tree delete preserves windows across tabs"] = function()
 	)
 	local deleted_path = vim.fs.joinpath(tree_root, "internal/billing/tax_test.go")
 	assert(not vim.tbl_contains(replacement_names, deleted_path), "replacement buffer names the deleted file")
+end
+
+T["file-tree: Project tree c and p copy a file into another folder"] = function()
+	expand("internal")
+	expand("internal/money")
+	local expected = read_file("internal/money/money.go")
+
+	copy("internal/money/money.go")
+	paste("cmd/server")
+
+	assert(wait_for_path("cmd/server/money.go"), "copied file did not appear")
+	eq(read_file("cmd/server/money.go"), expected)
+	eq(read_file("internal/money/money.go"), expected)
+end
+
+T["file-tree: Project tree pasting a copy over an existing name asks for a new name"] = function()
+	open_billing()
+	local expected = read_file("internal/billing/invoice.go")
+
+	copy("internal/billing/invoice.go")
+	paste("internal/billing")
+	assert(child.wait([[MiniPick.is_picker_active()]]), "Copy picker did not open")
+	eq(child.lua_get([[table.concat(MiniPick.get_picker_query())]]), "invoice_copy.go")
+	child.type_keys("<CR>")
+
+	assert(child.wait([[not MiniPick.is_picker_active()]]), "Copy picker did not close")
+	assert(wait_for_path("internal/billing/invoice_copy.go"), "conflict copy did not appear")
+	eq(read_file("internal/billing/invoice_copy.go"), expected)
+end
+
+T["file-tree: Project tree c and p copy a folder recursively"] = function()
+	expand("internal")
+	local money = read_file("internal/money/money.go")
+	local money_test = read_file("internal/money/money_test.go")
+
+	copy("internal/money")
+	paste("")
+
+	assert(wait_for_path("money/money.go"), "recursive copy did not appear")
+	eq(read_file("money/money.go"), money)
+	eq(read_file("money/money_test.go"), money_test)
+end
+
+T["file-tree: Project tree copy conflict advances to copy2"] = function()
+	open_billing()
+	local original = read_file("internal/billing/invoice.go")
+	local first_copy = "existing copy"
+	vim.fn.writefile({ first_copy }, vim.fs.joinpath(tree_root, "internal/billing/invoice_copy.go"))
+
+	copy("internal/billing/invoice.go")
+	paste("internal/billing")
+	assert(child.wait([[MiniPick.is_picker_active()]]), "Copy picker did not open")
+	eq(child.lua_get([[table.concat(MiniPick.get_picker_query())]]), "invoice_copy2.go")
+	child.type_keys("<CR>")
+
+	assert(wait_for_path("internal/billing/invoice_copy2.go"), "second conflict copy did not appear")
+	eq(read_file("internal/billing/invoice.go"), original)
+	eq(read_file("internal/billing/invoice_copy.go"), first_copy)
+	eq(read_file("internal/billing/invoice_copy2.go"), original)
+end
+
+T["file-tree: Project tree folder copy preflights before writing"] = function()
+	expand("internal")
+	local existing = "keep me"
+	local conflict_dir = vim.fs.joinpath(tree_root, "money")
+	vim.fn.mkdir(conflict_dir, "p")
+	vim.fn.writefile({ existing }, vim.fs.joinpath(conflict_dir, "money_test.go"))
+
+	copy("internal/money")
+	paste("")
+	assert(child.wait([[MiniPick.is_picker_active()]]), "Copy picker did not open")
+	eq(child.lua_get([[table.concat(MiniPick.get_picker_query())]]), "money_copy")
+	eq(vim.uv.fs_stat(vim.fs.joinpath(conflict_dir, "money.go")), nil)
+	eq(read_file("money/money_test.go"), existing)
+	child.type_keys("<CR>")
+	assert(wait_for_path("money_copy/money.go"), "preflighted folder copy did not appear")
+	eq(read_file("money/money_test.go"), existing)
+	eq(read_file("money_copy/money_test.go"), read_file("internal/money/money_test.go"))
 end
 
 return T

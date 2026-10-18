@@ -288,6 +288,14 @@ local function project_delete()
 	require("gleb.file_tree.ops").delete()
 end
 
+local function project_copy()
+	require("gleb.file_tree.ops").copy()
+end
+
+local function project_paste()
+	require("gleb.file_tree.ops").paste()
+end
+
 ---@type gleb.Action[]
 local actions = {
 	{
@@ -326,6 +334,20 @@ local actions = {
 		category = "Project",
 		ft = "gleb-file-tree",
 		run = project_delete,
+	},
+	{
+		id = "file_tree.copy",
+		title = "Copy",
+		category = "Project",
+		ft = "gleb-file-tree",
+		run = project_copy,
+	},
+	{
+		id = "file_tree.paste",
+		title = "Paste",
+		category = "Project",
+		ft = "gleb-file-tree",
+		run = project_paste,
 	},
 	{
 		id = "file_tree.open",
