@@ -45,3 +45,13 @@ Full `make check` with only the helper fix (loop round104, 2026-10-18): that is 
 - `file-tree: Project tree keys come from the keymap file` still holds, now with a real wait.
 - Every case using `child.wait` keeps passing with the real wait; a case that newly fails is fixed at its cause,
   never by loosening the wait or the assertion.
+
+## Decision (auditor, 2026-10-18, review pass 1)
+
+- A multi-word Find Action query also matches an action's category and title together (`project open` finds
+  `Project: Open`): the palette shows rows as `<Category>: <Title>` and the existing case already types that query.
+  Single-word matching is unchanged.
+- This is a find-action behaviour change: add a `find-action` spec delta (MODIFIED requirement of the matching rule at
+  `openspec/specs/find-action/spec.md:43`, restated in full, with a scenario for the multi-word query) and set
+  `skip_specs: false`. Cover it with a unit case on the matcher (multi-word hit, a word order that should still
+  match or not per the requirement, single-word unchanged) named after that scenario.
