@@ -525,6 +525,10 @@ The build loop's gate SHALL first merge `auto` into the run's branch when `auto`
 - **WHEN** `spec_ready.py` runs on a finished folder whose proposal.md has a `## Decision (auditor, …)` section, and `.archon/commands/queue-spec.md` is read
 - **THEN** the folder is not ready (the spec step runs) and queue-spec applies the Decision's scenarios to the delta and its task splits, tests and gates to tasks.md without dropping any
 
+#### Scenario: An unfinished spec pass reruns the spec step
+- **WHEN** `spec_ready.py` routes a change to the spec step, `spec_gate.py` runs while the `spec-pending` marker is left, and `.archon/commands/queue-spec.md` and the work-queue spec nodes are read
+- **THEN** spec_ready.py writes `$ARTIFACTS_DIR/spec-pending`, the gate is red with "the spec step did not finish", queue-spec removes the marker as its last step, and `complete` and `spec-retry` set `idle_timeout: 900000`
+
 #### Scenario: Each task's context pack merges a moved auto first
 - **WHEN** the nvim-deliver `pack` node and `.archon/scripts/context_pack.py` are read
 - **THEN** the pack passes `sync_base: "true"` and context_pack.py calls `sync()` before it reads the change
