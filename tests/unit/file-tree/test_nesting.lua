@@ -49,8 +49,12 @@ T["file-tree: Nesting patterns match whole names"]["does not match prefixes or s
 	local result = nesting.nest("/project", entries({ "go.mod", "go.sum", "go.sum.bak", "xgo.mod" }), {
 		{ parent = "go%.mod", children = { "go%.sum" } },
 	})
+	local negated_class_result = nesting.nest("/project", entries({ "a.ts", "a.test.ts" }), {
+		{ parent = "([^.]+)%.ts", children = { "${capture}%.test%.ts" } },
+	})
 
 	eq(result, { ["go.mod"] = { "go.sum" } })
+	eq(negated_class_result, { ["a.ts"] = { "a.test.ts" } })
 end
 
 T["file-tree: Nesting captures are inserted literally"] = MiniTest.new_set()

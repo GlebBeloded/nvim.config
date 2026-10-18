@@ -115,7 +115,7 @@ Scenarios: `file-tree: File tree nests match the approved render`
 
 - [x] 7.1 Write `tests/screen/file-tree/test_nesting.lua` at 100x30 through the real tree and fixture, compare text verbatim with byte-identical `tests/screen/file-tree/nest_proposed.ansi`, and assert real extmark groups; run `make test FILE=tests/screen/file-tree/test_nesting.lua CASE="File tree nests match the approved render"` and see it fail
 - [x] 7.2 Make the render match, compare `make render CASE=nest_proposed` with `make colorize FILE=openspec/changes/file-tree-nesting/design.md`, then run the same targeted test and see it pass
-- [ ] 7.3 Run `make check`
+- [x] 7.3 Run `make check`
 
 ## Agent decisions
 

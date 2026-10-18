@@ -24,7 +24,9 @@ local compiled_rule_sets = setmetatable({}, { __mode = "k" })
 ---@param pattern string
 ---@return string
 local function whole_pattern(pattern)
-	pattern = pattern:gsub("%^", "", 1)
+	if pattern:sub(1, 1) == "^" then
+		pattern = pattern:sub(2)
+	end
 	local percent_count = 0
 	local index = #pattern - 1
 	while index > 0 and pattern:sub(index, index) == "%" do
