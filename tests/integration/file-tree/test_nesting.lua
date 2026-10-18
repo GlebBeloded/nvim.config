@@ -104,6 +104,38 @@ local function rename(name)
 	assert(child.wait([[not MiniPick.is_picker_active()]]), "Rename picker did not close")
 end
 
+---@param id string
+local function run_action(id)
+	child.lua(
+		[[
+		local action = assert(require("gleb.actions").state.applicator.catalog:get(...))
+		action.run(require("gleb.actions.context").capture())
+	]],
+		{ id }
+	)
+end
+
+---@param relative string
+local function expect_selected(relative)
+	local selected = child.lua_get([=[(function()
+		local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+		local cursor = vim.api.nvim_win_get_cursor(view.win)
+		return view.rows[cursor[1]].path
+	end)()]=])
+	local expected = child.lua_get([[require("gleb.file_tree.fs").normalize(...)]], {
+		vim.fs.joinpath(root, relative),
+	})
+	eq(selected, expected)
+end
+
+---@param query string
+local function add(query)
+	child.type_keys("a")
+	assert(child.wait([[MiniPick.is_picker_active()]]), "Add picker did not open")
+	child.type_keys(query, "<CR>")
+	assert(child.wait([[not MiniPick.is_picker_active()]]), "Add picker did not close")
+end
+
 local function nest_is_expanded()
 	return child.lua_get([[(function()
 		local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
@@ -472,6 +504,62 @@ T["file-tree: Unfold all counts nested children toward the row limit"] = functio
 	eq(notifications(), {
 		{ msg = "Unfold all stopped at 5000 rows", level = vim.log.levels.WARN },
 	})
+end
+
+T["file-tree: Followed nested file expands its nest"] = function()
+	child.cmd("wincmd l")
+	child.cmd("edit " .. vim.fn.fnameescape(vim.fs.joinpath(root, "internal/billing/invoice_test.go")))
+
+	eq(has_tree_line("invoice_test.go"), true)
+	expect_selected("internal/billing/invoice_test.go")
+end
+
+T["file-tree: Added nested file is revealed in its nest"] = function()
+	focus_tree_row("invoice.go")
+	child.type_keys("za")
+	focus_tree_row("invoice_test.go")
+	add("invoice_mock.go")
+
+	eq(has_tree_line("invoice_mock.go"), true)
+	expect_selected("internal/billing/invoice_mock.go")
+end
+
+T["file-tree: Renamed file is revealed in a collapsed nest"] = function()
+	vim.fn.writefile({ "package billing" }, vim.fs.joinpath(root, "internal/billing/pending.go"))
+	child.type_keys("R")
+	focus_tree_row("pending.go")
+
+	rename("invoice_mock.go")
+
+	eq(has_tree_line("invoice_mock.go"), true)
+	expect_selected("internal/billing/invoice_mock.go")
+end
+
+T["file-tree: Pasted file is revealed in a collapsed nest"] = function()
+	vim.fn.writefile({ "package billing" }, vim.fs.joinpath(root, "invoice_mock.go"))
+	child.type_keys("R")
+	focus_tree_path("invoice_mock.go")
+	child.type_keys("c", "<Esc>")
+	focus_tree_path("internal/billing/invoice.go")
+
+	child.type_keys("p")
+
+	assert(vim.uv.fs_stat(vim.fs.joinpath(root, "internal/billing/invoice_mock.go")), "pasted file did not appear")
+	eq(has_tree_line("invoice_mock.go"), true)
+	expect_selected("internal/billing/invoice_mock.go")
+end
+
+T["file-tree: Following under a symlinked root expands the nest"] = function()
+	local logical_root = vim.fs.joinpath(vim.fn.tempname(), "linked-billing")
+	vim.fn.mkdir(vim.fs.dirname(logical_root), "p")
+	assert(vim.uv.fs_symlink(root, logical_root, { dir = true }))
+	run_action("file_tree.toggle")
+	child.cmd("cd " .. vim.fn.fnameescape(logical_root))
+	child.cmd("edit " .. vim.fn.fnameescape(vim.fs.joinpath(logical_root, "internal/billing/invoice_test.go")))
+	run_action("file_tree.reveal")
+
+	eq(has_tree_line("invoice_test.go"), true)
+	expect_selected("internal/billing/invoice_test.go")
 end
 
 return T

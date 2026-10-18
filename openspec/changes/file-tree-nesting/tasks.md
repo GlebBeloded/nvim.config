@@ -81,9 +81,9 @@ Scenarios: `file-tree: za toggles a nest`, `file-tree: h on a nested file closes
 
 Scenarios: `file-tree: Followed nested file expands its nest`, `file-tree: Added nested file is revealed in its nest`, `file-tree: Renamed file is revealed in a collapsed nest`, `file-tree: Pasted file is revealed in a collapsed nest`, `file-tree: Following under a symlinked root expands the nest`
 
-- [ ] 5b.1 Write the five cases in `tests/integration/file-tree/test_nesting.lua`, driving the real editor follow, reveal, add, `r` and `p` entry points with populated data and normalized paths, then run `make test FILE=tests/integration/file-tree/test_nesting.lua CASE="Followed nested file expands its nest"` and see it fail
-- [ ] 5b.2 Add one `select_path(path)` helper that normalizes the path, expands folders and its nest, then selects it; use it from follow, reveal, add, rename and paste, with a child row targeting `dirname(row.path)`
-- [ ] 5b.3 Run each scenario with `make test FILE=tests/integration/file-tree/test_nesting.lua CASE="<scenario title>"` and see it pass
+- [x] 5b.1 Write the five cases in `tests/integration/file-tree/test_nesting.lua`, driving the real editor follow, reveal, add, `r` and `p` entry points with populated data and normalized paths, then run `make test FILE=tests/integration/file-tree/test_nesting.lua CASE="Followed nested file expands its nest"` and see it fail
+- [x] 5b.2 Add one `select_path(path)` helper that normalizes the path, expands folders and its nest, then selects it; use it from follow, reveal, add, rename and paste, with a child row targeting `dirname(row.path)`
+- [x] 5b.3 Run each scenario with `make test FILE=tests/integration/file-tree/test_nesting.lua CASE="<scenario title>"` and see it pass
 
 ## 5c. Parent operation safety
 
@@ -125,3 +125,4 @@ Scenarios: `file-tree: File tree nests match the approved render`
 - Nest rows carry explicit expansion and parent metadata so rendering and later row actions do not infer structure from labels or adjacency.
 - Settings reload redraws each tree at its selected path so configuration changes do not move the cursor.
 - Move expansion keys before the filesystem rename so watcher redraws cannot prune them; reverse the keys if the move rolls back.
+- Nested target lookup lives in the model so selection reuses the cached nest map instead of rebuilding engine logic in the view.

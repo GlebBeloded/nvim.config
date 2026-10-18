@@ -243,11 +243,24 @@ end
 
 ---@param view FileTreeView
 ---@param path string
+local function select_path(view, path)
+	local normalized = fs.normalize(path)
+	expand_to(view, normalized)
+	local nesting_settings = settings.load().nesting
+	local parent = model.nest_parent(fs.tree(view.root), normalized, nesting_settings)
+	if parent then
+		view.expanded_nests[parent:sub(#view.root + 2)] = true
+	end
+	draw(view, normalized)
+end
+
+---@param view FileTreeView
+---@param path string
 ---@param missing_is_root boolean
 local function reveal_path(view, path, missing_is_root)
 	local target = reveal_target(view, path, missing_is_root)
 	if target then
-		draw(view, target)
+		select_path(view, target)
 	end
 end
 
@@ -668,7 +681,7 @@ local function open_view(path)
 		end
 	end)
 	add_teardown_autocmds(view)
-	draw(view, reveal_target(view, path, true) or root)
+	select_path(view, reveal_target(view, path, true) or root)
 	git.request(root)
 	update_cursor()
 	return view
@@ -768,7 +781,7 @@ function M.select_created(path, open_file)
 		return
 	end
 	fs.invalidate_root(view.root)
-	draw(view, path)
+	select_path(view, path)
 	if open_file then
 		vim.api.nvim_set_current_win(eligible_editor(view))
 		vim.cmd("edit " .. vim.fn.fnameescape(path))
@@ -824,7 +837,7 @@ function M.refresh_moved(root, selected_path, _move_pairs)
 		if view.root == root and vim.api.nvim_win_is_valid(view.win) then
 			local row = selected_row(view)
 			local target = tab == current_tab and selected_path or (row and row.path or root)
-			draw(view, target)
+			select_path(view, target)
 		end
 	end
 	if initiating_view and vim.api.nvim_win_is_valid(initiating_view.win) then

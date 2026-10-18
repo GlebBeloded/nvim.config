@@ -228,6 +228,23 @@ function M.has_nest(tree, path, nesting_settings)
 	return children ~= nil and #children > 0
 end
 
+--- Return the parent path when a file is nested in its folder.
+---@param tree FileTreeSource
+---@param path string
+---@param nesting_settings? FileTreeNestingSettings
+---@return string?
+function M.nest_parent(tree, path, nesting_settings)
+	local directory = vim.fs.dirname(path)
+	local _, nest_map = visible_entries(tree, directory, nesting_settings)
+	local name = basename(path)
+	for parent, children in pairs(nest_map) do
+		if vim.tbl_contains(children, name) then
+			return vim.fs.joinpath(directory, parent)
+		end
+	end
+	return nil
+end
+
 ---@param tree FileTreeSource
 ---@param entry FileTreeEntry
 ---@param nesting_settings? FileTreeNestingSettings
