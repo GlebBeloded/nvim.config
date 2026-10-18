@@ -11,6 +11,8 @@ local M = {}
 ---@field capture_count? integer
 ---@field children? string[]
 ---@field lua? fun(dir: string, names: string[]): table<string, string[]>
+---@field rule_index? integer
+---@field failed? boolean
 
 ---@type table<table, FileTreeCompiledNestingRule[]>
 local compiled_rule_sets = setmetatable({}, { __mode = "k" })
@@ -86,7 +88,16 @@ local function compile_rules(rules)
 	for rule_index, rule in ipairs(rules) do
 		local reason
 		if type(rule.lua) == "function" then
-			compiled[#compiled + 1] = { lua = rule.lua }
+			compiled[#compiled + 1] = { lua = rule.lua, rule_index = rule_index }
+		elseif type(rule.lua) == "string" then
+			local loaded, module = pcall(require, rule.lua)
+			if not loaded then
+				reason = tostring(module)
+			elseif type(module) ~= "function" then
+				reason = "Lua module must return a function"
+			else
+				compiled[#compiled + 1] = { lua = module, rule_index = rule_index }
+			end
 		elseif type(rule.parent) ~= "string" or type(rule.children) ~= "table" then
 			reason = "parent and children are required"
 		else
@@ -120,6 +131,45 @@ local function compile_rules(rules)
 	end
 	compiled_rule_sets[rules] = compiled
 	return compiled
+end
+
+---@param rule FileTreeCompiledNestingRule
+---@param dir string
+---@param names string[]
+---@return table<string, string[]>?
+local function call_lua_rule(rule, dir, names)
+	if rule.failed then
+		return nil
+	end
+	local ok, proposed = pcall(rule.lua, dir, names)
+	local reason
+	if not ok then
+		reason = tostring(proposed)
+	elseif type(proposed) ~= "table" then
+		reason = "Lua rule must return a table"
+	else
+		for parent, children in pairs(proposed) do
+			if type(parent) ~= "string" or type(children) ~= "table" then
+				reason = "Lua rule names must be strings"
+				break
+			end
+			for _, child in ipairs(children) do
+				if type(child) ~= "string" then
+					reason = "Lua rule names must be strings"
+					break
+				end
+			end
+			if reason then
+				break
+			end
+		end
+	end
+	if reason then
+		rule.failed = true
+		warn(rule.rule_index, reason)
+		return nil
+	end
+	return proposed
 end
 
 ---@param template string
@@ -226,12 +276,14 @@ function M.nest(_dir, entries, rules)
 	end
 	for _, rule in ipairs(compile_rules(rules)) do
 		if rule.lua then
-			local proposed = rule.lua(_dir, names)
-			local parents = vim.tbl_keys(proposed)
-			table.sort(parents, name_before)
-			for _, parent in ipairs(parents) do
-				for _, child in ipairs(proposed[parent]) do
-					claim(parent, child)
+			local proposed = call_lua_rule(rule, _dir, names)
+			if proposed then
+				local parents = vim.tbl_keys(proposed)
+				table.sort(parents, name_before)
+				for _, parent in ipairs(parents) do
+					for _, child in ipairs(proposed[parent]) do
+						claim(parent, child)
+					end
 				end
 			end
 		else

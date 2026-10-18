@@ -33,9 +33,9 @@ Scenarios: `file-tree: Default nesting rules meet the large-folder bound`, `file
 
 Scenarios: `file-tree: Lua nesting rule nests by function`, `file-tree: Failing Lua nesting rule is skipped`
 
-- [ ] 2.1 Write both cases in `tests/unit/file-tree/test_nesting.lua` with `package.preload` modules and exact argument assertions, then run `make test FILE=tests/unit/file-tree/test_nesting.lua CASE="Lua nesting rule nests by function"` and see it fail
-- [ ] 2.2 Compile `{ lua = <module> }` at its list position, validate returned names, catch load/call/type failures and continue with later rules
-- [ ] 2.3 Run both cases with `make test FILE=tests/unit/file-tree/test_nesting.lua CASE="<scenario title>"` and see them pass
+- [x] 2.1 Write both cases in `tests/unit/file-tree/test_nesting.lua` with `package.preload` modules and exact argument assertions, then run `make test FILE=tests/unit/file-tree/test_nesting.lua CASE="Lua nesting rule nests by function"` and see it fail
+- [x] 2.2 Compile `{ lua = <module> }` at its list position, validate returned names, catch load/call/type failures and continue with later rules
+- [x] 2.3 Run both cases with `make test FILE=tests/unit/file-tree/test_nesting.lua CASE="<scenario title>"` and see them pass
 
 ## 3. Default rules
 
@@ -120,3 +120,4 @@ Scenarios: `file-tree: File tree nests match the approved render`
 ## Agent decisions
 
 - Compiled Lua rules use a function-valued `lua` field so the model cache can exercise real rule execution before task 2 adds module loading and error handling.
+- A malformed Lua-rule result skips that whole rule and warns once, preventing a partially valid user table from making order-dependent claims.

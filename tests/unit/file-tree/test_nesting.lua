@@ -258,4 +258,59 @@ T["file-tree: Git redraw reuses the nest map"]["runs a Lua rule once for an unch
 	end
 end
 
+T["file-tree: Lua nesting rule nests by function"] = MiniTest.new_set()
+
+T["file-tree: Lua nesting rule nests by function"]["passes the folder and sorted file names"] = function()
+	local nesting = require("gleb.file_tree.nesting")
+	local received
+	package.preload.nest_sql = function()
+		return function(dir, names)
+			received = { dir = dir, names = names }
+			return { ["schema.sql"] = { "schema_seed.sql", "missing.sql", "schema.sql" } }
+		end
+	end
+	package.loaded.nest_sql = nil
+
+	local result = nesting.nest("/repo/db", entries({ "schema_seed.sql", "other.sql", "schema.sql" }), {
+		{ lua = "nest_sql" },
+	})
+
+	package.loaded.nest_sql = nil
+	package.preload.nest_sql = nil
+	eq(received, { dir = "/repo/db", names = { "other.sql", "schema.sql", "schema_seed.sql" } })
+	eq(result, { ["schema.sql"] = { "schema_seed.sql" } })
+end
+
+T["file-tree: Failing Lua nesting rule is skipped"] = MiniTest.new_set()
+
+T["file-tree: Failing Lua nesting rule is skipped"]["warns once and continues with a later rule"] = function()
+	local nesting = require("gleb.file_tree.nesting")
+	package.preload.nest_boom = function()
+		return function()
+			error("boom")
+		end
+	end
+	package.loaded.nest_boom = nil
+	local notifications = {}
+	local original_notify = vim.notify
+	rawset(vim, "notify", function(message, level)
+		notifications[#notifications + 1] = { message = message, level = level }
+	end)
+
+	local ok, result = pcall(nesting.nest, "/repo/lua", entries({ "init_spec.lua", "init.lua" }), {
+		{ lua = "nest_boom" },
+		{ parent = "(.+)%.lua", children = { "${capture}_spec%.lua" } },
+	})
+
+	rawset(vim, "notify", original_notify)
+	package.loaded.nest_boom = nil
+	package.preload.nest_boom = nil
+	eq(ok, true)
+	eq(result, { ["init.lua"] = { "init_spec.lua" } })
+	eq(#notifications, 1)
+	eq(notifications[1].level, vim.log.levels.WARN)
+	eq(notifications[1].message:match("^File tree nesting rule 1 skipped"), "File tree nesting rule 1 skipped")
+	eq(notifications[1].message:find("boom", 1, true) ~= nil, true)
+end
+
 return T
