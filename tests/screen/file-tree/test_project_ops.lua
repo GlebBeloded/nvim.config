@@ -109,6 +109,7 @@ local function start()
 	child.o.lines = 30
 	child.o.columns = 100
 	child.wait_very_lazy()
+	F.disable_file_tree_nesting(child)
 	child.lua(
 		[[
 		vim.env.HOME = ...

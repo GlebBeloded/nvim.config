@@ -2,6 +2,21 @@
 
 local M = {}
 
+local nesting = require("gleb.file_tree.nesting")
+
+---@class FileTreeNestingSettings
+---@field enabled boolean
+---@field rules table[]
+---@field generation integer
+
+---@class FileTreeNestCacheEntry
+---@field generation integer
+---@field rules table[]
+---@field map table<string, string[]>
+
+---@type table<table, FileTreeNestCacheEntry>
+local nest_cache = setmetatable({}, { __mode = "k" })
+
 local STATUS_STRENGTH = {
 	untracked = 1,
 	added = 2,
@@ -10,6 +25,16 @@ local STATUS_STRENGTH = {
 	modified = 3,
 	conflict = 4,
 }
+
+---@param strongest string?
+---@param candidate string?
+---@return string?
+local function stronger_descendant_status(strongest, candidate)
+	if not candidate or (STATUS_STRENGTH[candidate] or 0) <= (STATUS_STRENGTH[strongest] or 0) then
+		return strongest
+	end
+	return (candidate == "renamed" or candidate == "deleted") and "modified" or candidate
+end
 
 ---@class FileTreeEntry
 ---@field name string
@@ -28,6 +53,9 @@ local STATUS_STRENGTH = {
 ---@field expanded boolean
 ---@field empty boolean
 ---@field status string?
+---@field nest_children? string[]
+---@field nest_expanded? boolean
+---@field nest_parent? string
 
 ---@param path string
 ---@return string
@@ -137,15 +165,10 @@ end
 ---@return string?
 function M.folder_status(status, path)
 	local strongest
-	local strength = 0
 	local prefix = path:gsub("/+$", "") .. "/"
 	for candidate, value in pairs(status) do
 		if candidate == path or candidate == prefix or candidate:sub(1, #prefix) == prefix then
-			local candidate_strength = STATUS_STRENGTH[value] or 0
-			if candidate_strength > strength then
-				strength = candidate_strength
-				strongest = (value == "renamed" or value == "deleted") and "modified" or value
-			end
+			strongest = stronger_descendant_status(strongest, value)
 		end
 	end
 	return strongest
@@ -170,32 +193,99 @@ local function path_status(status, relative, directory)
 	return nil
 end
 
+---@param status table<string, string>
+---@param tree FileTreeSource
+---@param entry FileTreeEntry
+---@param child_names string[]?
+---@param entries_by_name table<string, FileTreeEntry>
+---@return string?
+local function nest_parent_status(status, tree, entry, child_names, entries_by_name)
+	local direct = path_status(status, relative_path(tree.root, entry.path), false)
+	if direct or not child_names then
+		return direct
+	end
+	local strongest
+	for _, child_name in ipairs(child_names) do
+		local child = entries_by_name[child_name]
+		if child then
+			local child_status = path_status(status, relative_path(tree.root, child.path), false)
+			strongest = stronger_descendant_status(strongest, child_status)
+		end
+	end
+	return strongest
+end
+
 ---@param tree FileTreeSource
 ---@param path string
+---@param nesting_settings? FileTreeNestingSettings
 ---@return FileTreeEntry[]
-local function visible_entries(tree, path)
+---@return table<string, string[]>
+local function visible_entries(tree, path, nesting_settings)
+	local scan = tree.scan(path)
 	local entries = {}
-	for _, entry in ipairs(tree.scan(path)) do
+	for _, entry in ipairs(scan) do
 		if entry.name ~= ".git" then
 			entries[#entries + 1] = entry
 		end
 	end
-	return M.sort(entries)
+	local nest_map = {}
+	if nesting_settings and nesting_settings.enabled then
+		local cached = nest_cache[scan]
+		if not cached or cached.generation ~= nesting_settings.generation or cached.rules ~= nesting_settings.rules then
+			cached = {
+				generation = nesting_settings.generation,
+				rules = nesting_settings.rules,
+				map = nesting.nest(path, entries, nesting_settings.rules),
+			}
+			nest_cache[scan] = cached
+		end
+		nest_map = cached.map
+	end
+	return M.sort(entries), nest_map
+end
+
+--- Return whether a file is currently a parent in its folder's nest map.
+---@param tree FileTreeSource
+---@param path string
+---@param nesting_settings? FileTreeNestingSettings
+---@return boolean
+function M.has_nest(tree, path, nesting_settings)
+	local _, nest_map = visible_entries(tree, vim.fs.dirname(path), nesting_settings)
+	local children = nest_map[basename(path)]
+	return children ~= nil and #children > 0
+end
+
+--- Return the parent path when a file is nested in its folder.
+---@param tree FileTreeSource
+---@param path string
+---@param nesting_settings? FileTreeNestingSettings
+---@return string?
+function M.nest_parent(tree, path, nesting_settings)
+	local directory = vim.fs.dirname(path)
+	local _, nest_map = visible_entries(tree, directory, nesting_settings)
+	local name = basename(path)
+	for parent, children in pairs(nest_map) do
+		if vim.tbl_contains(children, name) then
+			return vim.fs.joinpath(directory, parent)
+		end
+	end
+	return nil
 end
 
 ---@param tree FileTreeSource
 ---@param entry FileTreeEntry
+---@param nesting_settings? FileTreeNestingSettings
 ---@return string label
 ---@return FileTreeEntry tail
 ---@return FileTreeEntry[] children
-local function compact_directory(tree, entry)
+local function compact_directory(tree, entry, nesting_settings)
 	local names = { entry.name }
 	local tail = entry
-	local children = visible_entries(tree, tail.path)
+	local children = visible_entries(tree, tail.path, nesting_settings)
 	while #children == 1 and children[1].kind == "directory" do
 		tail = children[1]
 		names[#names + 1] = tail.name
-		children = visible_entries(tree, tail.path)
+		children = visible_entries(tree, tail.path, nesting_settings)
 	end
 	return table.concat(names, "/"), tail, children
 end
@@ -206,27 +296,65 @@ end
 ---@param rows FileTreeRow[]
 ---@param path string
 ---@param depth integer
-local function append_children(tree, expanded, status, rows, path, depth)
-	for _, entry in ipairs(visible_entries(tree, path)) do
-		local label = entry.name
-		local tail = entry
-		local children = {}
-		if entry.kind == "directory" then
-			label, tail, children = compact_directory(tree, entry)
+---@param nesting_settings? FileTreeNestingSettings
+---@param expanded_nests? table<string, boolean>
+local function append_children(tree, expanded, status, rows, path, depth, nesting_settings, expanded_nests)
+	local entries, nest_map = visible_entries(tree, path, nesting_settings)
+	local entries_by_name = {}
+	local nested = {}
+	for _, entry in ipairs(entries) do
+		entries_by_name[entry.name] = entry
+	end
+	for _, child_names in pairs(nest_map) do
+		for _, child_name in ipairs(child_names) do
+			nested[child_name] = true
 		end
-		local relative = relative_path(tree.root, tail.path)
-		local is_expanded = tail.kind == "directory" and expanded[relative] == true
-		rows[#rows + 1] = {
-			depth = depth,
-			kind = tail.kind,
-			label = label,
-			path = tail.path,
-			expanded = is_expanded,
-			empty = tail.kind == "directory" and #children == 0,
-			status = path_status(status, relative, tail.kind == "directory"),
-		}
-		if is_expanded then
-			append_children(tree, expanded, status, rows, tail.path, depth + 1)
+	end
+	for _, entry in ipairs(entries) do
+		if not nested[entry.name] then
+			local label = entry.name
+			local tail = entry
+			local children = {}
+			if entry.kind == "directory" then
+				label, tail, children = compact_directory(tree, entry, nesting_settings)
+			end
+			local relative = relative_path(tree.root, tail.path)
+			local is_expanded = tail.kind == "directory" and expanded[relative] == true
+			local nest_children = nest_map[entry.name]
+			local nest_expanded = nest_children ~= nil and expanded_nests ~= nil and expanded_nests[relative] == true
+			local row_status = tail.kind == "file"
+					and nest_parent_status(status, tree, tail, nest_children, entries_by_name)
+				or path_status(status, relative, tail.kind == "directory")
+			rows[#rows + 1] = {
+				depth = depth,
+				kind = tail.kind,
+				label = label,
+				path = tail.path,
+				expanded = is_expanded,
+				empty = tail.kind == "directory" and #children == 0,
+				status = row_status,
+				nest_children = nest_children,
+				nest_expanded = nest_expanded,
+			}
+			if is_expanded then
+				append_children(tree, expanded, status, rows, tail.path, depth + 1, nesting_settings, expanded_nests)
+			elseif nest_expanded then
+				for _, child_name in ipairs(nest_children) do
+					local child = entries_by_name[child_name]
+					if child then
+						rows[#rows + 1] = {
+							depth = depth + 1,
+							kind = "file",
+							label = child.name,
+							path = child.path,
+							expanded = false,
+							empty = false,
+							status = path_status(status, relative_path(tree.root, child.path), false),
+							nest_parent = entry.path,
+						}
+					end
+				end
+			end
 		end
 	end
 end
@@ -235,8 +363,10 @@ end
 ---@param tree FileTreeSource
 ---@param expanded table<string, boolean>
 ---@param status table<string, string>
+---@param nesting_settings? FileTreeNestingSettings
+---@param expanded_nests? table<string, boolean>
 ---@return FileTreeRow[]
-function M.rows(tree, expanded, status)
+function M.rows(tree, expanded, status, nesting_settings, expanded_nests)
 	local rows = {
 		{
 			depth = 0,
@@ -247,7 +377,7 @@ function M.rows(tree, expanded, status)
 			empty = false,
 		},
 	}
-	append_children(tree, expanded, status, rows, tree.root, 0)
+	append_children(tree, expanded, status, rows, tree.root, 0, nesting_settings, expanded_nests)
 	return rows
 end
 

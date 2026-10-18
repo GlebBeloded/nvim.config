@@ -11,6 +11,7 @@ local function start()
 	root = F.copy("treeproj", vim.fn.tempname() .. "/billing")
 	child.start_config({ env = F.go_env() })
 	child.wait_very_lazy()
+	F.disable_file_tree_nesting(child)
 	child.lua(
 		[[
 		local fs = require("gleb.file_tree.fs")
@@ -48,6 +49,12 @@ local function run_toggle()
 		local action = assert(catalog:get("file_tree.toggle"), "file_tree.toggle is not registered")
 		action.run(require("gleb.actions.context").capture())
 	]])
+end
+
+local function enable_file_tree_nesting()
+	child.lua([[require("gleb.file_tree.settings").setup({ path = ... })]], {
+		vim.fs.joinpath(H.root, "settings", "file_tree.json"),
+	})
 end
 
 ---@return integer[]
@@ -794,22 +801,23 @@ end)()
 end
 
 T["file-tree: Project tree za on a file collapses its folder"] = function()
+	enable_file_tree_nesting()
 	edit("README.md")
 	run_toggle()
 	focus_tree_row("internal")
 	child.type_keys("<CR>")
 	focus_tree_row(" billing")
 	child.type_keys("<CR>")
-	focus_tree_row("invoice.go")
+	focus_tree_row("tax.go")
 
 	child.type_keys("za")
 
-	eq(child.lua_get([[vim.api.nvim_get_current_line():find("billing", 1, true) ~= nil]]), true)
-	eq(child.lua_get([[vim.api.nvim_get_current_line():find("", 1, true) ~= nil]]), true)
-	eq(has_tree_line("invoice.go"), false)
+	eq(child.lua_get([[vim.api.nvim_get_current_line():find("tax.go", 1, true) ~= nil]]), true)
+	eq(has_tree_line("tax_test.go"), true)
 end
 
 T["file-tree: Project tree zM collapses every folder"] = function()
+	enable_file_tree_nesting()
 	edit("README.md")
 	run_toggle()
 	focus_tree_row("cmd/server")
@@ -821,10 +829,14 @@ T["file-tree: Project tree zM collapses every folder"] = function()
 	focus_tree_row("web")
 	child.type_keys("<CR>")
 	focus_tree_row("invoice.go")
+	child.type_keys("za")
+	eq(has_tree_line("invoice_test.go"), true)
+	focus_tree_row("invoice.go")
 
 	child.type_keys("zM")
 
 	eq(has_tree_line("invoice.go"), false)
+	eq(has_tree_line("invoice_test.go"), false)
 	eq(has_tree_line(" billing"), false)
 	eq(child.lua_get([[vim.api.nvim_get_current_line():find("internal", 1, true) ~= nil]]), true)
 	eq(
@@ -857,22 +869,38 @@ T["file-tree: Project tree has no trailing blank row"] = function()
 end
 
 T["file-tree: Project tree zR expands every folder"] = function()
+	enable_file_tree_nesting()
 	edit("README.md")
 	run_toggle()
 
 	child.type_keys("zR")
 
 	eq(has_tree_line("invoice.go"), true)
+	eq(has_tree_line("invoice_test.go"), true)
 	eq(has_tree_line("money.go"), true)
+	eq(has_tree_line("money_test.go"), true)
 	eq(has_tree_line("cart.tsx"), true)
+	eq(has_tree_line("price.test.ts"), true)
+	eq(
+		child.lua_get([[(function()
+			local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+			local lines = vim.api.nvim_buf_get_lines(view.buf, 0, -1, false)
+			return vim.iter(view.rows):enumerate():all(function(index, row)
+				return row.kind ~= "directory" or lines[index]:find("", 1, true) ~= nil
+			end)
+		end)()]]),
+		true
+	)
 end
 
 T["file-tree: Project tree unfold all stops at the row limit"] = function()
+	enable_file_tree_nesting()
 	local oversized = vim.fs.joinpath(root, "oversized")
-	for _, folder in ipairs({ "a", "b" }) do
+	for folder_index = 1, 60 do
+		local folder = ("folder-%02d"):format(folder_index)
 		local directory = vim.fs.joinpath(oversized, folder)
 		vim.fn.mkdir(directory, "p")
-		for index = 1, 2500 do
+		for index = 1, 100 do
 			local file = assert(vim.uv.fs_open(vim.fs.joinpath(directory, ("file-%04d"):format(index)), "w", 420))
 			assert(vim.uv.fs_close(file))
 		end
@@ -891,8 +919,8 @@ T["file-tree: Project tree unfold all stops at the row limit"] = function()
 	local expanded =
 		child.lua_get([[require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()].expanded]])
 	eq(expanded.oversized, true)
-	eq(expanded["oversized/a"], true)
-	eq(expanded["oversized/b"], nil)
+	eq(expanded["oversized/folder-01"], true)
+	eq(expanded["oversized/folder-60"], nil)
 end
 
 T["file-tree: Project tree manual expansion stops at the row limit"] = function()

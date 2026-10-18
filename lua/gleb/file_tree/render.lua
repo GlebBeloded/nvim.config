@@ -95,6 +95,16 @@ end
 ---@return FileTreeRenderSegment[]
 local function file_segments(row)
 	local icon, icon_group = file_icon(row)
+	if row.nest_children then
+		return {
+			{ text = string.rep(" ", 3 + 2 * row.depth) },
+			{ text = row.nest_expanded and EXPANDED or COLLAPSED, group = "FileTreeExpander" },
+			{ text = " " },
+			{ text = icon, group = icon_group },
+			{ text = " " },
+			{ text = row.label, group = STATUS_GROUPS[row.status] or "FileTreeFileName" },
+		}
+	end
 	return {
 		{ text = string.rep(" ", 5 + 2 * row.depth) },
 		{ text = icon, group = icon_group },

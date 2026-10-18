@@ -44,7 +44,7 @@ Research (2026-10-17):
      - The path defaults to `stdpath("config") .. "/settings/file_tree.json"`. `M.setup({ path = … })` overrides it, so tests use a temporary copy and never edit the checkout.
    - A missing file means no rules, silently.
    - JSON that does not decode, or whose `nesting` is not an object, gives one ERROR `File tree settings invalid: <error>` and no nesting. The tree still renders: degrade, don't crash.
-   - A `BufWritePost` autocmd on the resolved path (augroup `gleb_file_tree_settings`) clears the cache and re-renders every open tree. A reload that warns again shows its warnings again.
+   - A `BufWritePost` autocmd on the `fs.normalize`d resolved path (augroup `gleb_file_tree_settings`) clears the cache, bumps the settings generation and re-renders every open tree. Normalization makes `/var` and `/private/var` spellings match. A reload that warns again shows its warnings again.
 2. **Rule syntax: Lua patterns with captures.**
    - `parent` and every `children` entry are Lua patterns. The loader anchors each one to the whole name (`^…$`), after stripping a leading `^` and a trailing unescaped `$` the user may have written.
    - In a child, `${capture}` is capture 1, and `${1}`…`${9}` are captures 1–9 of the parent match. Each is inserted through `vim.pesc`, so `a.b.ts` nests `a.b.test.ts` and never `aXb.test.ts`.
@@ -58,8 +58,8 @@ Research (2026-10-17):
      - JSON needs no doubled backslashes (`%.go`, not `\\.go`).
      - Alternation, which they lack, is covered by listing several children.
      - vim.regex would need `matchlist` per name for captures. Globs (VS Code) can't express `test_${capture}.py` with more than one capture, and the user asked for regexp.
-3. **Engine** `nesting.nest(dir, entries, rules)` → `table<string, string[]>`, pure. `entries` are the folder's `{ name, type }` and `rules` the compiled list.
-   - Only `type == "file"` entries take part. Folders and links to folders never nest.
+3. **Engine** `nesting.nest(dir, entries, rules)` → `table<string, string[]>`, pure. `entries` use the shipped `{ name, path, kind }` shape and `rules` the compiled list.
+   - Only `kind == "file"` entries take part. Folders and links to folders never nest.
    - Rules are walked in list order. For a pattern rule, every file that matches `parent` (in name order) proposes each present file that matches one of its child templates. For a Lua rule, the returned map is walked in parent name order.
    - A proposal (P, C) is accepted when all of these hold:
      - C is not claimed yet;
@@ -68,7 +68,8 @@ Research (2026-10-17):
      So the first rule wins, and a cycle is broken in favour of the earlier rule.
    - Each accepted child is listed under its top parent: follow parents until one has none. Chains end at the root, as in VS Code.
    - Children are sorted in the tree's name order (`file-tree-view`'s comparator). The result holds only parents with at least one child.
-   - Cost: rules × files × children per folder, run once per listing (the model caches it per folder until the next refresh). The 16 default rules on a 500-file folder stay well under 10 ms.
+   - A substituted child is a hash lookup in the folder's name table, not a scan. The model caches the map by the `fs.scan` table in a weak-key table plus a settings generation bumped by reload. Git-only redraws reuse the same map and never rerun a Lua rule.
+   - The 16 default rules over 5000 files complete within 50 ms after warm-up. The tree's 5000-row caps count visible nest children as well as ordinary rows.
 4. **Programmable rules.**
    - A rule `{ "lua": "<module>" }` is resolved with `pcall(require, module)`, which must return `fun(dir: string, names: string[]): table<string, string[]>`.
    - It is called per folder listing with the absolute folder path and its file names in name order.
@@ -103,8 +104,9 @@ Research (2026-10-17):
      - `test_money.py` matches rule 10's parent too, but it is claimed as `money.py`'s child first.
    - The four "Default nesting rules" scenarios plus a case table in `tests/unit/file-tree/test_nesting.lua` cover every child of every rule. A draft of the engine (`agent_nest/proto` in the planning scratchpad, not committed) produced exactly the scenario results.
 6. **View.**
-   - The model keeps each folder's listing and its nest map. It drops nested children from the folder's own rows and keeps `expanded_nests: table<string, true>` keyed by the parent's absolute path. Like folder expansion, this lives for as long as the tree and survives refreshes and settings reloads.
-   - Renaming a parent (G) moves its key. If the parent loses its last child, the chevron goes away.
+   - The model keeps each folder's listing and its cached nest map. It drops nested children from the folder's own rows. Each tab's view keeps `expanded_nests: table<string, true>` keyed by the parent's path relative to the root, separate from `expanded`.
+   - Nest state lives only for the view: `expanded.json` is unchanged. It survives refreshes and settings reloads, but reroot and `zM` clear it. `draw()` drops a key when its parent is gone, is not a file, or is now childless.
+   - File and folder rename or move migrate matching keys in every view of the root. If a parent loses its last child, the chevron goes away.
    - Rows:
      - A parent row draws `▸`/`▾` (the folder expander glyphs) in the expander column with `FileTreeExpander`. A file without children leaves that column blank, as today.
      - Child rows sit one level deeper (2 columns) with their devicon and name group, and no chevron.
@@ -114,13 +116,13 @@ Research (2026-10-17):
      - `file_tree.close_node` (`h`, `<BS>`): on an expanded parent, collapse. On a child, collapse the nest and move to the parent. Elsewhere, as before.
      - `file_tree.open` (`<CR>`, `o`, `l`) opens a parent's file and never toggles: open and expand stay two keys, as in IntelliJ.
      - `file_tree.unfold_all` (`zR`) also expands every nest of every folder it expands. `file_tree.fold_all` (`zM`) also collapses every nest.
-   - Follow: when the followed file is a nested child, its nest is expanded before the cursor moves to it. A file revealed after `file_tree.add`, `paste` or `rename` follows the same path.
-   - Ops act on the row's own file only. Deleting or moving a parent re-lists its former children as plain rows. A new file that matches a rule joins its nest at the next listing.
+   - One `select_path(path)` helper expands folders, expands a containing nest, then moves the cursor. Follow, reveal, add, rename and paste pass it `fs.normalize`d paths, including under a symlinked `/private/var` root.
+   - Ops act on the row's own file only. A child row's target folder is `dirname(row.path)`. Visual `d` over one collapsed parent deletes only that parent. Deleting or moving a parent re-lists its former children as plain rows. A new file that matches a rule joins its nest at the next listing.
 7. **Git tint of a parent.**
-   - A parent without its own status gets its status from its children by the same function the model uses for a folder's tint (`file-tree-view`), applied to the nest's children.
+   - A parent without its own status gets the strongest status among its listed children through a helper shared with `folder_status`'s strength table, including renamed/deleted → modified folding.
    - With its own status, that status is shown.
    - The tint is the same whether the nest is collapsed or expanded, like a folder. So a collapsed nest never hides a change, which is what the user relies on in IntelliJ's tinted folders.
-   - Children keep their own colours.
+   - Children keep their own colours. A deleted child absent from the folder listing contributes no tint.
 8. **Fixture.** `treeproj` in `tests/fixtures/build.sh`, created by `file-tree-view` as the design fixture. This change relies on the following and adds whatever is missing. Branch `feat/tax`, `go.mod` module `example.com/billing`. Tracked and committed:
    - `.github/workflows/ci.yml`, `.gitignore`, `go.mod`, `go.sum`, `Makefile`, `README.md`
    - `cmd/server/main.go`
@@ -137,12 +139,14 @@ Research (2026-10-17):
 
    The ignored entries of `treeproj` stay listed until `file-tree-ignored`. So the screen scenario, like `file-tree-view`'s, runs on a copy without them, and keeps holding once they are hidden by default. The manifest records the nest map the default rules give each folder.
 
+   The screen test keeps a byte-identical copy of the approved ANSI capture at `tests/screen/file-tree/nest_proposed.ansi`; it never reads the archivable change folder. It asserts the text verbatim and checks real extmark groups rather than a hand-made mask or a self-blessed screenshot.
+
 ## Risks / Trade-offs
 
 - **Pattern footguns.** `-` is a quantifier in Lua patterns (`package-lock` must be `package%-lock`). The default file shows the escapes, and a bad pattern fails quietly as "no match". The design accepts this for the first iteration, as the user asked.
 - **Name order coupling.** Children use `file-tree-view`'s comparator (case-insensitive). If it changes, the scenario lists change with it.
-- **Re-listing cost.** Nesting runs per listed folder per refresh. The model caches it per folder until the watcher reports a change there.
-- **Function rules** run user code on every listing. Errors are caught, but a slow function slows the tree. There is no timeout.
+- **Re-listing cost.** Nesting runs only for a new `fs.scan` table or settings generation; weak cache keys release old scans.
+- **Function rules** run user code on cache misses. Errors are caught, but a slow function slows that listing. There is no timeout.
 - **One parent per file** differs from VS Code, which lists a shared child under every parent. The trade is exact ops targets.
 
 ## Renders
@@ -150,7 +154,7 @@ Research (2026-10-17):
 - Stand-ins: `▸ ▾` expander and nest chevron, `■ □` folder closed/open, `◆` devicon, `⎇` branch.
 - The real-glyph, real-colour renders are `renders/nest_current.ansi` and `renders/nest_proposed.ansi`; view them with `command cat`. They are generated by `tree_gen.py` with every cell annotated with its group.
 - `FileTree*` groups come from `file-tree-view` (this change adds none). Until it lands, `make colorize` shows them as plain text.
-- The Proposed render equals the approved screen `nest_chevron.ansi` cell for cell, except the statusline filetype, which reads `gleb-file-tree` (proposal, Agent decisions).
+- The Proposed render equals the approved screen `nest_chevron.ansi` cell for cell, except the statusline filetype, which reads `gleb-file-tree` (proposal, Agent decisions), and the `notes.md` devicon and the root row's leading blank cell, which keep the base tree's real `md` glyph and Normal colour (tasks, Agent decisions).
 
 **Current — tree without nesting**: `100x30`, Normal, tree focused, `treeproj` fixture copy without its ignored entries, on `feat/tax` (Decision 8), `cmd/server`, `internal/billing` and `web/src` expanded, cursor on `invoice.go`, right window `internal/billing/invoice.go` at line 17. The tree of `file-tree-view`: every file is its own row.
 

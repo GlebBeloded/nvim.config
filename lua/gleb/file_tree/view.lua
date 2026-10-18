@@ -7,6 +7,7 @@ local fs = require("gleb.file_tree.fs")
 local git = require("gleb.file_tree.git")
 local model = require("gleb.file_tree.model")
 local render = require("gleb.file_tree.render")
+local settings = require("gleb.file_tree.settings")
 local watch = require("gleb.file_tree.watch")
 
 local EXPANSION_MAX_ROWS = 5000
@@ -17,6 +18,7 @@ local EXPANSION_MAX_ROWS = 5000
 ---@field buf integer
 ---@field win integer
 ---@field expanded table<string, boolean>
+---@field expanded_nests table<string, boolean>
 ---@field rows FileTreeRow[]
 ---@field autocmds integer[]
 ---@field watching boolean
@@ -196,13 +198,18 @@ local function draw(view, path)
 		end
 	end
 	local watched = {}
-	view.rows = model.rows(
-		fs.tree(view.root, function(scan_path)
-			watched[scan_path] = true
-		end),
-		view.expanded,
-		git.status(view.root)
-	)
+	local tree = fs.tree(view.root, function(scan_path)
+		watched[scan_path] = true
+	end)
+	local nesting_settings = settings.load().nesting
+	for relative in pairs(view.expanded_nests) do
+		local parent = vim.fs.joinpath(view.root, relative)
+		local stat = vim.uv.fs_stat(parent)
+		if not stat or stat.type ~= "file" or not model.has_nest(tree, parent, nesting_settings) then
+			view.expanded_nests[relative] = nil
+		end
+	end
+	view.rows = model.rows(tree, view.expanded, git.status(view.root), nesting_settings, view.expanded_nests)
 	render.draw(view.buf, view.rows)
 	local cursor = vim.api.nvim_win_get_cursor(view.win)
 	vim.api.nvim_win_set_cursor(view.win, { math.min(cursor[1], math.max(#view.rows, 1)), cursor[2] })
@@ -236,11 +243,24 @@ end
 
 ---@param view FileTreeView
 ---@param path string
+local function select_path(view, path)
+	local normalized = fs.normalize(path)
+	expand_to(view, normalized)
+	local nesting_settings = settings.load().nesting
+	local parent = model.nest_parent(fs.tree(view.root), normalized, nesting_settings)
+	if parent then
+		view.expanded_nests[parent:sub(#view.root + 2)] = true
+	end
+	draw(view, normalized)
+end
+
+---@param view FileTreeView
+---@param path string
 ---@param missing_is_root boolean
 local function reveal_path(view, path, missing_is_root)
 	local target = reveal_target(view, path, missing_is_root)
 	if target then
-		draw(view, target)
+		select_path(view, target)
 	end
 end
 
@@ -298,7 +318,7 @@ end
 local function expand_directory(view, row, warning)
 	local relative = row.path:sub(#view.root + 2)
 	view.expanded[relative] = true
-	local rows = model.rows(fs.tree(view.root), view.expanded, {})
+	local rows = model.rows(fs.tree(view.root), view.expanded, {}, settings.load().nesting, view.expanded_nests)
 	if #rows > EXPANSION_MAX_ROWS then
 		view.expanded[relative] = nil
 		vim.notify(warning, vim.log.levels.WARN)
@@ -333,6 +353,19 @@ local function open_selected(view, command)
 	vim.cmd(command .. " " .. vim.fn.fnameescape(row.path))
 end
 
+---@param view FileTreeView
+---@param row FileTreeRow
+---@return boolean
+local function close_nest(view, row)
+	local parent = row.nest_parent or (row.nest_expanded and row.path or nil)
+	if not parent then
+		return false
+	end
+	view.expanded_nests[parent:sub(#view.root + 2)] = nil
+	draw(view, parent)
+	return true
+end
+
 --- Open the selected project-tree file in the most recent editor window.
 ---@return nil
 function M.open()
@@ -357,6 +390,9 @@ function M.close_node()
 	local index = vim.api.nvim_win_get_cursor(view.win)[1]
 	local row = view.rows[index]
 	if not row or row.kind == "root" then
+		return
+	end
+	if close_nest(view, row) then
 		return
 	end
 	local target = row
@@ -386,6 +422,12 @@ function M.toggle_fold()
 	local row = selected_row(view)
 	if row and row.kind == "directory" then
 		toggle_directory(view, row)
+	elseif row and row.kind == "file" and row.nest_children then
+		local relative = row.path:sub(#view.root + 2)
+		view.expanded_nests[relative] = not view.expanded_nests[relative] or nil
+		draw(view, row.path)
+	elseif row and row.kind == "file" and row.nest_parent then
+		close_nest(view, row)
 	elseif row and row.kind == "file" then
 		M.close_node()
 	end
@@ -407,6 +449,7 @@ function M.fold_all()
 		end
 	end
 	view.expanded = {}
+	view.expanded_nests = {}
 	redraw_at(view, path)
 end
 
@@ -435,7 +478,10 @@ function M.unfold_all()
 	end
 	local selected = selected_row(view)
 	view.expanded = {}
-	local rows = model.rows(fs.tree(view.root), view.expanded, {})
+	view.expanded_nests = {}
+	local nesting_settings = settings.load().nesting
+	local tree = fs.tree(view.root)
+	local rows = model.rows(tree, view.expanded, {}, nesting_settings, view.expanded_nests)
 	local queue = {}
 	for _, row in ipairs(rows) do
 		if row.kind == "directory" then
@@ -443,16 +489,31 @@ function M.unfold_all()
 		end
 	end
 	local queue_index = 1
+	local stopped = false
 	while queue_index <= #queue do
 		local row = queue[queue_index]
 		queue_index = queue_index + 1
 		if not row.empty then
 			local expanded_rows = expand_directory(view, row, "Unfold all stopped at 5000 rows")
 			if not expanded_rows then
+				stopped = true
 				break
 			end
 			rows = expanded_rows
 			append_directory_children(rows, row, queue)
+		end
+	end
+	if not stopped then
+		local visible_count = #rows
+		for _, row in ipairs(rows) do
+			if row.nest_children then
+				if visible_count + #row.nest_children > EXPANSION_MAX_ROWS then
+					vim.notify("Unfold all stopped at 5000 rows", vim.log.levels.WARN)
+					break
+				end
+				view.expanded_nests[row.path:sub(#view.root + 2)] = true
+				visible_count = visible_count + #row.nest_children
+			end
 		end
 	end
 	redraw_at(view, selected and selected.path or view.root)
@@ -605,6 +666,7 @@ local function open_view(path)
 		buf = buf,
 		win = win,
 		expanded = expanded.load(root),
+		expanded_nests = {},
 		rows = {},
 		autocmds = {},
 		watching = true,
@@ -619,7 +681,7 @@ local function open_view(path)
 		end
 	end)
 	add_teardown_autocmds(view)
-	draw(view, reveal_target(view, path, true) or root)
+	select_path(view, reveal_target(view, path, true) or root)
 	git.request(root)
 	update_cursor()
 	return view
@@ -637,6 +699,7 @@ local function reroot(view, root)
 	git.stop_root(view.root, view.tab)
 	view.root = root
 	view.expanded = expanded.load(root)
+	view.expanded_nests = {}
 	vim.api.nvim_buf_set_name(view.buf, ("gleb-file-tree://%s#%d"):format(root, view.tab))
 	watch.start_root(root, view.tab)
 	git.start_root(root, view.tab, function()
@@ -718,7 +781,7 @@ function M.select_created(path, open_file)
 		return
 	end
 	fs.invalidate_root(view.root)
-	draw(view, path)
+	select_path(view, path)
 	if open_file then
 		vim.api.nvim_set_current_win(eligible_editor(view))
 		vim.cmd("edit " .. vim.fn.fnameescape(path))
@@ -727,15 +790,17 @@ function M.select_created(path, open_file)
 	end
 end
 
----@param view FileTreeView
+---@param root string
+---@param state table<string, boolean>
 ---@param move_pairs FileTreeMovePair[]
-local function migrate_expanded(view, move_pairs)
+---@return table<string, boolean>
+local function migrate_state(root, state, move_pairs)
 	local migrated = {}
-	for relative, value in pairs(view.expanded) do
+	for relative, value in pairs(state) do
 		local target = relative
 		for _, pair in ipairs(move_pairs) do
-			local old = pair.old:sub(#view.root + 2)
-			local new = pair.new:sub(#view.root + 2)
+			local old = pair.old:sub(#root + 2)
+			local new = pair.new:sub(#root + 2)
 			if relative == old or vim.startswith(relative, old .. "/") then
 				target = new .. relative:sub(#old + 1)
 				break
@@ -743,26 +808,36 @@ local function migrate_expanded(view, move_pairs)
 		end
 		migrated[target] = value
 	end
-	view.expanded = migrated
+	return migrated
+end
+
+--- Migrate expansion keys before filesystem moves can trigger a pruning redraw.
+---@param root string
+---@param move_pairs FileTreeMovePair[]
+---@return nil
+function M.migrate_moved(root, move_pairs)
+	for _, view in pairs(M.state.by_tab) do
+		if view.root == root then
+			view.expanded = migrate_state(view.root, view.expanded, move_pairs)
+			view.expanded_nests = migrate_state(view.root, view.expanded_nests, move_pairs)
+		end
+	end
 end
 
 --- Refresh every project-tree view of a moved root and select the initiating target.
 ---@param root string
 ---@param selected_path string
----@param move_pairs? FileTreeMovePair[]
+---@param _move_pairs? FileTreeMovePair[]
 ---@return nil
-function M.refresh_moved(root, selected_path, move_pairs)
+function M.refresh_moved(root, selected_path, _move_pairs)
 	local current_tab = vim.api.nvim_get_current_tabpage()
 	local initiating_view = M.state.by_tab[current_tab]
 	fs.invalidate_root(root)
 	for tab, view in pairs(M.state.by_tab) do
 		if view.root == root and vim.api.nvim_win_is_valid(view.win) then
-			if move_pairs then
-				migrate_expanded(view, move_pairs)
-			end
 			local row = selected_row(view)
 			local target = tab == current_tab and selected_path or (row and row.path or root)
-			draw(view, target)
+			select_path(view, target)
 		end
 	end
 	if initiating_view and vim.api.nvim_win_is_valid(initiating_view.win) then
@@ -781,6 +856,17 @@ function M.refresh()
 	fs.invalidate_root(view.root)
 	draw(view, row and row.path or view.root)
 	git.refresh(view.root)
+end
+
+--- Redraw every open project tree after shared configuration changes.
+---@return nil
+function M.redraw_all()
+	for _, view in pairs(M.state.by_tab) do
+		if vim.api.nvim_win_is_valid(view.win) and vim.api.nvim_buf_is_valid(view.buf) then
+			local row = selected_row(view)
+			draw(view, row and row.path or view.root)
+		end
+	end
 end
 
 --- Toggle the current tab page's project tree.

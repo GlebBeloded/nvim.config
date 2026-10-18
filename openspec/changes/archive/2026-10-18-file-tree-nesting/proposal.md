@@ -24,17 +24,17 @@ The new project tree (`file-tree-view`) lists every file of a folder flat, so a 
 - none
 
 ### Modified Capabilities
-- `file-tree`: added "File tree nesting settings", "File tree programmable nesting rules", "File tree nesting precedence", "File tree default nesting rules", "File tree nest rows", "File tree nest actions", "File tree nest git tint" and "File tree nesting screen". No existing requirement or scenario changes.
+- `file-tree`: adds nesting settings, programmable rules, precedence, caching and limits, defaults, rows, per-tab state, actions, git tint and the approved screen; modifies "Project tree folds" so `za`, `zM` and `zR` include nests.
 
 ## Impact
 
 - Code:
   - New: `settings/file_tree.json`, `lua/gleb/file_tree/settings.lua`, `lua/gleb/file_tree/nesting.lua`.
-  - Changed: `lua/gleb/file_tree/model.lua` (nest children and expansion state per folder), `render.lua` (chevron, nest indent, parent tint), `view.lua` (actions on nests, follow, settings reload), `actions.lua` (`file_tree.toggle_fold`, `file_tree.close_node`, `file_tree.fold_all`, `file_tree.unfold_all` handle nests). Actions and keys keep the ids and keys `file-tree-view` gave them.
+  - Changed: `lua/gleb/file_tree/model.lua` (nest children, cache and parent tint), `lua/gleb/file_tree/render.lua` (chevron and nest indent), `lua/gleb/file_tree/view.lua` (per-tab nest state, actions, selection, follow and settings reload), `lua/gleb/file_tree/actions.lua` (existing fold action ids include nests), and `lua/gleb/file_tree/ops.lua` (move migration and child target folders). Actions and keys keep the ids and keys `file-tree-view` gave them.
 - Tests:
   - unit: `tests/unit/file-tree/test_nesting.lua` (engine, rule syntax, precedence, Lua rules, the default set as a case table), `tests/unit/file-tree/test_settings.lua` (loader).
-  - integration: `tests/integration/file-tree/test_nesting.lua` (rows, actions, follow, refresh, ops, git tint, reload) on the `treeproj` fixture.
-  - screen: `tests/screen/file-tree/test_nesting.lua` with the approved render.
+  - integration: `tests/integration/file-tree/test_nesting.lua` (rows, per-tab state, actions, follow, refresh, ops, git tint and reload) on the `treeproj` fixture; existing file-tree and picker suites run with nesting disabled through their shared setup.
+  - screen: `tests/screen/file-tree/test_nesting.lua` with a byte-identical `tests/screen/file-tree/nest_proposed.ansi` copy of the approved render and real extmark assertions.
 - Fixture: `treeproj` in `tests/fixtures/build.sh` (from `file-tree-view`), exactly as design.md Decision 8 lists it.
 - Plugins: none added or removed. No plugin offers nesting for a custom tree. neo-tree's own `nesting_rules` only work inside neo-tree, which `tree-diff-cutover` removes.
 - Core keymaps: none. The scoped tree keys of `file-tree-view` gain nest behaviour.
