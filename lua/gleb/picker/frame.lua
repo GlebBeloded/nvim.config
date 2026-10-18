@@ -86,9 +86,18 @@ local function apply_highlight_overrides(win, overrides)
 	end
 end
 
+---@param buf integer
+---@param group string
+---@param col integer
+---@param end_col integer
+local function highlight_hint(buf, group, col, end_col)
+	vim.api.nvim_buf_set_extmark(buf, hint_namespace, 0, col, { end_col = end_col, hl_group = group })
+end
+
 ---@param hint string
 ---@param parent integer
-local function open_hint_window(hint, parent)
+---@param highlight_overrides? table<string, string>
+local function open_hint_window(hint, parent, highlight_overrides)
 	close_chrome_windows()
 	local position = vim.api.nvim_win_get_position(parent)
 	local width = vim.api.nvim_win_get_width(parent)
@@ -100,6 +109,11 @@ local function open_hint_window(hint, parent)
 	local buf = vim.api.nvim_create_buf(false, true)
 	vim.bo[buf].bufhidden = "wipe"
 	vim.api.nvim_buf_set_lines(buf, 0, -1, false, { " " .. string.rep(" ", padding) .. clipped .. " " })
+	-- `PickerHintPadding` greys only the hint text, so the cells around it keep the given group
+	local padding_group = highlight_overrides and highlight_overrides.PickerHintPadding
+	if padding_group then
+		highlight_hint(buf, "PickerHint", padding + 1, padding + 1 + #clipped)
+	end
 	local win = vim.api.nvim_open_win(buf, false, {
 		relative = "editor",
 		row = position[1] + height + 1,
@@ -111,7 +125,7 @@ local function open_hint_window(hint, parent)
 		focusable = false,
 		zindex = zindex,
 	})
-	vim.wo[win].winhighlight = "Normal:PickerHint,FloatBorder:PickerBorder"
+	vim.wo[win].winhighlight = "Normal:" .. (padding_group or "PickerHint") .. ",FloatBorder:PickerBorder"
 	table.insert(chrome_windows, win)
 end
 
@@ -130,14 +144,6 @@ local function match_counter()
 		return type(item) ~= "table" or not item.section
 	end, matches.all_inds))
 	return string.format("%d/%d", current, total)
-end
-
----@param buf integer
----@param group string
----@param col integer
----@param end_col integer
-local function highlight_hint(buf, group, col, end_col)
-	vim.api.nvim_buf_set_extmark(buf, hint_namespace, 0, col, { end_col = end_col, hl_group = group })
 end
 
 ---@param hint string
@@ -224,7 +230,7 @@ local function create_show(hints, on_show, highlight_overrides, selected_categor
 			open_hint_band(hint, hint_keys, picker_win, highlight_overrides)
 			vim.wo[picker_win].scrolloff = 1
 		elseif hint then
-			open_hint_window(hint, picker_win)
+			open_hint_window(hint, picker_win, highlight_overrides)
 		else
 			close_chrome_windows()
 		end

@@ -58,6 +58,8 @@ The project tree from `file-tree-view` can only browse. The user edits files fro
   Neovim's own `vim.lsp.util.rename` already moves files, undo files and buffers. The will/did requests are about 40 lines.
 - Core keymaps: none. All keys are buffer-local to `gleb-file-tree`.
 - Unchanged scenarios:
+  - `diff: Diff view left window is read-only` still holds: file-tree operations never make diff-view buffers modifiable.
+  - `diff: Diff view trim policy shows a staged checkbox` still holds: file-tree refresh and file operations do not change diff staging or whitespace policy.
   - `file-tree: a creates a file` and `file-tree: r renames a file` still hold: neo-tree's edit mappings are untouched.
   - `ai: Menu ignores other keys` still holds: the AI menu and its keys are untouched; the new keys exist only in `gleb-file-tree` buffers and the input prompt.
   - `git: ]c steps to the next hunk in differ` still holds: differ and its keys are untouched.

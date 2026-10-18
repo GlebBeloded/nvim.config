@@ -2,7 +2,9 @@
 ---@param buf integer
 ---@return boolean
 local function should_autosave(buf)
-	return vim.api.nvim_buf_get_name(buf) ~= ""
+	local name = vim.api.nvim_buf_get_name(buf)
+	return name ~= ""
+		and vim.uv.fs_stat(name) ~= nil
 		and vim.bo[buf].buftype == ""
 		and not vim.tbl_contains({ "gitcommit", "gitrebase" }, vim.bo[buf].filetype)
 end
