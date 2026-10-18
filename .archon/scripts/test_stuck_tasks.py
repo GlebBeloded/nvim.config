@@ -70,5 +70,13 @@ class StuckTasks(unittest.TestCase):
             self.assertEqual(tasks.stuck_tasks(SPLIT, pathlib.Path(root)), ["## 3b. Hygiene"])
             self.assertTrue(tasks.next_task(path, pathlib.Path(root)).startswith("## 3c. Close"))
 
+    def test_one_stuck_section_naming_two_tasks_holds_both(self):
+        text = "## 3b. Create\n- [ ] 3b.1 a\n\n## 4c. Rename\n- [ ] 4c.1 b\n\n## 5a. Delete\n- [ ] 5a.1 c\n\n## Stuck\n\n- Task 3b remains unticked.\n- Task 4c remains unticked.\n"
+        with tempfile.TemporaryDirectory() as root:
+            path = pathlib.Path(root, "tasks.md")
+            path.write_text(text)
+            self.assertEqual(sorted(tasks.stuck_tasks(text, pathlib.Path(root))), ["## 3b. Create", "## 4c. Rename"])
+            self.assertTrue(tasks.next_task(path, pathlib.Path(root)).startswith("## 5a. Delete"))
+
 if __name__ == "__main__":
     unittest.main()
