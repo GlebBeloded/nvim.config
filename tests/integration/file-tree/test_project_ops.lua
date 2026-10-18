@@ -71,6 +71,61 @@ local function rename(query)
 	assert(child.wait([[not MiniPick.is_picker_active()]]), "Rename picker did not close")
 end
 
+---@return string log
+local function install_fake_trash()
+	local script = vim.fn.tempname() .. "-trash"
+	local log = vim.fn.tempname() .. "-trash-args"
+	child.lua(
+		[[(function(script, log)
+			vim.fn.writefile({
+				"#!/bin/sh",
+				("printf '%%s\\n' \"$@\" > %s"):format(vim.fn.shellescape(log)),
+				"shift",
+				"/bin/rm -rf -- \"$@\"",
+			}, script)
+			assert(vim.uv.fs_chmod(script, 493))
+			require("gleb.file_tree.ops").state.trash_path = script
+		end)(...)]],
+		{ script, log }
+	)
+	return log
+end
+
+---@param choice "confirm"|"cancel"
+local function delete(choice)
+	child.lua([[
+		local real_select = vim.ui.select
+		vim.ui.select = function(items, opts, callback)
+			DeleteSelect = { items = items, prompt = opts.prompt }
+			return real_select(items, opts, function(item, index)
+				DeleteChoice = { item = item, index = index }
+				callback(item, index)
+			end)
+		end
+	]])
+	child.type_keys("d")
+	assert(vim.wait(1000, child.is_blocked, 10), "Delete confirmation did not block for a choice")
+	child.type_keys("<Down>")
+	if choice == "cancel" then
+		child.type_keys("<Down>")
+	end
+	child.type_keys("<CR>")
+	assert(vim.wait(1000, function() return not child.is_blocked() end, 10), "Delete confirmation did not return")
+	local expected_index = choice == "cancel" and 2 or 1
+	eq(child.lua_get([[DeleteChoice.index]]), expected_index)
+end
+
+---@param relative string
+local function wait_for_absence(relative)
+	local path = vim.fs.joinpath(tree_root, relative)
+	assert(
+		child.lua_get([[(function(target)
+			return vim.wait(1000, function() return vim.uv.fs_lstat(target) == nil end, 20)
+		end)(...)]], { path }),
+		"deleted path still exists: " .. relative
+	)
+end
+
 ---@param relative string
 ---@return integer
 local function load_buffer(relative)
@@ -583,6 +638,84 @@ end)()
 			end
 		end
 	end
+end
+
+T["file-tree: Project tree d moves a file to the Trash after confirmation"] = function()
+	local log = install_fake_trash()
+	open_billing()
+	focus_tree_path("internal/billing/tax_test.go")
+	delete("confirm")
+	wait_for_absence("internal/billing/tax_test.go")
+	local deleted_path = vim.fs.joinpath(tree_root, "internal/billing/tax_test.go")
+	assert(child.lua_get([[(function(path)
+		return vim.wait(1000, function()
+			local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+			return not vim.iter(view.rows):any(function(row) return row.path == path end)
+		end, 20)
+	end)(...)]], { deleted_path }), "deleted tree row remained")
+
+	eq(vim.fn.readfile(log), { "-s", vim.fs.joinpath(tree_root, "internal/billing/tax_test.go") })
+end
+
+T["file-tree: Project tree d keeps the file when cancelled"] = function()
+	local log = install_fake_trash()
+	open_billing()
+	focus_tree_path("internal/billing/tax_test.go")
+	delete("cancel")
+
+	eq(vim.uv.fs_lstat(vim.fs.joinpath(root, "internal/billing/tax_test.go")) ~= nil, true)
+	eq(vim.uv.fs_lstat(log), nil)
+end
+
+T["file-tree: Project tree Visual d deletes every selected row"] = function()
+	local log = install_fake_trash()
+	open_billing()
+	focus_tree_path("internal/billing/discount.go")
+	child.type_keys("Vj")
+	eq(child.fn.mode(1), "V")
+	eq(child.lua_get([[vim.fn.maparg("d", "x", false, true).desc]]), "Project: Delete")
+	child.type_keys("d")
+	assert(vim.wait(1000, child.is_blocked, 10), "Visual delete confirmation did not block for a choice")
+	child.type_keys("<Down>")
+	child.type_keys("<CR>")
+	assert(vim.wait(1000, function() return not child.is_blocked() end, 10), "Visual delete confirmation did not return")
+	wait_for_absence("internal/billing/discount.go")
+	wait_for_absence("internal/billing/discount_test.go")
+
+	eq(vim.fn.readfile(log), {
+		"-s",
+		vim.fs.joinpath(tree_root, "internal/billing/discount.go"),
+		vim.fs.joinpath(tree_root, "internal/billing/discount_test.go"),
+	})
+end
+
+T["file-tree: Project tree d deletes without a trash command"] = function()
+	child.lua([[require("gleb.file_tree.ops").state.trash_path = false]])
+	focus_tree_path("web")
+	delete("confirm")
+	wait_for_absence("web")
+end
+
+T["file-tree: Project tree d closes buffers of deleted files"] = function()
+	install_fake_trash()
+	open_billing()
+	local buffer = load_buffer("internal/billing/tax_test.go")
+	local windows_before = child.lua_get([[
+(function(buf)
+	local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+	local editor = assert(require("gleb.file_tree.view").state.last_editor_by_tab[view.tab])
+	vim.api.nvim_win_set_buf(editor, buf)
+	return #vim.api.nvim_tabpage_list_wins(0)
+end)(...)
+]], { buffer })
+	focus_tree_path("internal/billing/tax_test.go")
+	delete("confirm")
+	wait_for_absence("internal/billing/tax_test.go")
+	assert(child.lua_get([[(function(buf)
+		return vim.wait(1000, function() return not vim.api.nvim_buf_is_valid(buf) end, 20)
+	end)(...)]], { buffer }), "deleted file buffer remained")
+
+	eq(child.lua_get([[#vim.api.nvim_tabpage_list_wins(0)]]), windows_before)
 end
 
 return T

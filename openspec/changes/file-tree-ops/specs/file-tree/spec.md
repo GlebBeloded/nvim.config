@@ -130,6 +130,10 @@ Every submitted path SHALL normalize inside the tree root with no absolute path,
 - **WHEN** the cursor is on the root row and `r`, `d`, `c` and `x` are each pressed in normal mode
 - **THEN** no prompt opens, the tree clipboard stays nil, the root still exists, and no filesystem entry changes
 
+#### Scenario: Project tree Visual operations refuse the root row
+- **WHEN** the root row alone is selected in Visual mode and `d`, `c` and `x` are each pressed
+- **THEN** no confirmation opens, the tree clipboard stays nil, the root still exists, and no filesystem entry changes
+
 #### Scenario: Project tree refuses a path that escapes the root
 - **WHEN** the cursor is on the `billing` row, `r` is pressed in normal mode and `<C-u>../../../outside<CR>` is typed
 - **THEN** `internal/billing` still exists, no path named `outside` is created beyond the root, and a `Rename failed:` notification at ERROR is emitted

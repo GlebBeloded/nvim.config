@@ -23,10 +23,10 @@ Scenarios: `file-tree: Project tree a creates a file in the folder under the cur
 - [x] 3a.3 Run `make test FILE=tests/integration/file-tree/test_project_ops.lua CASE="Project tree a"` and see them pass
 
 ## 3b. Create safety and operation keys
-Scenarios: `file-tree: Project tree create reports a read-only destination`, `file-tree: Project tree operation keys come from the keymap file`, `file-tree: Project tree add prompt matches the approved render`
-- [ ] 3b.1 Write the integration assertions in `tests/integration/file-tree/test_project_ops.lua` and the screen case in `tests/screen/file-tree/test_project_ops.lua`, drive the real `a` mapping and key applicator, and see them fail
+Scenarios: `file-tree: Project tree create reports a read-only destination`, `file-tree: Project tree operation keys come from the keymap file`, `file-tree: Project tree refuses operations on the root row`, `file-tree: Project tree Visual operations refuse the root row`, `file-tree: Project tree add prompt matches the approved render`
+- [ ] 3b.1 Write the integration assertions in `tests/integration/file-tree/test_project_ops.lua` and the screen case in `tests/screen/file-tree/test_project_ops.lua`, drive the real `a`, `r`, `d`, `c` and `x` mappings in Normal and Visual modes plus the key applicator, and see them fail
 - [ ] 3b.2 Validate normalized destinations, report create failures, and register `a`, `r`, `d`, `c`, `x`, `p`, `R` plus Visual `d`, `c`, `x` from `settings/keymap.json`, with no action `plugin`
-- [ ] 3b.3 Run `make test FILE=tests/integration/file-tree/test_project_ops.lua CASE="Project tree operation keys come from the keymap file"` and see it pass
+- [ ] 3b.3 Run `make test FILE=tests/integration/file-tree/test_project_ops.lua CASE="Project tree"` and `make test FILE=tests/screen/file-tree/test_project_ops.lua CASE="Project tree add prompt matches the approved render"` and see them pass
 
 ## 4a. LSP file operations
 Scenarios: `file-tree: Project tree rename asks language servers to update references`, `file-tree: Project tree rename skips servers whose filters do not match`, `file-tree: Project tree rename waits for servers at most one second`, `file-tree: Project tree move notifies didRename only after the target exists`
@@ -104,6 +104,10 @@ Scenarios: `file-tree: Project tree operation keys come from the keymap file`, `
 - Probe: two isolated `vim.lsp.util.rename` hops moved `README.md` through `.gleb-rename-temporary-README.md` to `Readme.md` with no notifications, so the filesystem supports the operation.
 - Attempt 1 added the temporary hop, rollback, post-stat checks and expanded-key migration. The real mapped rename timed out in `workspace/willRenameFiles` after the first hop and left the temporary sibling.
 - Attempt 2 allowed overwrite on the second hop to replace `vim.lsp.util.rename`'s stale old-name buffer entry. Even after waiting beyond the LSP timeout, the mapped rename still left the temporary sibling. The saved production diff is `artifacts/runs/fce92e56-8211-40e7-9a50-95c1cdfead98/stuck-attempt.diff`.
+- Task 5a remains unticked. The red tests prove normal delete confirmation, cancellation, permanent fallback and buffer cleanup, while the real Visual `d` mapping captures rows 7–8 in mode `V` but never opens confirmation.
+- Probe: direct shared-selection invocation blocked awaiting picker input; the mapped Visual diagnostic captured `selection.start = { 7, 0 }`, `selection.finish = { 8, 0 }`, and the `discount.go`/`discount_test.go` rows before delete returned without a picker.
+- Attempt 1 added normal/Visual delete, trash override, recursive fallback and unmodified-buffer cleanup. All four normal `Project tree d` cases passed, but Visual `d` returned without opening confirmation.
+- Attempt 2 left the selection captured in the real mapping and exited Visual mode before `vim.ui.select`; Visual `d` still returned without opening confirmation. The saved production diff is `artifacts/runs/22b161e8-b488-477c-96ac-c5f4d88e49c8/stuck-attempt.diff`.
 
 ## Agent decisions
 
