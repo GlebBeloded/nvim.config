@@ -15,5 +15,4 @@ Scenarios: `file-tree: Project tree keys come from the keymap file`
 
 ## Agent decisions
 
-- Complete the first project-tree draw when the initial Git request finishes, because a fixed fallback deadline can render ignored rows under load.
 - Should combined `Category Title` matching become a Find Action requirement? Choose option 1 and add its own scenario and regression test, because `project open` cannot uniquely reach `file_tree.open` through its separate title, category, or absent aliases.
