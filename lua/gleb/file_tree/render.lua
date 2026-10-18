@@ -108,12 +108,6 @@ end
 ---@param segments FileTreeRenderSegment[]
 ---@return nil
 local function add_segments(buf, row_index, segments)
-	local line = ""
-	for _, segment in ipairs(segments) do
-		line = line .. segment.text
-	end
-	vim.api.nvim_buf_set_lines(buf, row_index, row_index + 1, false, { line })
-
 	local start_col = 0
 	for _, segment in ipairs(segments) do
 		if segment.group then
@@ -133,12 +127,19 @@ end
 function M.draw(buf, rows)
 	vim.bo[buf].modifiable = true
 	vim.api.nvim_buf_clear_namespace(buf, M.namespace, 0, -1)
-	vim.api.nvim_buf_set_lines(buf, 0, -1, false, {})
+	local rendered = {}
+	local lines = {}
 	for index, row in ipairs(rows) do
 		local segments = row.kind == "root" and root_segments(row)
 			or row.kind == "directory" and directory_segments(row)
 			or file_segments(row)
-		vim.api.nvim_buf_set_lines(buf, index - 1, index - 1, false, { "" })
+		rendered[index] = segments
+		lines[index] = vim.iter(segments):fold("", function(line, segment)
+			return line .. segment.text
+		end)
+	end
+	vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+	for index, segments in ipairs(rendered) do
 		add_segments(buf, index - 1, segments)
 	end
 	vim.bo[buf].modifiable = false

@@ -30,6 +30,14 @@ Scenarios: `file-tree: Project tree opens on the left at width 35`, `file-tree: 
 - [x] 2b.2 Add `lua/gleb/file_tree/view.lua` with state, buffer names and autocmd teardown keyed by tabpage handle. Append the unbound `file_tree.toggle` and `file_tree.reveal` actions, and implement `QuitPre` without group-wide clearing.
 - [x] 2b.3 Run `make test FILE=tests/integration/file-tree/test_project_tree.lua` for these cases and see them pass.
 
+## 2b2. Toggle from non-project buffers
+
+Scenarios: `file-tree: Project tree opens from non-project buffers`
+
+- [x] 2b2.1 Write the scenario in `tests/integration/file-tree/test_project_tree.lua`, driving `file_tree.toggle` from a real outside-cwd file and a terminal buffer, and see it fail.
+- [x] 2b2.2 Draw the cwd tree when no current normal-file buffer belongs to the project.
+- [x] 2b2.3 Run `make test FILE=tests/integration/file-tree/test_project_tree.lua CASE="Project tree opens from non-project buffers"` and see it pass.
+
 ## 2c. Transition wiring and bufferline
 
 Scenarios: `file-tree: Project tree actions start unbound`, `bufferline: tabs start after the open project tree`
@@ -37,6 +45,14 @@ Scenarios: `file-tree: Project tree actions start unbound`, `bufferline: tabs st
 - [x] 2c.1 Write the file-tree case in `tests/integration/file-tree/test_project_tree.lua` and the bufferline case in `tests/screen/bufferline/test_bufferline_screen.lua`; see them fail.
 - [x] 2c.2 Keep `<A-e>` and `<A-G>` on neo-tree, and add the `gleb-file-tree` offset to `lua/gleb/bufferline.lua` without removing the neo-tree offset.
 - [x] 2c.3 Run both test files and see them pass.
+
+## 2d. Find Action catalog screen count
+
+Scenarios: `find-action: Physical Find Action workflow persists an assignment`
+
+- [x] 2d.1 Run `make e2e` in the sandbox VM with the populated action catalog and see the old 45-action screen counters fail against the 47-action catalog.
+- [x] 2d.2 Update `tests/e2e/find-action/screens.lua` so the opened and searched palette screens expect 47 catalog actions.
+- [x] 2d.3 Run `make e2e` in the sandbox VM and see the scenario pass.
 
 ## 3a. Eligible editor targets
 
@@ -182,6 +198,14 @@ Scenarios: `file-tree: Project tree matches the approved render`, `file-tree: Pr
 - [x] 7.2 Adjust `lua/gleb/file_tree/render.lua` until the tests pass. Compare `make render` with `renders/f1_proposed.ansi` and review the reference screenshot against that artifact before commit.
 - [x] 7.3 Update only the `file_tree/` row of the module map in `docs/architecture.md` to describe the project tree beside neo-tree until `tree-diff-cutover`.
 - [x] 7.4 Run `make check`.
+
+## 8. Exact buffer rows
+
+Scenarios: `file-tree: Project tree has no trailing blank row`
+
+- [x] 8.1 Write the scenario in `tests/integration/file-tree/test_project_tree.lua`, opening the populated tree, asserting `nvim_buf_line_count(view.buf) == #view.rows`, pressing `G` then the real `zM` mapping, and see it fail with the trailing blank line.
+- [x] 8.2 Change `lua/gleb/file_tree/render.lua` to write all rendered lines at once before adding extmarks, leaving exactly one buffer line per row.
+- [x] 8.3 Run `make test FILE=tests/integration/file-tree/test_project_tree.lua CASE="Project tree has no trailing blank row"` and see it pass.
 
 ## Agent decisions
 

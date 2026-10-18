@@ -54,6 +54,7 @@ This change adds the new tree beside neo-tree. It opens only from new, unbound a
   - unit: `tests/unit/file-tree/test_model.lua` (rows, sort, chains, porcelain v2 parsing, tint).
   - integration: `tests/integration/file-tree/test_project_tree.lua`, `test_project_git.lua`, `test_project_live.lua`.
   - screen: `tests/screen/file-tree/test_project_tree.lua`, `tests/screen/bufferline/` (new offset case).
+  - e2e fixture: `tests/e2e/find-action/screens.lua` (the two new global actions raise the populated catalog count from 45 to 47).
 - Plugins: none added or removed. nvim-web-devicons (installed) gives the file icons. The tree is our own code by user decision. Alternatives considered for the base:
   - nvim-tree.lua (8.7k stars, pushed 2026-10-16) and neo-tree have no folder tint or compact chains in their renderers.
   - oil.nvim (7.0k stars, pushed 2026-10-12) is a buffer editor, not a sidebar tree.
@@ -116,5 +117,5 @@ Run on `loop/file-tree-view-20261018-005322` was rejected by the judge:
   
   [minor] tests/e2e/find-action/screens.lua:92,106: neither proposal.md nor tasks.md covers this file. The palette count goes from 45 to 47 because of the new global `file_tree.toggle` and `file_tree.reveal` actions. The gate needed this edit to go green.
   
-  [minor] The fix-scope edit to specs/file-tree/spec.md adds the scenario "Project tree opens from non-project b
+  [minor] The fix-scope edit to the file-tree delta adds the scenario "Project tree opens from non-project buffers", but tasks.md does not cover it.
 - note: loop: No test cases matched

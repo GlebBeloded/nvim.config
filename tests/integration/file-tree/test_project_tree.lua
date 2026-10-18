@@ -842,6 +842,20 @@ T["file-tree: Project tree zM collapses every folder"] = function()
 	)
 end
 
+T["file-tree: Project tree has no trailing blank row"] = function()
+	edit("README.md")
+	run_toggle()
+	local line_count = child.lua_get([[(function()
+		local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+		return { vim.api.nvim_buf_line_count(view.buf), #view.rows }
+	end)()]])
+
+	child.type_keys("G")
+	child.type_keys("zM")
+
+	eq(line_count[1], line_count[2])
+end
+
 T["file-tree: Project tree zR expands every folder"] = function()
 	edit("README.md")
 	run_toggle()

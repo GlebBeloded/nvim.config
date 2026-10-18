@@ -50,6 +50,13 @@ The tree SHALL show a root row (expanded expander, open folder icon, the root's 
 - **WHEN** the project tree opens in a copy of the `treeproj` fixture and `internal` and `billing` are expanded
 - **THEN** the `invoice.go` row starts with nine spaces, then U+E627, a space and `invoice.go`, and no row contains `│`, `├` or `└`
 
+### Requirement: Project tree buffer row correspondence
+The project-tree buffer SHALL contain exactly one buffer line for every rendered row, with no trailing blank line, so every cursor position selects a tree row.
+
+#### Scenario: Project tree has no trailing blank row
+- **WHEN** the project tree opens in a copy of the `treeproj` fixture, `G` moves to its last line, and `zM` is pressed in normal mode
+- **THEN** the buffer line count equals the view row count, the last line renders a tree row, and the fold action completes without error
+
 ### Requirement: Compact folder chains
 A folder whose only visible entry is a folder SHALL share one row with it, labelled `<a>/<b>`, repeated down the chain, whatever its expansion. The row's expander and its expansion SHALL be those of the last folder of the chain, whose entries are listed one level deeper. A chain SHALL split as soon as one of its folders has more than one visible entry.
 
