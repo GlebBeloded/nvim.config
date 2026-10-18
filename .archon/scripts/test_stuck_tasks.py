@@ -78,5 +78,15 @@ class StuckTasks(unittest.TestCase):
             self.assertEqual(sorted(tasks.stuck_tasks(text, pathlib.Path(root))), ["## 3b. Create", "## 4c. Rename"])
             self.assertTrue(tasks.next_task(path, pathlib.Path(root)).startswith("## 5a. Delete"))
 
+    def test_loop_ends_after_two_passes_that_tick_nothing(self):
+        text = "## 7. Render\n- [ ] 7.1 a\n\n## 8. Gates\n- [x] 8.2 b\n- [ ] 8.1 c\n\n## Stuck\n\n- Task 7 failed.\n"
+        with tempfile.TemporaryDirectory() as root:
+            path = pathlib.Path(root, "tasks.md")
+            path.write_text(text)
+            artifacts = pathlib.Path(root)
+            self.assertEqual([tasks.loop_done(path, artifacts) for _ in range(3)], [False, False, True])
+            path.write_text(text.replace("- [ ] 8.1 c", "- [x] 8.1 c"))
+            self.assertTrue(tasks.loop_done(path, artifacts))  # nothing left outside Stuck
+
 if __name__ == "__main__":
     unittest.main()

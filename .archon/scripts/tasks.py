@@ -120,7 +120,24 @@ def loop_done(tasks: pathlib.Path, artifacts: pathlib.Path) -> bool:
     counter.write_text(str(passes))
     text = tasks.read_text() if tasks.exists() else ""
     left = without(text, stuck_tasks(text, artifacts))
-    return unchecked(left) == 0 or blocks(text) or passes >= MAX_PASSES
+    return unchecked(left) == 0 or blocks(text) or passes >= MAX_PASSES or idle(text, artifacts)
+
+
+IDLE_PASSES = 2  # passes in a row that tick nothing: what is left waits on Stuck tasks (e.g. final gates), so the fix passes take over
+
+
+def idle(text: str, artifacts: pathlib.Path) -> bool:
+    """True once IDLE_PASSES passes in a row left the ticked-item count unchanged (run file-tree-ops: a final-gates task
+    that cannot pass while Stuck tasks are red was handed to implement 20 times)."""
+    # progress = a new tick or a new Stuck note (a pass that went Stuck on another task is not idle)
+    ticks = len(re.findall(r"^\s*[-*] \[x\] ", text, re.MULTILINE))
+    notes = len("".join(m.group(0) for m in STUCK.finditer(text)))
+    ticked = f"{ticks}:{notes}"
+    path = artifacts / "task-ticks"
+    last, streak = (json.loads(path.read_text()) if path.exists() else ["", 0])
+    streak = streak + 1 if ticked == last else 0
+    path.write_text(json.dumps([ticked, streak]))
+    return streak >= IDLE_PASSES
 
 
 def plan_needed(tasks: pathlib.Path) -> bool:
