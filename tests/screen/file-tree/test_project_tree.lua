@@ -137,7 +137,7 @@ end
 local T = H.child_set(child, start)
 
 local function approved_tree_lines()
-	local path = vim.fs.joinpath(H.root, "openspec/changes/archive/2026-10-18-file-tree-view/renders/f1_proposed.ansi")
+	local path = vim.fs.joinpath(H.root, "tests/screen/file-tree/f1_proposed.ansi")
 	local artifact = vim.fn.readfile(path)
 	local expected = {}
 	for row = 2, 28 do
