@@ -690,7 +690,8 @@ local function wipe_deleted_buffers(path_list)
 			end, vim.api.nvim_list_wins())
 			local fallback = #windows > 0 and vim.api.nvim_create_buf(true, false) or nil
 			for _, win in ipairs(windows) do
-				vim.api.nvim_win_set_buf(win, assert(fallback, "visible deleted buffer has no replacement"))
+				assert(fallback, "visible deleted buffer has no replacement")
+				vim.api.nvim_win_set_buf(win, fallback)
 			end
 			vim.api.nvim_buf_delete(buf, {})
 		end
