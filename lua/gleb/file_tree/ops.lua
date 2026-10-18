@@ -4,30 +4,79 @@ local M = {}
 
 local paths = require("gleb.file_tree.paths")
 
----@param old_path string
----@param new_path string
-local function rename_path(old_path, new_path)
-	local pair = { old = old_path, new = new_path }
-	local lsp_files = require("gleb.file_tree.lsp_files")
-	lsp_files.will_rename({ pair })
-	local ok, error = pcall(vim.lsp.util.rename, old_path, new_path)
-	if not ok then
-		vim.notify("Rename failed: " .. tostring(error), vim.log.levels.ERROR)
-		return
-	end
-	if not vim.uv.fs_stat(new_path) then
-		vim.notify("Rename failed: target does not exist", vim.log.levels.ERROR)
-		return
-	end
-	lsp_files.did_rename({ pair })
-	require("gleb.file_tree.view").select_created(new_path, false)
-end
-
 ---@param root string
 ---@param path string
 local function notify_exists(root, path)
 	local relative = path:sub(#root + 2)
 	vim.notify("Already exists: " .. relative, vim.log.levels.ERROR)
+end
+
+---@param path string
+---@return string[]
+local function directory_names(path)
+	local names = {}
+	for name in vim.fs.dir(path) do
+		names[#names + 1] = name
+	end
+	return names
+end
+
+---@param root string
+---@param reason string
+---@param path string
+local function notify_preflight_failure(root, reason, path)
+	if reason == "exists" then
+		notify_exists(root, path)
+		return
+	end
+	local detail = reason == "cross-device" and reason or (path .. ": " .. reason)
+	vim.notify("Rename failed: " .. detail, vim.log.levels.ERROR)
+end
+
+--- Move a batch only after every source and target passes preflight.
+---@param move_pairs FileTreeMovePair[]
+---@return boolean moved
+function M.move(move_pairs)
+	local view = require("gleb.file_tree.view")
+	local root = view.selected_path()
+	if not root then
+		return false
+	end
+
+	local pending = vim.tbl_filter(function(pair)
+		return pair.old ~= pair.new
+	end, move_pairs)
+	if #pending == 0 then
+		return true
+	end
+	local ok, reason, failed_path = paths.preflight_moves(root, pending, {
+		lstat = vim.uv.fs_lstat,
+		stat = vim.uv.fs_stat,
+		read_dir = directory_names,
+	})
+	if not ok then
+		notify_preflight_failure(root, reason or "unknown", failed_path or root)
+		return false
+	end
+
+	local lsp_files = require("gleb.file_tree.lsp_files")
+	lsp_files.will_rename(pending)
+	for _, pair in ipairs(pending) do
+		local moved, error = pcall(vim.lsp.util.rename, pair.old, pair.new)
+		if not moved then
+			vim.notify("Rename failed: " .. tostring(error), vim.log.levels.ERROR)
+			return false
+		end
+	end
+	for _, pair in ipairs(pending) do
+		if not vim.uv.fs_stat(pair.new) then
+			vim.notify("Rename failed: target does not exist", vim.log.levels.ERROR)
+			return false
+		end
+	end
+	lsp_files.did_rename(pending)
+	view.refresh_moved(root, pending[1].new)
+	return true
 end
 
 ---@param path string
@@ -127,7 +176,7 @@ function M.rename()
 			}
 		end,
 		on_submit = function(query)
-			rename_path(row.path, vim.fs.joinpath(parent, query))
+			M.move({ { old = row.path, new = vim.fs.joinpath(parent, query) } })
 		end,
 	})
 end

@@ -727,6 +727,26 @@ function M.select_created(path, open_file)
 	end
 end
 
+--- Refresh every project-tree view of a moved root and select the initiating target.
+---@param root string
+---@param selected_path string
+---@return nil
+function M.refresh_moved(root, selected_path)
+	local current_tab = vim.api.nvim_get_current_tabpage()
+	local initiating_view = M.state.by_tab[current_tab]
+	fs.invalidate_root(root)
+	for tab, view in pairs(M.state.by_tab) do
+		if view.root == root and vim.api.nvim_win_is_valid(view.win) then
+			local row = selected_row(view)
+			local target = tab == current_tab and selected_path or (row and row.path or root)
+			draw(view, target)
+		end
+	end
+	if initiating_view and vim.api.nvim_win_is_valid(initiating_view.win) then
+		vim.api.nvim_set_current_win(initiating_view.win)
+	end
+end
+
 --- Toggle the current tab page's project tree.
 ---@return nil
 function M.toggle()

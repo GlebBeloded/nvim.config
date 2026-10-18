@@ -36,9 +36,9 @@ Scenarios: `file-tree: Project tree rename asks language servers to update refer
 
 ## 4b. Rename and move preflight
 Scenarios: `file-tree: Project tree r renames a file and its buffer`, `file-tree: Project tree r renames a folder and the buffers inside`, `file-tree: Project tree r reports an existing name`, `file-tree: Project tree rename refuses a vanished row`, `file-tree: Project tree move preflights the whole batch`
-- [ ] 4b.1 Write the tests in `tests/integration/file-tree/test_project_ops.lua`, drive `r` and Visual cut/paste against populated data, and see them fail before any partial move or LSP traffic
-- [ ] 4b.2 Add `ops.move(pairs)` with complete lstat, case-insensitive target, normalized-root, same-device and root-row preflight before LSP, then move, post-stat and one refresh per root view
-- [ ] 4b.3 Run `make test FILE=tests/integration/file-tree/test_project_ops.lua CASE="Project tree rename"` and see them pass
+- [x] 4b.1 Write the tests in `tests/integration/file-tree/test_project_ops.lua`, drive `r` and Visual cut/paste against populated data, and see them fail before any partial move or LSP traffic
+- [x] 4b.2 Add `ops.move(pairs)` with complete lstat, case-insensitive target, normalized-root, same-device and root-row preflight before LSP, then move, post-stat and one refresh per root view
+- [x] 4b.3 Run `make test FILE=tests/integration/file-tree/test_project_ops.lua CASE="Project tree rename"` and see them pass
 
 ## 4c. Rename identity and filesystem edge cases
 Scenarios: `file-tree: Project tree rename reports a read-only destination`, `file-tree: Project tree supports a case-only rename`, `file-tree: Project tree rename follows a buffer opened through a symlinked root`, `file-tree: Project tree folder rename migrates expanded keys`, `file-tree: Project tree refuses a cross-device move`
@@ -111,3 +111,5 @@ Scenarios: `file-tree: Project tree operation keys come from the keymap file`, `
 - Selection deduplication preserves the first-occurrence order of surviving top-level paths while dropping descendants regardless of selection order.
 - Copy-name generation takes an explicit directory flag and conflict ordinal so dotted folder names and `_copy2` names are unambiguous.
 - Task 4a installs only the `r` action and key needed by its real-entry-point tests; the other operation keys remain with stuck task 3b.
+- Task 4b drives batch preflight through its public `ops.move(pairs)` entry point because Visual cut/paste mappings remain part of stuck task 3b.
+- `ops.move` derives the root from the active project-tree view and returns success so later cut paste can retain its clipboard after a failed move.

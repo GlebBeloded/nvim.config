@@ -63,6 +63,70 @@ local function add(query)
 	assert(child.wait([[not MiniPick.is_picker_active()]]), "Add picker did not close")
 end
 
+---@param query string
+local function rename(query)
+	child.type_keys("r")
+	assert(child.wait([[MiniPick.is_picker_active()]]), "Rename picker did not open")
+	child.type_keys("<C-u>", query, "<CR>")
+	assert(child.wait([[not MiniPick.is_picker_active()]]), "Rename picker did not close")
+end
+
+---@param relative string
+---@return integer
+local function load_buffer(relative)
+	return child.lua_get(
+		[[(function(path)
+			local buf = vim.fn.bufadd(path)
+			vim.fn.bufload(buf)
+			return buf
+		end)(...)]],
+		{ vim.fs.joinpath(tree_root, relative) }
+	)
+end
+
+local function attach_rename_recorder()
+	child.lua([[
+		RenameRequestCount = 0
+		local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+		local editor = assert(require("gleb.file_tree.view").state.last_editor_by_tab[view.tab])
+		vim.api.nvim_set_current_win(editor)
+		local request_id = 0
+		local function server()
+			return {
+				request = function(method, _, callback, notify_reply)
+					request_id = request_id + 1
+					local current_id = request_id
+					local function respond(result)
+						callback(nil, result, current_id)
+						if notify_reply then
+							notify_reply(current_id)
+						end
+					end
+					if method == "initialize" then
+						respond({ capabilities = { workspace = { fileOperations = {
+							willRename = { filters = { { scheme = "file", pattern = { glob = "**/*" } } } },
+						} } } })
+					elseif method == "workspace/willRenameFiles" then
+						RenameRequestCount = RenameRequestCount + 1
+						respond(nil)
+					else
+						respond(nil)
+					end
+					return true, current_id
+				end,
+				notify = function() return true end,
+				is_closing = function() return false end,
+				terminate = function() end,
+			}
+		end
+		vim.lsp.start({ name = "move-preflight-test", cmd = server, root_dir = view.root })
+		assert(vim.wait(1000, function()
+			return #vim.lsp.get_clients({ name = "move-preflight-test" }) == 1
+		end), "move preflight test server did not initialize")
+		vim.api.nvim_set_current_win(view.win)
+	]])
+end
+
 ---@param relative string
 ---@return boolean
 local function wait_for_path(relative)
@@ -173,6 +237,187 @@ T["file-tree: Project tree a reports an existing name"] = function()
 		level = vim.log.levels.ERROR,
 	})
 	eq(vim.fn.readfile(tax_path), before)
+end
+
+T["file-tree: Project tree r renames a file and its buffer"] = function()
+	open_billing()
+	local buffer = load_buffer("internal/billing/invoice.go")
+	focus_tree_path("internal/billing/invoice.go")
+	rename("bill.go")
+
+	assert(wait_for_path("internal/billing/bill.go"), "renamed file did not appear")
+	eq(vim.uv.fs_stat(vim.fs.joinpath(root, "internal/billing/invoice.go")), nil)
+	eq(child.api.nvim_buf_get_name(buffer), vim.fs.joinpath(tree_root, "internal/billing/bill.go"))
+	child.lua(
+		[[
+		local buf = ...
+		vim.api.nvim_buf_call(buf, function() vim.cmd("write") end)
+	]],
+		{ buffer }
+	)
+	eq(
+		child.lua_get(
+			[=[require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()].rows[vim.api.nvim_win_get_cursor(0)[1]].path]=]
+		),
+		vim.fs.joinpath(tree_root, "internal/billing/bill.go")
+	)
+end
+
+T["file-tree: Project tree r renames a folder and the buffers inside"] = function()
+	expand("internal")
+	local buffer = load_buffer("internal/money/money.go")
+	focus_tree_path("internal/money")
+	rename("currency")
+
+	assert(wait_for_path("internal/currency/money.go"), "renamed folder did not appear")
+	eq(vim.uv.fs_stat(vim.fs.joinpath(root, "internal/money")), nil)
+	eq(child.api.nvim_buf_get_name(buffer), vim.fs.joinpath(tree_root, "internal/currency/money.go"))
+end
+
+T["file-tree: Project tree r reports an existing name"] = function()
+	local notifications = H.record_notify(child)
+	local invoice = vim.fs.joinpath(root, "internal/billing/invoice.go")
+	local tax = vim.fs.joinpath(root, "internal/billing/tax.go")
+	local invoice_before = vim.fn.readfile(invoice)
+	local tax_before = vim.fn.readfile(tax)
+	open_billing()
+	focus_tree_path("internal/billing/invoice.go")
+	rename("tax.go")
+	assert(child.wait([[#Notifications > 0]]), "rename conflict was not reported")
+
+	eq(notifications()[#notifications()], {
+		msg = "Already exists: internal/billing/tax.go",
+		level = vim.log.levels.ERROR,
+	})
+	eq(vim.fn.readfile(invoice), invoice_before)
+	eq(vim.fn.readfile(tax), tax_before)
+end
+
+T["file-tree: Project tree rename refuses a vanished row"] = function()
+	local notifications = H.record_notify(child)
+	open_billing()
+	focus_tree_path("internal/billing/invoice.go")
+	attach_rename_recorder()
+	vim.fn.delete(vim.fs.joinpath(root, "internal/billing/invoice.go"))
+	rename("bill.go")
+	assert(child.wait([[#Notifications > 0]]), "vanished rename was not reported")
+
+	eq(vim.uv.fs_stat(vim.fs.joinpath(root, "internal/billing/bill.go")), nil)
+	eq(child.lua_get("RenameRequestCount"), 0)
+	local notification = notifications()[#notifications()]
+	assert(notification.msg:find("Rename failed:", 1, true) == 1, "vanished source failure was not reported")
+	eq(notification.level, vim.log.levels.ERROR)
+end
+
+T["file-tree: Project tree move preflights the whole batch"] = MiniTest.new_set()
+
+T["file-tree: Project tree move preflights the whole batch"]["rejects a vanished later source before moving"] = function()
+	H.record_notify(child)
+	open_billing()
+	attach_rename_recorder()
+	local invoice = vim.fs.joinpath(tree_root, "internal/billing/invoice.go")
+	local tax = vim.fs.joinpath(tree_root, "internal/billing/tax.go")
+	local invoice_target = vim.fs.joinpath(tree_root, "internal/money/invoice.go")
+	local tax_target = vim.fs.joinpath(tree_root, "internal/money/tax.go")
+	eq(child.lua_get([[vim.uv.fs_unlink(...)]], { tax }), true)
+	eq(child.lua_get([[vim.uv.fs_lstat(...) == nil]], { tax }), true)
+
+	local outcome = child.lua_get(
+		[[(function(move_pairs)
+			local move = require("gleb.file_tree.ops").move
+			if type(move) ~= "function" then
+				return { api = false }
+			end
+			return { api = true, moved = move(move_pairs), notifications = Notifications }
+		end)(...)]],
+		{ { { old = invoice, new = invoice_target }, { old = tax, new = tax_target } } }
+	)
+	eq(outcome.api, true)
+	eq(outcome.moved, false)
+
+	eq(vim.uv.fs_stat(invoice) ~= nil, true)
+	eq(vim.uv.fs_stat(invoice_target), nil)
+	eq(vim.uv.fs_stat(tax_target), nil)
+	eq(child.lua_get("RenameRequestCount"), 0)
+	local notification = outcome.notifications[#outcome.notifications]
+	assert(notification.msg:find("Rename failed:", 1, true) == 1, "batch failure was not reported")
+	eq(notification.level, vim.log.levels.ERROR)
+end
+
+T["file-tree: Project tree move preflights the whole batch"]["deduplicates nested selections"] = function()
+	local path_helpers = require("gleb.file_tree.paths")
+	eq(
+		path_helpers.dedupe({
+			"/project/internal/billing/invoice.go",
+			"/project/README.md",
+			"/project/internal",
+			"/project/internal/billing",
+			"/project/README.md",
+		}),
+		{ "/project/README.md", "/project/internal" }
+	)
+end
+
+T["file-tree: Project tree move preflights the whole batch"]["rejects the batch when a later source is missing"] = function()
+	local path_helpers = require("gleb.file_tree.paths")
+	local stats = {
+		["/project/one.go"] = { dev = 7 },
+		["/project/archive"] = { dev = 7 },
+	}
+	local ok, reason, failed_path = path_helpers.preflight_moves("/project", {
+		{ old = "/project/one.go", new = "/project/archive/one.go" },
+		{ old = "/project/two.go", new = "/project/archive/two.go" },
+	}, {
+		lstat = function(path)
+			return stats[path]
+		end,
+		stat = function(path)
+			return stats[path]
+		end,
+		read_dir = function()
+			return {}
+		end,
+	})
+
+	eq({ ok, reason, failed_path }, { nil, "missing", "/project/two.go" })
+end
+
+T["file-tree: Project tree move preflights the whole batch"]["rejects case-insensitive target conflicts"] = function()
+	local path_helpers = require("gleb.file_tree.paths")
+	local ok, reason, failed_path = path_helpers.preflight_moves("/project", {
+		{ old = "/project/invoice.go", new = "/project/archive/invoice.go" },
+	}, {
+		lstat = function()
+			return { dev = 7 }
+		end,
+		stat = function()
+			return { dev = 7 }
+		end,
+		read_dir = function()
+			return { "Invoice.go" }
+		end,
+	})
+
+	eq({ ok, reason, failed_path }, { nil, "exists", "/project/archive/invoice.go" })
+end
+
+T["file-tree: Project tree move preflights the whole batch"]["allows a case-only rename of its source"] = function()
+	local path_helpers = require("gleb.file_tree.paths")
+	local ok = path_helpers.preflight_moves("/project", {
+		{ old = "/project/Invoice.go", new = "/project/invoice.go" },
+	}, {
+		lstat = function()
+			return { dev = 7 }
+		end,
+		stat = function()
+			return { dev = 7 }
+		end,
+		read_dir = function()
+			return { "Invoice.go" }
+		end,
+	})
+
+	eq(ok, true)
 end
 
 T["file-tree: Project tree create reports a read-only destination"] = MiniTest.new_set()
