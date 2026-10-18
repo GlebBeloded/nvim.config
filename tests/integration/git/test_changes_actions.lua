@@ -171,4 +171,29 @@ T["git: Changes panel X reverts a rename"] = function()
 	})
 end
 
+T["git: Changes panel X on unborn HEAD keeps the file"] = function()
+	local dir = vim.fs.normalize(vim.fn.tempname())
+	vim.fn.mkdir(dir, "p")
+	H.git(dir, { "init", "-q", "-b", "main" })
+	H.write_files(dir, { ["a.txt"] = "content\n" })
+	H.git(dir, { "add", "a.txt" })
+	local path = vim.fs.joinpath(vim.fn.resolve(dir), "a.txt")
+	open_changes(dir)
+	select_path("a.txt")
+	record_system_calls()
+
+	revert_with_answer("y")
+
+	eq(
+		vim.wait(ASYNC_MS, function()
+			return vim.trim(H.git(dir, { "ls-files", "--others", "--exclude-standard", "--", "a.txt" })) == "a.txt"
+		end, 50),
+		true
+	)
+	eq(vim.fn.readfile(path), { "content" })
+	eq(revert_calls(), {
+		{ "git", "--literal-pathspecs", "rm", "--cached", "--", path },
+	})
+end
+
 return T

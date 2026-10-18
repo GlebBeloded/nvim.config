@@ -138,9 +138,9 @@ Scenarios: `git: Changes panel X reverts a file after confirmation`, `git: Chang
 
 ## 6b. Revert on unborn HEAD
 Scenarios: `git: Changes panel X on unborn HEAD keeps the file`
-- [ ] 6b.1 Write the scenario in `tests/integration/git/test_changes_actions.lua` with a staged file in a repository without commits and see it fail
-- [ ] 6b.2 Fall back to literal-pathspec `rm --cached` when HEAD is unborn
-- [ ] 6b.3 Run `make test FILE=tests/integration/git/test_changes_actions.lua CASE="Changes panel X on unborn HEAD keeps the file"` and see it pass
+- [x] 6b.1 Write the scenario in `tests/integration/git/test_changes_actions.lua` with a staged file in a repository without commits and see it fail
+- [x] 6b.2 Fall back to literal-pathspec `rm --cached` when HEAD is unborn
+- [x] 6b.3 Run `make test FILE=tests/integration/git/test_changes_actions.lua CASE="Changes panel X on unborn HEAD keeps the file"` and see it pass
 
 ## 6c. Commit
 Scenarios: `git: Changes panel gc commits confirmed message`, `git: Changes panel gc reports commit failure`
@@ -182,6 +182,7 @@ Scenarios: `git: Changes panel matches the approved render`, `git: Changes panel
 - Binary detection uses Git numstat while conflict content uses its porcelain status, keeping both kinds in unnamed read-only buffers without guessing from file bytes.
 - Panel diff loading reports an initially unloaded file buffer to its owning panel, so close can unload clean owned buffers without touching preloaded or modified buffers.
 - Revert uses `vim.ui.input` so the standalone Changes panel keeps the existing prompt without requiring neo-tree UI setup.
+- Unborn-HEAD revert reuses the added-file path because every staged path without a commit is added, and that path already runs literal-pathspec `rm --cached`.
 
 ## Stuck
 
