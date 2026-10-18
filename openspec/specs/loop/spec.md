@@ -772,8 +772,8 @@ The loop SHALL keep the user's contract unasked: no step changes a requirement's
 - **THEN** its JSON `decision` is `reject` and `reasons` names the re-added requirement
 
 #### Scenario: Judge rejects a change that rewrites the user's Decision
-- **WHEN** `.archon/scripts/escalation.py` runs on a branch that rewords the `## Decision` section of a proposal on `auto`, and on one that edits only its `## Why`
-- **THEN** the first JSON `decision` is `reject` with a reason naming the proposal, and the second is `ship`
+- **WHEN** `.archon/scripts/escalation.py` runs on a branch that rewords the `## Decision` section of a proposal on `auto`, on one that edits only its `## Why`, and on one whose `auto` extended the Decision after the branch forked
+- **THEN** the first JSON `decision` is `reject` with a reason naming the proposal, and the second and third are `ship`
 
 #### Scenario: Adopt reverts main spec edits
 - **WHEN** `.archon/scripts/adopt.py` merges a branch that edits and adds files under `openspec/specs/` and edits another file
