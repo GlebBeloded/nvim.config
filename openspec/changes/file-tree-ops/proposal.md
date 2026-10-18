@@ -1,6 +1,7 @@
 ## Why
 
 Kind: feature
+Adopt: loop/file-tree-ops-20261018-042709
 Depends: file-tree-view
 
 The project tree from `file-tree-view` can only browse. The user edits files from the tree every day: add, rename, delete, copy and move. They use neo-tree's operations today (the `file-tree` spec's "Common tree edit mappings"). neo-tree's prompts are nui inputs at the cursor row, outside the shared picker frame (Current renders in design.md). Its renames never tell the language servers, so imports are not updated the way IntelliJ's rename updates them.
@@ -102,3 +103,19 @@ The project tree from `file-tree-view` can only browse. The user edits files fro
 - **The tree clipboard** is the tree's own state, not a register. A cut is cleared after its paste. A copy can be pasted many times.
 - **A compact row** (`cmd/server`) stands for its last folder in every operation.
 - **Modified buffers** of deleted files stay open, so unsaved text is never lost. Renamed modified buffers are written to the new path by `vim.lsp.util.rename` (`:saveas!`), and auto-save writes them anyway.
+
+## Rejected run
+Run on `loop/file-tree-ops-20261018-042709` was rejected by the judge:
+- fix loop exhausted with gates still red: review
+- review findings:
+  [must-fix] A case-only rename of a symlink row still resolves the realpath, so buffers end up named after a path outside the root. In lua/gleb/file_tree/ops.lua:217-224, `rename_path` takes the case-only branch (`rename_case_only(old, new, buffers_at(old))`) before the `fs_lstat(...).type == "link"` check. `buffers_at` (ops.lua:77-99) matches buffers by realpath, and line 170 renames them to `dirname(logical_old)/basename(new)`.
+  
+  Probe: `proj/link.txt` is a symlink to `out/target.txt` outside the root. Load the target directly, and also through `link.txt`. Then call `ops.move({{old=root.."/link.txt", new=root.."/Link.txt"}})`. It returns true and the link moves, but both buffers are now named `<tmp>/out/Link.txt`, a path that does not exist outside the root. A `:write` then creates a file beyond the root.
+  
+  This breaks "Project tree move identity and state" ("rename moves a symlink and not its target … buffers move by logical path"), "operation path safety" and the auditor Decision (act on the row's lstat path, never its realpath).
+  
+  Why pass 6 missed it: the fix c7a0dfac added the link branch after the case-only branch, and the new test only covers a rename that is not case-only.
+  
+  Fix: check lstat for a link before the case-only branch. For a link, use `buffers_at_logical_path`, and do the case-only move through a temporary sibling with `fs_rename`. Add a case-only symlink rename to the symlink scenario's test.
+  
+  [minor] Visual `c`/`x` still leave Visual mode active (ops.lua:58
