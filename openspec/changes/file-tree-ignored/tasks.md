@@ -48,9 +48,9 @@ Scenarios: `file-tree: Ignored rows are grey italic`
 
 ## 4b. Prevent descent through ignored folders
 Scenarios: `file-tree: Unfold all leaves ignored folders collapsed`, `file-tree: Expanded ignored folder lists ignored children`, `file-tree: Ignored folders do not compact or consume unfold budget`
-- [ ] 4b.1 Write the three scenarios in `tests/integration/file-tree/test_ignored.lua` using `zR` and `za`, and run `make test FILE=tests/integration/file-tree/test_ignored.lua` to see them fail
-- [ ] 4b.2 Pass ignored state down from the parent, scan and watch an ignored folder only on explicit expansion, keep unfold-all out of ignored folders, filter before compaction, and count only listed rows toward caps
-- [ ] 4b.3 Run `make test FILE=tests/integration/file-tree/test_ignored.lua` and see the three scenarios pass
+- [x] 4b.1 Write the three scenarios in `tests/integration/file-tree/test_ignored.lua` using `zR` and `za`, and run `make test FILE=tests/integration/file-tree/test_ignored.lua` to see them fail
+- [x] 4b.2 Pass ignored state down from the parent, scan and watch an ignored folder only on explicit expansion, keep unfold-all out of ignored folders, filter before compaction, and count only listed rows toward caps
+- [x] 4b.3 Run `make test FILE=tests/integration/file-tree/test_ignored.lua` and see the three scenarios pass
 
 ## 5. Pin the approved screen
 Scenarios: `file-tree: Show Ignored matches the approved render`

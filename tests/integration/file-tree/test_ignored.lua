@@ -707,4 +707,80 @@ T["file-tree: Ignored rows are grey italic"]["uses the ignored group for names a
 	eq(child.lua_get([[vim.api.nvim_get_hl(0, { name = "FileTreeIgnored", link = false }).italic]]), true)
 end
 
+T["file-tree: Unfold all leaves ignored folders collapsed"] = MiniTest.new_set()
+
+T["file-tree: Unfold all leaves ignored folders collapsed"]["does not descend into ignored directories"] = function()
+	local project = F.copy("treeproj", vim.fn.tempname() .. "/billing")
+	open_tree(project, settings_file({}))
+	wait_for_git()
+	child.type_keys("I")
+	wait_for_label("bin", true)
+
+	child.type_keys("zR")
+
+	local bin = assert(row_for("bin"))
+	local node_modules = assert(row_for("web/node_modules"))
+	eq({ bin.expanded, bin.empty }, { false, false })
+	eq({ node_modules.expanded, node_modules.empty }, { false, false })
+	eq(has_label("server"), false)
+	eq(has_label("left-pad"), false)
+end
+
+T["file-tree: Expanded ignored folder lists ignored children"] = MiniTest.new_set()
+
+T["file-tree: Expanded ignored folder lists ignored children"]["inherits ignored state without another git call"] = function()
+	local project = F.copy("treeproj", vim.fn.tempname() .. "/billing")
+	open_tree(project, settings_file({}))
+	wait_for_git()
+	child.type_keys("I")
+	wait_for_label("bin", true)
+	child.lua([[
+		_G.file_tree_system_calls = {}
+		local original_system = vim.system
+		vim.system = function(command, options, callback)
+			_G.file_tree_system_calls[#_G.file_tree_system_calls + 1] = command
+			return original_system(command, options, callback)
+		end
+	]])
+
+	focus_tree_path("bin")
+	child.type_keys("za")
+
+	eq(has_label("server"), true)
+	eq(row_groups("bin/server"), { "FileTreeIgnored", "FileTreeIgnored" })
+	eq(
+		child.lua_get([[vim.iter(_G.file_tree_system_calls):any(function(command) return command[1] == "git" end)]]),
+		false
+	)
+end
+
+T["file-tree: Ignored folders do not compact or consume unfold budget"] = MiniTest.new_set()
+
+T["file-tree: Ignored folders do not compact or consume unfold budget"]["counts only listed rows near the cap"] = function()
+	local project = F.copy("treeproj", vim.fn.tempname() .. "/billing")
+	for index = 1, 4870 do
+		local path = vim.fs.joinpath(project, ("budget-%04d.txt"):format(index))
+		local file = assert(vim.uv.fs_open(path, "w", 420))
+		assert(vim.uv.fs_close(file))
+	end
+	for index = 1, 150 do
+		local path = vim.fs.joinpath(project, "bin", ("ignored-%04d.txt"):format(index))
+		local file = assert(vim.uv.fs_open(path, "w", 420))
+		assert(vim.uv.fs_close(file))
+	end
+	open_tree(project, settings_file({}))
+	wait_for_git()
+	child.type_keys("I")
+	wait_for_label("bin", true)
+	local notifications = H.record_notify(child)
+
+	child.type_keys("zR")
+
+	local node_modules = assert(row_for("web/node_modules"))
+	eq(node_modules.label, "node_modules")
+	eq({ node_modules.expanded, node_modules.empty }, { false, false })
+	eq(has_label("cart.tsx"), true)
+	eq(notifications(), {})
+end
+
 return T

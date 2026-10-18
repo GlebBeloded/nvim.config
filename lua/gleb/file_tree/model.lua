@@ -239,16 +239,18 @@ end
 ---@param path string
 ---@param nesting_settings? FileTreeNestingSettings
 ---@param opts FileTreeRowOptions
+---@param parent_ignored? boolean
 ---@return FileTreeEntry[]
 ---@return table<string, string[]>
 ---@return table<string, boolean>
-local function visible_entries(tree, path, nesting_settings, opts)
+local function visible_entries(tree, path, nesting_settings, opts, parent_ignored)
 	local scan = tree.scan(path)
 	local entries = {}
 	local ignored_entries = {}
 	for _, entry in ipairs(scan) do
 		local relative = relative_path(tree.root, entry.path)
-		local entry_ignored = ignore.is_ignored(opts.ignored, opts.matcher, relative, entry.kind == "directory", false)
+		local entry_ignored =
+			ignore.is_ignored(opts.ignored, opts.matcher, relative, entry.kind == "directory", parent_ignored == true)
 		if entry.name ~= ".git" and (opts.show_ignored or not entry_ignored) then
 			entries[#entries + 1] = entry
 			ignored_entries[entry.name] = entry_ignored
@@ -332,11 +334,11 @@ end
 local function compact_directory(tree, entry, nesting_settings, opts)
 	local names = { entry.name }
 	local tail = entry
-	local children = visible_entries(tree, tail.path, nesting_settings, opts)
-	while #children == 1 and children[1].kind == "directory" do
+	local children, _, ignored_entries = visible_entries(tree, tail.path, nesting_settings, opts)
+	while #children == 1 and children[1].kind == "directory" and not ignored_entries[children[1].name] do
 		tail = children[1]
 		names[#names + 1] = tail.name
-		children = visible_entries(tree, tail.path, nesting_settings, opts)
+		children, _, ignored_entries = visible_entries(tree, tail.path, nesting_settings, opts)
 	end
 	return table.concat(names, "/"), tail, children
 end
@@ -349,8 +351,19 @@ end
 ---@param depth integer
 ---@param nesting_settings? FileTreeNestingSettings
 ---@param expanded_nests? table<string, boolean>
-local function append_children(tree, expanded, opts, rows, path, depth, nesting_settings, expanded_nests)
-	local entries, nest_map, ignored_entries = visible_entries(tree, path, nesting_settings, opts)
+---@param parent_ignored? boolean
+local function append_children(
+	tree,
+	expanded,
+	opts,
+	rows,
+	path,
+	depth,
+	nesting_settings,
+	expanded_nests,
+	parent_ignored
+)
+	local entries, nest_map, ignored_entries = visible_entries(tree, path, nesting_settings, opts, parent_ignored)
 	local entries_by_name = {}
 	local nested = {}
 	for _, entry in ipairs(entries) do
@@ -370,13 +383,7 @@ local function append_children(tree, expanded, opts, rows, path, depth, nesting_
 				label, tail, children = compact_directory(tree, entry, nesting_settings, opts)
 			end
 			local relative = relative_path(tree.root, tail.path)
-			local row_ignored = ignore.is_ignored(
-				opts.ignored,
-				opts.matcher,
-				relative,
-				tail.kind == "directory",
-				ignored_entries[entry.name] == true
-			)
+			local row_ignored = ignored_entries[entry.name] == true
 			local is_expanded = tail.kind == "directory" and expanded[relative] == true
 			local nest_children = nest_map[entry.name]
 			local nest_expanded = nest_children ~= nil and expanded_nests ~= nil and expanded_nests[relative] == true
@@ -389,14 +396,24 @@ local function append_children(tree, expanded, opts, rows, path, depth, nesting_
 				label = label,
 				path = tail.path,
 				expanded = is_expanded,
-				empty = tail.kind == "directory" and #children == 0,
+				empty = tail.kind == "directory" and not row_ignored and #children == 0,
 				status = row_status,
 				ignored = row_ignored,
 				nest_children = nest_children,
 				nest_expanded = nest_expanded,
 			}
 			if is_expanded then
-				append_children(tree, expanded, opts, rows, tail.path, depth + 1, nesting_settings, expanded_nests)
+				append_children(
+					tree,
+					expanded,
+					opts,
+					rows,
+					tail.path,
+					depth + 1,
+					nesting_settings,
+					expanded_nests,
+					row_ignored
+				)
 			elseif nest_expanded then
 				for _, child_name in ipairs(nest_children) do
 					local child = entries_by_name[child_name]
@@ -438,7 +455,7 @@ function M.rows(tree, expanded, opts, nesting_settings, expanded_nests)
 			ignored = false,
 		},
 	}
-	append_children(tree, expanded, opts, rows, tree.root, 0, nesting_settings, expanded_nests)
+	append_children(tree, expanded, opts, rows, tree.root, 0, nesting_settings, expanded_nests, false)
 	return rows
 end
 

@@ -550,7 +550,7 @@ local function append_directory_children(rows, parent, queue)
 			found_parent = true
 		elseif found_parent and row.depth <= parent.depth then
 			return
-		elseif found_parent and row.depth == parent.depth + 1 and row.kind == "directory" then
+		elseif found_parent and row.depth == parent.depth + 1 and row.kind == "directory" and not row.ignored then
 			queue[#queue + 1] = row
 		end
 	end
@@ -573,7 +573,7 @@ function M.unfold_all()
 		model.rows(tree, view.expanded, row_options(view, loaded_settings), nesting_settings, view.expanded_nests)
 	local queue = {}
 	for _, row in ipairs(rows) do
-		if row.kind == "directory" then
+		if row.kind == "directory" and not row.ignored then
 			queue[#queue + 1] = row
 		end
 	end
