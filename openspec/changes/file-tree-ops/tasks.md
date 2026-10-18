@@ -94,6 +94,13 @@ Scenarios: `file-tree: Project tree operation keys come from the keymap file`, `
 - [ ] 8.2 Update `docs/architecture.md` only for the new `file_tree/ops.lua`, `paths.lua`, `lsp_files.lua` and `picker/input.lua` module responsibilities allowed by rule 10
 - [ ] 8.3 Run `make test CAPS=find-action,actions,file-tree` (including `more_results` and neo-tree `test_tree.lua`), then run `make check`, and see both pass
 
+## Stuck
+
+- Task 3b remains unticked. The red tests prove that create accepts `../outside`, only `file_tree.add` is registered, and the add prompt does not match the approved G1 render.
+- Probe: the input picker retained an empty query, accepted multibyte `{ "å", "界" }`, resized from width 70 to 44 at 46 columns, and became inactive after its window was closed (`wins = 2`).
+- Attempt 1 added normalized create containment plus all requested actions and mappings. The integration cases passed, but G1 showed the prompt one row too high and no statusline.
+- Attempt 2 shifted the input frame down and tried retaining the originating/global statusline. The frame then matched rows 13–17, but the focused minimal float rendered first Neovim's default statusline and then a blank line instead of the approved lualine row. The saved production diff is `artifacts/runs/fce92e56-8211-40e7-9a50-95c1cdfead98/stuck-attempt.diff`.
+
 ## Agent decisions
 
 - Create invalidates the root's cached scan before redrawing, so the submitted path is selected immediately without waiting for a watcher event.

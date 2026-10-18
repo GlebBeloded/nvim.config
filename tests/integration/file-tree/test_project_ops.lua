@@ -175,4 +175,71 @@ T["file-tree: Project tree a reports an existing name"] = function()
 	eq(vim.fn.readfile(tax_path), before)
 end
 
+T["file-tree: Project tree create reports a read-only destination"] = MiniTest.new_set()
+
+T["file-tree: Project tree create reports a read-only destination"]["reports the filesystem error"] = function()
+	local notifications = H.record_notify(child)
+	focus_tree_path("")
+	child.lua([[vim.uv.fs_chmod(..., 365)]], { tree_root })
+	add("blocked.go")
+
+	eq(vim.uv.fs_stat(vim.fs.joinpath(root, "blocked.go")), nil)
+	local notification = notifications()[#notifications()]
+	assert(notification.msg:find("Create failed:", 1, true) == 1, "create failure was not reported")
+	eq(notification.level, vim.log.levels.ERROR)
+end
+
+T["file-tree: Project tree create reports a read-only destination"]["rejects a destination outside the root"] = function()
+	local notifications = H.record_notify(child)
+	local outside = vim.fs.joinpath(vim.fs.dirname(tree_root), "outside")
+	focus_tree_path("")
+	add("../outside")
+
+	eq(vim.uv.fs_stat(outside), nil)
+	local notification = notifications()[#notifications()]
+	assert(notification.msg:find("Create failed:", 1, true) == 1, "unsafe destination was not reported")
+	eq(notification.level, vim.log.levels.ERROR)
+end
+
+T["file-tree: Project tree operation keys come from the keymap file"] = function()
+	local actual = child.lua_get([[
+(function()
+	local result = { n = {}, x = {}, actions = {} }
+	for _, mode in ipairs({ "n", "x" }) do
+		for _, map in ipairs(vim.api.nvim_buf_get_keymap(0, mode)) do
+			result[mode][map.lhs] = map.desc
+		end
+	end
+	local shortcuts = vim.json.decode(table.concat(vim.fn.readfile(
+		vim.fs.joinpath(vim.fn.stdpath("config"), "settings/keymap.json")), "\n"))
+	local catalog = require("gleb.actions").state.applicator.catalog
+	for _, name in ipairs({ "add", "rename", "delete", "copy", "cut", "paste", "refresh" }) do
+		local id = "file_tree." .. name
+		local action = assert(catalog:get(id), id .. " is not registered")
+		result.actions[id] = { keys = shortcuts[id], plugin = action.plugin }
+	end
+	return result
+end)()
+]])
+	local expected = {
+		add = { keys = { "a" }, title = "New File or Directory" },
+		rename = { keys = { "r" }, title = "Rename" },
+		delete = { keys = { "d" }, title = "Delete", visual = true },
+		copy = { keys = { "c" }, title = "Copy", visual = true },
+		cut = { keys = { "x" }, title = "Cut", visual = true },
+		paste = { keys = { "p" }, title = "Paste" },
+		refresh = { keys = { "R" }, title = "Refresh" },
+	}
+	for name, operation in pairs(expected) do
+		local id = "file_tree." .. name
+		eq(actual.actions[id], { keys = operation.keys })
+		for _, lhs in ipairs(operation.keys) do
+			eq(actual.n[lhs], "Project: " .. operation.title)
+			if operation.visual then
+				eq(actual.x[lhs], "Project: " .. operation.title)
+			end
+		end
+	end
+end
+
 return T
