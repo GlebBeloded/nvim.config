@@ -173,4 +173,47 @@ T["file-tree: Project tree colours changed files"]["marks files below an untrack
 	eq({ rows[2].status, rows[3].status }, { "untracked", "untracked" })
 end
 
+T["file-tree: Shared parser preserves rename and copy origins"] = MiniTest.new_set()
+
+T["file-tree: Shared parser preserves rename and copy origins"]["consumes each original-path field"] = function()
+	local output = table.concat({
+		"2 R. N... 100644 100644 100644 abcdef1 abcdef2 R100 new name.md",
+		"old name.md",
+		"2 C. S.M. 100644 100644 100644 abcdef3 abcdef4 C75 copy.md",
+		"source.md",
+	}, "\0") .. "\0"
+
+	eq(model.parse_status_records(output), {
+		{ kind = "2", xy = "R.", sub = "N...", path = "new name.md", orig = "old name.md" },
+		{ kind = "2", xy = "C.", sub = "S.M.", path = "copy.md", orig = "source.md" },
+	})
+end
+
+T["file-tree: Shared parser classifies added and unmerged records"] = MiniTest.new_set()
+
+T["file-tree: Shared parser classifies added and unmerged records"]["maps worktree additions and conflicts"] = function()
+	local output = table.concat({
+		"1 .A N... 000000 000000 100644 0000000 1234567 added.lua",
+		"u UU N... 100644 100644 100644 100644 abcdef1 abcdef2 abcdef3 conflicted.lua",
+	}, "\0") .. "\0"
+
+	local status, ignored = model.parse_status(output, "")
+	eq(status, { ["added.lua"] = "added", ["conflicted.lua"] = "conflict" })
+	eq(ignored, {})
+end
+
+T["file-tree: Shared parser keeps ignored records separate"] = MiniTest.new_set()
+
+T["file-tree: Shared parser keeps ignored records separate"]["keeps ignored paths out of status"] = function()
+	local output = table.concat({
+		"1 .M N... 100644 100644 100644 abcdef1 abcdef2 tracked.lua",
+		"? notes.md",
+		"! build/",
+	}, "\0") .. "\0"
+
+	local status, ignored = model.parse_status(output, "")
+	eq(status, { ["tracked.lua"] = "modified", ["notes.md"] = "untracked" })
+	eq(ignored, { ["build/"] = true })
+end
+
 return T

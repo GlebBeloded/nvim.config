@@ -102,8 +102,7 @@ local function watch_git_dir(root, state)
 	local ok = handle:start(path, {}, function(error)
 		if not error then
 			vim.schedule(function()
-				local _, client = next(state.clients)
-				if client then
+				for _, client in pairs(state.clients) do
 					client.refresh_git()
 				end
 			end)

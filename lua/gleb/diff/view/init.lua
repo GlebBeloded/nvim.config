@@ -274,8 +274,10 @@ local function refresh_before_action(view)
 	end
 end
 
+--- Refresh a view's staged comparison from the repository index.
 ---@param view gleb.diff.view.View
-local function refresh_index(view)
+---@return nil
+function M.refresh_index(view)
 	if not view.root then
 		return
 	end
@@ -427,7 +429,7 @@ local function create_interaction_autocmds(view)
 	vim.api.nvim_create_autocmd("FocusGained", {
 		group = view.augroup,
 		callback = function()
-			refresh_index(view)
+			M.refresh_index(view)
 		end,
 	})
 end
