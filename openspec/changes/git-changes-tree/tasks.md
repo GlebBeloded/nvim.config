@@ -12,9 +12,9 @@ Scenarios: `git: Changes panel lists the dirty fixture`, `git: Changes panel com
 
 ## 2b. Status command and row cap
 Scenarios: `git: Changes panel status avoids optional locks`, `git: Changes panel caps rows`
-- [ ] 2b.1 Write the scenarios in `tests/unit/git/test_changes_model.lua` and `tests/integration/git/test_changes.lua`, driving a real panel refresh, and see them fail
-- [ ] 2b.2 Add the no-optional-locks status command and project-tree row cap to the Changes model and git runner
-- [ ] 2b.3 Run `make test FILE=tests/integration/git/test_changes.lua CASE="Changes panel status"` and see it pass
+- [x] 2b.1 Write the scenarios in `tests/unit/git/test_changes_model.lua` and `tests/integration/git/test_changes.lua`, driving a real panel refresh, and see them fail
+- [x] 2b.2 Add the no-optional-locks status command and project-tree row cap to the Changes model and git runner
+- [x] 2b.3 Run `make test FILE=tests/integration/git/test_changes.lua CASE="Changes panel status"` and see it pass
 
 ## 2c. Render and status highlights
 Scenarios: `git: Changes panel colours names by status`, `git: Changes panel highlight colours`, `git: Changes panel treats copies as renamed`
@@ -168,3 +168,4 @@ Scenarios: `git: Changes panel matches the approved render`, `git: Changes panel
 ## Agent decisions
 
 - `model.rows` returns flat display-order rows because rendering, cursor movement and folds consume the same ordered panel model.
+- `model.rows` returns a `capped` flag so the view can own the warning while the model stays pure.

@@ -4,6 +4,8 @@ local M = {}
 
 local file_tree_model = require("gleb.file_tree.model")
 
+local MAX_ROWS = 5000
+
 ---@class ChangesTreeNode
 ---@field name string
 ---@field path string
@@ -144,6 +146,7 @@ end
 ---@param node ChangesTreeNode
 ---@param root_name "changes"|"unversioned"
 ---@param depth integer
+---@return boolean complete
 local function append_directory(rows, node, root_name, depth)
 	local labels = { node.name }
 	local tail = node
@@ -152,6 +155,9 @@ local function append_directory(rows, node, root_name, depth)
 		labels[#labels + 1] = child.name
 		tail = child
 		child = #tail.files == 0 and only_directory(tail) or nil
+	end
+	if #rows >= MAX_ROWS then
+		return false
 	end
 	rows[#rows + 1] = {
 		kind = "directory",
@@ -165,21 +171,31 @@ local function append_directory(rows, node, root_name, depth)
 	}
 
 	for _, directory in ipairs(sorted_directories(tail.directories)) do
-		append_directory(rows, directory, root_name, depth + 1)
+		if not append_directory(rows, directory, root_name, depth + 1) then
+			return false
+		end
 	end
 	table.sort(tail.files, named_before)
 	for _, file in ipairs(tail.files) do
+		if #rows >= MAX_ROWS then
+			return false
+		end
 		file.depth = depth + 1
 		rows[#rows + 1] = file
 	end
+	return true
 end
 
 ---@param rows ChangesRow[]
 ---@param root ChangesTreeNode
 ---@param root_name "changes"|"unversioned"
+---@return boolean complete
 local function append_root(rows, root, root_name)
 	if root.count == 0 then
-		return
+		return true
+	end
+	if #rows >= MAX_ROWS then
+		return false
 	end
 	rows[#rows + 1] = {
 		kind = "root",
@@ -191,19 +207,26 @@ local function append_root(rows, root, root_name)
 		expanded = true,
 	}
 	for _, directory in ipairs(sorted_directories(root.directories)) do
-		append_directory(rows, directory, root_name, 1)
+		if not append_directory(rows, directory, root_name, 1) then
+			return false
+		end
 	end
 	table.sort(root.files, named_before)
 	for _, file in ipairs(root.files) do
+		if #rows >= MAX_ROWS then
+			return false
+		end
 		file.depth = 1
 		rows[#rows + 1] = file
 	end
+	return true
 end
 
 --- Build compact Changes panel rows from porcelain-v2 output.
 ---@param porcelain_z string
 ---@param _nesting_rules table[]
----@return ChangesRow[]
+---@return ChangesRow[] rows
+---@return boolean capped
 function M.rows(porcelain_z, _nesting_rules)
 	local roots = {
 		changes = tree_node("", ""),
@@ -217,9 +240,11 @@ function M.rows(porcelain_z, _nesting_rules)
 	end
 
 	local rows = {}
-	append_root(rows, roots.changes, "changes")
-	append_root(rows, roots.unversioned, "unversioned")
-	return rows
+	local complete = append_root(rows, roots.changes, "changes")
+	if complete then
+		complete = append_root(rows, roots.unversioned, "unversioned")
+	end
+	return rows, not complete
 end
 
 return M

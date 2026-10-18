@@ -118,4 +118,18 @@ T["git: Changes panel lists directory and submodule records"]["keeps both as non
 	})
 end
 
+T["git: Changes panel caps rows"] = MiniTest.new_set()
+
+T["git: Changes panel caps rows"]["stops at the project tree row limit"] = function()
+	local items = {}
+	for index = 1, 5001 do
+		items[index] = status_record(".M", ("file-%04d.txt"):format(index))
+	end
+
+	local rows, capped = model.rows(records(items), default_nesting_rules())
+
+	eq(#rows, 5000)
+	eq(capped, true)
+end
+
 return T
