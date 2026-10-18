@@ -42,16 +42,19 @@ _INDEX: dict[str, str] = {}
 def staged(*args: str, check: bool = True) -> str:
     """`git <args>` against a private copy of the index with everything staged (ship commits everything, so new
     files count). Staging into the real index made the agent's later `git add <touched files>` commit stray files;
-    gate.py imports this module, so the process environment stays untouched."""
-    root = git("rev-parse", "--show-toplevel").strip()
+    gate.py imports this module, so the process environment stays untouched. Staged once per working directory and
+    process (a check reads the tree, never edits it): re-staging on every read doubled the judge's git calls (73,
+    ~7 s at load 30), and it outran the 30 s test timeout under load."""
+    root = os.getcwd()
+    env = {**os.environ, "GIT_INDEX_FILE": _INDEX.get(root, "")}
     if root not in _INDEX:
         index = pathlib.Path(git("rev-parse", "--path-format=absolute", "--git-path", "index").strip())
         copy = pathlib.Path(tempfile.mkdtemp(prefix="integrity-")) / "index"
         if index.is_file():
             shutil.copy2(index, copy)  # keep its mtime: git re-hashes files changed in the index's own second (racy git)
         _INDEX[root] = str(copy)
-    env = {**os.environ, "GIT_INDEX_FILE": _INDEX[root]}
-    subprocess.run(["git", "add", "-A"], capture_output=True, text=True, check=True, env=env)
+        env["GIT_INDEX_FILE"] = str(copy)
+        subprocess.run(["git", "add", "-A"], capture_output=True, text=True, check=True, env=env)
     return subprocess.run(["git", *args], capture_output=True, text=True, check=check, env=env).stdout
 
 
