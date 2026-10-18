@@ -29,7 +29,6 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 
 ## Loop lessons
 
-- Refresh cached comparisons before buffer-mutating actions whenever the debounce or changedtick shows stale input.
 - Keep package aggregators requires-only by loading persisted defaults in the owning implementation part.
 - Render all view rows in one buffer replacement before adding extmarks, so Neovim's mandatory initial line cannot survive as an extra selectable row.
 - Map EndOfBuffer to the view normal highlight when removing a trailing buffer line, so empty viewport cells retain the approved view colour.
@@ -44,6 +43,7 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - Preserve current-window predicates when scheduling UI opens; loaded-buffer checks can hide focus regressions.
 - Pass the same visibility snapshot to drawing and nest actions so toggled ignored children remain actionable.
 - Keep source statuses raw until display policy is available, then exclude hidden descendants before folder and nest aggregation.
+- Wait for captured subprocess content, not capture-file creation; shell redirection makes the file visible before stdin is fully consumed.
 
 ## The loop
 
