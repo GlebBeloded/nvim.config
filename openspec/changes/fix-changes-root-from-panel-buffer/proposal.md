@@ -19,11 +19,17 @@ stack traceback:
         ...s/hlebbeladzed/.config/nvim/lua/gleb/actions/context.lua:82: in function <...s/hlebbeladzed/.config/nvim/lua/gleb/actions/context.lua:76>
 ```
 
+User's repro: press Enter on a file in the Changes panel (diff tree), then press Cmd+G. The file opened that way does
+not count as an independent, normal open buffer (the user's words: "it doesn't count as independent normal open
+buffer"), so the next Cmd+G resolves the root from the panel's buffer instead of the opened file.
+
 The root resolver ran `git` with a cwd built from the Changes panel's own buffer name
 (`gleb-changes:/Users/.../ENG-873`) joined onto a directory, which does not exist.
 
 ## What Changes
 
+- A file opened with Enter from the Changes panel is a normal, independent buffer (Cmd+G and other git actions resolve
+  from it like from any opened file).
 - Cmd+G resolves the repository from a real path in every case, including when the current buffer is the Changes panel
   (or another non-file buffer); it never errors.
 
