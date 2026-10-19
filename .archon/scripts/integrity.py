@@ -4,6 +4,7 @@
 """
 
 import difflib
+from collections import Counter
 import hashlib
 import json
 import os
@@ -157,15 +158,31 @@ def near(a: str, b: str) -> bool:
     return difflib.SequenceMatcher(None, words(a), words(b)).ratio() >= NEAR_NAME
 
 
+NUMBER = re.compile(r"\d+(?:\.\d+)?")
+
+
+def bounds(text: str) -> list[str]:
+    """The numbers a requirement states (times, sizes, counts), in order: what a remove-and-re-add could loosen."""
+    return sorted(NUMBER.findall(text))
+
+
 def readded_requirements() -> list[str]:
-    """A REMOVED requirement ADDED again (same or near name): a way to change its bounds unasked."""
+    """A REMOVED requirement ADDED again (same or near name) without one of its bounds: a way to change them unasked. A
+    rename that keeps every number of the main-spec requirement is not one (run 8aa9b091: the cutover's file tree ->
+    project tree renames were rejected although no bound changed)."""
     reasons = []
     for path in changed_files(r"openspec/changes/[^/]+/specs/.+\.md"):
-        reqs = delta_requirements(open(path).read())
+        text = open(path).read()
+        reqs = delta_requirements(text)
+        main = pathlib.Path("openspec/specs") / pathlib.Path(path).parent.name / "spec.md"
+        main_text = main.read_text() if main.is_file() else ""
         for gone in reqs.get("REMOVED", []):
-            again = [a for a in reqs.get("ADDED", []) if near(gone, a)]
-            if again:
-                reasons.append(f"removes and re-adds requirement '{gone}' as '{again[0]}' ({path}): check its bounds")
+            for again in (a for a in reqs.get("ADDED", []) if near(gone, a)):
+                before = requirement_body(main_text, gone)
+                if before and not Counter(bounds(before)) - Counter(bounds(requirement_body(text, again))):
+                    continue  # every bound kept (new scenarios may add numbers); a loosened 100 -> 1000 drops the 100
+                reasons.append(f"removes and re-adds requirement '{gone}' as '{again}' ({path}): check its bounds")
+                break
     return reasons
 
 

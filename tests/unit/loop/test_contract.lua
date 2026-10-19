@@ -110,6 +110,20 @@ T["loop: Judge rejects a change that re-adds a removed requirement"] = function(
 	local out = run("escalation.py", repo)
 	eq(out.decision, "reject")
 	has(out.reasons, "re-adds requirement 'Server readiness'")
+	-- a rename that keeps every bound of the main-spec requirement ships; one that loosens a bound does not
+	local main = "# lsp\n\n## Requirements\n\n### Requirement: Server readiness\nEach server SHALL answer within 1 s.\n\n"
+		.. "#### Scenario: s\n- **WHEN** x\n- **THEN** y\n"
+	local kept = delta:gsub("2%.5 s", "1 s")
+	local renamed = branch_repo(
+		{ ["openspec/specs/lsp/spec.md"] = main },
+		{ ["openspec/changes/c/specs/lsp/spec.md"] = kept }
+	)
+	eq(run("escalation.py", renamed).decision, "ship")
+	local loosened = branch_repo(
+		{ ["openspec/specs/lsp/spec.md"] = main },
+		{ ["openspec/changes/c/specs/lsp/spec.md"] = delta }
+	)
+	has(run("escalation.py", loosened).reasons, "re-adds requirement 'Server readiness'")
 end
 
 T["loop: Judge rejects a change that rewrites the user's Decision"] = function()

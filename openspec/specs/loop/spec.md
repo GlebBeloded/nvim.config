@@ -772,8 +772,8 @@ The loop SHALL keep the user's contract unasked: no step changes a requirement's
 - **THEN** it forbids changing a requirement's numbers or bounds, removing a requirement to add it again, rewording `## Decision` and dropping, narrowing or scoping out a `## What Changes` item, and settles any `## Blocked` section left
 
 #### Scenario: Judge rejects a change that re-adds a removed requirement
-- **WHEN** `.archon/scripts/escalation.py` runs on a branch whose change delta REMOVES requirement `Server readiness` and ADDS `Server readiness.` (a near name)
-- **THEN** its JSON `decision` is `reject` and `reasons` names the re-added requirement
+- **WHEN** `.archon/scripts/escalation.py` runs on a branch whose change delta REMOVES requirement `Server readiness` and ADDS `Server readiness.` (a near name), once with no main-spec text, once keeping the main spec's `1 s` and once loosening it to `2.5 s`
+- **THEN** the first and third JSON `decision`s are `reject` with `reasons` naming the re-added requirement, and the second (every bound kept) is `ship`
 
 #### Scenario: Judge rejects a change that rewrites the user's Decision
 - **WHEN** `.archon/scripts/escalation.py` runs on a branch that rewords the `## Decision` section of a proposal on `auto`, on one that edits only its `## Why`, and on one whose `auto` extended the Decision after the branch forked
