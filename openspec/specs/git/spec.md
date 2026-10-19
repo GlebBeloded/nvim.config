@@ -430,7 +430,7 @@ Added, untracked, deleted, binary, unmerged and submodule rows SHALL produce spe
 - **THEN** the panel closes its own previous view and notifies `No content changes: mode.txt`
 
 ### Requirement: Changes panel review
-The `changes.review` action SHALL open the changes panel when it is closed (cursor on the current file's row, else the first file row), focus it when open, and show the diff of the row under the cursor at once.
+The `changes.review` action SHALL open the changes panel when it is closed (cursor on the current file's row, else the first file row), focus it when open, and show the diff of the row under the cursor at once. When run from the dashboard, the panel-owned diff SHALL replace the dashboard window.
 
 #### Scenario: Changes panel review shows the current file's diff
 - **WHEN** `internal/billing/invoice.go` of the `billing` fixture is edited and the `changes.review` action runs
@@ -439,6 +439,10 @@ The `changes.review` action SHALL open the changes panel when it is closed (curs
 #### Scenario: Changes panel review without a changed current file
 - **WHEN** `:enew` is current in a copy of the `dirty` fixture and the `changes.review` action runs
 - **THEN** the panel cursor is on the `c.lua` row and the diff view shows `lib/c.lua`
+
+#### Scenario: Changes panel review replaces the dashboard
+- **WHEN** Neovim starts on the Alpha dashboard in a copy of the `dirty` fixture and the `changes.review` action runs
+- **THEN** the `gleb-changes` window is current, the diff view shows `lib/c.lua`, and no window displays an `alpha` buffer
 
 ### Requirement: Changes panel diff file navigation
 While the diff view shows a panel file, `diff.next_file` SHALL move the panel cursor to the next file and show it immediately; the last stays. When invoked from a diff window, completion SHALL focus the new view's `right_win`.
