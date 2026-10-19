@@ -11,6 +11,7 @@ Scenarios: `file-tree: Directory argument opens the project tree`
 - The deletion module receives the public operation state so trash overrides keep following resets without duplicate state.
 - Diff mappings receive the public window registry so they can preserve routing without creating a module cycle.
 - Diff autocmds receive redraw and index-refresh callbacks so event ownership moves out without creating a module cycle.
+- References layout receives render and preview callbacks so geometry moves out without creating a module cycle.
 
 ## 2. Extract file-tree folds
 Scenarios: `file-tree: za toggles a nest`
@@ -38,7 +39,7 @@ Scenarios: `diff: Diff view re-diffs after an edit`
 
 ## 8. Extract references formatting and layout
 Scenarios: `references: Wide view matches reference screenshot`
-- [ ] 8.1 Run `make test FILE=tests/screen/references/test_view.lua CASE="Wide view matches reference screenshot"` and see it pass, move segment formatting into `lua/gleb/references/format.lua` and geometry/layout into `lua/gleb/references/layout.lua`, run it again and see it pass
+- [x] 8.1 Run `make test FILE=tests/screen/references/test_view.lua CASE="Wide view matches reference screenshot"` and see it pass, move segment formatting into `lua/gleb/references/format.lua` and geometry/layout into `lua/gleb/references/layout.lua`, run it again and see it pass
 
 ## 9. Extract references preview coordination
 Scenarios: `references: Preview follows the selection`
