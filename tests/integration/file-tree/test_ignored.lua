@@ -112,9 +112,15 @@ local function wait_for_git()
 			local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
 			local git = require("gleb.file_tree.git")
 			local state = git.state.roots[view.root]
-			return state and git.state.runs > 0 and state.timer == nil and not state.in_flight
+			return state
+				and git.state.runs > 0
+				and state.timer == nil
+				and not state.in_flight
+				and not view.dirty
+				and view.dirty_timer == nil
+				and not view.git_pending
 		end)()]],
-			3000
+			math.ceil(3000 * H.load_factor())
 		),
 		"git status did not finish"
 	)
@@ -161,9 +167,13 @@ end
 
 ---@return table
 local function tree_state()
-	return child.lua_get([=[(function()
+	return child.lua_get(
+		[=[(function(timeout)
 		local expanded = require("gleb.file_tree.expanded")
 		expanded.flush()
+		assert(vim.wait(timeout, function()
+			return not expanded.state.writing and next(expanded.state.pending) == nil
+		end, 20), "expanded state did not settle")
 		local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
 		local cursor = vim.api.nvim_win_get_cursor(view.win)
 		local state_path = vim.fs.joinpath(vim.fn.stdpath("state"), "file_tree", "expanded.json")
@@ -177,7 +187,9 @@ local function tree_state()
 			selected = view.rows[cursor[1]].path,
 			stored = stored,
 		}
-	end)()]=])
+	end)(...)]=],
+		{ math.ceil(1000 * H.load_factor()) }
+	)
 end
 
 ---@param query string
@@ -309,7 +321,7 @@ T["file-tree: First paint waits for ignored status"]["omits ignored entries from
 				vim.schedule(function() callback({ code = 0, stdout = "", stderr = "" }) end)
 				return {}
 			end
-			if callback and command[4] == "status" then
+			if callback and command[5] == "status" then
 				vim.schedule(function() callback({ code = 0, stdout = status_output, stderr = "" }) end)
 				return {}
 			end
@@ -635,6 +647,7 @@ T["file-tree: I toggles ignored entries"]["reveals a settings-ignored nest child
 	child.cmd("wincmd l")
 	child.cmd("edit " .. vim.fn.fnameescape(vim.fs.joinpath(project, "web/package-lock.json")))
 
+	wait_for_label("package-lock.json", true)
 	eq(has_label("package-lock.json"), true)
 	eq(
 		child.lua_get([[(function()
@@ -793,6 +806,23 @@ T["file-tree: Unfold all leaves ignored folders collapsed"]["does not descend in
 	eq({ node_modules.expanded, node_modules.empty }, { false, false })
 	eq(has_label("server"), false)
 	eq(has_label("left-pad"), false)
+end
+
+T["file-tree: Project tree unfold all preserves skipped expansion state"] = function()
+	local project = F.copy("treeproj", vim.fn.tempname() .. "/billing")
+	open_tree(project, settings_file({}))
+	wait_for_git()
+	child.type_keys("I")
+	wait_for_label("bin", true)
+	expand("web")
+	expand("web/node_modules")
+	eq(has_label("left-pad"), true)
+
+	child.type_keys("zR")
+
+	local node_modules = assert(row_for("web/node_modules"))
+	eq(node_modules.expanded, true)
+	eq(has_label("left-pad"), true)
 end
 
 T["file-tree: Expanded ignored folder lists ignored children"] = MiniTest.new_set()

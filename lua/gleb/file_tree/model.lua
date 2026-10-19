@@ -44,6 +44,7 @@ end
 ---@field name string
 ---@field path string
 ---@field kind "directory"|"file"
+---@field identity? string
 
 ---@class FileTreeSource
 ---@field root string
@@ -392,16 +393,18 @@ end
 ---@return string label
 ---@return FileTreeEntry tail
 ---@return FileTreeEntry[] children
+---@return table<string, string[]> nest_map
+---@return table<string, boolean> ignored_entries
 local function compact_directory(tree, entry, nesting_settings, opts)
 	local names = { entry.name }
 	local tail = entry
-	local children, _, ignored_entries = visible_entries(tree, tail.path, nesting_settings, opts)
+	local children, nest_map, ignored_entries = visible_entries(tree, tail.path, nesting_settings, opts)
 	while #children == 1 and children[1].kind == "directory" and not ignored_entries[children[1].name] do
 		tail = children[1]
 		names[#names + 1] = tail.name
-		children, _, ignored_entries = visible_entries(tree, tail.path, nesting_settings, opts)
+		children, nest_map, ignored_entries = visible_entries(tree, tail.path, nesting_settings, opts)
 	end
-	return table.concat(names, "/"), tail, children
+	return table.concat(names, "/"), tail, children, nest_map, ignored_entries
 end
 
 ---@param tree FileTreeSource
@@ -413,6 +416,9 @@ end
 ---@param nesting_settings? FileTreeNestingSettings
 ---@param expanded_nests? table<string, boolean>
 ---@param parent_ignored? boolean
+---@param prepared_entries? FileTreeEntry[]
+---@param prepared_nest_map? table<string, string[]>
+---@param prepared_ignored_entries? table<string, boolean>
 local function append_children(
 	tree,
 	expanded,
@@ -422,9 +428,19 @@ local function append_children(
 	depth,
 	nesting_settings,
 	expanded_nests,
-	parent_ignored
+	parent_ignored,
+	prepared_entries,
+	prepared_nest_map,
+	prepared_ignored_entries
 )
-	local entries, nest_map, ignored_entries = visible_entries(tree, path, nesting_settings, opts, parent_ignored)
+	local entries, nest_map, ignored_entries
+	if prepared_entries then
+		entries = prepared_entries
+		nest_map = prepared_nest_map or {}
+		ignored_entries = prepared_ignored_entries or {}
+	else
+		entries, nest_map, ignored_entries = visible_entries(tree, path, nesting_settings, opts, parent_ignored)
+	end
 	local entries_by_name = {}
 	local nested = {}
 	for _, entry in ipairs(entries) do
@@ -439,9 +455,12 @@ local function append_children(
 		if not nested[entry.name] then
 			local label = entry.name
 			local tail = entry
-			local children = {}
+			local children
+			local child_nest_map
+			local child_ignored_entries
 			if entry.kind == "directory" and not ignored_entries[entry.name] then
-				label, tail, children = compact_directory(tree, entry, nesting_settings, opts)
+				label, tail, children, child_nest_map, child_ignored_entries =
+					compact_directory(tree, entry, nesting_settings, opts)
 			end
 			local relative = relative_path(tree.root, tail.path)
 			local row_ignored = ignored_entries[entry.name] == true
@@ -457,7 +476,7 @@ local function append_children(
 				label = label,
 				path = tail.path,
 				expanded = is_expanded,
-				empty = tail.kind == "directory" and not row_ignored and #children == 0,
+				empty = tail.kind == "directory" and not row_ignored and children ~= nil and #children == 0,
 				status = row_status,
 				ignored = row_ignored,
 				nest_children = nest_children,
@@ -473,7 +492,10 @@ local function append_children(
 					depth + 1,
 					nesting_settings,
 					expanded_nests,
-					row_ignored
+					row_ignored,
+					children,
+					child_nest_map,
+					child_ignored_entries
 				)
 			elseif nest_expanded then
 				for _, child_name in ipairs(nest_children) do
@@ -495,6 +517,144 @@ local function append_children(
 			end
 		end
 	end
+end
+
+---@class FileTreeUnfoldEntry
+---@field tail FileTreeEntry
+---@field ignored boolean
+---@field children FileTreeEntry[]
+---@field nest_map table<string, string[]>
+---@field ignored_entries table<string, boolean>
+---@field nest_children? string[]
+
+---@param tree FileTreeSource
+---@param path string
+---@param nesting_settings? FileTreeNestingSettings
+---@param opts FileTreeRowOptions
+---@param parent_ignored boolean
+---@param prepared_entries? FileTreeEntry[]
+---@param prepared_nest_map? table<string, string[]>
+---@param prepared_ignored_entries? table<string, boolean>
+---@return FileTreeUnfoldEntry[]
+local function unfold_entries(
+	tree,
+	path,
+	nesting_settings,
+	opts,
+	parent_ignored,
+	prepared_entries,
+	prepared_nest_map,
+	prepared_ignored_entries
+)
+	local entries, nest_map, ignored_entries
+	if prepared_entries then
+		entries = prepared_entries
+		nest_map = prepared_nest_map or {}
+		ignored_entries = prepared_ignored_entries or {}
+	else
+		entries, nest_map, ignored_entries = visible_entries(tree, path, nesting_settings, opts, parent_ignored)
+	end
+	local nested = {}
+	for _, child_names in pairs(nest_map) do
+		for _, child_name in ipairs(child_names) do
+			nested[child_name] = true
+		end
+	end
+
+	local result = {}
+	for _, entry in ipairs(entries) do
+		if not nested[entry.name] then
+			local tail = entry
+			local children = {}
+			local child_nest_map = {}
+			local child_ignored_entries = {}
+			local entry_ignored = ignored_entries[entry.name] == true
+			if entry.kind == "directory" and not entry_ignored then
+				_, tail, children, child_nest_map, child_ignored_entries =
+					compact_directory(tree, entry, nesting_settings, opts)
+			end
+			result[#result + 1] = {
+				tail = tail,
+				ignored = entry_ignored,
+				children = children,
+				nest_map = child_nest_map,
+				ignored_entries = child_ignored_entries,
+				nest_children = nest_map[entry.name],
+			}
+		end
+	end
+	return result
+end
+
+--- Discover unfold state in one depth-first traversal up to the visible-row limit.
+---@param tree FileTreeSource
+---@param opts FileTreeRowOptions
+---@param nesting_settings FileTreeNestingSettings
+---@param max_rows integer
+---@return table<string, boolean> expanded
+---@return table<string, boolean> expanded_nests
+---@return boolean stopped
+function M.unfold_all(tree, opts, nesting_settings, max_rows)
+	local expanded = {}
+	local expanded_nests = {}
+	local visible_count = 1
+	local stopped = false
+
+	---@param entries FileTreeUnfoldEntry[]
+	---@param is_root boolean
+	local function visit(entries, is_root)
+		if not is_root then
+			if visible_count + #entries > max_rows then
+				stopped = true
+				return
+			end
+			visible_count = visible_count + #entries
+		end
+
+		for _, item in ipairs(entries) do
+			if stopped then
+				return
+			end
+			local relative = relative_path(tree.root, item.tail.path)
+			if item.tail.kind == "directory" and not item.ignored and #item.children > 0 then
+				if visible_count + #item.children > max_rows then
+					stopped = true
+					return
+				end
+				expanded[relative] = true
+				visit(
+					unfold_entries(
+						tree,
+						item.tail.path,
+						nesting_settings,
+						opts,
+						false,
+						item.children,
+						item.nest_map,
+						item.ignored_entries
+					),
+					false
+				)
+			elseif item.nest_children then
+				local nested_count = #item.nest_children
+				if visible_count + nested_count > max_rows then
+					stopped = true
+					return
+				end
+				expanded_nests[relative] = true
+				visible_count = visible_count + nested_count
+			end
+		end
+	end
+
+	local root_entries = unfold_entries(tree, tree.root, nesting_settings, opts, false)
+	visible_count = visible_count + #root_entries
+	if visible_count > max_rows then
+		stopped = true
+	else
+		visit(root_entries, true)
+	end
+	return expanded, expanded_nests, stopped
 end
 
 --- Flatten the visible portion of a project tree into rows.

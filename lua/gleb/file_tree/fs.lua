@@ -82,6 +82,7 @@ function M.scan(path)
 				name = name,
 				path = entry_path,
 				kind = (kind == "directory" or (target and target.type == "directory")) and "directory" or "file",
+				identity = kind == "link" and (vim.uv.fs_realpath(entry_path) or entry_path) or entry_path,
 			}
 		end
 	end
@@ -94,22 +95,26 @@ end
 ---@param on_scan? fun(path: string)
 ---@return FileTreeSource
 function M.tree(root, on_scan)
-	local realpaths = { [vim.uv.fs_realpath(root) or root] = root }
+	local root_identity = vim.uv.fs_realpath(root) or root
+	local identities = { [root] = root_identity }
+	local first_paths = { [root_identity] = root }
 	return {
 		root = root,
 		scan = function(path)
 			if on_scan then
 				on_scan(path)
 			end
-			local realpath = vim.uv.fs_realpath(path)
-			local first_path = realpath and realpaths[realpath] or nil
+			local identity = identities[path] or path
+			local first_path = first_paths[identity]
 			if first_path and first_path ~= path then
 				return {}
 			end
-			if realpath then
-				realpaths[realpath] = path
+			first_paths[identity] = path
+			local entries = M.scan(path)
+			for _, entry in ipairs(entries) do
+				identities[entry.path] = entry.identity or entry.path
 			end
-			return M.scan(path)
+			return entries
 		end,
 	}
 end

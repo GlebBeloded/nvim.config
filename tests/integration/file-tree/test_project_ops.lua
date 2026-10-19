@@ -22,8 +22,25 @@ local function start()
 		action.run(require("gleb.actions.context").capture())
 	]])
 	assert(
-		child.wait([[#require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()].rows > 0]]),
-		"Project tree did not draw its initial rows"
+		child.wait(
+			[=[(function()
+				local view = require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()]
+				if not view or #view.rows == 0 then return false end
+				local git = require("gleb.file_tree.git")
+				local state = git.state.roots[view.root]
+				return state
+					and git.state.runs > 0
+					and state.timer == nil
+					and not state.in_flight
+					and not view.initializing
+					and not view.dirty
+					and view.dirty_timer == nil
+					and not view.git_pending
+					and not require("gleb.file_tree.expanded").state.loading
+			end)()]=],
+			math.ceil(3000 * H.load_factor())
+		),
+		"Project tree did not settle its initial state"
 	)
 end
 
@@ -229,8 +246,26 @@ local function wait_for_path(relative, timeout)
 				return vim.uv.fs_stat(path) ~= nil
 			end, 20)
 		end)(...)]],
-		{ vim.fs.joinpath(tree_root, relative), timeout or 1000 }
+		{ vim.fs.joinpath(tree_root, relative), timeout or math.ceil(1000 * H.load_factor()) }
 	)
+end
+
+---@param buffer integer
+---@param expected string
+local function wait_for_buffer_name(buffer, expected)
+	assert(
+		child.wait(("vim.api.nvim_buf_get_name(%d) == %q"):format(buffer, expected), math.ceil(1000 * H.load_factor())),
+		"renamed buffer did not follow its file"
+	)
+end
+
+---@param expected string
+local function wait_for_selected_path(expected)
+	local selected = ([=[(function(path)
+		local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+		return view.rows[vim.api.nvim_win_get_cursor(view.win)[1]].path == path
+	end)(%q)]=]):format(expected)
+	assert(child.wait(selected, math.ceil(3000 * H.load_factor())), "project tree did not select the renamed path")
 end
 
 ---@param relative string
@@ -245,6 +280,22 @@ local function tree_has_path(relative)
 		end)(...)]],
 		{ vim.fs.joinpath(tree_root, relative) }
 	)
+end
+
+---@param relative string
+---@param present boolean
+---@return boolean
+local function wait_for_tree_path(relative, present)
+	local condition = string.format(
+		[[(function(path, expected)
+			local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+			local found = vim.iter(view.rows):any(function(row) return row.path == path end)
+			return found == expected
+		end)(%q, %s)]],
+		vim.fs.joinpath(tree_root, relative),
+		tostring(present)
+	)
+	return child.wait(condition, math.ceil(1000 * H.load_factor()))
 end
 
 ---@param relative string
@@ -372,7 +423,9 @@ T["file-tree: Project tree r renames a file and its buffer"] = function()
 
 	assert(wait_for_path("internal/billing/bill.go"), "renamed file did not appear")
 	eq(vim.uv.fs_stat(vim.fs.joinpath(root, "internal/billing/invoice.go")), nil)
+	wait_for_buffer_name(buffer, vim.fs.joinpath(tree_root, "internal/billing/bill.go"))
 	eq(child.api.nvim_buf_get_name(buffer), vim.fs.joinpath(tree_root, "internal/billing/bill.go"))
+	wait_for_selected_path(vim.fs.joinpath(tree_root, "internal/billing/bill.go"))
 	child.lua(
 		[[
 		local buf = ...
@@ -380,6 +433,7 @@ T["file-tree: Project tree r renames a file and its buffer"] = function()
 	]],
 		{ buffer }
 	)
+	wait_for_selected_path(vim.fs.joinpath(tree_root, "internal/billing/bill.go"))
 	eq(
 		child.lua_get([=[(function()
 				local view = require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()]
@@ -397,6 +451,7 @@ T["file-tree: Project tree r renames a folder and the buffers inside"] = functio
 
 	assert(wait_for_path("internal/currency/money.go"), "renamed folder did not appear")
 	eq(vim.uv.fs_stat(vim.fs.joinpath(root, "internal/money")), nil)
+	wait_for_buffer_name(buffer, vim.fs.joinpath(tree_root, "internal/currency/money.go"))
 	eq(child.api.nvim_buf_get_name(buffer), vim.fs.joinpath(tree_root, "internal/currency/money.go"))
 end
 
@@ -493,21 +548,23 @@ T["file-tree: Project tree rename follows a buffer opened through a symlinked ro
 	rename("bill.go")
 
 	assert(wait_for_path("internal/billing/bill.go"), "symlinked buffer target did not appear")
+	wait_for_buffer_name(buffer, expected_name)
 	eq(child.api.nvim_buf_get_name(buffer), expected_name)
 	child.lua([[vim.api.nvim_buf_call(..., function() vim.cmd("write") end)]], { buffer })
 	eq(vim.uv.fs_stat(new_linked) ~= nil, true)
 	eq(
-		child.lua_get(
-			[[
-		(function(old_name)
-			return vim.iter(vim.api.nvim_list_bufs()):any(function(buf)
-				return vim.api.nvim_buf_get_name(buf) == old_name
-			end)
-		end)(...)
-		]],
-			{ old_name }
+		child.wait(
+			string.format(
+				[[(function(old_name)
+				return not vim.iter(vim.api.nvim_list_bufs()):any(function(buf)
+					return vim.api.nvim_buf_get_name(buf) == old_name
+				end)
+			end)(%q)]],
+				old_name
+			),
+			math.ceil(1000 * H.load_factor())
 		),
-		false
+		true
 	)
 end
 
@@ -529,6 +586,7 @@ T["file-tree: Project tree rename moves a symlink and not its target"] = functio
 	eq(vim.uv.fs_lstat(target).type, "link")
 	eq(vim.uv.fs_readlink(target), outside)
 	eq(vim.fn.readfile(outside), { "outside content" })
+	wait_for_buffer_name(buffer, target)
 	eq(child.api.nvim_buf_get_name(buffer), target)
 end
 
@@ -993,7 +1051,7 @@ T["file-tree: Project tree delete refuses a vanished row safely"] = function()
 
 	eq(vim.uv.fs_lstat(invoice) ~= nil, true)
 	eq(vim.uv.fs_lstat(log), nil)
-	eq(tree_has_path("internal/billing/tax_test.go"), false)
+	eq(wait_for_tree_path("internal/billing/tax_test.go", false), true)
 end
 
 T["file-tree: Project tree fallback delete reports a read-only destination"] = function()
@@ -1259,7 +1317,7 @@ T["file-tree: Project tree x and p move a file like a rename"] = function()
 	assert(wait_for_path("internal/money/discount.go"), "cut file did not move")
 	eq(vim.uv.fs_stat(source), nil)
 	eq(child.lua_get([[vim.api.nvim_buf_get_name(...)]], { buffer }), target)
-	eq(child.lua_get([[require("gleb.file_tree.ops").state.clipboard]]), vim.NIL)
+	eq(child.wait([[require("gleb.file_tree.ops").state.clipboard == nil]], math.ceil(1000 * H.load_factor())), true)
 end
 
 T["file-tree: Project tree refuses to paste a folder into itself"] = function()
