@@ -95,3 +95,16 @@ Run on `loop/tree-diff-cutover` was rejected by the judge:
   against a fresh run before acting on it. fseventsd was restarted at 08:25; the live file passes again.
 - No platform-specific watcher (a `watch_darwin.lua`, polling fallbacks) to work around missing events: the watcher
   uses `vim.uv.new_fs_event` as it is.
+
+## Decision (auditor, 2026-10-19, stuck triage at 10:30)
+
+- The `## Stuck` LSP readiness note (c71976bf, 05:48) is from the fseventsd window and has not recurred in any gate since
+  08:25: drop it, no work on it.
+- "Original cursor setting" passes alone and in its whole file: no change unless a gate shows it again.
+- "Rename refuses a vanished row" is a real regression of this branch: it passes 3/3 on `auto` and fails on the branch.
+  Bisect `auto..HEAD` on that one case (`view.lua` and the `r` action path first) and fix the cause; the case stays
+  as it is.
+- Bufferline render (task 11): start from `stuck-attempt-11.diff` (row 1 already matches) and fix the row-2 column-37
+  colour; the screen case keeps asserting both rows of the approved render.
+- Revert the waits f1462325 (04:47, inside the fseventsd window) inflated in `test_project_live.lua` back to their
+  `auto` values (1000 ms × `H.load_factor()` where auto scales).
