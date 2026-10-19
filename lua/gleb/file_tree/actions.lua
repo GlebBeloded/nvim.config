@@ -8,6 +8,10 @@ local function project_close_node()
 	require("gleb.file_tree.view").close_node()
 end
 
+local function project_expand_node()
+	require("gleb.file_tree.view").expand_node()
+end
+
 local function project_close()
 	require("gleb.file_tree.view").close()
 end
@@ -178,6 +182,13 @@ local actions = {
 		category = "Project",
 		ft = "gleb-file-tree",
 		run = project_close_node,
+	},
+	{
+		id = "file_tree.expand_node",
+		title = "Expand Node",
+		category = "Project",
+		ft = "gleb-file-tree",
+		run = project_expand_node,
 	},
 	{
 		id = "file_tree.close",

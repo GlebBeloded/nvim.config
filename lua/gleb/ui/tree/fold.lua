@@ -5,6 +5,7 @@ local M = {}
 local model = require("gleb.ui.tree.model")
 
 ---@alias gleb.ui.tree.Expand fun(node: gleb.ui.tree.Node): boolean
+---@alias gleb.ui.tree.ExpandAll fun()
 
 ---@param tree gleb.ui.tree.Model
 ---@param id string
@@ -108,8 +109,13 @@ end
 ---@param tree gleb.ui.tree.Model
 ---@param selected_id string
 ---@param expand? gleb.ui.tree.Expand
+---@param expand_all? gleb.ui.tree.ExpandAll
 ---@return string selected_id
-function M.open_all(tree, selected_id, expand)
+function M.open_all(tree, selected_id, expand, expand_all)
+	if expand_all then
+		expand_all()
+		return selected_id
+	end
 	for _, node in pairs(tree.nodes) do
 		if node.foldable and tree.folds[node.id] then
 			expand_node(tree, node, expand)

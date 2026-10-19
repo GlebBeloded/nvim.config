@@ -115,6 +115,8 @@ state separately (`collapsed[fold_id]`, `folded[node.id]`, `expanded[path]`); `f
     unchanged: diffview's panel is not one of the three trees.
   - `diff: Diff view zo opens a fold in both windows` still holds: `diff.expand_fold` is scoped to `gleb-diff`,
     which is not a tree buffer.
+  - `diff: Diff view reverting the last change keeps the view open` still holds: shared tree folding does not
+    change diff application or the diff view's empty-fragment lifecycle.
   - `diff: Diff view keys stay native outside view windows` still holds: the new `zo` bindings are buffer-local to
     the three tree filetypes, so native `zo` in a file window is untouched.
   - `picker: Input prompt ignores a blank query` still holds: `<CR>` bindings change in no picker or prompt; only

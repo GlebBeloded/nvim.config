@@ -18,7 +18,7 @@ local function apply(verb, tree)
 		return false
 	end
 	local options = view.options(tree) or {}
-	local next_id = fold[verb](tree, selected_id, options.expand)
+	local next_id = fold[verb](tree, selected_id, options.expand, options.expand_all)
 	view.redraw(tree, next_id)
 	return true
 end

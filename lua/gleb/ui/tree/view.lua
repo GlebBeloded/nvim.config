@@ -9,6 +9,7 @@ local model = require("gleb.ui.tree.model")
 
 ---@class gleb.ui.tree.ViewOptions
 ---@field expand? gleb.ui.tree.Expand
+---@field expand_all? gleb.ui.tree.ExpandAll
 ---@field fallback? gleb.ui.tree.Fallback
 
 ---@class gleb.ui.tree.View

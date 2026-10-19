@@ -41,9 +41,9 @@ Scenarios: `references: h folds a group and l unfolds it`, `references: h on a u
 
 Scenarios: `file-tree: Project tree l expands a folder`, `file-tree: Project tree l on an open folder moves to its first child`, `file-tree: Project tree l on a file does nothing`, `file-tree: Project tree l opens a nest`, `file-tree: Project tree arrow keys fold and unfold a folder`, `file-tree: Project tree zo and zc fold without an error`, `file-tree: Project tree keys come from the keymap file`
 
-- [ ] 6.1 Write the new scenarios in `tests/integration/file-tree/test_project_tree.lua` and see them fail
-- [ ] 6.2 Back `close_node`, `toggle_fold`, `fold_all`, `unfold_all` and the new `expand_node` with the shared verbs through the expansion adapter (design Decision 3), keeping `expanded`, `expanded_nests`, `expanded.json` and the 5000-row bound
-- [ ] 6.3 Run `make test CAPS=file-tree` and see it pass, including every existing fold, nest, limit and render scenario
+- [x] 6.1 Write the new scenarios in `tests/integration/file-tree/test_project_tree.lua` and see them fail
+- [x] 6.2 Back `close_node`, `toggle_fold`, `fold_all`, `unfold_all` and the new `expand_node` with the shared verbs through the expansion adapter (design Decision 3), keeping `expanded`, `expanded_nests`, `expanded.json` and the 5000-row bound
+- [x] 6.3 Run `make test CAPS=file-tree` and see it pass, including every existing fold, nest, limit and render scenario
 
 ## 7. Global fold actions and registry
 
@@ -62,10 +62,4 @@ Scenarios: `folding: Collapse Fold key folds the group under the tree cursor`, `
 - Store a folded boolean for every foldable id, so rebuilds preserve both explicit opens and closes.
 - Cache each attached tree's last rendered rows and renderer, so redraws recover the old cursor id and shared actions can redraw without feature-specific dispatch.
 - Keep `references.fold`'s existing `Fold Group` title by adjusting that factory result locally, avoiding a shared factory API change for one label.
-
-## Stuck
-
-- Task 6 remains unticked. The cause was obvious from the existing project-tree expansion adapter, so no headless probe was needed.
-- Attempt 1 attached project rows to the shared model and synchronized directory/nest expansion through its adapter. The seven new scenarios passed, but the existing `Project tree zM collapses every folder` scenario failed because `close_all` selected the pinned synthetic root instead of the current depth-0 project row.
-- Attempt 2 represented the pinned root as a peer of depth-0 project rows, which fixed `zM` and made the full edited test file green. Routing `unfold_all` through the shared `open_all` verb then retried every node left folded by the 5000-row bound and emitted repeated `Expansion stopped at 5000 rows` warnings instead of the single `Unfold all stopped at 5000 rows` warning.
-- The complete second production attempt is saved at `/Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/d598de91-9ca0-4634-8958-cd72f8a6851e/stuck-attempt-6.diff`; production edits were reverted and the red task tests remain.
+- Use an operation-level project-tree expansion adapter for unfold-all because its row limit and warning apply to the whole traversal.
