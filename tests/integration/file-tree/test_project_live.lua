@@ -559,9 +559,9 @@ T["file-tree: Project tree isolates tabpage state"] = function()
 	local result = H.system(child, { "touch", vim.fs.joinpath(root, "isolated.lua") }, root)
 	eq(result.code, 0)
 	local isolated = child.lua_get(
-		[[(function(first_tab, expected, root)
+		[[(function(first_tab, expected, root, timeout)
 		root = require("gleb.file_tree.fs").normalize(root)
-		local ready = vim.wait(1000, function()
+		local ready = vim.wait(timeout, function()
 			local state = require("gleb.file_tree.view").state
 			local view = state.by_tab[vim.api.nvim_get_current_tabpage()]
 			return state.by_tab[first_tab] == nil
@@ -578,7 +578,7 @@ T["file-tree: Project tree isolates tabpage state"] = function()
 			watch_refs = require("gleb.file_tree.watch").state.roots[root].refs,
 		} or false
 	end)(...)]],
-		{ first_tab, second, root }
+		{ first_tab, second, root, math.ceil(3000 * H.load_factor()) }
 	)
 	eq(isolated, { git_refs = 1, watch_refs = 1 })
 end

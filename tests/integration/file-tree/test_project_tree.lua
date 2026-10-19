@@ -62,7 +62,7 @@ local function open_changes_panel()
 				local view = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
 				return view ~= nil and #view.rows > 0
 			end)()]],
-			3000
+			math.ceil(3000 * H.load_factor())
 		),
 		"Changes panel did not draw its initial rows"
 	)
