@@ -11,6 +11,7 @@ local render = require("gleb.file_tree.render")
 local settings = require("gleb.file_tree.settings")
 local state = require("gleb.file_tree.state")
 local watch = require("gleb.file_tree.watch")
+local debounce = require("gleb.util.debounce")
 
 local EXPANSION_MAX_ROWS = 5000
 local IGNORE_WAIT_MS = 300
@@ -463,38 +464,34 @@ schedule_dirty = function(view, path, invalidated_scan)
 		view.dirty_timer:stop()
 		view.dirty_timer:close()
 	end
-	local timer = assert(vim.uv.new_timer())
+	local timer
+	timer = debounce.schedule(nil, INVALIDATION_WINDOW_MS, function()
+		if view.dirty_timer ~= timer then
+			return
+		end
+		timer:stop()
+		timer:close()
+		view.dirty_timer = nil
+		if view.git_pending then
+			return
+		end
+		if M.state.by_tab[view.tab] ~= view or not vim.api.nvim_buf_is_valid(view.buf) then
+			return
+		end
+		for scan in pairs(view.dirty_scans) do
+			fs.invalidate(scan)
+			if not vim.uv.fs_stat(scan) then
+				fs.invalidate(vim.fs.dirname(scan))
+			end
+		end
+		local selected = view.rows[vim.api.nvim_win_get_cursor(view.win)[1]]
+		local target = view.dirty_path or (selected and selected.path) or view.root
+		view.dirty = false
+		view.dirty_path = nil
+		view.dirty_scans = {}
+		draw(view, target)
+	end)
 	view.dirty_timer = timer
-	timer:start(
-		INVALIDATION_WINDOW_MS,
-		0,
-		vim.schedule_wrap(function()
-			if view.dirty_timer ~= timer then
-				return
-			end
-			timer:stop()
-			timer:close()
-			view.dirty_timer = nil
-			if view.git_pending then
-				return
-			end
-			if M.state.by_tab[view.tab] ~= view or not vim.api.nvim_buf_is_valid(view.buf) then
-				return
-			end
-			for scan in pairs(view.dirty_scans) do
-				fs.invalidate(scan)
-				if not vim.uv.fs_stat(scan) then
-					fs.invalidate(vim.fs.dirname(scan))
-				end
-			end
-			local selected = view.rows[vim.api.nvim_win_get_cursor(view.win)[1]]
-			local target = view.dirty_path or (selected and selected.path) or view.root
-			view.dirty = false
-			view.dirty_path = nil
-			view.dirty_scans = {}
-			draw(view, target)
-		end)
-	)
 end
 
 ---@param view FileTreeView

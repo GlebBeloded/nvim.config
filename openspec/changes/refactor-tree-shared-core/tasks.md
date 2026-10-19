@@ -5,6 +5,7 @@ Scenarios: `file-tree: Project tree watchers stop when the tree closes`
 ## Agent decisions
 
 - `gleb.util.debounce.schedule` accepts and returns a reusable timer so each consumer retains ownership of lifecycle cleanup.
+- Project-tree redraw replaces its timer before scheduling so a queued stale callback remains distinguishable from the current debounce.
 
 ## 2. Migrate project-tree git and expansion debounce
 Scenarios: `file-tree: Project tree runs git status once per burst`, `file-tree: Project tree expanded folders persist per root`
@@ -12,7 +13,7 @@ Scenarios: `file-tree: Project tree runs git status once per burst`, `file-tree:
 
 ## 3. Migrate project-tree redraw debounce
 Scenarios: `file-tree: Project tree redraw meets the large-tree bound`
-- [ ] 3.1 Run `make test FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree redraw meets the large-tree bound"` and see it pass, migrate the listed `file_tree/view.lua` debounce site to `gleb.util.debounce`, then run it again and see it pass
+- [x] 3.1 Run `make test FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree redraw meets the large-tree bound"` and see it pass, migrate the listed `file_tree/view.lua` debounce site to `gleb.util.debounce`, then run it again and see it pass
 
 ## 4. Migrate Changes-panel and diff-view debounce
 Scenarios: `git: Changes panel debounces rapid moves`, `git: Changes panel drops a stale diff result`
