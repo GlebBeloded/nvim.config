@@ -3,7 +3,7 @@
 ## Why
 
 Kind: bug
-Adopt: loop/update-rustaceanvim-20261019-185538
+Adopt: loop/update-rustaceanvim-20261019-221250
 
 Upgrade rustaceanvim from `88575b98bb9937fb9983ddec5e532b67e75ce677` (v6.9.7) to
 `9cb125de42c0256ed1bc1f9ded8d8f0381317a17` (v9.2.1), while keeping Rust Find Usages behavior. The
@@ -60,25 +60,23 @@ None.
 Pinned back in lazy-lock.json: the fix loop did not ship. The unfinished attempt is on branch `loop/update-rustaceanvim-20261019-132103-attempt`. Resume with `make update PLUGIN=rustaceanvim`.
 
 ## Rejected run
-Run on `loop/update-rustaceanvim-20261019-185538` was rejected by the judge:
-- fix loop exhausted with gates still red: tests,stuck
-- stuck: tasks.md `## Stuck` (earlier attempts, kept on the branch: not quoted here)
+Run on `loop/update-rustaceanvim-20261019-221250` was rejected by the judge:
+- fix loop exhausted with gates still red: tests
 - last failures:
   make check is red:
-  full log: /Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/20191bf4-8ebd-481b-81de-d03841de818d/check-10.log
-  check: waiting for the check lock held by pid 81123 (/Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/worktrees/loop/fix-file-tree-watch-limit) at /Users/hlebbeladzed/.cache/nvim-check-lock
-  ok   trace            0.7 s
-  ok   lint             0.8 s
-  ok   specs            2.0 s
-  ok   types            2.8 s
-  ok   chain            7.0 s
-  ok   smoke-health    14.4 s
-  ok   stack           28.0 s
-  FAIL test           354.7 s
-  ok   e2e            379.0 s
+  full log: /Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/785b42fa-2abd-4f04-be5c-f531e84c763a/check-10.log
+  ok   lint             0.4 s
+  ok   specs            0.5 s
+  ok   trace            1.0 s
+  ok   types            2.5 s
+  ok   chain            6.3 s
+  ok   smoke-health    13.9 s
+  ok   stack           25.0 s
+  FAIL e2e            232.6 s
+  FAIL test           272.6 s
+  ok   smoke-startup    1.8 s
+- note: loop: FAIL in tests/unit/loop/test_drain.lua | loop: Drain gives a re-queued change one more run:
 - note: loop: FAIL in tests/unit/loop/test_gate.lua | loop: Gate stops on sandbox infra that fails again on rerun:
 - note: loop: FAIL in tests/unit/shortcuts/test_sandbox.lua | shortcuts: CHECK_LOCK=0 runs make check without the check lock:
-- note: loop: FAIL in tests/unit/shortcuts/test_sandbox.lua | shortcuts: sandbox.sh e2e waits while another checkout holds the sandbox lock:
-- note: loop: sandbox: nvim-e2e did not answer SSH within 180 s (/Users/hlebbeladzed/.cache/nvim-e2e-sandbox/vm.log)
 - note: loop: Error: VM 'nvim-e2e' is not running
 - note: loop: sandbox: Lume still reports nvim-e2e unknown while its lume run process is alive, after one restart; giving up (/Users/hlebbeladzed/.cache/nvim-e2e-sandbox/vm.log)
