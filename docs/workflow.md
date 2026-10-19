@@ -29,10 +29,6 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 
 ## Loop lessons
 
-- Strip optional pattern anchors by position; an unanchored substitution corrupts semantic carets inside Lua patterns.
-- Preserve current-window predicates when scheduling UI opens; loaded-buffer checks can hide focus regressions.
-- Pass the same visibility snapshot to drawing and nest actions so toggled ignored children remain actionable.
-- Keep source statuses raw until display policy is available, then exclude hidden descendants before folder and nest aggregation.
 - Pass a single asserted capture to numeric conversion; Lua assertions propagate their message argument as a second return value.
 - Close a plugin view after auditing it when its asynchronous updates can launch synchronous subprocess waits, so the next bounded open cannot inherit a blocked editor loop.
 - Match a target command anywhere in subprocess diagnostics because unrelated child processes can appear first.
@@ -42,8 +38,12 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - When a cutover task updates retained spec prose, verify the named main-spec sections are present in the branch diff before marking the task complete.
 - Assert structured failure diagnostics at the regression boundary so phase and live subprocess evidence cannot silently disappear.
 - An algorithm fallback change must preserve independent upstream eligibility guards; here exact LCS still applies only when at least one line is at most 300 characters.
+- Complete per-view pending state on every current asynchronous result, including failures and first-paint callbacks, so later invalidations cannot deadlock.
+- Merge traversal discoveries into retained UI state when the traversal intentionally skips user-expandable nodes.
 - Preserve polling semantics when extracting asynchronous readiness helpers: recording an LSP error must not make the wait return before readiness.
 - Preserve a valid restore buffer when replacing a wipe-on-hide dashboard, so repeated owned-diff updates cannot restore a deleted buffer.
+- Keep mutation refreshes drawing after visible-row selection; a follow-path fast path can otherwise leave invalidated rows rendered.
+- Gate first paint on every asynchronous input it consumes, and use a synchronous atomic persistence path for shutdown events.
 
 ## The loop
 

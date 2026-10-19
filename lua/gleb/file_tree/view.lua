@@ -14,6 +14,7 @@ local watch = require("gleb.file_tree.watch")
 
 local EXPANSION_MAX_ROWS = 5000
 local IGNORE_WAIT_MS = 300
+local INVALIDATION_WINDOW_MS = 50
 
 ---@class FileTreeView
 ---@field tab integer
@@ -23,12 +24,21 @@ local IGNORE_WAIT_MS = 300
 ---@field expanded table<string, boolean>
 ---@field expanded_nests table<string, boolean>
 ---@field rows FileTreeRow[]
+---@field rows_by_path table<string, integer>
 ---@field autocmds integer[]
 ---@field watching boolean
 ---@field directory_hijacks table<integer, boolean>
 ---@field buffer_leave_cursor? integer[]
 ---@field skip_follow_buf? integer
 ---@field initial_draw_timer? uv.uv_timer_t
+---@field dirty_timer? uv.uv_timer_t
+---@field dirty boolean
+---@field dirty_path? string
+---@field dirty_scans table<string, boolean>
+---@field git_pending boolean
+---@field initializing boolean
+---@field initial_source_ready boolean
+---@field initial_expansions_loaded boolean
 
 ---@class FileTreeViewState
 ---@field by_tab table<integer, FileTreeView>
@@ -146,6 +156,11 @@ local function forget(view)
 		view.initial_draw_timer:stop()
 		view.initial_draw_timer:close()
 		view.initial_draw_timer = nil
+	end
+	if view.dirty_timer then
+		view.dirty_timer:stop()
+		view.dirty_timer:close()
+		view.dirty_timer = nil
 	end
 	for _, autocmd in ipairs(view.autocmds) do
 		pcall(vim.api.nvim_del_autocmd, autocmd)
@@ -281,11 +296,25 @@ local function restore_cursor(view, path, rows_before, cursor_line)
 	vim.api.nvim_win_set_cursor(view.win, { target or math.min(cursor_line, math.max(#view.rows, 1)), 0 })
 end
 
+---@class FileTreePreparedDraw
+---@field rows FileTreeRow[]
+---@field rows_by_path table<string, integer>
+---@field watched table<string, boolean>
+
+---@param rows FileTreeRow[]
+---@return table<string, integer>
+local function index_rows(rows)
+	local rows_by_path = {}
+	for index, row in ipairs(rows) do
+		rows_by_path[row.path] = index
+	end
+	return rows_by_path
+end
+
 ---@param view FileTreeView
 ---@param path string
-local function draw(view, path)
-	local rows_before = view.rows
-	local cursor_line = vim.api.nvim_win_get_cursor(view.win)[1]
+---@return FileTreePreparedDraw
+local function prepare_draw(view, path)
 	expand_to(view, path)
 	for relative in pairs(view.expanded) do
 		local stat = vim.uv.fs_stat(vim.fs.joinpath(view.root, relative))
@@ -307,10 +336,29 @@ local function draw(view, path)
 			view.expanded_nests[relative] = nil
 		end
 	end
-	view.rows = model.rows(tree, view.expanded, opts, nesting_settings, view.expanded_nests)
+	local rows = model.rows(tree, view.expanded, opts, nesting_settings, view.expanded_nests)
+	return {
+		rows = rows,
+		rows_by_path = index_rows(rows),
+		watched = watched,
+	}
+end
+
+local schedule_dirty
+local request_git
+
+---@param view FileTreeView
+---@param path string
+---@param prepared? FileTreePreparedDraw
+local function draw(view, path, prepared)
+	local rows_before = view.rows
+	local cursor_line = vim.api.nvim_win_get_cursor(view.win)[1]
+	prepared = prepared or prepare_draw(view, path)
+	view.rows = prepared.rows
+	view.rows_by_path = prepared.rows_by_path
 	render.draw(view.buf, view.rows)
 	restore_cursor(view, path, rows_before, cursor_line)
-	watch.sync(view.root, view.tab, watched, function(changed_path)
+	watch.sync(view.root, view.tab, prepared.watched, function(changed_path)
 		if M.state.by_tab[view.tab] ~= view or not vim.api.nvim_buf_is_valid(view.buf) then
 			return
 		end
@@ -324,18 +372,23 @@ local function draw(view, path)
 				break
 			end
 		end
-		local selected = view.rows[vim.api.nvim_win_get_cursor(view.win)[1]]
-		draw(view, selected and selected.path or view.root)
+		schedule_dirty(view, nil, changed_path)
 	end, function()
-		git.request(view.root)
+		request_git(view)
 	end)
 	expanded.save(view.root, view.expanded)
 end
 
 ---@param view FileTreeView
 ---@param path string
-local function select_path(view, path)
+---@return string?
+local function prepare_selection(view, path)
 	local normalized = fs.normalize(path)
+	local row = view.rows_by_path[normalized]
+	if row then
+		vim.api.nvim_win_set_cursor(view.win, { row, 0 })
+		return
+	end
 	expand_to(view, normalized)
 	local loaded_settings = settings.load()
 	local nesting_settings = loaded_settings.nesting
@@ -344,20 +397,108 @@ local function select_path(view, path)
 	if parent then
 		view.expanded_nests[parent:sub(#view.root + 2)] = true
 	end
-	draw(view, normalized)
+	return normalized
+end
+
+---@param view FileTreeView
+---@param path string
+local function select_path(view, path)
+	local normalized = prepare_selection(view, path)
+	if normalized then
+		draw(view, normalized)
+	end
+end
+
+---@param view FileTreeView
+request_git = function(view)
+	if view.git_pending or not watch.toplevel(view.root) then
+		return
+	end
+	view.git_pending = true
+	git.request(view.root)
+end
+
+---@param view FileTreeView
+---@param path? string
+---@param invalidated_scan? string
+schedule_dirty = function(view, path, invalidated_scan)
+	if M.state.by_tab[view.tab] ~= view or not vim.api.nvim_buf_is_valid(view.buf) then
+		return
+	end
+	view.dirty = true
+	view.dirty_path = path or view.dirty_path
+	if invalidated_scan then
+		view.dirty_scans[invalidated_scan] = true
+	end
+	if view.dirty_timer then
+		view.dirty_timer:stop()
+		view.dirty_timer:close()
+	end
+	local timer = assert(vim.uv.new_timer())
+	view.dirty_timer = timer
+	timer:start(
+		INVALIDATION_WINDOW_MS,
+		0,
+		vim.schedule_wrap(function()
+			if view.dirty_timer ~= timer then
+				return
+			end
+			timer:stop()
+			timer:close()
+			view.dirty_timer = nil
+			if view.git_pending then
+				return
+			end
+			if M.state.by_tab[view.tab] ~= view or not vim.api.nvim_buf_is_valid(view.buf) then
+				return
+			end
+			for scan in pairs(view.dirty_scans) do
+				fs.invalidate(scan)
+				if not vim.uv.fs_stat(scan) then
+					fs.invalidate(vim.fs.dirname(scan))
+				end
+			end
+			local selected = view.rows[vim.api.nvim_win_get_cursor(view.win)[1]]
+			local target = view.dirty_path or (selected and selected.path) or view.root
+			view.dirty = false
+			view.dirty_path = nil
+			view.dirty_scans = {}
+			draw(view, target)
+		end)
+	)
+end
+
+---@param view FileTreeView
+---@param changed boolean
+local function apply_git_result(view, changed)
+	view.git_pending = false
+	if changed or view.dirty then
+		schedule_dirty(view)
+	end
+end
+
+---@param view FileTreeView
+---@param loaded table<string, boolean>
+local function merge_loaded_expansions(view, loaded)
+	for relative in pairs(loaded) do
+		view.expanded[relative] = true
+	end
 end
 
 ---@param view FileTreeView
 ---@param path string
 ---@return boolean
 local function finish_initial_draw(view, path)
-	local timer = view.initial_draw_timer
-	if not timer then
+	if not view.initializing or not view.initial_source_ready or not view.initial_expansions_loaded then
 		return false
 	end
-	timer:stop()
-	timer:close()
-	view.initial_draw_timer = nil
+	local timer = view.initial_draw_timer
+	if timer then
+		timer:stop()
+		timer:close()
+		view.initial_draw_timer = nil
+	end
+	view.initializing = false
 	if M.state.by_tab[view.tab] == view and vim.api.nvim_buf_is_valid(view.buf) then
 		select_path(view, path)
 	end
@@ -366,11 +507,43 @@ end
 
 ---@param view FileTreeView
 ---@param path string
+local function start_initial_draw_deadline(view, path)
+	view.initializing = true
+	view.initial_draw_timer = assert(vim.uv.new_timer())
+	view.initial_draw_timer:start(
+		IGNORE_WAIT_MS,
+		0,
+		vim.schedule_wrap(function()
+			view.initial_source_ready = true
+			finish_initial_draw(view, path)
+		end)
+	)
+end
+
+---@param view FileTreeView
+---@param root string
+---@param path string
+---@param toplevel? string
+local function repository_ready(view, root, path, toplevel)
+	if M.state.by_tab[view.tab] ~= view or view.root ~= root or not vim.api.nvim_buf_is_valid(view.buf) then
+		return
+	end
+	if toplevel then
+		start_initial_draw_deadline(view, path)
+		git.refresh(root)
+	else
+		view.initial_source_ready = true
+		finish_initial_draw(view, path)
+	end
+end
+
+---@param view FileTreeView
+---@param path string
 ---@param missing_is_root boolean
 local function reveal_path(view, path, missing_is_root)
 	local target = reveal_target(view, path, missing_is_root)
 	if target and not is_hidden(view, target) then
-		select_path(view, target)
+		schedule_dirty(view, prepare_selection(view, target))
 	end
 end
 
@@ -425,23 +598,17 @@ end
 ---@param row FileTreeRow
 ---@param warning string
 ---@return FileTreeRow[]?
+---@return FileTreePreparedDraw?
 local function expand_directory(view, row, warning)
 	local relative = row.path:sub(#view.root + 2)
 	view.expanded[relative] = true
-	local loaded_settings = settings.load()
-	local rows = model.rows(
-		fs.tree(view.root),
-		view.expanded,
-		row_options(view, loaded_settings),
-		loaded_settings.nesting,
-		view.expanded_nests
-	)
-	if #rows > EXPANSION_MAX_ROWS then
+	local prepared = prepare_draw(view, row.path)
+	if #prepared.rows > EXPANSION_MAX_ROWS then
 		view.expanded[relative] = nil
 		vim.notify(warning, vim.log.levels.WARN)
 		return nil
 	end
-	return rows
+	return prepared.rows, prepared
 end
 
 ---@param view FileTreeView
@@ -453,10 +620,14 @@ local function toggle_directory(view, row)
 	local relative = row.path:sub(#view.root + 2)
 	if row.expanded then
 		view.expanded[relative] = nil
-	elseif not expand_directory(view, row, "Expansion stopped at 5000 rows") then
-		return
+		draw(view, row.path)
+	else
+		local _, prepared = expand_directory(view, row, "Expansion stopped at 5000 rows")
+		if not prepared then
+			return
+		end
+		draw(view, row.path, prepared)
 	end
-	draw(view, row.path)
 end
 
 ---@param view FileTreeView
@@ -570,23 +741,7 @@ function M.fold_all()
 	redraw_at(view, path)
 end
 
----@param rows FileTreeRow[]
----@param parent FileTreeRow
----@param queue FileTreeRow[]
-local function append_directory_children(rows, parent, queue)
-	local found_parent = false
-	for _, row in ipairs(rows) do
-		if row.path == parent.path then
-			found_parent = true
-		elseif found_parent and row.depth <= parent.depth then
-			return
-		elseif found_parent and row.depth == parent.depth + 1 and row.kind == "directory" and not row.ignored then
-			queue[#queue + 1] = row
-		end
-	end
-end
-
---- Expand project-tree directories breadth-first up to the visible-row safety limit.
+--- Expand project-tree directories depth-first up to the visible-row safety limit.
 ---@return nil
 function M.unfold_all()
 	local view = M.state.by_tab[vim.api.nvim_get_current_tabpage()]
@@ -594,46 +749,22 @@ function M.unfold_all()
 		return
 	end
 	local selected = selected_row(view)
-	view.expanded = {}
-	view.expanded_nests = {}
 	local loaded_settings = settings.load()
 	local nesting_settings = loaded_settings.nesting
 	local tree = fs.tree(view.root)
-	local rows =
-		model.rows(tree, view.expanded, row_options(view, loaded_settings), nesting_settings, view.expanded_nests)
-	local queue = {}
-	for _, row in ipairs(rows) do
-		if row.kind == "directory" and not row.ignored then
-			queue[#queue + 1] = row
-		end
+	local discovered
+	local discovered_nests
+	local stopped
+	discovered, discovered_nests, stopped =
+		model.unfold_all(tree, row_options(view, loaded_settings), nesting_settings, EXPANSION_MAX_ROWS)
+	for relative in pairs(discovered) do
+		view.expanded[relative] = true
 	end
-	local queue_index = 1
-	local stopped = false
-	while queue_index <= #queue do
-		local row = queue[queue_index]
-		queue_index = queue_index + 1
-		if not row.empty then
-			local expanded_rows = expand_directory(view, row, "Unfold all stopped at 5000 rows")
-			if not expanded_rows then
-				stopped = true
-				break
-			end
-			rows = expanded_rows
-			append_directory_children(rows, row, queue)
-		end
+	for relative in pairs(discovered_nests) do
+		view.expanded_nests[relative] = true
 	end
-	if not stopped then
-		local visible_count = #rows
-		for _, row in ipairs(rows) do
-			if row.nest_children then
-				if visible_count + #row.nest_children > EXPANSION_MAX_ROWS then
-					vim.notify("Unfold all stopped at 5000 rows", vim.log.levels.WARN)
-					break
-				end
-				view.expanded_nests[row.path:sub(#view.root + 2)] = true
-				visible_count = visible_count + #row.nest_children
-			end
-		end
+	if stopped then
+		vim.notify("Unfold all stopped at 5000 rows", vim.log.levels.WARN)
 	end
 	redraw_at(view, selected and selected.path or view.root)
 end
@@ -790,6 +921,21 @@ local function open_view(path, requested_root)
 	remember_editor()
 	local editor = M.state.last_editor_by_tab[tab]
 	local root = fs.normalize(requested_root or vim.fn.getcwd())
+	local view
+	local initial_path
+	local initial_expanded = expanded.load(root, function(loaded)
+		if
+			view
+			and initial_path
+			and M.state.by_tab[tab] == view
+			and view.root == root
+			and vim.api.nvim_buf_is_valid(view.buf)
+		then
+			merge_loaded_expansions(view, loaded)
+			view.initial_expansions_loaded = true
+			finish_initial_draw(view, initial_path)
+		end
+	end)
 	local buf = vim.api.nvim_create_buf(false, true)
 	vim.api.nvim_buf_set_name(buf, ("gleb-file-tree://%s#%d"):format(root, tab))
 	configure_buffer(buf)
@@ -801,45 +947,39 @@ local function open_view(path, requested_root)
 	detach_ufo(buf)
 
 	---@type FileTreeView
-	local view = {
+	view = {
 		tab = tab,
 		root = root,
 		buf = buf,
 		win = win,
-		expanded = expanded.load(root),
+		expanded = initial_expanded,
 		expanded_nests = {},
 		rows = {},
+		rows_by_path = {},
 		autocmds = {},
 		watching = true,
 		directory_hijacks = {},
+		dirty = false,
+		dirty_scans = {},
+		git_pending = false,
+		initializing = true,
+		initial_source_ready = false,
+		initial_expansions_loaded = false,
 	}
 	M.state.by_tab[tab] = view
 	M.state.last_editor_by_tab[tab] = editor
-	watch.start_root(root, tab)
-	local initial_path = reveal_target(view, path, true) or root
-	git.start_root(root, tab, function()
-		if finish_initial_draw(view, initial_path) then
-			return
-		end
-		if M.state.by_tab[tab] == view and vim.api.nvim_buf_is_valid(buf) then
-			local selected = view.rows[vim.api.nvim_win_get_cursor(win)[1]]
-			draw(view, selected and selected.path or root)
+	initial_path = reveal_target(view, path, true) or root
+	git.start_root(root, tab, function(changed)
+		view.initial_source_ready = true
+		local initial_drawn = finish_initial_draw(view, initial_path)
+		if M.state.by_tab[tab] == view and vim.api.nvim_buf_is_valid(buf) and not view.initializing then
+			apply_git_result(view, not initial_drawn and changed)
 		end
 	end)
 	add_teardown_autocmds(view)
-	if watch.toplevel(root) then
-		view.initial_draw_timer = assert(vim.uv.new_timer())
-		view.initial_draw_timer:start(
-			IGNORE_WAIT_MS,
-			0,
-			vim.schedule_wrap(function()
-				finish_initial_draw(view, initial_path)
-			end)
-		)
-		git.refresh(root)
-	else
-		select_path(view, initial_path)
-	end
+	watch.start_root(root, tab, function(toplevel)
+		repository_ready(view, root, initial_path, toplevel)
+	end)
 	update_cursor()
 	return view
 end
@@ -897,19 +1037,43 @@ local function reroot(view, root)
 	expanded.flush()
 	watch.stop_root(view.root, view.tab)
 	git.stop_root(view.root, view.tab)
+	if view.dirty_timer then
+		view.dirty_timer:stop()
+		view.dirty_timer:close()
+		view.dirty_timer = nil
+	end
+	if view.initial_draw_timer then
+		view.initial_draw_timer:stop()
+		view.initial_draw_timer:close()
+		view.initial_draw_timer = nil
+	end
+	view.dirty = false
+	view.dirty_path = nil
+	view.dirty_scans = {}
+	view.git_pending = false
+	view.initializing = true
+	view.initial_source_ready = false
+	view.initial_expansions_loaded = false
 	view.root = root
-	view.expanded = expanded.load(root)
-	view.expanded_nests = {}
-	vim.api.nvim_buf_set_name(view.buf, ("gleb-file-tree://%s#%d"):format(root, view.tab))
-	watch.start_root(root, view.tab)
-	git.start_root(root, view.tab, function()
-		if M.state.by_tab[view.tab] == view and vim.api.nvim_buf_is_valid(view.buf) then
-			local selected = view.rows[vim.api.nvim_win_get_cursor(view.win)[1]]
-			draw(view, selected and selected.path or root)
+	view.expanded = expanded.load(root, function(loaded)
+		if M.state.by_tab[view.tab] == view and view.root == root and vim.api.nvim_buf_is_valid(view.buf) then
+			merge_loaded_expansions(view, loaded)
+			view.initial_expansions_loaded = true
+			finish_initial_draw(view, root)
 		end
 	end)
-	draw(view, root)
-	git.request(root)
+	view.expanded_nests = {}
+	vim.api.nvim_buf_set_name(view.buf, ("gleb-file-tree://%s#%d"):format(root, view.tab))
+	git.start_root(root, view.tab, function(changed)
+		view.initial_source_ready = true
+		local initial_drawn = finish_initial_draw(view, root)
+		if M.state.by_tab[view.tab] == view and vim.api.nvim_buf_is_valid(view.buf) and not view.initializing then
+			apply_git_result(view, not initial_drawn and changed)
+		end
+	end)
+	watch.start_root(root, view.tab, function(toplevel)
+		repository_ready(view, root, root, toplevel)
+	end)
 end
 
 ---@param tab integer
@@ -1048,7 +1212,7 @@ function M.refresh_moved(root, selected_path, _move_pairs)
 			if is_hidden(view, target) then
 				draw(view, row and row.path or root)
 			else
-				select_path(view, target)
+				draw(view, prepare_selection(view, target) or target)
 			end
 		end
 	end
@@ -1143,16 +1307,14 @@ function M.setup()
 			end
 		end,
 	})
-	vim.api.nvim_create_autocmd("VimLeavePre", { group = view_group, callback = expanded.flush })
+	vim.api.nvim_create_autocmd("VimLeavePre", { group = view_group, callback = expanded.flush_sync })
 	vim.api.nvim_create_autocmd("BufWritePost", {
 		group = view_group,
 		callback = function()
 			local path = fs.normalize(vim.api.nvim_buf_get_name(0))
-			local requested = {}
 			for _, view in pairs(M.state.by_tab) do
-				if vim.startswith(path, view.root .. "/") and not requested[view.root] then
-					requested[view.root] = true
-					git.request(view.root)
+				if vim.startswith(path, view.root .. "/") then
+					request_git(view)
 				end
 			end
 		end,

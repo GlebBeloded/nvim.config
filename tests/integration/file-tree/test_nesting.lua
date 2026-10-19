@@ -68,6 +68,17 @@ local function has_tree_line(name)
 end
 
 ---@param name string
+---@param present boolean
+local function wait_for_tree_line(name, present)
+	assert(
+		vim.wait(math.ceil(1000 * H.load_factor()), function()
+			return has_tree_line(name) == present
+		end, 20),
+		("tree line %s did not become %s"):format(name, present and "visible" or "hidden")
+	)
+end
+
+---@param name string
 ---@param group string
 local function expect_tree_name_group(name, group)
 	local result = child.lua_get(
@@ -598,6 +609,7 @@ T["file-tree: Followed nested file expands its nest"] = function()
 	child.cmd("wincmd l")
 	child.cmd("edit " .. vim.fn.fnameescape(vim.fs.joinpath(root, "internal/billing/invoice_test.go")))
 
+	wait_for_tree_line("invoice_test.go", true)
 	eq(has_tree_line("invoice_test.go"), true)
 	expect_selected("internal/billing/invoice_test.go")
 end
@@ -664,7 +676,7 @@ T["file-tree: Deleting a nest parent keeps its children"] = function()
 		"nest parent was not deleted"
 	)
 	eq(vim.uv.fs_lstat(nested_child) ~= nil, true)
-	eq(has_tree_line("discount_test.go"), true)
+	wait_for_tree_line("discount_test.go", true)
 	local child_line = assert(tree_line("discount_test.go"))
 	eq(child_line:find("", 1, true), nil)
 	eq(child_line:find("", 1, true), nil)
@@ -686,7 +698,7 @@ T["file-tree: Visual delete on a collapsed parent deletes only the parent"] = fu
 		"nest parent was not deleted"
 	)
 	eq(vim.uv.fs_lstat(nested_child) ~= nil, true)
-	eq(has_tree_line("discount_test.go"), true)
+	wait_for_tree_line("discount_test.go", true)
 end
 
 T["file-tree: Collapsed nest parent shows a changed child"] = function()

@@ -12,7 +12,7 @@ local GIT_DEBOUNCE_MS = 150
 ---@field ignored table<string, boolean>
 ---@field ignored_generation integer
 ---@field refs integer
----@field callbacks table<integer, fun()>
+---@field callbacks table<integer, fun(changed: boolean)>
 ---@field generation integer
 ---@field in_flight boolean
 ---@field dirty boolean
@@ -32,23 +32,6 @@ M.state = { roots = {}, runs = 0 }
 ---@return table<string, boolean> ignored
 local function parse_status(output, prefix)
 	return model.parse_status(output, prefix)
-end
-
----@param left table<string, boolean>
----@param right table<string, boolean>
----@return boolean
-local function equal_sets(left, right)
-	for path in pairs(left) do
-		if not right[path] then
-			return false
-		end
-	end
-	for path in pairs(right) do
-		if not left[path] then
-			return false
-		end
-	end
-	return true
 end
 
 --- Return the latest status snapshot for a root.
@@ -81,7 +64,7 @@ end
 --- Retain one view's ownership of a root snapshot.
 ---@param root string
 ---@param owner integer
----@param callback fun()
+---@param callback fun(changed: boolean)
 ---@return nil
 function M.start_root(root, owner, callback)
 	root = fs.normalize(root)
@@ -153,15 +136,20 @@ local function run(root, state)
 					return
 				end
 				state.in_flight = false
+				local changed = false
 				if prefix_result.code == 0 and result.code == 0 and generation == state.generation then
 					local status, ignored = parse_status(result.stdout or "", prefix)
+					local ignored_changed = not vim.deep_equal(state.ignored, ignored)
+					changed = not vim.deep_equal(state.status, status) or ignored_changed
 					state.status = status
-					if not equal_sets(state.ignored, ignored) then
+					if ignored_changed then
 						state.ignored = ignored
 						state.ignored_generation = state.ignored_generation + 1
 					end
+				end
+				if generation == state.generation then
 					for _, callback in pairs(state.callbacks) do
-						callback()
+						callback(changed)
 					end
 				end
 				if state.dirty then
