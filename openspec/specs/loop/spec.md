@@ -1088,3 +1088,14 @@ The gate SHALL commit its tick of tasks.md's gate items and the judge SHALL comm
 #### Scenario: Steps commit the run files they edit
 - **WHEN** `integrity.commit_paths` commits a changed tasks.md in a repo that also has another edited file, then runs again with nothing changed, and gate.py and escalation.py are read
 - **THEN** it reports a commit, then none; only the other file stays modified; gate.py commits its tick and escalation.py commits `docs/workflow.md`
+
+### Requirement: Plugin update checks retain installed test dependencies
+The private data prepared for a plugin update SHALL retain installed plugins, parsers, and Mason packages so the full check exercises the updated plugin with the same external test tools as the normal test environment, and the context pack SHALL read only numbered gate logs (`check-<n>.log`), ignoring the update's `check-update.log`.
+
+#### Scenario: Plugin update data includes Mason tools
+- **WHEN** the plugin update workflow prepares private test data from an installation containing `lazy`, `site`, and `mason` trees
+- **THEN** all three trees are available to the update's test gate, including executables under `mason/bin`
+
+#### Scenario: Context pack skips the update check log
+- **WHEN** `context_pack.last_failures` reads an artifacts dir holding `check-update.log` and `check-2.log`
+- **THEN** it returns the FAIL lines of `check-2.log` and does not fail on the unnumbered log

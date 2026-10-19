@@ -199,7 +199,8 @@ def plugin_sources(change_dir: pathlib.Path) -> str:
 
 
 def last_failures() -> str:
-    logs = sorted(ARTIFACTS.glob("check-*.log"), key=lambda p: int(p.stem.split("-")[1]))
+    # numbered gate logs only: plugin-update also writes check-update.log (int("update") broke the pack, run 0b2c5b03)
+    logs = sorted((p for p in ARTIFACTS.glob("check-*.log") if p.stem.split("-")[1].isdigit()), key=lambda p: int(p.stem.split("-")[1]))
     if not logs:
         return ""
     lines = logs[-1].read_text(errors="replace").splitlines()

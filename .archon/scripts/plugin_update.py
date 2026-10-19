@@ -33,7 +33,7 @@ def isolate(xdg: pathlib.Path, config: pathlib.Path) -> dict[str, str]:
     data = xdg / "data/nvim"
     if not data.exists():
         data.mkdir(parents=True)
-        for sub in ("lazy", "site"):
+        for sub in ("lazy", "site", "mason"):
             if (LIVE_DATA / sub).exists():
                 run("cp", "-cR", str(LIVE_DATA / sub), str(data / sub))
     (xdg / "config").mkdir(exist_ok=True)
