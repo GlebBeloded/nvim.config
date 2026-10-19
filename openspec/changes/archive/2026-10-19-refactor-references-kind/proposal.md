@@ -24,4 +24,5 @@ highlight-eligibility check in two:
 
 ## Impact
 
-- `lua/gleb/references/kind.lua` (and a small rules module if the finalizer moves out), `tests/unit/languages/test_contract.lua`.
+- `lua/gleb/references/kind.lua`, `lua/gleb/references/kind_refine.lua`, and
+  `tests/unit/languages/test_contract.lua`.

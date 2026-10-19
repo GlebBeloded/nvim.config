@@ -1,0 +1,11 @@
+## 1. Consolidate usage-kind finalization
+Scenarios: `references: Function and type targets get no write or read`, `references: TypeScript query classifies every usage type`, `references: Python query classifies every usage type`, `references: Rust query classifies every usage type`
+- [x] 1.1 Run `make test FILE=tests/unit/references/test_go_usages.lua CASE="Function and type targets get no write or read"` and the three matching cases in `tests/unit/languages/test_contract.lua` and see them pass; export one finalizer from `lua/gleb/references/kind_refine.lua`, make `lua/gleb/references/kind.lua` finalize each usage once, replace the copied rule in `tests/unit/languages/test_contract.lua` with that production finalizer, then run the same cases again and see them pass
+
+## 2. Share document-highlight eligibility
+Scenarios: `languages: Filetypes without an enabled references facet use server kinds`, `references: Function and type targets get no write or read`
+- [x] 2.1 Run `make test FILE=tests/unit/languages/test_references.lua CASE="Filetypes without an enabled references facet use server kinds"`, `make test FILE=tests/unit/references/test_go_usages.lua CASE="Function and type targets get no write or read"`, and `make test CAPS=references` and see them pass; add one `highlights_allowed(client, references)` helper in `lua/gleb/references/kind.lua` and use it at both document-highlight call sites, then run the same commands again and see them pass with every references assertion and approved render unchanged
+
+## Agent decisions
+
+- Let `finalize` accept an optional fallback so each usage is finalized once while preserving rejected syntactic kinds' existing server kind or read fallback.
