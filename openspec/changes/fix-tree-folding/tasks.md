@@ -33,9 +33,9 @@ Scenarios: `git: Changes panel h folds a directory and l unfolds it`, `git: Chan
 
 Scenarios: `references: h folds a group and l unfolds it`, `references: h on a usage folds its group`, `references: l on an open group moves to its first child`, `references: l on a usage keeps the view open`, `references: zM and zR fold every group`, `references: Arrow keys and zc zo fold groups without an error`, `references: View keys come from the keymap file`, `references: za folds a group`, `references: Return opens a usage at its position`, `references: Escape returns to the origin window`, `references: Built-in close returns to the origin window`
 
-- [ ] 5.1 Write the new scenarios in `tests/integration/references/test_keys.lua`, update the key list of `references: View keys come from the keymap file`, and see them fail
-- [ ] 5.2 Replace `visible_nodes`/`folded`/`fold`/`place_cursor` in `references/view.lua` with the shared model, verbs and view helper; append the factory actions in `references/actions.lua`
-- [ ] 5.3 Run `make test CAPS=references` and see it pass, screen cases unchanged
+- [x] 5.1 Write the new scenarios in `tests/integration/references/test_keys.lua`, update the key list of `references: View keys come from the keymap file`, and see them fail
+- [x] 5.2 Replace `visible_nodes`/`folded`/`fold`/`place_cursor` in `references/view.lua` with the shared model, verbs and view helper; append the factory actions in `references/actions.lua`
+- [x] 5.3 Run `make test CAPS=references` and see it pass, screen cases unchanged
 
 ## 6. Project tree on the shared tree
 
@@ -61,3 +61,4 @@ Scenarios: `folding: Collapse Fold key folds the group under the tree cursor`, `
 
 - Store a folded boolean for every foldable id, so rebuilds preserve both explicit opens and closes.
 - Cache each attached tree's last rendered rows and renderer, so redraws recover the old cursor id and shared actions can redraw without feature-specific dispatch.
+- Keep `references.fold`'s existing `Fold Group` title by adjusting that factory result locally, avoiding a shared factory API change for one label.

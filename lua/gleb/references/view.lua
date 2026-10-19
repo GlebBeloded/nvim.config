@@ -9,6 +9,8 @@ local layout = require("gleb.references.layout")
 local preview = require("gleb.references.preview")
 local persisted_state = require("gleb.references.state")
 local tree = require("gleb.references.tree")
+local tree_model = require("gleb.ui.tree.model")
+local tree_view = require("gleb.ui.tree.view")
 
 ---@class gleb.references.ViewState
 ---@field windows integer[]
@@ -25,7 +27,7 @@ local tree = require("gleb.references.tree")
 ---@field title? string
 ---@field usages? gleb.references.Usage[]
 ---@field options? gleb.references.PersistedState
----@field folded? table<string, boolean>
+---@field shared_tree? gleb.ui.tree.Model
 ---@field visible_nodes? gleb.references.TreeNode[]
 ---@field origin_win? integer
 ---@field origin_cursor? integer[]
@@ -73,11 +75,12 @@ end
 ---@return gleb.references.TreeNode?
 local function node_under_cursor()
 	local state = M.state
-	if not state.tree_win or not state.visible_nodes then
+	if not state.tree_win or not state.shared_tree then
 		return nil
 	end
-	local row = vim.api.nvim_win_get_cursor(state.tree_win)[1]
-	return state.visible_nodes[row]
+	local id = tree_view.selected_id(state.shared_tree)
+	local node = id and state.shared_tree.nodes[id]
+	return node and node.data or nil
 end
 
 ---@param id string
@@ -121,44 +124,61 @@ function M.hint(wide)
 	return hint
 end
 
----@return gleb.references.TreeNode[]
-local function visible_nodes()
-	local result = {}
-	local hidden_depth
-	for _, node in ipairs(M.state.tree.nodes) do
-		if not hidden_depth or node.depth <= hidden_depth then
-			hidden_depth = nil
-			table.insert(result, node)
-			if node.kind ~= "usage" and M.state.folded[node.id] then
-				hidden_depth = node.depth
-			end
+---@param nodes gleb.references.TreeNode[]
+---@return gleb.ui.tree.Node[]
+local function shared_nodes(nodes)
+	local indexed = {}
+	for _, node in ipairs(nodes) do
+		indexed[node.id] = {
+			id = node.id,
+			children = {},
+			foldable = node.kind ~= "usage",
+			open_by_default = true,
+			data = node,
+		}
+	end
+
+	local roots = {}
+	for _, node in ipairs(nodes) do
+		local shared = indexed[node.id]
+		local parent = node.parent_id and indexed[node.parent_id]
+		if parent then
+			parent.children[#parent.children + 1] = shared
+		else
+			roots[#roots + 1] = shared
 		end
 	end
-	return result
+	return roots
 end
 
 ---@param width? integer text width of the tree window
+---@param selected_id? string
 ---@return nil
-local function render_tree(width)
-	local buf = M.state.tree_buf
-	M.state.visible_nodes = visible_nodes()
-	local rows = vim.tbl_map(function(node)
-		return format.tree_segments(node, M.state.folded, width)
-	end, M.state.visible_nodes)
-	set_lines(buf, vim.tbl_map(format.text, rows))
-	format.clear_highlights(buf)
-	for index, segments in ipairs(rows) do
-		format.highlight(buf, index - 1, segments)
-	end
+local function render_tree(width, selected_id)
+	tree_view.draw(M.state.shared_tree, function(buf, tree_rows)
+		M.state.visible_nodes = vim.tbl_map(function(row)
+			return row.node.data
+		end, tree_rows)
+		local rows = vim.tbl_map(function(node)
+			return format.tree_segments(node, M.state.shared_tree.folds, width)
+		end, M.state.visible_nodes)
+		set_lines(buf, vim.tbl_map(format.text, rows))
+		format.clear_highlights(buf)
+		for index, segments in ipairs(rows) do
+			format.highlight(buf, index - 1, segments)
+		end
+	end, selected_id)
 end
 
 --- The cursor moves to `selected_id` before the preview reads the usage under it.
 ---@param selected_id? string
 ---@return nil
 local function apply_layout(selected_id)
-	layout.apply(M.state, selected_id, {
+	layout.apply(M.state, {
 		hint = M.hint,
-		render_tree = render_tree,
+		render_tree = function(width)
+			render_tree(width, selected_id)
+		end,
 		update_preview = function()
 			preview.update(M.state)
 		end,
@@ -184,6 +204,7 @@ end
 local function rebuild()
 	local selected = as_usage(preview.selected(M.state) or M.state.preview_usage)
 	M.state.tree = tree.build(M.state.usages, M.state.options, selected)
+	tree_model.rebuild(M.state.shared_tree, shared_nodes(M.state.tree.nodes))
 	apply_layout(M.state.tree.selected_id)
 end
 
@@ -266,13 +287,14 @@ function M.open(title, usages, classifying)
 		title = title,
 		usages = usages,
 		options = options,
-		folded = {},
+		shared_tree = tree_model.new(shared_nodes(built.nodes)),
 		visible_nodes = built.nodes,
 		origin_win = origin_win,
 		origin_cursor = origin_cursor,
 		classifying = classifying == true,
 		id = view_id,
 	}
+	tree_view.attach(tree_buf, M.state.shared_tree)
 	local group = vim.api.nvim_create_augroup("gleb_references_view", { clear = true })
 	preview.follow(M.state, group)
 	vim.api.nvim_create_autocmd("WinClosed", { group = group, pattern = tostring(tree_win), callback = M.close })
@@ -326,12 +348,7 @@ end
 
 ---@return nil
 function M.fold()
-	local node = node_under_cursor()
-	if not node or node.kind == "usage" then
-		return
-	end
-	M.state.folded[node.id] = not M.state.folded[node.id]
-	apply_layout(node.id)
+	require("gleb.ui.tree").toggle(M.state.shared_tree)
 end
 
 ---@return nil
