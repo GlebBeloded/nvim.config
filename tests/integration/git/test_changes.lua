@@ -32,6 +32,16 @@ local function toggle_project_tree()
 	]])
 end
 
+local function review_changes()
+	return child.lua_get([[
+		(function()
+			local catalog = require("gleb.actions").state.applicator.catalog
+			local action = assert(catalog:get("changes.review"), "changes.review is not registered")
+			return { pcall(action.run, require("gleb.actions.context").capture()) }
+		end)()
+	]])
+end
+
 local function wait_for_panel()
 	assert(
 		child.wait(
@@ -86,6 +96,28 @@ T["git: Changes panel cursor starts on the first file"] = function()
 	wait_for_panel()
 
 	assert(child.lua_get([[vim.api.nvim_get_current_line():find("c.lua", 1, true) ~= nil]]))
+end
+
+T["git: Cmd+G from a non-file buffer uses a real directory"] = function()
+	local dirty = F.copy("dirty", vim.fn.tempname() .. "/dirty")
+	child.cmd("cd " .. vim.fn.fnameescape(dirty))
+	child.cmd("enew")
+	child.bo.buftype = "nofile"
+	child.api.nvim_buf_set_name(0, "gleb-changes://not-a-file")
+
+	local opened = review_changes()
+	assert(opened[1], opened[2])
+	wait_for_panel()
+
+	eq(
+		child.lua_get([[
+			(function()
+				local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+				return { panel.root, vim.uv.fs_stat(panel.root).type }
+			end)()
+		]]),
+		{ assert(vim.uv.fs_realpath(dirty)), "directory" }
+	)
 end
 
 T["git: Changes panel toggle closes the focused panel"] = function()

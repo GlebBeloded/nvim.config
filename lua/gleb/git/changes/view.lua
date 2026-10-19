@@ -484,6 +484,7 @@ function M.open_file(view, row)
 	view.editor_win = editor
 	vim.api.nvim_set_current_win(editor)
 	vim.cmd("edit " .. vim.fn.fnameescape(vim.fs.joinpath(view.root, row.path)))
+	view.loaded_buffers[vim.api.nvim_get_current_buf()] = nil
 end
 
 --- Open and populate a Changes view in the current tab.
