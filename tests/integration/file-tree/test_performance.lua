@@ -77,11 +77,18 @@ local function start()
 				local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
 				local git = require("gleb.file_tree.git")
 				local state = git.state.roots[view.root]
-				return state and git.state.runs > 0 and state.timer == nil and not state.in_flight
+				return state
+					and git.state.runs > 0
+					and state.timer == nil
+					and not state.in_flight
+					and not view.dirty
+					and view.dirty_timer == nil
+					and not view.git_pending
+					and not require("gleb.file_tree.expanded").state.loading
 			end)()]=],
-			3000
+			math.ceil(3000 * H.load_factor())
 		),
-		"initial git status did not settle"
+		"initial project tree did not settle"
 	)
 end
 
@@ -212,9 +219,9 @@ end
 
 local function wait_for_save_result(baseline_runs)
 	return child.lua_get(
-		[=[(function(baseline)
+		[=[(function(baseline, timeout)
 			local row_status
-			local complete = vim.wait(1000, function()
+			local complete = vim.wait(timeout, function()
 				local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
 				local git = require("gleb.file_tree.git")
 				local state = git.state.roots[view.root]
@@ -241,7 +248,7 @@ local function wait_for_save_result(baseline_runs)
 				runs = require("gleb.file_tree.git").state.runs - baseline,
 			}
 		end)(...)]=],
-		{ baseline_runs }
+		{ baseline_runs, math.ceil(1000 * H.load_factor()) }
 	)
 end
 
@@ -333,7 +340,7 @@ T["file-tree: Unchanged git status does not redraw the project tree"] = function
 				local state = git.state.roots[view.root]
 				return git.state.runs == %d and state.timer == nil and not state.in_flight
 			end)()]=]):format(baseline_runs + 1),
-			1000
+			math.ceil(1000 * H.load_factor())
 		),
 		"unchanged git status did not finish"
 	)

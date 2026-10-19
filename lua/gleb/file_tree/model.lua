@@ -455,9 +455,9 @@ local function append_children(
 		if not nested[entry.name] then
 			local label = entry.name
 			local tail = entry
-			local children = {}
-			local child_nest_map = {}
-			local child_ignored_entries = {}
+			local children
+			local child_nest_map
+			local child_ignored_entries
 			if entry.kind == "directory" and not ignored_entries[entry.name] then
 				label, tail, children, child_nest_map, child_ignored_entries =
 					compact_directory(tree, entry, nesting_settings, opts)
@@ -476,7 +476,7 @@ local function append_children(
 				label = label,
 				path = tail.path,
 				expanded = is_expanded,
-				empty = tail.kind == "directory" and not row_ignored and #children == 0,
+				empty = tail.kind == "directory" and not row_ignored and children ~= nil and #children == 0,
 				status = row_status,
 				ignored = row_ignored,
 				nest_children = nest_children,

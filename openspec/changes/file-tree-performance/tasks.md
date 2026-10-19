@@ -11,19 +11,16 @@ Scenarios: `file-tree: Project tree redraw meets the large-tree bound`, `file-tr
 - Reconcile at most 16 watch handles per scheduled batch so large ownership changes yield between libuv operations.
 - Serialize asynchronous expansion-state replacements and discard callbacks from reset state so only the newest in-memory state can commit.
 - Count and expand each file nest when its parent is visited so the row cap matches the final render without a second traversal.
+- Hold a dirty draw behind its burst's Git result so one replacement renders the final filesystem and status snapshots together.
+- Notify views when asynchronous repository discovery completes so the ignored-status deadline starts from repository readiness.
+- Merge loaded expansion keys into the live view so user expansion state survives asynchronous state reads.
+- Leave ignored-directory children unprepared so expanding a visible ignored folder performs its first scan.
 
 ## 2. Coalesce watcher, write and git refreshes
 Scenarios: `file-tree: Project tree coalesces a save burst`, `file-tree: Unchanged git status does not redraw the project tree`, `file-tree: Project tree save leaves the main path promptly`
-- [ ] 2.1 Write the integration tests in `tests/integration/file-tree/test_performance.lua`, driving a real `:write`, `BufWritePost`, populated git data and the real watcher callback, and see the redraw count, git-run count, unchanged-map or load-scaled timing assertions fail
-- [ ] 2.2 Add one per-view dirty scheduler with a 50 ms window, route watcher, write, follow and git invalidations through it, keep one git request per burst, and suppress invalidation when both returned git maps are unchanged
-- [ ] 2.3 Run `make test FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree coalesces a save burst"`, `make test FILE=tests/integration/file-tree/test_performance.lua CASE="Unchanged git status does not redraw the project tree"` and `make test FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree save leaves the main path promptly"` and see them pass
-
-## Stuck
-
-- Task 2 probe: after a real tracked-file write the scheduler quiesced with `dirty=false`, `dirty_timer=false`, `git_pending=false`, `git_in_flight=false`, `git_timer=false`, one replacement and one Git run; the small probe's collapsed target had no listed row status.
-- Attempt 1: held each view's 50 ms dirty draw behind one pending Git request and compared both returned maps; the first task run missed final state, while the diagnostic rerun and all three isolated scenarios then passed.
-- Attempt 2: preserved nest preparation for scheduled follow, avoided waiting on Git outside repositories, and reset scheduler state on re-root; a normal task rerun produced one replacement and one Git run but the listed tracked row remained `status = nil` after the Git result.
-- Saved production diff: `artifacts/runs/d79215f6-6e22-4aff-8cd9-f3ec27f6a6b1/stuck-attempt-2.diff`.
+- [x] 2.1 Write the integration tests in `tests/integration/file-tree/test_performance.lua`, driving a real `:write`, `BufWritePost`, populated git data and the real watcher callback, and see the redraw count, git-run count, unchanged-map or load-scaled timing assertions fail
+- [x] 2.2 Add one per-view dirty scheduler with a 50 ms window, route watcher, write, follow and git invalidations through it, keep one git request per burst, and suppress invalidation when both returned git maps are unchanged
+- [x] 2.3 Run `make test FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree coalesces a save burst"`, `make test FILE=tests/integration/file-tree/test_performance.lua CASE="Unchanged git status does not redraw the project tree"` and `make test FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree save leaves the main path promptly"` and see them pass
 
 ## 3. Follow an existing row without drawing
 Scenarios: `file-tree: Project tree follows an already listed row promptly`
@@ -43,7 +40,7 @@ Scenarios: `file-tree: Project tree unfold all meets the large-tree bound`
 - [x] 5.2 Replace repeated row rebuilding with one traversal that updates expansion state, counts listed and nested rows, preserves the ignored-folder gate, stops at the existing cap, and builds final rows once
 - [x] 5.3 Run `make test FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree unfold all meets the large-tree bound"` and see it pass
 - [x] 5.4 Run `make probe SCRIPT=openspec/changes/file-tree-performance/probe.lua` on the same disposable config fixture before and after implementation and record the post-change values beside the baseline below
-- [ ] 5.5 Run `make quick`, then run `make check`, and fix implementation defects without weakening any scenario
+- [x] 5.5 Run `make quick`, then run `make check`, and fix implementation defects without weakening any scenario
 
 ## Measurements
 

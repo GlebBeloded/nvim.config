@@ -183,6 +183,16 @@ T["file-tree: Project tree follows the current file"] = function()
 	edit("internal/money/money.go")
 
 	eq(child.api.nvim_get_current_win(), editor)
+	assert(
+		child.wait(
+			[=[(function()
+				local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+				return view.rows[vim.api.nvim_win_get_cursor(view.win)[1]].label == "money.go"
+			end)()]=],
+			math.ceil(1000 * H.load_factor())
+		),
+		"project tree did not follow the current file"
+	)
 	eq(selected_tree_line():match("[^ ]+$"), "money.go")
 	local money_line = child.lua_get([[(function()
 		local view = require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()]
@@ -499,8 +509,8 @@ T["file-tree: Project tree prunes a deleted expanded folder"] = function()
 				and cursor <= #view.rows
 				and _G.file_tree_deleted_handle:is_closing()
 		end, 20)
-	end)(...)]],
-		{ 1000 }
+		end)(...)]],
+		{ math.ceil(1000 * H.load_factor()) }
 	)
 	eq(pruned, true)
 end
@@ -539,9 +549,9 @@ T["file-tree: Project tree shares root work across tabs"] = function()
 	local result = H.system(child, { "touch", vim.fs.joinpath(root, "shared.lua") }, root)
 	eq(result.code, 0)
 	local shared = child.lua_get(
-		[[(function(root)
+		[[(function(root, timeout)
 		root = require("gleb.file_tree.fs").normalize(root)
-		return vim.wait(1000, function()
+		return vim.wait(timeout, function()
 			local views = vim.tbl_values(require("gleb.file_tree.view").state.by_tab)
 			return #views == 2 and vim.iter(views):all(function(view)
 				return vim.iter(view.rows):any(function(row)
@@ -553,7 +563,7 @@ T["file-tree: Project tree shares root work across tabs"] = function()
 			watch_refs = require("gleb.file_tree.watch").state.roots[root].refs,
 		}
 	end)(...)]],
-		{ root }
+		{ root, math.ceil(1000 * H.load_factor()) }
 	)
 	eq(shared, { git_refs = 2, watch_refs = 2 })
 end
@@ -581,9 +591,9 @@ T["file-tree: Project tree isolates tabpage state"] = function()
 	local result = H.system(child, { "touch", vim.fs.joinpath(root, "isolated.lua") }, root)
 	eq(result.code, 0)
 	local isolated = child.lua_get(
-		[[(function(first_tab, expected, root)
+		[[(function(first_tab, expected, root, timeout)
 		root = require("gleb.file_tree.fs").normalize(root)
-		local ready = vim.wait(1000, function()
+		local ready = vim.wait(timeout, function()
 			local state = require("gleb.file_tree.view").state
 			local view = state.by_tab[vim.api.nvim_get_current_tabpage()]
 			return state.by_tab[first_tab] == nil
@@ -600,7 +610,7 @@ T["file-tree: Project tree isolates tabpage state"] = function()
 			watch_refs = require("gleb.file_tree.watch").state.roots[root].refs,
 		} or false
 	end)(...)]],
-		{ first_tab, second, root }
+		{ first_tab, second, root, math.ceil(1000 * H.load_factor()) }
 	)
 	eq(isolated, { git_refs = 1, watch_refs = 1 })
 end
@@ -675,11 +685,15 @@ T["file-tree: Project tree drops a stored folder that is gone"] = function()
 	)
 	run_action("file_tree.close")
 	local stored = child.lua_get(
-		[[(function(root)
-		local path = vim.fs.joinpath(vim.fn.stdpath("state"), "file_tree", "expanded.json")
-		return vim.json.decode(table.concat(vim.fn.readfile(path), "\n"))[root]
-	end)(...)]],
-		{ assert(vim.uv.fs_realpath(root)) }
+		[[(function(root, timeout)
+			local expanded = require("gleb.file_tree.expanded")
+			assert(vim.wait(timeout, function()
+				return not expanded.state.writing and next(expanded.state.pending) == nil
+			end, 20), "expanded state did not settle")
+			local path = vim.fs.joinpath(vim.fn.stdpath("state"), "file_tree", "expanded.json")
+			return vim.json.decode(table.concat(vim.fn.readfile(path), "\n"))[root]
+		end)(...)]],
+		{ assert(vim.uv.fs_realpath(root)), math.ceil(1000 * H.load_factor()) }
 	)
 	eq(expanded, {})
 	eq(stored, {})
@@ -700,14 +714,21 @@ T["file-tree: Project tree atomically merges expansion state"] = function()
 	child.cmd("tabclose")
 	run_action("file_tree.close")
 
-	local stored = child.lua_get([[(function()
+	local stored = child.lua_get(
+		[[(function(timeout)
+		local expanded = require("gleb.file_tree.expanded")
+		assert(vim.wait(timeout, function()
+			return not expanded.state.writing and next(expanded.state.pending) == nil
+		end, 20), "expanded state did not settle")
 		local directory = vim.fs.joinpath(vim.fn.stdpath("state"), "file_tree")
 		local path = vim.fs.joinpath(directory, "expanded.json")
 		return {
 			value = vim.json.decode(table.concat(vim.fn.readfile(path), "\n")),
 			temporary = vim.fn.globpath(directory, "expanded.json.*", false, true),
 		}
-	end)()]])
+	end)(...)]],
+		{ math.ceil(1000 * H.load_factor()) }
+	)
 	eq(stored, {
 		value = {
 			[assert(vim.uv.fs_realpath(root))] = { "internal" },

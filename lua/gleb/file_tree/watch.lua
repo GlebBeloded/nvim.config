@@ -19,12 +19,14 @@ M.MAX_WATCH_HANDLES = 256
 ---@field clients table<integer, FileTreeWatchClient>
 ---@field wanted table<string, boolean>
 ---@field sync_scheduled boolean
+---@field discovery_complete boolean
 
 ---@class FileTreeWatchClient
 ---@field paths table<string, boolean>
 ---@field redraw fun(path: string)
 ---@field refresh_git fun()
 ---@field git_ready boolean
+---@field repository_ready? fun(toplevel: string?)
 
 ---@class FileTreeWatchState
 ---@field roots table<string, FileTreeWatchRoot>
@@ -50,10 +52,6 @@ local function queue_redraw(root, path)
 		0,
 		vim.schedule_wrap(function()
 			if M.state.roots[root] == state then
-				fs.invalidate(path)
-				if not vim.uv.fs_stat(path) then
-					fs.invalidate(vim.fs.dirname(path))
-				end
 				local refresh_git
 				for _, client in pairs(state.clients) do
 					client.redraw(path)
@@ -101,28 +99,32 @@ local function watch_git_dir(root, state)
 		{ text = true },
 		function(result)
 			vim.schedule(function()
-				if M.state.roots[root] ~= state or result.code ~= 0 then
+				if M.state.roots[root] ~= state then
 					return
 				end
-				local lines = vim.split(vim.trim(result.stdout or ""), "\n", { plain = true })
-				local path = lines[2]
-				if not path then
-					return
+				state.discovery_complete = true
+				if result.code == 0 then
+					local lines = vim.split(vim.trim(result.stdout or ""), "\n", { plain = true })
+					local path = lines[2]
+					if path then
+						state.toplevel = lines[1]
+						state.git_dir = path
+						state.git_handle = watch_path(path, function()
+							vim.schedule(function()
+								if M.state.roots[root] == state then
+									for _, client in pairs(state.clients) do
+										client.refresh_git()
+									end
+								end
+							end)
+						end)
+					end
 				end
-				state.toplevel = lines[1]
-				state.git_dir = path
-				state.git_handle = watch_path(path, function()
-					vim.schedule(function()
-						if M.state.roots[root] == state then
-							for _, client in pairs(state.clients) do
-								client.refresh_git()
-							end
-						end
-					end)
-				end)
 				for _, client in pairs(state.clients) do
-					if not client.git_ready then
-						client.git_ready = true
+					client.git_ready = state.git_dir ~= nil
+					if client.repository_ready then
+						client.repository_ready(state.toplevel)
+					elseif state.git_dir then
 						client.refresh_git()
 					end
 				end
@@ -150,14 +152,34 @@ end
 
 ---@param root string
 ---@param owner integer
+---@param repository_ready? fun(toplevel: string?)
 ---@return nil
-function M.start_root(root, owner)
+function M.start_root(root, owner, repository_ready)
 	local state = M.state.roots[root]
 	if state then
 		if not state.clients[owner] then
 			state.refs = state.refs + 1
-			state.clients[owner] =
-				{ paths = {}, redraw = function() end, refresh_git = function() end, git_ready = false }
+			state.clients[owner] = {
+				paths = {},
+				redraw = function() end,
+				refresh_git = function() end,
+				git_ready = false,
+				repository_ready = repository_ready,
+			}
+		end
+		local client = state.clients[owner]
+		if state.discovery_complete then
+			client.git_ready = state.git_dir ~= nil
+			vim.schedule(function()
+				if M.state.roots[root] ~= state or state.clients[owner] ~= client then
+					return
+				end
+				if client.repository_ready then
+					client.repository_ready(state.toplevel)
+				elseif state.git_dir then
+					client.refresh_git()
+				end
+			end)
 		end
 		return
 	end
@@ -166,10 +188,17 @@ function M.start_root(root, owner)
 		timers = {},
 		refs = 1,
 		clients = {
-			[owner] = { paths = {}, redraw = function() end, refresh_git = function() end, git_ready = false },
+			[owner] = {
+				paths = {},
+				redraw = function() end,
+				refresh_git = function() end,
+				git_ready = false,
+				repository_ready = repository_ready,
+			},
 		},
 		wanted = {},
 		sync_scheduled = false,
+		discovery_complete = false,
 	}
 	M.state.roots[root] = state
 	watch_git_dir(root, state)

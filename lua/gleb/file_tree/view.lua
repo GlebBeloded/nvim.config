@@ -14,6 +14,7 @@ local watch = require("gleb.file_tree.watch")
 
 local EXPANSION_MAX_ROWS = 5000
 local IGNORE_WAIT_MS = 300
+local INVALIDATION_WINDOW_MS = 50
 
 ---@class FileTreeView
 ---@field tab integer
@@ -30,6 +31,12 @@ local IGNORE_WAIT_MS = 300
 ---@field buffer_leave_cursor? integer[]
 ---@field skip_follow_buf? integer
 ---@field initial_draw_timer? uv.uv_timer_t
+---@field dirty_timer? uv.uv_timer_t
+---@field dirty boolean
+---@field dirty_path? string
+---@field dirty_scans table<string, boolean>
+---@field git_pending boolean
+---@field initializing boolean
 
 ---@class FileTreeViewState
 ---@field by_tab table<integer, FileTreeView>
@@ -136,6 +143,11 @@ local function forget(view)
 		view.initial_draw_timer:stop()
 		view.initial_draw_timer:close()
 		view.initial_draw_timer = nil
+	end
+	if view.dirty_timer then
+		view.dirty_timer:stop()
+		view.dirty_timer:close()
+		view.dirty_timer = nil
 	end
 	for _, autocmd in ipairs(view.autocmds) do
 		pcall(vim.api.nvim_del_autocmd, autocmd)
@@ -319,6 +331,9 @@ local function prepare_draw(view, path)
 	}
 end
 
+local schedule_dirty
+local request_git
+
 ---@param view FileTreeView
 ---@param path string
 ---@param prepared? FileTreePreparedDraw
@@ -344,17 +359,17 @@ local function draw(view, path, prepared)
 				break
 			end
 		end
-		local selected = view.rows[vim.api.nvim_win_get_cursor(view.win)[1]]
-		draw(view, selected and selected.path or view.root)
+		schedule_dirty(view, nil, changed_path)
 	end, function()
-		git.request(view.root)
+		request_git(view)
 	end)
 	expanded.save(view.root, view.expanded)
 end
 
 ---@param view FileTreeView
 ---@param path string
-local function select_path(view, path)
+---@return string?
+local function prepare_selection(view, path)
 	local normalized = fs.normalize(path)
 	local row = view.rows_by_path[normalized]
 	if row then
@@ -369,7 +384,92 @@ local function select_path(view, path)
 	if parent then
 		view.expanded_nests[parent:sub(#view.root + 2)] = true
 	end
-	draw(view, normalized)
+	return normalized
+end
+
+---@param view FileTreeView
+---@param path string
+local function select_path(view, path)
+	local normalized = prepare_selection(view, path)
+	if normalized then
+		draw(view, normalized)
+	end
+end
+
+---@param view FileTreeView
+request_git = function(view)
+	if view.git_pending or not watch.toplevel(view.root) then
+		return
+	end
+	view.git_pending = true
+	git.request(view.root)
+end
+
+---@param view FileTreeView
+---@param path? string
+---@param invalidated_scan? string
+schedule_dirty = function(view, path, invalidated_scan)
+	if M.state.by_tab[view.tab] ~= view or not vim.api.nvim_buf_is_valid(view.buf) then
+		return
+	end
+	view.dirty = true
+	view.dirty_path = path or view.dirty_path
+	if invalidated_scan then
+		view.dirty_scans[invalidated_scan] = true
+	end
+	if view.dirty_timer then
+		view.dirty_timer:stop()
+		view.dirty_timer:close()
+	end
+	local timer = assert(vim.uv.new_timer())
+	view.dirty_timer = timer
+	timer:start(
+		INVALIDATION_WINDOW_MS,
+		0,
+		vim.schedule_wrap(function()
+			if view.dirty_timer ~= timer then
+				return
+			end
+			timer:stop()
+			timer:close()
+			view.dirty_timer = nil
+			if view.git_pending then
+				return
+			end
+			if M.state.by_tab[view.tab] ~= view or not vim.api.nvim_buf_is_valid(view.buf) then
+				return
+			end
+			for scan in pairs(view.dirty_scans) do
+				fs.invalidate(scan)
+				if not vim.uv.fs_stat(scan) then
+					fs.invalidate(vim.fs.dirname(scan))
+				end
+			end
+			local selected = view.rows[vim.api.nvim_win_get_cursor(view.win)[1]]
+			local target = view.dirty_path or (selected and selected.path) or view.root
+			view.dirty = false
+			view.dirty_path = nil
+			view.dirty_scans = {}
+			draw(view, target)
+		end)
+	)
+end
+
+---@param view FileTreeView
+---@param changed boolean
+local function apply_git_result(view, changed)
+	view.git_pending = false
+	if changed or view.dirty then
+		schedule_dirty(view)
+	end
+end
+
+---@param view FileTreeView
+---@param loaded table<string, boolean>
+local function merge_loaded_expansions(view, loaded)
+	for relative in pairs(loaded) do
+		view.expanded[relative] = true
+	end
 end
 
 ---@param view FileTreeView
@@ -383,6 +483,7 @@ local function finish_initial_draw(view, path)
 	timer:stop()
 	timer:close()
 	view.initial_draw_timer = nil
+	view.initializing = false
 	if M.state.by_tab[view.tab] == view and vim.api.nvim_buf_is_valid(view.buf) then
 		select_path(view, path)
 	end
@@ -391,11 +492,42 @@ end
 
 ---@param view FileTreeView
 ---@param path string
+local function start_initial_draw_deadline(view, path)
+	view.initializing = true
+	view.initial_draw_timer = assert(vim.uv.new_timer())
+	view.initial_draw_timer:start(
+		IGNORE_WAIT_MS,
+		0,
+		vim.schedule_wrap(function()
+			finish_initial_draw(view, path)
+		end)
+	)
+end
+
+---@param view FileTreeView
+---@param root string
+---@param path string
+---@param toplevel? string
+local function repository_ready(view, root, path, toplevel)
+	if M.state.by_tab[view.tab] ~= view or view.root ~= root or not vim.api.nvim_buf_is_valid(view.buf) then
+		return
+	end
+	if toplevel then
+		start_initial_draw_deadline(view, path)
+		git.refresh(root)
+	else
+		view.initializing = false
+		select_path(view, path)
+	end
+end
+
+---@param view FileTreeView
+---@param path string
 ---@param missing_is_root boolean
 local function reveal_path(view, path, missing_is_root)
 	local target = reveal_target(view, path, missing_is_root)
 	if target and not is_hidden(view, target) then
-		select_path(view, target)
+		schedule_dirty(view, prepare_selection(view, target))
 	end
 end
 
@@ -777,8 +909,10 @@ local function open_view(path, requested_root)
 			and view.root == root
 			and vim.api.nvim_buf_is_valid(view.buf)
 		then
-			view.expanded = loaded
-			select_path(view, initial_path)
+			merge_loaded_expansions(view, loaded)
+			if not view.initializing then
+				select_path(view, initial_path)
+			end
 		end
 	end)
 	local buf = vim.api.nvim_create_buf(false, true)
@@ -804,34 +938,26 @@ local function open_view(path, requested_root)
 		autocmds = {},
 		watching = true,
 		directory_hijacks = {},
+		dirty = false,
+		dirty_scans = {},
+		git_pending = false,
+		initializing = true,
 	}
 	M.state.by_tab[tab] = view
 	M.state.last_editor_by_tab[tab] = editor
-	watch.start_root(root, tab)
 	initial_path = reveal_target(view, path, true) or root
-	git.start_root(root, tab, function()
+	git.start_root(root, tab, function(changed)
 		if finish_initial_draw(view, initial_path) then
 			return
 		end
 		if M.state.by_tab[tab] == view and vim.api.nvim_buf_is_valid(buf) then
-			local selected = view.rows[vim.api.nvim_win_get_cursor(win)[1]]
-			draw(view, selected and selected.path or root)
+			apply_git_result(view, changed)
 		end
 	end)
 	add_teardown_autocmds(view)
-	if watch.toplevel(root) then
-		view.initial_draw_timer = assert(vim.uv.new_timer())
-		view.initial_draw_timer:start(
-			IGNORE_WAIT_MS,
-			0,
-			vim.schedule_wrap(function()
-				finish_initial_draw(view, initial_path)
-			end)
-		)
-		git.refresh(root)
-	else
-		select_path(view, initial_path)
-	end
+	watch.start_root(root, tab, function(toplevel)
+		repository_ready(view, root, initial_path, toplevel)
+	end)
 	update_cursor()
 	return view
 end
@@ -889,28 +1015,43 @@ local function reroot(view, root)
 	expanded.flush()
 	watch.stop_root(view.root, view.tab)
 	git.stop_root(view.root, view.tab)
+	if view.dirty_timer then
+		view.dirty_timer:stop()
+		view.dirty_timer:close()
+		view.dirty_timer = nil
+	end
+	if view.initial_draw_timer then
+		view.initial_draw_timer:stop()
+		view.initial_draw_timer:close()
+		view.initial_draw_timer = nil
+	end
+	view.dirty = false
+	view.dirty_path = nil
+	view.dirty_scans = {}
+	view.git_pending = false
+	view.initializing = true
 	view.root = root
 	view.expanded = expanded.load(root, function(loaded)
 		if M.state.by_tab[view.tab] == view and view.root == root and vim.api.nvim_buf_is_valid(view.buf) then
-			view.expanded = loaded
-			draw(view, root)
+			merge_loaded_expansions(view, loaded)
+			if not view.initializing then
+				draw(view, root)
+			end
 		end
 	end)
 	view.expanded_nests = {}
 	vim.api.nvim_buf_set_name(view.buf, ("gleb-file-tree://%s#%d"):format(root, view.tab))
-	watch.start_root(root, view.tab)
-	git.start_root(root, view.tab, function()
+	git.start_root(root, view.tab, function(changed)
+		if finish_initial_draw(view, root) then
+			return
+		end
 		if M.state.by_tab[view.tab] == view and vim.api.nvim_buf_is_valid(view.buf) then
-			local selected = view.rows[vim.api.nvim_win_get_cursor(view.win)[1]]
-			draw(view, selected and selected.path or root)
+			apply_git_result(view, changed)
 		end
 	end)
-	vim.schedule(function()
-		if M.state.by_tab[view.tab] == view and view.root == root and vim.api.nvim_buf_is_valid(view.buf) then
-			draw(view, root)
-		end
+	watch.start_root(root, view.tab, function(toplevel)
+		repository_ready(view, root, root, toplevel)
 	end)
-	git.request(root)
 end
 
 ---@param tab integer
@@ -1149,11 +1290,9 @@ function M.setup()
 		group = view_group,
 		callback = function()
 			local path = fs.normalize(vim.api.nvim_buf_get_name(0))
-			local requested = {}
 			for _, view in pairs(M.state.by_tab) do
-				if vim.startswith(path, view.root .. "/") and not requested[view.root] then
-					requested[view.root] = true
-					git.request(view.root)
+				if vim.startswith(path, view.root .. "/") then
+					request_git(view)
 				end
 			end
 		end,
