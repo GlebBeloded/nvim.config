@@ -717,31 +717,11 @@ local function open_money()
 	child.wo.winbar = "%#Normal#▎ money.ts"
 	child.api.nvim_win_set_cursor(0, { declaration.line, declaration.col - 1 })
 	eq(child.wait([[#vim.lsp.get_clients({ bufnr = 0, name = "vtsls" }) > 0]], TIMEOUT_MS), true)
-	child.lua(
-		[[
-		local minimum, timeout = ...
-_G.references_ready = nil
-local bufnr = vim.api.nvim_get_current_buf()
-local started = vim.uv.hrtime()
-local populated = 0
-local function request()
-	local client = vim.lsp.get_clients({ bufnr = bufnr, name = "vtsls" })[1]
-	local params = vim.lsp.util.make_position_params(0, client.offset_encoding)
-	params.context = { includeDeclaration = false }
-	client:request("textDocument/references", params, function(_, result)
-		populated = result and #result >= minimum and populated + 1 or 0
-		if populated >= 2 then
-			_G.references_ready = true
-		elseif (vim.uv.hrtime() - started) / 1e6 < timeout then
-			vim.defer_fn(request, 10)
-		end
-	end, bufnr)
-end
-request()
-]],
-		{ #typescript_manifest.references.Money - 1, TIMEOUT_MS }
-	)
-	eq(child.wait("_G.references_ready == true", TIMEOUT_MS), true)
+	H.wait_references_ready(child, "vtsls", {
+		minimum = #typescript_manifest.references.Money - 1,
+		consecutive = 2,
+		timeout = TIMEOUT_MS,
+	})
 	child.type_keys("gr")
 	eq(child.wait([[vim.bo.filetype == "gleb-references"]], TIMEOUT_MS), true)
 	eq(child.wait([[not require("gleb.references.view").state.classifying]], TIMEOUT_MS), true)
@@ -775,31 +755,11 @@ local function open_python_money()
 	child.wo.winbar = "%#Normal#▎ money.py"
 	child.api.nvim_win_set_cursor(0, { declaration.line, declaration.col - 1 })
 	eq(child.wait([[#vim.lsp.get_clients({ bufnr = 0, name = "basedpyright" }) > 0]], TIMEOUT_MS), true)
-	child.lua(
-		[[
-		local minimum, timeout = ...
-_G.references_ready = nil
-local bufnr = vim.api.nvim_get_current_buf()
-local started = vim.uv.hrtime()
-local populated = 0
-local function request()
-	local client = vim.lsp.get_clients({ bufnr = bufnr, name = "basedpyright" })[1]
-	local params = vim.lsp.util.make_position_params(0, client.offset_encoding)
-	params.context = { includeDeclaration = false }
-	client:request("textDocument/references", params, function(_, result)
-		populated = result and #result >= minimum and populated + 1 or 0
-		if populated >= 2 then
-			_G.references_ready = true
-		elseif (vim.uv.hrtime() - started) / 1e6 < timeout then
-			vim.defer_fn(request, 10)
-		end
-	end, bufnr)
-end
-request()
-]],
-		{ #python_manifest.references.Money - 1, TIMEOUT_MS }
-	)
-	eq(child.wait("_G.references_ready == true", TIMEOUT_MS), true)
+	H.wait_references_ready(child, "basedpyright", {
+		minimum = #python_manifest.references.Money - 1,
+		consecutive = 2,
+		timeout = TIMEOUT_MS,
+	})
 	child.type_keys("gr")
 	eq(child.wait([[vim.bo.filetype == "gleb-references"]], TIMEOUT_MS), true)
 	eq(child.wait([[not require("gleb.references.view").state.classifying]], TIMEOUT_MS), true)
@@ -834,31 +794,11 @@ local function open_lua_apply()
 	child.api.nvim_win_set_cursor(0, { declaration.line, declaration.col - 1 })
 	eq(child.wait([[#vim.lsp.get_clients({ bufnr = 0, name = "lua_ls" }) > 0]], TIMEOUT_MS), true)
 	child.lua([[vim.diagnostic.enable(false, { bufnr = 0 })]])
-	child.lua(
-		[[
-		local minimum, timeout = ...
-_G.references_ready = nil
-local bufnr = vim.api.nvim_get_current_buf()
-local started = vim.uv.hrtime()
-local populated = 0
-local function request()
-	local client = vim.lsp.get_clients({ bufnr = bufnr, name = "lua_ls" })[1]
-	local params = vim.lsp.util.make_position_params(0, client.offset_encoding)
-	params.context = { includeDeclaration = false }
-	client:request("textDocument/references", params, function(_, result)
-		populated = result and #result >= minimum and populated + 1 or 0
-		if populated >= 2 then
-			_G.references_ready = true
-		elseif (vim.uv.hrtime() - started) / 1e6 < timeout then
-			vim.defer_fn(request, 10)
-		end
-	end, bufnr)
-end
-request()
-]],
-		{ #lua_manifest.references.apply - 2, TIMEOUT_MS }
-	)
-	eq(child.wait("_G.references_ready == true", TIMEOUT_MS), true)
+	H.wait_references_ready(child, "lua_ls", {
+		minimum = #lua_manifest.references.apply - 2,
+		consecutive = 2,
+		timeout = TIMEOUT_MS,
+	})
 	child.type_keys("gr")
 	eq(child.wait([[vim.bo.filetype == "gleb-references"]], TIMEOUT_MS), true)
 	eq(child.wait([[not require("gleb.references.view").state.classifying]], TIMEOUT_MS), true)
@@ -898,31 +838,11 @@ local function open_bash_rate()
 	child.wo.winbar = "%#Normal#▎ tax.sh"
 	child.api.nvim_win_set_cursor(0, { declaration.line, declaration.col - 1 })
 	eq(child.wait([[#vim.lsp.get_clients({ bufnr = 0, name = "bashls" }) > 0]], TIMEOUT_MS), true)
-	child.lua(
-		[[
-		local minimum, timeout = ...
-_G.references_ready = nil
-local bufnr = vim.api.nvim_get_current_buf()
-local started = vim.uv.hrtime()
-local populated = 0
-local function request()
-	local client = vim.lsp.get_clients({ bufnr = bufnr, name = "bashls" })[1]
-	local params = vim.lsp.util.make_position_params(0, client.offset_encoding)
-	params.context = { includeDeclaration = false }
-	client:request("textDocument/references", params, function(_, result)
-		populated = result and #result >= minimum and populated + 1 or 0
-		if populated >= 2 then
-			_G.references_ready = true
-		elseif (vim.uv.hrtime() - started) / 1e6 < timeout then
-			vim.defer_fn(request, 10)
-		end
-	end, bufnr)
-end
-request()
-]],
-		{ #bash_manifest.references.rate - 1, TIMEOUT_MS }
-	)
-	eq(child.wait("_G.references_ready == true", TIMEOUT_MS), true)
+	H.wait_references_ready(child, "bashls", {
+		minimum = #bash_manifest.references.rate - 1,
+		consecutive = 2,
+		timeout = TIMEOUT_MS,
+	})
 	child.type_keys("gr")
 	eq(child.wait([[vim.bo.filetype == "gleb-references"]], TIMEOUT_MS), true)
 	eq(child.wait([[not require("gleb.references.view").state.classifying]], TIMEOUT_MS), true)
@@ -964,31 +884,11 @@ local function open_terraform_vpc()
 	child.api.nvim_win_set_cursor(0, { declaration.line, declaration.col - 1 })
 	eq(child.wait([[#vim.lsp.get_clients({ bufnr = 0, name = "terraformls" }) > 0]], TIMEOUT_MS), true)
 	child.lua([[vim.diagnostic.enable(false, { bufnr = 0 })]])
-	child.lua(
-		[[
-		local minimum, timeout = ...
-_G.references_ready = nil
-local bufnr = vim.api.nvim_get_current_buf()
-local started = vim.uv.hrtime()
-local populated = 0
-local function request()
-	local client = vim.lsp.get_clients({ bufnr = bufnr, name = "terraformls" })[1]
-	local params = vim.lsp.util.make_position_params(0, client.offset_encoding)
-	params.context = { includeDeclaration = false }
-	client:request("textDocument/references", params, function(_, result)
-		populated = result and #result >= minimum and populated + 1 or 0
-		if populated >= 2 then
-			_G.references_ready = true
-		elseif (vim.uv.hrtime() - started) / 1e6 < timeout then
-			vim.defer_fn(request, 10)
-		end
-	end, bufnr)
-end
-request()
-]],
-		{ #terraform_manifest.references.vpc - 1, TIMEOUT_MS }
-	)
-	eq(child.wait("_G.references_ready == true", TIMEOUT_MS), true)
+	H.wait_references_ready(child, "terraformls", {
+		minimum = #terraform_manifest.references.vpc - 1,
+		consecutive = 2,
+		timeout = TIMEOUT_MS,
+	})
 	child.type_keys("gr")
 	eq(child.wait([[vim.bo.filetype == "gleb-references"]], TIMEOUT_MS), true)
 	eq(child.wait([[not require("gleb.references.view").state.classifying]], TIMEOUT_MS), true)

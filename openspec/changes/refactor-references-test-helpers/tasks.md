@@ -4,7 +4,7 @@ Scenarios: `references: TypeScript class usages are grouped by usage type`, `ref
 
 ## 2. Migrate non-Rust screen readiness loops
 Scenarios: `references: TypeScript class usages are grouped by usage type`, `references: Python class usages are grouped by usage type`, `references: Lua usage types match the approved render`, `references: Bash usage types match the approved render`, `references: Terraform usage types match the approved render`
-- [ ] 2.1 Run `make test FILE=tests/screen/references/test_view.lua CASE="TypeScript class usages are grouped by usage type"` and the equivalent commands for the other four scenarios and see them pass, replace their copied readiness loops with `H.wait_references_ready` while preserving every assertion, wait, minimum, and bound, then run the same commands again and see them pass
+- [x] 2.1 Run `make test FILE=tests/screen/references/test_view.lua CASE="TypeScript class usages are grouped by usage type"` and the equivalent commands for the other four scenarios and see them pass, replace their copied readiness loops with `H.wait_references_ready` while preserving every assertion, wait, minimum, and bound, then run the same commands again and see them pass
 
 ## 3. Migrate Rust screen readiness and quiescence
 Scenarios: `references: Rust struct usages are grouped by usage type`
