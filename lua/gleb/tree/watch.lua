@@ -28,6 +28,7 @@ M.MAX_WATCH_HANDLES = 256
 ---@field settle_passes integer
 ---@field git_handle? uv.uv_fs_event_t
 ---@field git_dir? string
+---@field git_index_stamp? string|false
 ---@field toplevel? string
 ---@field refs integer
 ---@field clients table<integer, FileTreeWatchClient>
@@ -51,6 +52,39 @@ M.state = { roots = {} }
 
 local schedule_sync
 local update_coverage
+
+---@param stat uv.fs_stat.result?
+---@return string|false
+local function stat_stamp(stat)
+	if not stat then
+		return false
+	end
+	return ("%d:%d"):format(stat.mtime.sec, stat.mtime.nsec)
+end
+
+---@param root string
+---@param state FileTreeWatchRoot
+local function poll_git_index(root, state)
+	local index = vim.fs.joinpath(state.git_dir, "index")
+	local request = vim.uv.fs_stat(index, function(_, stat)
+		vim.schedule(function()
+			if M.state.roots[root] ~= state then
+				return
+			end
+			local stamp = stat_stamp(stat)
+			local changed = state.git_index_stamp ~= nil and state.git_index_stamp ~= stamp
+			state.git_index_stamp = stamp
+			if changed then
+				for _, client in pairs(state.clients) do
+					client.refresh_git()
+				end
+			end
+		end)
+	end)
+	if not request then
+		state.git_index_stamp = false
+	end
+end
 
 ---@param root string
 ---@param path string
@@ -123,6 +157,7 @@ local function watch_git_dir(root, state)
 					if path then
 						state.toplevel = lines[1]
 						state.git_dir = path
+						poll_git_index(root, state)
 						state.git_handle = watch_path(path, function()
 							vim.schedule(function()
 								if M.state.roots[root] == state then
@@ -456,6 +491,9 @@ local function poll_folders(root, state)
 	local settling = state.settle_passes > 0
 	if settling then
 		state.settle_passes = state.settle_passes - 1
+		if state.git_dir then
+			poll_git_index(root, state)
+		end
 	end
 	local before = {}
 	for _, client in pairs(state.clients) do

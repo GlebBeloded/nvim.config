@@ -9,6 +9,7 @@ Scenarios: `file-tree: Project tree watchers stop when the tree closes`
 - Shared scanning lives at `gleb.workspace` and porcelain parsing at `gleb.git.status`, matching their workspace and Git ownership while retaining the old filesystem import as a compatibility alias.
 - Shared tree infrastructure lives under `gleb.tree`, with compatibility aliases for existing file-tree callers so the Changes panel has no project-tree dependency.
 - Large pathspec stdin travels as metadata on the Git argument list so the three-argument runner stays uniform without changing Git's NUL-delimited input.
+- During macOS watch-set settling, compare the Git index stamp so a dropped git-dir event still refreshes status without continuous polling.
 
 ## 2. Migrate project-tree git and expansion debounce
 Scenarios: `file-tree: Project tree runs git status once per burst`, `file-tree: Project tree expanded folders persist per root`

@@ -54,7 +54,7 @@ Repeated infrastructure across the tree, Changes panel and diff view (2026-10-19
 - `file-tree: Show Ignored persists` still holds because settings persistence is unchanged.
 - `file-tree: Saved Show Ignored state is restored` still holds because settings loading is unchanged.
 - `file-tree: Ignored folders do not compact or consume unfold budget` still holds because filtering precedes compaction as before.
-- `file-tree: Requirement: Shared porcelain status records` still holds because parsing moves without changing records.
+- `file-tree: Requirement: Shared porcelain status records` is updated to name the neutral `gleb.git.status` API.
 - `file-tree: Project tree opens on the left at width 35` still holds because window placement is unchanged.
 - `file-tree: Project tree toggle closes a focused tree` still holds because toggle behavior is unchanged.
 - `file-tree: Project tree toggle focuses an open tree` still holds because toggle behavior is unchanged.
