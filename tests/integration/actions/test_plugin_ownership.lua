@@ -63,7 +63,9 @@ local function expect_audit_empty()
 	eq(child.lua_get([[require("gleb.actions").audit()]]), {})
 end
 
-T["actions: Plugin-window mappings are action-owned"] = function()
+T["actions: Plugin-window mappings are action-owned"] = MiniTest.new_set()
+
+T["actions: Plugin-window mappings are action-owned"]["audits every populated plugin window"] = function()
 	child.lua(PLUGIN_MAPPED)
 	open_surface(
 		[[RunAction("file_tree.toggle")]],
@@ -161,6 +163,27 @@ T["actions: Plugin-window mappings are action-owned"] = function()
 			},
 		}
 	)
+end
+
+T["actions: Plugin-window mappings are action-owned"]["reaps a blocked surface's shell-owned descendant"] = function()
+	local pid_file = vim.fn.tempname()
+	local shell_command = ("sleep 60 & echo $! > %s; wait"):format(vim.fn.shellescape(pid_file))
+	local opened, err = pcall(H.open_surface, child, {
+		open = ([[vim.system({ "sh", "-c", %q }, { text = true }):wait()]]):format(shell_command),
+		condition = "false",
+		surface = "blocked descendant",
+		timeout = 500,
+	})
+
+	eq(opened, false)
+	eq(tostring(err):find("blocked descendant surface open failed", 1, true) ~= nil, true)
+	local recorded_pid = assert(vim.fn.readfile(pid_file)[1], "blocked shell did not record its child pid")
+	local sleep_pid = assert(tonumber(recorded_pid), "blocked shell recorded an invalid child pid")
+	local remained_alive = vim.uv.kill(sleep_pid, 0) == 0
+	if remained_alive then
+		vim.uv.kill(sleep_pid, "sigkill")
+	end
+	eq(remained_alive, false)
 end
 
 T["actions: Unconfigured defaults are absent"] = function()

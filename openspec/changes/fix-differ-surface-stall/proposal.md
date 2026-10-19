@@ -18,6 +18,18 @@ The child's main loop was blocked by a synchronous `git status --porcelain=v1 -z
 Also, `stop_blocked_child` (tests/helpers.lua) SIGKILLs only the child nvim, leaving its git or `sleep` subprocess
 running.
 
+`tree-diff-cutover` is now present: the active tests assert that the `Differ` command and `differ.nvim` plugin are
+not registered. The Differ-specific work below therefore no longer applies; the process-tree cleanup remains.
+
+## Evidence
+
+- `/Users/hlebbeladzed/.local/share/nvim/lazy/differ.nvim/lua/differ/git/init.lua:42` waits synchronously for every
+  local git command without a timeout; lines 574 and 981 invoke that helper for `git status --porcelain=v1 -z -uall`.
+- `tests/integration/git/test_git.lua:244`-`261` asserts that the retired `Differ` command and `differ.nvim` plugin
+  are absent.
+- `tests/helpers.lua:336`-`347` records only the Neovim child's immediate subprocesses, and lines 320-325 kill only
+  those pids before killing Neovim; grandchildren such as a shell's `sleep` process are not collected or killed.
+
 ## What Changes
 
 - `tree-diff-cutover` removes differ.nvim: if `:Differ` and its surface cases are gone, the Differ items below no longer
@@ -33,6 +45,7 @@ running.
 
 ## Impact
 
-- tests/integration/actions/test_plugin_ownership.lua, tests/integration/git/test_git.lua, tests/helpers.lua.
-- `actions: Plugin-window mappings are action-owned` and `git: Differ opens panel on the left` still hold, and pass in
-  full parallel runs without a stall.
+- `tests/integration/actions/test_plugin_ownership.lua` and `tests/helpers.lua`.
+- No plugin dependency or core keymap changes; no module layout, load-order, or plugin-wiring changes.
+- Out of scope: restoring or changing retired Differ behavior, changing active surface assertions, or skipping a
+  surface.
