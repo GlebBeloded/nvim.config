@@ -164,4 +164,40 @@ T["file-tree: Directory buffer entered from project tree focuses it"] = function
 	eq(actual.directory_buffers, 0)
 end
 
+T["file-tree: Directory buffer replaces an open changes panel"] = function()
+	child.cmd("cd " .. vim.fn.fnameescape(root))
+	child.cmd("edit README.md")
+	child.lua([[require("gleb.git.changes").open({ root = ... })]], { root })
+	assert(
+		child.wait([[(function()
+		local view = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		return view and #view.rows > 0
+	end)()]]),
+		"Changes panel did not draw its initial rows"
+	)
+	child.cmd("wincmd l")
+	local directory = vim.fs.joinpath(root, "internal")
+
+	child.cmd("edit " .. vim.fn.fnameescape(directory))
+	assert(
+		child.wait([[(function()
+		local view = require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		return view and vim.api.nvim_get_current_win() == view.win and #view.rows > 0
+	end)()]]),
+		"Project tree did not replace the directory buffer"
+	)
+
+	local actual = child.lua_get([[(function()
+		local tree = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+		local filetypes = vim.iter(vim.api.nvim_tabpage_list_wins(0)):map(function(win)
+			return vim.bo[vim.api.nvim_win_get_buf(win)].filetype
+		end):totable()
+		return { root = tree.root, filetypes = filetypes }
+	end)()]])
+
+	eq(actual.root, vim.uv.fs_realpath(directory))
+	eq(vim.tbl_contains(actual.filetypes, "gleb-changes"), false)
+	eq(vim.tbl_contains(actual.filetypes, "gleb-diff"), false)
+end
+
 return T

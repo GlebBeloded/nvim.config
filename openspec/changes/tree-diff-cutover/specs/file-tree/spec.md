@@ -19,6 +19,10 @@ With no project tree open, editing a directory SHALL open and focus the sidebar 
 - **WHEN** the project tree rooted at a copy of `treeproj` has its cursor on `go.mod` and `:edit internal` runs in the project-tree window
 - **THEN** the existing project tree is current with the same root and cursor, the editor still shows its previous file, and no directory buffer remains
 
+#### Scenario: Directory buffer replaces an open changes panel
+- **WHEN** the changes panel is open beside an editor and `:edit internal` runs in the editor
+- **THEN** no changes-panel or diff-view window remains and the focused project tree is rooted at `internal`
+
 ### Requirement: Project tree sidebar
 The action `file_tree.toggle` SHALL open the project tree for the cwd in a left-docked window 35 columns wide with `winfixwidth`, filetype `gleb-file-tree` and a `nofile` buffer, at most one per tab page, reveal the current file, and focus it. When current it SHALL close; when open but unfocused it SHALL focus. Closing the last other non-floating window SHALL close the tree first.
 

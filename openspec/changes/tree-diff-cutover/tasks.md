@@ -112,6 +112,12 @@ Scenarios: `bufferline: tabline over the changes panel matches the approved rend
 - [x] 11.2 Make the smallest bufferline setup change that draws column 37 with `BufferLineBufferSelected` while preserving the approved text and every existing project-tree screenshot
 - [x] 11.3 Run the named case and the other four task-6 cases and see them pass without re-approving screenshots
 
+## 12. Keep both sidebar entry points mutually exclusive
+Scenarios: `file-tree: Directory buffer replaces an open changes panel`, `git: Cmd+G with the project tree open replaces it`
+- [x] 12.1 Add regressions through real `:edit <dir>` and Cmd+G entry points and see each retain the opposing sidebar
+- [x] 12.2 Make directory hijacking share the project-tree open cleanup and make changes review share the changes-panel open cleanup
+- [x] 12.3 Run both named cases and their file-tree, keymaps and git integration directories
+
 ## Agent decisions
 
 - Reused the remaining lazy.nvim adapter for the adapter-reopen contract because it has the same lhs-to-callback shape as the retired neo-tree adapter.

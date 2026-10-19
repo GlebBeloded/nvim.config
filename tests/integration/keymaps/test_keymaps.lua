@@ -855,6 +855,32 @@ T["keymaps: Alt-g opens the changes review"] = function()
 	)
 end
 
+T["git: Cmd+G with the project tree open replaces it"] = function()
+	local repo = F.copy("billing", vim.fn.tempname() .. "/billing")
+	local invoice = vim.fs.joinpath(repo, "internal/billing/invoice.go")
+	child.cmd("cd " .. vim.fn.fnameescape(repo) .. " | edit " .. vim.fn.fnameescape(invoice))
+	child.type_keys("<M-e>")
+	eq(wait_project_tree_focused(), true)
+	child.cmd("wincmd l")
+	child.type_keys("<M-g>")
+
+	eq(
+		child.wait(
+			[[(function()
+				local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+				if not panel or not panel.diff_view then
+					return false
+				end
+				return vim.iter(vim.api.nvim_tabpage_list_wins(0)):all(function(win)
+					return vim.bo[vim.api.nvim_win_get_buf(win)].filetype ~= "gleb-file-tree"
+				end)
+			end)()]],
+			async_ms()
+		),
+		true
+	)
+end
+
 T["keymaps: Alt-F opens live grep"] = function()
 	edit_repo_file()
 	child.type_keys("<M-F>")

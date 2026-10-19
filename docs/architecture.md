@@ -169,9 +169,8 @@ flowchart LR
   restores. resession stores layout, never unsaved text, so auto-save keeps buffers written. Restore is
   `nested` so `FileType` and LSP attach fire for restored buffers.
 - **file-tree**: one owned sidebar instead of neo-tree, so its rows, keys and colours follow the specs.
-  Directory buffers open it, with netrw disabled. macOS folder and git-dir watches poll, as do gitsigns'
-  git-dir watches: FSEvents closes wait for fseventsd, which can stall events and `:quit`. Every left
-  panel (project tree, changes panel, diffview) is 35 columns wide.
+  Directory buffers open it, with netrw disabled. Every left panel (project tree, changes panel, diffview)
+  is 35 columns wide.
 - **git**: the changes panel with the owned diff view reviews changes; diffview stays for merges and
   history. Commit messages come from a local model, the
   prompt goes on stdin to avoid shell escaping, and the diff is cut to 200 lines to keep the model on

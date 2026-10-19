@@ -833,6 +833,17 @@ local function open_view(path, requested_root)
 	return view
 end
 
+---@param path string
+---@param requested_root? string
+---@return FileTreeView
+local function open_replacing_changes(path, requested_root)
+	local changes = package.loaded["gleb.git.changes"]
+	if changes then
+		changes.close()
+	end
+	return open_view(path, requested_root)
+end
+
 ---@param args { buf: integer }
 local function hijack_directory(args)
 	if not vim.api.nvim_buf_is_valid(args.buf) then
@@ -858,7 +869,7 @@ local function hijack_directory(args)
 		vim.api.nvim_set_current_win(view.win)
 	else
 		vim.api.nvim_win_set_buf(0, vim.api.nvim_create_buf(true, false))
-		open_view(directory, directory)
+		open_replacing_changes(directory, directory)
 	end
 	if vim.api.nvim_buf_is_valid(args.buf) then
 		vim.api.nvim_buf_delete(args.buf, { force = true })
@@ -1074,11 +1085,7 @@ function M.toggle()
 		end
 		return
 	end
-	local changes = package.loaded["gleb.git.changes"]
-	if changes then
-		changes.close()
-	end
-	open_view(path)
+	open_replacing_changes(path)
 end
 
 --- Open the project tree and reveal the current file.
