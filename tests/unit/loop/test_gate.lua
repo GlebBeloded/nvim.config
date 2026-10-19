@@ -868,6 +868,7 @@ end
 T["loop: Gate flags a test case added and removed within one pass"] = function()
 	local repo = branch_repo({
 		["tests/unit/a/test_a.lua"] = 'T["a: old"] = function() end\nT[scenario]["kept by variable"] = function() end',
+		["tests/unit/b/test_b.lua"] = "for _, language in ipairs(languages) do\n\tT[s][language.name] = function() end\nend",
 	})
 	local artifacts = H.tempdir(child)
 	local scratch = H.tempdir(child)
@@ -875,7 +876,8 @@ T["loop: Gate flags a test case added and removed within one pass"] = function()
 	local env = { ARTIFACTS_DIR = artifacts, PATH = bin .. ":" .. vim.env.PATH }
 	loop_script("verdict.py", repo, verdict_env(artifacts))
 	local seen = '[{"file":"tests/unit/a/test_a.lua","case":"a: old"},{"file":"tests/unit/a/test_a.lua","case":"a: tmp"},'
-		.. '{"file":"tests/unit/a/test_a.lua","case":"kept by variable"},{"file":"/tmp/fixture/test_stall.lua","case":"hang: ok first"}]'
+		.. '{"file":"tests/unit/a/test_a.lua","case":"kept by variable"},{"file":"/tmp/fixture/test_stall.lua","case":"hang: ok first"},'
+		.. '{"file":"tests/unit/b/test_b.lua","case":"go"}]'
 	write(artifacts, { ["case-seen.json"] = seen })
 
 	local first = loop_script("gate.py", repo, env)
@@ -885,6 +887,12 @@ T["loop: Gate flags a test case added and removed within one pass"] = function()
 	-- a variable-keyed case its file still names, and a fixture runner's case outside tests/, are not dropped
 	eq(first.failures:find("kept by variable", 1, true), nil, { fail_reason = first.failures })
 	eq(first.failures:find("hang: ok first", 1, true), nil, { fail_reason = first.failures })
+	-- a case named from data (`T[s][language.name]`) cannot be checked against the source: never flagged
+	eq(
+		first.failures:find(": go", 1, true) or first.failures:find(", go", 1, true),
+		nil,
+		{ fail_reason = first.failures }
+	)
 	loop_script(
 		"verdict.py",
 		repo,

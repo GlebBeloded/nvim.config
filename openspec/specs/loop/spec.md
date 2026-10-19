@@ -520,7 +520,7 @@ With `ARTIFACTS_DIR` set, tests/parallel.lua SHALL add each collected case (file
 
 #### Scenario: Gate flags a test case added and removed within one pass
 - **WHEN** verdict.py snapshots a branch holding base case `a: old`, case-seen.json then lists `a: old` and `a: tmp`, and gate.py, verdict.py and gate.py run
-- **THEN** the first gate is red naming `hard rule: test added then removed during build: a: tmp` and not `a: old`, verdict removes case-seen.json, and the second gate does not repeat it; a seen case its file still names as a quoted string (a variable-keyed `T[scenario]["…"]`) and a case from a file outside tests/ are never flagged
+- **THEN** the first gate is red naming `hard rule: test added then removed during build: a: tmp` and not `a: old`, verdict removes case-seen.json, and the second gate does not repeat it; a seen case its file still names as a quoted string (a variable-keyed `T[scenario]["…"]`) a case from a file outside tests/, and a case of a file that names nested cases from data (`T[s][language.name] = function`) are never flagged
 
 ### Requirement: Gate merges a moved auto first
 The build loop's gate SHALL first merge `auto` into the run's branch when `auto` has commits the branch lacks, the worktree has no tracked edits and the merge is clean (`.archon/scripts/sync_base.py`); a conflicting merge SHALL be aborted and the gate SHALL run on the branch as it is.
