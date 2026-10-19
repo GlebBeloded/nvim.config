@@ -40,3 +40,11 @@ Two VS Code parity gaps in move detection that reviews noted but never fixed (ar
 - No plugin dependency is added, removed, or upgraded; core keymaps do not change.
 - Out of scope: diff-view rendering, line-diff fallback policy, move thresholds other than size give-up, and the existing
   move deadline and performance bounds.
+
+## Decision (auditor, 2026-10-19, review pass 1)
+
+- Gap 2 in this proposal overstated VS Code: upstream `areLinesSimilar` (`computeMovedLines.ts`) still returns false
+  when both lines are longer than 300 characters, before Myers. Keep the `MAX_SIMILAR_LINE = 300` guard exactly as
+  VS Code has it. The change is only that `lines_similar` does not give up (`too_big`) for lines within that limit,
+  where VS Code's Myers always decides; if `lcs.diff` cannot report `too_big` for lines of at most 300 characters, gap 2
+  needs no code change and its scenario asserts the VS Code result for a long (≤ 300 chars) moved line.
