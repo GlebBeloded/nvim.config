@@ -456,11 +456,15 @@ While the diff view shows a panel file, `diff.next_file` SHALL move the panel cu
 - **THEN** focus moves to the new diff view's `right_win`, not to the panel or the replaced window
 
 ### Requirement: Changes panel open and close
-`<CR>` on an actionable file row SHALL close the panel-owned diff view, edit the file in the editor window and focus it, keeping the panel open. `q` SHALL close the panel and only its view; editor restoration SHALL remain in `windows.restore`. Buffers loaded only by the panel SHALL be unloaded on close when unmodified.
+`<CR>` on an actionable file row SHALL close the panel-owned diff view, edit the file in the editor window and focus it as a listed normal file buffer independent of the panel, keeping the panel open. `q` SHALL close the panel and only its view; editor restoration SHALL remain in `windows.restore`. Buffers loaded only by the panel SHALL be unloaded on close when unmodified.
 
 #### Scenario: Changes panel Enter opens the file
 - **WHEN** the diff view shows `b.txt` of the `dirty` fixture and `<CR>` is pressed in normal mode on the `b.txt` panel row
 - **THEN** no window with filetype `gleb-diff` remains, the current window edits `b.txt`, and the `gleb-changes` window is still open
+
+#### Scenario: Changes panel file is an independent normal buffer
+- **WHEN** the diff view shows `b.txt` of the `dirty` fixture and `<CR>` is pressed in normal mode on the `b.txt` panel row
+- **THEN** the current buffer is listed, has empty `buftype`, has the absolute path of `b.txt`, and remains a valid file buffer after the Changes panel closes
 
 #### Scenario: Changes panel q closes the panel and the diff view
 - **WHEN** `a.txt` was edited, the changes panel was opened, the diff view shows `b.txt`, and `q` is pressed in normal mode in the panel
@@ -595,11 +599,15 @@ The changes panel SHALL match the approved IntelliJ commit-tree render.
 - **THEN** columns 1-36 of screen rows 2-12 match design.md "Proposed A — changes panel", text and colour mask
 
 ### Requirement: Changes review workflow
-In a repository with staged, unstaged and untracked changes, Cmd+G SHALL open the changes panel with the diff view of the selected file, and in a diff window `]f` SHALL show the panel's next changed file and `]c` SHALL move the cursor to the next change of the current file.
+In a repository with staged, unstaged and untracked changes, Cmd+G SHALL resolve the repository from a real directory for file and non-file buffers, then open the changes panel with the diff view of the selected file. In a diff window `]f` SHALL show the panel's next changed file and `]c` SHALL move the cursor to the next change of the current file.
 
 #### Scenario: Cmd+G opens the changes review of a dirty repo
 - **WHEN** Neovim runs in a fresh copy of the `dirty` fixture and Cmd+G is pressed as a real key press
 - **THEN** the changes panel is the leftmost window of the current tab and lists exactly the fixture manifest's changed files: `a.txt` (staged), `b.txt` and `lib/c.lua` (unstaged), `d.txt` (staged and unstaged) and `new.txt` (untracked), and the editor area shows the diff view of `lib/c.lua`
+
+#### Scenario: Cmd+G from a non-file buffer uses a real directory
+- **WHEN** Neovim's working directory is the `dirty` fixture, the current named non-file buffer has no filesystem path, and Cmd+G is pressed
+- **THEN** Git runs with an existing directory as its working directory, no `ENOENT` error is reported, and the changes review opens for the `dirty` fixture
 
 #### Scenario: Cmd+G with the project tree open replaces it
 - **WHEN** the project tree is open in a dirty repository and Cmd+G is pressed as a real key press
