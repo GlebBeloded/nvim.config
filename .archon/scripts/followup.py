@@ -122,6 +122,8 @@ def queue_detached() -> str:
     try:
         git("worktree", "add", "--detach", temp, BASE)
         name = queue(temp)
+        if git("rev-parse", "--is-bare-repository").strip() == "true":  # a leaked GIT_DIR flipped core.bare (2026-10-19):
+            raise SystemExit(f"followup: the repository reads as bare; refusing to move {BASE} under a checkout")
         git("update-ref", f"refs/heads/{BASE}", git("rev-parse", "HEAD", cwd=temp))
         return name
     finally:
