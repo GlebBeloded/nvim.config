@@ -1263,4 +1263,75 @@ T[rust_grouped_scenario]["matches approved R1"] = function()
 	H.expect_screen_colors(child, 1, with_cleared_rust_background(RUST_GROUPED_MASK), RUST_LEGEND)
 end
 
+T[rust_grouped_scenario]["waits for consecutive populated results"] = function()
+	child.lua([[
+		local populated = {
+			{
+				uri = "file:///repo/first.lua",
+				range = {
+					start = { line = 0, character = 0 },
+					["end"] = { line = 0, character = 5 },
+				},
+			},
+			{
+				uri = "file:///repo/second.lua",
+				range = {
+					start = { line = 1, character = 0 },
+					["end"] = { line = 1, character = 5 },
+				},
+			},
+		}
+		local results = { populated, {}, populated, populated }
+		_G.reference_requests = 0
+		vim.lsp.get_clients = function()
+			return {
+				{
+					offset_encoding = "utf-16",
+					request = function(_, method, params, callback, bufnr)
+						assert(method == "textDocument/references")
+						assert(params.context.includeDeclaration == false)
+						assert(bufnr == vim.api.nvim_get_current_buf())
+						_G.reference_requests = _G.reference_requests + 1
+						callback(nil, results[_G.reference_requests])
+					end,
+				},
+			}
+		end
+	]])
+
+	H.wait_references_ready(child, "lua_ls", { minimum = 2, consecutive = 2, timeout = 1000 })
+
+	eq(child.lua_get("_G.reference_requests"), 4)
+end
+
+T[rust_grouped_scenario]["restores the status handler after quiescence"] = function()
+	child.lua([[
+		_G.previous_calls = 0
+		_G.original_status_handler = function()
+			_G.previous_calls = _G.previous_calls + 1
+		end
+		package.loaded["rustaceanvim.config.internal"] = {
+			server = { handlers = { ["experimental/serverStatus"] = _G.original_status_handler } },
+		}
+	]])
+
+	H.watch_rust_quiescent(child)
+	child.lua([[
+		require("rustaceanvim.config.internal").server.handlers["experimental/serverStatus"](
+			nil,
+			{ quiescent = true },
+			{},
+			{}
+		)
+	]])
+	H.wait_rust_quiescent(child, 1000)
+	child.lua([[
+		local handler = require("rustaceanvim.config.internal").server.handlers["experimental/serverStatus"]
+		assert(handler == _G.original_status_handler)
+		handler(nil, { quiescent = false }, {}, {})
+	]])
+
+	eq(child.lua_get("_G.previous_calls"), 2)
+end
+
 return T
