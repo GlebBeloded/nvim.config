@@ -1103,3 +1103,10 @@ The private data prepared for a plugin update SHALL retain installed plugins, pa
 #### Scenario: Context pack skips the update check log
 - **WHEN** `context_pack.last_failures` reads an artifacts dir holding `check-update.log` and `check-2.log`
 - **THEN** it returns the FAIL lines of `check-2.log` and does not fail on the unnumbered log
+
+### Requirement: Tests never see an Archon node's inputs
+`tests/minimal_init.lua` SHALL unset every `INPUTS_*` environment variable, so a loop script a test runs sees only the inputs the test passes, not the ones of the Archon node that ran `make check` (plugin-update sets `INPUTS_CANCEL_ON_REJECT=false`).
+
+#### Scenario: Tests never see an Archon node's inputs
+- **WHEN** Neovim starts with `tests/minimal_init.lua` and `INPUTS_CANCEL_ON_REJECT=false` in its environment
+- **THEN** `vim.env.INPUTS_CANCEL_ON_REJECT` is nil
