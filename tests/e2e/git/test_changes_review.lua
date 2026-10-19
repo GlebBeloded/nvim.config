@@ -24,6 +24,11 @@ end
 
 local function start()
 	stack, skipped = E.start_or_skip({ cwd = copy_dirty, layout = "nvim", columns = 100, lines = 30 })
+	if stack then
+		-- Mason's bin directory is isolated in the sandbox; opening lib/c.lua would
+		-- otherwise let null-ls report missing selene through a hit-enter prompt.
+		stack:lua([[require("null-ls").disable({ name = "selene" })]])
+	end
 end
 
 local function stop()
@@ -98,8 +103,8 @@ local PANEL_CURRENT = [[local panel = require("gleb.git.changes").state.by_tab[v
 	end
 	return vim.NIL]]
 
-local PANEL_COLUMN = [[local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
-	return vim.fn.win_screenpos(panel.win)[2]]
+local PANEL_COLUMN = [=[local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+	return vim.fn.win_screenpos(panel.win)[2]]=]
 
 local VIEW = [[local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
 	local view = panel and panel.diff_view
@@ -108,16 +113,19 @@ local VIEW = [[local panel = require("gleb.git.changes").state.by_tab[vim.api.nv
 local FOCUS_DIFF = [[local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
 	vim.api.nvim_set_current_win(panel.diff_view.right_win)]]
 
-local DIFF_STATE = [[local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
-	local view = panel.diff_view
-	local requested = { ... }
-	local display = {}
-	for screen_row, row in ipairs(view.layout.rows) do
-		for index, line in ipairs(requested) do
-			if display[index] == nil and row.right == line then display[index] = screen_row end
+local SELECT_FILE = [[local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+	for index, row in ipairs(panel.rows) do
+		if row.kind == "file" and row.path == ... then
+			vim.api.nvim_win_set_cursor(panel.win, { index, 0 })
+			require("gleb.git.changes.view").review(panel)
+			return
 		end
 	end
-	return { win = view.right_win, cursor = vim.api.nvim_win_get_cursor(view.right_win)[1], display = display }]]
+	error("file row not found: " .. ...)]]
+
+local DIFF_STATE = [[local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+	local view = panel.diff_view
+	return { win = view.right_win, cursor = vim.api.nvim_win_get_cursor(view.right_win)[1] }]]
 
 ---@param s e2e.Stack
 ---@return changes_review.Entry[]
@@ -213,29 +221,26 @@ end
 
 T["git: ]c steps to the next change in the changes review"] = function()
 	local s = get()
-	local entries = ensure_review(s)
+	ensure_review(s)
 	local view = wait_view(s)
+	s:lua(SELECT_FILE, { "b.txt" })
+	S.wait_for(function()
+		view = s:lua(VIEW)
+		return view ~= vim.NIL and view.path == "b.txt"
+	end, "changes diff for b.txt")
 	s:lua(FOCUS_DIFF)
-	E.burst(s, function()
-		for _ = 1, #entries do
-			if view.path == "b.txt" then
-				break
-			end
-			view = next_file(s, view)
-		end
-	end)
 	eq(view.path, "b.txt")
 
 	local hunks = manifest.hunks["b.txt"]
-	local state = s:lua(DIFF_STATE, hunks)
-	s:lua("vim.api.nvim_win_set_cursor(...)", { state.win, { state.display[1], 0 } })
+	local state = s:lua(DIFF_STATE)
+	s:lua("vim.api.nvim_win_set_cursor(...)", { state.win, { hunks[1], 0 } })
 	E.burst(s, function()
 		E.press(s, { "]", "c" })
 		S.wait_for(function()
-			return s:lua(DIFF_STATE, hunks).cursor == state.display[2]
+			return s:lua(DIFF_STATE).cursor == hunks[2]
 		end, "cursor on the second change of b.txt")
 	end)
-	eq(s:lua(DIFF_STATE, hunks).cursor, state.display[2])
+	eq(s:lua(DIFF_STATE).cursor, hunks[2])
 end
 
 return T

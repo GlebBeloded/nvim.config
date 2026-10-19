@@ -87,7 +87,7 @@ Scenarios: `bufferline: tabs start after the open project tree`, `bufferline: ta
 Scenarios: `git: Cmd+G opens the changes review of a dirty repo`, `git: ]f steps to the next changed file in the changes review`, `git: ]c steps to the next change in the changes review`
 - [x] 7.1 Only after task 5d, port `tests/e2e/git/test_differ_review.lua` to `tests/e2e/git/test_changes_review.lua` using the same `dirty` fixture and manifest, real Cmd+G/`]f`/`]c` key events, panel rows and owned diff view; run `make e2e CASE="changes review"` and see it fail
 - [x] 7.2 Delete the old e2e file after its replacement exists; use the harness async wait budget rather than a 100 ms wait
-- [ ] 7.3 Run `make e2e CASE="changes review"` and see all three scenarios pass
+- [x] 7.3 Run `make e2e CASE="changes review"` and see all three scenarios pass
 
 ## 8. Update architecture and retained spec text
 Scenarios: `shortcuts: Shortcut table names action ids`, `shortcuts: Shortcut meanings survive registry migration`, `find-action: Saved shortcut applies immediately`
