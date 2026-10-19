@@ -1,7 +1,7 @@
 # git Specification
 
 ## Purpose
-Git integration loaded from `lua/gleb/git/`: gutter signs, unified/split diff viewers (differ.nvim, diffview.nvim, vscode-diff), permalink copying via `:Gitlink`, and an AI-generated commit message popup.
+Git integration loaded from `lua/gleb/git/`: gutter signs, the changes panel with its owned diff view, diffview for merges and history, permalink copying via `:Gitlink`, and an AI-generated commit message popup.
 
 ## Requirements
 
