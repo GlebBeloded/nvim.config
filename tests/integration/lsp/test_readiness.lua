@@ -5,7 +5,7 @@ local child = H.new_child()
 
 ---@type integer How long to wait for the answer before failing.
 local BOUND_MS = 10000 -- every server; tune later (user decision 2026-10-14)
-local TIMEOUT_MS = 15000 -- above the bound: a slow start reports the bound, not a timeout
+local TIMEOUT_MS = H.lsp_timeout(15000) -- setup may scale; the measured bound stays fixed
 
 local function start()
 	child.start_config()
