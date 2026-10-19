@@ -1,28 +1,4 @@
--- Git entry actions lazy-load their viewer commands; viewer adapters supply buffer-local keys.
-
----@param id string
-local function replay_shortcut(id)
-	local store = assert(require("gleb.actions").state.store, "actions are not set up")
-	local lhs = assert(store.last_good[id], "shortcut is not configured")[1]
-	vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes(lhs, true, false, true), "m", false)
-end
-
----@param id string
----@param title string
----@param plugin string
----@return gleb.Action
-local function viewer_action(id, title, plugin)
-	local action_id = plugin .. "." .. id
-	return {
-		id = action_id,
-		title = title,
-		category = "Git | Diff",
-		plugin = plugin,
-		run = function()
-			replay_shortcut(action_id)
-		end,
-	}
-end
+-- Git actions own diffview and the changes panel.
 
 ---@param id string
 ---@param title string
@@ -81,14 +57,6 @@ local actions = {
 			require("gleb.git.ai_commit").discard(ctx.buf)
 		end,
 	},
-	{
-		id = "git.open_differ",
-		title = "Open Differ",
-		category = "Git | Diff",
-		run = function()
-			vim.cmd.Differ()
-		end,
-	},
 	diffview_action(
 		"select_next_entry",
 		"Select Next Diffview Entry",
@@ -123,9 +91,6 @@ local actions = {
 	diffview_action("close", "Close Diffview", { "file_panel" }, function()
 		vim.cmd.DiffviewClose()
 	end),
-	viewer_action("next_file", "Select Next Differ File", "differ"),
-	viewer_action("next_hunk", "Select Next Differ Hunk", "differ"),
-	viewer_action("next_hunk", "Select Next Codediff Hunk", "codediff"),
 }
 
 vim.list_extend(actions, require("gleb.git.changes.actions"))

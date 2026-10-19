@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Project tree opens for a directory buffer
-Editing a directory SHALL open the project tree rooted at that directory as the left sidebar and focus it, and SHALL replace the directory buffer in its window with an empty buffer. netrw SHALL not load.
+With no project tree open, editing a directory SHALL open and focus the sidebar rooted there, replace the directory buffer's window with an empty buffer and wipe the directory buffer. With a tree already open, entering a directory buffer SHALL focus that tree without changing its root or cursor. netrw SHALL not load.
 
 #### Scenario: Directory argument opens the project tree
 - **WHEN** `:edit <dir>` runs for a directory `docs` that contains `workflow.md`
@@ -11,8 +11,20 @@ Editing a directory SHALL open the project tree rooted at that directory as the 
 - **WHEN** Neovim starts with the full config and `VeryLazy` has fired
 - **THEN** `:Explore` is not a command (`vim.fn.exists(":Explore") == 0`) and `lazy.nvim`'s `performance.rtp.disabled_plugins` contains `netrwPlugin`
 
+#### Scenario: Directory buffer focuses an open project tree
+- **WHEN** the project tree rooted at a copy of `treeproj` has its cursor on `go.mod` and `:edit internal` runs in its editor window
+- **THEN** the existing project tree is current, its root is still `treeproj`, its cursor is still on `go.mod`, and no directory buffer remains
+
+#### Scenario: Directory buffer entered from project tree focuses it
+- **WHEN** the project tree rooted at a copy of `treeproj` has its cursor on `go.mod` and `:edit internal` runs in the project-tree window
+- **THEN** the existing project tree is current with the same root and cursor, the editor still shows its previous file, and no directory buffer remains
+
+#### Scenario: Directory buffer replaces an open changes panel
+- **WHEN** the changes panel is open beside an editor and `:edit internal` runs in the editor
+- **THEN** no changes-panel or diff-view window remains and the focused project tree is rooted at `internal`
+
 ### Requirement: Project tree sidebar
-The action `file_tree.toggle` SHALL open the project tree for the cwd in a left-docked window 35 columns wide with `winfixwidth`, filetype `gleb-file-tree` and a `nofile` buffer, at most one per tab page, and focus it. When the tree is the current window it SHALL close it. When the tree is open but not focused it SHALL focus it. Closing the last other non-floating window SHALL close the tree first, so `:q` behaves as without a tree.
+The action `file_tree.toggle` SHALL open the project tree for the cwd in a left-docked window 35 columns wide with `winfixwidth`, filetype `gleb-file-tree` and a `nofile` buffer, at most one per tab page, reveal the current file, and focus it. When current it SHALL close; when open but unfocused it SHALL focus. Closing the last other non-floating window SHALL close the tree first.
 
 #### Scenario: Project tree opens on the left at width 35
 - **WHEN** the action `file_tree.toggle` runs in a tab with one file window
@@ -30,6 +42,25 @@ The action `file_tree.toggle` SHALL open the project tree for the cwd in a left-
 - **WHEN** the project tree is open next to one file window and that file window is closed with `:q`
 - **THEN** Neovim exits
 
+#### Scenario: Project tree toggle reveals the current file
+- **WHEN** no project tree is open, the current buffer is `internal/money/money.go` and the action `file_tree.toggle` runs
+- **THEN** the current window is the project tree and its cursor is on the `money.go` row
+
+#### Scenario: Project tree opens from non-project buffers
+- **WHEN** no project tree is open and `file_tree.toggle` runs from either a file outside the cwd or a terminal buffer
+- **THEN** the project tree draws its root row and top-level rows
+
+### Requirement: Project tree and changes panel close-if-last isolation
+QuitPre SHALL count project-tree and changes-panel windows as sidebars. Closing the last editor window with `:q` or `:close` SHALL close sidebars first without clearing another tab's state or autocmds. A tab containing both sidebar types SHALL still quit as if neither were present.
+
+#### Scenario: Project tree closes before last editor with close
+- **WHEN** the project tree is open next to one file window and that file window is closed with `:close`
+- **THEN** the tab page closes without an error or a remaining project-tree window
+
+#### Scenario: Project tree and changes panel close before the last editor
+- **WHEN** project tree and changes panel windows are open next to one file window and that file window is closed with `:q`
+- **THEN** both sidebar windows close first and Neovim exits
+
 ## MODIFIED Requirements
 
 ### Requirement: Filesystem tree toggle
@@ -39,19 +70,73 @@ The normal-mode project tree toggle SHALL reveal an existing current buffer file
 - **WHEN** an existing file is opened, deleted from disk, and the normal-mode `<A-e>` mapping is pressed
 - **THEN** no error is raised, the current window has filetype `gleb-file-tree` and its cursor is on the root row
 
+### Requirement: Project tree editor-window hygiene
+File-opening actions SHALL run from the target editor window, never the tree, and skip the changes panel, quickfix, terminal, floating and diff-view windows. If a file replaces the tree buffer, it SHALL move to an eligible editor window. New split and tab windows SHALL inherit editor options, not tree-only options.
+
+#### Scenario: Project tree opening skips non-editor windows
+- **WHEN** the changes panel, quickfix, terminal, floating and diff-view windows are present, the project tree is focused on `Makefile`, and `<CR>` is pressed in normal mode
+- **THEN** `Makefile` opens in the most recently used normal editor window and none of the skipped windows is replaced
+
+#### Scenario: A file cannot replace the project tree buffer
+- **WHEN** the project tree window is current and `:edit Makefile` runs
+- **THEN** `Makefile` is shown in a normal editor window and the project tree remains open in its own window
+
+#### Scenario: Project tree split windows keep editor options
+- **WHEN** `v` or `s` is pressed in normal mode on the `Makefile` row
+- **THEN** the new current window shows `Makefile`, has `number` set and does not have `winfixwidth` set
+
+#### Scenario: Project tree tab windows keep editor options
+- **WHEN** `t` is pressed in normal mode on the `Makefile` row
+- **THEN** the new tab's current window shows `Makefile`, has `number` set and does not have `winfixwidth` set
+
+### Requirement: Project tree follows the current file
+While the tree is open, entering a file under its root SHALL reveal it without moving focus. `file_tree.reveal` SHALL do the same and focus the tree, opening it if needed. A missing file SHALL select the root. Files outside the root and URI buffers SHALL be ignored. Entering a directory buffer SHALL leave the tree root and cursor unchanged.
+
+#### Scenario: Project tree follows the current file
+- **WHEN** the project tree is open and `:edit internal/money/money.go` runs in the file window
+- **THEN** the `money` row shows U+F47C, the tree cursor is on the `money.go` row, and the current window is the file window
+
+#### Scenario: Project tree ignores files outside the root
+- **WHEN** the project tree is open with its cursor on the `go.mod` row and a file outside the root is edited in the file window
+- **THEN** the tree cursor is still on the `go.mod` row and no error is raised
+
+#### Scenario: Project tree reveal focuses the current file
+- **WHEN** no project tree is open, the current buffer is `internal/money/money.go` and the action `file_tree.reveal` runs
+- **THEN** the current window is the project tree and its cursor is on the `money.go` row
+
+#### Scenario: Project tree reveal tolerates a deleted file
+- **WHEN** the current buffer's file was deleted from disk and the action `file_tree.reveal` runs
+- **THEN** no error is raised, the project tree is focused and its cursor is on the root row
+
+#### Scenario: Project tree follow tolerates a deleted file
+- **WHEN** the project tree is open and `BufEnter` runs for a file buffer whose file was deleted from disk
+- **THEN** the tree cursor moves to the root row and no error or notification is raised
+
+#### Scenario: Project tree toggle tolerates a deleted file
+- **WHEN** no project tree is open, the current buffer's file was deleted from disk and the action `file_tree.toggle` runs
+- **THEN** the project tree opens with its cursor on the root row and no error or notification is raised
+
+#### Scenario: Project tree does not follow a directory buffer
+- **WHEN** the project tree cursor is on `go.mod` and a directory buffer for `internal` is entered
+- **THEN** the tree root and cursor stay unchanged on `go.mod` and no error or notification is raised
+
 ## REMOVED Requirements
 
 ### Requirement: Project tree window
 **Reason**: its scenario "Project tree actions start unbound" stops holding when `<A-e>` runs `file_tree.toggle`; the rest of the requirement continues unchanged under a new name.
-**Migration**: replaced by "Project tree sidebar", which keeps "Project tree opens on the left at width 35", "Project tree toggle closes a focused tree", "Project tree toggle focuses an open tree" and "Project tree closes with the last window" verbatim; "Project tree actions start unbound" → `keymaps: Alt-e reveals current file` (the action is now bound).
+**Migration**: replaced by "Project tree sidebar", which keeps its six surviving scenarios verbatim; "Project tree actions start unbound" → `keymaps: Alt-e reveals current file` (the action is now bound).
+
+### Requirement: Project tree close-if-last isolation
+**Reason**: neo-tree is removed, so close-if-last isolation now coordinates the project tree with the changes panel.
+**Migration**: replaced by "Project tree and changes panel close-if-last isolation": "Project tree closes before last editor with close" keeps its title; "Project and neo-tree close before the last editor" → `file-tree: Project tree and changes panel close before the last editor`.
 
 ### Requirement: Tree sources and window
-**Reason**: neo-tree is removed; its `filesystem` and `git_status` sources become two panels of our own.
+**Reason**: neo-tree is removed; its two sources become owned panels.
 **Migration**: "Filesystem tree opens on the left at width 35" → `file-tree: Project tree opens on the left at width 35`; "Git status tree opens on the left at width 35" → `git: Changes panel opens on the left at width 35`; "Tree closes with last window" → `file-tree: Project tree closes with the last window`; "Missing neo-tree is tolerated" → none (the tree is own code with no plugin to miss).
 
 ### Requirement: Common tree open mappings
 **Reason**: neo-tree's window mappings go away with neo-tree.
-**Migration**: "v opens file in vertical split" → `file-tree: Project tree v opens a vertical split`; "t opens file in new tab" → `file-tree: Project tree t opens a new tab`; "Next source switches tree source" → none (the two panels have their own keys: Alt+E and Alt+Shift+G, `keymaps: Alt-G replaces the project tree with the changes panel`); "o and l keep native open in git status tree" → none (there is no git status source; the changes panel opens with Enter, `git: Changes panel Enter opens the file`).
+**Migration**: "v opens file in vertical split" → `file-tree: Project tree v opens a vertical split`; "t opens file in new tab" → `file-tree: Project tree t opens a new tab`; "Next source switches tree source" → `keymaps: Alt-G replaces the project tree with the changes panel`; "o and l keep native open in git status tree" → `git: Changes panel Enter opens the file`.
 
 ### Requirement: Common tree edit mappings
 **Reason**: neo-tree's add and rename commands go away with neo-tree.
@@ -59,11 +144,11 @@ The normal-mode project tree toggle SHALL reveal an existing current buffer file
 
 ### Requirement: Filesystem source behaviour
 **Reason**: the neo-tree `filesystem` source is removed.
-**Migration**: "Dotfiles and gitignored files are listed" → `file-tree: Project tree lists folders first in case-insensitive order` (dotfiles listed) and `file-tree: I toggles ignored entries` (ignored files hidden until Show Ignored, a user decision); "Directory argument opens tree in current window" → `file-tree: Directory argument opens the project tree` (as a sidebar, not in the current window); "Current file is followed" → `file-tree: Project tree follows the current file`. The `H` hidden toggle has no successor.
+**Migration**: "Dotfiles and gitignored files are listed" → `file-tree: Project tree lists folders first in case-insensitive order` and `file-tree: I toggles ignored entries`; "Directory argument opens tree in current window" → `file-tree: Directory argument opens the project tree`; "Current file is followed" → `file-tree: Project tree follows the current file`. The `H` hidden toggle has no successor.
 
 ### Requirement: Git status navigation previews diffs
 **Reason**: the git status tree and its tab preview are replaced by the changes panel with the diff view in the editor area.
-**Migration**: "j skips directories and previews next file" → `git: Changes panel j shows the next file in the diff view`; "k skips directories and previews previous file" → `git: Changes panel keeps the diff on a directory row` (folders are rows the cursor may rest on, as in IntelliJ); "Deleted file is not previewed" → `git: Changes panel shows a deleted file` (deleted files now show their `HEAD` text).
+**Migration**: "j skips directories and previews next file" → `git: Changes panel j shows the next file in the diff view`; "k skips directories and previews previous file" → `git: Changes panel keeps the diff on a directory row`; "Deleted file is not previewed" → `git: Changes panel shows a deleted file`.
 
 ### Requirement: Git status open, close and staging actions
 **Reason**: the git status tree is replaced by the changes panel.
@@ -71,11 +156,11 @@ The normal-mode project tree toggle SHALL reveal an existing current buffer file
 
 ### Requirement: Git status staging matches exact paths
 **Reason**: the exact-path staging rule moves to the changes panel unchanged.
-**Migration**: "Space stages a file whose name is a suffix of a staged file" → `git: Changes panel Space stages a file whose name is a suffix of a staged file`; "Space stages when cwd is outside the repository" → `git: Changes panel stages when cwd is outside the repository`; "Space unstages when cwd is outside the repository" → `git: Changes panel unstages when cwd is outside the repository`; "Space stages from a subdirectory cwd" → `git: Changes panel stages from a subdirectory cwd`; "Space unstages from a subdirectory cwd" → `git: Changes panel unstages from a subdirectory cwd`; "Space reports a staging failure" → `git: Changes panel reports a staging failure`.
+**Migration**: all six scenarios map one-for-one to the `git: Changes panel …` successors in design.md's Removed scenarios table, preserving suffix-path, outside-repository, subdirectory-cwd and failure bounds.
 
 ### Requirement: Git status revert and key ownership
 **Reason**: the git status tree is replaced by the changes panel.
-**Migration**: "X reverts a file after confirmation" → `git: Changes panel X reverts a file after confirmation`; "X keeps a file when revert is declined" → `git: Changes panel X keeps a file when revert is declined`; "gr keeps its global meaning in git status tree" → `git: Changes panel leaves gr global`; "c is copy in git status tree" → `file-tree: Project tree c and p copy a file into another folder` (the changes panel has no file operations).
+**Migration**: the two `X` scenarios map to the same-titled changes-panel successors; `gr` → `git: Changes panel leaves gr global`; `c` → `file-tree: Project tree c and p copy a file into another folder`.
 
 ### Requirement: Git status AI commit
 **Reason**: the git status tree is replaced by the changes panel, which opens the same AI commit popup.
@@ -103,11 +188,11 @@ The normal-mode project tree toggle SHALL reveal an existing current buffer file
 
 ### Requirement: Diff preview focus and closing
 **Reason**: the preview tab, its focus guard and the return to the original tab are gone: the diff view never takes focus and lives in the current tab.
-**Migration**: "Focus returns false without neo-tree", "Focus moves to neo-tree" and "Focus guard pulls focus back during navigation" → `git: Changes panel j shows the next file in the diff view` (the panel stays current); "Return to original tab", "Return clears current file", "Return clears tab state and focus guard", "Next preview records the new original tab" and "Return cancels a pending preview" → `git: Changes panel q closes the panel and the diff view` (no tab to return to).
+**Migration**: the three focus scenarios → `git: Changes panel j shows the next file in the diff view`; the five return/state scenarios → `git: Changes panel q closes the panel and the diff view`. design.md's Removed scenarios table keeps every title.
 
 ### Requirement: Tree icons
 **Reason**: the neo-tree renderer is removed.
-**Migration**: "Collapsed directory shows expander and folder icon", "Expanded directory shows open expander and folder icon" and "Empty directory shows empty folder icon" → `file-tree: Project tree rows have icons and no guides`; "Tree shows diagnostic glyph of a file" → none (diagnostics in the tree are out of scope of `file-tree-view`); "Conflicted file shows conflict symbol" → `file-tree: Project tree colours renamed and conflicted files` (colour, no symbol: user decision "git status = name colour only"); "filesystem tree matches reference screenshot" → `file-tree: Project tree matches the approved render`.
+**Migration**: the three folder-icon scenarios → `file-tree: Project tree rows have icons and no guides`; diagnostics → none; conflict symbol → `file-tree: Project tree colours renamed and conflicted files`; screenshot → `file-tree: Project tree matches the approved render`.
 
 ### Requirement: Neo-tree mapping ownership
 **Reason**: neo-tree and its mapping adapter are removed.

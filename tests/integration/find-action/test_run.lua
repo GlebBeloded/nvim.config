@@ -72,12 +72,11 @@ local function start()
 				end,
 			},
 			{
-				id = "neo_tree.open",
-				title = "Open",
-				category = "Tree",
-				plugin = "neo-tree",
-				neo_tree_scope = "common",
-				run = function() NeoTreeOpen = (NeoTreeOpen or 0) + 1 end,
+				id = "lazy.close",
+				title = "Close Lazy",
+				category = "Lazy",
+				plugin = "lazy",
+				run = function() LazyClose = (LazyClose or 0) + 1 end,
 			},
 			RealCatalog:get("find_action.open"),
 		} })
@@ -89,7 +88,7 @@ local function start()
 			["test.toggle_first"] = {},
 			["test.toggle"] = {},
 			["test.visual"] = { "gV" },
-			["neo_tree.open"] = { "<CR>" },
+			["lazy.close"] = { "q" },
 			["find_action.open"] = { "<M-A>" },
 		}
 		actions.state.applicator:apply(actions.state.store.last_good)
@@ -127,7 +126,8 @@ T["find-action: Catalog rows use standalone Title Case labels"] = function()
 		["fold.close_one"] = { "Collapse Fold", "Fold" },
 		["fold.open_all"] = { "Expand All Folds", "Fold" },
 		["fold.open_one"] = { "Expand Fold", "Fold" },
-		["git.open_differ"] = { "Open Differ", "Git | Diff" },
+		["file_tree.toggle"] = { "Toggle Project Tree", "Project" },
+		["file_tree.reveal"] = { "Reveal in Project Tree", "Project" },
 		["jump.back"] = { "Navigate Back", "Jump" },
 		["jump.forward"] = { "Navigate Forward", "Jump" },
 		["lsp.code_action"] = { "Show Code Actions...", "LSP" },
@@ -145,8 +145,6 @@ T["find-action: Catalog rows use standalone Title Case labels"] = function()
 		["surround.change"] = { "Change Surrounding...", "Surround" },
 		["surround.change_on_lines"] = { "Change Surrounding on Lines...", "Surround" },
 		["surround.delete"] = { "Delete Surrounding", "Surround" },
-		["tree.toggle_filesystem"] = { "Toggle File Tree", "View | Tool Windows" },
-		["tree.toggle_git_status"] = { "Toggle Git Status Tree", "View | Tool Windows" },
 		["window.decrease_height"] = { "Decrease Window Height", "Window" },
 		["window.decrease_width"] = { "Decrease Window Width", "Window" },
 		["window.increase_height"] = { "Increase Window Height", "Window" },
@@ -240,35 +238,7 @@ T["find-action: Catalog rows use standalone Title Case labels"] = function()
 		["diffview.unstage_all"] = { "Unstage All Diffview Files", "Git | Diff" },
 		["diffview.refresh_files"] = { "Refresh Diffview Files", "Git | Diff" },
 		["diffview.close"] = { "Close Diffview", "Git | Diff" },
-		["differ.next_file"] = { "Select Next Differ File", "Git | Diff" },
-		["differ.next_hunk"] = { "Select Next Differ Hunk", "Git | Diff" },
-		["codediff.next_hunk"] = { "Select Next Codediff Hunk", "Git | Diff" },
 		["mason.install_package"] = { "Install Package", "Mason" },
-		["neo_tree.open"] = { "Open Tree Node", "Tree" },
-		["neo_tree.git_open_file"] = { "Open Git Tree File", "Tree" },
-		["neo_tree.close_node"] = { "Close Tree Node", "Tree" },
-		["neo_tree.open_vsplit"] = { "Open Tree Node in Vertical Split", "Tree" },
-		["neo_tree.open_split"] = { "Open Tree Node in Horizontal Split", "Tree" },
-		["neo_tree.open_tab"] = { "Open Tree Node in New Tab", "Tree" },
-		["neo_tree.add"] = { "Add Tree Node", "Tree" },
-		["neo_tree.delete"] = { "Delete Tree Node", "Tree" },
-		["neo_tree.rename"] = { "Rename Tree Node", "Tree" },
-		["neo_tree.copy"] = { "Copy Tree Node", "Tree" },
-		["neo_tree.cut"] = { "Cut Tree Node", "Tree" },
-		["neo_tree.paste"] = { "Paste Tree Node", "Tree" },
-		["neo_tree.refresh"] = { "Refresh Tree", "Tree" },
-		["neo_tree.close"] = { "Close Tree", "Tree" },
-		["neo_tree.help"] = { "Show Tree Help", "Tree" },
-		["neo_tree.previous_source"] = { "Show Previous Tree Source", "Tree" },
-		["neo_tree.next_source"] = { "Show Next Tree Source", "Tree" },
-		["neo_tree.toggle_hidden"] = { "Toggle Hidden Tree Files", "Tree" },
-		["neo_tree.navigate_down"] = { "Navigate Down Git Status Tree", "Tree" },
-		["neo_tree.navigate_up"] = { "Navigate Up Git Status Tree", "Tree" },
-		["neo_tree.toggle_stage"] = { "Toggle Git Tree Node Staging", "Tree" },
-		["neo_tree.commit"] = { "Commit Git Changes with AI", "Tree" },
-		["neo_tree.push"] = { "Push Git Changes", "Tree" },
-		["neo_tree.add_all"] = { "Stage All Git Changes", "Tree" },
-		["neo_tree.revert"] = { "Revert Git Tree File", "Tree" },
 		["neotest.run"] = { "Run Nearest Test", "Test" },
 	}
 	actual = child.lua_get([[(function()
@@ -320,15 +290,14 @@ T["find-action: Shortcut and palette use update recent actions"] = function()
 	child.type_keys("<Esc>")
 	child.lua([[
 		local actions = require("gleb.actions")
-		local mappings = require("gleb.actions.adapters.neo_tree").mappings(
+		local mappings = require("gleb.actions.adapters.lazy").mappings(
 			actions.state.applicator.catalog,
-			actions.state.store.last_good,
-			"common"
+			actions.state.store.last_good
 		)
-		vim.keymap.set("n", "<CR>", mappings["<CR>"], { buffer = true })
+		vim.keymap.set("n", "q", mappings.q, { buffer = true })
 	]])
-	child.type_keys("<CR>")
-	assert(child.wait("NeoTreeOpen == 1", 5000), "Neo-tree action did not run")
+	child.type_keys("q")
+	assert(child.wait("LazyClose == 1", 5000), "lazy.nvim action did not run")
 	eq(child.lua_get([[require("gleb.find_action.items").history():load()]]), {
 		"test.toggle_first",
 		"find_action.open",

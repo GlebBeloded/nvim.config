@@ -34,6 +34,31 @@ local function require_server(server)
 	end
 end
 
+--- rust-analyzer reloads its workspace after its first answers; records its `quiescent` status.
+local function watch_rust_analyzer_status()
+	child.lua([[
+		_G.rust_analyzer_quiescent = nil
+		local server = require("rustaceanvim.config.internal").server
+		server.handlers = server.handlers or {}
+		_G.previous_server_status_handler = server.handlers["experimental/serverStatus"]
+		server.handlers["experimental/serverStatus"] = function(err, result, context, config)
+			if result and result.quiescent then _G.rust_analyzer_quiescent = true end
+			local handler = _G.previous_server_status_handler or require("rustaceanvim.server_status").handler
+			return handler(err, result, context, config)
+		end
+	]])
+end
+
+---@param timeout integer
+local function wait_rust_analyzer_quiescent(timeout)
+	eq(child.wait("_G.rust_analyzer_quiescent == true", timeout), true)
+	child.lua([[
+		require("rustaceanvim.config.internal").server.handlers["experimental/serverStatus"] =
+			_G.previous_server_status_handler
+		_G.previous_server_status_handler = nil
+	]])
+end
+
 ---@param fixture string
 ---@param symbol string
 ---@param server string
@@ -45,6 +70,10 @@ local function open_references(fixture, symbol, server, attached, timeout)
 	require_server(server)
 	local root, manifest = F.copy(fixture, vim.fn.tempname())
 	local declaration = manifest.references[symbol][1]
+	local rust = attached[1] == "rust-analyzer"
+	if rust then
+		watch_rust_analyzer_status()
+	end
 	child.cmd("cd " .. vim.fn.fnameescape(root) .. " | edit " .. vim.fn.fnameescape(declaration.path))
 	child.api.nvim_win_set_cursor(0, { declaration.line, declaration.col - 1 })
 
@@ -53,6 +82,9 @@ local function open_references(fixture, symbol, server, attached, timeout)
 			child.wait(([[#vim.lsp.get_clients({ bufnr = 0, name = %q }) > 0]]):format(name), timeout or TIMEOUT_MS),
 			true
 		)
+	end
+	if rust then
+		wait_rust_analyzer_quiescent(timeout or TIMEOUT_MS)
 	end
 
 	child.lua(

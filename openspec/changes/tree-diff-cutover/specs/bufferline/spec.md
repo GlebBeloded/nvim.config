@@ -1,4 +1,4 @@
-## MODIFIED Requirements
+## ADDED Requirements
 
 ### Requirement: Tabline offset for the project tree
 While a project tree (filetype `gleb-file-tree`) or changes panel (filetype `gleb-changes`) window is open as the leftmost full-height window, the config SHALL shift the buffer tabs right by the panel width plus one column (the window separator), so the first tab starts above the editor window. The offset area SHALL hold no label and no separator and SHALL use the panel window's highlight. With no panel open, tabs SHALL start at column 1.

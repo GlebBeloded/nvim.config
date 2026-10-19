@@ -164,6 +164,7 @@ T["file-tree: Project tree colours renamed and conflicted files"] = function()
 
 	expect_tree_highlight("READ.md", "FileTreeGitRenamed")
 	expect_tree_highlight("go.mod", "FileTreeGitConflict")
+	H.expect_no_neo_tree(child)
 end
 
 T["file-tree: Project tree reads git status without optional locks"] = function()

@@ -41,6 +41,14 @@ local function resolve_and_open(dir, selected_path, review)
 	end)
 end
 
+---@param review? boolean
+---@return nil
+local function replace_tree_and_open(review)
+	require("gleb.file_tree.view").close()
+	local selected_path, dir = current_location()
+	resolve_and_open(dir, selected_path, review)
+end
+
 --- Toggle the current tab's Changes panel.
 ---@return nil
 function M.toggle()
@@ -54,9 +62,7 @@ function M.toggle()
 		end
 		return
 	end
-	require("gleb.file_tree.view").close()
-	local path, dir = current_location()
-	resolve_and_open(dir, path)
+	replace_tree_and_open()
 end
 
 --- Open or focus the Changes panel for review.
@@ -67,8 +73,7 @@ function M.review()
 		view.review(current)
 		return
 	end
-	local path, dir = current_location()
-	resolve_and_open(dir, path, true)
+	replace_tree_and_open(true)
 end
 
 --- Open the Changes panel for a directory.

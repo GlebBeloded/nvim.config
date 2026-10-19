@@ -15,13 +15,13 @@ T["find-action: Rows show action metadata"] = function()
 	eq(
 		child.lua_get([[
 			FindActionRows.format({
-				id = "git.open_differ",
-				title = "Open Differ",
+				id = "git.open_review",
+				title = "Open Review",
 				category = "Git | Diff",
 				run = function() end,
 			}, { "<M-g>", "gd" })
 		]]),
-		{ text = "Open Differ", secondary = "⌘G", category = "Git | Diff" }
+		{ text = "Open Review", secondary = "⌘G", category = "Git | Diff" }
 	)
 end
 

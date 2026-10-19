@@ -9,13 +9,10 @@ local HIGHLIGHT_NAMESPACE = vim.api.nvim_create_namespace("gleb_find_action_assi
 
 local ADAPTER_PLUGINS = {
 	blink = "blink",
-	codediff = "codediff",
 	copilot = "copilot",
 	dap_ui = "dap-ui",
-	differ = "differ",
 	lazy = "lazy",
 	mason = "mason",
-	neo_tree = "neo-tree",
 	neotest = "neotest",
 }
 

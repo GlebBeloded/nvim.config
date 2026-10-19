@@ -63,21 +63,30 @@ local function queue_redraw(root, path)
 	)
 end
 
+--- Watch one directory's entries.
+---@param path string
+---@param on_change fun()
+---@return uv.uv_fs_event_t?
+local function watch_path(path, on_change)
+	local handle = assert(vim.uv.new_fs_event())
+	local ok = handle:start(path, {}, function(error)
+		if not error then
+			on_change()
+		end
+	end)
+	if ok then
+		return handle
+	end
+	handle:close()
+end
+
 ---@param root string
 ---@param path string
 ---@param state FileTreeWatchRoot
 local function watch_folder(root, path, state)
-	local handle = assert(vim.uv.new_fs_event())
-	local ok = handle:start(path, {}, function(error)
-		if not error then
-			queue_redraw(root, path)
-		end
+	state.handles[path] = watch_path(path, function()
+		queue_redraw(root, path)
 	end)
-	if ok then
-		state.handles[path] = handle
-	else
-		handle:close()
-	end
 end
 
 ---@param root string
@@ -98,21 +107,13 @@ local function watch_git_dir(root, state)
 	end
 	state.toplevel = lines[1]
 	state.git_dir = path
-	local handle = assert(vim.uv.new_fs_event())
-	local ok = handle:start(path, {}, function(error)
-		if not error then
-			vim.schedule(function()
-				for _, client in pairs(state.clients) do
-					client.refresh_git()
-				end
-			end)
-		end
+	state.git_handle = watch_path(path, function()
+		vim.schedule(function()
+			for _, client in pairs(state.clients) do
+				client.refresh_git()
+			end
+		end)
 	end)
-	if ok then
-		state.git_handle = handle
-	else
-		handle:close()
-	end
 end
 
 ---@param state FileTreeWatchRoot
