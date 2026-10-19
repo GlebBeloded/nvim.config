@@ -2,6 +2,7 @@
 -- Source comparison happens before opening windows so empty/error branches leave the editor untouched.
 
 local engine = require("gleb.diff.engine")
+local debounce = require("gleb.util.debounce")
 local layout = require("gleb.diff.view.layout")
 local patch = require("gleb.diff.patch")
 local render = require("gleb.diff.view.render")
@@ -293,12 +294,8 @@ local function schedule_redraw(view)
 	if view.closing then
 		return
 	end
-	view.timer = view.timer or assert(vim.uv.new_timer())
-	view.timer:stop()
-	view.timer:start(M.config.debounce_ms, 0, function()
-		vim.schedule(function()
-			redraw(view)
-		end)
+	view.timer = debounce.schedule(view.timer, M.config.debounce_ms, function()
+		redraw(view)
 	end)
 end
 

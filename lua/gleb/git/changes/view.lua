@@ -2,6 +2,7 @@
 
 local M = {}
 
+local debounce = require("gleb.util.debounce")
 local fs = require("gleb.file_tree.fs")
 local file_tree_view = require("gleb.file_tree.view")
 local git = require("gleb.git.changes.git")
@@ -180,14 +181,9 @@ end
 ---@param view ChangesView
 ---@return nil
 function M.schedule_refresh(view)
-	view.timer:stop()
-	view.timer:start(
-		REFRESH_DEBOUNCE_MS,
-		0,
-		vim.schedule_wrap(function()
-			refresh_now(view)
-		end)
-	)
+	view.timer = debounce.schedule(view.timer, REFRESH_DEBOUNCE_MS, function()
+		refresh_now(view)
+	end)
 end
 
 ---@param view ChangesView
@@ -308,17 +304,12 @@ end
 local function schedule_diff(view)
 	local row = view.rows[vim.api.nvim_win_get_cursor(view.win)[1]]
 	drop_pending_diff(view, row)
-	view.diff_timer:stop()
-	view.diff_timer:start(
-		DIFF_DEBOUNCE_MS,
-		0,
-		vim.schedule_wrap(function()
-			if not vim.api.nvim_win_is_valid(view.win) then
-				return
-			end
-			request_diff(view, row, false)
-		end)
-	)
+	view.diff_timer = debounce.schedule(view.diff_timer, DIFF_DEBOUNCE_MS, function()
+		if not vim.api.nvim_win_is_valid(view.win) then
+			return
+		end
+		request_diff(view, row, false)
+	end)
 end
 
 ---@param tab integer

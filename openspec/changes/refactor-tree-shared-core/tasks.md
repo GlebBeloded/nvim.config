@@ -17,7 +17,7 @@ Scenarios: `file-tree: Project tree redraw meets the large-tree bound`
 
 ## 4. Migrate Changes-panel and diff-view debounce
 Scenarios: `git: Changes panel debounces rapid moves`, `git: Changes panel drops a stale diff result`
-- [ ] 4.1 Run `make test FILE=tests/integration/git/test_changes_diff.lua CASE="Changes panel debounces rapid moves"` and `make test FILE=tests/integration/git/test_changes_diff.lua CASE="Changes panel drops a stale diff result"` and see them pass, migrate the listed `git/changes/view.lua` and `diff/view/init.lua` debounce sites to `gleb.util.debounce`, then run them again and see them pass
+- [x] 4.1 Run `make test FILE=tests/integration/git/test_changes_diff.lua CASE="Changes panel debounces rapid moves"` and `make test FILE=tests/integration/git/test_changes_diff.lua CASE="Changes panel drops a stale diff result"` and see them pass, migrate the listed `git/changes/view.lua` and `diff/view/init.lua` debounce sites to `gleb.util.debounce`, then run them again and see them pass
 
 ## 5. Extract shared filesystem scan and porcelain parser
 Scenarios: `file-tree: Shared parser preserves rename and copy origins`, `file-tree: Shared parser classifies added and unmerged records`, `file-tree: Shared parser keeps ignored records separate`, `git: Changes panel status avoids optional locks`
