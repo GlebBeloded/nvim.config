@@ -2,7 +2,7 @@
 
 local M = {}
 
-local nesting = require("gleb.file_tree.nesting")
+local nesting = require("gleb.tree.nesting")
 local ignore = require("gleb.file_tree.ignore")
 
 ---@class FileTreeNestingSettings

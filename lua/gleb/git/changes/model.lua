@@ -3,7 +3,7 @@
 local M = {}
 
 local git_status = require("gleb.git.status")
-local nesting = require("gleb.file_tree.nesting")
+local nesting = require("gleb.tree.nesting")
 
 local MAX_ROWS = 5000
 local CHECKBOX_EMPTY = "󰄱"

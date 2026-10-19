@@ -4,12 +4,12 @@ local M = {}
 
 local debounce = require("gleb.util.debounce")
 local workspace = require("gleb.workspace")
-local file_tree_view = require("gleb.file_tree.view")
 local git = require("gleb.git.changes.git")
 local model = require("gleb.git.changes.model")
 local render = require("gleb.git.changes.render")
-local settings = require("gleb.file_tree.settings")
-local watch = require("gleb.file_tree.watch")
+local settings = require("gleb.tree.settings")
+local watch = require("gleb.tree.watch")
+local windows = require("gleb.tree.windows")
 
 local WIDTH = 35
 local REFRESH_DEBOUNCE_MS = 50
@@ -237,7 +237,7 @@ local function show_diff(view, row, generation, selection_generation, focus_righ
 			view.loaded_buffers[loaded_buf] = true
 		end
 		local diff = require("gleb.diff.view")
-		local editor = file_tree_view.eligible_editor(view, true)
+		local editor = windows.eligible_editor(view, true)
 		view.editor_win = editor
 		spec.on_next_file = function()
 			M.next_file(view)
@@ -316,7 +316,7 @@ end
 ---@return integer
 local function eligible_editor_count(tab)
 	return vim.iter(vim.api.nvim_tabpage_list_wins(tab)):fold(0, function(count, win)
-		return count + (file_tree_view.is_eligible_editor(win) and 1 or 0)
+		return count + (windows.is_eligible_editor(win) and 1 or 0)
 	end)
 end
 
@@ -346,7 +346,7 @@ end
 local function close_before_last_editor(view)
 	if
 		vim.api.nvim_get_current_tabpage() == view.tab
-		and file_tree_view.is_eligible_editor(vim.api.nvim_get_current_win())
+		and windows.is_eligible_editor(vim.api.nvim_get_current_win())
 		and eligible_editor_count(view.tab) == 1
 	then
 		M.close(view)
@@ -448,7 +448,7 @@ function M.close(view)
 	end
 	view.loaded_buffers = {}
 	if vim.api.nvim_win_is_valid(view.win) and #vim.api.nvim_tabpage_list_wins(view.tab) == 1 then
-		view.editor_win = file_tree_view.eligible_editor(view)
+		view.editor_win = windows.eligible_editor(view)
 	end
 	if vim.api.nvim_win_is_valid(view.editor_win) then
 		vim.api.nvim_set_current_win(view.editor_win)
@@ -474,7 +474,7 @@ function M.open_file(view, row)
 		view.diff_view = nil
 		view.diff_path = nil
 	end
-	local editor = file_tree_view.eligible_editor(view)
+	local editor = windows.eligible_editor(view)
 	view.editor_win = editor
 	vim.api.nvim_set_current_win(editor)
 	vim.cmd("edit " .. vim.fn.fnameescape(vim.fs.joinpath(view.root, row.path)))

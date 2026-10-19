@@ -5,6 +5,7 @@ local M = {}
 local workspace = require("gleb.workspace")
 local git = require("gleb.git.changes.git")
 local view = require("gleb.git.changes.view")
+local sidebar = require("gleb.tree.sidebar")
 
 ---@class ChangesState
 ---@field by_tab table<integer, ChangesView>
@@ -44,7 +45,7 @@ end
 ---@param review? boolean
 ---@return nil
 local function replace_tree_and_open(review)
-	require("gleb.file_tree.view").close()
+	sidebar.close("file_tree")
 	local selected_path, dir = current_location()
 	resolve_and_open(dir, selected_path, review)
 end
@@ -286,5 +287,7 @@ function M.reset()
 end
 
 require("gleb.git.changes.highlights").setup()
+
+sidebar.register("changes", M.close)
 
 return M

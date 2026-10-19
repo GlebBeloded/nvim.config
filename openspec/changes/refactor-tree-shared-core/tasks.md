@@ -7,6 +7,7 @@ Scenarios: `file-tree: Project tree watchers stop when the tree closes`
 - `gleb.util.debounce.schedule` accepts and returns a reusable timer so each consumer retains ownership of lifecycle cleanup.
 - Project-tree redraw replaces its timer before scheduling so a queued stale callback remains distinguishable from the current debounce.
 - Shared scanning lives at `gleb.workspace` and porcelain parsing at `gleb.git.status`, matching their workspace and Git ownership while retaining the old filesystem import as a compatibility alias.
+- Shared tree infrastructure lives under `gleb.tree`, with compatibility aliases for existing file-tree callers so the Changes panel has no project-tree dependency.
 
 ## 2. Migrate project-tree git and expansion debounce
 Scenarios: `file-tree: Project tree runs git status once per burst`, `file-tree: Project tree expanded folders persist per root`
@@ -26,7 +27,7 @@ Scenarios: `file-tree: Shared parser preserves rename and copy origins`, `file-t
 
 ## 6. Extract shared nesting from project-tree internals
 Scenarios: `file-tree: Nesting rule nests by capture`, `git: Changes panel nests tests under their file`
-- [ ] 6.1 Run `make test FILE=tests/unit/file-tree/test_nesting.lua CASE="Nesting rule nests by capture"` and `make test FILE=tests/unit/git/test_changes_model.lua CASE="Changes panel nests tests under their file"` and see them pass, move shared nesting into the neutral module and remove `git/changes` imports of project-tree `fs`, `model`, `nesting`, `settings`, `watch`, and `view` internals, then run them again and see them pass
+- [x] 6.1 Run `make test FILE=tests/unit/file-tree/test_nesting.lua CASE="Nesting rule nests by capture"` and `make test FILE=tests/unit/git/test_changes_model.lua CASE="Changes panel nests tests under their file"` and see them pass, move shared nesting into the neutral module and remove `git/changes` imports of project-tree `fs`, `model`, `nesting`, `settings`, `watch`, and `view` internals, then run them again and see them pass
 
 ## 7. Consolidate Changes-panel git process execution
 Scenarios: `git: Changes panel status avoids optional locks`, `git: Changes panel Space stages an unstaged file`, `git: Changes panel X reverts a file after confirmation`, `git: Changes panel review shows the current file's diff`
