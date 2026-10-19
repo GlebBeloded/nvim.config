@@ -1,7 +1,7 @@
 ## Why
 
 Kind: feature
-Adopt: loop/tree-diff-cutover-20261018-235135
+Adopt: loop/tree-diff-cutover
 Depends: git-changes-tree
 
 The queue builds an IntelliJ-style project tree (`file-tree-view` … `file-tree-ignored`), a commit tree (`git-changes-tree`) and an own diff view (`diff-engine-*`, `diff-view*`), all reachable only from Find Action so the old flows keep working meanwhile. The user decided to own the UI ("is diffbanding perfect? I want to own ui 100%") and to work as in IntelliJ ("I'm used to Idea", "I like IDEA IDE diff more"). This change makes the new UIs the default on the existing keys and removes the three plugins they replace. It is a breaking change: neo-tree, differ and codediff behaviour goes away.
@@ -77,9 +77,12 @@ The queue builds an IntelliJ-style project tree (`file-tree-view` … `file-tree
 - **Requirements that lose a scenario are replaced** (removed and added under a new name) because OpenSpec refuses a MODIFIED block that drops one; surviving scenario titles are kept so their tests keep their names.
 
 ## Rejected run
-Run on `loop/tree-diff-cutover-20261018-235135` was rejected by the judge:
+Run on `loop/tree-diff-cutover` was rejected by the judge:
 - removes and re-adds requirement 'Tabline offset for the file tree' as 'Tabline offset for the project tree' (openspec/changes/tree-diff-cutover/specs/bufferline/spec.md): check its bounds
 - removes and re-adds requirement 'Project tree close-if-last isolation' as 'Project tree and changes panel close-if-last isolation' (openspec/changes/tree-diff-cutover/specs/file-tree/spec.md): check its bounds
 - removes and re-adds requirement 'Pending file tree work does not override a toggle' as 'Pending panel work does not override a toggle' (openspec/changes/tree-diff-cutover/specs/keymaps/spec.md): check its bounds
 - stuck: tasks.md `## Stuck` (earlier attempts, kept on the branch: not quoted here)
-- note: loop: sandbox: Lume still reports nvim-e2e unknown while its lume run process is alive, after one restart; giving up (/Users/hlebbeladzed/.cache/nvim-e2e-sandbox/vm.log)
+- note: loop: command selene is not executable (make sure it's installed and on your $PATH)
+- note: loop: FAIL in tests/e2e/git/test_changes_review.lua | git: Cmd+G opens the changes review of a dirty repo: /Users/lume/nvim/tests/shortcuts/stack.lua:171: stack: timed out waiting for owned changes diff view (last error: stack: Neovim is blocked in mode r; screen: … command selene is not executable (make sure it's installed and on your $PATH)
+- note: loop: Error: VM 'nvim-e2e' is not running
+- note: loop: vim.schedule callback: Vim:E482: Can't open file /var/folders/9c/yg1yg4td727dkq_blbwbwn1w0000gn/T/nvim.hlebbeladzed/2Rxlnm/18.json.progress for writing: no space left on device
