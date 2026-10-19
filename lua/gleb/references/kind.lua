@@ -209,6 +209,16 @@ local function usage_client(usage)
 	end
 end
 
+---@param client vim.lsp.Client?
+---@param references gleb.language.References?
+---@return boolean
+local function highlights_allowed(client, references)
+	if not client or (references and references.write_access == false) then
+		return false
+	end
+	return client:supports_method("textDocument/documentHighlight")
+end
+
 ---@param uri string
 ---@param usages gleb.references.KindUsage[]
 ---@param client vim.lsp.Client
@@ -476,7 +486,8 @@ local function fallback_position(usage, client)
 end
 
 ---@param groups table<string, gleb.references.KindUsage[]>
-local function apply_query_kinds(groups)
+---@param target gleb.references.TargetKind
+local function apply_query_kinds(groups, target)
 	for uri, usages in pairs(groups) do
 		if #usages > 0 then
 			local source = table.concat(vim.fn.readfile(vim.uri_to_fname(uri)), "\n")
@@ -489,25 +500,9 @@ local function apply_query_kinds(groups)
 			for index, usage in ipairs(usages) do
 				local query_kind = kinds[index]
 				local is_syntactic = query_kind ~= "write" and query_kind ~= "read" and query_kind ~= "unclassified"
-				if is_syntactic or usage.kind == nil then
-					usage.kind = query_kind
-				end
-			end
-		end
-	end
-end
-
----@param usages gleb.references.KindUsage[]
----@param target gleb.references.TargetKind
-local function refine_target_kinds(usages, target)
-	for _, usage in ipairs(usages) do
-		local kind = usage.kind
-		if kind then
-			local refined = kind_refine.finalize(kind, target, usage.filetype or "")
-			if refined == nil then
-				usage.kind = "unclassified"
-			else
-				usage.kind = refined
+				local kind = is_syntactic and query_kind or usage.kind or query_kind
+				local fallback = is_syntactic and (usage.kind or "read") or nil
+				usage.kind = kind_refine.finalize(kind, target, usage.filetype or "", fallback) or "unclassified"
 			end
 		end
 	end
@@ -549,8 +544,7 @@ function M.classify(usages, callback, origin)
 			return
 		end
 		finished = true
-		apply_query_kinds(groups)
-		refine_target_kinds(classified, target)
+		apply_query_kinds(groups, target)
 		callback(classified)
 	end
 	local function request_done()
@@ -572,11 +566,8 @@ function M.classify(usages, callback, origin)
 		if client and references and references.write_access == "tsserver" and has_tsserver_command(client) then
 			tsserver_client = client
 			vim.list_extend(tsserver_usages, file_usages)
-		elseif
-			client
-			and (not references or references.write_access ~= false)
-			and client:supports_method("textDocument/documentHighlight")
-		then
+		elseif highlights_allowed(client, references) then
+			---@cast client vim.lsp.Client
 			pending = pending + 1
 			local anchor_range
 			local received
@@ -595,11 +586,8 @@ function M.classify(usages, callback, origin)
 		local client = vim.lsp.get_client_by_id(origin.client_id)
 		local filetype = vim.filetype.match({ filename = vim.uri_to_fname(origin.params.textDocument.uri) }) or ""
 		local references = references_config(filetype)
-		if
-			client
-			and (not references or references.write_access ~= false)
-			and client:supports_method("textDocument/documentHighlight")
-		then
+		if highlights_allowed(client, references) then
+			---@cast client vim.lsp.Client
 			pending = pending + 1
 			local anchor_range = { start = origin.params.position, ["end"] = origin.params.position }
 			request_highlights(
