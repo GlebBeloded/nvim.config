@@ -13,6 +13,7 @@ Scenarios: `file-tree: Directory argument opens the project tree`
 - Diff autocmds receive redraw and index-refresh callbacks so event ownership moves out without creating a module cycle.
 - References layout receives render and preview callbacks so geometry moves out without creating a module cycle.
 - References preview owns cursor-following autocmds and selection state so the view only supplies layout callbacks.
+- The public kind module passes its cache into request orchestration so reset and state inspection remain stable.
 
 ## 2. Extract file-tree folds
 Scenarios: `file-tree: za toggles a nest`
@@ -48,4 +49,4 @@ Scenarios: `references: Preview follows the selection`
 
 ## 10. Extract reference-kind request flow
 Scenarios: `references: The view opens before classification finishes`
-- [ ] 10.1 Run `make test FILE=tests/integration/references/test_kind_view.lua CASE="The view opens before classification finishes"` and see it pass, move highlight, tsserver, target-kind, timeout, and completion request orchestration into `lua/gleb/references/kind_request.lua`, split `append_origin_writes` into small named helpers, and keep `lua/gleb/references/kind.lua` as the classification entry point, run it again and see it pass
+- [x] 10.1 Run `make test FILE=tests/integration/references/test_kind_view.lua CASE="The view opens before classification finishes"` and see it pass, move highlight, tsserver, target-kind, timeout, and completion request orchestration into `lua/gleb/references/kind_request.lua`, split `append_origin_writes` into small named helpers, and keep `lua/gleb/references/kind.lua` as the classification entry point, run it again and see it pass
