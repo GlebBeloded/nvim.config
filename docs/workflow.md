@@ -29,7 +29,6 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 
 ## Loop lessons
 
-- Pass a single asserted capture to numeric conversion; Lua assertions propagate their message argument as a second return value.
 - Close a plugin view after auditing it when its asynchronous updates can launch synchronous subprocess waits, so the next bounded open cannot inherit a blocked editor loop.
 - Match a target command anywhere in subprocess diagnostics because unrelated child processes can appear first.
 - Wait for captured subprocess content, not capture-file creation; shell redirection makes the file visible before stdin is fully consumed.
@@ -44,6 +43,7 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - Preserve a valid restore buffer when replacing a wipe-on-hide dashboard, so repeated owned-diff updates cannot restore a deleted buffer.
 - Keep mutation refreshes drawing after visible-row selection; a follow-path fast path can otherwise leave invalidated rows rendered.
 - Gate first paint on every asynchronous input it consumes, and use a synchronous atomic persistence path for shutdown events.
+- A live directory handle does not prove macOS FSEvents has settled after watch churn; cover the transition in production instead of extending the scenario's bound.
 
 ## The loop
 
