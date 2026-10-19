@@ -16,11 +16,9 @@ local GRAMMAR = {
 	i = { "<C-U>", "<C-W>", "<Tab>", "<S-Tab>" },
 }
 
--- Hardcoded plugin-window keys by filetype: Mason navigation, codediff mouse selection, 99's `q` and `<CR>`.
+-- Hardcoded plugin-window keys by filetype: Mason navigation and 99's `q` and `<CR>`.
 local NATIVE = {
 	mason = { n = { "<Esc>", "1", "2", "3", "4", "5", "q" } },
-	["codediff-explorer"] = { n = { "<2-LeftMouse>" } },
-	["codediff-history"] = { n = { "<2-LeftMouse>" } },
 	["99"] = { n = { "q", "<CR>" } },
 	["99prompt"] = { n = { "q", "<CR>" } },
 }

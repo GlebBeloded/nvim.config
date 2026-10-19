@@ -1,20 +1,24 @@
 # git Specification
 
 ## Purpose
-Git integration loaded from `lua/gleb/git/`: gutter signs, unified/split diff viewers (differ.nvim, diffview.nvim, vscode-diff), permalink copying via `:Gitlink`, and an AI-generated commit message popup.
+Git integration loaded from `lua/gleb/git/`: gutter signs, the changes panel with its owned diff view, diffview for merges and history, permalink copying via `:Gitlink`, and an AI-generated commit message popup.
 
 ## Requirements
 
 ### Requirement: Module loading
-`require("gleb.git")` SHALL load, in order, the gitsigns, differ, diffview and gitlink configurations. The vscode-diff configuration SHALL be loaded by lazy.nvim when that plugin loads. The gitsigns, differ, diffview and vscode-diff configurations SHALL return without error when their plugin cannot be required.
+`require("gleb.git")` SHALL load, in order, the gitsigns, diffview and gitlink configurations and the changes panel. The gitsigns and diffview configurations SHALL return without error when their plugin cannot be required. differ.nvim and vscode-diff.nvim SHALL not be installed.
 
 #### Scenario: Missing optional git plugins are tolerated
-- **WHEN** `require("gleb.git.gitsigns")`, `require("gleb.git.differ")`, `require("gleb.git.diffview")` and `require("gleb.git.vscode_diff")` are called with those plugins absent from the runtimepath
+- **WHEN** `require("gleb.git.gitsigns")` and `require("gleb.git.diffview")` are called with those plugins absent from the runtimepath
 - **THEN** no error is raised
 
 #### Scenario: Git commands are available after startup
 - **WHEN** Neovim starts with the full config
-- **THEN** user commands `Gitsigns`, `Differ`, `DiffviewOpen` and `Gitlink` exist (`vim.fn.exists(":<cmd>") == 2`)
+- **THEN** user commands `Gitsigns`, `DiffviewOpen` and `Gitlink` exist (`vim.fn.exists(":<cmd>") == 2`), and `Differ`, `CodeDiff` and `VscodeDiff` do not
+
+#### Scenario: Removed diff plugins are not registered
+- **WHEN** the lazy.nvim plugin list and `lazy-lock.json` are read after startup
+- **THEN** neither names `differ.nvim`, `vscode-diff.nvim` or `neo-tree.nvim`, and `diffview.nvim`, `gitsigns.nvim` and `nui.nvim` are still listed
 
 ### Requirement: Gutter signs
 The config SHALL show git hunk signs in the sign column using `┃` for added, untracked, changed and changed-deleted lines and `` for deleted and top-deleted lines, with number highlighting, line highlighting, word diff and current-line blame disabled by default. No other plugin SHALL draw hunk signs over them.
@@ -34,13 +38,6 @@ The config SHALL show git hunk signs in the sign column using `┃` for added, u
 #### Scenario: Added line sign matches reference screenshot
 - **WHEN** Neovim starts with the full config at 60x8 and `:edit sample.lua` opens a committed file in a temp git repo whose working copy adds `M.x = 1` as line 2, and gitsigns has refreshed the buffer
 - **THEN** screen rows 2-5 match the reference screenshot of design.md "Proposed": the sign column of line 2 draws `┃` in [GitSignsAdd] and no other line has a sign
-
-### Requirement: Differ viewer
-The config SHALL set up differ.nvim with split (side-by-side) layout, 3 lines of context, word-granularity deep diff, and a file panel on the left, 35 columns wide, listing files as a tree. A blocked `:Differ` open SHALL fail its test within 10 seconds with recorded child state instead of blocking the worker.
-
-#### Scenario: Differ opens panel on the left
-- **WHEN** `:Differ` is executed in a repository with working-tree changes
-- **THEN** a new panel window is the leftmost window of the current tab with width 35 listing the changed files as a tree; if opening blocks, the test fails within 10 seconds with recorded child state; the blocked-open regression reports phase `opening` and live subprocess command lines, then stops its Neovim child and descendants even if the open returns before the deadline
 
 ### Requirement: Diffview viewer
 The config SHALL set up diffview.nvim with enhanced diff highlighting, `diff2_horizontal` layout for diffs, `diff3_mixed` for merges, and a left file panel 35 columns wide with tree listing, flattened directories and folder statuses only when folded.
@@ -94,13 +91,6 @@ In the diffview file panel, normal-mode `j`/`<Tab>` SHALL select and display the
 #### Scenario: s stages entry from file panel
 - **WHEN** the cursor is on an unstaged file entry in the diffview file panel and `s` is pressed in normal mode
 - **THEN** the file appears in `git diff --cached --name-only`
-
-### Requirement: vscode-diff configuration
-When vscode-diff loads, the config SHALL call its setup with the explorer left, 35 columns wide, in tree view mode, with every plugin default diff keymap disabled so registered actions are the sole configured mappings.
-
-#### Scenario: vscode-diff setup runs on plugin load
-- **WHEN** lazy.nvim loads `vscode-diff.nvim`
-- **THEN** `require("gleb.git.vscode_diff")` executes without error and disables every default keymap
 
 ### Requirement: Gitlink permalink command
 The config SHALL configure gitlinker with no default mappings, without printing the URL, and with host `pgw.dev` producing GitHub-style URLs. It SHALL define the `:Gitlink` command accepting a range: without a range it copies the URL for the current line, with a range it copies the URL for the inclusive line endpoints supplied to the command; the URL SHALL be copied to the `+` register. Ranged commands SHALL restore the cursor and visual marks, leave Normal mode, and propagate failures.
@@ -190,40 +180,6 @@ In the popup, normal-mode `<CR>` SHALL drop every line starting with `#`, right-
 #### Scenario: Leaving popup closes it
 - **WHEN** focus leaves the popup buffer with `:wincmd p`
 - **THEN** the popup window is closed and `on_commit` is not called
-
-### Requirement: Differ review workflow
-In a repository with staged, unstaged and untracked changes, Cmd+G SHALL open differ listing every changed file in its panel, and in the diff window `]f` SHALL show the next changed file and `]c` SHALL move the cursor to the next hunk of the current file.
-
-#### Scenario: Cmd+G opens differ listing every change of a dirty repo
-- **WHEN** Neovim runs in a fresh copy of the `dirty` fixture and Cmd+G is pressed as a real key press
-- **THEN** the differ panel is the leftmost window of the current tab and lists exactly the fixture manifest's changed files: `a.txt` (staged), `b.txt` and `lib/c.lua` (unstaged), `d.txt` (staged and unstaged) and `new.txt` (untracked)
-
-#### Scenario: ]f steps to the next changed file in differ
-- **WHEN** differ shows the diff of a changed file of the `dirty` fixture with the diff window focused and `]` `f` is pressed as a real key press
-- **THEN** the diff window shows the next file in the panel's order, and repeating `]` `f` visits every changed file of the manifest once
-
-#### Scenario: ]c steps to the next hunk in differ
-- **WHEN** differ shows `b.txt` of the `dirty` fixture with the cursor in its first hunk and `]` `c` is pressed as a real key press
-- **THEN** the cursor is on the first changed line of the second hunk from the manifest and the diff window's winbar reads `hunk 2/2`
-
-### Requirement: Git plugin mapping ownership
-Differ, diffview, and codediff SHALL disable their default mappings and derive configured window mappings from registered git actions and current `settings/keymap.json` assignments. Diffview's spec-retained `<leader>co`, `<leader>ct`, `<leader>cb`, and `<leader>ca` conflict choices SHALL be registered as view-scoped `conflict_choose` actions with those current assignments. Opening a viewer after reassignment SHALL use only the new lhs.
-
-#### Scenario: Diffview mappings come from git actions
-- **WHEN** diffview opens a populated view and file panel after `VeryLazy`
-- **THEN** every configured mapping invokes the git action assigned by `settings/keymap.json` and an unconfigured diffview default is absent
-
-#### Scenario: Diffview conflict choices come from git actions
-- **WHEN** diffview opens a populated conflict view after `VeryLazy`
-- **THEN** `<leader>co`, `<leader>ct`, `<leader>cb`, and `<leader>ca` invoke the registered `diffview.choose_ours`, `diffview.choose_theirs`, `diffview.choose_base`, and `diffview.choose_all` actions assigned by `settings/keymap.json`
-
-#### Scenario: Differ mappings come from git actions
-- **WHEN** differ opens a populated dirty-repository review after `VeryLazy`
-- **THEN** every configured mapping invokes the git action assigned by `settings/keymap.json` and an unconfigured differ default is absent
-
-#### Scenario: Codediff mappings come from git actions
-- **WHEN** codediff opens a populated diff after `VeryLazy`
-- **THEN** every configured mapping invokes the git action assigned by `settings/keymap.json` and an unconfigured codediff default is absent
 
 ### Requirement: Git popup mapping ownership
 The AI commit popup SHALL install its buffer-local `<CR>` and `q` mappings from registered git actions and their `settings/keymap.json` assignments while preserving the existing confirm, validation, cleanup, and discard behavior.
@@ -633,3 +589,33 @@ The changes panel SHALL match the approved IntelliJ commit-tree render.
 #### Scenario: Changes panel matches the approved render
 - **WHEN** a `100x30` screen edits `internal/billing/invoice.go` of a fresh copy of the `billing` fixture and the `changes.toggle` action runs
 - **THEN** columns 1-36 of screen rows 2-12 match design.md "Proposed A — changes panel", text and colour mask
+
+### Requirement: Changes review workflow
+In a repository with staged, unstaged and untracked changes, Cmd+G SHALL open the changes panel with the diff view of the selected file, and in a diff window `]f` SHALL show the panel's next changed file and `]c` SHALL move the cursor to the next change of the current file.
+
+#### Scenario: Cmd+G opens the changes review of a dirty repo
+- **WHEN** Neovim runs in a fresh copy of the `dirty` fixture and Cmd+G is pressed as a real key press
+- **THEN** the changes panel is the leftmost window of the current tab and lists exactly the fixture manifest's changed files: `a.txt` (staged), `b.txt` and `lib/c.lua` (unstaged), `d.txt` (staged and unstaged) and `new.txt` (untracked), and the editor area shows the diff view of `lib/c.lua`
+
+#### Scenario: Cmd+G with the project tree open replaces it
+- **WHEN** the project tree is open in a dirty repository and Cmd+G is pressed as a real key press
+- **THEN** no project-tree window remains and the changes panel and its diff view are open
+
+#### Scenario: ]f steps to the next changed file in the changes review
+- **WHEN** the changes review shows a changed file of the `dirty` fixture with a diff window focused and `]` `f` is pressed as a real key press
+- **THEN** the diff view shows the next file in the panel's order, and repeating `]` `f` visits every changed file of the manifest once
+
+#### Scenario: ]c steps to the next change in the changes review
+- **WHEN** the changes review shows `b.txt` of the `dirty` fixture with the cursor of the right diff window in its first change and `]` `c` is pressed as a real key press
+- **THEN** the cursor is on the first changed line of the second hunk from the manifest
+
+### Requirement: Diffview mapping ownership
+Diffview SHALL disable its default mappings and derive configured window mappings from registered git actions and current `settings/keymap.json` assignments. Diffview's spec-retained `<leader>co`, `<leader>ct`, `<leader>cb`, and `<leader>ca` conflict choices SHALL be registered as view-scoped `conflict_choose` actions with those current assignments. Opening a viewer after reassignment SHALL use only the new lhs.
+
+#### Scenario: Diffview mappings come from git actions
+- **WHEN** diffview opens a populated view and file panel after `VeryLazy`
+- **THEN** every configured mapping invokes the git action assigned by `settings/keymap.json` and an unconfigured diffview default is absent
+
+#### Scenario: Diffview conflict choices come from git actions
+- **WHEN** diffview opens a populated conflict view after `VeryLazy`
+- **THEN** `<leader>co`, `<leader>ct`, `<leader>cb`, and `<leader>ca` invoke the registered `diffview.choose_ours`, `diffview.choose_theirs`, `diffview.choose_base`, and `diffview.choose_all` actions assigned by `settings/keymap.json`

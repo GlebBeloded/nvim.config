@@ -28,15 +28,15 @@ The queue builds an IntelliJ-style project tree (`file-tree-view` … `file-tree
 - `file-tree`: added "Project tree opens for a directory buffer" and "Project tree sidebar" (`file-tree-view`'s "Project tree window" without its pre-cutover scenario); modified "Filesystem tree toggle"; removed "Project tree window", "Tree sources and window", "Common tree open mappings", "Common tree edit mappings", "Filesystem source behaviour", "Git status navigation previews diffs", "Git status open, close and staging actions", "Git status staging matches exact paths", "Git status revert and key ownership", "Git status AI commit", "Git status push", "Diff preview state", "Diff preview opening", "Diff preview tree in diff tab", "Diff preview git errors", "Diff preview focus and closing", "Tree icons" and "Neo-tree mapping ownership".
 - `git`: added "Changes review workflow" and "Diffview mapping ownership"; modified "Module loading"; removed "Differ viewer", "vscode-diff configuration", "Differ review workflow" and "Git plugin mapping ownership".
 - `keymaps`: added "Changes review entry point", "Project tree and changes panel toggles" and "Pending panel work does not override a toggle"; modified "Normal-mode command maps bypass the command line" (no Ex command behind Cmd+G any more); removed "Differ entry point", "File tree and git panel toggles" and "Pending file tree work does not override a toggle".
-- `bufferline`: modified "Tabline offset for the project tree" (also the changes panel); removed "Tabline offset for the file tree".
+- `bufferline`: added "Tabline offset for the project tree" (also the changes panel); removed "Tabline offset for the file tree".
 - `actions`: modified "Exclusive shortcut ownership" (no codediff allowlist; the new views instead of neo-tree, differ and codediff windows).
-- Every removed scenario is listed with its successor in design.md, "Removed scenarios" (77 rows).
+- Every removed scenario is listed with its successor in design.md, "Removed scenarios" (78 rows).
 
 ## Impact
 
 - Code:
   - Removed: `lua/gleb/file_tree/neo_tree.lua`, `lua/gleb/file_tree/diff_preview.lua`, `lua/gleb/git/differ.lua`, `lua/gleb/git/vscode_diff.lua`, `lua/gleb/actions/adapters/neo_tree.lua`, `differ.lua`, `codediff.lua`.
-  - Changed: `lua/gleb/file_tree/{init,actions}.lua` (hijack autocmd, old actions dropped), `lua/gleb/git/{init,actions}.lua`, `lua/gleb/plugins/plugins.lua`, the lazy.nvim setup (`disabled_plugins`), `lazy-lock.json`, `lua/gleb/bufferline.lua`, `lua/gleb/actions/{registry,audit}.lua`, `lua/gleb/find_action/assign.lua`, `lua/gleb/colors/gruvbox-material/git.lua`, `settings/keymap.json`.
+  - Changed: `lua/gleb/file_tree/{init,actions,view}.lua` (hijack autocmd, old actions dropped), `lua/gleb/git/{init,actions}.lua`, `lua/gleb/plugins/{init,plugins}.lua` (including lazy.nvim `disabled_plugins`), `lazy-lock.json`, `lua/gleb/bufferline.lua`, `lua/gleb/actions/{registry,audit}.lua`, `lua/gleb/find_action/assign.lua`, `lua/gleb/colors/gruvbox-material/{git,init}.lua`, `lua/gleb/colors/transparency.lua`, `settings/keymap.json`.
   - Docs: docs/architecture.md, docs/testing.md; spec text: the shortcut table rows Cmd+E and Cmd+G, the `file-tree` and `git` Purpose lines.
   - Tests: cases of removed scenarios deleted with them; `tests/e2e/git/test_differ_review.lua` becomes `test_changes_review.lua`; render case `neo-tree` becomes `project-tree` plus a `changes` case; `tests/bootstrap.sh`/`tests/types.sh` drop vscode-diff.nvim; `tests/fixtures/build.sh` comment of `dirty`; the Find Action adapter fixture moves to a remaining adapter id.
 - Plugins: removed nvim-neo-tree/neo-tree.nvim, undont/differ.nvim, esmuellert/vscode-diff.nvim. None added. nui.nvim stays: `lua/gleb/git/ai_commit.lua` is its remaining user.
@@ -46,6 +46,19 @@ The queue builds an IntelliJ-style project tree (`file-tree-view` … `file-tree
   - `shortcuts: Shortcut meanings survive registry migration` still holds: bytes, routing and received keys are unchanged; each row's action id is updated with the table.
   - `find-action: Adapter assignment reports deferred application` still holds: the test's adapter fixture moves to a remaining adapter id (`lazy.`), so the message is unchanged.
   - `find-action: Saved shortcut applies immediately` still holds: `file_tree.*` and `changes.*` are no adapter ids.
+  - `diff: Diff view opens on the current file` still holds: `diff.open_file` remains registered and available through Find Action.
+  - `diff: Diff view of an unchanged file opens nothing` still holds: the standalone diff entry point and unchanged-file guard are untouched.
+  - `diff: Diff view outside a repository opens nothing` still holds: removing plugin viewers does not change the owned diff view's repository guard.
+  - `diff: Diff view of a file absent from HEAD` still holds: the owned diff engine and absent-file comparison are untouched.
+  - `diff: Diff view focuses an open view of the same file` still holds: `diff.open_file` remains unbound but callable through Find Action.
+  - `diff: Diff view matches the approved render` still holds: this change alters only the bufferline over the changes panel, not the diff-view render.
+  - `diff: Diff view marks an approximate comparison` still holds: timeout attribution belongs to the owned diff engine and is untouched.
+  - `diff: Requirement: Diff view closing` still holds: removal of external viewers does not change owned diff-view teardown or mappings.
+  - `diff: Diff view ]f without a list keeps the view` still holds: standalone `diff.open_file` remains without a next-file hook.
+  - `diff: Diff view mappings come from diff actions` still holds: the diff action adapter remains; only neo-tree, differ and codediff adapters are removed.
+  - `diff: Diff view checkboxes follow the index` still holds: index comparison and checkbox rendering are untouched.
+  - `diff: Diff view marks both ends of a moved block` still holds: move detection and its view decorations are untouched.
+  - `diff: Diff view moved block matches the approved render` still holds: the owned diff-view render is unchanged.
 - Out of scope:
   - New tree, panel or diff behaviour (their own changes), diagnostics in the tree.
   - diffview and gitsigns configuration.
@@ -75,6 +88,7 @@ The queue builds an IntelliJ-style project tree (`file-tree-view` … `file-tree
 - **Directory buffers open the sidebar,** not a tree in the current window as neo-tree's `open_current` did: there is one kind of tree window.
 - **nui.nvim stays** for the commit popup; plenary and devicons stay for their other users.
 - **Requirements that lose a scenario are replaced** (removed and added under a new name) because OpenSpec refuses a MODIFIED block that drops one; surviving scenario titles are kept so their tests keep their names.
+- **The three rejected replacement bounds stay unchanged except for the named cutover:** bufferline keeps the 35-column panel plus one separator, blank label/separator, panel highlight and column-1 no-panel case; close-if-last keeps `:q`, `:close`, cross-tab isolation and mixed-sidebar exit while changes panel replaces neo-tree; pending refreshes still cannot reopen or focus a closed panel, with the changes-panel race added alongside the tree race.
 
 ## Decision (auditor, 2026-10-19, host fseventsd)
 
@@ -84,7 +98,6 @@ The queue builds an IntelliJ-style project tree (`file-tree-view` … `file-tree
   against a fresh run before acting on it. fseventsd was restarted at 08:25; the live file passes again.
 - No platform-specific watcher (a `watch_darwin.lua`, polling fallbacks) to work around missing events: the watcher
   uses `vim.uv.new_fs_event` as it is.
-
 ## Decision (auditor, 2026-10-19, stuck triage at 10:30)
 
 - The `## Stuck` LSP readiness note (c71976bf, 05:48) is from the fseventsd window and has not recurred in any gate since
@@ -120,3 +133,5 @@ Run on `loop/tree-diff-cutover-20261019-091302` was rejected by the judge:
   - Out-of-scope test edits were needed to get the gate green: test_typecheck.lua, test_languages.lua, test_gitsigns.lua.
 - note: flaky test cases (failed, then passed on rerun): e2e: sandbox: booting nvim-e2e headless
 - note: loop: sandbox: Lume still reports nvim-e2e unknown while its lume run process is alive, after one restart; giving up (/Users/hlebbeladzed/.cache/nvim-e2e-sandbox/vm.log)
+
+The replacement-bound findings are settled by the explicit bounds above and by tasks 2, 4c and 6, whose scenarios exercise those preserved limits.

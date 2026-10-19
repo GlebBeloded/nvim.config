@@ -9,7 +9,7 @@
 #   build.sh rustproj Rust crate with production, integration and inline test usages
 #   build.sh bashproj Bash project with production and test-script usages
 #   build.sh tfproj  Terraform module with variable usages
-#   build.sh dirty   repo with staged, unstaged and untracked changes (differ review)
+#   build.sh dirty   repo with staged, unstaged and untracked changes (changes review)
 #   build.sh billing  Go/TS repo with staged, unstaged and untracked changes (changes panel)
 #   build.sh diffgo  Go files with changed, inserted, deleted and moved lines
 #   build.sh treeproj Project-tree sample with modified, added, untracked and ignored files

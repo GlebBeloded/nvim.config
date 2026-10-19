@@ -7,6 +7,10 @@ In a repository with staged, unstaged and untracked changes, Cmd+G SHALL open th
 - **WHEN** Neovim runs in a fresh copy of the `dirty` fixture and Cmd+G is pressed as a real key press
 - **THEN** the changes panel is the leftmost window of the current tab and lists exactly the fixture manifest's changed files: `a.txt` (staged), `b.txt` and `lib/c.lua` (unstaged), `d.txt` (staged and unstaged) and `new.txt` (untracked), and the editor area shows the diff view of `lib/c.lua`
 
+#### Scenario: Cmd+G with the project tree open replaces it
+- **WHEN** the project tree is open in a dirty repository and Cmd+G is pressed as a real key press
+- **THEN** no project-tree window remains and the changes panel and its diff view are open
+
 #### Scenario: ]f steps to the next changed file in the changes review
 - **WHEN** the changes review shows a changed file of the `dirty` fixture with a diff window focused and `]` `f` is pressed as a real key press
 - **THEN** the diff view shows the next file in the panel's order, and repeating `]` `f` visits every changed file of the manifest once

@@ -34,13 +34,6 @@ local function lua_file(driver)
 	driver.wait([[vim.bo.filetype == "lua"]])
 end
 
---- Neo-tree filesystem tree of this checkout next to an empty buffer.
----@param driver render.Driver
-local function neo_tree(driver)
-	driver.cmd("cd " .. H.root .. " | enew | Neotree filesystem")
-	driver.wait([[vim.bo.filetype == "neo-tree"]], 3000)
-end
-
 --- Approved project-tree render on the populated billing fixture.
 ---@param driver render.Driver
 local function project_tree(driver)
@@ -89,6 +82,27 @@ local function project_tree(driver)
 		driver.type_keys("<CR>")
 	end
 	driver.lua([[vim.fn.search("invoice.go", "w")]])
+end
+
+--- Changes panel on the populated billing fixture.
+---@param driver render.Driver
+local function changes(driver)
+	local root = F.copy("billing", vim.fn.tempname() .. "/billing")
+	driver.cmd("cd " .. vim.fn.fnameescape(root) .. " | edit internal/billing/invoice.go")
+	driver.lua([[
+		local action = assert(require("gleb.actions").state.applicator.catalog:get("changes.toggle"))
+		action.run(require("gleb.actions.context").capture())
+	]])
+	assert(
+		driver.wait(
+			[[(function()
+		local view = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		return view and #view.rows == 10
+	end)()]],
+			5000
+		),
+		"changes panel did not load"
+	)
 end
 
 --- Owned aligned diff of the changed Go controller fixture.
@@ -544,7 +558,8 @@ return {
 		description = "<C-q> on a buffer shown in two vsplit windows",
 		setup = close_buffer_split,
 	},
-	["neo-tree"] = { description = "neo-tree filesystem tree of this checkout", setup = neo_tree },
+	["project-tree"] = { description = "approved project-tree render", setup = project_tree },
+	changes = { description = "changes panel on the billing fixture", setup = changes },
 	["f1-proposed"] = { description = "approved project-tree render", setup = project_tree },
 	["lua_l1_apply"] = { description = "Lua function usages grouped by usage type", setup = lua_l1_apply },
 	["bash_b1_rate"] = { description = "Bash variable usages grouped by usage type", setup = bash_b1_rate },
