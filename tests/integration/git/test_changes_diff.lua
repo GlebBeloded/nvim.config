@@ -573,6 +573,60 @@ T["git: Changes panel Enter opens the file"] = function()
 	})
 end
 
+T["git: Changes panel file is an independent normal buffer"] = function()
+	local root = F.copy("dirty", vim.fn.tempname() .. "/dirty")
+	open_changes(root, "a.txt")
+	observe_show()
+	cursor_before("b.txt")
+	child.type_keys("j")
+	wait_for_shows(1)
+
+	child.type_keys("<CR>")
+
+	local opened = child.lua_get([[(function()
+		local buf = vim.api.nvim_get_current_buf()
+		return {
+			buf = buf,
+			listed = vim.bo[buf].buflisted,
+			buftype = vim.bo[buf].buftype,
+			path = vim.fs.normalize(vim.api.nvim_buf_get_name(buf)),
+		}
+	end)()]])
+	eq({ opened.listed, opened.buftype, opened.path }, {
+		true,
+		"",
+		assert(vim.uv.fs_realpath(vim.fs.joinpath(root, "b.txt"))),
+	})
+
+	child.lua([[
+		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		vim.api.nvim_set_current_win(panel.win)
+	]])
+	child.type_keys("q")
+
+	eq(
+		child.lua_get(
+			[[(function(buf)
+				return {
+					vim.api.nvim_buf_is_valid(buf),
+					vim.api.nvim_buf_is_loaded(buf),
+					vim.bo[buf].buflisted,
+					vim.bo[buf].buftype,
+					vim.fs.normalize(vim.api.nvim_buf_get_name(buf)),
+				}
+			end)(...)]],
+			{ opened.buf }
+		),
+		{
+			true,
+			true,
+			true,
+			"",
+			assert(vim.uv.fs_realpath(vim.fs.joinpath(root, "b.txt"))),
+		}
+	)
+end
+
 T["git: Changes panel q closes the panel and the diff view"] = function()
 	local root = F.copy("dirty", vim.fn.tempname() .. "/dirty")
 	open_changes(root, "a.txt")
