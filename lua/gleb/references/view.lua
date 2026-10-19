@@ -3,11 +3,12 @@ local M = {
 	state = {},
 }
 
+local format = require("gleb.references.format")
 local icons = require("gleb.references.icons")
+local layout = require("gleb.references.layout")
 local preview = require("gleb.references.preview")
 local persisted_state = require("gleb.references.state")
 local tree = require("gleb.references.tree")
-local usage_types = require("gleb.references.usage_types")
 
 ---@class gleb.references.ViewState
 ---@field windows integer[]
@@ -31,163 +32,11 @@ local usage_types = require("gleb.references.usage_types")
 ---@field classifying? boolean
 ---@field id? integer
 
----@class gleb.references.Segment
----@field text string
----@field group? string
-
-local namespace = vim.api.nvim_create_namespace("gleb_references_view")
-local TREE_SHARE = 0.45
-local WIDE_MIN_COLUMNS = 80
 local FRAME_HIGHLIGHT =
 	"Normal:MiniPickNormal,FloatBorder:PickerBorder,FloatTitle:MiniPickBorderText,EndOfBuffer:MiniPickNormal"
 local TREE_HIGHLIGHT = FRAME_HIGHLIGHT .. ",CursorLine:MiniPickMatchCurrent"
-local PREVIEW_HIGHLIGHT = FRAME_HIGHLIGHT .. ",WinBar:MiniPickNormal,WinBarNC:MiniPickNormal"
--- The tree's status column is its left padding, coloured like the row it pads.
-local TREE_PADDING = "%{%v:relnum ? '%#MiniPickNormal#' : '%#MiniPickMatchCurrent#'%} "
 local HINT_HIGHLIGHT = FRAME_HIGHLIGHT
-local WIDE_TREE_BORDER = { "╭", "─", "┬", "│", "┴", "─", "├", "│" }
-local NARROW_TREE_BORDER = { "╭", "─", "╮", "│", "┤", "─", "├", "│" }
-local PREVIEW_BORDER = { "┬", "─", "╮", "│", "┤", "─", "┴", "│" }
--- The tree and preview bottom borders draw the rule above the hints.
-local HINT_BORDER = { "", "", "", "│", "╯", "─", "╰", "│" }
-local TOGGLE_ON = "●"
 local next_view_id = 0
-
----@param node gleb.references.TreeNode
----@return gleb.references.Segment[]
-local function group_segments(node)
-	local icon = icons.for_node(node)
-	local folded = M.state.folded and M.state.folded[node.id]
-	local indent = string.rep(" ", math.max(node.depth, node.kind == "folder" and 1 or 0) * 2)
-	return {
-		{ text = indent .. (folded and "▸" or "▾") .. " " },
-		{ text = icon.icon, group = icon.icon_group },
-		{ text = " " },
-		{ text = node.label, group = icon.label_group },
-		{ text = "  " },
-		{ text = tostring(node.count), group = "PickerSecondary" },
-	}
-end
-
----@param node gleb.references.TreeNode
----@return gleb.references.Segment[]
-local function usage_segments(node)
-	local icon = icons.for_node(node)
-	local file, line = node.label:match("^(.*)(:%d+)$")
-	local indent = node.flat_path and node.depth * 2 or node.depth * 2 + 2
-	return {
-		{ text = node.depth == 0 and "" or string.rep(" ", indent) },
-		{ text = icon.icon, group = icon.icon_group },
-		{ text = " " },
-		{ text = file or node.label, group = icon.label_group },
-		{ text = line or "", group = "PickerSecondary" },
-	}
-end
-
----@param segments gleb.references.Segment[]
----@return string
-local function segments_text(segments)
-	return table.concat(vim.tbl_map(function(segment)
-		return segment.text
-	end, segments))
-end
-
----@param text string
----@param width integer
----@return string
-local function shorten_left(text, width)
-	if vim.fn.strdisplaywidth(text) <= width then
-		return text
-	end
-	if width <= 1 then
-		return "…"
-	end
-	local suffix = text
-	while suffix ~= "" and vim.fn.strdisplaywidth("…" .. suffix) > width do
-		suffix = vim.fn.strcharpart(suffix, 1)
-	end
-	return "…" .. suffix
-end
-
----@param segments gleb.references.Segment[]
----@param width? integer text width the test tag is right-aligned to
-local function add_test_tag(segments, width)
-	local icon = icons.for_node({ kind = "scope", id = "scope:test", label = "Test", depth = 0 })
-	local tag_width = vim.fn.strdisplaywidth(icon.icon .. " test")
-	if width then
-		local fixed_width = vim.fn.strdisplaywidth(segments_text(segments)) - vim.fn.strdisplaywidth(segments[4].text)
-		segments[4].text = shorten_left(segments[4].text, math.max(width - fixed_width - tag_width - 1, 1))
-	end
-	local line_width = vim.fn.strdisplaywidth(segments_text(segments))
-	vim.list_extend(segments, {
-		{ text = string.rep(" ", math.max((width or 0) - line_width - tag_width, 1)) },
-		{ text = icon.icon, group = icon.icon_group },
-		{ text = " " },
-		{ text = "test", group = icon.label_group },
-	})
-end
-
----@param segments gleb.references.Segment[]
----@param type_id string
----@param width? integer
-local function add_type_tag(segments, type_id, width)
-	local entry = assert(usage_types[type_id], "unknown reference usage type")
-	local icon = icons.for_node({
-		kind = "type",
-		id = "type:tag:" .. type_id,
-		label = entry.label,
-		depth = 0,
-		usage_type = type_id,
-	})
-	local tag_width = vim.fn.strdisplaywidth(icon.icon .. " " .. entry.tag)
-	if width then
-		local fixed_width = vim.fn.strdisplaywidth(segments_text(segments)) - vim.fn.strdisplaywidth(segments[4].text)
-		segments[4].text = shorten_left(segments[4].text, math.max(width - fixed_width - tag_width - 2, 1))
-	end
-	local line_width = vim.fn.strdisplaywidth(segments_text(segments))
-	vim.list_extend(segments, {
-		{ text = string.rep(" ", math.max((width or 0) - line_width - tag_width, 2)) },
-		{ text = icon.icon, group = icon.icon_group },
-		{ text = " " },
-		{ text = entry.tag, group = icon.label_group },
-	})
-end
-
----@param node gleb.references.TreeNode
----@param width? integer
----@return gleb.references.Segment[]
-local function tree_segments(node, width)
-	if node.kind ~= "usage" then
-		return group_segments(node)
-	end
-	local segments = usage_segments(node)
-	if node.test_tag then
-		add_test_tag(segments, width)
-	end
-	if node.type_tag then
-		add_type_tag(segments, node.type_tag, width)
-	end
-	return segments
-end
-
----@param buf integer
----@param row integer 0-based
----@param segments gleb.references.Segment[]
-local function highlight_segments(buf, row, segments)
-	local col = 0
-	for _, segment in ipairs(segments) do
-		if segment.group and segment.text ~= "" then
-			vim.api.nvim_buf_set_extmark(
-				buf,
-				namespace,
-				row,
-				col,
-				{ end_col = col + #segment.text, hl_group = segment.group }
-			)
-		end
-		col = col + #segment.text
-	end
-end
 
 ---@param buf integer
 ---@param filetype string
@@ -229,75 +78,6 @@ local function node_under_cursor()
 	end
 	local row = vim.api.nvim_win_get_cursor(state.tree_win)[1]
 	return state.visible_nodes[row]
-end
-
----@return gleb.references.TreeNode?
-local function usage_under_cursor()
-	local node = node_under_cursor()
-	return node and node.kind == "usage" and node or nil
-end
-
----@return nil
-local function update_preview()
-	local state = M.state
-	local usage = usage_under_cursor()
-	if not usage then
-		state.preview_usage = nil
-		state.tree.selected_id = nil
-		if state.preview_buf then
-			preview.clear(state.preview_buf, state.preview_win)
-		end
-		return
-	end
-	state.preview_usage = usage
-	state.tree.selected_id = usage.id
-	if not state.preview_buf or not state.preview_win then
-		return
-	end
-	preview.render(state.preview_buf, usage, state.usages, state.title)
-	preview.center(state.preview_win, usage)
-end
-
----@class gleb.references.Geometry
----@field inner_width integer
----@field body_height integer
----@field tree_width integer
----@field preview_width integer
----@field row integer
----@field col integer
-
---- Without the preview the frame fits the widest row or hint plus one padding cell per side.
----@return integer
-local function fitted_width()
-	local widest = vim.fn.strdisplaywidth(M.hint(false))
-	for _, line in ipairs(vim.api.nvim_buf_get_lines(M.state.tree_buf, 0, -1, false)) do
-		widest = math.max(widest, vim.fn.strdisplaywidth(line))
-	end
-	return widest + 2
-end
-
----@param visible boolean
----@return gleb.references.Geometry
-local function geometry(visible)
-	local columns, lines = vim.o.columns, vim.o.lines
-	local inner_width, body_height, tree_width
-	if visible then
-		inner_width = columns - 6
-		body_height = lines - 6
-		tree_width = math.floor(inner_width * TREE_SHARE)
-	else
-		inner_width = math.min(fitted_width(), columns - 6)
-		body_height = math.max(1, math.min(#M.state.visible_nodes, lines - 6))
-		tree_width = inner_width
-	end
-	return {
-		inner_width = inner_width,
-		body_height = body_height,
-		tree_width = tree_width,
-		preview_width = inner_width - tree_width - 1,
-		row = math.floor((lines - body_height - 4) / 2),
-		col = math.floor((columns - inner_width - 2) / 2),
-	}
 end
 
 ---@param id string
@@ -363,100 +143,12 @@ local function render_tree(width)
 	local buf = M.state.tree_buf
 	M.state.visible_nodes = visible_nodes()
 	local rows = vim.tbl_map(function(node)
-		return tree_segments(node, width)
+		return format.tree_segments(node, M.state.folded, width)
 	end, M.state.visible_nodes)
-	set_lines(buf, vim.tbl_map(segments_text, rows))
-	vim.api.nvim_buf_clear_namespace(buf, namespace, 0, -1)
+	set_lines(buf, vim.tbl_map(format.text, rows))
+	format.clear_highlights(buf)
 	for index, segments in ipairs(rows) do
-		highlight_segments(buf, index - 1, segments)
-	end
-end
-
----@param size gleb.references.Geometry
----@param visible boolean
-local function render_hint(size, visible)
-	local buf = M.state.hint_buf
-	local hint = M.hint(visible)
-	local padding = string.rep(" ", math.max(size.inner_width - vim.fn.strdisplaywidth(hint) - 1, 1))
-	local line = padding .. hint .. " "
-	set_lines(buf, { line })
-	vim.api.nvim_buf_clear_namespace(buf, namespace, 0, -1)
-	vim.api.nvim_buf_set_extmark(
-		buf,
-		namespace,
-		0,
-		#padding,
-		{ end_col = #line, hl_group = "PickerHint", priority = vim.hl.priorities.syntax }
-	)
-	local toggle = hint:find(TOGGLE_ON, 1, true)
-	while toggle do
-		local col = #padding + toggle - 1
-		vim.api.nvim_buf_set_extmark(
-			buf,
-			namespace,
-			0,
-			col,
-			{ end_col = col + #TOGGLE_ON, hl_group = "PickerToggleOn", priority = vim.hl.priorities.user }
-		)
-		toggle = hint:find(TOGGLE_ON, toggle + #TOGGLE_ON, true)
-	end
-end
-
----@return nil
-local function close_preview()
-	local state = M.state
-	if state.preview_win and vim.api.nvim_win_is_valid(state.preview_win) then
-		vim.api.nvim_win_close(state.preview_win, true)
-	end
-	state.preview_win = nil
-	state.preview_buf = nil
-end
-
----@param selected_id? string
----@return nil
-local function place_cursor(selected_id)
-	local state = M.state
-	if #state.visible_nodes == 0 then
-		vim.api.nvim_win_set_cursor(state.tree_win, { 1, 0 })
-		return
-	end
-	for index, node in ipairs(state.visible_nodes) do
-		if node.id == selected_id then
-			vim.api.nvim_win_set_cursor(state.tree_win, { index, 0 })
-			return
-		end
-	end
-	vim.api.nvim_win_set_cursor(
-		state.tree_win,
-		{ math.min(vim.api.nvim_win_get_cursor(state.tree_win)[1], #state.visible_nodes), 0 }
-	)
-end
-
----@param size gleb.references.Geometry
-local function show_preview(size)
-	local state = M.state
-	if not state.preview_buf then
-		state.preview_buf = vim.api.nvim_create_buf(false, true)
-		configure_buffer(state.preview_buf, "gleb-references-preview")
-		table.insert(state.buffers, state.preview_buf)
-	end
-	---@type vim.api.keyset.win_config
-	local config = {
-		relative = "editor",
-		row = size.row,
-		col = size.col + size.tree_width + 1,
-		width = size.preview_width,
-		height = size.body_height,
-		border = PREVIEW_BORDER,
-		style = "minimal",
-		focusable = false,
-		zindex = 50,
-	}
-	if state.preview_win then
-		vim.api.nvim_win_set_config(state.preview_win, config)
-	else
-		state.preview_win = open_window(state.preview_buf, false, config, PREVIEW_HIGHLIGHT)
-		table.insert(state.windows, state.preview_win)
+		format.highlight(buf, index - 1, segments)
 	end
 end
 
@@ -464,51 +156,12 @@ end
 ---@param selected_id? string
 ---@return nil
 local function apply_layout(selected_id)
-	local state = M.state
-	render_tree()
-	local visible = state.preview_visible and vim.o.columns >= WIDE_MIN_COLUMNS
-	local size = geometry(visible)
-	vim.api.nvim_win_set_config(state.tree_win, {
-		relative = "editor",
-		row = size.row,
-		col = size.col,
-		width = size.tree_width,
-		height = size.body_height,
-		border = visible and WIDE_TREE_BORDER or NARROW_TREE_BORDER,
-		title = string.format(
-			" Usages of %s · %d%s ",
-			state.title,
-			state.tree.count,
-			state.classifying and " · classifying" or ""
-		),
-		title_pos = "left",
-		style = "minimal",
-		zindex = 50,
-	})
-	vim.wo[state.tree_win].statuscolumn = TREE_PADDING
-	render_tree(size.tree_width - 2)
-	if selected_id then
-		place_cursor(selected_id)
-	end
-
-	if visible then
-		show_preview(size)
-	else
-		close_preview()
-	end
-	update_preview()
-
-	render_hint(size, visible)
-	vim.api.nvim_win_set_config(state.hint_win, {
-		relative = "editor",
-		row = size.row + size.body_height + 2,
-		col = size.col,
-		width = size.inner_width,
-		height = 1,
-		border = HINT_BORDER,
-		style = "minimal",
-		focusable = false,
-		zindex = 51,
+	layout.apply(M.state, selected_id, {
+		hint = M.hint,
+		render_tree = render_tree,
+		update_preview = function()
+			preview.update(M.state)
+		end,
 	})
 end
 
@@ -529,7 +182,7 @@ end
 
 ---@return nil
 local function rebuild()
-	local selected = as_usage(usage_under_cursor() or M.state.preview_usage)
+	local selected = as_usage(preview.selected(M.state) or M.state.preview_usage)
 	M.state.tree = tree.build(M.state.usages, M.state.options, selected)
 	apply_layout(M.state.tree.selected_id)
 end
@@ -564,7 +217,7 @@ function M.open(title, usages, classifying)
 	set_lines(
 		tree_buf,
 		vim.tbl_map(function(node)
-			return segments_text(tree_segments(node))
+			return format.text(format.tree_segments(node, {}))
 		end, built.nodes)
 	)
 	local tree_win = open_window(tree_buf, true, {
@@ -621,7 +274,7 @@ function M.open(title, usages, classifying)
 		id = view_id,
 	}
 	local group = vim.api.nvim_create_augroup("gleb_references_view", { clear = true })
-	vim.api.nvim_create_autocmd("CursorMoved", { group = group, buffer = tree_buf, callback = update_preview })
+	preview.follow(M.state, group)
 	vim.api.nvim_create_autocmd("WinClosed", { group = group, pattern = tostring(tree_win), callback = M.close })
 	vim.api.nvim_create_autocmd("VimResized", {
 		group = group,
