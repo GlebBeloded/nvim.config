@@ -1100,7 +1100,7 @@ function M.wait_references_ready(child, server, opts)
 	child.lua(
 		[[
 			local server, opts = ...
-			_G.references_ready, _G.references_error = nil, nil
+			_G.references_ready, _G.references_error, _G.references_result = nil, nil, nil
 			local bufnr = vim.api.nvim_get_current_buf()
 			local started = vim.uv.hrtime()
 			local populated = 0
@@ -1112,11 +1112,11 @@ function M.wait_references_ready(child, server, opts)
 				local params = vim.lsp.util.make_position_params(0, client.offset_encoding)
 				params.context = { includeDeclaration = false }
 				client:request(opts.method or "textDocument/references", params, function(err, result)
-					if err and opts.capture_error then _G.references_error = err.message end
 					if err and opts.retry_content_modified and err.message == "content modified" then
 						if within_bound() then vim.defer_fn(request, 10) end
 						return
 					end
+					if err and opts.capture_error then _G.references_error = err.message end
 					if opts.exclude_origin then
 						result = vim.tbl_filter(function(location)
 							local start = location.range.start
@@ -1125,6 +1125,7 @@ function M.wait_references_ready(child, server, opts)
 					end
 					populated = result and #result >= (opts.minimum or 1) and populated + 1 or 0
 					if populated >= (opts.consecutive or 1) then
+						_G.references_result = result
 						_G.references_ready = true
 					elseif within_bound() then
 						vim.defer_fn(request, 10)

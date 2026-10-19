@@ -16,9 +16,10 @@ Scenarios: `references: Lua usages in production and spec files`, `references: P
 
 ## 5. Migrate kind and classification integration helpers
 Scenarios: `references: gr classifies every Go variable usage`, `references: gopls kinds classify a Go variable`, `references: rust-analyzer kinds classify a Rust variable`
-- [ ] 5.1 Run `make test FILE=tests/integration/references/test_kind.lua CASE="gr classifies every Go variable usage"` and the equivalent commands for the other two scenarios and see them pass, replace the copied readiness, content-modified retry, optional document-highlight request, and Rust quiescence handling with the shared helpers while preserving every assertion, wait, retry condition, request method, minimum, and bound, then run the same commands again and see them pass
+- [x] 5.1 Run `make test FILE=tests/integration/references/test_kind.lua CASE="gr classifies every Go variable usage"` and the equivalent commands for the other two scenarios and see them pass, replace the copied readiness, content-modified retry, optional document-highlight request, and Rust quiescence handling with the shared helpers while preserving every assertion, wait, retry condition, request method, minimum, and bound, then run the same commands again and see them pass
 
 ## Agent decisions
 
 - The readiness options include request method, content-modified retry, error capture, and origin filtering so later migrations can preserve their existing variants without callback hooks.
 - The language migration keeps an explicit ready-state assertion because error capture can end the helper wait before readiness.
+- The readiness helper retains the qualifying locations so kind classification consumes the exact response that satisfied its minimum and filtering contract.

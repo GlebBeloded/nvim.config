@@ -1163,6 +1163,10 @@ T[rust_grouped_scenario]["waits for consecutive populated results"] = function()
 	H.wait_references_ready(child, "lua_ls", { minimum = 2, consecutive = 2, timeout = 1000 })
 
 	eq(child.lua_get("_G.reference_requests"), 4)
+	eq(child.lua_get("_G.references_result and { #_G.references_result, _G.references_result[2].uri }"), {
+		2,
+		"file:///repo/second.lua",
+	})
 end
 
 T[rust_grouped_scenario]["restores the status handler after quiescence"] = function()
