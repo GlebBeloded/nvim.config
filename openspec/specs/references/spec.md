@@ -230,7 +230,7 @@ The view's keys SHALL be registry actions scoped to the view, bound from `settin
 
 #### Scenario: TypeScript usages in production and test files
 - **WHEN** Neovim runs in a fresh copy of the `tsproj` fixture with `src/price.ts` open, the cursor on the exported `total` function, vtsls and eslint attached, and `gr` is pressed
-- **THEN** the view lists `cart.ts:<line>` under `Production` in folder `src` and `price.test.ts:<line>` under `Test` in folder `src`, at the manifest's lines, each once, whatever usage type groups sit between scope and folder
+- **THEN** the view lists `cart.ts:<line>` under `Production` in folder `src` and `price.test.ts:<line>` under `Test` in folder `src`, at the fixture manifest's lines, each once, whatever usage type groups sit between scope and folder
 
 #### Scenario: Rust usages in production and test code
 - **WHEN** Neovim runs in a fresh copy of the `rustproj` fixture with `src/price.rs` open, the cursor on the `pub fn total` definition, rust-analyzer attached, and `gr` is pressed
@@ -238,7 +238,7 @@ The view's keys SHALL be registry actions scoped to the view, bound from `settin
 
 #### Scenario: Bash usages in production and test scripts
 - **WHEN** Neovim runs in a fresh copy of the `bashproj` fixture with `lib/price.sh` open, the cursor on the `total` function, bashls attached, and `gr` is pressed
-- **THEN** the view lists `run.sh:<line>` under `Production` in folder `bin` and `price_test.sh:<line>` under `Test` in folder `test`, at the manifest's lines, whatever usage type groups sit between scope and folder
+- **THEN** the view lists `run.sh:<line>` under `Production` in folder `bin` and `price_test.sh:<line>` under `Test` in folder `test`, at the fixture manifest's lines, whatever usage type groups sit between scope and folder
 
 #### Scenario: Terraform variable usages
 - **WHEN** Neovim runs in a fresh copy of the `tfproj` fixture with `variables.tf` open, the cursor on `variable "region"`, terraform-ls attached, and `gr` is pressed
