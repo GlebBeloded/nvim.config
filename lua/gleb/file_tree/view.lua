@@ -1192,7 +1192,7 @@ function M.refresh_moved(root, selected_path, _move_pairs)
 			if is_hidden(view, target) then
 				draw(view, row and row.path or root)
 			else
-				select_path(view, target)
+				draw(view, prepare_selection(view, target) or target)
 			end
 		end
 	end
