@@ -373,12 +373,20 @@ T["git: Changes panel mappings come from the shortcut file"] = function()
 	eq(mappings, {
 		{ " ", "Changes: Toggle Stage", "changes.toggle_stage" },
 		{ "<CR>", "Changes: Open", "changes.open" },
+		{ "<Left>", "Changes: Collapse Node", "changes.close_node" },
+		{ "<Right>", "Changes: Expand Node", "changes.expand_node" },
 		{ "A", "Changes: Stage All", "changes.stage_all" },
 		{ "P", "Changes: Push", "changes.push" },
 		{ "X", "Changes: Revert", "changes.revert" },
 		{ "gc", "Changes: Commit", "changes.commit" },
+		{ "h", "Changes: Collapse Node", "changes.close_node" },
+		{ "l", "Changes: Expand Node", "changes.expand_node" },
 		{ "q", "Changes: Close", "changes.close" },
+		{ "zM", "Changes: Fold All", "changes.fold_all" },
+		{ "zR", "Changes: Unfold All", "changes.unfold_all" },
 		{ "za", "Changes: Toggle Fold", "changes.toggle_fold" },
+		{ "zc", "Changes: Collapse Node", "changes.close_node" },
+		{ "zo", "Changes: Expand Node", "changes.expand_node" },
 	})
 end
 
@@ -448,6 +456,128 @@ local function find_panel_line(text)
 	assert(line > 0, "Panel row not found: " .. text)
 	child.api.nvim_win_set_cursor(0, { line, 0 })
 	return line
+end
+
+local function find_panel_path(path)
+	local line = child.lua_get(
+		[[
+		(function(target)
+			local view = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+			for index, row in ipairs(view.rows) do
+				if row.path == target then return index end
+			end
+			return 0
+		end)(...)
+	]],
+		{ path }
+	)
+	assert(line > 0, "Panel path not found: " .. path)
+	child.api.nvim_win_set_cursor(0, { line, 0 })
+	return line
+end
+
+local function panel_has_path(path)
+	return child.lua_get(
+		[[
+		(function(target)
+			local view = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+			return vim.iter(view.rows):any(function(row) return row.path == target end)
+		end)(...)
+	]],
+		{ path }
+	)
+end
+
+local function current_panel_line()
+	return child.api.nvim_get_current_line()
+end
+
+T["git: Changes panel h folds a directory and l unfolds it"] = function()
+	open_fixture("billing")
+	find_panel_line("internal/billing 4")
+
+	child.type_keys("h")
+	for _, path in ipairs({
+		"internal/billing/invoice.go",
+		"internal/billing/invoice_test.go",
+		"internal/billing/tax.go",
+		"internal/billing/tax_test.go",
+	}) do
+		eq(panel_has_path(path), false)
+	end
+	assert(current_panel_line():find("", 1, true), "directory did not show the collapsed expander")
+
+	child.type_keys("l")
+	for _, path in ipairs({
+		"internal/billing/invoice.go",
+		"internal/billing/invoice_test.go",
+		"internal/billing/tax.go",
+		"internal/billing/tax_test.go",
+	}) do
+		eq(panel_has_path(path), true)
+	end
+	assert(current_panel_line():find("internal/billing 4", 1, true), "cursor moved from the unfolded directory")
+end
+
+T["git: Changes panel h on a file folds its directory"] = function()
+	open_fixture("billing")
+	find_panel_line("price.ts")
+
+	child.type_keys("h")
+
+	eq(panel_has("price.ts"), false)
+	assert(current_panel_line():find("web/src 1", 1, true), "cursor did not move to the parent directory")
+	assert(current_panel_line():find("", 1, true), "parent directory did not show the collapsed expander")
+end
+
+T["git: Changes panel l on an open group moves to its first child"] = function()
+	open_fixture("billing")
+	find_panel_line("Changes 5 files")
+	local lines = panel_lines()
+
+	child.type_keys("l")
+
+	eq(panel_lines(), lines)
+	assert(current_panel_line():find("internal/billing 4", 1, true), "cursor did not move to the first child")
+end
+
+T["git: Changes panel l on a file does nothing"] = function()
+	open_fixture("billing")
+	find_panel_line("notes.md")
+	local lines = panel_lines()
+	local cursor = child.api.nvim_win_get_cursor(0)
+
+	child.type_keys("l")
+
+	eq(panel_lines(), lines)
+	eq(child.api.nvim_win_get_cursor(0), cursor)
+	eq(child.bo.filetype, "gleb-changes")
+end
+
+T["git: Changes panel za on a file folds its parent"] = function()
+	open_fixture("billing")
+	find_panel_path("internal/billing/invoice_test.go")
+
+	child.type_keys("za")
+
+	eq(panel_has("invoice_test.go"), false)
+	assert(current_panel_line():find("invoice.go", 1, true), "cursor did not move to the nest parent")
+	assert(current_panel_line():find("", 1, true), "nest parent did not show the collapsed expander")
+end
+
+T["git: Changes panel zM and zR fold every group"] = function()
+	open_fixture("billing")
+	find_panel_line("tax_test.go")
+
+	child.type_keys("zM")
+	eq(#panel_lines(), 2)
+	assert(panel_lines()[1]:find("Changes 5 files", 1, true), "Changes root is missing")
+	assert(panel_lines()[2]:find("Unversioned Files 1 file", 1, true), "Unversioned root is missing")
+	assert(current_panel_line():find("Changes 5 files", 1, true), "cursor did not move to the Changes root")
+
+	child.type_keys("zR")
+	eq(#panel_lines(), 10)
+	assert(current_panel_line():find("Changes 5 files", 1, true), "cursor moved after unfolding all groups")
 end
 
 T["git: Changes panel za folds a nest"] = function()

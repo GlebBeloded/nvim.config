@@ -25,9 +25,9 @@ Scenarios: `ui: Selection follows its id after a rebuild`, `ui: Selection on a h
 
 Scenarios: `git: Changes panel h folds a directory and l unfolds it`, `git: Changes panel h on a file folds its directory`, `git: Changes panel l on an open group moves to its first child`, `git: Changes panel l on a file does nothing`, `git: Changes panel za on a file folds its parent`, `git: Changes panel zM and zR fold every group`, `git: Changes panel arrow keys and zc zo fold without an error`, `git: Changes panel mappings come from the shortcut file`, `git: Changes panel leaves gr global`, `git: Changes panel entry points are actions`
 
-- [ ] 4.1 Write the new scenarios in `tests/integration/git/test_changes.lua` and see them fail
-- [ ] 4.2 Replace `visible_rows`/`collapsed`/`toggle_fold` in `git/changes/view.lua` with the shared model, verbs and view helper; append the factory actions in `git/changes/actions.lua`
-- [ ] 4.3 Run `make test FILE=tests/integration/git/test_changes.lua` and the other `tests/integration/git/test_changes*.lua` files and see them pass (including `git: Changes panel za folds a nest` and `git: Changes panel Enter folds a directory`)
+- [x] 4.1 Write the new scenarios in `tests/integration/git/test_changes.lua` and see them fail
+- [x] 4.2 Replace `visible_rows`/`collapsed`/`toggle_fold` in `git/changes/view.lua` with the shared model, verbs and view helper; append the factory actions in `git/changes/actions.lua`
+- [x] 4.3 Run `make test FILE=tests/integration/git/test_changes.lua` and the other `tests/integration/git/test_changes*.lua` files and see them pass (including `git: Changes panel za folds a nest` and `git: Changes panel Enter folds a directory`)
 
 ## 5. Find Usages view on the shared tree
 
