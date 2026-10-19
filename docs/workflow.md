@@ -29,7 +29,6 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 
 ## Loop lessons
 
-- Keep child-wait stabilization isolated from file-tree behavior; preserve the first-paint deadline and per-result Git callbacks as independent contracts.
 - Scope paste mutability guards to buffer-editing routes so terminal jobs and command-line paste still reach Neovim's native handler.
 - When a cutover task updates retained spec prose, verify the named main-spec sections are present in the branch diff before marking the task complete.
 - Assert structured failure diagnostics at the regression boundary so phase and live subprocess evidence cannot silently disappear.
@@ -44,6 +43,7 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - On macOS libuv shares one FSEvents stream per loop and rebuilds it on every fs_event start or stop (a stop blocks the main loop, events during the rebuild are lost): keep watch sets stable, cover overflow with one recursive root watch, and poll listed folders briefly after watch changes instead of continuously.
 - Keep fixed readiness assertions separate from cache-warming waits: honor the gate's LSP setup timeout without scaling the measured bound.
 - A git-directory event can be dropped while macOS rebuilds its watch stream; compare the index stamp during the existing settle passes.
+- Preserve explicit branches when one branch can validly return false; Lua's and/or selection otherwise executes the fallback.
 
 ## The loop
 
