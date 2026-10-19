@@ -106,7 +106,12 @@ local function delete_paths(root, path_list, state)
 	end
 
 	local command_path = trash_path(state)
-	local deleted = command_path and delete_with_trash(existing, command_path) or delete_permanently(existing)
+	local deleted
+	if command_path then
+		deleted = delete_with_trash(existing, command_path)
+	else
+		deleted = delete_permanently(existing)
+	end
 	if deleted then
 		wipe_deleted_buffers(existing)
 		require("gleb.file_tree.view").refresh_moved(root, root)
