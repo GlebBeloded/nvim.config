@@ -6,6 +6,7 @@
 local M = {}
 
 local fs = require("gleb.file_tree.fs")
+local debounce = require("gleb.util.debounce")
 
 local WATCH_DEBOUNCE_MS = 100
 local WATCH_BATCH_SIZE = 16
@@ -59,28 +60,18 @@ local function queue_redraw(root, path)
 		return
 	end
 	state.reported[path] = fs.state.cache[path]
-	local timer = state.timers[path]
-	if not timer then
-		timer = assert(vim.uv.new_timer())
-		state.timers[path] = timer
-	end
-	timer:stop()
-	timer:start(
-		WATCH_DEBOUNCE_MS,
-		0,
-		vim.schedule_wrap(function()
-			if M.state.roots[root] == state then
-				local refresh_git
-				for _, client in pairs(state.clients) do
-					client.redraw(path)
-					refresh_git = refresh_git or client.refresh_git
-				end
-				if refresh_git then
-					refresh_git()
-				end
+	state.timers[path] = debounce.schedule(state.timers[path], WATCH_DEBOUNCE_MS, function()
+		if M.state.roots[root] == state then
+			local refresh_git
+			for _, client in pairs(state.clients) do
+				client.redraw(path)
+				refresh_git = refresh_git or client.refresh_git
 			end
-		end)
-	)
+			if refresh_git then
+				refresh_git()
+			end
+		end
+	end)
 end
 
 --- Watch one directory's entries, or its whole subtree when `flags.recursive` is set.
