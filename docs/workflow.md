@@ -29,8 +29,6 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 
 ## Loop lessons
 
-- Close a plugin view after auditing it when its asynchronous updates can launch synchronous subprocess waits, so the next bounded open cannot inherit a blocked editor loop.
-- Match a target command anywhere in subprocess diagnostics because unrelated child processes can appear first.
 - Wait for captured subprocess content, not capture-file creation; shell redirection makes the file visible before stdin is fully consumed.
 - Keep child-wait stabilization isolated from file-tree behavior; preserve the first-paint deadline and per-result Git callbacks as independent contracts.
 - Scope paste mutability guards to buffer-editing routes so terminal jobs and command-line paste still reach Neovim's native handler.
@@ -44,6 +42,8 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - Keep mutation refreshes drawing after visible-row selection; a follow-path fast path can otherwise leave invalidated rows rendered.
 - Gate first paint on every asynchronous input it consumes, and use a synchronous atomic persistence path for shutdown events.
 - A live directory handle does not prove macOS FSEvents has settled after watch churn; cover the transition in production instead of extending the scenario's bound.
+- On macOS libuv shares one FSEvents stream per loop and rebuilds it on every fs_event start or stop (a stop blocks the main loop, events during the rebuild are lost): keep watch sets stable, cover overflow with one recursive root watch, and poll listed folders briefly after watch changes instead of continuously.
+- Keep fixed readiness assertions separate from cache-warming waits: honor the gate's LSP setup timeout without scaling the measured bound.
 
 ## The loop
 
