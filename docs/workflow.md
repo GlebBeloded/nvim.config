@@ -45,6 +45,7 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - Complete per-view pending state on every current asynchronous result, including failures and first-paint callbacks, so later invalidations cannot deadlock.
 - Merge traversal discoveries into retained UI state when the traversal intentionally skips user-expandable nodes.
 - Preserve polling semantics when extracting asynchronous readiness helpers: recording an LSP error must not make the wait return before readiness.
+- Preserve a valid restore buffer when replacing a wipe-on-hide dashboard, so repeated owned-diff updates cannot restore a deleted buffer.
 
 ## The loop
 

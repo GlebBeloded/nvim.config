@@ -247,6 +247,9 @@ def dropped_cases(seen: list[str]) -> list[str]:
     return sorted(gone - base_case_names()) if gone else []
 
 
+DYNAMIC_CASE = re.compile(r"^\s*T\[[^\]]+\](?:\[[^\]]+\])*\[(?![\"'])[^\]]+\]\s*=\s*function", re.MULTILINE)  # a nested case keyed by an expression
+
+
 def seen_case_names(artifacts: pathlib.Path) -> set[str]:
     """Case names of verdict's last snapshot and of every `make test` run since (CASE_SEEN, tests/parallel.lua). A
     run-time name whose test file still names it (or its base version does) as a quoted string is not counted:
@@ -271,8 +274,8 @@ def seen_case_names(artifacts: pathlib.Path) -> set[str]:
         path, case = entry.get("file", "").removeprefix(root), entry["case"]
         if not path.startswith("tests/"):
             continue
-        if f'"{case}"' in text(path) or f"'{case}'" in text(path):
-            continue
+        if f'"{case}"' in text(path) or f"'{case}'" in text(path) or DYNAMIC_CASE.search(text(path)):
+            continue  # still named, or the file builds case names from data (`T[s][language.name]`): unknowable
         names.add(case)
     return names
 

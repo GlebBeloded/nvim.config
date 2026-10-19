@@ -114,8 +114,9 @@ end
 
 --- Select an eligible editor window for a left-side tool view.
 ---@param view { tab: integer, win: integer }
+---@param replace_dashboard? boolean
 ---@return integer
-function M.eligible_editor(view)
+function M.eligible_editor(view, replace_dashboard)
 	local remembered = M.state.last_editor_by_tab[view.tab]
 	if remembered and remembered ~= view.win and M.is_eligible_editor(remembered) then
 		return remembered
@@ -124,6 +125,16 @@ function M.eligible_editor(view)
 		if win ~= view.win and M.is_eligible_editor(win) then
 			M.state.last_editor_by_tab[view.tab] = win
 			return win
+		end
+	end
+	if replace_dashboard then
+		for _, win in ipairs(vim.api.nvim_tabpage_list_wins(view.tab)) do
+			local buf = vim.api.nvim_win_get_buf(win)
+			if win ~= view.win and vim.bo[buf].filetype == "alpha" then
+				vim.api.nvim_win_set_buf(win, vim.api.nvim_create_buf(true, false))
+				M.state.last_editor_by_tab[view.tab] = win
+				return win
+			end
 		end
 	end
 	return create_editor(view)
