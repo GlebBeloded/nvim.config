@@ -5,10 +5,11 @@ Scenarios: `file-tree: Directory argument opens the project tree`
 ## Agent decisions
 
 - Lifecycle receives view callbacks so teardown and hijacking move out without creating a module cycle.
+- Folds receive drawing hooks so fold coordination moves out without creating a module cycle.
 
 ## 2. Extract file-tree folds
 Scenarios: `file-tree: za toggles a nest`
-- [ ] 2.1 Run `make test FILE=tests/integration/file-tree/test_nesting.lua CASE="za toggles a nest"` and see it pass, move fold and nest-opening coordination into `lua/gleb/file_tree/folds.lua`, preserve the public functions in `lua/gleb/file_tree/view.lua`, run it again and see it pass
+- [x] 2.1 Run `make test FILE=tests/integration/file-tree/test_nesting.lua CASE="za toggles a nest"` and see it pass, move fold and nest-opening coordination into `lua/gleb/file_tree/folds.lua`, preserve the public functions in `lua/gleb/file_tree/view.lua`, run it again and see it pass
 
 ## 3. Extract file-tree moves
 Scenarios: `file-tree: Project tree r renames a file and its buffer`

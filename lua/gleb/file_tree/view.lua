@@ -4,6 +4,7 @@ local M = {}
 
 local editor = require("gleb.file_tree.editor")
 local expanded = require("gleb.file_tree.expanded")
+local folds = require("gleb.file_tree.folds")
 local fs = require("gleb.workspace")
 local git = require("gleb.file_tree.git")
 local ignore = require("gleb.tree.ignore")
@@ -16,7 +17,6 @@ local state = require("gleb.file_tree.state")
 local watch = require("gleb.tree.watch")
 local debounce = require("gleb.util.debounce")
 
-local EXPANSION_MAX_ROWS = 5000
 local IGNORE_WAIT_MS = 300
 local INVALIDATION_WINDOW_MS = 50
 
@@ -291,25 +291,19 @@ local function draw(view, path, prepared)
 	expanded.save(view.root, view.expanded)
 end
 
+---@type FileTreeFoldHooks
+local fold_hooks = {
+	expand_to = expand_to,
+	row_options = row_options,
+	prepare_draw = prepare_draw,
+	draw = draw,
+}
+
 ---@param view FileTreeView
 ---@param path string
 ---@return string?
 local function prepare_selection(view, path)
-	local normalized = fs.normalize(path)
-	local row = view.rows_by_path[normalized]
-	if row then
-		vim.api.nvim_win_set_cursor(view.win, { row, 0 })
-		return
-	end
-	expand_to(view, normalized)
-	local loaded_settings = settings.load()
-	local nesting_settings = loaded_settings.nesting
-	local parent =
-		model.nest_parent(fs.tree(view.root), normalized, nesting_settings, row_options(view, loaded_settings))
-	if parent then
-		view.expanded_nests[parent:sub(#view.root + 2)] = true
-	end
-	return normalized
+	return folds.prepare_selection(view, path, fold_hooks)
 end
 
 ---@param view FileTreeView
@@ -455,12 +449,6 @@ local function reveal_path(view, path, missing_is_root)
 	end
 end
 
----@param view FileTreeView
----@param path string
-local function redraw_at(view, path)
-	draw(view, path)
-end
-
 ---@param buf integer
 local function configure_buffer(buf)
 	vim.bo[buf].buftype = "nofile"
@@ -503,42 +491,6 @@ local function selected_row(view)
 end
 
 ---@param view FileTreeView
----@param row FileTreeRow
----@param warning string
----@return FileTreeRow[]?
----@return FileTreePreparedDraw?
-local function expand_directory(view, row, warning)
-	local relative = row.path:sub(#view.root + 2)
-	view.expanded[relative] = true
-	local prepared = prepare_draw(view, row.path)
-	if #prepared.rows > EXPANSION_MAX_ROWS then
-		view.expanded[relative] = nil
-		vim.notify(warning, vim.log.levels.WARN)
-		return nil
-	end
-	return prepared.rows, prepared
-end
-
----@param view FileTreeView
----@param row FileTreeRow
-local function toggle_directory(view, row)
-	if row.kind == "root" or row.empty then
-		return
-	end
-	local relative = row.path:sub(#view.root + 2)
-	if row.expanded then
-		view.expanded[relative] = nil
-		draw(view, row.path)
-	else
-		local _, prepared = expand_directory(view, row, "Expansion stopped at 5000 rows")
-		if not prepared then
-			return
-		end
-		draw(view, row.path, prepared)
-	end
-end
-
----@param view FileTreeView
 ---@param command string
 local function open_selected(view, command)
 	local row = selected_row(view)
@@ -549,19 +501,6 @@ local function open_selected(view, command)
 	vim.cmd(command .. " " .. vim.fn.fnameescape(row.path))
 end
 
----@param view FileTreeView
----@param row FileTreeRow
----@return boolean
-local function close_nest(view, row)
-	local parent = row.nest_parent or (row.nest_expanded and row.path or nil)
-	if not parent then
-		return false
-	end
-	view.expanded_nests[parent:sub(#view.root + 2)] = nil
-	draw(view, parent)
-	return true
-end
-
 --- Open the selected project-tree file in the most recent editor window.
 ---@return nil
 function M.open()
@@ -569,7 +508,7 @@ function M.open()
 	if view then
 		local row = selected_row(view)
 		if row and row.kind == "directory" then
-			toggle_directory(view, row)
+			folds.toggle_directory(view, row, fold_hooks)
 		else
 			open_selected(view, "edit")
 		end
@@ -583,29 +522,7 @@ function M.close_node()
 	if not view then
 		return
 	end
-	local index = vim.api.nvim_win_get_cursor(view.win)[1]
-	local row = view.rows[index]
-	if not row or row.kind == "root" then
-		return
-	end
-	if close_nest(view, row) then
-		return
-	end
-	local target = row
-	if row.kind ~= "directory" or not row.expanded then
-		for parent_index = index - 1, 1, -1 do
-			local candidate = view.rows[parent_index]
-			if candidate.depth < row.depth then
-				target = candidate
-				break
-			end
-		end
-	end
-	if target.kind == "root" then
-		return
-	end
-	view.expanded[target.path:sub(#view.root + 2)] = nil
-	draw(view, target.path)
+	folds.close_node(view, fold_hooks)
 end
 
 --- Toggle the selected directory, or collapse the selected file's displayed parent.
@@ -615,18 +532,7 @@ function M.toggle_fold()
 	if not view then
 		return
 	end
-	local row = selected_row(view)
-	if row and row.kind == "directory" then
-		toggle_directory(view, row)
-	elseif row and row.kind == "file" and row.nest_children then
-		local relative = row.path:sub(#view.root + 2)
-		view.expanded_nests[relative] = not view.expanded_nests[relative] or nil
-		draw(view, row.path)
-	elseif row and row.kind == "file" and row.nest_parent then
-		close_nest(view, row)
-	elseif row and row.kind == "file" then
-		M.close_node()
-	end
+	folds.toggle(view, fold_hooks)
 end
 
 --- Collapse every project-tree directory while keeping the root visible.
@@ -636,17 +542,7 @@ function M.fold_all()
 	if not view then
 		return
 	end
-	local path = view.root
-	for index = vim.api.nvim_win_get_cursor(view.win)[1], 2, -1 do
-		local row = view.rows[index]
-		if row.depth == 0 then
-			path = row.path
-			break
-		end
-	end
-	view.expanded = {}
-	view.expanded_nests = {}
-	redraw_at(view, path)
+	folds.fold_all(view, fold_hooks)
 end
 
 --- Expand project-tree directories depth-first up to the visible-row safety limit.
@@ -656,25 +552,7 @@ function M.unfold_all()
 	if not view then
 		return
 	end
-	local selected = selected_row(view)
-	local loaded_settings = settings.load()
-	local nesting_settings = loaded_settings.nesting
-	local tree = fs.tree(view.root)
-	local discovered
-	local discovered_nests
-	local stopped
-	discovered, discovered_nests, stopped =
-		model.unfold_all(tree, row_options(view, loaded_settings), nesting_settings, EXPANSION_MAX_ROWS)
-	for relative in pairs(discovered) do
-		view.expanded[relative] = true
-	end
-	for relative in pairs(discovered_nests) do
-		view.expanded_nests[relative] = true
-	end
-	if stopped then
-		vim.notify("Unfold all stopped at 5000 rows", vim.log.levels.WARN)
-	end
-	redraw_at(view, selected and selected.path or view.root)
+	folds.unfold_all(view, fold_hooks)
 end
 
 --- Close the current tab page's project tree.
