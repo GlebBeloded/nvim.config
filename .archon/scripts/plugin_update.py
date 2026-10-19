@@ -100,6 +100,16 @@ def change_id(name: str) -> str:
     return "update-" + re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
 
 
+ANSI = re.compile(r"\x1b\[[0-9;]*m")
+FETCH_ERROR = re.compile(r"fatal: (unable to access|could not read)|Could not resolve host|Connection timed out", re.IGNORECASE)
+
+
+def fetch_failed(log: str, name: str) -> bool:
+    """`:Lazy! update` printed a git transport error on one of `name`'s lines (e.g. `[rustaceanvim] fetch | fatal: …`)."""
+    tag = f"[{name}]"
+    return any(tag in line and FETCH_ERROR.search(line) for line in ANSI.sub("", log).splitlines())
+
+
 def update() -> dict:
     name = os.environ.get("INPUTS_PLUGIN", "").strip()
     before_text = run("git", "show", f"HEAD:{LOCK}")
@@ -109,6 +119,8 @@ def update() -> dict:
     env = isolate(XDG, pathlib.Path.cwd())
     log = nvim(env, "Lazy! restore", f"Lazy! update {name}")
     (ARTIFACTS / "lazy.log").write_text(log)
+    if fetch_failed(log, name):  # an offline fetch left the pin as it was: never report "nothing to update" (run 16a2b177)
+        sys.exit(f"{name}: the fetch failed (see {ARTIFACTS / 'lazy.log'}); check the network and run make update again")
     after = lock_lines(LOCK.read_text())
     # lazy rewrites every line; keep the committed lock except this plugin's line
     LOCK.write_text(before_text.replace(before[name], after.get(name, before[name])) + "\n")

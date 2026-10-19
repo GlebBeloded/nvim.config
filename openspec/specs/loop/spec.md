@@ -1096,6 +1096,10 @@ The private data prepared for a plugin update SHALL retain installed plugins, pa
 - **WHEN** the plugin update workflow prepares private test data from an installation containing `lazy`, `site`, and `mason` trees
 - **THEN** all three trees are available to the update's test gate, including executables under `mason/bin`
 
+#### Scenario: Plugin update fails on a failed fetch
+- **WHEN** `plugin_update.fetch_failed` reads a `:Lazy! update` log whose line for the plugin shows a git transport error (`Could not resolve host`), one where only another plugin's fetch failed, and one where the fetch finished
+- **THEN** it reports the first as failed and the others as not, so an offline update exits with an error instead of "nothing to update"
+
 #### Scenario: Context pack skips the update check log
 - **WHEN** `context_pack.last_failures` reads an artifacts dir holding `check-update.log` and `check-2.log`
 - **THEN** it returns the FAIL lines of `check-2.log` and does not fail on the unnumbered log
