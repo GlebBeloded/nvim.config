@@ -2,8 +2,8 @@
 
 local M = {}
 
-local file_tree_model = require("gleb.file_tree.model")
-local nesting = require("gleb.file_tree.nesting")
+local git_status = require("gleb.git.status")
+local nesting = require("gleb.tree.nesting")
 
 local MAX_ROWS = 5000
 local CHECKBOX_EMPTY = "󰄱"
@@ -68,7 +68,7 @@ local function checkbox(staged, unstaged)
 	return CHECKBOX_EMPTY
 end
 
----@param record FileTreeStatusRecord
+---@param record GitStatusRecord
 ---@return boolean staged
 ---@return boolean unstaged
 local function record_index_state(record)
@@ -93,7 +93,7 @@ local function named_before(left, right)
 	return left_name < right_name
 end
 
----@param record FileTreeStatusRecord
+---@param record GitStatusRecord
 ---@return string
 local function record_status(record)
 	if record.kind == "?" then
@@ -148,7 +148,7 @@ end
 
 ---@param root ChangesTreeNode
 ---@param root_name "changes"|"unversioned"
----@param record FileTreeStatusRecord
+---@param record GitStatusRecord
 ---@param stats table<string, ChangesNumstat>
 ---@return nil
 local function insert_record(root, root_name, record, stats)
@@ -350,7 +350,7 @@ function M.rows(porcelain_z, nesting_rules, numstat_z)
 		unversioned = tree_node("", ""),
 	}
 	local stats = parse_numstat(numstat_z)
-	for _, record in ipairs(file_tree_model.parse_status_records(porcelain_z)) do
+	for _, record in ipairs(git_status.parse_records(porcelain_z)) do
 		if record.kind ~= "!" then
 			local root_name = record.kind == "?" and "unversioned" or "changes"
 			insert_record(roots[root_name], root_name, record, stats)

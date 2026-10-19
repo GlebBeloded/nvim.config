@@ -2,9 +2,10 @@
 
 local M = {}
 
-local fs = require("gleb.file_tree.fs")
+local workspace = require("gleb.workspace")
 local git = require("gleb.git.changes.git")
 local view = require("gleb.git.changes.view")
+local sidebar = require("gleb.tree.sidebar")
 
 ---@class ChangesState
 ---@field by_tab table<integer, ChangesView>
@@ -17,9 +18,9 @@ M.state = { by_tab = {} }
 local function current_location()
 	local path = vim.api.nvim_buf_get_name(0)
 	if vim.bo.buftype ~= "" or path == "" or path:match("^[%a][%w+.-]*://") then
-		return "", fs.normalize(vim.fn.getcwd())
+		return "", workspace.normalize(vim.fn.getcwd())
 	end
-	path = fs.normalize(path)
+	path = workspace.normalize(path)
 	return path, vim.fs.dirname(path)
 end
 
@@ -44,7 +45,7 @@ end
 ---@param review? boolean
 ---@return nil
 local function replace_tree_and_open(review)
-	require("gleb.file_tree.view").close()
+	sidebar.close("file_tree")
 	local selected_path, dir = current_location()
 	resolve_and_open(dir, selected_path, review)
 end
@@ -286,5 +287,7 @@ function M.reset()
 end
 
 require("gleb.git.changes.highlights").setup()
+
+sidebar.register("changes", M.close)
 
 return M

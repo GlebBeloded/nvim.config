@@ -3,14 +3,17 @@
 local M = {}
 
 local expanded = require("gleb.file_tree.expanded")
-local fs = require("gleb.file_tree.fs")
+local fs = require("gleb.workspace")
 local git = require("gleb.file_tree.git")
-local ignore = require("gleb.file_tree.ignore")
+local ignore = require("gleb.tree.ignore")
 local model = require("gleb.file_tree.model")
 local render = require("gleb.file_tree.render")
-local settings = require("gleb.file_tree.settings")
+local settings = require("gleb.tree.settings")
+local sidebar = require("gleb.tree.sidebar")
 local state = require("gleb.file_tree.state")
-local watch = require("gleb.file_tree.watch")
+local watch = require("gleb.tree.watch")
+local windows = require("gleb.tree.windows")
+local debounce = require("gleb.util.debounce")
 
 local EXPANSION_MAX_ROWS = 5000
 local IGNORE_WAIT_MS = 300
@@ -45,7 +48,7 @@ local INVALIDATION_WINDOW_MS = 50
 ---@field last_editor_by_tab table<integer, integer>
 
 ---@type FileTreeViewState
-M.state = { by_tab = {}, last_editor_by_tab = {} }
+M.state = { by_tab = {}, last_editor_by_tab = windows.state.last_editor_by_tab }
 
 local view_group
 local original_guicursor
@@ -64,35 +67,11 @@ local function update_cursor()
 	end
 end
 
----@param view FileTreeView
----@return integer
-local function create_editor(view)
-	vim.api.nvim_set_current_win(view.win)
-	vim.cmd("rightbelow vnew")
-	vim.cmd(
-		"setlocal winfixwidth< cursorline< number< relativenumber< signcolumn< foldcolumn< foldenable< foldmethod< statuscolumn< wrap< list< spell< winhighlight<"
-	)
-	local win = vim.api.nvim_get_current_win()
-	M.state.last_editor_by_tab[view.tab] = win
-	return win
-end
-
 --- Return whether a window can host an editor buffer.
 ---@param win integer
 ---@return boolean
 function M.is_eligible_editor(win)
-	if not vim.api.nvim_win_is_valid(win) or vim.api.nvim_win_get_config(win).relative ~= "" then
-		return false
-	end
-	local buf = vim.api.nvim_win_get_buf(win)
-	local filetype = vim.bo[buf].filetype
-	local name = vim.api.nvim_buf_get_name(buf)
-	return vim.bo[buf].buftype == ""
-		and filetype ~= "gleb-file-tree"
-		and filetype ~= "gleb-changes"
-		and not vim.startswith(filetype, "Diffview")
-		and not vim.startswith(name, "diffview://")
-		and not vim.wo[win].diff
+	return windows.is_eligible_editor(win)
 end
 
 ---@param win integer
@@ -108,7 +87,7 @@ end
 local function remember_editor()
 	local win = vim.api.nvim_get_current_win()
 	if M.is_eligible_editor(win) then
-		M.state.last_editor_by_tab[vim.api.nvim_get_current_tabpage()] = win
+		windows.state.last_editor_by_tab[vim.api.nvim_get_current_tabpage()] = win
 	end
 end
 
@@ -117,27 +96,7 @@ end
 ---@param replace_dashboard? boolean
 ---@return integer
 function M.eligible_editor(view, replace_dashboard)
-	local remembered = M.state.last_editor_by_tab[view.tab]
-	if remembered and remembered ~= view.win and M.is_eligible_editor(remembered) then
-		return remembered
-	end
-	for _, win in ipairs(vim.api.nvim_tabpage_list_wins(view.tab)) do
-		if win ~= view.win and M.is_eligible_editor(win) then
-			M.state.last_editor_by_tab[view.tab] = win
-			return win
-		end
-	end
-	if replace_dashboard then
-		for _, win in ipairs(vim.api.nvim_tabpage_list_wins(view.tab)) do
-			local buf = vim.api.nvim_win_get_buf(win)
-			if win ~= view.win and vim.bo[buf].filetype == "alpha" then
-				vim.api.nvim_win_set_buf(win, vim.api.nvim_create_buf(true, false))
-				M.state.last_editor_by_tab[view.tab] = win
-				return win
-			end
-		end
-	end
-	return create_editor(view)
+	return windows.eligible_editor(view, replace_dashboard)
 end
 
 ---@param view FileTreeView
@@ -463,38 +422,34 @@ schedule_dirty = function(view, path, invalidated_scan)
 		view.dirty_timer:stop()
 		view.dirty_timer:close()
 	end
-	local timer = assert(vim.uv.new_timer())
+	local timer
+	timer = debounce.schedule(nil, INVALIDATION_WINDOW_MS, function()
+		if view.dirty_timer ~= timer then
+			return
+		end
+		timer:stop()
+		timer:close()
+		view.dirty_timer = nil
+		if view.git_pending then
+			return
+		end
+		if M.state.by_tab[view.tab] ~= view or not vim.api.nvim_buf_is_valid(view.buf) then
+			return
+		end
+		for scan in pairs(view.dirty_scans) do
+			fs.invalidate(scan)
+			if not vim.uv.fs_stat(scan) then
+				fs.invalidate(vim.fs.dirname(scan))
+			end
+		end
+		local selected = view.rows[vim.api.nvim_win_get_cursor(view.win)[1]]
+		local target = view.dirty_path or (selected and selected.path) or view.root
+		view.dirty = false
+		view.dirty_path = nil
+		view.dirty_scans = {}
+		draw(view, target)
+	end)
 	view.dirty_timer = timer
-	timer:start(
-		INVALIDATION_WINDOW_MS,
-		0,
-		vim.schedule_wrap(function()
-			if view.dirty_timer ~= timer then
-				return
-			end
-			timer:stop()
-			timer:close()
-			view.dirty_timer = nil
-			if view.git_pending then
-				return
-			end
-			if M.state.by_tab[view.tab] ~= view or not vim.api.nvim_buf_is_valid(view.buf) then
-				return
-			end
-			for scan in pairs(view.dirty_scans) do
-				fs.invalidate(scan)
-				if not vim.uv.fs_stat(scan) then
-					fs.invalidate(vim.fs.dirname(scan))
-				end
-			end
-			local selected = view.rows[vim.api.nvim_win_get_cursor(view.win)[1]]
-			local target = view.dirty_path or (selected and selected.path) or view.root
-			view.dirty = false
-			view.dirty_path = nil
-			view.dirty_scans = {}
-			draw(view, target)
-		end)
-	)
 end
 
 ---@param view FileTreeView
@@ -948,7 +903,7 @@ local function open_view(path, requested_root)
 	state.load()
 	local tab = vim.api.nvim_get_current_tabpage()
 	remember_editor()
-	local editor = M.state.last_editor_by_tab[tab]
+	local editor = windows.state.last_editor_by_tab[tab]
 	local root = fs.normalize(requested_root or vim.fn.getcwd())
 	local view
 	local initial_path
@@ -996,7 +951,7 @@ local function open_view(path, requested_root)
 		initial_expansions_loaded = false,
 	}
 	M.state.by_tab[tab] = view
-	M.state.last_editor_by_tab[tab] = editor
+	windows.state.last_editor_by_tab[tab] = editor
 	initial_path = reveal_target(view, path, true) or root
 	git.start_root(root, tab, function(changed)
 		view.initial_source_ready = true
@@ -1017,10 +972,7 @@ end
 ---@param requested_root? string
 ---@return FileTreeView
 local function open_replacing_changes(path, requested_root)
-	local changes = package.loaded["gleb.git.changes"]
-	if changes then
-		changes.close()
-	end
+	sidebar.close("changes")
 	return open_view(path, requested_root)
 end
 
@@ -1312,13 +1264,15 @@ function M.reset()
 	for _, view in pairs(M.state.by_tab) do
 		close_view(view)
 	end
-	M.state = { by_tab = {}, last_editor_by_tab = {} }
+	windows.reset()
+	M.state = { by_tab = {}, last_editor_by_tab = windows.state.last_editor_by_tab }
 end
 
 --- Set up project-tree rendering and lifecycle hooks.
 ---@return nil
 function M.setup()
 	render.setup()
+	settings.on_reload("file_tree", M.redraw_all)
 	view_group = vim.api.nvim_create_augroup("gleb_file_tree_view", { clear = true })
 	local hijack_group = vim.api.nvim_create_augroup("gleb_file_tree_hijack", { clear = true })
 	vim.api.nvim_create_autocmd("BufEnter", { group = hijack_group, callback = hijack_directory })
@@ -1349,5 +1303,7 @@ function M.setup()
 		end,
 	})
 end
+
+sidebar.register("file_tree", M.close)
 
 return M

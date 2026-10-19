@@ -473,7 +473,7 @@ T["file-tree: Project tree refresh survives initial git completion"] = function(
 				return require("gleb.file_tree.watch").toplevel(view.root) ~= nil
 					and #_G.file_tree_status_callbacks == 1
 			end)()]],
-			1000
+			math.ceil(1000 * H.load_factor())
 		),
 		"repository discovery did not start git status"
 	)
@@ -487,14 +487,20 @@ T["file-tree: Project tree refresh survives initial git completion"] = function(
 		local callback = table.remove(_G.file_tree_status_callbacks, 1)
 		callback({ code = 0, stdout = _G.file_tree_status_output, stderr = "" })
 	]])
-	assert(child.wait([[#_G.file_tree_status_callbacks == 1]], 1000), "write did not queue a second git status")
+	assert(
+		child.wait([[#_G.file_tree_status_callbacks == 1]], math.ceil(1000 * H.load_factor())),
+		"write did not queue a second git status"
+	)
 	child.lua([[
 		local callback = table.remove(_G.file_tree_status_callbacks, 1)
 		callback({ code = 0, stdout = _G.file_tree_status_output, stderr = "" })
 		vim.system = _G.file_tree_original_system
 	]])
 	assert(
-		child.wait([[#require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()].rows > 0]], 1000)
+		child.wait(
+			[[#require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()].rows > 0]],
+			math.ceil(1000 * H.load_factor())
+		)
 	)
 
 	local result = H.system(child, { "touch", vim.fs.joinpath(root, "after-initial-git.txt") }, root)
@@ -512,7 +518,7 @@ T["file-tree: Project tree refresh survives failed git status"] = function()
 				local state = assert(require("gleb.file_tree.git").state.roots[view.root])
 				return state.timer == nil and not state.in_flight and not view.git_pending
 			end)()]],
-			1000
+			math.ceil(1000 * H.load_factor())
 		),
 		"initial git status did not settle"
 	)
@@ -534,7 +540,7 @@ T["file-tree: Project tree refresh survives failed git status"] = function()
 				local state = assert(git.state.roots[view.root])
 				return git.state.runs > %d and state.timer == nil and not state.in_flight
 			end)()]]):format(baseline_runs),
-			1000
+			math.ceil(1000 * H.load_factor())
 		),
 		"failed git status did not complete"
 	)

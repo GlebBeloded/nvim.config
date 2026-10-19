@@ -20,7 +20,7 @@ local T = MiniTest.new_set()
 T["file-tree: Nesting rule nests by capture"] = MiniTest.new_set()
 
 T["file-tree: Nesting rule nests by capture"]["groups matching siblings under each parent"] = function()
-	local nesting = require("gleb.file_tree.nesting")
+	local nesting = require("gleb.tree.nesting")
 	local result = nesting.nest(
 		"/project",
 		entries({

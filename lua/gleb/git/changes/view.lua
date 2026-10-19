@@ -2,13 +2,14 @@
 
 local M = {}
 
-local fs = require("gleb.file_tree.fs")
-local file_tree_view = require("gleb.file_tree.view")
+local debounce = require("gleb.util.debounce")
+local workspace = require("gleb.workspace")
 local git = require("gleb.git.changes.git")
 local model = require("gleb.git.changes.model")
 local render = require("gleb.git.changes.render")
-local settings = require("gleb.file_tree.settings")
-local watch = require("gleb.file_tree.watch")
+local settings = require("gleb.tree.settings")
+local watch = require("gleb.tree.watch")
+local windows = require("gleb.tree.windows")
 
 local WIDTH = 35
 local REFRESH_DEBOUNCE_MS = 50
@@ -180,14 +181,9 @@ end
 ---@param view ChangesView
 ---@return nil
 function M.schedule_refresh(view)
-	view.timer:stop()
-	view.timer:start(
-		REFRESH_DEBOUNCE_MS,
-		0,
-		vim.schedule_wrap(function()
-			refresh_now(view)
-		end)
-	)
+	view.timer = debounce.schedule(view.timer, REFRESH_DEBOUNCE_MS, function()
+		refresh_now(view)
+	end)
 end
 
 ---@param view ChangesView
@@ -241,7 +237,7 @@ local function show_diff(view, row, generation, selection_generation, focus_righ
 			view.loaded_buffers[loaded_buf] = true
 		end
 		local diff = require("gleb.diff.view")
-		local editor = file_tree_view.eligible_editor(view, true)
+		local editor = windows.eligible_editor(view, true)
 		view.editor_win = editor
 		spec.on_next_file = function()
 			M.next_file(view)
@@ -308,24 +304,19 @@ end
 local function schedule_diff(view)
 	local row = view.rows[vim.api.nvim_win_get_cursor(view.win)[1]]
 	drop_pending_diff(view, row)
-	view.diff_timer:stop()
-	view.diff_timer:start(
-		DIFF_DEBOUNCE_MS,
-		0,
-		vim.schedule_wrap(function()
-			if not vim.api.nvim_win_is_valid(view.win) then
-				return
-			end
-			request_diff(view, row, false)
-		end)
-	)
+	view.diff_timer = debounce.schedule(view.diff_timer, DIFF_DEBOUNCE_MS, function()
+		if not vim.api.nvim_win_is_valid(view.win) then
+			return
+		end
+		request_diff(view, row, false)
+	end)
 end
 
 ---@param tab integer
 ---@return integer
 local function eligible_editor_count(tab)
 	return vim.iter(vim.api.nvim_tabpage_list_wins(tab)):fold(0, function(count, win)
-		return count + (file_tree_view.is_eligible_editor(win) and 1 or 0)
+		return count + (windows.is_eligible_editor(win) and 1 or 0)
 	end)
 end
 
@@ -355,7 +346,7 @@ end
 local function close_before_last_editor(view)
 	if
 		vim.api.nvim_get_current_tabpage() == view.tab
-		and file_tree_view.is_eligible_editor(vim.api.nvim_get_current_win())
+		and windows.is_eligible_editor(vim.api.nvim_get_current_win())
 		and eligible_editor_count(view.tab) == 1
 	then
 		M.close(view)
@@ -375,7 +366,7 @@ local function add_refresh_sources(view)
 	view.autocmds[#view.autocmds + 1] = vim.api.nvim_create_autocmd("BufWritePost", {
 		group = augroup,
 		callback = function(args)
-			local path = fs.normalize(vim.api.nvim_buf_get_name(args.buf))
+			local path = workspace.normalize(vim.api.nvim_buf_get_name(args.buf))
 			if path:sub(1, #view.root + 1) == view.root .. "/" then
 				M.schedule_refresh(view)
 			end
@@ -457,7 +448,7 @@ function M.close(view)
 	end
 	view.loaded_buffers = {}
 	if vim.api.nvim_win_is_valid(view.win) and #vim.api.nvim_tabpage_list_wins(view.tab) == 1 then
-		view.editor_win = file_tree_view.eligible_editor(view)
+		view.editor_win = windows.eligible_editor(view)
 	end
 	if vim.api.nvim_win_is_valid(view.editor_win) then
 		vim.api.nvim_set_current_win(view.editor_win)
@@ -483,7 +474,7 @@ function M.open_file(view, row)
 		view.diff_view = nil
 		view.diff_path = nil
 	end
-	local editor = file_tree_view.eligible_editor(view)
+	local editor = windows.eligible_editor(view)
 	view.editor_win = editor
 	vim.api.nvim_set_current_win(editor)
 	vim.cmd("edit " .. vim.fn.fnameescape(vim.fs.joinpath(view.root, row.path)))
@@ -511,7 +502,7 @@ function M.open(root, selected_path, review)
 	---@type ChangesView
 	local view = {
 		tab = tab,
-		root = fs.normalize(root),
+		root = workspace.normalize(root),
 		buf = buf,
 		win = win,
 		editor_win = editor_win,
@@ -524,7 +515,7 @@ function M.open(root, selected_path, review)
 		selection_generation = 0,
 		autocmds = {},
 		loaded_buffers = {},
-		initial_selected_path = fs.normalize(selected_path),
+		initial_selected_path = workspace.normalize(selected_path),
 		review_on_refresh = review == true,
 	}
 	changes.state.by_tab[tab] = view
