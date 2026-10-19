@@ -1,7 +1,7 @@
 ## Why
 
 Kind: feature
-Adopt: loop/tree-diff-cutover
+Adopt: loop/tree-diff-cutover-20261019-091302
 Depends: git-changes-tree
 
 The queue builds an IntelliJ-style project tree (`file-tree-view` … `file-tree-ignored`), a commit tree (`git-changes-tree`) and an own diff view (`diff-engine-*`, `diff-view*`), all reachable only from Find Action so the old flows keep working meanwhile. The user decided to own the UI ("is diffbanding perfect? I want to own ui 100%") and to work as in IntelliJ ("I'm used to Idea", "I like IDEA IDE diff more"). This change makes the new UIs the default on the existing keys and removes the three plugins they replace. It is a breaking change: neo-tree, differ and codediff behaviour goes away.
@@ -76,17 +76,6 @@ The queue builds an IntelliJ-style project tree (`file-tree-view` … `file-tree
 - **nui.nvim stays** for the commit popup; plenary and devicons stay for their other users.
 - **Requirements that lose a scenario are replaced** (removed and added under a new name) because OpenSpec refuses a MODIFIED block that drops one; surviving scenario titles are kept so their tests keep their names.
 
-## Rejected run
-Run on `loop/tree-diff-cutover` was rejected by the judge:
-- removes and re-adds requirement 'Tabline offset for the file tree' as 'Tabline offset for the project tree' (openspec/changes/tree-diff-cutover/specs/bufferline/spec.md): check its bounds
-- removes and re-adds requirement 'Project tree close-if-last isolation' as 'Project tree and changes panel close-if-last isolation' (openspec/changes/tree-diff-cutover/specs/file-tree/spec.md): check its bounds
-- removes and re-adds requirement 'Pending file tree work does not override a toggle' as 'Pending panel work does not override a toggle' (openspec/changes/tree-diff-cutover/specs/keymaps/spec.md): check its bounds
-- stuck: tasks.md `## Stuck` (earlier attempts, kept on the branch: not quoted here)
-- note: loop: command selene is not executable (make sure it's installed and on your $PATH)
-- note: loop: FAIL in tests/e2e/git/test_changes_review.lua | git: Cmd+G opens the changes review of a dirty repo: /Users/lume/nvim/tests/shortcuts/stack.lua:171: stack: timed out waiting for owned changes diff view (last error: stack: Neovim is blocked in mode r; screen: … command selene is not executable (make sure it's installed and on your $PATH)
-- note: loop: Error: VM 'nvim-e2e' is not running
-- note: loop: vim.schedule callback: Vim:E482: Can't open file /var/folders/9c/yg1yg4td727dkq_blbwbwn1w0000gn/T/nvim.hlebbeladzed/2Rxlnm/18.json.progress for writing: no space left on device
-
 ## Decision (auditor, 2026-10-19, host fseventsd)
 
 - From about 00:45 to 08:25 on 2026-10-19 the host's fseventsd delivered no file events (a minimal `vim.uv.new_fs_event`
@@ -108,3 +97,26 @@ Run on `loop/tree-diff-cutover` was rejected by the judge:
   colour; the screen case keeps asserting both rows of the approved render.
 - Revert the waits f1462325 (04:47, inside the fseventsd window) inflated in `test_project_live.lua` back to their
   `auto` values (1000 ms × `H.load_factor()` where auto scales).
+
+## Rejected run
+Run on `loop/tree-diff-cutover-20261019-091302` was rejected by the judge:
+- removes and re-adds requirement 'Tabline offset for the file tree' as 'Tabline offset for the project tree' (openspec/changes/tree-diff-cutover/specs/bufferline/spec.md): check its bounds
+- removes and re-adds requirement 'Project tree close-if-last isolation' as 'Project tree and changes panel close-if-last isolation' (openspec/changes/tree-diff-cutover/specs/file-tree/spec.md): check its bounds
+- removes and re-adds requirement 'Pending file tree work does not override a toggle' as 'Pending panel work does not override a toggle' (openspec/changes/tree-diff-cutover/specs/keymaps/spec.md): check its bounds
+- rewrites the user's ## Decision in openspec/changes/tree-diff-cutover/proposal.md
+- review findings:
+  Pass 3's three must-fix findings are resolved in 7210aca5:
+  - view.lua:836-845: open_replacing_changes is shared by hijack_directory (view.lua:872) and toggle (view.lua:1088).
+  - changes/init.lua:44-50: replace_tree_and_open is shared by toggle and review.
+  - docs/architecture.md:171: the stale polling sentence is gone.
+  
+  The new scenarios were added at the findings' request (fix-scope edits allowed). Their tests are tests/integration/file-tree/test_project_hijack.lua:167 and tests/integration/keymaps/test_keymaps.lua:858. The names are unique and match the scenario titles. Task 12 was added. Validate, trial archive and pinned (`none`) are green, and check-4 has 0 fails.
+  
+  [minor] tests/integration/file-tree/test_project_hijack.lua:169: the "Directory buffer replaces an open changes panel" test opens the panel through changes.open with no diff view. Its gleb-diff assertion (line 199) therefore passes trivially. Opening it with review=true would cover the scenario's "no diff-view window remains".
+  
+  [minor] Carried over from pass 3 and still open:
+  - tasks.md agent decisions on macOS polling are superseded but not struck.
+  - bufferline.lua relies on fragile private-string gsub, sanctioned by the auditor Decision.
+  - Out-of-scope test edits were needed to get the gate green: test_typecheck.lua, test_languages.lua, test_gitsigns.lua.
+- note: flaky test cases (failed, then passed on rerun): e2e: sandbox: booting nvim-e2e headless
+- note: loop: sandbox: Lume still reports nvim-e2e unknown while its lume run process is alive, after one restart; giving up (/Users/hlebbeladzed/.cache/nvim-e2e-sandbox/vm.log)
