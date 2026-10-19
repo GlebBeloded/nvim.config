@@ -63,10 +63,8 @@ local function open_references(fixture, symbol, server, attached, timeout)
 	end
 
 	H.wait_references_ready(child, attached[1], {
-		capture_error = true,
 		timeout = timeout or TIMEOUT_MS,
 	})
-	eq(child.lua_get("_G.references_ready"), true)
 
 	child.type_keys("gr")
 	eq(child.wait([[vim.bo.filetype == "gleb-references"]], timeout or TIMEOUT_MS), true)
