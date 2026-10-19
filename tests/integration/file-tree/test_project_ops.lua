@@ -606,8 +606,9 @@ end
 T["file-tree: Project tree rename refuses a vanished row"] = function()
 	local notifications = H.record_notify(child)
 	open_billing()
-	focus_tree_path("internal/billing/invoice.go")
+	-- before selecting the row: the recorder visits the editor, and the tree follows its file
 	attach_rename_recorder()
+	focus_tree_path("internal/billing/invoice.go")
 	vim.fn.delete(vim.fs.joinpath(root, "internal/billing/invoice.go"))
 	rename("bill.go")
 	assert(child.wait([[#Notifications > 0]]), "vanished rename was not reported")

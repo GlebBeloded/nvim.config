@@ -81,7 +81,7 @@ Scenarios: `git: Removed diff plugins are not registered`, `file-tree: Project t
 Scenarios: `bufferline: tabs start after the open project tree`, `bufferline: tabs start after the open changes panel`, `bufferline: tabline over the changes panel matches the approved render`, `bufferline: tabline with tree open matches reference screenshot`, `bufferline: tabline without tree matches reference screenshot`
 - [x] 6.1 Update `tests/screen/bufferline/test_bufferline_screen.lua` to use real `file_tree.toggle` and `changes.toggle` actions; add the changes-panel case with real extmark highlight groups and a byte-identical `.ansi` copy under `tests/screen/bufferline/`, then run `make test FILE=tests/screen/bufferline/test_bufferline_screen.lua CASE="tabline over the changes panel matches the approved render"` and see it fail
 - [x] 6.2 Replace the `neo-tree` offset in `lua/gleb/bufferline.lua` with `gleb-changes` beside `gleb-file-tree`
-- [ ] 6.3 Run all five cases; keep the existing project-tree screenshots unchanged and do not re-approve anything during the test run
+- [x] 6.3 Run all five cases; keep the existing project-tree screenshots unchanged and do not re-approve anything during the test run
 
 ## 7. Port the physical changes-review workflow
 Scenarios: `git: Cmd+G opens the changes review of a dirty repo`, `git: ]f steps to the next changed file in the changes review`, `git: ]c steps to the next change in the changes review`
@@ -109,8 +109,8 @@ Scenarios: `file-tree: Project tree shows files created outside Neovim`, `file-t
 ## 11. Resolve the remaining changes-panel tabline colour regression
 Scenarios: `bufferline: tabline over the changes panel matches the approved render`
 - [x] 11.1 Run `make test FILE=tests/screen/bufferline/test_bufferline_screen.lua CASE="tabline over the changes panel matches the approved render"` and record the existing column-37 `indicator_selected` colour-mask failure
-- [ ] 11.2 Make the smallest bufferline setup change that draws column 37 with `BufferLineBufferSelected` while preserving the approved text and every existing project-tree screenshot
-- [ ] 11.3 Run the named case and the other four task-6 cases and see them pass without re-approving screenshots
+- [x] 11.2 Make the smallest bufferline setup change that draws column 37 with `BufferLineBufferSelected` while preserving the approved text and every existing project-tree screenshot
+- [x] 11.3 Run the named case and the other four task-6 cases and see them pass without re-approving screenshots
 
 ## Agent decisions
 
@@ -134,10 +134,8 @@ Scenarios: `bufferline: tabline over the changes panel matches the approved rend
 - The neo-tree rejection of task 5c.1 checks drawn `NeoTree*` groups (extmarks, `winhighlight`), not defined ones: the gruvbox-material colorscheme itself defines `NeoTree*` groups for its plugin integrations.
 - The 2026-10-19 auditor decision supersedes the earlier macOS polling decisions above; task 10 removes both polling overrides and rechecks the retained watcher behaviour against fresh host events.
 - Instrumented `vim.uv.new_fs_poll` with a passthrough in the real project-tree and `test_gitsigns.lua` entry points, where the named gitsigns scenario lives, so Darwin rejects poll handles without replacing watcher behaviour.
-
-## Stuck
-
-- Task 11, changes-panel tabline colour: the inherited attempt's generated close region was `%#BufferLineBufferSelected#…handle_close@ %X %…handle_click@%#BufferLineFill#%=`; one close-button group therefore coloured both blank edge cells. Attempt 1 changed the compact close-button group to `BufferLineFill`; column 52 became correct but column 51 incorrectly lost `BufferLineBufferSelected`. Attempt 2 restored the selected group and inserted `BufferLineFill` after `%X`; the whole tabline row then matched, but the same screen assertion failed at row 2, column 37: expected `CursorLineNr` `{ fg = #928374 }`, drawn `{ fg = #5a524c, bg = #282828 }`. Saved attempt: `/Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/8aa9b091-e20f-41eb-b9a4-09e064ae8280/stuck-attempt-11.diff`. Production edits were reverted; keep the existing red screen test.
-- Vanished-row rename: a real tree probe showed `invoice.go` selected immediately after unlink, then the filesystem redraw moved selection to `discount_test.go` before the queued real `r` mapping ran; no picker or notification appeared. Reinstalling that mapping's real callback with `nowait = true` in the probe did not change the ordering. No production attempt was made before task 11 reached its pass limit.
-- Original cursor setting: the gate-only `E21` did not reproduce in five earlier isolated runs or this pass's isolated rerun. The required five whole-directory repetitions were not reached before task 11's attempt limit stopped the pass; no test or production edit was retained.
-- LSP readiness: `lua_ls` did not answer within the 10-second bound in the gate sample or its single allowed rerun (`15361 ms` and `15544 ms`, last error `vim.NIL`). Per the readiness timing rule, keep the bound and one-sample assertion unchanged.
+- Task 11 keeps `stuck-attempt-11.diff` (auditor Decision 2026-10-19 10:30): bufferline's filter selects the compact, selected-coloured tab while a changes panel is open, and the tabline wrapper fixes the icon padding and right edge cells.
+- The changes-panel render case sets `cursorline` with `cursorlineopt=number` on the editor window after the panel opens: the render numbers the cursor line in `CursorLineNr` with absolute numbers, as it already sets `relativenumber`, `numberwidth` and `signcolumn`.
+- `tabs start after the open changes panel` locates the compact tab with its own 3-cell label inset (indicator, icon, space), since the fixed 8-cell inset belongs to the regular tab.
+- `rename refuses a vanished row` attaches its LSP recorder before selecting `invoice.go`, as the other recorder cases do: c71976bf made `last_editor_by_tab` the real editor, so the recorder's visit there makes the tree follow README.md and `r` hit that row.
+- `Project tree matches the approved render` waits for gitsigns hunks before its screenshot, as the changes-panel screen case does: the gate drew it before gitsigns diffed `invoice.go`, so the change bars were missing.

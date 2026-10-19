@@ -117,6 +117,11 @@ local function start()
 	child.cmd("cd " .. vim.fn.fnameescape(root))
 	child.cmd("edit " .. vim.fn.fnameescape(vim.fs.joinpath(root, "internal/billing/invoice.go")))
 	assert(child.wait([[vim.b.gitsigns_head == "main"]], 5000), "gitsigns branch did not load")
+	-- the render's change bars: gitsigns draws them from hunks it diffs after loading the branch
+	assert(
+		child.wait("next(require('gitsigns').get_hunks(vim.api.nvim_get_current_buf()) or {}) ~= nil", 5000),
+		"gitsigns hunks did not load"
+	)
 	run_toggle()
 	assert(
 		child.wait(

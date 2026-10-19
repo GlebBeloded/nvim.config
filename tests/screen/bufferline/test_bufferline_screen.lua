@@ -9,6 +9,7 @@ local child = H.new_child()
 
 local TAB = "[No Name]"
 local TAB_INSET = 8 -- indicator, padding, icon and space before the label in the fixed-width (tab_size) tab
+local COMPACT_TAB_INSET = 3 -- indicator, icon and space before the label in the compact tab over the changes panel
 local TREE_COLUMNS = 36 -- sidebar width 35 plus the window separator
 
 local CHANGES_MASK = {
@@ -120,20 +121,22 @@ local function cell_column(cells, text)
 	end
 end
 
---- Display column where the `[No Name]` tab (not its centred label) starts in the tabline row.
+--- Display column where the `[No Name]` tab (not its label) starts in the tabline row.
+---@param inset integer? cells before the label, TAB_INSET by default
 ---@return integer?
-local function tab_column()
+local function tab_column(inset)
 	local label = cell_column(tabline_cells(), TAB)
-	return label and label - TAB_INSET
+	return label and label - (inset or TAB_INSET)
 end
 
 --- Wait until bufferline (redrawn asynchronously) draws the tab at `col`.
 ---@param col integer
-local function wait_for_tab(col)
+---@param inset integer? cells before the label, TAB_INSET by default
+local function wait_for_tab(col, inset)
 	local ok = vim.wait(2000, function()
-		return tab_column() == col
+		return tab_column(inset) == col
 	end, 20)
-	assert(ok, ("%s at column %s, expected %d"):format(TAB, tostring(tab_column()), col))
+	assert(ok, ("%s at column %s, expected %d"):format(TAB, tostring(tab_column(inset)), col))
 end
 
 local function wait_for_sidebar_offset()
@@ -187,10 +190,10 @@ T["bufferline: tabs start after the open changes panel"] = function()
 	H.write_files(repo, { ["tracked.txt"] = "changed\n" })
 	child.cmd("cd " .. vim.fn.fnameescape(repo) .. " | enew")
 	open_changes()
-	wait_for_tab(TREE_COLUMNS + 1)
+	wait_for_tab(TREE_COLUMNS + 1, COMPACT_TAB_INSET)
 
 	eq(table.concat(tabline_cells(), "", 1, TREE_COLUMNS), (" "):rep(TREE_COLUMNS))
-	eq(tab_column(), TREE_COLUMNS + 1)
+	eq(tab_column(COMPACT_TAB_INSET), TREE_COLUMNS + 1)
 end
 
 T["bufferline: tabline over the changes panel matches the approved render"] = function()
@@ -201,7 +204,11 @@ T["bufferline: tabline over the changes panel matches the approved render"] = fu
 	child.wo.relativenumber = false
 	child.wo.numberwidth = 5
 	child.wo.signcolumn = "no"
+	local editor_win = child.api.nvim_get_current_win()
 	open_changes()
+	-- the render's editor gutter numbers its cursor line in CursorLineNr; set after the split so the panel keeps its own
+	child.api.nvim_set_option_value("cursorline", true, { win = editor_win })
+	child.api.nvim_set_option_value("cursorlineopt", "number", { win = editor_win })
 	assert(
 		child.wait([[#require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()].rows == 10]], 5000)
 	)
