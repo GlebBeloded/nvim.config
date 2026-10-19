@@ -15,6 +15,17 @@ local function start()
 			})
 		end
 
+		function FilterMovesInSameChange(changes, moves)
+			local compute = require("gleb.diff.engine.moves").compute
+			for index = 1, math.huge do
+				local name, value = debug.getupvalue(compute, index)
+				assert(name, "remove_moves_in_same_change upvalue exists")
+				if name == "remove_moves_in_same_change" then
+					return value(changes, moves, { clock = function() return 0 end, deadline = math.huge })
+				end
+			end
+		end
+
 		function CompareLines(lines1, lines2, opts)
 			return require("gleb.diff.engine").compare_lines(lines1, lines2, opts)
 		end
@@ -28,6 +39,34 @@ local function start()
 end
 
 local T = H.child_set(child, start)
+
+T["diff: Moves with no containing change are retained"] = function()
+	eq(child.lua_get("FilterMovesInSameChange(...)", { { { 5, 8, 5, 8 } }, { { 0, 3, 0, 3 } } }), {
+		{ 0, 3, 0, 3 },
+	})
+	eq(child.lua_get("FilterMovesInSameChange(...)", { { { 0, 4, 0, 4 } }, { { 0, 3, 0, 3 } } }), {})
+end
+
+T["diff: Long similar lines extend a move"] = function()
+	local anchors = { "local alpha = 1", "local beta = 2", "local gamma = 3" }
+	local stable_lines = { "function a() end", "function b() end", "function c() end", "function d() end" }
+	local lines1 = vim.list_extend(vim.deepcopy(anchors), { string.rep("a", 220) .. string.rep("b", 80) })
+	vim.list_extend(lines1, stable_lines)
+	local lines2 = vim.list_extend(vim.deepcopy(stable_lines), anchors)
+	lines2[#lines2 + 1] = string.rep("a", 220) .. string.rep("c", 130)
+
+	eq(
+		child.lua_get(
+			"ComputeMoves(...)",
+			{ {
+				changes = { { 0, 4, 0, 0 }, { 8, 8, 4, 8 } },
+				lines1 = lines1,
+				lines2 = lines2,
+			} }
+		),
+		{ { 0, 4, 4, 8 } }
+	)
+end
 
 T["diff: Short moves are ignored"] = function()
 	local moved = { "x=10", "y=20", "z=30" }

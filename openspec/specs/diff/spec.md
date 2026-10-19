@@ -264,6 +264,14 @@ Moves SHALL keep VS Code's thresholds:
 - **WHEN** `{ "local limit = 2048", "local cheap = true" }` followed by the four `function` lines is compared with `moves = true` against the four `function` lines followed by the two `local` lines
 - **THEN** `moves` is empty
 
+#### Scenario: Moves with no containing change are retained
+- **WHEN** the same-change filter is called with changes `{ { 5, 8, 5, 8 } }` and move `{ 0, 3, 0, 3 }`
+- **THEN** the move is retained because neither side belongs to a change
+
+#### Scenario: Long similar lines extend a move
+- **WHEN** `moves.compute` receives changes `{ { 0, 4, 0, 0 }, { 8, 8, 4, 8 } }`, with three equal anchor lines followed by 220 `a` and 80 `b` characters on the original side, four stable lines, then the same anchors followed by 220 `a` and 130 `c` characters on the modified side
+- **THEN** it returns `{ { 0, 4, 4, 8 } }`, extending the move through the 300- and 350-character lines without exceeding the shared deadline
+
 ### Requirement: Bounded move detection
 Move detection and the inner diffs of moves SHALL share the call's deadline and inner limits. When the deadline passes during move detection, `moves` SHALL be empty and `timed_out` set, while `fragments` stay.
 

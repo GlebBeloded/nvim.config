@@ -316,7 +316,7 @@ local function lines_similar(line1, line2, context)
 		end
 		values2[index] = keys[char]
 	end
-	local result = lcs.diff(values1, values2, context)
+	local result = lcs.diff_exact(values1, values2, context)
 	if result.status ~= "ok" then
 		return false
 	end
@@ -582,7 +582,7 @@ local function remove_moves_in_same_change(changes, moves, context)
 				modified_id = id
 			end
 		end
-		if original_id ~= modified_id then
+		if original_id == nil or modified_id == nil or original_id ~= modified_id then
 			result[#result + 1] = current
 		end
 	end
