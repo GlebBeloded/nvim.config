@@ -29,7 +29,6 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 
 ## Loop lessons
 
-- Start macOS filesystem handles needed by a view before its first draw; adding a late handle can recreate the shared FSEvents stream and drop an intervening directory event.
 - Batch deadline polls in hot candidate loops and maintain claimed ranges in sorted order so deadline enforcement does not dominate move detection.
 - When archiving a change, update tests that read its approved render to the archive path so the durable artifact remains available.
 - Check symlink identity before case-only handling, and rename logical buffers while the symlink is parked at its temporary path so a loaded target buffer remains untouched.
@@ -44,6 +43,7 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - Match a target command anywhere in subprocess diagnostics because unrelated child processes can appear first.
 - Wait for captured subprocess content, not capture-file creation; shell redirection makes the file visible before stdin is fully consumed.
 - Keep child-wait stabilization isolated from file-tree behavior; preserve the first-paint deadline and per-result Git callbacks as independent contracts.
+- Scope paste mutability guards to buffer-editing routes so terminal jobs and command-line paste still reach Neovim's native handler.
 
 ## The loop
 
