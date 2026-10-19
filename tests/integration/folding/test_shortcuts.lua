@@ -1,4 +1,5 @@
 local MiniTest = require("mini.test")
+local F = require("tests.fixtures")
 local H = require("tests.helpers")
 
 local eq = MiniTest.expect.equality
@@ -36,6 +37,57 @@ local function expect_action_mapping(lhs, desc)
 	eq(child.lua_get(([[vim.fn.maparg(%q, "n", false, true).desc]]):format(lhs)), desc)
 end
 
+local function open_billing_changes()
+	local root = F.copy("billing", vim.fn.tempname() .. "/billing")
+	child.cmd("cd " .. vim.fn.fnameescape(root))
+	child.cmd("enew")
+	child.lua([[
+		local catalog = require("gleb.actions").state.applicator.catalog
+		local action = assert(catalog:get("changes.toggle"), "changes.toggle is not registered")
+		action.run(require("gleb.actions.context").capture())
+	]])
+	assert(
+		child.wait(
+			[[(function()
+			local view = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+			return view ~= nil and #view.rows > 0
+		end)()]],
+			3000
+		),
+		"Changes panel did not draw its initial rows"
+	)
+end
+
+---@param text string
+---@return boolean
+local function select_changes_row(text)
+	return child.lua_get(
+		[[(function(text)
+			for row, line in ipairs(vim.api.nvim_buf_get_lines(0, 0, -1, false)) do
+				if line:find(text, 1, true) then
+					vim.api.nvim_win_set_cursor(0, { row, 0 })
+					return true
+				end
+			end
+			return false
+		end)(...)]],
+		{ text }
+	)
+end
+
+---@param text string
+---@return boolean
+local function changes_has(text)
+	return child.lua_get(
+		[[(function(text)
+			return vim.iter(vim.api.nvim_buf_get_lines(0, 0, -1, false)):any(function(line)
+				return line:find(text, 1, true) ~= nil
+			end)
+		end)(...)]],
+		{ text }
+	)
+end
+
 T["folding: Fold keys invoke registered actions"] = function()
 	eq(fold_state(), { 1, 4 })
 
@@ -69,6 +121,22 @@ T["folding: Fold keys without a fold do nothing"] = function()
 		eq(child.lua_get([[vim.api.nvim_win_get_cursor(0)]]), cursor)
 		eq(child.lua_get([[vim.v.errmsg]]), "")
 	end
+end
+
+T["folding: Collapse Fold key folds the group under the tree cursor"] = function()
+	open_billing_changes()
+	assert(select_changes_row("web/src 1"), "Changes row not found: web/src 1")
+	child.lua([[vim.v.errmsg = ""]])
+
+	local close_ok = pcall(child.type_keys, "<M-->")
+	local after_close = { changes_has("price.ts"), close_ok, child.lua_get([[vim.v.errmsg]]) }
+	local open_ok = pcall(child.type_keys, "<M-=>")
+	local after_open = { changes_has("price.ts"), open_ok, child.lua_get([[vim.v.errmsg]]) }
+
+	eq({ after_close, after_open }, {
+		{ false, true, "" },
+		{ true, true, "" },
+	})
 end
 
 return T

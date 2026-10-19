@@ -34,6 +34,14 @@ local function tree_lines()
 	return child.api.nvim_buf_get_lines(0, 0, -1, false)
 end
 
+---@param text string
+---@return boolean
+local function tree_has(text)
+	return vim.iter(tree_lines()):any(function(line)
+		return line:find(text, 1, true) ~= nil
+	end)
+end
+
 ---@return string
 local function hint_line()
 	return child.lua_get([[
@@ -169,6 +177,25 @@ T["references: za folds a group"] = function()
 	local unfolded = table.concat(tree_lines(), "\n")
 	eq(unfolded:find("invoice.go:16", 1, true) ~= nil, true)
 	eq(unfolded:find("invoice.go:23", 1, true) ~= nil, true)
+end
+
+T["references: Arrow keys and zc zo fold groups without an error"] = function()
+	open_format()
+	select_row("billing  2")
+	child.lua([[vim.v.errmsg = ""]])
+
+	local results = {}
+	for _, key in ipairs({ "<Left>", "<Right>", "zc", "zo" }) do
+		local ok = pcall(child.type_keys, key)
+		results[#results + 1] = { tree_has("invoice.go:16"), ok, child.lua_get([[vim.v.errmsg]]) }
+	end
+
+	eq(results, {
+		{ false, true, "" },
+		{ true, true, "" },
+		{ false, true, "" },
+		{ true, true, "" },
+	})
 end
 
 T["references: Escape returns to the origin window"] = function()

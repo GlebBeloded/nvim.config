@@ -2,8 +2,8 @@
 
 Scenarios: `git: Changes panel arrow keys and zc zo fold without an error`, `references: Arrow keys and zc zo fold groups without an error`, `file-tree: Project tree zo and zc fold without an error`, `folding: Collapse Fold key folds the group under the tree cursor`
 
-- [ ] 1.1 Write the four scenarios above (in `tests/integration/git/test_changes.lua`, `tests/integration/references/test_keys.lua`, `tests/integration/file-tree/test_project_tree.lua`, `tests/integration/folding/test_shortcuts.lua`) pressing the real keys, run each with `make test FILE=… CASE=…`, and see every one fail as in the proposal's Evidence table (rows unchanged, E490 for `zo`/`zc`)
-- [ ] 1.2 Record any key whose result differs from the Evidence table in the proposal before going on
+- [x] 1.1 Write the four scenarios above (in `tests/integration/git/test_changes.lua`, `tests/integration/references/test_keys.lua`, `tests/integration/file-tree/test_project_tree.lua`, `tests/integration/folding/test_shortcuts.lua`) pressing the real keys, run each with `make test FILE=… CASE=…`, and see every one fail as in the proposal's Evidence table (rows unchanged, E490 for `zo`/`zc`)
+- [x] 1.2 Record any key whose result differs from the Evidence table in the proposal before going on
 
 ## 2. Shared tree model and verbs
 

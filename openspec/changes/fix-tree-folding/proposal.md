@@ -34,6 +34,9 @@ the cursor put on the `lib` group row, once expanded and once collapsed, and eac
 | `<M-->`, `<M-=>` (`fold.close_one`, `fold.open_one`) | nothing (native `zc`/`zo` error swallowed) | nothing | nothing |
 | `<S-D-->`, `<S-D-=>` (`fold.close_all`, `fold.open_all`) | nothing, `v:errmsg` E490 (ufo) | nothing, E490 | nothing, E490 |
 
+Task 1 reproduction with the real mappings differed for Find Usages only: `zc` and `zo` left the rows unchanged
+but also left `v:errmsg` empty, rather than setting E490. All other tested results matched this table.
+
 Code: `git/changes/view.lua` (`visible_rows`, `toggle_fold`), `references/view.lua` (`visible_nodes`, `fold`)
 and `file_tree/view.lua` (`close_node`, `toggle_fold`, `fold_all`, `unfold_all`) each flatten rows and track fold
 state separately (`collapsed[fold_id]`, `folded[node.id]`, `expanded[path]`); `folding/actions.lua` runs native

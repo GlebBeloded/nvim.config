@@ -435,6 +435,14 @@ local function panel_lines()
 	return child.api.nvim_buf_get_lines(0, 0, -1, false)
 end
 
+---@param text string
+---@return boolean
+local function panel_has(text)
+	return vim.iter(panel_lines()):any(function(line)
+		return line:find(text, 1, true) ~= nil
+	end)
+end
+
 local function find_panel_line(text)
 	local line = child.fn.search(text, "nw")
 	assert(line > 0, "Panel row not found: " .. text)
@@ -478,6 +486,25 @@ T["git: Changes panel Enter folds a directory"] = function()
 		end),
 		false
 	)
+end
+
+T["git: Changes panel arrow keys and zc zo fold without an error"] = function()
+	open_fixture("billing")
+	find_panel_line("web/src 1")
+	child.lua([[vim.v.errmsg = ""]])
+
+	local results = {}
+	for _, key in ipairs({ "<Left>", "<Right>", "zc", "zo" }) do
+		local ok = pcall(child.type_keys, key)
+		results[#results + 1] = { panel_has("price.ts"), ok, child.lua_get([[vim.v.errmsg]]) }
+	end
+
+	eq(results, {
+		{ false, true, "" },
+		{ true, true, "" },
+		{ false, true, "" },
+		{ true, true, "" },
+	})
 end
 
 T["git: Changes panel refreshes after a write"] = function()

@@ -647,6 +647,27 @@ T["file-tree: Project tree Enter toggles a folder"] = function()
 	)
 end
 
+T["file-tree: Project tree zo and zc fold without an error"] = function()
+	edit("README.md")
+	run_toggle()
+	focus_tree_row("internal")
+	if has_tree_line(" billing") then
+		child.type_keys("<CR>")
+		focus_tree_row("internal")
+	end
+	child.lua([[vim.v.errmsg = ""]])
+
+	local open_ok = pcall(child.type_keys, "zo")
+	local after_open = { has_tree_line(" billing"), open_ok, child.lua_get([[vim.v.errmsg]]) }
+	local close_ok = pcall(child.type_keys, "zc")
+	local after_close = { has_tree_line(" billing"), close_ok, child.lua_get([[vim.v.errmsg]]) }
+
+	eq({ after_open, after_close }, {
+		{ true, true, "" },
+		{ false, true, "" },
+	})
+end
+
 T["file-tree: Project tree Enter opens a file in the editor window"] = function()
 	edit("go.mod")
 	run_toggle()
