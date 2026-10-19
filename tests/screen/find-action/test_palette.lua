@@ -26,7 +26,7 @@ local function start()
 		end
 
 		FixtureActions = {
-			action("changes.review", "Open Differ", "Git | Diff", { modes = { "n" } }),
+			action("changes.review", "Review Changes", "View | Tool Windows", { modes = { "n" } }),
 			registered("gleb.view.actions", "view.soft_wrap"),
 			registered("gleb.view.actions", "view.spell_check"),
 			registered("gleb.keymaps.actions", "search.live_grep"),
@@ -149,7 +149,7 @@ T["find-action: Wide palette matches reference screenshots"] = function()
 	eq(text:find("Assign ⌥↩ · Show hidden ⌘⇧A", 1, true) ~= nil, true)
 	eq(text:find("12/12", 1, true) ~= nil, true)
 	eq(text:find("Remove", 1, true), nil)
-	eq(text:find("Open Differ  ⌘G", 1, true) ~= nil, true)
+	eq(text:find("Review Changes  ⌘G", 1, true) ~= nil, true)
 	eq(text:find("Toggle Git Status Tree  ⌘⇧G", 1, true) ~= nil, true)
 	H.expect_hl_colors(child, "FindActionBody", { fg = "#d9c8a5", bg = "#45403d" })
 	H.expect_hl_colors(child, "FindActionSelected", { bg = "#59524d" })
@@ -223,12 +223,12 @@ T["find-action: Wide palette matches reference screenshots"] = function()
 	})
 	H.expect_screen_colors(child, 8, {
 		wide_color_mask(
-			string.rep("S", 14)
-				.. string.rep("q", 2)
-				.. string.rep("S", 43)
-				.. string.rep("a", 3)
-				.. string.rep("d", 3)
+			string.rep("S", 17)
+				.. string.rep("d", 2)
+				.. string.rep("S", 31)
 				.. string.rep("a", 4)
+				.. string.rep("d", 3)
+				.. string.rep("a", 12)
 				.. "S"
 		),
 	}, {
@@ -272,10 +272,10 @@ T["find-action: Wide palette matches reference screenshots"] = function()
 	assert(child.wait([[table.concat(require("mini.pick").get_picker_query()) == "diff"]]), "query was not rendered")
 	H.expect_screen_colors(child, 7, {
 		wide_color_mask(
-			string.rep("S", 14)
-				.. string.rep("q", 2)
-				.. string.rep("S", 43)
-				.. string.rep("a", 3)
+			string.rep("S", 17)
+				.. "d"
+				.. string.rep("S", 40)
+				.. string.rep("a", 4)
 				.. string.rep("d", 3)
 				.. string.rep("a", 4)
 				.. "S"
@@ -351,7 +351,7 @@ T["find-action: Conflict assignment matches reference screenshot"] = function()
 	)
 	expect_assignment_box("⌘G █")
 	local text = screen_text()
-	eq(text:find("Open Differ", 1, true) ~= nil, true)
+	eq(text:find("Review Changes", 1, true) ~= nil, true)
 	eq(text:find("[ Remove other ]", 1, true) ~= nil, true)
 	H.expect_screenshot(child.get_screenshot())
 

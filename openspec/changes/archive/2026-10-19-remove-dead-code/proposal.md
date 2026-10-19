@@ -28,4 +28,11 @@ Dead code found on `auto` (2026-10-19 inventory, `require`/caller search over lu
 
 ## Impact
 
-- The files listed above.
+- Cleanup touches `lua/gleb/database/picker.lua`, `lua/gleb/actions/adapters/init.lua`,
+  `lua/gleb/actions/adapters/lazy.lua`, `lua/gleb/file_tree/model.lua`, and their existing tests and screenshots.
+- `diff: CJK characters are words of their own` still holds because the public inner-comparison test seam and word engine remain unchanged.
+- `diff: An emoji change spans its whole character` still holds because the public inner-comparison test seam and character engine remain unchanged.
+- `diff: Punctuation separates words` still holds because the public inner-comparison test seam and word engine remain unchanged.
+- `diff: Every IntelliJ word case passes` still holds because `compare_words` remains available to the unchanged golden suite.
+- `diff: Every IntelliJ char case passes` still holds because `compare_chars` remains available to the unchanged golden suite.
+- `diff: Random texts keep IntelliJ's inner invariants` still holds because both public inner-comparison entry points remain available to the unchanged invariant suite.
