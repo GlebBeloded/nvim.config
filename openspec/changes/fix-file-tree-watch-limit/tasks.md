@@ -18,7 +18,7 @@ Scenarios: `file-tree: A compact chain splits when a folder gains an entry`, `fi
 
 ## Stuck
 
-- Root-cause evidence: the 250 ms fallback synchronously scans every unwatched directory on the main loop; the gate measured a 14457.88 ms fold, and the dedicated case remained red while the other five listed cases passed after moving scan I/O off the loop.
-- Attempt 1 used asynchronous directory reads but submitted every request in one callback; the fold case took 1520.64 ms and 1919.52 ms on its required rerun.
-- Attempt 2 submitted asynchronous reads in 16-path scheduled batches; the fold case improved to 585.64 ms but still exceeded its unchanged 100 ms bound.
-- The second attempt is saved at `/Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/f595f2d2-149b-4647-823a-8ac3e0469c96/stuck-attempt-1.diff`; production edits were reverted and the existing red performance regression remains.
+- Probe evidence: an exact 4898-row Git-backed probe folded in 64.71 ms with 1746 asynchronous directory metadata checks, zero asynchronous rescans, zero synchronous cache misses, and a 0.04 ms maximum heartbeat gap, while the dedicated case took 922.63 ms and 2032.59 ms. The remaining delay occurs outside the measured fold action despite unchanged directories avoiding scans.
+- Attempt 1 cached each scanned directory's mtime and replaced unchanged fallback scans with asynchronous metadata checks; the dedicated case remained red at 922.63 ms and 2032.59 ms on its required timing-bound rerun.
+- Attempt 2 submitted all cheap metadata checks from one callback instead of chaining 16-path scheduled batches; the dedicated case remained red at 2232.86 ms.
+- The second attempt is saved at `/Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/f595f2d2-149b-4647-823a-8ac3e0469c96/stuck-attempt-1b.diff`; production edits were reverted and the existing red performance regression remains.
