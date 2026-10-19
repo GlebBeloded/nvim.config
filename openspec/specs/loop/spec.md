@@ -564,7 +564,7 @@ The fix command SHALL run one headless scratch-file probe logging the relevant s
 
 #### Scenario: Fix feedback keeps a failing case's message
 - **WHEN** `check_log.summarize` reads a red test section with 30 passed nested sets (`: oooo`) and one `FAIL in` line whose message runs past 160 characters, and `.archon/commands/fix.md` is read
-- **THEN** the summary holds the whole message and none of the passed sets, and fix.md never lets an owned failing case pass as transient without a commit: it reruns its file 5 times and then its directory once, or writes `## Stuck`
+- **THEN** the summary holds the whole message and none of the passed sets, and fix.md never lets an owned failing case pass as transient without a commit: it reruns that case 5 times, then its file and its directory once each, or writes `## Stuck`
 
 #### Scenario: Fix prompt probes first and caps attempts
 - **WHEN** `.archon/commands/fix.md` is read
