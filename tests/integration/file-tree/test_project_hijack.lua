@@ -166,14 +166,16 @@ end
 
 T["file-tree: Directory buffer replaces an open changes panel"] = function()
 	child.cmd("cd " .. vim.fn.fnameescape(root))
-	child.cmd("edit README.md")
-	child.lua([[require("gleb.git.changes").open({ root = ... })]], { root })
+	child.cmd("edit " .. vim.fn.fnameescape(vim.fs.joinpath(root, "internal/billing/invoice.go")))
+	child.lua([[require("gleb.git.changes").review()]])
 	assert(
 		child.wait([[(function()
 		local view = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
-		return view and #view.rows > 0
+		return view and view.diff_view ~= nil and vim.iter(vim.api.nvim_tabpage_list_wins(0)):any(function(win)
+			return vim.bo[vim.api.nvim_win_get_buf(win)].filetype == "gleb-diff"
+		end)
 	end)()]]),
-		"Changes panel did not draw its initial rows"
+		"Changes review did not open its diff view"
 	)
 	child.cmd("wincmd l")
 	local directory = vim.fs.joinpath(root, "internal")
@@ -189,15 +191,20 @@ T["file-tree: Directory buffer replaces an open changes panel"] = function()
 
 	local actual = child.lua_get([[(function()
 		local tree = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+		local diff_views = require("gleb.diff.view").state.by_win
 		local filetypes = vim.iter(vim.api.nvim_tabpage_list_wins(0)):map(function(win)
 			return vim.bo[vim.api.nvim_win_get_buf(win)].filetype
 		end):totable()
-		return { root = tree.root, filetypes = filetypes }
+		local diff_windows = vim.iter(vim.api.nvim_tabpage_list_wins(0)):fold(0, function(count, win)
+			return count + (diff_views[win] and 1 or 0)
+		end)
+		return { root = tree.root, filetypes = filetypes, diff_windows = diff_windows }
 	end)()]])
 
 	eq(actual.root, vim.uv.fs_realpath(directory))
 	eq(vim.tbl_contains(actual.filetypes, "gleb-changes"), false)
 	eq(vim.tbl_contains(actual.filetypes, "gleb-diff"), false)
+	eq(actual.diff_windows, 0)
 end
 
 return T

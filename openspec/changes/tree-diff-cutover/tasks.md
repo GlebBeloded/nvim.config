@@ -98,7 +98,7 @@ Scenarios: `shortcuts: Shortcut table names action ids`, `shortcuts: Shortcut me
 Scenarios: `diff: Diff view opens on the current file`, `diff: Diff view mappings come from diff actions`, `diff: Diff view checkboxes follow the index`, `diff: Diff view marks both ends of a moved block`, `diff: Diff view moved block matches the approved render`
 - [x] 9.1 Run `make trace VERBOSE=1` and confirm no orphans, duplicates or missing scenarios introduced by this change
 - [x] 9.2 Run `rg -n 'neo-tree|neo_tree|NeoTree|Neotree|differ\.|Differ|codediff|vscode\.diff|diff_preview|open_differ' lua settings tests init.lua -g '!tests/unit/loop/**'`; remove every hit except an explicitly retained diffview/gitsigns/nui reference covered by the proposal
-- [ ] 9.3 After tasks 10 and 11, run `make check E2E=1`, `openspec validate tree-diff-cutover --strict`, and `python3 .archon/scripts/pinned.py tree-diff-cutover`; require the pinned command to print `none`
+- [ ] 9.3 After tasks 10-13, run `make check E2E=1`, `openspec validate tree-diff-cutover --strict`, and `python3 .archon/scripts/pinned.py tree-diff-cutover`; require the pinned command to print `none`
 
 ## 10. Remove the forbidden macOS polling fallbacks
 Scenarios: `file-tree: Project tree shows files created outside Neovim`, `file-tree: Project tree recolours after staging outside Neovim`, `git: Added line shows bar sign`
@@ -118,6 +118,11 @@ Scenarios: `file-tree: Directory buffer replaces an open changes panel`, `git: C
 - [x] 12.2 Make directory hijacking share the project-tree open cleanup and make changes review share the changes-panel open cleanup
 - [x] 12.3 Run both named cases and their file-tree, keymaps and git integration directories
 
+## 13. Exercise directory hijack against a real review diff
+Scenarios: `file-tree: Directory buffer replaces an open changes panel`
+- [x] 13.1 Tighten `tests/integration/file-tree/test_project_hijack.lua` to open the populated panel through `require("gleb.git.changes").review()` on a changed file and wait for its `gleb-diff` window; with a temporary fault that leaves the review diff open during project-tree replacement, run `make test FILE=tests/integration/file-tree/test_project_hijack.lua CASE="Directory buffer replaces an open changes panel"`, see it fail and record the failure, then remove the fault
+- [x] 13.2 Run `make test FILE=tests/integration/file-tree/test_project_hijack.lua CASE="Directory buffer replaces an open changes panel"` and see it pass with no changes-panel or diff-view window remaining
+
 ## Agent decisions
 
 - Reused the remaining lazy.nvim adapter for the adapter-reopen contract because it has the same lhs-to-callback shape as the retired neo-tree adapter.
@@ -128,11 +133,8 @@ Scenarios: `file-tree: Directory buffer replaces an open changes panel`, `git: C
 - Kept the directory-follow and shared-sidebar production paths already supplied by earlier project-tree work; the tightened 4c assertions proved both contracts without duplicate code.
 - Compared changed-file navigation by path in the ported e2e case because the owned review model combines staged and unstaged entries for the same file.
 - Kept the auditor-mandated remove/add replacements after the rejected run; tasks 2, 4c and 6 verify that only panel identity and the explicitly added successor cases change, while widths, close isolation, refresh-close behavior and no-panel behavior retain their prior bounds.
-- macOS project-tree folder and git-dir watches use `uv_fs_poll` (100 ms) instead of FSEvents: libuv registers each FSEvents change with fseventsd asynchronously and every close waits for that registration, so a busy fseventsd dropped the external-write events and blocked `:quit`; other platforms keep `uv_fs_event`.
-- Dropped the earlier attempt's one-draw-ahead child-folder watching: it scanned collapsed and ignored folders (the spec forbids scanning or watching an ignored folder before it is expanded), and polling alone delivers the immediate external write.
 - Moved the MODIFIED `file-tree: Toggle tolerates a deleted current file` into `test_project_tree.lua` beside the other toggle cases, since every other case of `test_tree.lua` is removed with a successor.
 - Removed `H.expect_blocked_differ_diagnostic`: task 5a left it without callers and it drives the removed `:Differ` command.
-- macOS gitsigns git-dir watches start in gitsigns' own `fs_poll` backend (its fallback; wrapped `Watcher._sync_watches` in `lua/gleb/git/gitsigns.lua`): its FSEvents `.git` and `.git/refs/heads` handles were the last ones whose close waits for fseventsd at `:quit`; signs still refresh after an outside `git add` (probe: 381 ms).
 - The Rust case of `tests/integration/references/test_languages.lua` waits for rust-analyzer's `quiescent` status before `gr`, as `test_kind.lua` and `test_view.lua` do: rust-analyzer reloads its workspace after its first answers, and a `gr` during the reload gets no usages.
 - Renamed the synthetic `git.open_differ` fixture ids of `tests/unit/actions/test_registry.lua` and `tests/unit/find-action/test_rows.lua` to `git.open_review` so task 9.2's search keeps only retirement checks and the byte-identical Find Action stand-ins.
 - Also updated docs/testing.md's `make deps` libraries and its codediff example (design.md, Docs); its probing note is left to the loop-wording fix.
@@ -145,3 +147,4 @@ Scenarios: `file-tree: Directory buffer replaces an open changes panel`, `git: C
 - `tabs start after the open changes panel` locates the compact tab with its own 3-cell label inset (indicator, icon, space), since the fixed 8-cell inset belongs to the regular tab.
 - `rename refuses a vanished row` attaches its LSP recorder before selecting `invoice.go`, as the other recorder cases do: c71976bf made `last_editor_by_tab` the real editor, so the recorder's visit there makes the tree follow README.md and `r` hit that row.
 - `Project tree matches the approved render` waits for gitsigns hunks before its screenshot, as the changes-panel screen case does: the gate drew it before gitsigns diffed `invoice.go`, so the change bars were missing.
+- The task-13 temporary fault left two diff-view windows registered, proving the tightened directory-hijack case fails when review cleanup is omitted.
