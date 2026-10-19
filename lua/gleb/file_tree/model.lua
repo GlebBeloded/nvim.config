@@ -44,6 +44,7 @@ end
 ---@field name string
 ---@field path string
 ---@field kind "directory"|"file"
+---@field identity? string
 
 ---@class FileTreeSource
 ---@field root string
@@ -392,16 +393,18 @@ end
 ---@return string label
 ---@return FileTreeEntry tail
 ---@return FileTreeEntry[] children
+---@return table<string, string[]> nest_map
+---@return table<string, boolean> ignored_entries
 local function compact_directory(tree, entry, nesting_settings, opts)
 	local names = { entry.name }
 	local tail = entry
-	local children, _, ignored_entries = visible_entries(tree, tail.path, nesting_settings, opts)
+	local children, nest_map, ignored_entries = visible_entries(tree, tail.path, nesting_settings, opts)
 	while #children == 1 and children[1].kind == "directory" and not ignored_entries[children[1].name] do
 		tail = children[1]
 		names[#names + 1] = tail.name
-		children, _, ignored_entries = visible_entries(tree, tail.path, nesting_settings, opts)
+		children, nest_map, ignored_entries = visible_entries(tree, tail.path, nesting_settings, opts)
 	end
-	return table.concat(names, "/"), tail, children
+	return table.concat(names, "/"), tail, children, nest_map, ignored_entries
 end
 
 ---@param tree FileTreeSource
@@ -413,6 +416,9 @@ end
 ---@param nesting_settings? FileTreeNestingSettings
 ---@param expanded_nests? table<string, boolean>
 ---@param parent_ignored? boolean
+---@param prepared_entries? FileTreeEntry[]
+---@param prepared_nest_map? table<string, string[]>
+---@param prepared_ignored_entries? table<string, boolean>
 local function append_children(
 	tree,
 	expanded,
@@ -422,9 +428,19 @@ local function append_children(
 	depth,
 	nesting_settings,
 	expanded_nests,
-	parent_ignored
+	parent_ignored,
+	prepared_entries,
+	prepared_nest_map,
+	prepared_ignored_entries
 )
-	local entries, nest_map, ignored_entries = visible_entries(tree, path, nesting_settings, opts, parent_ignored)
+	local entries, nest_map, ignored_entries
+	if prepared_entries then
+		entries = prepared_entries
+		nest_map = prepared_nest_map or {}
+		ignored_entries = prepared_ignored_entries or {}
+	else
+		entries, nest_map, ignored_entries = visible_entries(tree, path, nesting_settings, opts, parent_ignored)
+	end
 	local entries_by_name = {}
 	local nested = {}
 	for _, entry in ipairs(entries) do
@@ -440,8 +456,11 @@ local function append_children(
 			local label = entry.name
 			local tail = entry
 			local children = {}
+			local child_nest_map = {}
+			local child_ignored_entries = {}
 			if entry.kind == "directory" and not ignored_entries[entry.name] then
-				label, tail, children = compact_directory(tree, entry, nesting_settings, opts)
+				label, tail, children, child_nest_map, child_ignored_entries =
+					compact_directory(tree, entry, nesting_settings, opts)
 			end
 			local relative = relative_path(tree.root, tail.path)
 			local row_ignored = ignored_entries[entry.name] == true
@@ -473,7 +492,10 @@ local function append_children(
 					depth + 1,
 					nesting_settings,
 					expanded_nests,
-					row_ignored
+					row_ignored,
+					children,
+					child_nest_map,
+					child_ignored_entries
 				)
 			elseif nest_expanded then
 				for _, child_name in ipairs(nest_children) do

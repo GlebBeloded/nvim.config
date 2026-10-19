@@ -270,11 +270,14 @@ local function restore_cursor(view, path, rows_before, cursor_line)
 	vim.api.nvim_win_set_cursor(view.win, { target or math.min(cursor_line, math.max(#view.rows, 1)), 0 })
 end
 
+---@class FileTreePreparedDraw
+---@field rows FileTreeRow[]
+---@field watched table<string, boolean>
+
 ---@param view FileTreeView
 ---@param path string
-local function draw(view, path)
-	local rows_before = view.rows
-	local cursor_line = vim.api.nvim_win_get_cursor(view.win)[1]
+---@return FileTreePreparedDraw
+local function prepare_draw(view, path)
 	expand_to(view, path)
 	for relative in pairs(view.expanded) do
 		local stat = vim.uv.fs_stat(vim.fs.joinpath(view.root, relative))
@@ -296,10 +299,23 @@ local function draw(view, path)
 			view.expanded_nests[relative] = nil
 		end
 	end
-	view.rows = model.rows(tree, view.expanded, opts, nesting_settings, view.expanded_nests)
+	return {
+		rows = model.rows(tree, view.expanded, opts, nesting_settings, view.expanded_nests),
+		watched = watched,
+	}
+end
+
+---@param view FileTreeView
+---@param path string
+---@param prepared? FileTreePreparedDraw
+local function draw(view, path, prepared)
+	local rows_before = view.rows
+	local cursor_line = vim.api.nvim_win_get_cursor(view.win)[1]
+	prepared = prepared or prepare_draw(view, path)
+	view.rows = prepared.rows
 	render.draw(view.buf, view.rows)
 	restore_cursor(view, path, rows_before, cursor_line)
-	watch.sync(view.root, view.tab, watched, function(changed_path)
+	watch.sync(view.root, view.tab, prepared.watched, function(changed_path)
 		if M.state.by_tab[view.tab] ~= view or not vim.api.nvim_buf_is_valid(view.buf) then
 			return
 		end
@@ -414,23 +430,17 @@ end
 ---@param row FileTreeRow
 ---@param warning string
 ---@return FileTreeRow[]?
+---@return FileTreePreparedDraw?
 local function expand_directory(view, row, warning)
 	local relative = row.path:sub(#view.root + 2)
 	view.expanded[relative] = true
-	local loaded_settings = settings.load()
-	local rows = model.rows(
-		fs.tree(view.root),
-		view.expanded,
-		row_options(view, loaded_settings),
-		loaded_settings.nesting,
-		view.expanded_nests
-	)
-	if #rows > EXPANSION_MAX_ROWS then
+	local prepared = prepare_draw(view, row.path)
+	if #prepared.rows > EXPANSION_MAX_ROWS then
 		view.expanded[relative] = nil
 		vim.notify(warning, vim.log.levels.WARN)
 		return nil
 	end
-	return rows
+	return prepared.rows, prepared
 end
 
 ---@param view FileTreeView
@@ -442,10 +452,14 @@ local function toggle_directory(view, row)
 	local relative = row.path:sub(#view.root + 2)
 	if row.expanded then
 		view.expanded[relative] = nil
-	elseif not expand_directory(view, row, "Expansion stopped at 5000 rows") then
-		return
+		draw(view, row.path)
+	else
+		local _, prepared = expand_directory(view, row, "Expansion stopped at 5000 rows")
+		if not prepared then
+			return
+		end
+		draw(view, row.path, prepared)
 	end
-	draw(view, row.path)
 end
 
 ---@param view FileTreeView
