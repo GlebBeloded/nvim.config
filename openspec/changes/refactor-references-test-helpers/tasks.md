@@ -23,3 +23,7 @@ Scenarios: `references: gr classifies every Go variable usage`, `references: gop
 - The readiness options include request method, content-modified retry, error capture, and origin filtering so later migrations can preserve their existing variants without callback hooks.
 - The language migration keeps an explicit ready-state assertion because error capture can end the helper wait before readiness.
 - The readiness helper retains the qualifying locations so kind classification consumes the exact response that satisfied its minimum and filtering contract.
+
+## Stuck
+
+- `lsp: lua_ls ready in this config` exceeded its fixed 10 s readiness bound in the gate, the gate's isolated rerun, the full-file rerun (15,382 ms), and the required isolated rerun (15,379 ms). A full-config probe showed lua_ls attached and initialized by 1,051 ms, but its `textDocument/documentSymbol` request remained pending while LuaLS loaded 1,190 workspace files and answered at 14,078 ms. This change does not modify the LSP config or readiness case, and the main spec forbids scaling the bound with host load; changing workspace coverage would alter behavior beyond this refactor.
