@@ -53,4 +53,22 @@ T["loop: Context pack skips the update check log"] = function()
 	eq(vim.trim(result.stdout), "FAIL in tests/y.lua | y: gate two")
 end
 
+T["loop: Plugin update fails on a failed fetch"] = function()
+	local code = [[
+import os, runpy, sys
+os.environ["INPUTS_MODE"] = ""
+exit = sys.exit
+sys.exit = lambda *args: None
+module = runpy.run_path(sys.argv[1])
+sys.exit = exit
+failed = module["fetch_failed"]
+offline = "\x1b[35m[rustaceanvim] \x1b[0m fetch | fatal: unable to access 'https://github.com/mrcjkb/rustaceanvim.git/': Could not resolve host: github.com"
+other = "[LuaSnip] fetch | fatal: unable to access 'x': Could not resolve host: github.com"
+print(failed(offline, "rustaceanvim"), failed(other, "rustaceanvim"), failed("[rustaceanvim] fetch | Finished task fetch", "rustaceanvim"))
+]]
+	local result = H.system(child, { "python3", "-c", code, SCRIPT }, H.root)
+	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
+	eq(vim.trim(result.stdout), "True False False")
+end
+
 return T

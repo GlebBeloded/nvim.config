@@ -564,7 +564,7 @@ The fix command SHALL run one headless scratch-file probe logging the relevant s
 
 #### Scenario: Fix feedback keeps a failing case's message
 - **WHEN** `check_log.summarize` reads a red test section with 30 passed nested sets (`: oooo`) and one `FAIL in` line whose message runs past 160 characters, and `.archon/commands/fix.md` is read
-- **THEN** the summary holds the whole message and none of the passed sets, and fix.md never lets an owned failing case pass as transient without a commit: it reruns its file 5 times and then its directory once, or writes `## Stuck`
+- **THEN** the summary holds the whole message and none of the passed sets, and fix.md never lets an owned failing case pass as transient without a commit: it reruns that case 5 times, then its file and its directory once each, or writes `## Stuck`
 
 #### Scenario: Fix prompt probes first and caps attempts
 - **WHEN** `.archon/commands/fix.md` is read
@@ -1095,6 +1095,10 @@ The private data prepared for a plugin update SHALL retain installed plugins, pa
 #### Scenario: Plugin update data includes Mason tools
 - **WHEN** the plugin update workflow prepares private test data from an installation containing `lazy`, `site`, and `mason` trees
 - **THEN** all three trees are available to the update's test gate, including executables under `mason/bin`
+
+#### Scenario: Plugin update fails on a failed fetch
+- **WHEN** `plugin_update.fetch_failed` reads a `:Lazy! update` log whose line for the plugin shows a git transport error (`Could not resolve host`), one where only another plugin's fetch failed, and one where the fetch finished
+- **THEN** it reports the first as failed and the others as not, so an offline update exits with an error instead of "nothing to update"
 
 #### Scenario: Context pack skips the update check log
 - **WHEN** `context_pack.last_failures` reads an artifacts dir holding `check-update.log` and `check-2.log`
