@@ -148,10 +148,10 @@ T["references: TypeScript query classifies every usage type"] = function()
 		local actual = child.lua_get(
 			[[(function(source, filetype, source_positions, target_kinds)
 				local classify = require("gleb.references.kind_ts").classify
-				local refine = require("gleb.references.kind_refine").refine_query_kind
+				local finalize = require("gleb.references.kind_refine").finalize
 				local refined = {}
 				for index, query_kind in ipairs(classify(source, filetype, source_positions)) do
-					refined[index] = refine(query_kind, target_kinds[index], filetype) or false
+					refined[index] = finalize(query_kind, target_kinds[index], filetype) or false
 				end
 				return refined
 			end)(...)]],
@@ -178,18 +178,14 @@ T["references: Python query classifies every usage type"] = function()
 	local actual = child.lua_get(
 		[[(function(source, filetype, source_positions, target_kinds)
 			local classify = require("gleb.references.kind_ts").classify
-			local refine = require("gleb.references.kind_refine").refine_query_kind
+			local finalize = require("gleb.references.kind_refine").finalize
 			local refined = {}
 			for index, query_kind in ipairs(classify(source, filetype, source_positions)) do
 				local target = target_kinds[index]
-				local drops_read_write = target and (target == "function" or target == "type")
-					and (query_kind == "write" or query_kind == "read")
 				if not target then
 					refined[index] = query_kind
-				elseif drops_read_write then
-					refined[index] = false
 				else
-					refined[index] = refine(query_kind, target, filetype) or false
+					refined[index] = finalize(query_kind, target, filetype) or false
 				end
 			end
 			return refined
@@ -213,11 +209,11 @@ T["references: Rust query classifies every usage type"] = function()
 	local actual = child.lua_get(
 		[[(function(source, filetype, source_positions, target_kinds)
 			local classify = require("gleb.references.kind_ts").classify
-			local refine = require("gleb.references.kind_refine").refine_query_kind
+			local finalize = require("gleb.references.kind_refine").finalize
 			local refined = {}
 			for index, query_kind in ipairs(classify(source, filetype, source_positions)) do
 				local target_kind = target_kinds[index]
-				refined[index] = target_kind and refine(query_kind, target_kind, filetype) or query_kind
+				refined[index] = target_kind and finalize(query_kind, target_kind, filetype) or query_kind
 			end
 			return refined
 		end)(...)]],
