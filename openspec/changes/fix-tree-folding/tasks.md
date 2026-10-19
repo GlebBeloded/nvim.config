@@ -49,9 +49,9 @@ Scenarios: `file-tree: Project tree l expands a folder`, `file-tree: Project tre
 
 Scenarios: `folding: Collapse Fold key folds the group under the tree cursor`, `folding: Expand Fold key unfolds a project tree folder`, `folding: Collapse All Folds key folds every group of the Find Usages view`, `ui: Every tree buffer is a shared tree`, `folding: Fold keys invoke registered actions`, `folding: Fold keys without a fold do nothing`
 
-- [ ] 7.1 Write the scenarios in `tests/integration/folding/test_shortcuts.lua` and `tests/integration/ui/test_tree_buffers.lua` and see them fail
-- [ ] 7.2 Dispatch to `require("gleb.ui.tree").get(0)` first in `folding/actions.lua` (design Decision 6)
-- [ ] 7.3 Run both files and see them pass
+- [x] 7.1 Write the scenarios in `tests/integration/folding/test_shortcuts.lua` and `tests/integration/ui/test_tree_buffers.lua` and see them fail
+- [x] 7.2 Dispatch to `require("gleb.ui.tree").get(0)` first in `folding/actions.lua` (design Decision 6)
+- [x] 7.3 Run both files and see them pass
 
 ## 8. Gate
 
