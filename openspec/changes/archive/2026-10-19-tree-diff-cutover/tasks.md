@@ -98,7 +98,7 @@ Scenarios: `shortcuts: Shortcut table names action ids`, `shortcuts: Shortcut me
 Scenarios: `diff: Diff view opens on the current file`, `diff: Diff view mappings come from diff actions`, `diff: Diff view checkboxes follow the index`, `diff: Diff view marks both ends of a moved block`, `diff: Diff view moved block matches the approved render`
 - [x] 9.1 Run `make trace VERBOSE=1` and confirm no orphans, duplicates or missing scenarios introduced by this change
 - [x] 9.2 Run `rg -n 'neo-tree|neo_tree|NeoTree|Neotree|differ\.|Differ|codediff|vscode\.diff|diff_preview|open_differ' lua settings tests init.lua -g '!tests/unit/loop/**'`; remove every hit except an explicitly retained diffview/gitsigns/nui reference covered by the proposal
-- [ ] 9.3 After tasks 10-13, run `make check E2E=1`, `openspec validate tree-diff-cutover --strict`, and `python3 .archon/scripts/pinned.py tree-diff-cutover`; require the pinned command to print `none`
+- [x] 9.3 After tasks 10-13, run `make check E2E=1`, `openspec validate tree-diff-cutover --strict`, and `python3 .archon/scripts/pinned.py tree-diff-cutover`; require the pinned command to print `none`
 
 ## 10. Remove the forbidden macOS polling fallbacks
 Scenarios: `file-tree: Project tree shows files created outside Neovim`, `file-tree: Project tree recolours after staging outside Neovim`, `git: Added line shows bar sign`
