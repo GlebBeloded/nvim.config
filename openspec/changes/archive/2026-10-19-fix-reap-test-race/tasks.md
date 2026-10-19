@@ -1,0 +1,4 @@
+## 1. Make descendant reaping assertion race-free
+Scenarios: `actions: Plugin-window mappings are action-owned`
+- [x] 1.1 Use `FAIL in tests/integration/actions/test_plugin_ownership.lua | actions: Plugin-window mappings are action-owned | reaps a blocked surface's shell-owned descendant` from the proposal as the timing-flake failure evidence; replace the one-shot liveness probe with an assertion that polls for the real `sleep` process to disappear for up to 2000 ms × `H.load_factor()`, retaining the cleanup kill, then temporarily force the poll predicate to report the process alive, run `make test FILE=tests/integration/actions/test_plugin_ownership.lua CASE="reaps a blocked surface's shell-owned descendant"`, see it fail and record the failure, and remove the fault
+- [x] 1.2 Run `make test FILE=tests/integration/actions/test_plugin_ownership.lua CASE="reaps a blocked surface's shell-owned descendant"` and see it pass

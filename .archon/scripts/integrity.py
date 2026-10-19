@@ -248,10 +248,33 @@ def dropped_cases(seen: list[str]) -> list[str]:
 
 
 def seen_case_names(artifacts: pathlib.Path) -> set[str]:
-    """Case names of verdict's last snapshot and of every `make test` run since (CASE_SEEN, tests/parallel.lua)."""
+    """Case names of verdict's last snapshot and of every `make test` run since (CASE_SEEN, tests/parallel.lua). A
+    run-time name whose test file still names it (or its base version does) as a quoted string is not counted:
+    case_names() parses only all-literal `T["…"]` chains, so variable-keyed (`T[scenario]["…"]`) and loop-generated
+    cases looked dropped (run 0b2c5b03); entries from files outside tests/ (fixture runners) never count."""
     snapshot, seen = artifacts / CASE_SNAPSHOT, artifacts / CASE_SEEN
     names = set(json.loads(snapshot.read_text())) if snapshot.exists() else set()
-    return names | ({entry["case"] for entry in json.loads(seen.read_text())} if seen.exists() else set())
+    if not seen.exists():
+        return names
+    base = git("merge-base", "HEAD", BASE).strip()
+    root = os.getcwd() + os.sep
+    texts: dict[str, str] = {}
+
+    def text(path: str) -> str:
+        if path not in texts:
+            current = pathlib.Path(path).read_text(errors="replace") if os.path.isfile(path) else ""
+            old = subprocess.run(["git", "show", f"{base}:{path}"], capture_output=True, text=True).stdout
+            texts[path] = current + "\n" + old
+        return texts[path]
+
+    for entry in json.loads(seen.read_text()):
+        path, case = entry.get("file", "").removeprefix(root), entry["case"]
+        if not path.startswith("tests/"):
+            continue
+        if f'"{case}"' in text(path) or f"'{case}'" in text(path):
+            continue
+        names.add(case)
+    return names
 
 
 def record_dropped(artifacts: pathlib.Path) -> list[str]:

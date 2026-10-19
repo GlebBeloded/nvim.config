@@ -44,6 +44,7 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - An algorithm fallback change must preserve independent upstream eligibility guards; here exact LCS still applies only when at least one line is at most 300 characters.
 - Complete per-view pending state on every current asynchronous result, including failures and first-paint callbacks, so later invalidations cannot deadlock.
 - Merge traversal discoveries into retained UI state when the traversal intentionally skips user-expandable nodes.
+- Preserve polling semantics when extracting asynchronous readiness helpers: recording an LSP error must not make the wait return before readiness.
 
 ## The loop
 

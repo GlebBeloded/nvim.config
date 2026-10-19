@@ -520,7 +520,7 @@ With `ARTIFACTS_DIR` set, tests/parallel.lua SHALL add each collected case (file
 
 #### Scenario: Gate flags a test case added and removed within one pass
 - **WHEN** verdict.py snapshots a branch holding base case `a: old`, case-seen.json then lists `a: old` and `a: tmp`, and gate.py, verdict.py and gate.py run
-- **THEN** the first gate is red naming `hard rule: test added then removed during build: a: tmp` and not `a: old`, verdict removes case-seen.json, and the second gate does not repeat it
+- **THEN** the first gate is red naming `hard rule: test added then removed during build: a: tmp` and not `a: old`, verdict removes case-seen.json, and the second gate does not repeat it; a seen case its file still names as a quoted string (a variable-keyed `T[scenario]["…"]`) and a case from a file outside tests/ are never flagged
 
 ### Requirement: Gate merges a moved auto first
 The build loop's gate SHALL first merge `auto` into the run's branch when `auto` has commits the branch lacks, the worktree has no tracked edits and the merge is clean (`.archon/scripts/sync_base.py`); a conflicting merge SHALL be aborted and the gate SHALL run on the branch as it is.
@@ -564,7 +564,7 @@ The fix command SHALL run one headless scratch-file probe logging the relevant s
 
 #### Scenario: Fix feedback keeps a failing case's message
 - **WHEN** `check_log.summarize` reads a red test section with 30 passed nested sets (`: oooo`) and one `FAIL in` line whose message runs past 160 characters, and `.archon/commands/fix.md` is read
-- **THEN** the summary holds the whole message and none of the passed sets, and fix.md never lets an owned failing case pass as transient without a commit: it reruns its file 5 times and then its directory once, or writes `## Stuck`
+- **THEN** the summary holds the whole message and none of the passed sets, and fix.md never lets an owned failing case pass as transient without a commit: it reruns that case 5 times, then its file and its directory once each, or writes `## Stuck`
 
 #### Scenario: Fix prompt probes first and caps attempts
 - **WHEN** `.archon/commands/fix.md` is read
@@ -1088,3 +1088,18 @@ The gate SHALL commit its tick of tasks.md's gate items and the judge SHALL comm
 #### Scenario: Steps commit the run files they edit
 - **WHEN** `integrity.commit_paths` commits a changed tasks.md in a repo that also has another edited file, then runs again with nothing changed, and gate.py and escalation.py are read
 - **THEN** it reports a commit, then none; only the other file stays modified; gate.py commits its tick and escalation.py commits `docs/workflow.md`
+
+### Requirement: Plugin update checks retain installed test dependencies
+The private data prepared for a plugin update SHALL retain installed plugins, parsers, and Mason packages so the full check exercises the updated plugin with the same external test tools as the normal test environment, and the context pack SHALL read only numbered gate logs (`check-<n>.log`), ignoring the update's `check-update.log`.
+
+#### Scenario: Plugin update data includes Mason tools
+- **WHEN** the plugin update workflow prepares private test data from an installation containing `lazy`, `site`, and `mason` trees
+- **THEN** all three trees are available to the update's test gate, including executables under `mason/bin`
+
+#### Scenario: Plugin update fails on a failed fetch
+- **WHEN** `plugin_update.fetch_failed` reads a `:Lazy! update` log whose line for the plugin shows a git transport error (`Could not resolve host`), one where only another plugin's fetch failed, and one where the fetch finished
+- **THEN** it reports the first as failed and the others as not, so an offline update exits with an error instead of "nothing to update"
+
+#### Scenario: Context pack skips the update check log
+- **WHEN** `context_pack.last_failures` reads an artifacts dir holding `check-update.log` and `check-2.log`
+- **THEN** it returns the FAIL lines of `check-2.log` and does not fail on the unnumbered log

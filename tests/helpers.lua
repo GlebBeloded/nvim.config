@@ -1079,6 +1079,96 @@ function M.system(child, cmd, cwd, env, timeout_ms)
 	)
 end
 
+---@class test.AsyncLspDriver
+---@field lua fun(code: string, args?: any[]): any Run Lua in the child Neovim.
+---@field wait fun(expr: string, timeout?: integer): boolean Wait until a child expression is truthy.
+
+---@class test.ReferenceReadinessOpts
+---@field minimum? integer Minimum number of locations in a qualifying result; default 1.
+---@field consecutive? integer Consecutive qualifying results required; default 1.
+---@field timeout integer Request and wait bound in milliseconds.
+---@field method? string LSP request method; default `textDocument/references`.
+---@field retry_content_modified? boolean Retry `content modified` errors until the bound.
+---@field capture_error? boolean Store an LSP error message in `_G.references_error`.
+---@field exclude_origin? boolean Exclude a result at the requested position.
+
+--- Wait until repeated LSP location requests satisfy the readiness contract.
+---@param child test.AsyncLspDriver
+---@param server string
+---@param opts test.ReferenceReadinessOpts
+function M.wait_references_ready(child, server, opts)
+	child.lua(
+		[[
+			local server, opts = ...
+			_G.references_ready, _G.references_error, _G.references_result = nil, nil, nil
+			local bufnr = vim.api.nvim_get_current_buf()
+			local started = vim.uv.hrtime()
+			local populated = 0
+			local function within_bound()
+				return (vim.uv.hrtime() - started) / 1e6 < opts.timeout
+			end
+			local function request()
+				local client = vim.lsp.get_clients({ bufnr = bufnr, name = server })[1]
+				local params = vim.lsp.util.make_position_params(0, client.offset_encoding)
+				params.context = { includeDeclaration = false }
+				client:request(opts.method or "textDocument/references", params, function(err, result)
+					if err and opts.retry_content_modified and err.message == "content modified" then
+						if within_bound() then vim.defer_fn(request, 10) end
+						return
+					end
+					if err and opts.capture_error then _G.references_error = err.message end
+					if opts.exclude_origin then
+						result = vim.tbl_filter(function(location)
+							local start = location.range.start
+							return start.line ~= params.position.line or start.character ~= params.position.character
+						end, result or {})
+					end
+					populated = result and #result >= (opts.minimum or 1) and populated + 1 or 0
+					if populated >= (opts.consecutive or 1) then
+						_G.references_result = result
+						_G.references_ready = true
+					elseif within_bound() then
+						vim.defer_fn(request, 10)
+					end
+				end, bufnr)
+			end
+			request()
+		]],
+		{ server, opts }
+	)
+	local condition = opts.capture_error and "_G.references_ready == true or _G.references_error ~= nil"
+		or "_G.references_ready == true"
+	assert(child.wait(condition, opts.timeout), "references did not become ready")
+end
+
+--- Record rust-analyzer's quiescent status while preserving its current handler.
+---@param child test.AsyncLspDriver
+function M.watch_rust_quiescent(child)
+	child.lua([[
+		_G.rust_analyzer_quiescent = nil
+		local server = require("rustaceanvim.config.internal").server
+		server.handlers = server.handlers or {}
+		_G.previous_server_status_handler = server.handlers["experimental/serverStatus"]
+		server.handlers["experimental/serverStatus"] = function(err, result, context, config)
+			if result and result.quiescent then _G.rust_analyzer_quiescent = true end
+			local handler = _G.previous_server_status_handler or require("rustaceanvim.server_status").handler
+			return handler(err, result, context, config)
+		end
+	]])
+end
+
+--- Wait for rust-analyzer to become quiescent, then restore its status handler.
+---@param child test.AsyncLspDriver
+---@param timeout integer
+function M.wait_rust_quiescent(child, timeout)
+	assert(child.wait("_G.rust_analyzer_quiescent == true", timeout), "rust-analyzer did not become quiescent")
+	child.lua([[
+		require("rustaceanvim.config.internal").server.handlers["experimental/serverStatus"] =
+			_G.previous_server_status_handler
+		_G.previous_server_status_handler = nil
+	]])
+end
+
 --- How much slower the host runs than idle: the 1-min load average per CPU, at least 1. Timing
 --- checks multiply their deadlines by it; read on each call, so a test can stub `vim.uv.loadavg`.
 ---@return number

@@ -866,20 +866,25 @@ T["loop: Test run records the cases it collected"] = function()
 end
 
 T["loop: Gate flags a test case added and removed within one pass"] = function()
-	local repo = branch_repo({ ["tests/unit/a/test_a.lua"] = 'T["a: old"] = function() end' })
+	local repo = branch_repo({
+		["tests/unit/a/test_a.lua"] = 'T["a: old"] = function() end\nT[scenario]["kept by variable"] = function() end',
+	})
 	local artifacts = H.tempdir(child)
 	local scratch = H.tempdir(child)
 	local bin = fake_tool(scratch, "make", "exit 0")
 	local env = { ARTIFACTS_DIR = artifacts, PATH = bin .. ":" .. vim.env.PATH }
 	loop_script("verdict.py", repo, verdict_env(artifacts))
-	local seen =
-		'[{"file":"tests/unit/a/test_a.lua","case":"a: old"},{"file":"tests/unit/a/test_a.lua","case":"a: tmp"}]'
+	local seen = '[{"file":"tests/unit/a/test_a.lua","case":"a: old"},{"file":"tests/unit/a/test_a.lua","case":"a: tmp"},'
+		.. '{"file":"tests/unit/a/test_a.lua","case":"kept by variable"},{"file":"/tmp/fixture/test_stall.lua","case":"hang: ok first"}]'
 	write(artifacts, { ["case-seen.json"] = seen })
 
 	local first = loop_script("gate.py", repo, env)
 	eq(first.green, false)
 	has(first.failures, "hard rule: test added then removed during build: a: tmp")
 	eq(first.failures:find("a: old", 1, true), nil, { fail_reason = first.failures })
+	-- a variable-keyed case its file still names, and a fixture runner's case outside tests/, are not dropped
+	eq(first.failures:find("kept by variable", 1, true), nil, { fail_reason = first.failures })
+	eq(first.failures:find("hang: ok first", 1, true), nil, { fail_reason = first.failures })
 	loop_script(
 		"verdict.py",
 		repo,

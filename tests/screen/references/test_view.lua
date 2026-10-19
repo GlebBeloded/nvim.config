@@ -631,17 +631,7 @@ local function open_rust_money()
 	child.o.columns, child.o.lines = 70, 36
 	local rust_root, rust_manifest = F.copy("rustproj", vim.fn.tempname())
 	local declaration = rust_manifest.references.Money[1]
-	child.lua([[
-		_G.rust_analyzer_quiescent = nil
-		local server = require("rustaceanvim.config.internal").server
-		server.handlers = server.handlers or {}
-		_G.previous_server_status_handler = server.handlers["experimental/serverStatus"]
-		server.handlers["experimental/serverStatus"] = function(err, result, context, config)
-			if result and result.quiescent then _G.rust_analyzer_quiescent = true end
-			local handler = _G.previous_server_status_handler or require("rustaceanvim.server_status").handler
-			return handler(err, result, context, config)
-		end
-	]])
+	H.watch_rust_quiescent(child)
 	child.cmd("cd " .. vim.fn.fnameescape(rust_root) .. " | edit " .. vim.fn.fnameescape(declaration.path))
 	child.wo.number = true
 	child.wo.relativenumber = false
@@ -653,37 +643,8 @@ local function open_rust_money()
 	child.api.nvim_win_set_cursor(0, { declaration.line, declaration.col - 1 })
 	local timeout = H.lsp_timeout(30000)
 	eq(child.wait([[#vim.lsp.get_clients({ bufnr = 0, name = "rust-analyzer" }) > 0]], timeout), true)
-	eq(child.wait("_G.rust_analyzer_quiescent == true", timeout), true)
-	child.lua([[
-		require("rustaceanvim.config.internal").server.handlers["experimental/serverStatus"] =
-			_G.previous_server_status_handler
-		_G.previous_server_status_handler = nil
-	]])
-	child.lua(
-		[[
-			local minimum, timeout = ...
-_G.references_ready = nil
-local bufnr = vim.api.nvim_get_current_buf()
-local started = vim.uv.hrtime()
-local populated = 0
-local function request()
-	local client = vim.lsp.get_clients({ bufnr = bufnr, name = "rust-analyzer" })[1]
-	local params = vim.lsp.util.make_position_params(0, client.offset_encoding)
-	params.context = { includeDeclaration = false }
-	client:request("textDocument/references", params, function(_, result)
-		populated = result and #result >= minimum and populated + 1 or 0
-		if populated >= 2 then
-			_G.references_ready = true
-		elseif (vim.uv.hrtime() - started) / 1e6 < timeout then
-			vim.defer_fn(request, 10)
-		end
-	end, bufnr)
-end
-request()
-]],
-		{ 10, timeout }
-	)
-	eq(child.wait("_G.references_ready == true", timeout), true)
+	H.wait_rust_quiescent(child, timeout)
+	H.wait_references_ready(child, "rust-analyzer", { minimum = 10, consecutive = 2, timeout = timeout })
 	child.type_keys("gr")
 	eq(child.wait([[vim.bo.filetype == "gleb-references"]], timeout), true)
 	eq(child.wait([[not require("gleb.references.view").state.classifying]], timeout), true)
@@ -717,31 +678,11 @@ local function open_money()
 	child.wo.winbar = "%#Normal#▎ money.ts"
 	child.api.nvim_win_set_cursor(0, { declaration.line, declaration.col - 1 })
 	eq(child.wait([[#vim.lsp.get_clients({ bufnr = 0, name = "vtsls" }) > 0]], TIMEOUT_MS), true)
-	child.lua(
-		[[
-		local minimum, timeout = ...
-_G.references_ready = nil
-local bufnr = vim.api.nvim_get_current_buf()
-local started = vim.uv.hrtime()
-local populated = 0
-local function request()
-	local client = vim.lsp.get_clients({ bufnr = bufnr, name = "vtsls" })[1]
-	local params = vim.lsp.util.make_position_params(0, client.offset_encoding)
-	params.context = { includeDeclaration = false }
-	client:request("textDocument/references", params, function(_, result)
-		populated = result and #result >= minimum and populated + 1 or 0
-		if populated >= 2 then
-			_G.references_ready = true
-		elseif (vim.uv.hrtime() - started) / 1e6 < timeout then
-			vim.defer_fn(request, 10)
-		end
-	end, bufnr)
-end
-request()
-]],
-		{ #typescript_manifest.references.Money - 1, TIMEOUT_MS }
-	)
-	eq(child.wait("_G.references_ready == true", TIMEOUT_MS), true)
+	H.wait_references_ready(child, "vtsls", {
+		minimum = #typescript_manifest.references.Money - 1,
+		consecutive = 2,
+		timeout = TIMEOUT_MS,
+	})
 	child.type_keys("gr")
 	eq(child.wait([[vim.bo.filetype == "gleb-references"]], TIMEOUT_MS), true)
 	eq(child.wait([[not require("gleb.references.view").state.classifying]], TIMEOUT_MS), true)
@@ -775,31 +716,11 @@ local function open_python_money()
 	child.wo.winbar = "%#Normal#▎ money.py"
 	child.api.nvim_win_set_cursor(0, { declaration.line, declaration.col - 1 })
 	eq(child.wait([[#vim.lsp.get_clients({ bufnr = 0, name = "basedpyright" }) > 0]], TIMEOUT_MS), true)
-	child.lua(
-		[[
-		local minimum, timeout = ...
-_G.references_ready = nil
-local bufnr = vim.api.nvim_get_current_buf()
-local started = vim.uv.hrtime()
-local populated = 0
-local function request()
-	local client = vim.lsp.get_clients({ bufnr = bufnr, name = "basedpyright" })[1]
-	local params = vim.lsp.util.make_position_params(0, client.offset_encoding)
-	params.context = { includeDeclaration = false }
-	client:request("textDocument/references", params, function(_, result)
-		populated = result and #result >= minimum and populated + 1 or 0
-		if populated >= 2 then
-			_G.references_ready = true
-		elseif (vim.uv.hrtime() - started) / 1e6 < timeout then
-			vim.defer_fn(request, 10)
-		end
-	end, bufnr)
-end
-request()
-]],
-		{ #python_manifest.references.Money - 1, TIMEOUT_MS }
-	)
-	eq(child.wait("_G.references_ready == true", TIMEOUT_MS), true)
+	H.wait_references_ready(child, "basedpyright", {
+		minimum = #python_manifest.references.Money - 1,
+		consecutive = 2,
+		timeout = TIMEOUT_MS,
+	})
 	child.type_keys("gr")
 	eq(child.wait([[vim.bo.filetype == "gleb-references"]], TIMEOUT_MS), true)
 	eq(child.wait([[not require("gleb.references.view").state.classifying]], TIMEOUT_MS), true)
@@ -834,31 +755,11 @@ local function open_lua_apply()
 	child.api.nvim_win_set_cursor(0, { declaration.line, declaration.col - 1 })
 	eq(child.wait([[#vim.lsp.get_clients({ bufnr = 0, name = "lua_ls" }) > 0]], TIMEOUT_MS), true)
 	child.lua([[vim.diagnostic.enable(false, { bufnr = 0 })]])
-	child.lua(
-		[[
-		local minimum, timeout = ...
-_G.references_ready = nil
-local bufnr = vim.api.nvim_get_current_buf()
-local started = vim.uv.hrtime()
-local populated = 0
-local function request()
-	local client = vim.lsp.get_clients({ bufnr = bufnr, name = "lua_ls" })[1]
-	local params = vim.lsp.util.make_position_params(0, client.offset_encoding)
-	params.context = { includeDeclaration = false }
-	client:request("textDocument/references", params, function(_, result)
-		populated = result and #result >= minimum and populated + 1 or 0
-		if populated >= 2 then
-			_G.references_ready = true
-		elseif (vim.uv.hrtime() - started) / 1e6 < timeout then
-			vim.defer_fn(request, 10)
-		end
-	end, bufnr)
-end
-request()
-]],
-		{ #lua_manifest.references.apply - 2, TIMEOUT_MS }
-	)
-	eq(child.wait("_G.references_ready == true", TIMEOUT_MS), true)
+	H.wait_references_ready(child, "lua_ls", {
+		minimum = #lua_manifest.references.apply - 2,
+		consecutive = 2,
+		timeout = TIMEOUT_MS,
+	})
 	child.type_keys("gr")
 	eq(child.wait([[vim.bo.filetype == "gleb-references"]], TIMEOUT_MS), true)
 	eq(child.wait([[not require("gleb.references.view").state.classifying]], TIMEOUT_MS), true)
@@ -898,31 +799,11 @@ local function open_bash_rate()
 	child.wo.winbar = "%#Normal#▎ tax.sh"
 	child.api.nvim_win_set_cursor(0, { declaration.line, declaration.col - 1 })
 	eq(child.wait([[#vim.lsp.get_clients({ bufnr = 0, name = "bashls" }) > 0]], TIMEOUT_MS), true)
-	child.lua(
-		[[
-		local minimum, timeout = ...
-_G.references_ready = nil
-local bufnr = vim.api.nvim_get_current_buf()
-local started = vim.uv.hrtime()
-local populated = 0
-local function request()
-	local client = vim.lsp.get_clients({ bufnr = bufnr, name = "bashls" })[1]
-	local params = vim.lsp.util.make_position_params(0, client.offset_encoding)
-	params.context = { includeDeclaration = false }
-	client:request("textDocument/references", params, function(_, result)
-		populated = result and #result >= minimum and populated + 1 or 0
-		if populated >= 2 then
-			_G.references_ready = true
-		elseif (vim.uv.hrtime() - started) / 1e6 < timeout then
-			vim.defer_fn(request, 10)
-		end
-	end, bufnr)
-end
-request()
-]],
-		{ #bash_manifest.references.rate - 1, TIMEOUT_MS }
-	)
-	eq(child.wait("_G.references_ready == true", TIMEOUT_MS), true)
+	H.wait_references_ready(child, "bashls", {
+		minimum = #bash_manifest.references.rate - 1,
+		consecutive = 2,
+		timeout = TIMEOUT_MS,
+	})
 	child.type_keys("gr")
 	eq(child.wait([[vim.bo.filetype == "gleb-references"]], TIMEOUT_MS), true)
 	eq(child.wait([[not require("gleb.references.view").state.classifying]], TIMEOUT_MS), true)
@@ -964,31 +845,11 @@ local function open_terraform_vpc()
 	child.api.nvim_win_set_cursor(0, { declaration.line, declaration.col - 1 })
 	eq(child.wait([[#vim.lsp.get_clients({ bufnr = 0, name = "terraformls" }) > 0]], TIMEOUT_MS), true)
 	child.lua([[vim.diagnostic.enable(false, { bufnr = 0 })]])
-	child.lua(
-		[[
-		local minimum, timeout = ...
-_G.references_ready = nil
-local bufnr = vim.api.nvim_get_current_buf()
-local started = vim.uv.hrtime()
-local populated = 0
-local function request()
-	local client = vim.lsp.get_clients({ bufnr = bufnr, name = "terraformls" })[1]
-	local params = vim.lsp.util.make_position_params(0, client.offset_encoding)
-	params.context = { includeDeclaration = false }
-	client:request("textDocument/references", params, function(_, result)
-		populated = result and #result >= minimum and populated + 1 or 0
-		if populated >= 2 then
-			_G.references_ready = true
-		elseif (vim.uv.hrtime() - started) / 1e6 < timeout then
-			vim.defer_fn(request, 10)
-		end
-	end, bufnr)
-end
-request()
-]],
-		{ #terraform_manifest.references.vpc - 1, TIMEOUT_MS }
-	)
-	eq(child.wait("_G.references_ready == true", TIMEOUT_MS), true)
+	H.wait_references_ready(child, "terraformls", {
+		minimum = #terraform_manifest.references.vpc - 1,
+		consecutive = 2,
+		timeout = TIMEOUT_MS,
+	})
 	child.type_keys("gr")
 	eq(child.wait([[vim.bo.filetype == "gleb-references"]], TIMEOUT_MS), true)
 	eq(child.wait([[not require("gleb.references.view").state.classifying]], TIMEOUT_MS), true)
@@ -1261,6 +1122,81 @@ T[rust_grouped_scenario]["matches approved R1"] = function()
 	eq(actual, RUST_GROUPED_TEXT)
 	clear_background_for_mask()
 	H.expect_screen_colors(child, 1, with_cleared_rust_background(RUST_GROUPED_MASK), RUST_LEGEND)
+end
+
+T[rust_grouped_scenario]["waits for consecutive populated results"] = function()
+	child.lua([[
+		local populated = {
+			{
+				uri = "file:///repo/first.lua",
+				range = {
+					start = { line = 0, character = 0 },
+					["end"] = { line = 0, character = 5 },
+				},
+			},
+			{
+				uri = "file:///repo/second.lua",
+				range = {
+					start = { line = 1, character = 0 },
+					["end"] = { line = 1, character = 5 },
+				},
+			},
+		}
+		local results = { populated, {}, populated, populated }
+		_G.reference_requests = 0
+		vim.lsp.get_clients = function()
+			return {
+				{
+					offset_encoding = "utf-16",
+					request = function(_, method, params, callback, bufnr)
+						assert(method == "textDocument/references")
+						assert(params.context.includeDeclaration == false)
+						assert(bufnr == vim.api.nvim_get_current_buf())
+						_G.reference_requests = _G.reference_requests + 1
+						callback(nil, results[_G.reference_requests])
+					end,
+				},
+			}
+		end
+	]])
+
+	H.wait_references_ready(child, "lua_ls", { minimum = 2, consecutive = 2, timeout = 1000 })
+
+	eq(child.lua_get("_G.reference_requests"), 4)
+	eq(child.lua_get("_G.references_result and { #_G.references_result, _G.references_result[2].uri }"), {
+		2,
+		"file:///repo/second.lua",
+	})
+end
+
+T[rust_grouped_scenario]["restores the status handler after quiescence"] = function()
+	child.lua([[
+		_G.previous_calls = 0
+		_G.original_status_handler = function()
+			_G.previous_calls = _G.previous_calls + 1
+		end
+		package.loaded["rustaceanvim.config.internal"] = {
+			server = { handlers = { ["experimental/serverStatus"] = _G.original_status_handler } },
+		}
+	]])
+
+	H.watch_rust_quiescent(child)
+	child.lua([[
+		require("rustaceanvim.config.internal").server.handlers["experimental/serverStatus"](
+			nil,
+			{ quiescent = true },
+			{},
+			{}
+		)
+	]])
+	H.wait_rust_quiescent(child, 1000)
+	child.lua([[
+		local handler = require("rustaceanvim.config.internal").server.handlers["experimental/serverStatus"]
+		assert(handler == _G.original_status_handler)
+		handler(nil, { quiescent = false }, {}, {})
+	]])
+
+	eq(child.lua_get("_G.previous_calls"), 2)
 end
 
 return T
