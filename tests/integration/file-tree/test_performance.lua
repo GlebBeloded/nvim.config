@@ -7,6 +7,7 @@ local child = H.new_child()
 
 local root
 local second_root
+local unfold_root
 
 local function create_large_tree()
 	root = vim.fn.tempname() .. "/large-tree"
@@ -85,6 +86,95 @@ local function start()
 end
 
 local T = H.child_set(child, start)
+
+local unfold_child = H.new_child()
+
+local function create_unfold_tree()
+	unfold_root = vim.fn.tempname() .. "/unfold-tree"
+	vim.fn.mkdir(unfold_root, "p")
+	H.write_files(unfold_root, {
+		[".gitignore"] = "folder-60/\n",
+		["README.md"] = "fixture\n",
+	})
+	for folder_index = 1, 60 do
+		local directory = vim.fs.joinpath(unfold_root, ("folder-%02d"):format(folder_index))
+		vim.fn.mkdir(directory, "p")
+		for file_index = 1, 50 do
+			for _, suffix in ipairs({ ".ts", ".test.ts" }) do
+				local path = vim.fs.joinpath(directory, ("source-%03d%s"):format(file_index, suffix))
+				local file = assert(vim.uv.fs_open(path, "w", 420))
+				assert(vim.uv.fs_close(file))
+			end
+		end
+	end
+	H.git(unfold_root, { "init", "-q", "-b", "main" })
+end
+
+local function start_unfold()
+	create_unfold_tree()
+	unfold_child.start_config()
+	unfold_child.wait_very_lazy()
+	unfold_child.lua([[require("gleb.file_tree.settings").setup({ path = ... })]], {
+		vim.fs.joinpath(H.root, "settings", "file_tree.json"),
+	})
+	unfold_child.cmd("cd " .. vim.fn.fnameescape(unfold_root))
+	unfold_child.cmd("edit " .. vim.fn.fnameescape(vim.fs.joinpath(unfold_root, "README.md")))
+	unfold_child.type_keys("<M-e>")
+	assert(
+		unfold_child.wait(
+			[=[(function()
+				local view = require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()]
+				return view ~= nil and #view.rows > 0
+			end)()]=],
+			math.ceil(3000 * H.load_factor())
+		),
+		"project tree did not open"
+	)
+	assert(
+		unfold_child.wait(
+			[=[(function()
+				local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+				local git = require("gleb.file_tree.git")
+				local state = git.state.roots[view.root]
+				if not state or git.state.runs == 0 or state.timer ~= nil or state.in_flight then
+					return false
+				end
+				return not vim.iter(view.rows):any(function(row)
+					return row.label == "folder-60"
+				end)
+			end)()]=],
+			math.ceil(10000 * H.load_factor())
+		),
+		"project tree ignore state did not settle"
+	)
+end
+
+T["file-tree: Project tree unfold all meets the large-tree bound"] = H.child_set(unfold_child, start_unfold)
+T["file-tree: Project tree unfold all meets the large-tree bound"]["stops promptly at the row limit"] = function()
+	local notifications = H.record_notify(unfold_child)
+	eq(
+		unfold_child.lua_get(
+			[[vim.tbl_count(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()].expanded)]]
+		),
+		0
+	)
+	unfold_child.lua([[FileTreeUnfoldStarted = vim.uv.hrtime()]])
+
+	unfold_child.type_keys("zR")
+
+	local result = unfold_child.lua_get([[(function()
+		local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+		return {
+			elapsed_ms = (vim.uv.hrtime() - FileTreeUnfoldStarted) / 1e6,
+			rows = #view.rows,
+		}
+	end)()]])
+	assert(result.elapsed_ms <= 500 * H.load_factor(), ("unfold all took %.2f ms"):format(result.elapsed_ms))
+	assert(result.rows <= 5001, "unfold all exceeded the row limit")
+	eq(notifications(), {
+		{ msg = "Unfold all stopped at 5000 rows", level = vim.log.levels.WARN },
+	})
+end
 
 local function create_second_worktree()
 	second_root = vim.fn.tempname() .. "-worktree"

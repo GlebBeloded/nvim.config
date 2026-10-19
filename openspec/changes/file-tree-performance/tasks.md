@@ -10,6 +10,7 @@ Scenarios: `file-tree: Project tree redraw meets the large-tree bound`, `file-tr
 - Store prepared row indices on each view so visible-path follow can select directly while absent paths retain reconstruction behavior.
 - Reconcile at most 16 watch handles per scheduled batch so large ownership changes yield between libuv operations.
 - Serialize asynchronous expansion-state replacements and discard callbacks from reset state so only the newest in-memory state can commit.
+- Count and expand each file nest when its parent is visited so the row cap matches the final render without a second traversal.
 
 ## 2. Coalesce watcher, write and git refreshes
 Scenarios: `file-tree: Project tree coalesces a save burst`, `file-tree: Unchanged git status does not redraw the project tree`, `file-tree: Project tree save leaves the main path promptly`
@@ -38,10 +39,10 @@ Scenarios: `file-tree: Project tree re-roots without waiting for repository disc
 
 ## 5. Make unfold-all linear
 Scenarios: `file-tree: Project tree unfold all meets the large-tree bound`
-- [ ] 5.1 Write the integration test in `tests/integration/file-tree/test_performance.lua`, driving normal-mode `zR` on the generated 60-by-100 fixture with real ignore and nesting settings, and see the load-scaled 500 ms bound fail
-- [ ] 5.2 Replace repeated row rebuilding with one traversal that updates expansion state, counts listed and nested rows, preserves the ignored-folder gate, stops at the existing cap, and builds final rows once
-- [ ] 5.3 Run `make test FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree unfold all meets the large-tree bound"` and see it pass
-- [ ] 5.4 Run `make probe SCRIPT=openspec/changes/file-tree-performance/probe.lua` on the same disposable config fixture before and after implementation and record the post-change values beside the baseline below
+- [x] 5.1 Write the integration test in `tests/integration/file-tree/test_performance.lua`, driving normal-mode `zR` on the generated 60-by-100 fixture with real ignore and nesting settings, and see the load-scaled 500 ms bound fail
+- [x] 5.2 Replace repeated row rebuilding with one traversal that updates expansion state, counts listed and nested rows, preserves the ignored-folder gate, stops at the existing cap, and builds final rows once
+- [x] 5.3 Run `make test FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree unfold all meets the large-tree bound"` and see it pass
+- [x] 5.4 Run `make probe SCRIPT=openspec/changes/file-tree-performance/probe.lua` on the same disposable config fixture before and after implementation and record the post-change values beside the baseline below
 - [ ] 5.5 Run `make quick`, then run `make check`, and fix implementation defects without weakening any scenario
 
 ## Measurements
@@ -53,4 +54,4 @@ Refreshed 2026-10-19 baseline on a disposable clone of this config:
 | redraw with 400 expanded directories | 1,227 | 148.96 ms | pending task 5.4 |
 | write (`BufWritePost` + watcher + git) | 1,227 | 358.02 ms, 2 draws | pending task 5.4 |
 | already-listed `BufEnter` follow | 1,227 | 97.22 ms, 1 draw | pending task 5.4 |
-| `unfold_all` | 2,207 | 43,337.38 ms, 632 row builds | pending task 5.4 |
+| `unfold_all` | 2,207 | 43,337.38 ms, 632 row builds | 451.17 ms, 1 row build (same 2,216-row fixture: 18,463.60 ms and 634 row builds before) |
