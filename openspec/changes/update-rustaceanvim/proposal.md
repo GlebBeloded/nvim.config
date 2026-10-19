@@ -3,6 +3,7 @@
 ## Why
 
 Kind: bug
+Adopt: loop/update-rustaceanvim-20261019-161311
 
 Upgrade rustaceanvim from `88575b98bb9937fb9983ddec5e532b67e75ce677` (v6.9.7) to
 `9cb125de42c0256ed1bc1f9ded8d8f0381317a17` (v9.2.1), while keeping Rust Find Usages behavior. The
@@ -57,3 +58,26 @@ None.
 ## Status
 
 Pinned back in lazy-lock.json: the fix loop did not ship. The unfinished attempt is on branch `loop/update-rustaceanvim-20261019-132103-attempt`. Resume with `make update PLUGIN=rustaceanvim`.
+
+## Rejected run
+Run on `loop/update-rustaceanvim-20261019-161311` was rejected by the judge:
+- fix loop exhausted with gates still red: tests
+- test added then removed during build: go, js, lua, python, shell, terraform
+- last failures:
+  make check is red:
+  full log: /Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/0fe678db-1e2b-4ac3-9350-2757bfa77fc1/check-10.log
+  check: waiting for the check lock held by pid 27137 (/Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/worktrees/loop/file-tree-performance-20261019-175204) at /Users/hlebbeladzed/.cache/nvim-check-lock
+  ok   lint             0.7 s
+  ok   specs            0.7 s
+  ok   trace            1.2 s
+  ok   types            3.6 s
+  ok   chain            7.3 s
+  ok   smoke-health    16.7 s
+  ok   stack           28.6 s
+  FAIL test           285.0 s
+  ok   e2e            348.8 s
+- note: loop: FAIL in tests/unit/loop/test_gate.lua | loop: Gate stops on sandbox infra that fails again on rerun:
+- note: loop: FAIL in tests/unit/shortcuts/test_sandbox.lua | shortcuts: sandbox.sh e2e waits while another checkout holds the sandbox lock:
+- note: loop: FAIL in tests/unit/shortcuts/test_sandbox.lua | shortcuts: CHECK_LOCK=0 runs make check without the check lock:
+- note: loop: Error: VM 'nvim-e2e' is not running
+- note: loop: FAIL in tests/unit/loop/test_drain.lua | loop: Drain gives a re-queued change one more run:
