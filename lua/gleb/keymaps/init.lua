@@ -4,6 +4,20 @@
 local BRACKET_PAIRS =
 	{ "b", "B", "t", "T", "<C-T>", "a", "A", "l", "L", "<C-L>", "q", "Q", "<C-Q>", "d", "D", "<Space>" }
 
+local original_paste = vim.paste
+
+---@param lines string[]
+---@param phase integer
+---@return boolean?
+local function paste(lines, phase)
+	if not vim.bo.modifiable then
+		return false
+	end
+	return original_paste(lines, phase)
+end
+
+vim.paste = paste
+
 ---@type table<string, string[]>
 local DEFAULTS = {
 	n = { "gO", "gx", "<C-W>d", "<C-W><C-D>" },
