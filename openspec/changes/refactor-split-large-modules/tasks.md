@@ -6,6 +6,7 @@ Scenarios: `file-tree: Directory argument opens the project tree`
 
 - Lifecycle receives view callbacks so teardown and hijacking move out without creating a module cycle.
 - Folds receive drawing hooks so fold coordination moves out without creating a module cycle.
+- The public ops module keeps thin move wrappers because clipboard paste also dispatches through `M.move`.
 
 ## 2. Extract file-tree folds
 Scenarios: `file-tree: za toggles a nest`
@@ -13,7 +14,7 @@ Scenarios: `file-tree: za toggles a nest`
 
 ## 3. Extract file-tree moves
 Scenarios: `file-tree: Project tree r renames a file and its buffer`
-- [ ] 3.1 Run `make test FILE=tests/integration/file-tree/test_project_ops.lua CASE="Project tree r renames a file and its buffer"` and see it pass, move rename and move implementation into `lua/gleb/file_tree/ops/move.lua` while preserving `lua/gleb/file_tree/ops.lua` as the public entry point, run it again and see it pass
+- [x] 3.1 Run `make test FILE=tests/integration/file-tree/test_project_ops.lua CASE="Project tree r renames a file and its buffer"` and see it pass, move rename and move implementation into `lua/gleb/file_tree/ops/move.lua` while preserving `lua/gleb/file_tree/ops.lua` as the public entry point, run it again and see it pass
 
 ## 4. Extract file-tree clipboard operations
 Scenarios: `file-tree: Project tree c and p copy a file into another folder`
