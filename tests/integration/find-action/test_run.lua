@@ -75,7 +75,7 @@ local function start()
 				id = "lazy.close",
 				title = "Close Lazy",
 				category = "Lazy",
-				plugin = "lazy",
+				ft = "lazy",
 				run = function() LazyClose = (LazyClose or 0) + 1 end,
 			},
 			RealCatalog:get("find_action.open"),
@@ -288,17 +288,12 @@ T["find-action: Shortcut and palette use update recent actions"] = function()
 	child.type_keys("toggle first<CR>")
 	assert(child.wait("ToggleFirst == true", 5000), "Palette action did not run")
 	child.type_keys("<Esc>")
-	child.lua([[
-		local actions = require("gleb.actions")
-		local mappings = require("gleb.actions.adapters.lazy").mappings(
-			actions.state.applicator.catalog,
-			actions.state.store.last_good
-		)
-		vim.keymap.set("n", "q", mappings.q, { buffer = true })
-	]])
+	child.cmd("setfiletype lazy")
 	child.type_keys("q")
 	assert(child.wait("LazyClose == 1", 5000), "lazy.nvim action did not run")
+	child.lua([[vim.bo.filetype = ""]])
 	eq(child.lua_get([[require("gleb.find_action.items").history():load()]]), {
+		"lazy.close",
 		"test.toggle_first",
 		"find_action.open",
 		"test.regular",
