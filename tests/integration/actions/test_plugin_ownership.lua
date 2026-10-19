@@ -177,6 +177,8 @@ T["actions: Plugin-window mappings are action-owned"]["reaps a blocked surface's
 
 	eq(opened, false)
 	eq(tostring(err):find("blocked descendant surface open failed", 1, true) ~= nil, true)
+	eq(tostring(err):find("phase: opening", 1, true) ~= nil, true)
+	eq(tostring(err):find("sleep 60", 1, true) ~= nil, true)
 	local recorded_pid = assert(vim.fn.readfile(pid_file)[1], "blocked shell did not record its child pid")
 	local sleep_pid = assert(tonumber(recorded_pid), "blocked shell recorded an invalid child pid")
 	local remained_alive = vim.uv.kill(sleep_pid, 0) == 0
