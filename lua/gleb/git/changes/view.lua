@@ -456,6 +456,9 @@ function M.close(view)
 		unload_clean_buffer(buf)
 	end
 	view.loaded_buffers = {}
+	if vim.api.nvim_win_is_valid(view.win) and #vim.api.nvim_tabpage_list_wins(view.tab) == 1 then
+		view.editor_win = file_tree_view.eligible_editor(view)
+	end
 	if vim.api.nvim_win_is_valid(view.editor_win) then
 		vim.api.nvim_set_current_win(view.editor_win)
 	end

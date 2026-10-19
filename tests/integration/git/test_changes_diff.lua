@@ -761,4 +761,31 @@ T["git: Project tree replaces the changes panel"] = function()
 	eq(result, { changes = false, diff = false, leftmost = "gleb-file-tree", focused = true })
 end
 
+T["git: Project tree replaces a last-window changes panel"] = function()
+	local root = F.copy("dirty", vim.fn.tempname() .. "/dirty")
+	open_changes(root, "a.txt")
+	child.lua([[
+		local view = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		vim.api.nvim_win_close(view.editor_win, true)
+		assert(#vim.api.nvim_tabpage_list_wins(0) == 1)
+
+		local action = assert(require("gleb.actions").state.applicator.catalog:get("file_tree.toggle"))
+		action.run(require("gleb.actions.context").capture())
+	]])
+	eq(child.wait([[vim.bo.filetype == "gleb-file-tree"]], ASYNC_MS), true)
+
+	local result = child.lua_get([[(function()
+		local filetypes = {}
+		for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+			filetypes[vim.bo[vim.api.nvim_win_get_buf(win)].filetype] = true
+		end
+		return {
+			changes = filetypes["gleb-changes"] or false,
+			diff = filetypes["gleb-diff"] or false,
+			focused = vim.bo.filetype,
+		}
+	end)()]])
+	eq(result, { changes = false, diff = false, focused = "gleb-file-tree" })
+end
+
 return T
