@@ -10,6 +10,7 @@ Scenarios: `file-tree: Directory argument opens the project tree`
 - The clipboard module owns the shared operation-state table so public state inspection stays stable across the extraction.
 - The deletion module receives the public operation state so trash overrides keep following resets without duplicate state.
 - Diff mappings receive the public window registry so they can preserve routing without creating a module cycle.
+- Diff autocmds receive redraw and index-refresh callbacks so event ownership moves out without creating a module cycle.
 
 ## 2. Extract file-tree folds
 Scenarios: `file-tree: za toggles a nest`
@@ -33,7 +34,7 @@ Scenarios: `diff: Diff view mappings come from diff actions`
 
 ## 7. Extract diff-view autocmds
 Scenarios: `diff: Diff view re-diffs after an edit`
-- [ ] 7.1 Run `make test FILE=tests/integration/diff/test_view_keys.lua CASE="Diff view re-diffs after an edit"` and see it pass, move redraw scheduling, buffer attachment, window synchronization, and interaction autocmds into `lua/gleb/diff/view/autocmds.lua`, run it again and see it pass
+- [x] 7.1 Run `make test FILE=tests/integration/diff/test_view_keys.lua CASE="Diff view re-diffs after an edit"` and see it pass, move redraw scheduling, buffer attachment, window synchronization, and interaction autocmds into `lua/gleb/diff/view/autocmds.lua`, run it again and see it pass
 
 ## 8. Extract references formatting and layout
 Scenarios: `references: Wide view matches reference screenshot`
