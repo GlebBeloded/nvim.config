@@ -20,4 +20,4 @@ config uses none of them (`check = clippy`, `cargo.allFeatures`). Latest: v9.2.1
 ## Impact
 
 - `lua/gleb/plugins/plugins.lua` (one line).
-- The rustaceanvim and Rust references cases keep passing on the current pin; the pin moves in the follow-up `make update`.
+- `references: Rust usages in production and test code` keeps passing on the current pin; the pin moves in the follow-up `make update`.

@@ -236,7 +236,7 @@ local plugins = {
 	-- grouped code actions, hover actions). Replaces lspconfig's rust_analyzer.
 	{
 		"mrcjkb/rustaceanvim",
-		version = "^6",
+		version = "^9",
 		lazy = false, -- plugin self-lazies via ftplugin/rust
 		init = function()
 			vim.g.rustaceanvim = {
