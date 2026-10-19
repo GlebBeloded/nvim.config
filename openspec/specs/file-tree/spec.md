@@ -574,7 +574,7 @@ Folder copy SHALL preflight the complete destination before writing and recreate
 `settings/file_tree.json` SHALL hold `nesting.enabled` and the ordered list `nesting.rules`. A pattern rule's `parent` and `children` SHALL be Lua patterns matched against a whole file name. A child template's `${capture}` (first capture) and `${1}`…`${9}` SHALL insert the parent's captures literally. A rule with a malformed pattern or an unknown capture SHALL be skipped with a WARN. An unreadable file SHALL disable nesting with an ERROR, and a write from Neovim SHALL reload it.
 
 #### Scenario: Nesting rule nests by capture
-- **WHEN** `require("gleb.file_tree.nesting").nest(dir, entries, rules)` gets the files `discount.go`, `discount_test.go`, `invoice.go`, `invoice_test.go`, `invoice_mock.go`, `tax.go` and the one rule `{ parent = "(.+)%.go", children = { "${capture}_test%.go", "${capture}_mock%.go" } }`
+- **WHEN** `require("gleb.tree.nesting").nest(dir, entries, rules)` gets the files `discount.go`, `discount_test.go`, `invoice.go`, `invoice_test.go`, `invoice_mock.go`, `tax.go` and the one rule `{ parent = "(.+)%.go", children = { "${capture}_test%.go", "${capture}_mock%.go" } }`
 - **THEN** it returns exactly `{ ["discount.go"] = { "discount_test.go" }, ["invoice.go"] = { "invoice_mock.go", "invoice_test.go" } }`
 
 #### Scenario: Nesting patterns match whole names
@@ -894,18 +894,18 @@ After Show Ignored, the tree SHALL look like the approved render.
 - **THEN** the screen matches the approved render "Proposed — after Show Ignored"
 
 ### Requirement: Shared porcelain status records
-`gleb.file_tree.model.parse_status_records(z)` SHALL parse every porcelain-v2 NUL record once into ordered `{ kind, xy, sub, path, orig }` values. A `2` record SHALL consume its following original-path field. `parse_status(z, prefix)` and the ignored-path set SHALL remain wrappers over those records, and the Changes panel SHALL consume only those records.
+`gleb.git.status.parse_records(z)` SHALL parse every porcelain-v2 NUL record once into ordered `{ kind, xy, sub, path, orig }` values. A `2` record SHALL consume its following original-path field. `gleb.git.status.parse(z, prefix)` and the ignored-path set SHALL remain wrappers over those records, and the Changes panel SHALL consume only those records.
 
 #### Scenario: Shared parser preserves rename and copy origins
-- **WHEN** `parse_status_records` receives NUL-delimited `2` records for a rename and a copy
+- **WHEN** `gleb.git.status.parse_records` receives NUL-delimited `2` records for a rename and a copy
 - **THEN** each result has kind `2`, its XY and submodule fields, the destination in `path`, and the following NUL field in `orig`
 
 #### Scenario: Shared parser classifies added and unmerged records
-- **WHEN** `parse_status` receives an ordinary `.A` record and a `u` record
+- **WHEN** `gleb.git.status.parse` receives an ordinary `.A` record and a `u` record
 - **THEN** the ordinary path is `added`, the unmerged path is `conflict`, and neither record is ignored
 
 #### Scenario: Shared parser keeps ignored records separate
-- **WHEN** `parse_status` receives a modified tracked record, an untracked record and an ignored record
+- **WHEN** `gleb.git.status.parse` receives a modified tracked record, an untracked record and an ignored record
 - **THEN** the status map contains the modified and untracked paths while the ignored set alone contains the ignored path
 
 ### Requirement: Project tree opens for a directory buffer
