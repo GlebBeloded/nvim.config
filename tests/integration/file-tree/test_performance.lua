@@ -203,6 +203,39 @@ local function install_replacement_counter()
 	]=])
 end
 
+local function make_next_git_refresh_immediate()
+	child.lua(
+		[=[
+		local root = ...
+		local original = vim.system
+		local prefix = original({ "git", "-C", root, "rev-parse", "--show-prefix" }, { text = true }):wait()
+		local command = assert(require("gleb.file_tree.git").state.last_cmd)
+		local status = original(command, { text = true }):wait()
+		local results = { prefix, status }
+		local expected = {
+			{ "git", "-C", root, "rev-parse", "--show-prefix" },
+			command,
+		}
+		local next_result = 1
+		vim.system = function(cmd, opts, callback)
+			if callback and vim.deep_equal(cmd, expected[next_result]) then
+				local result = results[next_result]
+				next_result = next_result + 1
+				if next_result > #results then
+					vim.system = original
+				end
+				vim.schedule(function()
+					callback(result)
+				end)
+				return {}
+			end
+			return original(cmd, opts, callback)
+		end
+	]=],
+		{ root }
+	)
+end
+
 local function install_open_replacement_counter()
 	child.lua([=[
 		FileTreeOriginalSetLines = vim.api.nvim_buf_set_lines
@@ -359,6 +392,7 @@ T["file-tree: Project tree coalesces a save burst"] = function()
 end
 
 T["file-tree: Unchanged git status does not redraw the project tree"] = function()
+	make_next_git_refresh_immediate()
 	install_replacement_counter()
 	local baseline_runs = child.lua_get([[require("gleb.file_tree.git").state.runs]])
 	child.lua([[require("gleb.file_tree.git").refresh(...)]], { root })

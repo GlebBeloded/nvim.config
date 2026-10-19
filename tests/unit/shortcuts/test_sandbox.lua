@@ -224,24 +224,33 @@ local function temp_plist()
 end
 
 --- Bash that takes `sandbox_lock "$1"` from tests/sandbox/lock.sh, appends the time it got it to
---- "$2", and holds the lock for "$3" s; just before exiting it appends its leaving time to "$2".
+--- "$2", and holds the lock for "$3" s or until the `release:` path exists; just before exiting it
+--- appends its leaving time to "$2".
 local LOCK_SCRIPT = [[source "$LOCK_SH"
 sandbox_lock "$1"
 now() { perl -MTime::HiRes=time -e 'printf "%.3f\n", time'; }
 owner=$(head -1 "$1/owner")
 echo "got $(now) ${owner%% *}" >>"$2"
-sleep "$3"
+case "$3" in
+release:*)
+	release=${3#release:}
+	while [ ! -e "$release" ]; do sleep 0.05; done
+	;;
+*) sleep "$3" ;;
+esac
 echo "left $(now)" >>"$2"
 ]]
 
 ---@class SandboxLocker
 ---@field pid integer
 ---@field log string the `got <time> <pid>` / `left <time>` lines
+---@field release? string path whose creation releases a synchronized locker
 
---- Starts LOCK_SCRIPT on `dir` in the background, holding the lock `hold` s; `name` keys it in the child.
+--- Starts LOCK_SCRIPT on `dir` in the background, holding the lock `hold` s or until its release path exists;
+--- `name` keys it in the child.
 ---@param name string
 ---@param dir string
----@param hold number
+---@param hold number|string
 ---@param env? table<string, string>
 ---@return SandboxLocker
 local function start_locker(name, dir, hold, env)
@@ -259,6 +268,16 @@ local function start_locker(name, dir, hold, env)
 		}
 	)
 	return { pid = pid, log = log }
+end
+
+---@param name string
+---@param dir string
+---@return SandboxLocker
+local function start_synchronized_locker(name, dir)
+	local release = vim.fs.joinpath(tempdir(), "release")
+	local locker = start_locker(name, dir, "release:" .. release)
+	locker.release = release
+	return locker
 end
 
 --- Waits for the locker `name` to exit.
@@ -736,7 +755,7 @@ end
 
 T["shortcuts: CHECK_LOCK=0 runs make check without the check lock"] = function()
 	local env = check_env()
-	local holder = start_locker("holder", env.CHECK_LOCK_DIR, 4)
+	local holder = start_synchronized_locker("holder", env.CHECK_LOCK_DIR)
 	wait_owner(env.CHECK_LOCK_DIR, holder.pid)
 	env.CHECK_LOCK = "0"
 
@@ -746,6 +765,7 @@ T["shortcuts: CHECK_LOCK=0 runs make check without the check lock"] = function()
 	eq(run.stderr:find("waiting for", 1, true), nil, { fail_reason = run.stderr })
 	eq(locker_time(holder.log, "left"), nil)
 	eq(lock_owner(env.CHECK_LOCK_DIR), holder.pid)
+	child.fn.writefile({}, holder.release)
 	eq(wait_locker("holder").code, 0)
 end
 
