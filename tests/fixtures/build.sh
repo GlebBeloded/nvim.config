@@ -15,6 +15,7 @@
 #   build.sh treeproj Project-tree sample with modified, added, untracked and ignored files
 # Git is hermetic: no user or system config, fixed author, committer and dates.
 set -eu
+unset $(git rev-parse --local-env-vars) # GIT_DIR & co. leaked from `git bisect run` or a hook: `git init` would re-init the real repo (core.bare=true, 2026-10-19)
 root=$(cd "$(dirname "$0")/../.." && pwd)
 name=${1:?usage: build.sh <fixture>}
 out="$root/.tests/fixtures"

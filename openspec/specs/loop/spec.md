@@ -1067,3 +1067,10 @@ a test child SHALL exit when its test worker is gone, `make test FILE=<directory
 #### Scenario: Check prunes stale Neovim temp dirs
 - **WHEN** `tests/prune_tmp.sh` runs on a root holding an old unused dir, a young dir, and an old dir a running process names
 - **THEN** only the old unused dir is removed and the script reports one removal
+
+### Requirement: Test bootstrap ignores a leaked GIT_DIR
+`tests/bootstrap.sh` and `tests/fixtures/build.sh` SHALL unset Git's local environment (`git rev-parse --local-env-vars`) before any git command, so a `make test` run from `git bisect run` or a hook never re-initializes the real repository, and `followup.py` SHALL refuse to move the base branch while the repository reads as bare.
+
+#### Scenario: Test bootstrap ignores a leaked GIT_DIR
+- **WHEN** both scripts are read, and `git init <dir>` runs after that unset with `GIT_DIR` naming another repository's `.git`
+- **THEN** both scripts carry the unset, the other repository's `core.bare` stays `false` and `<dir>` gets its own `.git`

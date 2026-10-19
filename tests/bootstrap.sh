@@ -2,6 +2,7 @@
 # Fetch pinned test dependencies into .tests/deps (gitignored).
 # Not part of the user's plugin list; only the test runner and LuaLS load them.
 set -eu
+unset $(git rev-parse --local-env-vars) # GIT_DIR & co. leaked from `git bisect run` or a hook: `git init` would re-init the real repo (core.bare=true, 2026-10-19)
 
 MINI_COMMIT="1345d191bb3da9c7b0e977f4387c5761f9bff68d" # mini.nvim v0.18.0
 DEPS_DIR="${TEST_DEPS_DIR:-.tests/deps}"
