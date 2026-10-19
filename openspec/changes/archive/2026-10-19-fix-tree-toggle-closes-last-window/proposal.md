@@ -27,6 +27,19 @@ diff windows).
 - Toggling the project tree with the Changes panel open replaces the panel in every layout, including when the panel's
   window is the last one in the tab, without an error.
 
+## Evidence
+
+- `lua/gleb/file_tree/view.lua:990-995` closes the Changes panel synchronously before opening the project tree.
+- `lua/gleb/git/changes/view.lua:447-467` closes the owned diff first, but calls `nvim_win_close` on the panel without
+  handling the panel being the tab's last window.
+- A headless probe with the Changes panel as the tab's only window reports `windows_before = 1` and
+  `Vim:E444: Cannot close last window` from `lua/gleb/git/changes/view.lua:463` when `file_tree.toggle` runs.
+- A headless probe with only the Changes panel and its owned diff layout reports `ok = true`; diff teardown restores an
+  editor window and the resulting layout contains `gleb-file-tree` and the restored text window.
+
 ## Impact
 
 - `lua/gleb/git/changes/view.lua` (close), `lua/gleb/file_tree/view.lua` (`open_replacing_changes`).
+- No plugin dependency is added, removed or upgraded.
+- Core keymaps do not change.
+- Out of scope: changing the Changes panel or project-tree appearance, or changing their shared-left-side policy.
