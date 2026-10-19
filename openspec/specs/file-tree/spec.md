@@ -211,7 +211,7 @@ One normalizer SHALL identify roots, buffers, git toplevels and HOME-relative pa
 - **THEN** the folder remains a row with no children and no error or notification is raised
 
 ### Requirement: Project tree live updates
-The tree SHALL cache scans and watch every folder whose scan feeds a row, every expanded folder, and the repository git dir. A watch event SHALL invalidate the affected cache, redraw within 1000 ms, and rerun git status when relevant. Handles SHALL stop when no tree for their root needs them. Global `DirChanged` SHALL re-root the current tab's tree.
+The tree SHALL cache scans and watch every folder whose scan feeds a row, every expanded folder, and the repository git dir. If a safety cap or watch-start failure leaves a listed directory unwatched, the tree SHALL periodically invalidate and rescan it. A filesystem change SHALL redraw within 1000 ms and rerun git status when relevant. Handles and fallback work SHALL stop when no tree for their root needs them. Global `DirChanged` SHALL re-root the current tab's tree.
 
 #### Scenario: Project tree shows files created outside Neovim
 - **WHEN** the project tree shows the expanded `internal/billing` folder and `touch internal/billing/fee.go` runs as an external process
@@ -248,6 +248,10 @@ The tree SHALL cache scans and watch every folder whose scan feeds a row, every 
 #### Scenario: Project tree caps watched folders
 - **WHEN** the watch-handle cap is lowered for the test and more expanded folders feed visible rows than the cap permits
 - **THEN** the number of live folder handles does not exceed the cap, visible rows remain usable, and no error is raised
+
+#### Scenario: Project tree updates the last folder beyond the legacy watch limit
+- **WHEN** the project tree has more than 256 expanded listed directories and an external process creates a file in the alphabetically last directory
+- **THEN** within 1000 ms the new file appears in the tree even when that directory has no live watch handle
 
 ### Requirement: Project tree remembers expanded folders
 The tree SHALL merge relative expanded paths per normalized root into `stdpath("state")/file_tree/expanded.json` with an atomic replacement, preserving other roots, and restore them on open. Missing folders SHALL be dropped. A root without state SHALL start with only the root expanded. Re-rooting SHALL also refresh the worktree's absolute git dir.

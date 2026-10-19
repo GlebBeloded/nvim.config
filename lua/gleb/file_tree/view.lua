@@ -344,6 +344,35 @@ local function prepare_draw(view, path)
 	}
 end
 
+---@param view FileTreeView
+---@param watched table<string, boolean>
+---@return table<string, number>
+local function prioritize_watches(view, watched)
+	local priorities = {}
+	for scan_path in pairs(watched) do
+		priorities[scan_path] = math.huge
+	end
+	local cursor = vim.api.nvim_win_get_cursor(view.win)[1]
+	local viewport = vim.api.nvim_win_call(view.win, function()
+		return { vim.fn.line("w0"), vim.fn.line("w$") }
+	end)
+	for index, row in ipairs(view.rows) do
+		local visible_penalty = index >= viewport[1] and index <= viewport[2] and 0 or #view.rows + 1
+		local priority = visible_penalty + math.abs(index - cursor)
+		local scan_path = row.path
+		while scan_path and vim.startswith(scan_path, view.root) do
+			if priorities[scan_path] and priority < priorities[scan_path] then
+				priorities[scan_path] = priority
+			end
+			if scan_path == view.root then
+				break
+			end
+			scan_path = vim.fs.dirname(scan_path)
+		end
+	end
+	return priorities
+end
+
 local schedule_dirty
 local request_git
 
@@ -358,7 +387,7 @@ local function draw(view, path, prepared)
 	view.rows_by_path = prepared.rows_by_path
 	render.draw(view.buf, view.rows)
 	restore_cursor(view, path, rows_before, cursor_line)
-	watch.sync(view.root, view.tab, prepared.watched, function(changed_path)
+	watch.sync(view.root, view.tab, prioritize_watches(view, prepared.watched), function(changed_path)
 		if M.state.by_tab[view.tab] ~= view or not vim.api.nvim_buf_is_valid(view.buf) then
 			return
 		end

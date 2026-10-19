@@ -653,6 +653,43 @@ T["file-tree: Project tree caps watched folders"] = function()
 	eq(watched, { handle_count = 2, has_compact_row = true, has_unwatched_row = true })
 end
 
+T["file-tree: Project tree updates the last folder beyond the legacy watch limit"] = function()
+	local expanded = {}
+	for index = 1, 257 do
+		local relative = ("z-folder-%03d"):format(index)
+		local directory = vim.fs.joinpath(root, relative)
+		vim.fn.mkdir(directory, "p")
+		vim.fn.writefile({ "seed" }, vim.fs.joinpath(directory, "seed.txt"))
+		expanded[relative] = true
+	end
+	child.lua(
+		[[(function(root, paths)
+			require("gleb.file_tree.expanded").save(require("gleb.file_tree.fs").normalize(root), paths)
+		end)(...)]],
+		{ root, expanded }
+	)
+
+	edit("z-folder-001/seed.txt")
+	run_action("file_tree.toggle")
+	local target = vim.fs.joinpath(root, "z-folder-257")
+	local unwatched = child.lua_get(
+		[[(function(root, path, timeout)
+			root = require("gleb.file_tree.fs").normalize(root)
+			path = require("gleb.file_tree.fs").normalize(path)
+			return vim.wait(timeout, function()
+				local handles = assert(require("gleb.file_tree.watch").state.roots[root]).handles
+				return vim.tbl_count(handles) == 256 and handles[path] == nil
+			end, 20)
+		end)(...)]],
+		{ root, target, math.ceil(3000 * H.load_factor()) }
+	)
+	eq(unwatched, true)
+
+	local result = H.system(child, { "touch", vim.fs.joinpath(target, "last.txt") }, root)
+	eq(result.code, 0)
+	eq(wait_for_tree_row("last.txt"), true)
+end
+
 T["file-tree: Project tree shares root work across tabs"] = function()
 	edit("README.md")
 	run_action("file_tree.toggle")

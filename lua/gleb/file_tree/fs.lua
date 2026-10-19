@@ -4,9 +4,19 @@ local M = {}
 
 ---@class FileTreeFsState
 ---@field cache table<string, FileTreeEntry[]>
+---@field scan_stamps table<string, string|false>
 
 ---@type FileTreeFsState
-M.state = { cache = {} }
+M.state = { cache = {}, scan_stamps = {} }
+
+---@param stat uv.fs_stat.result?
+---@return string|false
+local function directory_stamp(stat)
+	if not stat then
+		return false
+	end
+	return ("%d:%d"):format(stat.mtime.sec, stat.mtime.nsec)
+end
 
 --- Resolve a path through its nearest existing parent.
 ---@param path string
@@ -39,6 +49,7 @@ end
 ---@return nil
 function M.reset()
 	M.state.cache = {}
+	M.state.scan_stamps = {}
 end
 
 --- Remove one directory scan from the cache.
@@ -57,19 +68,18 @@ function M.invalidate_root(root)
 			M.state.cache[path] = nil
 		end
 	end
+	for path in pairs(M.state.scan_stamps) do
+		if path == root or vim.startswith(path, root .. "/") then
+			M.state.scan_stamps[path] = nil
+		end
+	end
 end
 
---- Scan a directory, returning an empty list when it cannot be read.
 ---@param path string
+---@param handle uv.uv_fs_t?
 ---@return FileTreeEntry[]
-function M.scan(path)
-	local cached = M.state.cache[path]
-	if cached then
-		return cached
-	end
-
+local function read_scan(path, handle)
 	local entries = {}
-	local handle = vim.uv.fs_scandir(path)
 	if handle then
 		while true do
 			local name, kind = vim.uv.fs_scandir_next(handle)
@@ -86,8 +96,57 @@ function M.scan(path)
 			}
 		end
 	end
-	M.state.cache[path] = entries
 	return entries
+end
+
+--- Scan a directory, returning an empty list when it cannot be read.
+---@param path string
+---@return FileTreeEntry[]
+function M.scan(path)
+	local cached = M.state.cache[path]
+	if cached then
+		return cached
+	end
+
+	local stamp = directory_stamp(vim.uv.fs_stat(path))
+	local entries = read_scan(path, vim.uv.fs_scandir(path))
+	M.state.cache[path] = entries
+	M.state.scan_stamps[path] = stamp
+	return entries
+end
+
+--- Read the directory stamp without blocking the main loop.
+---@param path string
+---@param callback fun(stamp: string|false)
+---@return nil
+function M.scan_stamp_async(path, callback)
+	local request = vim.uv.fs_stat(path, function(_, stat)
+		callback(directory_stamp(stat))
+	end)
+	if not request then
+		callback(false)
+	end
+end
+
+--- Remember the stamp represented by an unchanged asynchronous scan.
+---@param path string
+---@param stamp string|false
+---@return nil
+function M.remember_scan_stamp(path, stamp)
+	M.state.scan_stamps[path] = stamp
+end
+
+--- Read a directory without blocking the main loop or changing the cache.
+---@param path string
+---@param callback fun(entries: FileTreeEntry[])
+---@return nil
+function M.scan_async(path, callback)
+	local request = vim.uv.fs_scandir(path, function(_, handle)
+		callback(read_scan(path, handle))
+	end)
+	if not request then
+		callback({})
+	end
 end
 
 --- Build the filesystem-backed source consumed by the pure row model.
