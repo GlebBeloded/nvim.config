@@ -56,4 +56,19 @@ T["folding: Fold keys invoke registered actions"] = function()
 	eq(fold_state(), { 1, 4 })
 end
 
+T["folding: Fold keys without a fold do nothing"] = function()
+	child.cmd("normal! zE")
+	local lines = child.lua_get([[vim.api.nvim_buf_get_lines(0, 0, -1, false)]])
+	local cursor = child.lua_get([[vim.api.nvim_win_get_cursor(0)]])
+
+	for _, lhs in ipairs({ "<M-=>", "<M-->" }) do
+		child.lua([[vim.v.errmsg = ""]])
+		child.type_keys(lhs)
+
+		eq(child.lua_get([[vim.api.nvim_buf_get_lines(0, 0, -1, false)]]), lines)
+		eq(child.lua_get([[vim.api.nvim_win_get_cursor(0)]]), cursor)
+		eq(child.lua_get([[vim.v.errmsg]]), "")
+	end
+end
+
 return T
