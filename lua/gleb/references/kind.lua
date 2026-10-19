@@ -476,8 +476,7 @@ local function fallback_position(usage, client)
 end
 
 ---@param groups table<string, gleb.references.KindUsage[]>
----@param target gleb.references.TargetKind
-local function apply_query_kinds(groups, target)
+local function apply_query_kinds(groups)
 	for uri, usages in pairs(groups) do
 		if #usages > 0 then
 			local source = table.concat(vim.fn.readfile(vim.uri_to_fname(uri)), "\n")
@@ -490,11 +489,7 @@ local function apply_query_kinds(groups, target)
 			for index, usage in ipairs(usages) do
 				local query_kind = kinds[index]
 				local is_syntactic = query_kind ~= "write" and query_kind ~= "read" and query_kind ~= "unclassified"
-				if is_syntactic then
-					usage.kind = kind_refine.refine_query_kind(query_kind, target, usage.filetype or "")
-						or usage.kind
-						or "read"
-				elseif usage.kind == nil then
+				if is_syntactic or usage.kind == nil then
 					usage.kind = query_kind
 				end
 			end
@@ -508,9 +503,8 @@ local function refine_target_kinds(usages, target)
 	for _, usage in ipairs(usages) do
 		local kind = usage.kind
 		if kind then
-			local drops_read_write = (target == "function" or target == "type") and (kind == "write" or kind == "read")
-			local refined = kind_refine.refine_query_kind(kind, target, usage.filetype or "")
-			if drops_read_write or refined == nil then
+			local refined = kind_refine.finalize(kind, target, usage.filetype or "")
+			if refined == nil then
 				usage.kind = "unclassified"
 			else
 				usage.kind = refined
@@ -555,7 +549,7 @@ function M.classify(usages, callback, origin)
 			return
 		end
 		finished = true
-		apply_query_kinds(groups, target)
+		apply_query_kinds(groups)
 		refine_target_kinds(classified, target)
 		callback(classified)
 	end

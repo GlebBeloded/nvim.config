@@ -24,7 +24,7 @@ local TYPE_POSITION_KINDS = {
 ---@param target gleb.references.TargetKind
 ---@param filetype string
 ---@return string?
-function M.refine_query_kind(kind, target, filetype)
+local function refine_query_kind(kind, target, filetype)
 	if kind == "call" and target == "type" and filetype == "python" then
 		return "new"
 	end
@@ -38,6 +38,18 @@ function M.refine_query_kind(kind, target, filetype)
 		return nil
 	end
 	return kind
+end
+
+---@param kind string
+---@param target gleb.references.TargetKind
+---@param filetype string
+---@return string?
+function M.finalize(kind, target, filetype)
+	local drops_read_write = (target == "function" or target == "type") and (kind == "write" or kind == "read")
+	if drops_read_write then
+		return nil
+	end
+	return refine_query_kind(kind, target, filetype)
 end
 
 return M
