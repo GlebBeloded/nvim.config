@@ -108,7 +108,7 @@ Scenarios: `file-tree: Project tree shows files created outside Neovim`, `file-t
 
 ## 11. Resolve the remaining changes-panel tabline colour regression
 Scenarios: `bufferline: tabline over the changes panel matches the approved render`
-- [ ] 11.1 Run `make test FILE=tests/screen/bufferline/test_bufferline_screen.lua CASE="tabline over the changes panel matches the approved render"` and record the existing column-37 `indicator_selected` colour-mask failure
+- [x] 11.1 Run `make test FILE=tests/screen/bufferline/test_bufferline_screen.lua CASE="tabline over the changes panel matches the approved render"` and record the existing column-37 `indicator_selected` colour-mask failure
 - [ ] 11.2 Make the smallest bufferline setup change that draws column 37 with `BufferLineBufferSelected` while preserving the approved text and every existing project-tree screenshot
 - [ ] 11.3 Run the named case and the other four task-6 cases and see them pass without re-approving screenshots
 
@@ -138,4 +138,5 @@ Scenarios: `bufferline: tabline over the changes panel matches the approved rend
 ## Stuck
 
 - Task 6, approved changes-panel tabline: the full-width color regression remains red. Probe output from the real setup put the Go icon at column 43; attempt 1 moved the approved test-only layout options into production and made the text byte-identical, but column 37 still drew `{ fg = #242424, bg = #242424 }` instead of `BufferLineBufferSelected` `{ fg = #ddc7a1, bg = #3e3834, bold }`. Plugin source shows that cell is rendered from `config.highlights.indicator_selected.hl_group`. Attempt 2 shared one setup highlight table between `buffer_selected` and `indicator_selected`, but the same column-37 assertion failed. Saved attempt: `/Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/f4e4e8be-19c0-4187-8093-4779cfa91b0a/stuck-attempt-6.diff`. Production edits were reverted; keep the full-width red regression.
+- Task 11, changes-panel tabline colour: the inherited probe put the Go icon at column 43. Attempt 1 selected compact tab options only while a real changes-panel window was open and redirected `indicator_selected` to `BufferLineBufferSelected`; the icon moved to column 39. Attempt 2 also removed bufferline's hidden close-icon inset, making the approved text byte-identical, but column 37 still drew `{ fg = #242424, bg = #242424 }` instead of `BufferLineBufferSelected` `{ fg = #ddc7a1, bg = #3e3834, bold }`. Saved attempt: `/Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/8aa9b091-e20f-41eb-b9a4-09e064ae8280/stuck-attempt-11.diff`. Production edits were reverted; keep the existing red screen test.
 - LSP readiness: `lua_ls` did not answer within the 10-second bound in the gate sample or its single allowed rerun (`15361 ms` and `15544 ms`, last error `vim.NIL`). Per the readiness timing rule, keep the bound and one-sample assertion unchanged.
