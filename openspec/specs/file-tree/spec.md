@@ -1,7 +1,7 @@
 # file-tree Specification
 
 ## Purpose
-Configures neo-tree as the file explorer with a `filesystem` source and a `git_status` source, where the `git_status` source previews each changed file in a reusable side-by-side diff tab and supports staging, committing and pushing (`lua/gleb/file_tree/`).
+The project tree sidebar: an owned file explorer on the left that lists, reveals, colours by git status and edits project files, and opens for directory buffers (`lua/gleb/file_tree/`).
 
 ## Requirements
 

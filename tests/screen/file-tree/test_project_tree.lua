@@ -166,6 +166,7 @@ T["file-tree: Project tree matches the approved render"] = function()
 		vim.cmd("redraw")
 	]])
 	H.expect_screen_colors(child, 2, vim.list_slice(MASK, 2, 29), LEGEND)
+	H.expect_no_neo_tree(child)
 end
 
 T["file-tree: Project tree render text matches the ANSI artifact"] = function()

@@ -49,55 +49,55 @@ Scenarios: `file-tree: Project tree v opens a vertical split`, `file-tree: Proje
 
 ## 5c. Remove neo-tree implementation and colours
 Scenarios: `file-tree: Project tree keys come from the keymap file`, `file-tree: Project tree rows have icons and no guides`, `file-tree: Project tree colours renamed and conflicted files`, `file-tree: Project tree matches the approved render`, `file-tree: Project tree opens from non-project buffers`
-- [ ] 5c.1 Extend the named project-tree tests to reject neo-tree mappings, highlights and windows, run `make test FILE=tests/screen/file-tree/test_project_tree.lua CASE="Project tree matches the approved render"`, and see the legacy surface fail the new assertion
+- [x] 5c.1 Extend the named project-tree tests to reject neo-tree mappings, highlights and windows, run `make test FILE=tests/screen/file-tree/test_project_tree.lua CASE="Project tree matches the approved render"`, and see the legacy surface fail the new assertion
 - [x] 5c.2 Remove `lua/gleb/file_tree/{neo_tree,diff_preview}.lua`, retired neo-tree/tree actions, the neo-tree block from `lua/gleb/colors/gruvbox-material/git.lua`, NeoTree highlights from `lua/gleb/colors/gruvbox-material/init.lua`, and `NeoTree` handling from `lua/gleb/colors/transparency.lua`
 - [x] 5c.3 Run the five named cases and see them pass
 
 ## 5d. Remove differ, codediff and plugin wiring
 Scenarios: `git: Removed diff plugins are not registered`, `git: Diffview mappings come from git actions`, `git: Diffview conflict choices come from git actions`, `actions: Unconfigured defaults are absent`, `actions: Lazy specs define no shortcut keys`
-- [ ] 5d.1 Update the named tests to assert only diffview mappings remain and run `make test FILE=tests/integration/git/test_git.lua CASE="Diffview mappings come from git actions"` to see the legacy adapters/defaults fail
+- [x] 5d.1 Update the named tests to assert only diffview mappings remain and run `make test FILE=tests/integration/git/test_git.lua CASE="Diffview mappings come from git actions"` to see the legacy adapters/defaults fail
 - [x] 5d.2 Remove the three plugin specs and lock entries; remove `lua/gleb/git/{differ,vscode_diff}.lua`, their actions, `lua/gleb/actions/adapters/{neo_tree,differ,codediff}.lua`, `neo_tree_scope`, the codediff audit allowlist and retired adapter assignments; remove the remaining 31 retired `settings/keymap.json` entries while keeping diffview, gitsigns and nui.nvim
 - [x] 5d.3 Run the five named cases and see them pass, then commit plugin removal separately from task 1
 
 ## 5e. Move Find Action fixtures to remaining actions
 Scenarios: `find-action: Adapter assignment reports deferred application`, `find-action: Saved shortcut applies immediately`, `find-action: Catalog rows use standalone Title Case labels`
-- [ ] 5e.1 Update `tests/integration/find-action/test_assign.lua` and `test_run.lua` catalog tables so the `neo_tree.open` fixture uses a remaining `lazy.*` adapter id and ordinary `file_tree.*`/`changes.*` actions apply immediately; run `make test FILE=tests/integration/find-action/test_assign.lua CASE="Adapter assignment reports deferred application"` and see the stale fixture fail
+- [x] 5e.1 Update `tests/integration/find-action/test_assign.lua` and `test_run.lua` catalog tables so the `neo_tree.open` fixture uses a remaining `lazy.*` adapter id and ordinary `file_tree.*`/`changes.*` actions apply immediately; run `make test FILE=tests/integration/find-action/test_assign.lua CASE="Adapter assignment reports deferred application"` and see the stale fixture fail
 - [x] 5e.2 Remove retired adapter names from `lua/gleb/find_action/assign.lua`
 - [x] 5e.3 Run the three named cases and see them pass
 
 ## 5e2. Preserve Find Action screenshots
 Scenarios: `find-action: Wide palette matches reference screenshots`, `find-action: Compact palette matches reference screenshot`, `find-action: Narrow palette matches reference screenshot`, `find-action: Conflict assignment matches reference screenshot`, `find-action: Free assignment matches reference screenshot`
-- [ ] 5e2.1 Replace removed actions in `tests/screen/find-action/test_palette.lua` with stand-in actions having the same displayed titles, run `make test FILE=tests/screen/find-action/test_palette.lua CASE="Wide palette matches reference screenshots"`, and see the stale plugin setup fail
-- [ ] 5e2.2 Remove neo-tree from the screen test's plugin startup and keep all five stored screenshots byte-identical
-- [ ] 5e2.3 Run `make test FILE=tests/screen/find-action/test_palette.lua` and see all five cases pass without re-approving screenshots
+- [x] 5e2.1 Replace removed actions in `tests/screen/find-action/test_palette.lua` with stand-in actions having the same displayed titles, run `make test FILE=tests/screen/find-action/test_palette.lua CASE="Wide palette matches reference screenshots"`, and see the stale plugin setup fail
+- [x] 5e2.2 Remove neo-tree from the screen test's plugin startup and keep all five stored screenshots byte-identical
+- [x] 5e2.3 Run `make test FILE=tests/screen/find-action/test_palette.lua` and see all five cases pass without re-approving screenshots
 
 ## 5f. Remove retired tooling and render fixtures
 Scenarios: `git: Removed diff plugins are not registered`, `file-tree: Project tree matches the approved render`, `git: Changes panel matches the approved render`
-- [ ] 5f.1 Tighten the plugin/bootstrap and render assertions, run `make test FILE=tests/screen/git/test_changes_screen.lua CASE="Changes panel matches the approved render"`, and see the missing post-cutover render setup fail
-- [ ] 5f.2 Drop vscode-diff.nvim from `tests/bootstrap.sh` and `tests/types.sh`; replace the `neo-tree` render case with `project-tree`, add `changes` using the `billing` fixture in `tests/render/cases.lua`, and reword the `dirty` fixture comment in `tests/fixtures/build.sh`
-- [ ] 5f.3 Run `make deps`, `make types`, and the three named render/screen cases and see them pass
+- [x] 5f.1 Tighten the plugin/bootstrap and render assertions, run `make test FILE=tests/screen/git/test_changes_screen.lua CASE="Changes panel matches the approved render"`, and see the missing post-cutover render setup fail
+- [x] 5f.2 Drop vscode-diff.nvim from `tests/bootstrap.sh` and `tests/types.sh`; replace the `neo-tree` render case with `project-tree`, add `changes` using the `billing` fixture in `tests/render/cases.lua`, and reword the `dirty` fixture comment in `tests/fixtures/build.sh`
+- [x] 5f.3 Run `make deps`, `make types`, and the three named render/screen cases and see them pass
 
 ## 6. Offset bufferline over either owned sidebar
 Scenarios: `bufferline: tabs start after the open project tree`, `bufferline: tabs start after the open changes panel`, `bufferline: tabline over the changes panel matches the approved render`, `bufferline: tabline with tree open matches reference screenshot`, `bufferline: tabline without tree matches reference screenshot`
-- [ ] 6.1 Update `tests/screen/bufferline/test_bufferline_screen.lua` to use real `file_tree.toggle` and `changes.toggle` actions; add the changes-panel case with real extmark highlight groups and a byte-identical `.ansi` copy under `tests/screen/bufferline/`, then run `make test FILE=tests/screen/bufferline/test_bufferline_screen.lua CASE="tabline over the changes panel matches the approved render"` and see it fail
+- [x] 6.1 Update `tests/screen/bufferline/test_bufferline_screen.lua` to use real `file_tree.toggle` and `changes.toggle` actions; add the changes-panel case with real extmark highlight groups and a byte-identical `.ansi` copy under `tests/screen/bufferline/`, then run `make test FILE=tests/screen/bufferline/test_bufferline_screen.lua CASE="tabline over the changes panel matches the approved render"` and see it fail
 - [x] 6.2 Replace the `neo-tree` offset in `lua/gleb/bufferline.lua` with `gleb-changes` beside `gleb-file-tree`
 - [x] 6.3 Run all five cases; keep the existing project-tree screenshots unchanged and do not re-approve anything during the test run
 
 ## 7. Port the physical changes-review workflow
 Scenarios: `git: Cmd+G opens the changes review of a dirty repo`, `git: ]f steps to the next changed file in the changes review`, `git: ]c steps to the next change in the changes review`
-- [ ] 7.1 Only after task 5d, port `tests/e2e/git/test_differ_review.lua` to `tests/e2e/git/test_changes_review.lua` using the same `dirty` fixture and manifest, real Cmd+G/`]f`/`]c` key events, panel rows and owned diff view; run `make e2e CASE="changes review"` and see it fail
+- [x] 7.1 Only after task 5d, port `tests/e2e/git/test_differ_review.lua` to `tests/e2e/git/test_changes_review.lua` using the same `dirty` fixture and manifest, real Cmd+G/`]f`/`]c` key events, panel rows and owned diff view; run `make e2e CASE="changes review"` and see it fail
 - [x] 7.2 Delete the old e2e file after its replacement exists; use the harness async wait budget rather than a 100 ms wait
 - [ ] 7.3 Run `make e2e CASE="changes review"` and see all three scenarios pass
 
 ## 8. Update architecture and retained spec text
 Scenarios: `shortcuts: Shortcut table names action ids`, `shortcuts: Shortcut meanings survive registry migration`, `find-action: Saved shortcut applies immediately`
-- [ ] 8.1 Run `make test FILE=tests/integration/find-action/test_assign.lua CASE="Saved shortcut applies immediately"` and the shortcut gates before editing, then update docs/architecture.md's module map, startup/plugin wiring and decisions plus a Moved keys note (`H`→`I`, `?`→Find Action, `<`/`>`→Alt+E/Alt+Shift+G); update only the `file-tree` and `git` Purpose lines and leave `docs/testing.md:81` to the loop-wording fix
-- [ ] 8.2 Run the named case, `make chain`, `make stack` and `make specs` and see them pass
+- [x] 8.1 Run `make test FILE=tests/integration/find-action/test_assign.lua CASE="Saved shortcut applies immediately"` and the shortcut gates before editing, then update docs/architecture.md's module map, startup/plugin wiring and decisions plus a Moved keys note (`H`→`I`, `?`→Find Action, `<`/`>`→Alt+E/Alt+Shift+G); update only the `file-tree` and `git` Purpose lines and leave `docs/testing.md:81` to the loop-wording fix
+- [x] 8.2 Run the named case, `make chain`, `make stack` and `make specs` and see them pass
 
 ## 9. Run the cutover gates
 Scenarios: `diff: Diff view opens on the current file`, `diff: Diff view mappings come from diff actions`, `diff: Diff view checkboxes follow the index`, `diff: Diff view marks both ends of a moved block`, `diff: Diff view moved block matches the approved render`
-- [ ] 9.1 Run `make trace VERBOSE=1` and confirm no orphans, duplicates or missing scenarios introduced by this change
-- [ ] 9.2 Run `rg -n 'neo-tree|neo_tree|NeoTree|Neotree|differ\.|Differ|codediff|vscode\.diff|diff_preview|open_differ' lua settings tests init.lua -g '!tests/unit/loop/**'`; remove every hit except an explicitly retained diffview/gitsigns/nui reference covered by the proposal
+- [x] 9.1 Run `make trace VERBOSE=1` and confirm no orphans, duplicates or missing scenarios introduced by this change
+- [x] 9.2 Run `rg -n 'neo-tree|neo_tree|NeoTree|Neotree|differ\.|Differ|codediff|vscode\.diff|diff_preview|open_differ' lua settings tests init.lua -g '!tests/unit/loop/**'`; remove every hit except an explicitly retained diffview/gitsigns/nui reference covered by the proposal
 - [ ] 9.3 Run `make check E2E=1`, `openspec validate tree-diff-cutover --strict`, and `python3 .archon/scripts/pinned.py tree-diff-cutover`; require the pinned command to print `none`
 
 ## Agent decisions
@@ -114,8 +114,9 @@ Scenarios: `diff: Diff view opens on the current file`, `diff: Diff view mapping
 - Dropped the earlier attempt's one-draw-ahead child-folder watching: it scanned collapsed and ignored folders (the spec forbids scanning or watching an ignored folder before it is expanded), and polling alone delivers the immediate external write.
 - Moved the MODIFIED `file-tree: Toggle tolerates a deleted current file` into `test_project_tree.lua` beside the other toggle cases, since every other case of `test_tree.lua` is removed with a successor.
 - Removed `H.expect_blocked_differ_diagnostic`: task 5a left it without callers and it drives the removed `:Differ` command.
-
-## Stuck
-
-- `file-tree: Project tree closes with the last window` (task 5c, environment): after the macOS polling fix the tree holds no FSEvents handle, and its watcher cases (`shows files created outside Neovim`, `recolours after staging outside Neovim`, `runs git status once per burst`, both compact-chain cases, prune and tab cases) pass. Five runs of `make test FILE=tests/integration/file-tree` at load 17-36: runs 1, 2 and 4 pass this case; run 3 exits 1 and run 5 times out (-1). Cause: at exit Neovim's `loop_close` closes gitsigns' FSEvents handles on `.git` and `.git/refs/heads`; each close waits for libuv's CF thread, sampled blocked in `FSEventStreamStart` → `f2d_register_rpc` while the host's fseventsd ran at 200 % CPU with 4 GB RSS, so teardown passes Neovim's 2 s bound (exit 1, `uv_loop_close() hang?` in the Neovim log) or the test's 5 s wait. Probe: closing those two handles before `:q` took 163-1806 ms, after which `:q` exited 0 in 23-47 ms (4 of 4). Rerun the gate once fseventsd is healthy; disabling gitsigns' `watch_gitdir` would change user-visible behaviour beyond this change.
-- `lsp: lua_ls ready in this config` (time bound, not edited by this change): 15262 ms in the gate and 13549 ms on the one allowed rerun at load about 20, bound 10000 ms.
+- macOS gitsigns git-dir watches start in gitsigns' own `fs_poll` backend (its fallback; wrapped `Watcher._sync_watches` in `lua/gleb/git/gitsigns.lua`): its FSEvents `.git` and `.git/refs/heads` handles were the last ones whose close waits for fseventsd at `:quit`; signs still refresh after an outside `git add` (probe: 381 ms).
+- The Rust case of `tests/integration/references/test_languages.lua` waits for rust-analyzer's `quiescent` status before `gr`, as `test_kind.lua` and `test_view.lua` do: rust-analyzer reloads its workspace after its first answers, and a `gr` during the reload gets no usages.
+- Renamed the synthetic `git.open_differ` fixture ids of `tests/unit/actions/test_registry.lua` and `tests/unit/find-action/test_rows.lua` to `git.open_review` so task 9.2's search keeps only retirement checks and the byte-identical Find Action stand-ins.
+- Also updated docs/testing.md's `make deps` libraries and its codediff example (design.md, Docs); its probing note is left to the loop-wording fix.
+- Updated the Find Action e2e approved palette count from 49 to 46 (`tests/e2e/find-action/screens.lua`): 5a715a4e retired the `tree.toggle_filesystem`, `tree.toggle_git_status` and `git.open_differ` rows, and every shown row is unchanged.
+- The neo-tree rejection of task 5c.1 checks drawn `NeoTree*` groups (extmarks, `winhighlight`), not defined ones: the gruvbox-material colorscheme itself defines `NeoTree*` groups for its plugin integrations.

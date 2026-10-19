@@ -234,6 +234,7 @@ T["file-tree: Project tree opens from non-project buffers"] = function()
 	child.cmd("terminal")
 	run_toggle()
 	expect_project_rows()
+	H.expect_no_neo_tree(child)
 end
 
 T["file-tree: Project tree rows have icons and no guides"] = function()
@@ -249,6 +250,7 @@ T["file-tree: Project tree rows have icons and no guides"] = function()
 	end
 	eq(invoice, "          invoice.go")
 	eq(groups_for("invoice.go"), { "DevIconGo", "FileTreeFileName" })
+	H.expect_no_neo_tree(child)
 end
 
 T["file-tree: Project tree highlight colours come from the palette"] = function()
@@ -764,6 +766,7 @@ end)()
 	for _, lhs in ipairs(actual.keys) do
 		eq(actual.maps[lhs] or actual.maps[vim.keycode(lhs)], "Project: Open")
 	end
+	H.expect_no_neo_tree(child)
 
 	child.type_keys("<M-A>")
 	assert(

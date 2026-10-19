@@ -990,6 +990,44 @@ function M.expect_hl_colors(child, group, expected)
 	end
 end
 
+--- Lists what is left of the retired neo-tree in the child: its modules, command and windows, `NeoTree*`
+--- groups drawn in any buffer or window (the colorscheme may still define them), and mappings naming it.
+local NEO_TREE_SURFACE = [[
+local found = {}
+local function add(item) found[item] = true end
+for name in pairs(package.loaded) do
+	if name:find("^neo%-tree") then add("module " .. name) end
+end
+if vim.fn.exists(":Neotree") == 2 then add("command Neotree") end
+for _, win in ipairs(vim.api.nvim_list_wins()) do
+	local filetype = vim.bo[vim.api.nvim_win_get_buf(win)].filetype
+	if filetype:find("^neo%-tree") then add("window " .. filetype) end
+	if vim.wo[win].winhighlight:find("NeoTree") then add("winhighlight " .. vim.wo[win].winhighlight) end
+end
+for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+	for _, mark in ipairs(vim.api.nvim_buf_get_extmarks(buf, -1, 0, -1, { details = true })) do
+		local group = mark[4].hl_group
+		if type(group) == "string" and group:find("^NeoTree") then add("highlight " .. group) end
+	end
+end
+for _, mode in ipairs({ "n", "x", "i" }) do
+	for _, map in ipairs(vim.list_extend(vim.api.nvim_get_keymap(mode), vim.api.nvim_buf_get_keymap(0, mode))) do
+		if ((map.desc or "") .. " " .. (map.rhs or "")):lower():find("neo%-?tree") then
+			add("mapping " .. mode .. " " .. map.lhs)
+		end
+	end
+end
+local list = vim.tbl_keys(found)
+table.sort(list)
+return list
+]]
+
+--- The project tree replaced neo-tree: no neo-tree module, command, window, drawn highlight or mapping remains.
+---@param child MiniTest.child
+function M.expect_no_neo_tree(child)
+	MiniTest.expect.equality(child.lua(NEO_TREE_SURFACE), {})
+end
+
 --- `expect.reference_screenshot` that honours UPDATE_SCREENSHOTS=1.
 ---@param screenshot table
 function M.expect_screenshot(screenshot)
