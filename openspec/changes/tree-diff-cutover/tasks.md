@@ -14,8 +14,8 @@ Scenarios: `keymaps: Alt-e closes the focused project tree`, `keymaps: Alt-G clo
 ## 3. Hijack directory buffers
 Scenarios: `file-tree: Directory argument opens the project tree`, `file-tree: netrw is not loaded`, `file-tree: Directory buffer focuses an open project tree`
 - [x] 3.1 Write the three cases in `tests/integration/file-tree/test_project_hijack.lua` using `:edit <dir>` and an already populated project tree; run `make test FILE=tests/integration/file-tree/test_project_hijack.lua CASE="Directory argument opens the project tree"` and see it fail
-- [ ] 3.2 Add `netrwPlugin` to `lua/gleb/plugins/init.lua`'s lazy.nvim `disabled_plugins` and add the `gleb_file_tree_hijack` `BufEnter` autocmd: only a newly opened tree takes the directory as root; an existing tree is focused without changing root or cursor
-- [ ] 3.3 Run `make test FILE=tests/integration/file-tree/test_project_hijack.lua` and see it pass
+- [x] 3.2 Add `netrwPlugin` to `lua/gleb/plugins/init.lua`'s lazy.nvim `disabled_plugins` and add the `gleb_file_tree_hijack` `BufEnter` autocmd: only a newly opened tree takes the directory as root; an existing tree is focused without changing root or cursor
+- [x] 3.3 Run `make test FILE=tests/integration/file-tree/test_project_hijack.lua` and see it pass
 
 ## 4a. Retain the project-tree sidebar contract
 Scenarios: `file-tree: Project tree opens on the left at width 35`, `file-tree: Project tree toggle closes a focused tree`, `file-tree: Project tree toggle focuses an open tree`, `file-tree: Project tree closes with the last window`, `file-tree: Project tree toggle reveals the current file`
@@ -39,31 +39,31 @@ Scenarios: `file-tree: Project tree opens from non-project buffers`, `file-tree:
 Scenarios: `git: Missing optional git plugins are tolerated`, `git: Git commands are available after startup`, `git: Removed diff plugins are not registered`, `actions: Every configured mapping is action-owned`, `actions: Plugin-window mappings are action-owned`
 - [x] 5a.1 Update `tests/unit/git/test_modules.lua`, `tests/integration/git/test_git.lua` and `tests/integration/actions/{test_ownership,test_plugin_ownership,test_adapters}.lua` to assert the retired commands, plugins, adapters and mappings are absent; run `make test FILE=tests/integration/git/test_git.lua CASE="Removed diff plugins are not registered"` and see it fail
 - [x] 5a.2 Keep the tests on real populated project-tree, changes-panel, diff-view and diffview windows, preserve the 10-second blocked-open diagnostics and descendant cleanup, and remove only expectations for neo-tree, differ and codediff
-- [ ] 5a.3 Run the five named cases and see them pass after tasks 5c and 5d
+- [x] 5a.3 Run the five named cases and see them pass after tasks 5c and 5d
 
 ## 5b. Remove retired file-tree tests only after successor checks
 Scenarios: `file-tree: Project tree v opens a vertical split`, `file-tree: Project tree t opens a new tab`, `file-tree: Project tree rows have icons and no guides`, `file-tree: Project tree matches the approved render`, `git: Changes panel Space stages an unstaged file`
-- [ ] 5b.1 Run each successor named in design.md's 78-row Removed scenarios table, starting with `make test FILE=tests/integration/file-tree/test_project_tree.lua CASE="Project tree v opens a vertical split"`; record and fix any missing successor before deleting a retired case
-- [ ] 5b.2 After every successor passes, delete the retired cases from `tests/integration/file-tree/{test_tree,test_stage,test_diff_preview,test_tree_icons}.lua`, `tests/unit/file-tree/test_diff_preview_state.lua`, and `tests/screen/file-tree/{test_tree_screen,test_git_status_help}.lua`; delete a file and its screenshots when its last case is removed, never leave an empty test file
-- [ ] 5b.3 Confirm the five named successor cases still pass
+- [x] 5b.1 Run each successor named in design.md's 78-row Removed scenarios table, starting with `make test FILE=tests/integration/file-tree/test_project_tree.lua CASE="Project tree v opens a vertical split"`; record and fix any missing successor before deleting a retired case
+- [x] 5b.2 After every successor passes, delete the retired cases from `tests/integration/file-tree/{test_tree,test_stage,test_diff_preview,test_tree_icons}.lua`, `tests/unit/file-tree/test_diff_preview_state.lua`, and `tests/screen/file-tree/{test_tree_screen,test_git_status_help}.lua`; delete a file and its screenshots when its last case is removed, never leave an empty test file
+- [x] 5b.3 Confirm the five named successor cases still pass
 
 ## 5c. Remove neo-tree implementation and colours
 Scenarios: `file-tree: Project tree keys come from the keymap file`, `file-tree: Project tree rows have icons and no guides`, `file-tree: Project tree colours renamed and conflicted files`, `file-tree: Project tree matches the approved render`, `file-tree: Project tree opens from non-project buffers`
 - [ ] 5c.1 Extend the named project-tree tests to reject neo-tree mappings, highlights and windows, run `make test FILE=tests/screen/file-tree/test_project_tree.lua CASE="Project tree matches the approved render"`, and see the legacy surface fail the new assertion
-- [ ] 5c.2 Remove `lua/gleb/file_tree/{neo_tree,diff_preview}.lua`, retired neo-tree/tree actions, the neo-tree block from `lua/gleb/colors/gruvbox-material/git.lua`, NeoTree highlights from `lua/gleb/colors/gruvbox-material/init.lua`, and `NeoTree` handling from `lua/gleb/colors/transparency.lua`
-- [ ] 5c.3 Run the five named cases and see them pass
+- [x] 5c.2 Remove `lua/gleb/file_tree/{neo_tree,diff_preview}.lua`, retired neo-tree/tree actions, the neo-tree block from `lua/gleb/colors/gruvbox-material/git.lua`, NeoTree highlights from `lua/gleb/colors/gruvbox-material/init.lua`, and `NeoTree` handling from `lua/gleb/colors/transparency.lua`
+- [x] 5c.3 Run the five named cases and see them pass
 
 ## 5d. Remove differ, codediff and plugin wiring
 Scenarios: `git: Removed diff plugins are not registered`, `git: Diffview mappings come from git actions`, `git: Diffview conflict choices come from git actions`, `actions: Unconfigured defaults are absent`, `actions: Lazy specs define no shortcut keys`
 - [ ] 5d.1 Update the named tests to assert only diffview mappings remain and run `make test FILE=tests/integration/git/test_git.lua CASE="Diffview mappings come from git actions"` to see the legacy adapters/defaults fail
-- [ ] 5d.2 Remove the three plugin specs and lock entries; remove `lua/gleb/git/{differ,vscode_diff}.lua`, their actions, `lua/gleb/actions/adapters/{neo_tree,differ,codediff}.lua`, `neo_tree_scope`, the codediff audit allowlist and retired adapter assignments; remove the remaining 31 retired `settings/keymap.json` entries while keeping diffview, gitsigns and nui.nvim
-- [ ] 5d.3 Run the five named cases and see them pass, then commit plugin removal separately from task 1
+- [x] 5d.2 Remove the three plugin specs and lock entries; remove `lua/gleb/git/{differ,vscode_diff}.lua`, their actions, `lua/gleb/actions/adapters/{neo_tree,differ,codediff}.lua`, `neo_tree_scope`, the codediff audit allowlist and retired adapter assignments; remove the remaining 31 retired `settings/keymap.json` entries while keeping diffview, gitsigns and nui.nvim
+- [x] 5d.3 Run the five named cases and see them pass, then commit plugin removal separately from task 1
 
 ## 5e. Move Find Action fixtures to remaining actions
 Scenarios: `find-action: Adapter assignment reports deferred application`, `find-action: Saved shortcut applies immediately`, `find-action: Catalog rows use standalone Title Case labels`
 - [ ] 5e.1 Update `tests/integration/find-action/test_assign.lua` and `test_run.lua` catalog tables so the `neo_tree.open` fixture uses a remaining `lazy.*` adapter id and ordinary `file_tree.*`/`changes.*` actions apply immediately; run `make test FILE=tests/integration/find-action/test_assign.lua CASE="Adapter assignment reports deferred application"` and see the stale fixture fail
-- [ ] 5e.2 Remove retired adapter names from `lua/gleb/find_action/assign.lua`
-- [ ] 5e.3 Run the three named cases and see them pass
+- [x] 5e.2 Remove retired adapter names from `lua/gleb/find_action/assign.lua`
+- [x] 5e.3 Run the three named cases and see them pass
 
 ## 5e2. Preserve Find Action screenshots
 Scenarios: `find-action: Wide palette matches reference screenshots`, `find-action: Compact palette matches reference screenshot`, `find-action: Narrow palette matches reference screenshot`, `find-action: Conflict assignment matches reference screenshot`, `find-action: Free assignment matches reference screenshot`
@@ -80,13 +80,13 @@ Scenarios: `git: Removed diff plugins are not registered`, `file-tree: Project t
 ## 6. Offset bufferline over either owned sidebar
 Scenarios: `bufferline: tabs start after the open project tree`, `bufferline: tabs start after the open changes panel`, `bufferline: tabline over the changes panel matches the approved render`, `bufferline: tabline with tree open matches reference screenshot`, `bufferline: tabline without tree matches reference screenshot`
 - [ ] 6.1 Update `tests/screen/bufferline/test_bufferline_screen.lua` to use real `file_tree.toggle` and `changes.toggle` actions; add the changes-panel case with real extmark highlight groups and a byte-identical `.ansi` copy under `tests/screen/bufferline/`, then run `make test FILE=tests/screen/bufferline/test_bufferline_screen.lua CASE="tabline over the changes panel matches the approved render"` and see it fail
-- [ ] 6.2 Replace the `neo-tree` offset in `lua/gleb/bufferline.lua` with `gleb-changes` beside `gleb-file-tree`
-- [ ] 6.3 Run all five cases; keep the existing project-tree screenshots unchanged and do not re-approve anything during the test run
+- [x] 6.2 Replace the `neo-tree` offset in `lua/gleb/bufferline.lua` with `gleb-changes` beside `gleb-file-tree`
+- [x] 6.3 Run all five cases; keep the existing project-tree screenshots unchanged and do not re-approve anything during the test run
 
 ## 7. Port the physical changes-review workflow
 Scenarios: `git: Cmd+G opens the changes review of a dirty repo`, `git: ]f steps to the next changed file in the changes review`, `git: ]c steps to the next change in the changes review`
 - [ ] 7.1 Only after task 5d, port `tests/e2e/git/test_differ_review.lua` to `tests/e2e/git/test_changes_review.lua` using the same `dirty` fixture and manifest, real Cmd+G/`]f`/`]c` key events, panel rows and owned diff view; run `make e2e CASE="changes review"` and see it fail
-- [ ] 7.2 Delete the old e2e file after its replacement exists; use the harness async wait budget rather than a 100 ms wait
+- [x] 7.2 Delete the old e2e file after its replacement exists; use the harness async wait budget rather than a 100 ms wait
 - [ ] 7.3 Run `make e2e CASE="changes review"` and see all three scenarios pass
 
 ## 8. Update architecture and retained spec text
@@ -110,7 +110,12 @@ Scenarios: `diff: Diff view opens on the current file`, `diff: Diff view mapping
 - Kept the directory-follow and shared-sidebar production paths already supplied by earlier project-tree work; the tightened 4c assertions proved both contracts without duplicate code.
 - Compared changed-file navigation by path in the ported e2e case because the owned review model combines staged and unstaged entries for the same file.
 - Kept the auditor-mandated remove/add replacements after the rejected run; tasks 2, 4c and 6 verify that only panel identity and the explicitly added successor cases change, while widths, close isolation, refresh-close behavior and no-panel behavior retain their prior bounds.
+- macOS project-tree folder and git-dir watches use `uv_fs_poll` (100 ms) instead of FSEvents: libuv registers each FSEvents change with fseventsd asynchronously and every close waits for that registration, so a busy fseventsd dropped the external-write events and blocked `:quit`; other platforms keep `uv_fs_event`.
+- Dropped the earlier attempt's one-draw-ahead child-folder watching: it scanned collapsed and ignored folders (the spec forbids scanning or watching an ignored folder before it is expanded), and polling alone delivers the immediate external write.
+- Moved the MODIFIED `file-tree: Toggle tolerates a deleted current file` into `test_project_tree.lua` beside the other toggle cases, since every other case of `test_tree.lua` is removed with a successor.
+- Removed `H.expect_blocked_differ_diagnostic`: task 5a left it without callers and it drives the removed `:Differ` command.
 
 ## Stuck
 
-- Task 5c: the exact `treeproj` probe reproduced the immediate external write with every visible child handle active. Both an early recursive root handle and a recursive handle started after the child handles delivered zero callbacks, invalidations and Git requests; a folder `uv_fs_poll` started at the same boundary delivered one callback. The restored earlier attempt from `/Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/c070db55-0327-4f41-8533-199585c5cb53/stuck-attempt-5c.diff` still failed `file-tree: Project tree shows files created outside Neovim`. Attempt 1 added a recursive root stream and failed the same case at `test_project_live.lua:390`. Attempt 2 used capped per-folder polling on macOS: the exact case passed, but its first required `tests/integration/file-tree` run failed `file-tree: Project tree recolours after staging outside Neovim` at line 412 and `file-tree: Project tree closes with the last window` at line 380. The full second attempt is saved at `/Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/f4e4e8be-19c0-4187-8093-4779cfa91b0a/stuck-attempt-5c.diff`; production edits were reverted and the red regressions remain.
+- `file-tree: Project tree closes with the last window` (task 5c, environment): after the macOS polling fix the tree holds no FSEvents handle, and its watcher cases (`shows files created outside Neovim`, `recolours after staging outside Neovim`, `runs git status once per burst`, both compact-chain cases, prune and tab cases) pass. Five runs of `make test FILE=tests/integration/file-tree` at load 17-36: runs 1, 2 and 4 pass this case; run 3 exits 1 and run 5 times out (-1). Cause: at exit Neovim's `loop_close` closes gitsigns' FSEvents handles on `.git` and `.git/refs/heads`; each close waits for libuv's CF thread, sampled blocked in `FSEventStreamStart` → `f2d_register_rpc` while the host's fseventsd ran at 200 % CPU with 4 GB RSS, so teardown passes Neovim's 2 s bound (exit 1, `uv_loop_close() hang?` in the Neovim log) or the test's 5 s wait. Probe: closing those two handles before `:q` took 163-1806 ms, after which `:q` exited 0 in 23-47 ms (4 of 4). Rerun the gate once fseventsd is healthy; disabling gitsigns' `watch_gitdir` would change user-visible behaviour beyond this change.
+- `lsp: lua_ls ready in this config` (time bound, not edited by this change): 15262 ms in the gate and 13549 ms on the one allowed rerun at load about 20, bound 10000 ms.

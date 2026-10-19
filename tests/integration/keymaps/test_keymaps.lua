@@ -711,7 +711,7 @@ T["keymaps: Diagnostic jump opens float"] = function()
 	eq(child.wait(FLOAT_WITH_FIRST, 1000), true)
 end
 
--- Project tree, Changes, Neo-tree, Differ, Telescope -------------------------
+-- Project tree, Changes, Telescope -----------------------------------------
 
 T["keymaps: Alt-e reveals current file"] = function()
 	local repo = edit_repo_file()

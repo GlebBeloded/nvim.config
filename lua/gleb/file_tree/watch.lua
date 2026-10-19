@@ -1,17 +1,21 @@
 -- Non-recursive libuv watches invalidate only changed scans and coalesce redraws from event bursts.
+-- macOS polls instead: FSEvents handles share one stream that fseventsd must register on every start,
+-- so a busy fseventsd drops events and blocks `stop()` (and `:quit`); tune with WATCH_POLL_MS.
 
 local M = {}
 
 local fs = require("gleb.file_tree.fs")
 
 local WATCH_DEBOUNCE_MS = 100
+local WATCH_POLL_MS = 100
+local USE_POLL = vim.uv.os_uname().sysname == "Darwin"
 
 M.MAX_WATCH_HANDLES = 256
 
 ---@class FileTreeWatchRoot
----@field handles table<string, uv.uv_fs_event_t>
+---@field handles table<string, uv.uv_fs_event_t|uv.uv_fs_poll_t>
 ---@field timers table<string, uv.uv_timer_t>
----@field git_handle? uv.uv_fs_event_t
+---@field git_handle? uv.uv_fs_event_t|uv.uv_fs_poll_t
 ---@field git_dir? string
 ---@field toplevel? string
 ---@field refs integer
@@ -63,21 +67,36 @@ local function queue_redraw(root, path)
 	)
 end
 
+--- Watch one directory's entries; a poll also reports the directory's removal.
+---@param path string
+---@param on_change fun()
+---@return (uv.uv_fs_event_t|uv.uv_fs_poll_t)?
+local function watch_path(path, on_change)
+	local handle, ok
+	if USE_POLL then
+		handle = assert(vim.uv.new_fs_poll())
+		ok = handle:start(path, WATCH_POLL_MS, on_change)
+	else
+		handle = assert(vim.uv.new_fs_event())
+		ok = handle:start(path, {}, function(error)
+			if not error then
+				on_change()
+			end
+		end)
+	end
+	if ok then
+		return handle
+	end
+	handle:close()
+end
+
 ---@param root string
 ---@param path string
 ---@param state FileTreeWatchRoot
 local function watch_folder(root, path, state)
-	local handle = assert(vim.uv.new_fs_event())
-	local ok = handle:start(path, {}, function(error)
-		if not error then
-			queue_redraw(root, path)
-		end
+	state.handles[path] = watch_path(path, function()
+		queue_redraw(root, path)
 	end)
-	if ok then
-		state.handles[path] = handle
-	else
-		handle:close()
-	end
 end
 
 ---@param root string
@@ -98,21 +117,13 @@ local function watch_git_dir(root, state)
 	end
 	state.toplevel = lines[1]
 	state.git_dir = path
-	local handle = assert(vim.uv.new_fs_event())
-	local ok = handle:start(path, {}, function(error)
-		if not error then
-			vim.schedule(function()
-				for _, client in pairs(state.clients) do
-					client.refresh_git()
-				end
-			end)
-		end
+	state.git_handle = watch_path(path, function()
+		vim.schedule(function()
+			for _, client in pairs(state.clients) do
+				client.refresh_git()
+			end
+		end)
 	end)
-	if ok then
-		state.git_handle = handle
-	else
-		handle:close()
-	end
 end
 
 ---@param state FileTreeWatchRoot

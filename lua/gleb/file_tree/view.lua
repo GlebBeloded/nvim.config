@@ -679,7 +679,7 @@ end
 ---@param view FileTreeView
 ---@param buf integer
 local function follow_buffer(view, buf)
-	if vim.api.nvim_get_current_tabpage() ~= view.tab or buf == view.buf then
+	if not vim.api.nvim_buf_is_valid(buf) or vim.api.nvim_get_current_tabpage() ~= view.tab or buf == view.buf then
 		return
 	end
 	if view.skip_follow_buf == buf then
@@ -753,11 +753,12 @@ local function add_teardown_autocmds(view)
 end
 
 ---@param path string
+---@param requested_root? string
 ---@return FileTreeView
-local function open_view(path)
+local function open_view(path, requested_root)
 	state.load()
 	local tab = vim.api.nvim_get_current_tabpage()
-	local root = fs.normalize(vim.fn.getcwd())
+	local root = fs.normalize(requested_root or vim.fn.getcwd())
 	local buf = vim.api.nvim_create_buf(false, true)
 	vim.api.nvim_buf_set_name(buf, ("gleb-file-tree://%s#%d"):format(root, tab))
 	configure_buffer(buf)
@@ -809,6 +810,29 @@ local function open_view(path)
 	end
 	update_cursor()
 	return view
+end
+
+---@param args { buf: integer }
+local function hijack_directory(args)
+	if not vim.api.nvim_buf_is_valid(args.buf) then
+		return
+	end
+	local directory = vim.api.nvim_buf_get_name(args.buf)
+	local stat = directory ~= "" and vim.uv.fs_stat(directory) or nil
+	if vim.bo[args.buf].buftype ~= "" or not stat or stat.type ~= "directory" then
+		return
+	end
+
+	vim.api.nvim_win_set_buf(0, vim.api.nvim_create_buf(true, false))
+	local view = M.state.by_tab[vim.api.nvim_get_current_tabpage()]
+	if view and vim.api.nvim_win_is_valid(view.win) then
+		vim.api.nvim_set_current_win(view.win)
+	else
+		open_view(directory, directory)
+	end
+	if vim.api.nvim_buf_is_valid(args.buf) then
+		vim.api.nvim_buf_delete(args.buf, { force = true })
+	end
 end
 
 ---@param view FileTreeView
@@ -1055,6 +1079,8 @@ end
 function M.setup()
 	render.setup()
 	view_group = vim.api.nvim_create_augroup("gleb_file_tree_view", { clear = true })
+	local hijack_group = vim.api.nvim_create_augroup("gleb_file_tree_hijack", { clear = true })
+	vim.api.nvim_create_autocmd("BufEnter", { group = hijack_group, callback = hijack_directory })
 	remember_editor()
 	vim.api.nvim_create_autocmd("WinEnter", { group = view_group, callback = remember_editor })
 	vim.api.nvim_create_autocmd("QuitPre", { group = view_group, callback = on_quit_pre })
