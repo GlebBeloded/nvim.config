@@ -181,11 +181,13 @@ T["actions: Plugin-window mappings are action-owned"]["reaps a blocked surface's
 	eq(tostring(err):find("sleep 60", 1, true) ~= nil, true)
 	local recorded_pid = assert(vim.fn.readfile(pid_file)[1], "blocked shell did not record its child pid")
 	local sleep_pid = assert(tonumber(recorded_pid), "blocked shell recorded an invalid child pid")
-	local remained_alive = vim.uv.kill(sleep_pid, 0) == 0
-	if remained_alive then
+	local disappeared = vim.wait(math.ceil(2000 * H.load_factor()), function()
+		return vim.uv.kill(sleep_pid, 0) ~= 0
+	end, 20)
+	if not disappeared then
 		vim.uv.kill(sleep_pid, "sigkill")
 	end
-	eq(remained_alive, false)
+	eq(disappeared, true)
 end
 
 T["actions: Unconfigured defaults are absent"] = function()
