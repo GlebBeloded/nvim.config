@@ -9,6 +9,17 @@ local CLIPPED = "…"
 local namespace = vim.api.nvim_create_namespace("gleb_references_preview")
 local clipped_namespace = vim.api.nvim_create_namespace("gleb_references_preview_clipped")
 
+---@param state gleb.references.ViewState
+---@return gleb.references.TreeNode?
+function M.selected(state)
+	if not state.tree_win or not state.visible_nodes then
+		return nil
+	end
+	local row = vim.api.nvim_win_get_cursor(state.tree_win)[1]
+	local node = state.visible_nodes[row]
+	return node and node.kind == "usage" and node or nil
+end
+
 ---@param filename string
 ---@return integer?
 local function loaded_buffer(filename)
@@ -156,6 +167,42 @@ function M.center(win, usage)
 		vim.fn.winrestview({ lnum = lnum, col = 0, topline = topline })
 	end)
 	mark_clipped(win, topline, vim.api.nvim_win_get_width(win) - number_width)
+end
+
+---Follow the tree selection, rendering or clearing the preview as needed.
+---@param state gleb.references.ViewState
+---@return nil
+function M.update(state)
+	local usage = M.selected(state)
+	if not usage then
+		state.preview_usage = nil
+		state.tree.selected_id = nil
+		if state.preview_buf then
+			M.clear(state.preview_buf, state.preview_win)
+		end
+		return
+	end
+	state.preview_usage = usage
+	state.tree.selected_id = usage.id
+	if not state.preview_buf or not state.preview_win then
+		return
+	end
+	M.render(state.preview_buf, usage, state.usages, state.title)
+	M.center(state.preview_win, usage)
+end
+
+---Keep the preview synchronized with cursor movement in the tree.
+---@param state gleb.references.ViewState
+---@param group integer
+---@return nil
+function M.follow(state, group)
+	vim.api.nvim_create_autocmd("CursorMoved", {
+		group = group,
+		buffer = state.tree_buf,
+		callback = function()
+			M.update(state)
+		end,
+	})
 end
 
 return M

@@ -12,6 +12,7 @@ Scenarios: `file-tree: Directory argument opens the project tree`
 - Diff mappings receive the public window registry so they can preserve routing without creating a module cycle.
 - Diff autocmds receive redraw and index-refresh callbacks so event ownership moves out without creating a module cycle.
 - References layout receives render and preview callbacks so geometry moves out without creating a module cycle.
+- References preview owns cursor-following autocmds and selection state so the view only supplies layout callbacks.
 
 ## 2. Extract file-tree folds
 Scenarios: `file-tree: za toggles a nest`
@@ -43,7 +44,7 @@ Scenarios: `references: Wide view matches reference screenshot`
 
 ## 9. Extract references preview coordination
 Scenarios: `references: Preview follows the selection`
-- [ ] 9.1 Run `make test FILE=tests/integration/references/test_preview.lua CASE="Preview follows the selection"` and see it pass, move preview lifecycle and selection-following coordination from `lua/gleb/references/view.lua` into `lua/gleb/references/preview.lua`, run it again and see it pass
+- [x] 9.1 Run `make test FILE=tests/integration/references/test_preview.lua CASE="Preview follows the selection"` and see it pass, move preview lifecycle and selection-following coordination from `lua/gleb/references/view.lua` into `lua/gleb/references/preview.lua`, run it again and see it pass
 
 ## 10. Extract reference-kind request flow
 Scenarios: `references: The view opens before classification finishes`

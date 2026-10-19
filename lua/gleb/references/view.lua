@@ -80,33 +80,6 @@ local function node_under_cursor()
 	return state.visible_nodes[row]
 end
 
----@return gleb.references.TreeNode?
-local function usage_under_cursor()
-	local node = node_under_cursor()
-	return node and node.kind == "usage" and node or nil
-end
-
----@return nil
-local function update_preview()
-	local state = M.state
-	local usage = usage_under_cursor()
-	if not usage then
-		state.preview_usage = nil
-		state.tree.selected_id = nil
-		if state.preview_buf then
-			preview.clear(state.preview_buf, state.preview_win)
-		end
-		return
-	end
-	state.preview_usage = usage
-	state.tree.selected_id = usage.id
-	if not state.preview_buf or not state.preview_win then
-		return
-	end
-	preview.render(state.preview_buf, usage, state.usages, state.title)
-	preview.center(state.preview_win, usage)
-end
-
 ---@param id string
 ---@param fallback string
 ---@return string
@@ -186,7 +159,9 @@ local function apply_layout(selected_id)
 	layout.apply(M.state, selected_id, {
 		hint = M.hint,
 		render_tree = render_tree,
-		update_preview = update_preview,
+		update_preview = function()
+			preview.update(M.state)
+		end,
 	})
 end
 
@@ -207,7 +182,7 @@ end
 
 ---@return nil
 local function rebuild()
-	local selected = as_usage(usage_under_cursor() or M.state.preview_usage)
+	local selected = as_usage(preview.selected(M.state) or M.state.preview_usage)
 	M.state.tree = tree.build(M.state.usages, M.state.options, selected)
 	apply_layout(M.state.tree.selected_id)
 end
@@ -299,7 +274,7 @@ function M.open(title, usages, classifying)
 		id = view_id,
 	}
 	local group = vim.api.nvim_create_augroup("gleb_references_view", { clear = true })
-	vim.api.nvim_create_autocmd("CursorMoved", { group = group, buffer = tree_buf, callback = update_preview })
+	preview.follow(M.state, group)
 	vim.api.nvim_create_autocmd("WinClosed", { group = group, pattern = tostring(tree_win), callback = M.close })
 	vim.api.nvim_create_autocmd("VimResized", {
 		group = group,
