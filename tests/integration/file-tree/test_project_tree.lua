@@ -890,6 +890,12 @@ T["file-tree: Project tree keys come from the keymap file"] = function()
 	}
 end)()
 ]])
+	eq(actual.keys["Project: Open"], { "<CR>", "o" })
+	eq(actual.keys["Project: Expand Node"], { "l", "<Right>", "zo" })
+	eq(actual.keys["Project: Close Node"], { "h", "<Left>", "zc", "<BS>" })
+	eq(actual.keys["Project: Toggle Fold"], { "za" })
+	eq(actual.keys["Project: Fold All"], { "zM" })
+	eq(actual.keys["Project: Unfold All"], { "zR" })
 	for desc, keys in pairs(actual.keys) do
 		for _, lhs in ipairs(keys) do
 			eq(actual.maps[lhs] or actual.maps[vim.keycode(lhs)], desc)
