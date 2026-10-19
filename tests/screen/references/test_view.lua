@@ -631,17 +631,7 @@ local function open_rust_money()
 	child.o.columns, child.o.lines = 70, 36
 	local rust_root, rust_manifest = F.copy("rustproj", vim.fn.tempname())
 	local declaration = rust_manifest.references.Money[1]
-	child.lua([[
-		_G.rust_analyzer_quiescent = nil
-		local server = require("rustaceanvim.config.internal").server
-		server.handlers = server.handlers or {}
-		_G.previous_server_status_handler = server.handlers["experimental/serverStatus"]
-		server.handlers["experimental/serverStatus"] = function(err, result, context, config)
-			if result and result.quiescent then _G.rust_analyzer_quiescent = true end
-			local handler = _G.previous_server_status_handler or require("rustaceanvim.server_status").handler
-			return handler(err, result, context, config)
-		end
-	]])
+	H.watch_rust_quiescent(child)
 	child.cmd("cd " .. vim.fn.fnameescape(rust_root) .. " | edit " .. vim.fn.fnameescape(declaration.path))
 	child.wo.number = true
 	child.wo.relativenumber = false
@@ -653,37 +643,8 @@ local function open_rust_money()
 	child.api.nvim_win_set_cursor(0, { declaration.line, declaration.col - 1 })
 	local timeout = H.lsp_timeout(30000)
 	eq(child.wait([[#vim.lsp.get_clients({ bufnr = 0, name = "rust-analyzer" }) > 0]], timeout), true)
-	eq(child.wait("_G.rust_analyzer_quiescent == true", timeout), true)
-	child.lua([[
-		require("rustaceanvim.config.internal").server.handlers["experimental/serverStatus"] =
-			_G.previous_server_status_handler
-		_G.previous_server_status_handler = nil
-	]])
-	child.lua(
-		[[
-			local minimum, timeout = ...
-_G.references_ready = nil
-local bufnr = vim.api.nvim_get_current_buf()
-local started = vim.uv.hrtime()
-local populated = 0
-local function request()
-	local client = vim.lsp.get_clients({ bufnr = bufnr, name = "rust-analyzer" })[1]
-	local params = vim.lsp.util.make_position_params(0, client.offset_encoding)
-	params.context = { includeDeclaration = false }
-	client:request("textDocument/references", params, function(_, result)
-		populated = result and #result >= minimum and populated + 1 or 0
-		if populated >= 2 then
-			_G.references_ready = true
-		elseif (vim.uv.hrtime() - started) / 1e6 < timeout then
-			vim.defer_fn(request, 10)
-		end
-	end, bufnr)
-end
-request()
-]],
-		{ 10, timeout }
-	)
-	eq(child.wait("_G.references_ready == true", timeout), true)
+	H.wait_rust_quiescent(child, timeout)
+	H.wait_references_ready(child, "rust-analyzer", { minimum = 10, consecutive = 2, timeout = timeout })
 	child.type_keys("gr")
 	eq(child.wait([[vim.bo.filetype == "gleb-references"]], timeout), true)
 	eq(child.wait([[not require("gleb.references.view").state.classifying]], timeout), true)

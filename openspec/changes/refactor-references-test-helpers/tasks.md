@@ -8,7 +8,7 @@ Scenarios: `references: TypeScript class usages are grouped by usage type`, `ref
 
 ## 3. Migrate Rust screen readiness and quiescence
 Scenarios: `references: Rust struct usages are grouped by usage type`
-- [ ] 3.1 Run `make test FILE=tests/screen/references/test_view.lua CASE="Rust struct usages are grouped by usage type"` and see it pass, replace the Rust handler wrapping and readiness loop with the shared helpers while preserving restoration, assertions, waits, minimums, and bounds, then run it again and see it pass
+- [x] 3.1 Run `make test FILE=tests/screen/references/test_view.lua CASE="Rust struct usages are grouped by usage type"` and see it pass, replace the Rust handler wrapping and readiness loop with the shared helpers while preserving restoration, assertions, waits, minimums, and bounds, then run it again and see it pass
 
 ## 4. Migrate language integration readiness and quiescence
 Scenarios: `references: Lua usages in production and spec files`, `references: Python usages in production and test files`, `references: TypeScript usages in production and test files`, `references: Rust usages in production and test code`, `references: Terraform variable usages`
