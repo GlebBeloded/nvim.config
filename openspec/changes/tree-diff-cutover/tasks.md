@@ -81,7 +81,7 @@ Scenarios: `git: Removed diff plugins are not registered`, `file-tree: Project t
 Scenarios: `bufferline: tabs start after the open project tree`, `bufferline: tabs start after the open changes panel`, `bufferline: tabline over the changes panel matches the approved render`, `bufferline: tabline with tree open matches reference screenshot`, `bufferline: tabline without tree matches reference screenshot`
 - [x] 6.1 Update `tests/screen/bufferline/test_bufferline_screen.lua` to use real `file_tree.toggle` and `changes.toggle` actions; add the changes-panel case with real extmark highlight groups and a byte-identical `.ansi` copy under `tests/screen/bufferline/`, then run `make test FILE=tests/screen/bufferline/test_bufferline_screen.lua CASE="tabline over the changes panel matches the approved render"` and see it fail
 - [x] 6.2 Replace the `neo-tree` offset in `lua/gleb/bufferline.lua` with `gleb-changes` beside `gleb-file-tree`
-- [x] 6.3 Run all five cases; keep the existing project-tree screenshots unchanged and do not re-approve anything during the test run
+- [ ] 6.3 Run all five cases; keep the existing project-tree screenshots unchanged and do not re-approve anything during the test run
 
 ## 7. Port the physical changes-review workflow
 Scenarios: `git: Cmd+G opens the changes review of a dirty repo`, `git: ]f steps to the next changed file in the changes review`, `git: ]c steps to the next change in the changes review`
@@ -98,7 +98,19 @@ Scenarios: `shortcuts: Shortcut table names action ids`, `shortcuts: Shortcut me
 Scenarios: `diff: Diff view opens on the current file`, `diff: Diff view mappings come from diff actions`, `diff: Diff view checkboxes follow the index`, `diff: Diff view marks both ends of a moved block`, `diff: Diff view moved block matches the approved render`
 - [x] 9.1 Run `make trace VERBOSE=1` and confirm no orphans, duplicates or missing scenarios introduced by this change
 - [x] 9.2 Run `rg -n 'neo-tree|neo_tree|NeoTree|Neotree|differ\.|Differ|codediff|vscode\.diff|diff_preview|open_differ' lua settings tests init.lua -g '!tests/unit/loop/**'`; remove every hit except an explicitly retained diffview/gitsigns/nui reference covered by the proposal
-- [x] 9.3 Run `make check E2E=1`, `openspec validate tree-diff-cutover --strict`, and `python3 .archon/scripts/pinned.py tree-diff-cutover`; require the pinned command to print `none`
+- [ ] 9.3 After tasks 10 and 11, run `make check E2E=1`, `openspec validate tree-diff-cutover --strict`, and `python3 .archon/scripts/pinned.py tree-diff-cutover`; require the pinned command to print `none`
+
+## 10. Remove the forbidden macOS polling fallbacks
+Scenarios: `file-tree: Project tree shows files created outside Neovim`, `file-tree: Project tree recolours after staging outside Neovim`, `git: Added line shows bar sign`
+- [x] 10.1 Tighten `tests/integration/file-tree/test_project_live.lua` and `tests/integration/git/test_git.lua` to reject `uv_fs_poll` use while driving the real project-tree and gitsigns entry points on macOS; run the three named cases and see the adopted polling overrides fail the assertion
+- [x] 10.2 Remove the platform-specific polling paths from `lua/gleb/file_tree/watch.lua` and `lua/gleb/git/gitsigns.lua`, keeping `vim.uv.new_fs_event` as the watcher implementation on every platform
+- [x] 10.3 Run the three named cases against fresh host file events and see them pass
+
+## 11. Resolve the remaining changes-panel tabline colour regression
+Scenarios: `bufferline: tabline over the changes panel matches the approved render`
+- [ ] 11.1 Run `make test FILE=tests/screen/bufferline/test_bufferline_screen.lua CASE="tabline over the changes panel matches the approved render"` and record the existing column-37 `indicator_selected` colour-mask failure
+- [ ] 11.2 Make the smallest bufferline setup change that draws column 37 with `BufferLineBufferSelected` while preserving the approved text and every existing project-tree screenshot
+- [ ] 11.3 Run the named case and the other four task-6 cases and see them pass without re-approving screenshots
 
 ## Agent decisions
 
@@ -120,6 +132,8 @@ Scenarios: `diff: Diff view opens on the current file`, `diff: Diff view mapping
 - Also updated docs/testing.md's `make deps` libraries and its codediff example (design.md, Docs); its probing note is left to the loop-wording fix.
 - Updated the Find Action e2e approved palette count from 49 to 46 (`tests/e2e/find-action/screens.lua`): 5a715a4e retired the `tree.toggle_filesystem`, `tree.toggle_git_status` and `git.open_differ` rows, and every shown row is unchanged.
 - The neo-tree rejection of task 5c.1 checks drawn `NeoTree*` groups (extmarks, `winhighlight`), not defined ones: the gruvbox-material colorscheme itself defines `NeoTree*` groups for its plugin integrations.
+- The 2026-10-19 auditor decision supersedes the earlier macOS polling decisions above; task 10 removes both polling overrides and rechecks the retained watcher behaviour against fresh host events.
+- Instrumented `vim.uv.new_fs_poll` with a passthrough in the real project-tree and `test_gitsigns.lua` entry points, where the named gitsigns scenario lives, so Darwin rejects poll handles without replacing watcher behaviour.
 
 ## Stuck
 

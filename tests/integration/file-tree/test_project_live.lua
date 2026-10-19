@@ -18,6 +18,24 @@ end
 
 local T = H.child_set(child, start)
 
+local function record_fs_poll_calls()
+	child.lua([[
+		_G.fs_poll_calls = 0
+		local new_fs_poll = vim.uv.new_fs_poll
+		vim.uv.new_fs_poll = function(...)
+			_G.fs_poll_calls = _G.fs_poll_calls + 1
+			return new_fs_poll(...)
+		end
+	]])
+end
+
+local function expect_no_fs_poll_on_macos()
+	local result = child.lua_get([[{ vim.uv.os_uname().sysname, _G.fs_poll_calls }]])
+	if result[1] == "Darwin" then
+		eq(result[2], 0)
+	end
+end
+
 ---@param relative string
 local function edit(relative)
 	child.cmd("edit " .. vim.fn.fnameescape(vim.fs.joinpath(root, relative)))
@@ -382,12 +400,14 @@ T["file-tree: Every compact chain member is watched"] = function()
 end
 
 T["file-tree: Project tree shows files created outside Neovim"] = function()
+	record_fs_poll_calls()
 	open_billing_folder()
 
 	local result = H.system(child, { "touch", vim.fs.joinpath(root, "internal/billing/fee.go") }, root)
 	eq(result.code, 0)
 
 	eq(wait_for_tree_highlight("fee.go", "FileTreeGitUntracked"), true)
+	expect_no_fs_poll_on_macos()
 end
 
 T["file-tree: Project tree recolours a written file"] = function()
@@ -402,6 +422,7 @@ T["file-tree: Project tree recolours a written file"] = function()
 end
 
 T["file-tree: Project tree recolours after staging outside Neovim"] = function()
+	record_fs_poll_calls()
 	edit("README.md")
 	run_action("file_tree.toggle")
 	eq(wait_for_tree_highlight("notes.md", "FileTreeGitUntracked"), true)
@@ -410,6 +431,7 @@ T["file-tree: Project tree recolours after staging outside Neovim"] = function()
 	eq(result.code, 0)
 
 	eq(wait_for_tree_highlight("notes.md", "FileTreeGitAdded"), true)
+	expect_no_fs_poll_on_macos()
 end
 
 T["file-tree: Project tree watchers stop when the tree closes"] = function()
