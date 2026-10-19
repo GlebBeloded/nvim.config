@@ -813,6 +813,20 @@ local function open_view(path, requested_root)
 	remember_editor()
 	local editor = M.state.last_editor_by_tab[tab]
 	local root = fs.normalize(requested_root or vim.fn.getcwd())
+	local view
+	local initial_path
+	local initial_expanded = expanded.load(root, function(loaded)
+		if
+			view
+			and initial_path
+			and M.state.by_tab[tab] == view
+			and view.root == root
+			and vim.api.nvim_buf_is_valid(view.buf)
+		then
+			view.expanded = loaded
+			select_path(view, initial_path)
+		end
+	end)
 	local buf = vim.api.nvim_create_buf(false, true)
 	vim.api.nvim_buf_set_name(buf, ("gleb-file-tree://%s#%d"):format(root, tab))
 	configure_buffer(buf)
@@ -824,12 +838,12 @@ local function open_view(path, requested_root)
 	detach_ufo(buf)
 
 	---@type FileTreeView
-	local view = {
+	view = {
 		tab = tab,
 		root = root,
 		buf = buf,
 		win = win,
-		expanded = expanded.load(root),
+		expanded = initial_expanded,
 		expanded_nests = {},
 		rows = {},
 		rows_by_path = {},
@@ -840,7 +854,7 @@ local function open_view(path, requested_root)
 	M.state.by_tab[tab] = view
 	M.state.last_editor_by_tab[tab] = editor
 	watch.start_root(root, tab)
-	local initial_path = reveal_target(view, path, true) or root
+	initial_path = reveal_target(view, path, true) or root
 	git.start_root(root, tab, function()
 		if finish_initial_draw(view, initial_path) then
 			return
@@ -922,7 +936,12 @@ local function reroot(view, root)
 	watch.stop_root(view.root, view.tab)
 	git.stop_root(view.root, view.tab)
 	view.root = root
-	view.expanded = expanded.load(root)
+	view.expanded = expanded.load(root, function(loaded)
+		if M.state.by_tab[view.tab] == view and view.root == root and vim.api.nvim_buf_is_valid(view.buf) then
+			view.expanded = loaded
+			draw(view, root)
+		end
+	end)
 	view.expanded_nests = {}
 	vim.api.nvim_buf_set_name(view.buf, ("gleb-file-tree://%s#%d"):format(root, view.tab))
 	watch.start_root(root, view.tab)
@@ -932,7 +951,11 @@ local function reroot(view, root)
 			draw(view, selected and selected.path or root)
 		end
 	end)
-	draw(view, root)
+	vim.schedule(function()
+		if M.state.by_tab[view.tab] == view and view.root == root and vim.api.nvim_buf_is_valid(view.buf) then
+			draw(view, root)
+		end
+	end)
 	git.request(root)
 end
 

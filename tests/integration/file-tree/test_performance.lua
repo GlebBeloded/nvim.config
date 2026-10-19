@@ -6,6 +6,7 @@ local eq = MiniTest.expect.equality
 local child = H.new_child()
 
 local root
+local second_root
 
 local function create_large_tree()
 	root = vim.fn.tempname() .. "/large-tree"
@@ -84,6 +85,12 @@ local function start()
 end
 
 local T = H.child_set(child, start)
+
+local function create_second_worktree()
+	second_root = vim.fn.tempname() .. "-worktree"
+	H.git(root, { "worktree", "add", "-q", "-b", "performance-reroot", second_root })
+	second_root = assert(vim.uv.fs_realpath(second_root))
+end
 
 local function install_replacement_counter()
 	child.lua([=[
@@ -301,6 +308,74 @@ T["file-tree: Project tree follows an already listed row promptly"] = function()
 	eq(result.replacements, 0)
 	eq(result.selected, target)
 	eq(result.focused, true)
+end
+
+T["file-tree: Project tree re-roots without waiting for repository discovery"] = function()
+	create_second_worktree()
+
+	local result = child.lua_get(
+		[=[(function(path)
+			local started = vim.uv.hrtime()
+			vim.cmd.cd(vim.fn.fnameescape(path))
+			return (vim.uv.hrtime() - started) / 1e6
+		end)(...)]=],
+		{ second_root }
+	)
+
+	assert(result <= 100 * H.load_factor(), ("re-root took %.2f ms"):format(result))
+	assert(
+		child.wait(
+			([=[(function(path)
+				local view = require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()]
+				local watched = require("gleb.file_tree.watch").state.roots[path]
+				return view and view.root == path and watched and watched.git_handle ~= nil
+			end)(%q)]=]):format(second_root),
+			1000
+		),
+		"re-rooted tree did not settle with a git-directory watch"
+	)
+end
+
+T["file-tree: Project tree persists folds off the action path"] = function()
+	local found = child.lua_get([=[(function()
+		local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+		for index, row in ipairs(view.rows) do
+			if row.label == "directory-0001" then
+				vim.api.nvim_set_current_win(view.win)
+				vim.api.nvim_win_set_cursor(view.win, { index, 0 })
+				return true
+			end
+		end
+		return false
+	end)()]=])
+	eq(found, true)
+	child.lua([[FileTreeFoldStarted = vim.uv.hrtime()]])
+
+	child.type_keys("za")
+
+	local elapsed_ms = child.lua_get([[(vim.uv.hrtime() - FileTreeFoldStarted) / 1e6]])
+	assert(elapsed_ms <= 100 * H.load_factor(), ("fold took %.2f ms"):format(elapsed_ms))
+	local normalized_root = assert(vim.uv.fs_realpath(root))
+	assert(
+		child.wait(
+			([=[(function(expected_root)
+				local path = vim.fs.joinpath(vim.fn.stdpath("state"), "file_tree", "expanded.json")
+				local file = io.open(path, "r")
+				if not file then
+					return false
+				end
+				local content = file:read("*a")
+				file:close()
+				local ok, stored = pcall(vim.json.decode, content)
+				if not ok or type(stored[expected_root]) ~= "table" then
+					return false
+				end
+				return not vim.tbl_contains(stored[expected_root], "directory-0001")
+			end)(%q)]=]):format(normalized_root),
+			1000
+		),
+		"collapsed expansion state was not persisted"
+	)
 end
 
 return T

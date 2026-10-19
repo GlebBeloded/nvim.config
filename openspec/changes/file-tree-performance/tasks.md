@@ -8,6 +8,8 @@ Scenarios: `file-tree: Project tree redraw meets the large-tree bound`, `file-tr
 
 - Store scan identity on cached entries so cached ordinary directories need no realpath call while symlink targets remain available for loop detection.
 - Store prepared row indices on each view so visible-path follow can select directly while absent paths retain reconstruction behavior.
+- Reconcile at most 16 watch handles per scheduled batch so large ownership changes yield between libuv operations.
+- Serialize asynchronous expansion-state replacements and discard callbacks from reset state so only the newest in-memory state can commit.
 
 ## 2. Coalesce watcher, write and git refreshes
 Scenarios: `file-tree: Project tree coalesces a save burst`, `file-tree: Unchanged git status does not redraw the project tree`, `file-tree: Project tree save leaves the main path promptly`
@@ -30,9 +32,9 @@ Scenarios: `file-tree: Project tree follows an already listed row promptly`
 
 ## 4. Defer repository, watch and persistence maintenance
 Scenarios: `file-tree: Project tree re-roots without waiting for repository discovery`, `file-tree: Project tree persists folds off the action path`
-- [ ] 4.1 Write the integration tests in `tests/integration/file-tree/test_performance.lua`, driving global `DirChanged` between populated git worktrees and normal-mode `za`, and see the action-path bounds or eventual-state assertions fail
-- [ ] 4.2 Make repository discovery asynchronous, reconcile watch handles in deferred bounded batches, and persist expansion state with sequenced asynchronous `vim.uv` reads, writes and atomic replacement
-- [ ] 4.3 Run `make test FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree re-roots without waiting for repository discovery"` and `make test FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree persists folds off the action path"` and see them pass
+- [x] 4.1 Write the integration tests in `tests/integration/file-tree/test_performance.lua`, driving global `DirChanged` between populated git worktrees and normal-mode `za`, and see the action-path bounds or eventual-state assertions fail
+- [x] 4.2 Make repository discovery asynchronous, reconcile watch handles in deferred bounded batches, and persist expansion state with sequenced asynchronous `vim.uv` reads, writes and atomic replacement
+- [x] 4.3 Run `make test FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree re-roots without waiting for repository discovery"` and `make test FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree persists folds off the action path"` and see them pass
 
 ## 5. Make unfold-all linear
 Scenarios: `file-tree: Project tree unfold all meets the large-tree bound`

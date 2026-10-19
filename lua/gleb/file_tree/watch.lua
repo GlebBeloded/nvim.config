@@ -5,6 +5,7 @@ local M = {}
 local fs = require("gleb.file_tree.fs")
 
 local WATCH_DEBOUNCE_MS = 100
+local WATCH_BATCH_SIZE = 16
 
 M.MAX_WATCH_HANDLES = 256
 
@@ -16,11 +17,14 @@ M.MAX_WATCH_HANDLES = 256
 ---@field toplevel? string
 ---@field refs integer
 ---@field clients table<integer, FileTreeWatchClient>
+---@field wanted table<string, boolean>
+---@field sync_scheduled boolean
 
 ---@class FileTreeWatchClient
 ---@field paths table<string, boolean>
 ---@field redraw fun(path: string)
 ---@field refresh_git fun()
+---@field git_ready boolean
 
 ---@class FileTreeWatchState
 ---@field roots table<string, FileTreeWatchRoot>
@@ -92,28 +96,39 @@ end
 ---@param root string
 ---@param state FileTreeWatchRoot
 local function watch_git_dir(root, state)
-	local result = vim.system(
+	vim.system(
 		{ "git", "-C", root, "rev-parse", "--show-toplevel", "--absolute-git-dir" },
-		{ text = true }
+		{ text = true },
+		function(result)
+			vim.schedule(function()
+				if M.state.roots[root] ~= state or result.code ~= 0 then
+					return
+				end
+				local lines = vim.split(vim.trim(result.stdout or ""), "\n", { plain = true })
+				local path = lines[2]
+				if not path then
+					return
+				end
+				state.toplevel = lines[1]
+				state.git_dir = path
+				state.git_handle = watch_path(path, function()
+					vim.schedule(function()
+						if M.state.roots[root] == state then
+							for _, client in pairs(state.clients) do
+								client.refresh_git()
+							end
+						end
+					end)
+				end)
+				for _, client in pairs(state.clients) do
+					if not client.git_ready then
+						client.git_ready = true
+						client.refresh_git()
+					end
+				end
+			end)
+		end
 	)
-		:wait()
-	if result.code ~= 0 then
-		return
-	end
-	local lines = vim.split(vim.trim(result.stdout or ""), "\n", { plain = true })
-	local path = lines[2]
-	if not path then
-		return
-	end
-	state.toplevel = lines[1]
-	state.git_dir = path
-	state.git_handle = watch_path(path, function()
-		vim.schedule(function()
-			for _, client in pairs(state.clients) do
-				client.refresh_git()
-			end
-		end)
-	end)
 end
 
 ---@param state FileTreeWatchRoot
@@ -141,7 +156,8 @@ function M.start_root(root, owner)
 	if state then
 		if not state.clients[owner] then
 			state.refs = state.refs + 1
-			state.clients[owner] = { paths = {}, redraw = function() end, refresh_git = function() end }
+			state.clients[owner] =
+				{ paths = {}, redraw = function() end, refresh_git = function() end, git_ready = false }
 		end
 		return
 	end
@@ -149,7 +165,11 @@ function M.start_root(root, owner)
 		handles = {},
 		timers = {},
 		refs = 1,
-		clients = { [owner] = { paths = {}, redraw = function() end, refresh_git = function() end } },
+		clients = {
+			[owner] = { paths = {}, redraw = function() end, refresh_git = function() end, git_ready = false },
+		},
+		wanted = {},
+		sync_scheduled = false,
 	}
 	M.state.roots[root] = state
 	watch_git_dir(root, state)
@@ -165,7 +185,7 @@ end
 
 ---@param root string
 ---@param state FileTreeWatchRoot
-local function sync_handles(root, state)
+local function wanted_paths(root, state)
 	local paths = {}
 	for _, client in pairs(state.clients) do
 		for path in pairs(client.paths) do
@@ -187,16 +207,46 @@ local function sync_handles(root, state)
 	for index = 1, math.min(#ordered, M.MAX_WATCH_HANDLES) do
 		wanted[ordered[index]] = true
 	end
-	for path in pairs(state.handles) do
-		if not wanted[path] then
-			close_folder(state, path)
-		end
+	return wanted
+end
+
+---@param root string
+---@param state FileTreeWatchRoot
+local function schedule_sync(root, state)
+	if state.sync_scheduled then
+		return
 	end
-	for path in pairs(wanted) do
-		if not state.handles[path] then
-			watch_folder(root, path, state)
+	state.sync_scheduled = true
+	vim.schedule(function()
+		if M.state.roots[root] ~= state then
+			state.sync_scheduled = false
+			return
 		end
-	end
+		local changed = 0
+		for path in pairs(state.handles) do
+			if not state.wanted[path] then
+				close_folder(state, path)
+				changed = changed + 1
+				if changed == WATCH_BATCH_SIZE then
+					state.sync_scheduled = false
+					schedule_sync(root, state)
+					return
+				end
+			end
+		end
+		for path in pairs(state.wanted) do
+			if not state.handles[path] then
+				watch_folder(root, path, state)
+				changed = changed + 1
+				if changed == WATCH_BATCH_SIZE then
+					state.sync_scheduled = false
+					schedule_sync(root, state)
+					return
+				end
+			end
+		end
+		state.sync_scheduled = false
+	end)
 end
 
 --- Watch every directory scan currently feeding one view's visible rows.
@@ -212,7 +262,12 @@ function M.sync(root, owner, paths, redraw, refresh_git)
 	client.paths = paths
 	client.redraw = redraw
 	client.refresh_git = refresh_git
-	sync_handles(root, state)
+	if state.git_dir and not client.git_ready then
+		client.git_ready = true
+		refresh_git()
+	end
+	state.wanted = wanted_paths(root, state)
+	schedule_sync(root, state)
 end
 
 --- Release one tree's ownership of a normalized root.
@@ -227,11 +282,9 @@ function M.stop_root(root, owner)
 	state.clients[owner] = nil
 	state.refs = state.refs - 1
 	if state.refs > 0 then
-		sync_handles(root, state)
+		state.wanted = wanted_paths(root, state)
+		schedule_sync(root, state)
 		return
-	end
-	for path in pairs(state.handles) do
-		close_folder(state, path)
 	end
 	if state.git_handle then
 		state.git_handle:stop()
@@ -239,6 +292,18 @@ function M.stop_root(root, owner)
 	end
 	M.state.roots[root] = nil
 	fs.invalidate_root(root)
+	local function close_batch()
+		local closed = 0
+		for path in pairs(state.handles) do
+			close_folder(state, path)
+			closed = closed + 1
+			if closed == WATCH_BATCH_SIZE then
+				vim.schedule(close_batch)
+				return
+			end
+		end
+	end
+	vim.schedule(close_batch)
 end
 
 --- Stop every active filesystem handle while retaining registered views.
