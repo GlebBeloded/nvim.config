@@ -9,6 +9,7 @@ Scenarios: `file-tree: Directory argument opens the project tree`
 - The public ops module keeps thin move wrappers because clipboard paste also dispatches through `M.move`.
 - The clipboard module owns the shared operation-state table so public state inspection stays stable across the extraction.
 - The deletion module receives the public operation state so trash overrides keep following resets without duplicate state.
+- Diff mappings receive the public window registry so they can preserve routing without creating a module cycle.
 
 ## 2. Extract file-tree folds
 Scenarios: `file-tree: za toggles a nest`
@@ -28,7 +29,7 @@ Scenarios: `file-tree: Project tree d moves a file to the Trash after confirmati
 
 ## 6. Extract diff-view mappings
 Scenarios: `diff: Diff view mappings come from diff actions`
-- [ ] 6.1 Run `make test FILE=tests/integration/diff/test_view_close.lua CASE="Diff view mappings come from diff actions"` and see it pass, move mapping installation and restoration into `lua/gleb/diff/view/mappings.lua` while preserving `lua/gleb/diff/view/init.lua` as the public entry point, run it again and see it pass
+- [x] 6.1 Run `make test FILE=tests/integration/diff/test_view_close.lua CASE="Diff view mappings come from diff actions"` and see it pass, move mapping installation and restoration into `lua/gleb/diff/view/mappings.lua` while preserving `lua/gleb/diff/view/init.lua` as the public entry point, run it again and see it pass
 
 ## 7. Extract diff-view autocmds
 Scenarios: `diff: Diff view re-diffs after an edit`

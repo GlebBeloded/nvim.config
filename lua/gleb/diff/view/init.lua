@@ -4,6 +4,7 @@
 local engine = require("gleb.diff.engine")
 local debounce = require("gleb.util.debounce")
 local layout = require("gleb.diff.view.layout")
+local mappings = require("gleb.diff.view.mappings")
 local patch = require("gleb.diff.patch")
 local render = require("gleb.diff.view.render")
 local settings = require("gleb.diff.settings").load()
@@ -85,58 +86,6 @@ local function readonly_buffer(lines)
 	vim.bo[buf].buftype = "nofile"
 	vim.bo[buf].bufhidden = "wipe"
 	return buf
-end
-
----@param lhs string
----@param previous table
-local function replay_mapping(lhs, previous)
-	if next(previous) == nil then
-		local count = vim.v.count > 0 and tostring(vim.v.count) or ""
-		vim.api.nvim_feedkeys(vim.keycode(count .. lhs), "n", false)
-		return
-	end
-	if previous.callback then
-		local result = previous.callback()
-		if previous.expr == 1 and type(result) == "string" then
-			vim.api.nvim_feedkeys(vim.keycode(result), previous.noremap == 1 and "n" or "m", false)
-		end
-		return
-	end
-	local count = vim.v.count > 0 and tostring(vim.v.count) or ""
-	vim.api.nvim_feedkeys(vim.keycode(count .. previous.rhs), previous.noremap == 1 and "n" or "m", false)
-end
-
----@param view gleb.diff.view.View
-local function set_mappings(view)
-	local actions = require("gleb.actions")
-	local adapter = require("gleb.actions.adapters.gleb_diff")
-	local catalog = assert(actions.state.applicator, "actions are not set up").catalog
-	local shortcuts = assert(actions.state.store, "actions are not set up").last_good
-	local mappings = adapter.mappings(catalog, shortcuts)
-	view.mappings = {}
-	for _, buf in ipairs({ view.left_buf, view.right_buf }) do
-		local saved = {}
-		view.mappings[buf] = saved
-		vim.api.nvim_buf_call(buf, function()
-			for lhs, mapping in pairs(mappings) do
-				local previous = vim.fn.maparg(lhs, "n", false, true)
-				local is_leader = vim.keycode(lhs) == vim.g.mapleader
-				table.insert(saved, { lhs = lhs, previous = previous })
-				vim.keymap.set("n", lhs, function()
-					if M.state.by_win[vim.api.nvim_get_current_win()] == view then
-						mapping.callback()
-					else
-						replay_mapping(lhs, previous)
-					end
-				end, {
-					buffer = buf,
-					desc = mapping.desc,
-					nowait = not is_leader,
-					silent = true,
-				})
-			end
-		end)
-	end
 end
 
 ---@param left string[]
@@ -436,7 +385,7 @@ local function register(view)
 	M.state.by_path[view.path] = view
 	M.state.by_win[view.left_win] = view
 	M.state.by_win[view.right_win] = view
-	set_mappings(view)
+	mappings.install(view, M.state.by_win)
 	render.draw(view)
 	create_interaction_autocmds(view)
 	attach(view)
@@ -697,18 +646,7 @@ function M.close(view)
 	sync_states[view] = nil
 	pcall(vim.api.nvim_del_augroup_by_id, view.augroup)
 
-	for buf, mappings in pairs(view.mappings or {}) do
-		if vim.api.nvim_buf_is_valid(buf) then
-			vim.api.nvim_buf_call(buf, function()
-				for _, mapping in ipairs(mappings) do
-					pcall(vim.keymap.del, "n", mapping.lhs, { buffer = buf })
-					if next(mapping.previous) ~= nil then
-						vim.fn.mapset("n", false, mapping.previous)
-					end
-				end
-			end)
-		end
-	end
+	mappings.restore(view)
 	for _, buf in ipairs({ view.left_buf, view.right_buf }) do
 		if vim.api.nvim_buf_is_valid(buf) then
 			vim.api.nvim_buf_clear_namespace(buf, view.ns, 0, -1)
