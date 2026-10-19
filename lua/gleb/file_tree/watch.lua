@@ -1,4 +1,7 @@
--- Non-recursive libuv watches invalidate only changed scans and coalesce redraws from event bursts.
+-- Non-recursive libuv watches invalidate only changed scans and coalesce redraws from event bursts. Listed folders
+-- beyond MAX_WATCH_HANDLES (or whose watch failed) are covered by one recursive root watch where libuv supports it,
+-- else polled every FALLBACK_RESCAN_MS. Every listed folder is also polled for FALLBACK_SETTLE_PASSES after a watch
+-- change, which can drop events.
 
 local M = {}
 
@@ -7,13 +10,21 @@ local fs = require("gleb.file_tree.fs")
 local WATCH_DEBOUNCE_MS = 100
 local WATCH_BATCH_SIZE = 16
 local FALLBACK_RESCAN_MS = 250
+-- libuv rebuilds its single FSEvents stream after any watch start or stop and drops events meanwhile.
+local FALLBACK_SETTLE_PASSES = 2
+-- libuv implements recursive fs events only on macOS (FSEvents) and Windows.
+local RECURSIVE_WATCH = vim.fn.has("mac") == 1 or vim.fn.has("win32") == 1
 
 M.MAX_WATCH_HANDLES = 256
 
 ---@class FileTreeWatchRoot
 ---@field handles table<string, uv.uv_fs_event_t>
 ---@field timers table<string, uv.uv_timer_t>
+---@field reported table<string, FileTreeEntry[]> cached scan already reported stale, per path
 ---@field fallback_timer? uv.uv_timer_t
+---@field tree_handle? uv.uv_fs_event_t
+---@field fallback_scanning boolean
+---@field settle_passes integer
 ---@field git_handle? uv.uv_fs_event_t
 ---@field git_dir? string
 ---@field toplevel? string
@@ -37,6 +48,9 @@ M.MAX_WATCH_HANDLES = 256
 ---@type FileTreeWatchState
 M.state = { roots = {} }
 
+local schedule_sync
+local update_coverage
+
 ---@param root string
 ---@param path string
 local function queue_redraw(root, path)
@@ -44,6 +58,7 @@ local function queue_redraw(root, path)
 	if not state then
 		return
 	end
+	state.reported[path] = fs.state.cache[path]
 	local timer = state.timers[path]
 	if not timer then
 		timer = assert(vim.uv.new_timer())
@@ -68,15 +83,16 @@ local function queue_redraw(root, path)
 	)
 end
 
---- Watch one directory's entries.
+--- Watch one directory's entries, or its whole subtree when `flags.recursive` is set.
 ---@param path string
----@param on_change fun()
+---@param on_change fun(filename?: string)
+---@param flags? uv.fs_event_start.flags
 ---@return uv.uv_fs_event_t?
-local function watch_path(path, on_change)
+local function watch_path(path, on_change, flags)
 	local handle = assert(vim.uv.new_fs_event())
-	local ok = handle:start(path, {}, function(error)
+	local ok = handle:start(path, flags or {}, function(error, filename)
 		if not error then
-			on_change()
+			on_change(filename)
 		end
 	end)
 	if ok then
@@ -92,6 +108,9 @@ local function watch_folder(root, path, state)
 	state.handles[path] = watch_path(path, function()
 		queue_redraw(root, path)
 	end)
+	if state.handles[path] then
+		state.settle_passes = FALLBACK_SETTLE_PASSES
+	end
 	return state.handles[path] ~= nil
 end
 
@@ -122,6 +141,8 @@ local function watch_git_dir(root, state)
 								end
 							end)
 						end)
+						state.settle_passes = FALLBACK_SETTLE_PASSES
+						schedule_sync(root, state)
 					end
 				end
 				for _, client in pairs(state.clients) do
@@ -145,6 +166,7 @@ local function close_folder(state, path)
 		handle:stop()
 		handle:close()
 		state.handles[path] = nil
+		state.settle_passes = FALLBACK_SETTLE_PASSES
 	end
 	local timer = state.timers[path]
 	if timer then
@@ -190,6 +212,7 @@ function M.start_root(root, owner, repository_ready)
 	state = {
 		handles = {},
 		timers = {},
+		reported = {},
 		refs = 1,
 		clients = {
 			[owner] = {
@@ -203,6 +226,8 @@ function M.start_root(root, owner, repository_ready)
 		wanted = {},
 		wanted_order = {},
 		sync_scheduled = false,
+		fallback_scanning = false,
+		settle_passes = 0,
 		discovery_complete = false,
 	}
 	M.state.roots[root] = state
@@ -234,6 +259,11 @@ local function wanted_paths(root, state)
 		end
 		if right == root then
 			return false
+		end
+		-- Keep live handles while their folder stays listed: on macOS each fs_event stop blocks the main loop.
+		local left_live, right_live = state.handles[left] ~= nil, state.handles[right] ~= nil
+		if left_live ~= right_live then
+			return left_live
 		end
 		if priorities[left] ~= priorities[right] then
 			return priorities[left] < priorities[right]
@@ -275,7 +305,7 @@ end
 
 ---@param root string
 ---@param state FileTreeWatchRoot
-local function schedule_sync(root, state)
+schedule_sync = function(root, state)
 	if state.sync_scheduled then
 		return
 	end
@@ -288,8 +318,165 @@ local function schedule_sync(root, state)
 		state.sync_scheduled = false
 		if reconcile(root, state, WATCH_BATCH_SIZE) then
 			schedule_sync(root, state)
+		else
+			update_coverage(root, state)
 		end
 	end)
+end
+
+---@param state FileTreeWatchRoot
+---@return boolean
+local function has_unwatched(state)
+	for _, client in pairs(state.clients) do
+		for path in pairs(client.paths) do
+			if not state.handles[path] then
+				return true
+			end
+		end
+	end
+	return false
+end
+
+---@param root string
+---@param state FileTreeWatchRoot
+---@param filename string
+local function redraw_unwatched_parent(root, state, filename)
+	local path = vim.fs.dirname(vim.fs.joinpath(root, filename))
+	if state.handles[path] then
+		return
+	end
+	for _, client in pairs(state.clients) do
+		if client.paths[path] then
+			queue_redraw(root, path)
+			return
+		end
+	end
+end
+
+---@param root string
+---@param state FileTreeWatchRoot
+---@return uv.uv_fs_event_t?
+local function watch_tree(root, state)
+	return watch_path(root, function(filename)
+		if filename then
+			redraw_unwatched_parent(root, state, filename)
+		end
+	end, { recursive = true })
+end
+
+---@param state FileTreeWatchRoot
+local function stop_fallback_timer(state)
+	if state.fallback_timer then
+		state.fallback_timer:stop()
+		state.fallback_timer:close()
+		state.fallback_timer = nil
+	end
+end
+
+---@param state FileTreeWatchRoot
+local function stop_tree_watch(state)
+	if state.tree_handle then
+		state.tree_handle:stop()
+		state.tree_handle:close()
+		state.tree_handle = nil
+	end
+end
+
+---@param state FileTreeWatchRoot
+local function stop_coverage(state)
+	stop_tree_watch(state)
+	stop_fallback_timer(state)
+	for path, timer in pairs(state.timers) do
+		if not state.handles[path] then
+			timer:stop()
+			timer:close()
+			state.timers[path] = nil
+		end
+	end
+end
+
+---@param root string
+---@param state FileTreeWatchRoot
+---@param before table<string, FileTreeEntry[]>
+---@param scans table<string, FileTreeEntry[]>
+---@param stamps table<string, string|false>
+local function apply_fallback_scans(root, state, before, scans, stamps)
+	if M.state.roots[root] ~= state then
+		return
+	end
+	state.fallback_scanning = false
+	for path, entries in pairs(scans) do
+		local previous = before[path]
+		if previous and fs.state.cache[path] == previous and state.reported[path] ~= previous then
+			if vim.deep_equal(previous, entries) then
+				fs.remember_scan_stamp(path, stamps[path])
+			else
+				-- Shares the watch event's debounce, so a change seen by both redraws once.
+				queue_redraw(root, path)
+				fs.invalidate(path)
+			end
+		end
+	end
+end
+
+---@param root string
+---@param state FileTreeWatchRoot
+---@param before table<string, FileTreeEntry[]>
+local function scan_fallback_paths(root, state, before)
+	local paths = vim.tbl_keys(before)
+	if #paths == 0 then
+		return
+	end
+	state.fallback_scanning = true
+	local pending = #paths
+	local scans = {}
+	local stamps = {}
+	local function complete(path, entries, stamp)
+		if entries then
+			scans[path] = entries
+			stamps[path] = stamp
+		end
+		pending = pending - 1
+		if pending == 0 then
+			vim.schedule(function()
+				apply_fallback_scans(root, state, before, scans, stamps)
+			end)
+		end
+	end
+	for _, path in ipairs(paths) do
+		fs.scan_stamp_async(path, function(stamp)
+			if fs.state.scan_stamps[path] == stamp then
+				complete(path)
+				return
+			end
+			fs.scan_async(path, function(entries)
+				complete(path, entries, stamp)
+			end)
+		end)
+	end
+end
+
+---@param root string
+---@param state FileTreeWatchRoot
+local function poll_folders(root, state)
+	if M.state.roots[root] ~= state or state.fallback_scanning then
+		return
+	end
+	local settling = state.settle_passes > 0
+	if settling then
+		state.settle_passes = state.settle_passes - 1
+	end
+	local before = {}
+	for _, client in pairs(state.clients) do
+		for path in pairs(client.paths) do
+			if settling or not state.handles[path] then
+				before[path] = fs.state.cache[path]
+			end
+		end
+	end
+	scan_fallback_paths(root, state, before)
+	state.wanted, state.wanted_order = wanted_paths(root, state)
+	schedule_sync(root, state)
 end
 
 ---@param root string
@@ -304,35 +491,29 @@ local function ensure_fallback_timer(root, state)
 		FALLBACK_RESCAN_MS,
 		FALLBACK_RESCAN_MS,
 		vim.schedule_wrap(function()
-			if M.state.roots[root] ~= state then
-				return
-			end
-			state.wanted, state.wanted_order = wanted_paths(root, state)
-			schedule_sync(root, state)
-			local changed = {}
-			for _, client in pairs(state.clients) do
-				for path in pairs(client.paths) do
-					if not state.handles[path] and changed[path] == nil then
-						local before = fs.state.cache[path]
-						fs.invalidate(path)
-						changed[path] = before ~= nil and not vim.deep_equal(before, fs.scan(path))
-					end
-				end
-			end
-			for _, client in pairs(state.clients) do
-				local refresh_git = false
-				for path in pairs(client.paths) do
-					if changed[path] then
-						client.redraw(path)
-						refresh_git = true
-					end
-				end
-				if refresh_git then
-					client.refresh_git()
-				end
-			end
+			poll_folders(root, state)
 		end)
 	)
+end
+
+--- Cover listed folders left without a handle once a reconcile pass completes.
+---@param root string
+---@param state FileTreeWatchRoot
+update_coverage = function(root, state)
+	local unwatched = has_unwatched(state)
+	if unwatched and RECURSIVE_WATCH and not state.tree_handle then
+		state.tree_handle = watch_tree(root, state)
+		if state.tree_handle then
+			state.settle_passes = FALLBACK_SETTLE_PASSES
+		end
+	elseif not unwatched then
+		stop_tree_watch(state)
+	end
+	if state.settle_passes > 0 or (unwatched and not state.tree_handle) then
+		ensure_fallback_timer(root, state)
+	else
+		stop_fallback_timer(state)
+	end
 end
 
 --- Watch every directory scan currently feeding one view's visible rows.
@@ -357,7 +538,6 @@ function M.sync(root, owner, paths, redraw, refresh_git)
 		reconcile(root, state, WATCH_BATCH_SIZE)
 	end
 	schedule_sync(root, state)
-	ensure_fallback_timer(root, state)
 end
 
 --- Release one tree's ownership of a normalized root.
@@ -376,11 +556,7 @@ function M.stop_root(root, owner)
 		schedule_sync(root, state)
 		return
 	end
-	if state.fallback_timer then
-		state.fallback_timer:stop()
-		state.fallback_timer:close()
-		state.fallback_timer = nil
-	end
+	stop_coverage(state)
 	if state.git_handle then
 		state.git_handle:stop()
 		state.git_handle:close()
@@ -405,11 +581,7 @@ end
 ---@return nil
 function M.stop_all()
 	for _, state in pairs(M.state.roots) do
-		if state.fallback_timer then
-			state.fallback_timer:stop()
-			state.fallback_timer:close()
-			state.fallback_timer = nil
-		end
+		stop_coverage(state)
 		for path in pairs(state.handles) do
 			close_folder(state, path)
 		end

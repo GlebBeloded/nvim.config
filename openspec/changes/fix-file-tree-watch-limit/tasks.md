@@ -15,10 +15,8 @@ Scenarios: `file-tree: A compact chain splits when a folder gains an entry`, `fi
 - Rank scan paths with visible rows first, then by row distance from the cursor, so compact-chain ancestors inherit the rendered row's priority.
 - Reconcile one 16-handle batch synchronously on first draw, then retain scheduled batches for larger trees.
 - Rescan unwatched listed directories every 250 ms, leaving time for the existing coalesced redraw inside the 1000 ms contract.
-
-## Stuck
-
-- Probe evidence: an exact 4898-row Git-backed probe folded in 64.71 ms with 1746 asynchronous directory metadata checks, zero asynchronous rescans, zero synchronous cache misses, and a 0.04 ms maximum heartbeat gap, while the dedicated case took 922.63 ms and 2032.59 ms. The remaining delay occurs outside the measured fold action despite unchanged directories avoiding scans.
-- Attempt 1 cached each scanned directory's mtime and replaced unchanged fallback scans with asynchronous metadata checks; the dedicated case remained red at 922.63 ms and 2032.59 ms on its required timing-bound rerun.
-- Attempt 2 submitted all cheap metadata checks from one callback instead of chaining 16-path scheduled batches; the dedicated case remained red at 2232.86 ms.
-- The second attempt is saved at `/Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/f595f2d2-149b-4647-823a-8ac3e0469c96/stuck-attempt-1b.diff`; production edits were reverted and the existing red performance regression remains.
+- Keep live watches whose folders stay listed ahead of the priority order and fill only free slots by visibility and cursor proximity: each macOS `fs_event` stop blocks the main loop, so a cursor jump swapping the whole capped set stalled the fold for seconds.
+- Check unwatched folders by an asynchronous directory mtime stamp, taken before each scan, and rescan only changed folders asynchronously, so the fallback never scans on the main loop.
+- On macOS and Windows, cover listed folders without their own handle by one recursive root watch (counted as watched for the fallback clause) and poll only where libuv lacks recursive watches: polling 1744 folders every 250 ms in parallel large-tree children slowed FSEvents delivery and git status in every other test.
+- Poll every listed folder for two 250 ms passes after any watch start or stop: libuv rebuilds its single FSEvents stream then and drops events, which instrumented runs showed for compact-chain and beyond-limit changes.
+- Report a stale cached scan once per cache entry, so a catch-up pass never repeats a watch event's redraw and git refresh while the view's redraw is still pending.
