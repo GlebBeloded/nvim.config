@@ -128,4 +128,40 @@ T["file-tree: Directory buffer focuses an open project tree"] = function()
 	eq(actual.directory_buffers, 0)
 end
 
+T["file-tree: Directory buffer entered from project tree focuses it"] = function()
+	child.cmd("cd " .. vim.fn.fnameescape(root))
+	child.cmd("edit README.md")
+	run_tree_toggle()
+	focus_tree_row("go.mod")
+	local directory = vim.fs.joinpath(root, "internal")
+
+	child.cmd("edit " .. vim.fn.fnameescape(directory))
+	assert(child.wait([[(function()
+		local view = require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		return view and vim.api.nvim_get_current_win() == view.win
+	end)()]]))
+
+	local actual = child.lua_get(
+		[[(function(directory)
+			local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+			local editor = assert(require("gleb.file_tree.view").state.last_editor_by_tab[view.tab])
+			return {
+				root = view.root,
+				line = vim.api.nvim_buf_get_lines(view.buf, vim.api.nvim_win_get_cursor(view.win)[1] - 1,
+					vim.api.nvim_win_get_cursor(view.win)[1], false)[1],
+				editor_name = vim.api.nvim_buf_get_name(vim.api.nvim_win_get_buf(editor)),
+				directory_buffers = vim.iter(vim.api.nvim_list_bufs()):fold(0, function(count, buf)
+					return count + (vim.api.nvim_buf_get_name(buf) == directory and 1 or 0)
+				end),
+			}
+		end)(...)]],
+		{ directory }
+	)
+
+	eq(actual.root, vim.uv.fs_realpath(root))
+	assert(actual.line:find("go.mod", 1, true), "tree cursor moved from go.mod")
+	eq(actual.editor_name, vim.fs.joinpath(root, "README.md"))
+	eq(actual.directory_buffers, 0)
+end
+
 return T

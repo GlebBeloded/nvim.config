@@ -12,7 +12,7 @@ local TAB_INSET = 8 -- indicator, padding, icon and space before the label in th
 local TREE_COLUMNS = 36 -- sidebar width 35 plus the window separator
 
 local CHANGES_MASK = {
-	"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabccbbbbbbbbbbbbbdddddddddddddddddddddddddddddddddddddddddddddddd",
+	"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabcbbbbbbbbbbbbbddddddddddddddddddddddddddddddddddddddddddddddddd",
 	"aeafagggggggahhhhhhhaaaaaaaaaaaaaaaijjjjjkkkkkkk....................................................",
 	"aaaealammmmmmmmmmmmmmmmahaaaaaaaaaainnnnn...........................................................",
 	"oooooeofocoppppppppppoooooooqqqorroinnnnnkkkkkk.....................................................",
@@ -201,16 +201,6 @@ T["bufferline: tabline over the changes panel matches the approved render"] = fu
 	child.wo.relativenumber = false
 	child.wo.numberwidth = 5
 	child.wo.signcolumn = "no"
-	child.lua([[
-		local config = require("bufferline.config")
-		local options = config.options
-		options.enforce_regular_tabs = false
-		options.tab_size = 1
-		options.buffer_close_icon = ""
-		options.indicator.style = "icon"
-		options.indicator.icon = " "
-		config.highlights.indicator_selected = config.highlights.buffer_selected
-	]])
 	open_changes()
 	assert(
 		child.wait([[#require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()].rows == 10]], 5000)
@@ -219,7 +209,7 @@ T["bufferline: tabline over the changes panel matches the approved render"] = fu
 	child.cmd("redrawtabline | redraw!")
 
 	eq(changes_text(), approved_changes_text())
-	H.expect_screen_colors(child, 1, CHANGES_MASK, CHANGES_LEGEND, { columns = TREE_COLUMNS })
+	H.expect_screen_colors(child, 1, CHANGES_MASK, CHANGES_LEGEND)
 	eq(panel_extmark_groups(), PANEL_GROUPS)
 end
 

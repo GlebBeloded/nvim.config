@@ -98,7 +98,7 @@ Scenarios: `shortcuts: Shortcut table names action ids`, `shortcuts: Shortcut me
 Scenarios: `diff: Diff view opens on the current file`, `diff: Diff view mappings come from diff actions`, `diff: Diff view checkboxes follow the index`, `diff: Diff view marks both ends of a moved block`, `diff: Diff view moved block matches the approved render`
 - [x] 9.1 Run `make trace VERBOSE=1` and confirm no orphans, duplicates or missing scenarios introduced by this change
 - [x] 9.2 Run `rg -n 'neo-tree|neo_tree|NeoTree|Neotree|differ\.|Differ|codediff|vscode\.diff|diff_preview|open_differ' lua settings tests init.lua -g '!tests/unit/loop/**'`; remove every hit except an explicitly retained diffview/gitsigns/nui reference covered by the proposal
-- [ ] 9.3 Run `make check E2E=1`, `openspec validate tree-diff-cutover --strict`, and `python3 .archon/scripts/pinned.py tree-diff-cutover`; require the pinned command to print `none`
+- [x] 9.3 Run `make check E2E=1`, `openspec validate tree-diff-cutover --strict`, and `python3 .archon/scripts/pinned.py tree-diff-cutover`; require the pinned command to print `none`
 
 ## Agent decisions
 
@@ -120,3 +120,11 @@ Scenarios: `diff: Diff view opens on the current file`, `diff: Diff view mapping
 - Also updated docs/testing.md's `make deps` libraries and its codediff example (design.md, Docs); its probing note is left to the loop-wording fix.
 - Updated the Find Action e2e approved palette count from 49 to 46 (`tests/e2e/find-action/screens.lua`): 5a715a4e retired the `tree.toggle_filesystem`, `tree.toggle_git_status` and `git.open_differ` rows, and every shown row is unchanged.
 - The neo-tree rejection of task 5c.1 checks drawn `NeoTree*` groups (extmarks, `winhighlight`), not defined ones: the gruvbox-material colorscheme itself defines `NeoTree*` groups for its plugin integrations.
+
+## Stuck
+
+- Task 3, tree-window directory hijack: the new `file-tree: Directory buffer entered from project tree focuses it` regression remains red. Attempt 1 restored `view.buf` before focusing the existing tree; focus and editor contents were fixed, but the tree cursor had already reset from `go.mod` to the root. Probe output showed the departed tree position is not retained in buffer marks: before `{ cursor = { 3, 0 }, quote = { 1, 0 } }`; after `{ cursor = { 1, 0 }, quote = { 0, 0 }, dot = { 0, 0 } }`. Attempt 2 captured the cursor in the tree buffer's `BufLeave` and restored it during hijack, but failed with `Invalid cursor line: out of range` while the shorter replacement buffer was exposed. Saved attempt: `/Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/f4e4e8be-19c0-4187-8093-4779cfa91b0a/stuck-attempt-3.diff`. Production edits were reverted; keep the red regression.
+
+## Blocked
+
+- Should the approved changes-panel tabline be re-rendered from the real bufferline configuration? Without the test-only overrides, production places the Go icon at column 43; design.md requires column 38. Option A (recommended): approve a new render from the existing production options (`tab_size = 21`, `enforce_regular_tabs = true`) and update design.md, the ANSI fixture and mask together. Option B: change the user-visible production tab sizing and indicator to reproduce the old approved row. The test now uses the real config and checks all 100 columns; it remains red pending this decision.
