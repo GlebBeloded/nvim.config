@@ -7,3 +7,4 @@ Scenarios: `git: Changes panel review replaces the dashboard`
 ## Agent decisions
 
 - Prefer Alpha only as an opt-in fallback after normal editor windows, so existing editor selection keeps its priority.
+- Replace Alpha with an empty editor buffer before showing the diff, so later diff updates retain a valid restore target.
