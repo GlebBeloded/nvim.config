@@ -9,9 +9,9 @@ Scenarios: `git: Changes panel arrow keys and zc zo fold without an error`, `ref
 
 Scenarios: `ui: Tree flattens open groups depth first`, `ui: Tree keeps fold state by id across rebuilds`, `ui: Tree groups start in their default state`, `ui: Close on an open group folds it`, `ui: Close on a leaf folds its parent and selects it`, `ui: Close on a folded group folds its parent`, `ui: Open on a folded group unfolds it`, `ui: Open on an open group selects its first child`, `ui: Open on a leaf does nothing`, `ui: Toggle on a leaf folds its parent`, `ui: Close all selects the top-level ancestor`, `ui: A pinned group never folds`
 
-- [ ] 2.1 Write the scenarios in `tests/unit/ui/test_tree.lua` (bare child, no plugins) and see them fail
-- [ ] 2.2 Add `lua/gleb/ui/tree/model.lua` and `lua/gleb/ui/tree/fold.lua` (design Decisions 2 and 3), typed with LuaCATS
-- [ ] 2.3 Run `make test FILE=tests/unit/ui/test_tree.lua` and see it pass
+- [x] 2.1 Write the scenarios in `tests/unit/ui/test_tree.lua` (bare child, no plugins) and see them fail
+- [x] 2.2 Add `lua/gleb/ui/tree/model.lua` and `lua/gleb/ui/tree/fold.lua` (design Decisions 2 and 3), typed with LuaCATS
+- [x] 2.3 Run `make test FILE=tests/unit/ui/test_tree.lua` and see it pass
 
 ## 3. View helper, registry and action factory
 
@@ -56,3 +56,7 @@ Scenarios: `folding: Collapse Fold key folds the group under the tree cursor`, `
 ## 8. Gate
 
 - [ ] 8.1 Run `make check` and see it green; `make trace` lists every scenario of this change as tested
+
+## Agent decisions
+
+- Store a folded boolean for every foldable id, so rebuilds preserve both explicit opens and closes.
