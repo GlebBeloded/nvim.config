@@ -11,17 +11,33 @@ local workspace = require("gleb.workspace")
 ---@type ChangesGitState
 M.state = {}
 
+---@class ChangesGitArgs: table
+---@field [integer] string
+---@field stdin? string
+
+--- Run a Git command and deliver its result on Neovim's main loop.
+---@param args ChangesGitArgs
+---@param cwd string
+---@param callback fun(result: vim.SystemCompleted)
+---@return nil
+local function run_git(args, cwd, callback)
+	local command = vim.list_slice(args)
+	vim.system(command, { cwd = workspace.normalize(cwd), text = true, stdin = args.stdin }, function(result)
+		vim.schedule(function()
+			callback(result)
+		end)
+	end)
+end
+
 --- Resolve the repository containing a directory.
 ---@param dir string
 ---@param callback fun(result: vim.SystemCompleted, root: string?)
 ---@return nil
 function M.resolve_root(dir, callback)
 	local command = { "git", "rev-parse", "--show-toplevel" }
-	vim.system(command, { cwd = workspace.normalize(dir), text = true }, function(result)
-		vim.schedule(function()
-			local root = result.code == 0 and workspace.normalize(vim.trim(result.stdout or "")) or nil
-			callback(result, root)
-		end)
+	run_git(command, dir, function(result)
+		local root = result.code == 0 and workspace.normalize(vim.trim(result.stdout or "")) or nil
+		callback(result, root)
 	end)
 end
 
@@ -50,17 +66,15 @@ function M.refresh(root, callback)
 		if not status_result or not numstat_result then
 			return
 		end
-		vim.schedule(function()
-			callback(status_result, numstat_result.code == 0 and numstat_result.stdout or nil)
-		end)
+		callback(status_result, numstat_result.code == 0 and numstat_result.stdout or nil)
 	end
 
 	M.state.last_cmd = command
-	vim.system(command, { cwd = cwd, text = true }, function(result)
+	run_git(command, cwd, function(result)
 		status_result = result
 		finish()
 	end)
-	vim.system(numstat_command, { cwd = cwd, text = true }, function(result)
+	run_git(numstat_command, cwd, function(result)
 		numstat_result = result
 		finish()
 	end)
@@ -103,57 +117,55 @@ function M.load_diff(root, row, callback)
 		if not left_result or not hash_result or not numstat_result then
 			return
 		end
-		vim.schedule(function()
-			local added = row.status == "added" or row.status == "untracked"
-			local deleted = row.status == "deleted"
-			local binary = (numstat_result.stdout or ""):match("^%-\t%-\t") ~= nil
-			local readonly = deleted or binary or row.status == "conflict"
-			local right = {}
-			local right_buf
-			local loaded_buf
-			if not deleted then
-				if readonly then
-					right = readonly_file_lines(path)
-				else
-					right_buf = vim.fn.bufnr(path, false)
-					if right_buf == -1 then
-						right_buf = vim.fn.bufadd(path)
-					end
-					if not vim.api.nvim_buf_is_loaded(right_buf) then
-						loaded_buf = right_buf
-					end
-					vim.fn.bufload(right_buf)
-					right = vim.api.nvim_buf_get_lines(right_buf, 0, -1, false)
+		local added = row.status == "added" or row.status == "untracked"
+		local deleted = row.status == "deleted"
+		local binary = (numstat_result.stdout or ""):match("^%-\t%-\t") ~= nil
+		local readonly = deleted or binary or row.status == "conflict"
+		local right = {}
+		local right_buf
+		local loaded_buf
+		if not deleted then
+			if readonly then
+				right = readonly_file_lines(path)
+			else
+				right_buf = vim.fn.bufnr(path, false)
+				if right_buf == -1 then
+					right_buf = vim.fn.bufadd(path)
 				end
+				if not vim.api.nvim_buf_is_loaded(right_buf) then
+					loaded_buf = right_buf
+				end
+				vim.fn.bufload(right_buf)
+				right = vim.api.nvim_buf_get_lines(right_buf, 0, -1, false)
 			end
-			local left_text = left_result.stdout or ""
-			callback({
-				path = path,
-				root = root,
-				relpath = relpath,
-				left = added and {} or text_lines(left_text),
-				right = right,
-				right_buf = right_buf,
-				actionable = not added and not readonly,
-				head_final_newline = not added and left_text:sub(-1) == "\n",
-				filetype = vim.filetype.match({ filename = path }) or "",
-				labels = {
-					left = (hash_result.code == 0 and vim.trim(hash_result.stdout or "") or "HEAD") .. " · HEAD",
-					right = "Your version",
-				},
-			}, loaded_buf)
-		end)
+		end
+		local left_text = left_result.stdout or ""
+		callback({
+			path = path,
+			root = root,
+			relpath = relpath,
+			left = added and {} or text_lines(left_text),
+			right = right,
+			right_buf = right_buf,
+			actionable = not added and not readonly,
+			head_final_newline = not added and left_text:sub(-1) == "\n",
+			filetype = vim.filetype.match({ filename = path }) or "",
+			labels = {
+				left = (hash_result.code == 0 and vim.trim(hash_result.stdout or "") or "HEAD") .. " · HEAD",
+				right = "Your version",
+			},
+		}, loaded_buf)
 	end
 
-	vim.system(left_command, { cwd = root, text = true }, function(result)
+	run_git(left_command, root, function(result)
 		left_result = result
 		finish()
 	end)
-	vim.system(hash_command, { cwd = root, text = true }, function(result)
+	run_git(hash_command, root, function(result)
 		hash_result = result
 		finish()
 	end)
-	vim.system(numstat_command, { cwd = root, text = true }, function(result)
+	run_git(numstat_command, root, function(result)
 		numstat_result = result
 		finish()
 	end)
@@ -174,20 +186,18 @@ local function fully_staged(records)
 	return true
 end
 
----@param command string[]
+---@param command ChangesGitArgs
 ---@param paths string[]
----@return string[] command
----@return table opts
+---@return ChangesGitArgs command
 local function add_pathspec(command, paths)
-	local opts = { text = true }
 	if #paths > 100 then
 		vim.list_extend(command, { "--pathspec-from-file=-", "--pathspec-file-nul" })
-		opts.stdin = table.concat(paths, "\0") .. "\0"
+		command.stdin = table.concat(paths, "\0") .. "\0"
 	else
 		command[#command + 1] = "--"
 		vim.list_extend(command, paths)
 	end
-	return command, opts
+	return command
 end
 
 ---@param records GitStatusRecord[]
@@ -244,32 +254,24 @@ function M.toggle_stage(root, paths, callback)
 		"--untracked-files=all",
 	}
 	M.state.last_cmd = status_command
-	vim.system(status_command, { cwd = root, text = true }, function(status_result)
-		vim.schedule(function()
-			if status_result.code ~= 0 then
-				callback(status_result)
-				return
-			end
-			local records = selected_records(root, paths, git_status.parse_records(status_result.stdout or ""))
-			if has_conflict(records) then
-				callback({ code = 1, signal = 0, stdout = "", stderr = "resolve conflicts in the merge tool" })
-				return
-			end
-			local operation = fully_staged(records) and "reset" or "add"
-			local command = { "git", "--literal-pathspecs", operation }
-			if operation == "reset" then
-				command[#command + 1] = "-q"
-			end
-			local command_opts
-			command, command_opts = add_pathspec(command, record_paths(root, records))
-			M.state.last_cmd = command
-			command_opts.cwd = root
-			vim.system(command, command_opts, function(result)
-				vim.schedule(function()
-					callback(result)
-				end)
-			end)
-		end)
+	run_git(status_command, root, function(status_result)
+		if status_result.code ~= 0 then
+			callback(status_result)
+			return
+		end
+		local records = selected_records(root, paths, git_status.parse_records(status_result.stdout or ""))
+		if has_conflict(records) then
+			callback({ code = 1, signal = 0, stdout = "", stderr = "resolve conflicts in the merge tool" })
+			return
+		end
+		local operation = fully_staged(records) and "reset" or "add"
+		local command = { "git", "--literal-pathspecs", operation }
+		if operation == "reset" then
+			command[#command + 1] = "-q"
+		end
+		command = add_pathspec(command, record_paths(root, records))
+		M.state.last_cmd = vim.list_slice(command)
+		run_git(command, root, callback)
 	end)
 end
 
@@ -280,11 +282,7 @@ end
 function M.stage_all(root, callback)
 	local command = { "git", "--literal-pathspecs", "add", "-A" }
 	M.state.last_cmd = command
-	vim.system(command, { cwd = workspace.normalize(root), text = true }, function(result)
-		vim.schedule(function()
-			callback(result)
-		end)
-	end)
+	run_git(command, root, callback)
 end
 
 --- Commit the staged changes in one Changes panel repository.
@@ -294,11 +292,7 @@ end
 ---@return nil
 function M.commit(root, message, callback)
 	local command = { "git", "--literal-pathspecs", "commit", "-m", message }
-	vim.system(command, { cwd = workspace.normalize(root), text = true }, function(result)
-		vim.schedule(function()
-			callback(result)
-		end)
-	end)
+	run_git(command, root, callback)
 end
 
 --- Push the current branch from one Changes panel repository.
@@ -306,11 +300,7 @@ end
 ---@param callback fun(result: vim.SystemCompleted)
 ---@return nil
 function M.push(root, callback)
-	vim.system({ "git", "push" }, { cwd = workspace.normalize(root), text = true }, function(result)
-		vim.schedule(function()
-			callback(result)
-		end)
-	end)
+	run_git({ "git", "push" }, root, callback)
 end
 
 ---@param root string
@@ -337,20 +327,14 @@ function M.revert(root, row, callback)
 		command = { "git", "--literal-pathspecs", "checkout", "HEAD", "--", path }
 	end
 	M.state.last_cmd = command
-	vim.system(command, { cwd = root, text = true }, function(result)
+	run_git(command, root, function(result)
 		if result.code ~= 0 or not row.orig then
-			vim.schedule(function()
-				callback(result)
-			end)
+			callback(result)
 			return
 		end
 		local remove = { "git", "--literal-pathspecs", "rm", "--cached", "--", path }
 		M.state.last_cmd = remove
-		vim.system(remove, { cwd = root, text = true }, function(remove_result)
-			vim.schedule(function()
-				callback(remove_result)
-			end)
-		end)
+		run_git(remove, root, callback)
 	end)
 end
 

@@ -8,6 +8,7 @@ Scenarios: `file-tree: Project tree watchers stop when the tree closes`
 - Project-tree redraw replaces its timer before scheduling so a queued stale callback remains distinguishable from the current debounce.
 - Shared scanning lives at `gleb.workspace` and porcelain parsing at `gleb.git.status`, matching their workspace and Git ownership while retaining the old filesystem import as a compatibility alias.
 - Shared tree infrastructure lives under `gleb.tree`, with compatibility aliases for existing file-tree callers so the Changes panel has no project-tree dependency.
+- Large pathspec stdin travels as metadata on the Git argument list so the three-argument runner stays uniform without changing Git's NUL-delimited input.
 
 ## 2. Migrate project-tree git and expansion debounce
 Scenarios: `file-tree: Project tree runs git status once per burst`, `file-tree: Project tree expanded folders persist per root`
@@ -31,4 +32,4 @@ Scenarios: `file-tree: Nesting rule nests by capture`, `git: Changes panel nests
 
 ## 7. Consolidate Changes-panel git process execution
 Scenarios: `git: Changes panel status avoids optional locks`, `git: Changes panel Space stages an unstaged file`, `git: Changes panel X reverts a file after confirmation`, `git: Changes panel review shows the current file's diff`
-- [ ] 7.1 Run `make test FILE=tests/integration/git/test_changes.lua CASE="Changes panel status avoids optional locks"`, `make test FILE=tests/integration/git/test_changes_stage.lua CASE="Changes panel Space stages an unstaged file"`, `make test FILE=tests/integration/git/test_changes_actions.lua CASE="Changes panel X reverts a file after confirmation"`, and `make test FILE=tests/integration/git/test_changes_diff.lua CASE="Changes panel review shows the current file's diff"` and see them pass, add one scheduled-callback `run_git(args, cwd, cb)` in `git/changes/git.lua` and migrate all 13 call sites, then run them again and see them pass
+- [x] 7.1 Run `make test FILE=tests/integration/git/test_changes.lua CASE="Changes panel status avoids optional locks"`, `make test FILE=tests/integration/git/test_changes_stage.lua CASE="Changes panel Space stages an unstaged file"`, `make test FILE=tests/integration/git/test_changes_actions.lua CASE="Changes panel X reverts a file after confirmation"`, and `make test FILE=tests/integration/git/test_changes_diff.lua CASE="Changes panel review shows the current file's diff"` and see them pass, add one scheduled-callback `run_git(args, cwd, cb)` in `git/changes/git.lua` and migrate all 13 call sites, then run them again and see them pass
