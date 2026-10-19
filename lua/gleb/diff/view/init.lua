@@ -2,16 +2,14 @@
 -- Source comparison happens before opening windows so empty/error branches leave the editor untouched.
 
 local engine = require("gleb.diff.engine")
-local debounce = require("gleb.util.debounce")
+local autocmds = require("gleb.diff.view.autocmds")
 local layout = require("gleb.diff.view.layout")
+local mappings = require("gleb.diff.view.mappings")
 local patch = require("gleb.diff.patch")
 local render = require("gleb.diff.view.render")
 local settings = require("gleb.diff.settings").load()
 local stage = require("gleb.diff.stage")
 local windows = require("gleb.diff.view.windows")
-
----@type table<gleb.diff.view.View, { cursor?: { win: integer, line: integer, col: integer }, scroll?: { win: integer, topline: integer, topfill: integer, leftcol: integer } }>
-local sync_states = setmetatable({}, { __mode = "k" })
 
 local M = {
 	config = {
@@ -85,58 +83,6 @@ local function readonly_buffer(lines)
 	vim.bo[buf].buftype = "nofile"
 	vim.bo[buf].bufhidden = "wipe"
 	return buf
-end
-
----@param lhs string
----@param previous table
-local function replay_mapping(lhs, previous)
-	if next(previous) == nil then
-		local count = vim.v.count > 0 and tostring(vim.v.count) or ""
-		vim.api.nvim_feedkeys(vim.keycode(count .. lhs), "n", false)
-		return
-	end
-	if previous.callback then
-		local result = previous.callback()
-		if previous.expr == 1 and type(result) == "string" then
-			vim.api.nvim_feedkeys(vim.keycode(result), previous.noremap == 1 and "n" or "m", false)
-		end
-		return
-	end
-	local count = vim.v.count > 0 and tostring(vim.v.count) or ""
-	vim.api.nvim_feedkeys(vim.keycode(count .. previous.rhs), previous.noremap == 1 and "n" or "m", false)
-end
-
----@param view gleb.diff.view.View
-local function set_mappings(view)
-	local actions = require("gleb.actions")
-	local adapter = require("gleb.actions.adapters.gleb_diff")
-	local catalog = assert(actions.state.applicator, "actions are not set up").catalog
-	local shortcuts = assert(actions.state.store, "actions are not set up").last_good
-	local mappings = adapter.mappings(catalog, shortcuts)
-	view.mappings = {}
-	for _, buf in ipairs({ view.left_buf, view.right_buf }) do
-		local saved = {}
-		view.mappings[buf] = saved
-		vim.api.nvim_buf_call(buf, function()
-			for lhs, mapping in pairs(mappings) do
-				local previous = vim.fn.maparg(lhs, "n", false, true)
-				local is_leader = vim.keycode(lhs) == vim.g.mapleader
-				table.insert(saved, { lhs = lhs, previous = previous })
-				vim.keymap.set("n", lhs, function()
-					if M.state.by_win[vim.api.nvim_get_current_win()] == view then
-						mapping.callback()
-					else
-						replay_mapping(lhs, previous)
-					end
-				end, {
-					buffer = buf,
-					desc = mapping.desc,
-					nowait = not is_leader,
-					silent = true,
-				})
-			end
-		end)
-	end
 end
 
 ---@param left string[]
@@ -290,156 +236,18 @@ function M.refresh_index(view)
 end
 
 ---@param view gleb.diff.view.View
-local function schedule_redraw(view)
-	if view.closing then
-		return
-	end
-	view.timer = debounce.schedule(view.timer, M.config.debounce_ms, function()
-		redraw(view)
-	end)
-end
-
----@param view gleb.diff.view.View
-local function attach(view)
-	local function on_lines()
-		if view.closing then
-			return true
-		end
-		schedule_redraw(view)
-	end
-	local function on_detach()
-		view.attached = false
-	end
-	view.attached = vim.api.nvim_buf_attach(view.right_buf, false, {
-		on_lines = on_lines,
-		on_detach = on_detach,
-	})
-end
-
----@param view gleb.diff.view.View
----@param source_win integer
-local function sync_windows(view, source_win)
-	if view.syncing or not vim.api.nvim_win_is_valid(source_win) then
-		return
-	end
-	local source_side = source_win == view.left_win and "left" or "right"
-	local peer_win = source_side == "left" and view.right_win or view.left_win
-	if not vim.api.nvim_win_is_valid(peer_win) then
-		return
-	end
-	local source_view = vim.api.nvim_win_call(source_win, vim.fn.winsaveview)
-	local source_cursor = vim.api.nvim_win_get_cursor(source_win)
-	local peer_line = layout.transfer_line(view.layout, source_side, source_cursor[1])
-	local peer_count = vim.api.nvim_buf_line_count(vim.api.nvim_win_get_buf(peer_win))
-	local peer_topline = layout.transfer_line(view.layout, source_side, source_view.topline)
-	peer_line = math.min(math.max(peer_line, 1), peer_count)
-	local state = sync_states[view] or {}
-	sync_states[view] = state
-
-	view.syncing = true
-	local peer_cursor = vim.api.nvim_win_get_cursor(peer_win)
-	if peer_cursor[1] ~= peer_line or peer_cursor[2] ~= source_cursor[2] then
-		state.cursor = { win = peer_win, line = peer_line, col = source_cursor[2] }
-		vim.api.nvim_win_set_cursor(peer_win, { peer_line, source_cursor[2] })
-	end
-	local target_topline = math.min(math.max(peer_topline, 1), peer_count)
-	state.scroll = {
-		win = peer_win,
-		topline = target_topline,
-		topfill = source_view.topfill,
-		leftcol = source_view.leftcol,
-	}
-	vim.api.nvim_win_call(peer_win, function()
-		vim.fn.winrestview({
-			topline = target_topline,
-			topfill = source_view.topfill,
-			leftcol = source_view.leftcol,
-		})
-	end)
-	view.syncing = false
-end
-
----@param args vim.api.keyset.create_autocmd.callback_args
-local function on_scrolled(args)
-	local win = tonumber(args.match) --[[@as integer?]]
-	if not win then
-		return
-	end
-	local view = M.state.by_win[win]
-	if view then
-		local state = sync_states[view]
-		local synced = state and state.scroll or nil
-		if synced and synced.win == win then
-			local actual = vim.api.nvim_win_call(win, vim.fn.winsaveview)
-			state.scroll = nil
-			if
-				synced.topline == actual.topline
-				and synced.topfill == actual.topfill
-				and synced.leftcol == actual.leftcol
-			then
-				return
-			end
-		end
-		sync_windows(view, win)
-	end
-end
-
-local function on_cursor_moved()
-	local win = vim.api.nvim_get_current_win()
-	local view = M.state.by_win[win]
-	if view then
-		local cursor = vim.api.nvim_win_get_cursor(win)
-		local state = sync_states[view]
-		local synced = state and state.cursor or nil
-		if synced and synced.win == win and synced.line == cursor[1] and synced.col == cursor[2] then
-			state.cursor = nil
-			return
-		end
-		if synced and synced.win == win then
-			state.cursor = nil
-		end
-		sync_windows(view, win)
-	end
-end
-
----@param view gleb.diff.view.View
-local function create_interaction_autocmds(view)
-	vim.api.nvim_create_autocmd("WinScrolled", {
-		group = view.augroup,
-		pattern = { tostring(view.left_win), tostring(view.right_win) },
-		callback = on_scrolled,
-	})
-	for _, buf in ipairs({ view.left_buf, view.right_buf }) do
-		vim.api.nvim_create_autocmd("CursorMoved", {
-			group = view.augroup,
-			buffer = buf,
-			callback = on_cursor_moved,
-		})
-	end
-	vim.api.nvim_create_autocmd({ "TextChanged", "TextChangedI" }, {
-		group = view.augroup,
-		buffer = view.right_buf,
-		callback = function()
-			schedule_redraw(view)
-		end,
-	})
-	vim.api.nvim_create_autocmd("FocusGained", {
-		group = view.augroup,
-		callback = function()
-			M.refresh_index(view)
-		end,
-	})
-end
-
----@param view gleb.diff.view.View
 local function register(view)
 	M.state.by_path[view.path] = view
 	M.state.by_win[view.left_win] = view
 	M.state.by_win[view.right_win] = view
-	set_mappings(view)
+	mappings.install(view, M.state.by_win)
 	render.draw(view)
-	create_interaction_autocmds(view)
-	attach(view)
+	autocmds.install(view, {
+		by_win = M.state.by_win,
+		debounce_ms = M.config.debounce_ms,
+		redraw = redraw,
+		refresh_index = M.refresh_index,
+	})
 end
 
 ---@param spec gleb.diff.view.Spec
@@ -694,21 +502,10 @@ function M.close(view)
 	M.state.by_path[view.path] = nil
 	M.state.by_win[view.left_win] = nil
 	M.state.by_win[view.right_win] = nil
-	sync_states[view] = nil
+	autocmds.forget(view)
 	pcall(vim.api.nvim_del_augroup_by_id, view.augroup)
 
-	for buf, mappings in pairs(view.mappings or {}) do
-		if vim.api.nvim_buf_is_valid(buf) then
-			vim.api.nvim_buf_call(buf, function()
-				for _, mapping in ipairs(mappings) do
-					pcall(vim.keymap.del, "n", mapping.lhs, { buffer = buf })
-					if next(mapping.previous) ~= nil then
-						vim.fn.mapset("n", false, mapping.previous)
-					end
-				end
-			end)
-		end
-	end
+	mappings.restore(view)
 	for _, buf in ipairs({ view.left_buf, view.right_buf }) do
 		if vim.api.nvim_buf_is_valid(buf) then
 			vim.api.nvim_buf_clear_namespace(buf, view.ns, 0, -1)
