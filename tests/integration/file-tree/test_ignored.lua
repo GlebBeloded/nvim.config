@@ -808,6 +808,23 @@ T["file-tree: Unfold all leaves ignored folders collapsed"]["does not descend in
 	eq(has_label("left-pad"), false)
 end
 
+T["file-tree: Project tree unfold all preserves skipped expansion state"] = function()
+	local project = F.copy("treeproj", vim.fn.tempname() .. "/billing")
+	open_tree(project, settings_file({}))
+	wait_for_git()
+	child.type_keys("I")
+	wait_for_label("bin", true)
+	expand("web")
+	expand("web/node_modules")
+	eq(has_label("left-pad"), true)
+
+	child.type_keys("zR")
+
+	local node_modules = assert(row_for("web/node_modules"))
+	eq(node_modules.expanded, true)
+	eq(has_label("left-pad"), true)
+end
+
 T["file-tree: Expanded ignored folder lists ignored children"] = MiniTest.new_set()
 
 T["file-tree: Expanded ignored folder lists ignored children"]["inherits ignored state without another git call"] = function()

@@ -733,14 +733,20 @@ function M.unfold_all()
 		return
 	end
 	local selected = selected_row(view)
-	view.expanded = {}
-	view.expanded_nests = {}
 	local loaded_settings = settings.load()
 	local nesting_settings = loaded_settings.nesting
 	local tree = fs.tree(view.root)
+	local discovered
+	local discovered_nests
 	local stopped
-	view.expanded, view.expanded_nests, stopped =
+	discovered, discovered_nests, stopped =
 		model.unfold_all(tree, row_options(view, loaded_settings), nesting_settings, EXPANSION_MAX_ROWS)
+	for relative in pairs(discovered) do
+		view.expanded[relative] = true
+	end
+	for relative in pairs(discovered_nests) do
+		view.expanded_nests[relative] = true
+	end
 	if stopped then
 		vim.notify("Unfold all stopped at 5000 rows", vim.log.levels.WARN)
 	end
@@ -947,11 +953,9 @@ local function open_view(path, requested_root)
 	M.state.last_editor_by_tab[tab] = editor
 	initial_path = reveal_target(view, path, true) or root
 	git.start_root(root, tab, function(changed)
-		if finish_initial_draw(view, initial_path) then
-			return
-		end
+		local initial_drawn = finish_initial_draw(view, initial_path)
 		if M.state.by_tab[tab] == view and vim.api.nvim_buf_is_valid(buf) then
-			apply_git_result(view, changed)
+			apply_git_result(view, not initial_drawn and changed)
 		end
 	end)
 	add_teardown_autocmds(view)
@@ -1042,11 +1046,9 @@ local function reroot(view, root)
 	view.expanded_nests = {}
 	vim.api.nvim_buf_set_name(view.buf, ("gleb-file-tree://%s#%d"):format(root, view.tab))
 	git.start_root(root, view.tab, function(changed)
-		if finish_initial_draw(view, root) then
-			return
-		end
+		local initial_drawn = finish_initial_draw(view, root)
 		if M.state.by_tab[view.tab] == view and vim.api.nvim_buf_is_valid(view.buf) then
-			apply_git_result(view, changed)
+			apply_git_result(view, not initial_drawn and changed)
 		end
 	end)
 	watch.start_root(root, view.tab, function(toplevel)

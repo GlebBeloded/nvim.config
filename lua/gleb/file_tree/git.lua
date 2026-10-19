@@ -136,15 +136,18 @@ local function run(root, state)
 					return
 				end
 				state.in_flight = false
+				local changed = false
 				if prefix_result.code == 0 and result.code == 0 and generation == state.generation then
 					local status, ignored = parse_status(result.stdout or "", prefix)
 					local ignored_changed = not vim.deep_equal(state.ignored, ignored)
-					local changed = not vim.deep_equal(state.status, status) or ignored_changed
+					changed = not vim.deep_equal(state.status, status) or ignored_changed
 					state.status = status
 					if ignored_changed then
 						state.ignored = ignored
 						state.ignored_generation = state.ignored_generation + 1
 					end
+				end
+				if generation == state.generation then
 					for _, callback in pairs(state.callbacks) do
 						callback(changed)
 					end

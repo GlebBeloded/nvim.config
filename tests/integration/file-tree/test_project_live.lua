@@ -431,6 +431,119 @@ T["file-tree: Project tree recolours a written file"] = function()
 	eq(wait_for_tree_highlight("discount.go", "FileTreeGitModified"), true)
 end
 
+T["file-tree: Project tree refresh survives initial git completion"] = function()
+	local status = vim.system({
+		"git",
+		"--no-optional-locks",
+		"-C",
+		root,
+		"status",
+		"--porcelain=v2",
+		"-z",
+		"--untracked-files=normal",
+		"--ignored=matching",
+	}, { text = true }):wait()
+	eq(status.code, 0)
+	child.lua(
+		[=[
+		local status_output = ...
+		local original_system = vim.system
+		_G.file_tree_original_system = original_system
+		_G.file_tree_status_callbacks = {}
+		vim.system = function(command, options, callback)
+			if callback and command[5] == "status" then
+				_G.file_tree_status_callbacks[#_G.file_tree_status_callbacks + 1] = callback
+				_G.file_tree_status_output = status_output
+				return {}
+			end
+			return original_system(command, options, callback)
+		end
+	]=],
+		{ status.stdout }
+	)
+	edit("README.md")
+	child.lua([[
+		local action = assert(require("gleb.actions").state.applicator.catalog:get("file_tree.toggle"))
+		action.run(require("gleb.actions.context").capture())
+	]])
+	assert(
+		child.wait(
+			[[(function()
+				local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+				return require("gleb.file_tree.watch").toplevel(view.root) ~= nil
+					and #_G.file_tree_status_callbacks == 1
+			end)()]],
+			1000
+		),
+		"repository discovery did not start git status"
+	)
+	child.lua([[
+		local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+		local editor = assert(require("gleb.file_tree.view").state.last_editor_by_tab[view.tab])
+		vim.api.nvim_win_call(editor, function()
+			vim.api.nvim_buf_set_lines(0, 0, 1, false, { "changed before first git result" })
+			vim.cmd.write()
+		end)
+		local callback = table.remove(_G.file_tree_status_callbacks, 1)
+		callback({ code = 0, stdout = _G.file_tree_status_output, stderr = "" })
+	]])
+	assert(child.wait([[#_G.file_tree_status_callbacks == 1]], 1000), "write did not queue a second git status")
+	child.lua([[
+		local callback = table.remove(_G.file_tree_status_callbacks, 1)
+		callback({ code = 0, stdout = _G.file_tree_status_output, stderr = "" })
+		vim.system = _G.file_tree_original_system
+	]])
+	assert(
+		child.wait([[#require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()].rows > 0]], 1000)
+	)
+
+	local result = H.system(child, { "touch", vim.fs.joinpath(root, "after-initial-git.txt") }, root)
+	eq(result.code, 0)
+	eq(wait_for_tree_row("after-initial-git.txt"), true)
+end
+
+T["file-tree: Project tree refresh survives failed git status"] = function()
+	edit("README.md")
+	run_action("file_tree.toggle")
+	assert(
+		child.wait(
+			[[(function()
+				local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+				local state = assert(require("gleb.file_tree.git").state.roots[view.root])
+				return state.timer == nil and not state.in_flight and not view.git_pending
+			end)()]],
+			1000
+		),
+		"initial git status did not settle"
+	)
+	eq(vim.fn.rename(vim.fs.joinpath(root, ".git"), vim.fs.joinpath(root, ".git-removed")), 0)
+	local baseline_runs = child.lua_get([[require("gleb.file_tree.git").state.runs]])
+	child.lua([[
+		local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+		local editor = assert(require("gleb.file_tree.view").state.last_editor_by_tab[view.tab])
+		vim.api.nvim_win_call(editor, function()
+			vim.api.nvim_buf_set_lines(0, 0, 1, false, { "changed after git removal" })
+			vim.cmd.write()
+		end)
+	]])
+	assert(
+		child.wait(
+			([[(function()
+				local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+				local git = require("gleb.file_tree.git")
+				local state = assert(git.state.roots[view.root])
+				return git.state.runs > %d and state.timer == nil and not state.in_flight
+			end)()]]):format(baseline_runs),
+			1000
+		),
+		"failed git status did not complete"
+	)
+
+	local result = H.system(child, { "touch", vim.fs.joinpath(root, "after-failed-git.txt") }, root)
+	eq(result.code, 0)
+	eq(wait_for_tree_row("after-failed-git.txt"), true)
+end
+
 T["file-tree: Project tree recolours after staging outside Neovim"] = function()
 	record_fs_poll_calls()
 	edit("README.md")

@@ -48,7 +48,7 @@ Refreshed 2026-10-19 baseline on a disposable clone of this config:
 
 | Operation | Rows | Before | After |
 |---|---:|---:|---:|
-| redraw with 400 expanded directories | 1,227 | 148.96 ms | pending task 5.4 |
-| write (`BufWritePost` + watcher + git) | 1,227 | 358.02 ms, 2 draws | pending task 5.4 |
-| already-listed `BufEnter` follow | 1,227 | 97.22 ms, 1 draw | pending task 5.4 |
+| redraw with 400 expanded directories | 1,227 | 148.96 ms | 70.65 ms |
+| write (`BufWritePost` + watcher + git) | 1,227 | 358.02 ms, 2 draws | 256.84 ms, 1 draw |
+| already-listed `BufEnter` follow | 1,227 | 97.22 ms, 1 draw | 19.18 ms, 1 draw |
 | `unfold_all` | 2,207 | 43,337.38 ms, 632 row builds | 451.17 ms, 1 row build (same 2,216-row fixture: 18,463.60 ms and 634 row builds before) |

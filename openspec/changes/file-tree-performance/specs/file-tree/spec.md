@@ -28,6 +28,14 @@ Each project-tree view SHALL coalesce watcher, write, follow and git invalidatio
 - **WHEN** `:write` saves a changed listed file while a 5000-row tree is open
 - **THEN** the command returns within 100 ms multiplied by the host load factor and the row reaches its final git colour within 1000 ms
 
+#### Scenario: Project tree refresh survives initial git completion
+- **WHEN** `:write` runs after repository discovery but before the first git result, then a file is created outside Neovim
+- **THEN** within 1000 ms the created file is listed
+
+#### Scenario: Project tree refresh survives failed git status
+- **WHEN** `:write` runs after the open repository's `.git` directory is removed, then a file is created outside Neovim
+- **THEN** within 1000 ms the created file is listed
+
 ### Requirement: Project tree follows listed rows without redraw
 Entering a file that already has a visible row SHALL move the tree cursor to that row without rebuilding or replacing the tree buffer. The `BufEnter` processing bound SHALL be 50 ms multiplied by the host load factor.
 
@@ -52,3 +60,7 @@ Repository discovery, watch-handle reconciliation and expansion-state persistenc
 #### Scenario: Project tree unfold all meets the large-tree bound
 - **WHEN** only the root is expanded in a generated fixture with 60 folders of 100 files and `zR` is pressed in normal mode
 - **THEN** within 500 ms multiplied by the host load factor the tree has at most 5001 rows and emits the WARN notification `Unfold all stopped at 5000 rows`
+
+#### Scenario: Project tree unfold all preserves skipped expansion state
+- **WHEN** Show Ignored is on, an ignored folder is expanded with `<CR>`, and `zR` is pressed in normal mode
+- **THEN** the ignored folder remains expanded and its child remains listed
