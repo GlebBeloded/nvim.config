@@ -34,6 +34,7 @@ check_lock() {
 }
 
 check_lock
+"$ROOT/tests/prune_tmp.sh" || true # stale temp dirs of killed test children (prune_tmp.sh)
 logs=$(mktemp -d "${TMPDIR:-/tmp}/check.XXXXXX")
 trap 'lock_release; rm -rf "$logs"' EXIT
 trap 'exit 130' INT
