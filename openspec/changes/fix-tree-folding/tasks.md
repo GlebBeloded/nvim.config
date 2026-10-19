@@ -55,7 +55,7 @@ Scenarios: `folding: Collapse Fold key folds the group under the tree cursor`, `
 
 ## 8. Gate
 
-- [ ] 8.1 Run `make check` and see it green; `make trace` lists every scenario of this change as tested
+- [x] 8.1 Run `make check` and see it green; `make trace` lists every scenario of this change as tested
 
 ## Agent decisions
 
