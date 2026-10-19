@@ -16,7 +16,7 @@ M.state = { by_tab = {} }
 ---@return string dir
 local function current_location()
 	local path = vim.api.nvim_buf_get_name(0)
-	if path == "" or path:match("^%w+://") then
+	if vim.bo.buftype ~= "" or path == "" or path:match("^[%a][%w+.-]*://") then
 		return "", fs.normalize(vim.fn.getcwd())
 	end
 	path = fs.normalize(path)
