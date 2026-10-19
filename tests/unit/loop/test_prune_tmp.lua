@@ -11,6 +11,7 @@ T["loop: Check prunes stale Neovim temp dirs"] = function()
 	for _, name in ipairs({ "OldGone", "Young", "OldLive" }) do
 		vim.fn.mkdir(vim.fs.joinpath(root, name, "data"), "p")
 	end
+	eq(H.system(child, { "chmod", "a-w", vim.fs.joinpath(root, "OldGone", "data") }, root).code, 0) -- a read-only fixture
 	for _, name in ipairs({ "OldGone", "OldLive" }) do
 		eq(H.system(child, { "touch", "-t", "202001010000", vim.fs.joinpath(root, name) }, root).code, 0)
 	end
