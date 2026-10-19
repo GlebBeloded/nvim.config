@@ -14,6 +14,13 @@ Scenarios: `file-tree: Project tree coalesces a save burst`, `file-tree: Unchang
 - [ ] 2.2 Add one per-view dirty scheduler with a 50 ms window, route watcher, write, follow and git invalidations through it, keep one git request per burst, and suppress invalidation when both returned git maps are unchanged
 - [ ] 2.3 Run `make test FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree coalesces a save burst"`, `make test FILE=tests/integration/file-tree/test_performance.lua CASE="Unchanged git status does not redraw the project tree"` and `make test FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree save leaves the main path promptly"` and see them pass
 
+## Stuck
+
+- Task 2 probe: after a real tracked-file write the scheduler quiesced with `dirty=false`, `dirty_timer=false`, `git_pending=false`, `git_in_flight=false`, `git_timer=false`, one replacement and one Git run; the small probe's collapsed target had no listed row status.
+- Attempt 1: held each view's 50 ms dirty draw behind one pending Git request and compared both returned maps; the first task run missed final state, while the diagnostic rerun and all three isolated scenarios then passed.
+- Attempt 2: preserved nest preparation for scheduled follow, avoided waiting on Git outside repositories, and reset scheduler state on re-root; a normal task rerun produced one replacement and one Git run but the listed tracked row remained `status = nil` after the Git result.
+- Saved production diff: `artifacts/runs/d79215f6-6e22-4aff-8cd9-f3ec27f6a6b1/stuck-attempt-2.diff`.
+
 ## 3. Follow an existing row without drawing
 Scenarios: `file-tree: Project tree follows an already listed row promptly`
 - [ ] 3.1 Write the integration test in `tests/integration/file-tree/test_performance.lua`, driving real `:edit`/`BufEnter` with a populated 5000-row tree, and see the load-scaled timing or tree-buffer-replacement assertion fail

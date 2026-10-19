@@ -32,6 +32,16 @@ local function create_large_tree()
 		local file = assert(vim.uv.fs_open(path, "w", 420))
 		assert(vim.uv.fs_close(file))
 	end
+	H.write_files(root, {
+		["ignored-data/status.txt"] = "ignored\n",
+	})
+	H.git(root, { "init", "-q", "-b", "main" })
+	H.write_files(root, { [".git/info/exclude"] = "ignored-data/\n" })
+	H.git(root, { "config", "user.name", "Test" })
+	H.git(root, { "config", "user.email", "test@example.com" })
+	H.git(root, { "config", "commit.gpgsign", "false" })
+	H.git(root, { "add", "-A" })
+	H.git(root, { "commit", "-q", "-m", "initial" })
 end
 
 local function start()
@@ -59,12 +69,24 @@ local function start()
 		end
 		require("gleb.file_tree.view").redraw_all()
 	]])
+	assert(
+		child.wait(
+			[=[(function()
+				local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+				local git = require("gleb.file_tree.git")
+				local state = git.state.roots[view.root]
+				return state and git.state.runs > 0 and state.timer == nil and not state.in_flight
+			end)()]=],
+			3000
+		),
+		"initial git status did not settle"
+	)
 end
 
 local T = H.child_set(child, start)
 
 local function install_replacement_counter()
-	child.lua([[
+	child.lua([=[
 		local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
 		FileTreeOriginalSetLines = vim.api.nvim_buf_set_lines
 		FileTreeReplacementCount = 0
@@ -74,7 +96,56 @@ local function install_replacement_counter()
 			end
 			return FileTreeOriginalSetLines(buf, ...)
 		end
-	]])
+	]=])
+end
+
+local function change_tracked_file()
+	child.lua(
+		[=[(function(path)
+			local view_module = require("gleb.file_tree.view")
+			local tab = vim.api.nvim_get_current_tabpage()
+			local editor = assert(view_module.state.last_editor_by_tab[tab])
+			vim.api.nvim_set_current_win(editor)
+			vim.cmd.edit(vim.fn.fnameescape(path))
+			vim.api.nvim_buf_set_lines(0, 0, -1, false, { "changed" })
+		end)(...)]=],
+		{ vim.fs.joinpath(root, "directory-0001", "file-001") }
+	)
+end
+
+local function wait_for_save_result(baseline_runs)
+	return child.lua_get(
+		[=[(function(baseline)
+			local row_status
+			local complete = vim.wait(1000, function()
+				local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+				local git = require("gleb.file_tree.git")
+				local state = git.state.roots[view.root]
+				if not state or state.timer ~= nil or state.in_flight or git.state.runs <= baseline then
+					return false
+				end
+				local changed_path = vim.fs.joinpath(view.root, "directory-0001", "file-001")
+				for _, row in ipairs(view.rows) do
+					if row.path == changed_path then
+						row_status = row.status or "none"
+						return row.status == "modified"
+					end
+				end
+				row_status = "missing"
+				return false
+			end, 10)
+			local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+			return {
+				complete = complete,
+				dirty = view.dirty,
+				git_pending = view.git_pending,
+				replacements = FileTreeReplacementCount,
+				row_status = row_status,
+				runs = require("gleb.file_tree.git").state.runs - baseline,
+			}
+		end)(...)]=],
+		{ baseline_runs }
+	)
 end
 
 T["file-tree: Project tree redraw meets the large-tree bound"] = function()
@@ -138,6 +209,61 @@ T["file-tree: Project tree expansion meets the large-tree bound"] = function()
 	eq(result.replacements, 1)
 	eq(result.rows, 5000)
 	eq(result.expanded, true)
+end
+
+T["file-tree: Project tree coalesces a save burst"] = function()
+	change_tracked_file()
+	install_replacement_counter()
+	local baseline_runs = child.lua_get([[require("gleb.file_tree.git").state.runs]])
+
+	child.cmd("write")
+	local result = wait_for_save_result(baseline_runs)
+
+	assert(result.complete, vim.inspect(result))
+	eq(result.replacements, 1)
+	eq(result.runs, 1)
+end
+
+T["file-tree: Unchanged git status does not redraw the project tree"] = function()
+	install_replacement_counter()
+	local baseline_runs = child.lua_get([[require("gleb.file_tree.git").state.runs]])
+	child.lua([[require("gleb.file_tree.git").refresh(...)]], { root })
+	assert(
+		child.wait(
+			([=[(function()
+				local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+				local git = require("gleb.file_tree.git")
+				local state = git.state.roots[view.root]
+				return git.state.runs == %d and state.timer == nil and not state.in_flight
+			end)()]=]):format(baseline_runs + 1),
+			1000
+		),
+		"unchanged git status did not finish"
+	)
+
+	eq(child.lua_get([[FileTreeReplacementCount]]), 0)
+end
+
+T["file-tree: Project tree save leaves the main path promptly"] = function()
+	child.lua([=[
+		local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+		view.expanded["expand-me"] = true
+		require("gleb.file_tree.view").redraw_all()
+	]=])
+	eq(child.lua_get([[#require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()].rows]]), 5000)
+	change_tracked_file()
+	install_replacement_counter()
+	local baseline_runs = child.lua_get([[require("gleb.file_tree.git").state.runs]])
+
+	local elapsed_ms = child.lua_get([=[(function()
+		local started = vim.uv.hrtime()
+		vim.cmd.write()
+		return (vim.uv.hrtime() - started) / 1e6
+	end)()]=])
+	local result = wait_for_save_result(baseline_runs)
+
+	assert(elapsed_ms <= 100 * H.load_factor(), ("write took %.2f ms"):format(elapsed_ms))
+	assert(result.complete, vim.inspect(result))
 end
 
 return T
