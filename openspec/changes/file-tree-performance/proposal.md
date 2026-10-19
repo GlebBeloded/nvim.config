@@ -62,3 +62,15 @@ Not a problem: the `git status` process (async, parse < 1.1 ms), nesting rules (
   existing project-tree cases unchanged.
 - Expected: a 4.7k-row redraw from ~400 ms to well under 100 ms; a save and a BufEnter no longer block for hundreds of
   ms (measure before and after with the probe and record both in tasks.md).
+
+## Decision (auditor, 2026-10-19, mid task loop)
+
+- Task 2 (coalesced refresh): a git result that arrives after the coalesced draw must still update the rows' status (the
+  stuck case: one replacement, one git run, row `status = nil`). One draw per burst, plus one when the git map changes;
+  never zero after a status change.
+- `expanded.flush` stays synchronous on `VimLeavePre` (async writes are fine during the session): expansion state set in
+  the last 500 ms before quit must survive a restart. Add a scenario for it.
+- Opening the tree draws once with the saved expansion already applied (no collapsed frame followed by the expanded
+  one), and a re-root draws once; assert the buffer replacement count in both.
+- The new timing cases' fixed setup waits (`start()`'s 3000 ms git settle, `wait_for_save_result`'s 1000 ms) scale with
+  `H.load_factor()` like the bounds do; the bounds themselves stay as the spec states.
