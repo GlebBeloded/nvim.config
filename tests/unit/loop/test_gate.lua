@@ -173,6 +173,30 @@ local function pack_has_task(tasks)
 	return out.has_task
 end
 
+T["loop: Steps commit the run files they edit"] = function()
+	local repo = H.tempdir(child)
+	write(repo, { ["openspec/changes/c/tasks.md"] = "- [ ] 1.1 x", ["lua/a.lua"] = "a" })
+	for _, cmd in ipairs({ { "init", "-q", "-b", "auto" }, { "add", "-A" }, { "commit", "-qm", "base" } }) do
+		eq(H.system(child, vim.list_extend({ "git" }, cmd), repo, H.GIT_ENV).code, 0)
+	end
+	write(repo, { ["openspec/changes/c/tasks.md"] = "- [x] 1.1 x", ["lua/a.lua"] = "edited" })
+	local commit = "import sys; sys.path.insert(0, sys.argv[1]); import integrity; "
+		.. "print(integrity.commit_paths('tick', 'openspec/changes/c/tasks.md'), integrity.commit_paths('again', 'openspec/changes/c/tasks.md'))"
+	local result = H.system(child, { "python3", "-c", commit, SCRIPTS }, repo, H.GIT_ENV)
+	eq(result.code, 0, { fail_reason = result.stdout .. result.stderr })
+	eq(vim.trim(result.stdout), "True False")
+	local status = H.system(child, { "git", "status", "--porcelain" }, repo, H.GIT_ENV)
+	eq(vim.trim(status.stdout), "M lua/a.lua")
+	has(
+		read(vim.fs.joinpath(SCRIPTS, "gate.py")),
+		'commit_paths(f"chore(openspec): tick gate items of {change}", str(tasks))'
+	)
+	has(
+		read(vim.fs.joinpath(SCRIPTS, "escalation.py")),
+		'commit_paths("docs(workflow): loop lessons", "docs/workflow.md")'
+	)
+end
+
 T["loop: Context pack reports when no task is left"] = function()
 	eq(pack_has_task("## 1. Done\n- [x] 1.1 a"), false)
 	eq(pack_has_task("## 1. Todo\n- [x] 1.1 a\n- [ ] 1.2 b"), true)

@@ -1081,3 +1081,10 @@ a test child SHALL exit when its test worker is gone, `make test FILE=<directory
 #### Scenario: Loop clean skips a branch that is already gone
 - **WHEN** `loop_clean.clean` gets a branch list holding `loop/c`, which does not exist, and an existing `loop/c-<stamp>` that is the keeper
 - **THEN** it finishes without an error and keeps `loop/c-<stamp>` (`.archon/scripts/test_loop_clean.py`)
+
+### Requirement: Steps commit the run files they edit
+The gate SHALL commit its tick of tasks.md's gate items and the judge SHALL commit its lessons edit of `docs/workflow.md` on the run branch (`integrity.commit_paths`, only those paths), so the run's worktree never keeps uncommitted loop edits that block `sync_base.py` from merging a moved base.
+
+#### Scenario: Steps commit the run files they edit
+- **WHEN** `integrity.commit_paths` commits a changed tasks.md in a repo that also has another edited file, then runs again with nothing changed, and gate.py and escalation.py are read
+- **THEN** it reports a commit, then none; only the other file stays modified; gate.py commits its tick and escalation.py commits `docs/workflow.md`

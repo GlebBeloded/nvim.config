@@ -33,6 +33,16 @@ def git(*args: str) -> str:
     return subprocess.run(["git", *args], capture_output=True, text=True, check=True).stdout
 
 
+def commit_paths(message: str, *paths: str) -> bool:
+    """Commits `paths` alone when they changed: a step that edits the run's tree commits it, so a dirty worktree never
+    blocks sync_base's merge of a moved base (runs 0334b5f5, 8aa9b091: an uncommitted gate tick and lessons edit)."""
+    subprocess.run(["git", "add", "--", *paths], capture_output=True, text=True)
+    if subprocess.run(["git", "diff", "--cached", "--quiet", "--", *paths]).returncode == 0:
+        return False
+    subprocess.run(["git", "commit", "-q", "-m", message, "--", *paths], capture_output=True, text=True, check=True)
+    return True
+
+
 def lines(diff: str, sign: str) -> list[str]:
     return [l[1:] for l in diff.splitlines() if l.startswith(sign) and not l.startswith(sign * 3)]
 

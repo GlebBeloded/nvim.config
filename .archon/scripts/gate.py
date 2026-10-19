@@ -22,7 +22,7 @@ import sys
 
 from blocked import blocked_text
 from check_log import failed_targets, failing_cases, sections, strip_ansi, summarize
-from integrity import BASE, CASE_CHAIN, CASE_KEY, case_names, git, hard_rule_violations, plan_edits, record_dropped
+from integrity import BASE, commit_paths, CASE_CHAIN, CASE_KEY, case_names, git, hard_rule_violations, plan_edits, record_dropped
 from pinned import pinned
 from scenarios import covered, untested
 from spec_trial import archived_specs_ok as trial_archive
@@ -281,7 +281,10 @@ if change and change_dir.is_dir():
     missing = untested(covered(change_dir))
     tasks = change_dir / "tasks.md"
     if green and tasks.exists():
-        tasks.write_text(tick_gate_items(tasks.read_text()))
+        ticked = tick_gate_items(tasks.read_text())
+        if ticked != tasks.read_text():
+            tasks.write_text(ticked)
+            commit_paths(f"chore(openspec): tick gate items of {change}", str(tasks))
     tasks_done = tasks.exists() and unchecked(tasks.read_text()) == 0
 
 missing = missing if change and change_dir.is_dir() else []
