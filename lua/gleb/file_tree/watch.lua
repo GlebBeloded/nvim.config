@@ -6,23 +6,26 @@ local fs = require("gleb.file_tree.fs")
 
 local WATCH_DEBOUNCE_MS = 100
 local WATCH_BATCH_SIZE = 16
+local FALLBACK_RESCAN_MS = 250
 
 M.MAX_WATCH_HANDLES = 256
 
 ---@class FileTreeWatchRoot
 ---@field handles table<string, uv.uv_fs_event_t>
 ---@field timers table<string, uv.uv_timer_t>
+---@field fallback_timer? uv.uv_timer_t
 ---@field git_handle? uv.uv_fs_event_t
 ---@field git_dir? string
 ---@field toplevel? string
 ---@field refs integer
 ---@field clients table<integer, FileTreeWatchClient>
 ---@field wanted table<string, boolean>
+---@field wanted_order string[]
 ---@field sync_scheduled boolean
 ---@field discovery_complete boolean
 
 ---@class FileTreeWatchClient
----@field paths table<string, boolean>
+---@field paths table<string, number>
 ---@field redraw fun(path: string)
 ---@field refresh_git fun()
 ---@field git_ready boolean
@@ -89,6 +92,7 @@ local function watch_folder(root, path, state)
 	state.handles[path] = watch_path(path, function()
 		queue_redraw(root, path)
 	end)
+	return state.handles[path] ~= nil
 end
 
 ---@param root string
@@ -197,6 +201,7 @@ function M.start_root(root, owner, repository_ready)
 			},
 		},
 		wanted = {},
+		wanted_order = {},
 		sync_scheduled = false,
 		discovery_complete = false,
 	}
@@ -215,14 +220,14 @@ end
 ---@param root string
 ---@param state FileTreeWatchRoot
 local function wanted_paths(root, state)
-	local paths = {}
+	local priorities = {}
 	for _, client in pairs(state.clients) do
-		for path in pairs(client.paths) do
-			paths[path] = true
+		for path, priority in pairs(client.paths) do
+			priorities[path] = math.min(priorities[path] or math.huge, priority)
 		end
 	end
 
-	local ordered = vim.tbl_keys(paths)
+	local ordered = vim.tbl_keys(priorities)
 	table.sort(ordered, function(left, right)
 		if left == root then
 			return true
@@ -230,13 +235,42 @@ local function wanted_paths(root, state)
 		if right == root then
 			return false
 		end
+		if priorities[left] ~= priorities[right] then
+			return priorities[left] < priorities[right]
+		end
 		return left < right
 	end)
 	local wanted = {}
 	for index = 1, math.min(#ordered, M.MAX_WATCH_HANDLES) do
 		wanted[ordered[index]] = true
 	end
-	return wanted
+	return wanted, vim.list_slice(ordered, 1, math.min(#ordered, M.MAX_WATCH_HANDLES))
+end
+
+---@param root string
+---@param state FileTreeWatchRoot
+---@param limit integer
+---@return boolean pending
+local function reconcile(root, state, limit)
+	local changed = 0
+	for path in pairs(state.handles) do
+		if not state.wanted[path] then
+			close_folder(state, path)
+			changed = changed + 1
+			if changed == limit then
+				return true
+			end
+		end
+	end
+	for _, path in ipairs(state.wanted_order) do
+		if not state.handles[path] and watch_folder(root, path, state) then
+			changed = changed + 1
+			if changed == limit then
+				return true
+			end
+		end
+	end
+	return false
 end
 
 ---@param root string
@@ -251,37 +285,60 @@ local function schedule_sync(root, state)
 			state.sync_scheduled = false
 			return
 		end
-		local changed = 0
-		for path in pairs(state.handles) do
-			if not state.wanted[path] then
-				close_folder(state, path)
-				changed = changed + 1
-				if changed == WATCH_BATCH_SIZE then
-					state.sync_scheduled = false
-					schedule_sync(root, state)
-					return
-				end
-			end
-		end
-		for path in pairs(state.wanted) do
-			if not state.handles[path] then
-				watch_folder(root, path, state)
-				changed = changed + 1
-				if changed == WATCH_BATCH_SIZE then
-					state.sync_scheduled = false
-					schedule_sync(root, state)
-					return
-				end
-			end
-		end
 		state.sync_scheduled = false
+		if reconcile(root, state, WATCH_BATCH_SIZE) then
+			schedule_sync(root, state)
+		end
 	end)
+end
+
+---@param root string
+---@param state FileTreeWatchRoot
+local function ensure_fallback_timer(root, state)
+	if state.fallback_timer then
+		return
+	end
+	local timer = assert(vim.uv.new_timer())
+	state.fallback_timer = timer
+	timer:start(
+		FALLBACK_RESCAN_MS,
+		FALLBACK_RESCAN_MS,
+		vim.schedule_wrap(function()
+			if M.state.roots[root] ~= state then
+				return
+			end
+			state.wanted, state.wanted_order = wanted_paths(root, state)
+			schedule_sync(root, state)
+			local changed = {}
+			for _, client in pairs(state.clients) do
+				for path in pairs(client.paths) do
+					if not state.handles[path] and changed[path] == nil then
+						local before = fs.state.cache[path]
+						fs.invalidate(path)
+						changed[path] = before ~= nil and not vim.deep_equal(before, fs.scan(path))
+					end
+				end
+			end
+			for _, client in pairs(state.clients) do
+				local refresh_git = false
+				for path in pairs(client.paths) do
+					if changed[path] then
+						client.redraw(path)
+						refresh_git = true
+					end
+				end
+				if refresh_git then
+					client.refresh_git()
+				end
+			end
+		end)
+	)
 end
 
 --- Watch every directory scan currently feeding one view's visible rows.
 ---@param root string
 ---@param owner integer
----@param paths table<string, boolean>
+---@param paths table<string, number>
 ---@param redraw fun(path: string)
 ---@param refresh_git fun()
 ---@return nil
@@ -295,8 +352,12 @@ function M.sync(root, owner, paths, redraw, refresh_git)
 		client.git_ready = true
 		refresh_git()
 	end
-	state.wanted = wanted_paths(root, state)
+	state.wanted, state.wanted_order = wanted_paths(root, state)
+	if next(client.paths) ~= nil and next(state.handles) == nil then
+		reconcile(root, state, WATCH_BATCH_SIZE)
+	end
 	schedule_sync(root, state)
+	ensure_fallback_timer(root, state)
 end
 
 --- Release one tree's ownership of a normalized root.
@@ -311,9 +372,14 @@ function M.stop_root(root, owner)
 	state.clients[owner] = nil
 	state.refs = state.refs - 1
 	if state.refs > 0 then
-		state.wanted = wanted_paths(root, state)
+		state.wanted, state.wanted_order = wanted_paths(root, state)
 		schedule_sync(root, state)
 		return
+	end
+	if state.fallback_timer then
+		state.fallback_timer:stop()
+		state.fallback_timer:close()
+		state.fallback_timer = nil
 	end
 	if state.git_handle then
 		state.git_handle:stop()
@@ -339,6 +405,11 @@ end
 ---@return nil
 function M.stop_all()
 	for _, state in pairs(M.state.roots) do
+		if state.fallback_timer then
+			state.fallback_timer:stop()
+			state.fallback_timer:close()
+			state.fallback_timer = nil
+		end
 		for path in pairs(state.handles) do
 			close_folder(state, path)
 		end
