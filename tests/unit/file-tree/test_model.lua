@@ -151,11 +151,24 @@ T["file-tree: Project tree colours changed files"]["uses documented folder prece
 		["web/renamed.ts"] = "renamed",
 		["scratch/"] = "untracked",
 	}
+	local tree = {
+		root = "/project",
+		scan = function(path)
+			if path ~= "/project" then
+				return {}
+			end
+			return vim.tbl_map(function(name)
+				return { name = name, path = "/project/" .. name, kind = "directory" }
+			end, { "internal", "web", "scratch", "clean" })
+		end,
+	}
+	local rows = model.rows(tree, {}, options(status))
+	local statuses = {}
+	for _, row in ipairs(rows) do
+		statuses[row.label] = row.status or vim.NIL
+	end
 
-	eq(model.folder_status(status, "internal"), "conflict")
-	eq(model.folder_status(status, "web"), "modified")
-	eq(model.folder_status(status, "scratch"), "untracked")
-	eq(model.folder_status(status, "clean"), nil)
+	eq(statuses, { project = vim.NIL, internal = "conflict", web = "modified", scratch = "untracked", clean = vim.NIL })
 end
 
 T["file-tree: Project tree colours changed files"]["marks files below an untracked folder"] = function()

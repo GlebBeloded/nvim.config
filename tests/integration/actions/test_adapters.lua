@@ -21,7 +21,6 @@ local function start()
 			action("dap_ui.expand"),
 			action("neotest.run"),
 			action("mason.install_package"),
-			action("lazy.close"),
 			action("blink.accept"),
 			action("copilot.accept"),
 			action("file_tree.open"),
@@ -30,7 +29,6 @@ local function start()
 			["dap_ui.expand"] = { "<CR>" },
 			["neotest.run"] = { "r", "R" },
 			["mason.install_package"] = { "i" },
-			["lazy.close"] = { "q" },
 			["blink.accept"] = { "<CR>" },
 			["copilot.accept"] = { "<M-l>" },
 			["file_tree.open"] = { "o" },
@@ -38,6 +36,7 @@ local function start()
 		function OpenPluginWindow(adapter)
 			local buf = vim.api.nvim_create_buf(false, true)
 			for lhs, callback in pairs(adapter.mappings(Catalog, Shortcuts)) do
+				callback = type(callback) == "table" and callback[1] or callback
 				vim.keymap.set("n", lhs, callback, { buffer = buf })
 			end
 			return buf
@@ -56,11 +55,9 @@ T["actions: Adapter output follows current shortcuts"] = function()
 			local dap_ui = require("gleb.actions.adapters.dap_ui").mappings(Catalog, Shortcuts)
 			local neotest = require("gleb.actions.adapters.neotest").mappings(Catalog, Shortcuts)
 			local mason = require("gleb.actions.adapters.mason").mappings(Catalog, Shortcuts)
-			local lazy = require("gleb.actions.adapters.lazy").mappings(Catalog, Shortcuts)
 			local blink = require("gleb.actions.adapters.blink").mappings(Catalog, Shortcuts)
 			local copilot = require("gleb.actions.adapters.copilot").mappings(Catalog, Shortcuts)
 
-			lazy.q()
 			blink["<CR>"][1]()
 
 			Shortcuts["mason.install_package"] = { "i", "I" }
@@ -85,10 +82,7 @@ T["actions: Adapter output follows current shortcuts"] = function()
 			"<M-l>",
 			false,
 			false,
-			{
-				"lazy.close",
-				"blink.accept",
-			},
+			{ "blink.accept" },
 		}
 	)
 	eq(
@@ -108,13 +102,13 @@ end
 T["actions: Adapter reassignment applies on reopen"] = function()
 	eq(
 		child.lua_get([[(function()
-			local adapter = require("gleb.actions.adapters.lazy")
+			local adapter = require("gleb.actions.adapters.blink")
 			local first_window = OpenPluginWindow(adapter)
-			Shortcuts["lazy.close"] = { "l" }
+			Shortcuts["blink.accept"] = { "l" }
 			vim.api.nvim_buf_delete(first_window, { force = true })
 			local reopened = OpenPluginWindow(adapter)
 			vim.api.nvim_set_current_buf(reopened)
-			local old_mapping = vim.fn.maparg("q", "n", false, true)
+			local old_mapping = vim.fn.maparg("<CR>", "n", false, true)
 			local new_mapping = vim.fn.maparg("l", "n", false, true)
 			new_mapping.callback()
 			return {
@@ -123,7 +117,7 @@ T["actions: Adapter reassignment applies on reopen"] = function()
 				Invoked,
 			}
 		end)()]]),
-		{ true, true, { "lazy.close" } }
+		{ true, true, { "blink.accept" } }
 	)
 end
 

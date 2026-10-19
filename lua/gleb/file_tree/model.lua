@@ -213,21 +213,6 @@ function M.parse_status(porcelain_z, prefix)
 	return status, ignored
 end
 
---- Return the strongest status at or below a folder path.
----@param status table<string, string>
----@param path string
----@return string?
-function M.folder_status(status, path)
-	local strongest
-	local prefix = path:gsub("/+$", "") .. "/"
-	for candidate, value in pairs(status) do
-		if candidate == path or candidate == prefix or candidate:sub(1, #prefix) == prefix then
-			strongest = stronger_descendant_status(strongest, value)
-		end
-	end
-	return strongest
-end
-
 ---@param opts FileTreeRowOptions
 ---@param relative string
 ---@param directory boolean

@@ -107,10 +107,4 @@ function M.callback(run)
 	return run
 end
 
----@param run fun(ctx: gleb.ActionContext)
----@return function[]
-function M.command_list(run)
-	return { run }
-end
-
 return M
