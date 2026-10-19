@@ -12,7 +12,7 @@ Scenarios: `references: Rust struct usages are grouped by usage type`
 
 ## 4. Migrate language integration readiness and quiescence
 Scenarios: `references: Lua usages in production and spec files`, `references: Python usages in production and test files`, `references: TypeScript usages in production and test files`, `references: Rust usages in production and test code`, `references: Terraform variable usages`
-- [ ] 4.1 Run `make test FILE=tests/integration/references/test_languages.lua CASE="Lua usages in production and spec files"` and the equivalent commands for the other four scenarios and see them pass, replace the shared language readiness loop and Rust handler wrapping with the new helpers while preserving one-pass readiness, error capture, restoration, assertions, waits, and bounds, then run the same commands again and see them pass
+- [x] 4.1 Run `make test FILE=tests/integration/references/test_languages.lua CASE="Lua usages in production and spec files"` and the equivalent commands for the other four scenarios and see them pass, replace the shared language readiness loop and Rust handler wrapping with the new helpers while preserving one-pass readiness, error capture, restoration, assertions, waits, and bounds, then run the same commands again and see them pass
 
 ## 5. Migrate kind and classification integration helpers
 Scenarios: `references: gr classifies every Go variable usage`, `references: gopls kinds classify a Go variable`, `references: rust-analyzer kinds classify a Rust variable`
@@ -21,3 +21,4 @@ Scenarios: `references: gr classifies every Go variable usage`, `references: gop
 ## Agent decisions
 
 - The readiness options include request method, content-modified retry, error capture, and origin filtering so later migrations can preserve their existing variants without callback hooks.
+- The language migration keeps an explicit ready-state assertion because error capture can end the helper wait before readiness.

@@ -34,31 +34,6 @@ local function require_server(server)
 	end
 end
 
---- rust-analyzer reloads its workspace after its first answers; records its `quiescent` status.
-local function watch_rust_analyzer_status()
-	child.lua([[
-		_G.rust_analyzer_quiescent = nil
-		local server = require("rustaceanvim.config.internal").server
-		server.handlers = server.handlers or {}
-		_G.previous_server_status_handler = server.handlers["experimental/serverStatus"]
-		server.handlers["experimental/serverStatus"] = function(err, result, context, config)
-			if result and result.quiescent then _G.rust_analyzer_quiescent = true end
-			local handler = _G.previous_server_status_handler or require("rustaceanvim.server_status").handler
-			return handler(err, result, context, config)
-		end
-	]])
-end
-
----@param timeout integer
-local function wait_rust_analyzer_quiescent(timeout)
-	eq(child.wait("_G.rust_analyzer_quiescent == true", timeout), true)
-	child.lua([[
-		require("rustaceanvim.config.internal").server.handlers["experimental/serverStatus"] =
-			_G.previous_server_status_handler
-		_G.previous_server_status_handler = nil
-	]])
-end
-
 ---@param fixture string
 ---@param symbol string
 ---@param server string
@@ -72,7 +47,7 @@ local function open_references(fixture, symbol, server, attached, timeout)
 	local declaration = manifest.references[symbol][1]
 	local rust = attached[1] == "rust-analyzer"
 	if rust then
-		watch_rust_analyzer_status()
+		H.watch_rust_quiescent(child)
 	end
 	child.cmd("cd " .. vim.fn.fnameescape(root) .. " | edit " .. vim.fn.fnameescape(declaration.path))
 	child.api.nvim_win_set_cursor(0, { declaration.line, declaration.col - 1 })
@@ -84,33 +59,14 @@ local function open_references(fixture, symbol, server, attached, timeout)
 		)
 	end
 	if rust then
-		wait_rust_analyzer_quiescent(timeout or TIMEOUT_MS)
+		H.wait_rust_quiescent(child, timeout or TIMEOUT_MS)
 	end
 
-	child.lua(
-		[[
-local server, timeout = ...
-_G.references_ready, _G.references_error = nil, nil
-local bufnr = vim.api.nvim_get_current_buf()
-local started = vim.uv.hrtime()
-local function request()
-	local client = vim.lsp.get_clients({ bufnr = bufnr, name = server })[1]
-	local params = vim.lsp.util.make_position_params(0, client.offset_encoding)
-	params.context = { includeDeclaration = false }
-	client:request("textDocument/references", params, function(err, result)
-		if err then _G.references_error = err.message end
-		if result and #result > 0 then
-			_G.references_ready = true
-		elseif (vim.uv.hrtime() - started) / 1e6 < timeout then
-			vim.defer_fn(request, 10)
-		end
-	end, bufnr)
-end
-request()
-]],
-		{ attached[1], timeout or TIMEOUT_MS }
-	)
-	eq(child.wait("_G.references_ready == true", timeout or TIMEOUT_MS), true)
+	H.wait_references_ready(child, attached[1], {
+		capture_error = true,
+		timeout = timeout or TIMEOUT_MS,
+	})
+	eq(child.lua_get("_G.references_ready"), true)
 
 	child.type_keys("gr")
 	eq(child.wait([[vim.bo.filetype == "gleb-references"]], timeout or TIMEOUT_MS), true)
