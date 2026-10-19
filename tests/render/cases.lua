@@ -175,31 +175,11 @@ vim.wo.winbar = "%#Normal#▎ money.ts"
 ]])
 	driver.lua([[vim.api.nvim_win_set_cursor(0, ...)]], { { declaration.line, declaration.col - 1 } })
 	assert(driver.wait([[#vim.lsp.get_clients({ bufnr = 0, name = "vtsls" }) > 0]], H.lsp_timeout(10000)))
-	driver.lua(
-		[[
-		local minimum, timeout = ...
-_G.references_ready = nil
-local bufnr = vim.api.nvim_get_current_buf()
-local started = vim.uv.hrtime()
-local populated = 0
-local function request()
-	local client = vim.lsp.get_clients({ bufnr = bufnr, name = "vtsls" })[1]
-	local params = vim.lsp.util.make_position_params(0, client.offset_encoding)
-	params.context = { includeDeclaration = false }
-	client:request("textDocument/references", params, function(_, result)
-		populated = result and #result >= minimum and populated + 1 or 0
-		if populated >= 2 then
-			_G.references_ready = true
-		elseif (vim.uv.hrtime() - started) / 1e6 < timeout then
-			vim.defer_fn(request, 10)
-		end
-	end, bufnr)
-end
-request()
-]],
-		{ #manifest.references.Money - 1, H.lsp_timeout(10000) }
-	)
-	assert(driver.wait("_G.references_ready == true", H.lsp_timeout(10000)))
+	H.wait_references_ready(driver, "vtsls", {
+		minimum = #manifest.references.Money - 1,
+		consecutive = 2,
+		timeout = H.lsp_timeout(10000),
+	})
 	driver.type_keys("gr")
 	assert(driver.wait([[vim.bo.filetype == "gleb-references"]], H.lsp_timeout(10000)))
 	assert(driver.wait([[not require("gleb.references.view").state.classifying]], H.lsp_timeout(10000)))
@@ -235,31 +215,11 @@ vim.wo.winbar = "%#Normal#▎ money.py"
 ]])
 	driver.lua([[vim.api.nvim_win_set_cursor(0, ...)]], { { declaration.line, declaration.col - 1 } })
 	assert(driver.wait([[#vim.lsp.get_clients({ bufnr = 0, name = "basedpyright" }) > 0]], H.lsp_timeout(10000)))
-	driver.lua(
-		[[
-		local minimum, timeout = ...
-_G.references_ready = nil
-local bufnr = vim.api.nvim_get_current_buf()
-local started = vim.uv.hrtime()
-local populated = 0
-local function request()
-	local client = vim.lsp.get_clients({ bufnr = bufnr, name = "basedpyright" })[1]
-	local params = vim.lsp.util.make_position_params(0, client.offset_encoding)
-	params.context = { includeDeclaration = false }
-	client:request("textDocument/references", params, function(_, result)
-		populated = result and #result >= minimum and populated + 1 or 0
-		if populated >= 2 then
-			_G.references_ready = true
-		elseif (vim.uv.hrtime() - started) / 1e6 < timeout then
-			vim.defer_fn(request, 10)
-		end
-	end, bufnr)
-end
-request()
-]],
-		{ #manifest.references.Money - 1, H.lsp_timeout(10000) }
-	)
-	assert(driver.wait("_G.references_ready == true", H.lsp_timeout(10000)))
+	H.wait_references_ready(driver, "basedpyright", {
+		minimum = #manifest.references.Money - 1,
+		consecutive = 2,
+		timeout = H.lsp_timeout(10000),
+	})
 	driver.type_keys("gr")
 	assert(driver.wait([[vim.bo.filetype == "gleb-references"]], H.lsp_timeout(10000)))
 	assert(driver.wait([[not require("gleb.references.view").state.classifying]], H.lsp_timeout(10000)))
@@ -296,31 +256,11 @@ vim.wo.winbar = "%#Normal#▎ discount.lua"
 	driver.lua([[vim.api.nvim_win_set_cursor(0, ...)]], { { declaration.line, declaration.col - 1 } })
 	assert(driver.wait([[#vim.lsp.get_clients({ bufnr = 0, name = "lua_ls" }) > 0]], H.lsp_timeout(10000)))
 	driver.lua([[vim.diagnostic.enable(false, { bufnr = 0 })]])
-	driver.lua(
-		[[
-		local minimum, timeout = ...
-_G.references_ready = nil
-local bufnr = vim.api.nvim_get_current_buf()
-local started = vim.uv.hrtime()
-local populated = 0
-local function request()
-	local client = vim.lsp.get_clients({ bufnr = bufnr, name = "lua_ls" })[1]
-	local params = vim.lsp.util.make_position_params(0, client.offset_encoding)
-	params.context = { includeDeclaration = false }
-	client:request("textDocument/references", params, function(_, result)
-		populated = result and #result >= minimum and populated + 1 or 0
-		if populated >= 2 then
-			_G.references_ready = true
-		elseif (vim.uv.hrtime() - started) / 1e6 < timeout then
-			vim.defer_fn(request, 10)
-		end
-	end, bufnr)
-end
-request()
-]],
-		{ #manifest.references.apply - 2, H.lsp_timeout(10000) }
-	)
-	assert(driver.wait("_G.references_ready == true", H.lsp_timeout(10000)))
+	H.wait_references_ready(driver, "lua_ls", {
+		minimum = #manifest.references.apply - 2,
+		consecutive = 2,
+		timeout = H.lsp_timeout(10000),
+	})
 	driver.type_keys("gr")
 	assert(driver.wait([[vim.bo.filetype == "gleb-references"]], H.lsp_timeout(10000)))
 	assert(driver.wait([[not require("gleb.references.view").state.classifying]], H.lsp_timeout(10000)))
@@ -362,31 +302,11 @@ vim.wo.winbar = "%#Normal#▎ tax.sh"
 ]])
 	driver.lua([[vim.api.nvim_win_set_cursor(0, ...)]], { { declaration.line, declaration.col - 1 } })
 	assert(driver.wait([[#vim.lsp.get_clients({ bufnr = 0, name = "bashls" }) > 0]], H.lsp_timeout(10000)))
-	driver.lua(
-		[[
-		local minimum, timeout = ...
-_G.references_ready = nil
-local bufnr = vim.api.nvim_get_current_buf()
-local started = vim.uv.hrtime()
-local populated = 0
-local function request()
-	local client = vim.lsp.get_clients({ bufnr = bufnr, name = "bashls" })[1]
-	local params = vim.lsp.util.make_position_params(0, client.offset_encoding)
-	params.context = { includeDeclaration = false }
-	client:request("textDocument/references", params, function(_, result)
-		populated = result and #result >= minimum and populated + 1 or 0
-		if populated >= 2 then
-			_G.references_ready = true
-		elseif (vim.uv.hrtime() - started) / 1e6 < timeout then
-			vim.defer_fn(request, 10)
-		end
-	end, bufnr)
-end
-request()
-]],
-		{ #manifest.references.rate - 1, H.lsp_timeout(10000) }
-	)
-	assert(driver.wait("_G.references_ready == true", H.lsp_timeout(10000)))
+	H.wait_references_ready(driver, "bashls", {
+		minimum = #manifest.references.rate - 1,
+		consecutive = 2,
+		timeout = H.lsp_timeout(10000),
+	})
 	driver.type_keys("gr")
 	assert(driver.wait([[vim.bo.filetype == "gleb-references"]], H.lsp_timeout(10000)))
 	assert(driver.wait([[not require("gleb.references.view").state.classifying]], H.lsp_timeout(10000)))
@@ -430,31 +350,11 @@ vim.wo.winbar = "%#Normal#▎ network.tf"
 	driver.lua([[vim.api.nvim_win_set_cursor(0, ...)]], { { declaration.line, declaration.col - 1 } })
 	assert(driver.wait([[#vim.lsp.get_clients({ bufnr = 0, name = "terraformls" }) > 0]], H.lsp_timeout(10000)))
 	driver.lua([[vim.diagnostic.enable(false, { bufnr = 0 })]])
-	driver.lua(
-		[[
-		local minimum, timeout = ...
-_G.references_ready = nil
-local bufnr = vim.api.nvim_get_current_buf()
-local started = vim.uv.hrtime()
-local populated = 0
-local function request()
-	local client = vim.lsp.get_clients({ bufnr = bufnr, name = "terraformls" })[1]
-	local params = vim.lsp.util.make_position_params(0, client.offset_encoding)
-	params.context = { includeDeclaration = false }
-	client:request("textDocument/references", params, function(_, result)
-		populated = result and #result >= minimum and populated + 1 or 0
-		if populated >= 2 then
-			_G.references_ready = true
-		elseif (vim.uv.hrtime() - started) / 1e6 < timeout then
-			vim.defer_fn(request, 10)
-		end
-	end, bufnr)
-end
-request()
-]],
-		{ #manifest.references.vpc - 1, H.lsp_timeout(10000) }
-	)
-	assert(driver.wait("_G.references_ready == true", H.lsp_timeout(10000)))
+	H.wait_references_ready(driver, "terraformls", {
+		minimum = #manifest.references.vpc - 1,
+		consecutive = 2,
+		timeout = H.lsp_timeout(10000),
+	})
 	driver.type_keys("gr")
 	assert(driver.wait([[vim.bo.filetype == "gleb-references"]], H.lsp_timeout(10000)))
 	assert(driver.wait([[not require("gleb.references.view").state.classifying]], H.lsp_timeout(10000)))

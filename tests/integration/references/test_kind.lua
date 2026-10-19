@@ -44,65 +44,48 @@ local function classify(root, path, line, col, server, client_name, timeout, min
 	child.cmd("cd " .. vim.fn.fnameescape(root) .. " | edit " .. vim.fn.fnameescape(path))
 	child.api.nvim_win_set_cursor(0, { line, col - 1 })
 	eq(child.wait(([[#vim.lsp.get_clients({ bufnr = 0, name = %q }) > 0]]):format(client_name), timeout), true)
+	H.wait_references_ready(child, client_name, {
+		minimum = minimum or 1,
+		timeout = timeout,
+		method = collect_highlights and "textDocument/documentHighlight" or "textDocument/references",
+		retry_content_modified = true,
+		capture_error = true,
+		exclude_origin = collect_highlights,
+	})
 
 	child.lua(
 		[[
-		local server, timeout, minimum, collect_highlights = ...
-_G.usage_kinds, _G.usage_kind_error = nil, nil
+		local server = ...
+_G.usage_kinds, _G.usage_kind_error = nil, _G.references_error
+if _G.usage_kind_error then return end
 local bufnr = vim.api.nvim_get_current_buf()
 local client = vim.lsp.get_clients({ bufnr = bufnr, name = server })[1]
 local params = vim.lsp.util.make_position_params(0, client.offset_encoding)
-params.context = { includeDeclaration = false }
-local started = vim.uv.hrtime()
-local function request()
-	local method = collect_highlights and "textDocument/documentHighlight" or "textDocument/references"
-	client:request(method, params, function(err, locations)
-		if err then
-			if err.message == "content modified" and (vim.uv.hrtime() - started) / 1e6 < timeout then
-				vim.defer_fn(request, 10)
-			else
-				_G.usage_kind_error = err.message
-			end
-			return
-		end
-		locations = vim.tbl_filter(function(location)
-			local start = location.range.start
-			return not collect_highlights or start.line ~= params.position.line or start.character ~= params.position.character
-		end, locations or {})
-		if #locations < minimum then
-			if (vim.uv.hrtime() - started) / 1e6 < timeout then
-				vim.defer_fn(request, 10)
-			end
-			return
-		end
-		local cwd = vim.fn.getcwd()
-		local usages = vim.tbl_map(function(location)
-			location.uri = location.uri or params.textDocument.uri
-			return {
-				uri = location.uri,
-				path = vim.fs.relpath(cwd, vim.uri_to_fname(location.uri)) or vim.uri_to_fname(location.uri),
-				lnum = location.range.start.line + 1,
-				col = location.range.start.character + 1,
-				filetype = vim.filetype.match({ filename = vim.uri_to_fname(location.uri) }),
-				range = location.range,
-				client_id = client.id,
-			}
-		end, locations)
-		require("gleb.references.kind").classify(usages, function(classified)
-			_G.usage_kinds = vim.tbl_map(function(usage)
-				return { usage.path, usage.lnum, usage.col, usage.kind }
-			end, classified)
-			table.sort(_G.usage_kinds, function(left, right)
-				if left[1] ~= right[1] then return left[1] < right[1] end
-				if left[2] ~= right[2] then return left[2] < right[2] end
-				return left[3] < right[3]
-			end)
-		end)
-	end, bufnr)
-end
-request()
+local cwd = vim.fn.getcwd()
+local usages = vim.tbl_map(function(location)
+	location.uri = location.uri or params.textDocument.uri
+	return {
+		uri = location.uri,
+		path = vim.fs.relpath(cwd, vim.uri_to_fname(location.uri)) or vim.uri_to_fname(location.uri),
+		lnum = location.range.start.line + 1,
+		col = location.range.start.character + 1,
+		filetype = vim.filetype.match({ filename = vim.uri_to_fname(location.uri) }),
+		range = location.range,
+		client_id = client.id,
+	}
+end, _G.references_result)
+require("gleb.references.kind").classify(usages, function(classified)
+	_G.usage_kinds = vim.tbl_map(function(usage)
+		return { usage.path, usage.lnum, usage.col, usage.kind }
+	end, classified)
+	table.sort(_G.usage_kinds, function(left, right)
+		if left[1] ~= right[1] then return left[1] < right[1] end
+		if left[2] ~= right[2] then return left[2] < right[2] end
+		return left[3] < right[3]
+	end)
+end)
 ]],
-		{ client_name, timeout, minimum or 1, collect_highlights or false }
+		{ client_name }
 	)
 	eq(child.wait("_G.usage_kinds ~= nil or _G.usage_kind_error ~= nil", timeout), true)
 	eq(child.lua_get("_G.usage_kind_error"), vim.NIL)
@@ -125,17 +108,7 @@ local function open_references(root, path, line, col, server, client_name, timeo
 	timeout = timeout or TIMEOUT_MS
 	require_server(server)
 	if client_name == "rust-analyzer" then
-		child.lua([[
-			_G.rust_analyzer_quiescent = nil
-			local server = require("rustaceanvim.config.internal").server
-			server.handlers = server.handlers or {}
-			_G.previous_server_status_handler = server.handlers["experimental/serverStatus"]
-			server.handlers["experimental/serverStatus"] = function(err, result, context, config)
-				if result and result.quiescent then _G.rust_analyzer_quiescent = true end
-				local handler = _G.previous_server_status_handler or require("rustaceanvim.server_status").handler
-				return handler(err, result, context, config)
-			end
-		]])
+		H.watch_rust_quiescent(child)
 	end
 	child.cmd("cd " .. vim.fn.fnameescape(root) .. " | edit " .. vim.fn.fnameescape(path))
 	child.api.nvim_win_set_cursor(0, { line, col - 1 })
@@ -144,12 +117,7 @@ local function open_references(root, path, line, col, server, client_name, timeo
 		client_name .. " did not attach"
 	)
 	if client_name == "rust-analyzer" then
-		assert(child.wait("_G.rust_analyzer_quiescent == true", timeout), "rust-analyzer did not become quiescent")
-		child.lua([[
-			require("rustaceanvim.config.internal").server.handlers["experimental/serverStatus"] =
-				_G.previous_server_status_handler
-			_G.previous_server_status_handler = nil
-		]])
+		H.wait_rust_quiescent(child, timeout)
 	end
 	if before_open then
 		before_open()
@@ -163,35 +131,7 @@ local function open_references(root, path, line, col, server, client_name, timeo
 			parser .. " parser is not installed"
 		)
 	end
-	child.lua(
-		[[
-		local server, timeout, minimum = ...
-_G.references_ready = nil
-local bufnr = vim.api.nvim_get_current_buf()
-local started = vim.uv.hrtime()
-local populated = 0
-local function request()
-	local client = vim.lsp.get_clients({ bufnr = bufnr, name = server })[1]
-	local params = vim.lsp.util.make_position_params(0, client.offset_encoding)
-	params.context = { includeDeclaration = false }
-	client:request("textDocument/references", params, function(_, result)
-		if result and #result >= minimum then
-			populated = populated + 1
-		else
-			populated = 0
-		end
-		if populated >= 2 then
-			_G.references_ready = true
-		elseif (vim.uv.hrtime() - started) / 1e6 < timeout then
-			vim.defer_fn(request, 10)
-		end
-	end, bufnr)
-end
-request()
-]],
-		{ client_name, timeout, minimum or 1 }
-	)
-	assert(child.wait("_G.references_ready == true", timeout), "references did not become ready")
+	H.wait_references_ready(child, client_name, { minimum = minimum or 1, consecutive = 2, timeout = timeout })
 
 	child.type_keys("gr")
 	assert(child.wait([[vim.bo.filetype == "gleb-references"]], timeout), "gr did not open the references view")
