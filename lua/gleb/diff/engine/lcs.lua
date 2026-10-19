@@ -16,7 +16,7 @@ local function timed_out(context)
 	return context.clock() > context.deadline
 end
 
-local function myers(values1, values2, context, bounded)
+local function myers(values1, values2, context, bounded, exact)
 	local length1 = #values1
 	local length2 = #values2
 	local forward = {}
@@ -241,6 +241,8 @@ local function myers(values1, values2, context, bounded)
 	local estimate
 	if bounded then
 		estimate = math.min(context.myers_threshold, length1 + length2)
+	elseif exact then
+		estimate = length1 + length2
 	else
 		estimate = math.min(20000 + 10 * math.floor(math.sqrt(length1 + length2)), length1 + length2)
 	end
@@ -249,6 +251,15 @@ local function myers(values1, values2, context, bounded)
 		return nil, status
 	end
 	return matches, "ok"
+end
+
+---@param values1 integer[]
+---@param values2 integer[]
+---@param context gleb.diff.Context
+---@return gleb.diff.LcsResult
+function M.diff_exact(values1, values2, context)
+	local matches, status = myers(values1, values2, context, false, true)
+	return { matches = matches or {}, status = status }
 end
 
 local function unique_anchors(values1, values2, start1, end1, start2, end2, context)

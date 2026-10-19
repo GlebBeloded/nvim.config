@@ -19,9 +19,27 @@ Two VS Code parity gaps in move detection that reviews noted but never fixed (ar
   add a scenario with a long moved line that VS Code reports as moved.
 - Keep every existing diff scenario and its bounds (the moves deadline stays).
 
+## Evidence
+
+- `lua/gleb/diff/engine/moves.lua:585` retains a move only when its two containing-change ids differ, so
+  `nil == nil` drops a move that belongs to neither change. Candidates produced by `moves.compute` cannot reach that
+  state: simple candidates come from non-empty deletion and insertion changes at
+  `lua/gleb/diff/engine/moves.lua:120` and `lua/gleb/diff/engine/moves.lua:127`, while line-window candidates are
+  constructed inside change ranges at `lua/gleb/diff/engine/moves.lua:389` and
+  `lua/gleb/diff/engine/moves.lua:409`. The parity branch therefore needs a direct unit case.
+- `lua/gleb/diff/engine/moves.lua:295` rejects two lines over 300 characters before measuring similarity, and
+  `lua/gleb/diff/engine/moves.lua:319` also treats every non-`ok` LCS result as dissimilar; the bounded LCS can exhaust
+  Myers and patience at `lua/gleb/diff/engine/lcs.lua:573` and `lua/gleb/diff/engine/lcs.lua:577`.
+- A headless `make probe` using a three-line moved anchor followed by 350-character lines made from 220 shared
+  characters and 130 differing characters returned `{ { 0, 3, 4, 7 } }`; VS Code parity requires the similar fourth
+  line to extend that move to `{ { 0, 4, 4, 8 } }`.
+
 ## Impact
 
-- `lua/gleb/diff/engine/moves.lua`, `tests/unit/diff/` move cases.
+- `lua/gleb/diff/engine/moves.lua`, `lua/gleb/diff/engine/lcs.lua`, and `tests/unit/diff/test_moves.lua`.
+- No plugin dependency is added, removed, or upgraded; core keymaps do not change.
+- Out of scope: diff-view rendering, line-diff fallback policy, move thresholds other than size give-up, and the existing
+  move deadline and performance bounds.
 
 ## Decision (auditor, 2026-10-19, review pass 1)
 
