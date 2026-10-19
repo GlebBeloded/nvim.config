@@ -241,7 +241,7 @@ local function show_diff(view, row, generation, selection_generation, focus_righ
 			view.loaded_buffers[loaded_buf] = true
 		end
 		local diff = require("gleb.diff.view")
-		local editor = file_tree_view.eligible_editor(view)
+		local editor = file_tree_view.eligible_editor(view, true)
 		view.editor_win = editor
 		spec.on_next_file = function()
 			M.next_file(view)

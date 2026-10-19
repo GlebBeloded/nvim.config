@@ -29,7 +29,6 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 
 ## Loop lessons
 
-- Model screen masks with active capture groups across full spans; blank cells inside comments and strings still carry syntax attributes.
 - Strip optional pattern anchors by position; an unanchored substitution corrupts semantic carets inside Lua patterns.
 - Preserve current-window predicates when scheduling UI opens; loaded-buffer checks can hide focus regressions.
 - Pass the same visibility snapshot to drawing and nest actions so toggled ignored children remain actionable.
@@ -44,6 +43,7 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - Assert structured failure diagnostics at the regression boundary so phase and live subprocess evidence cannot silently disappear.
 - An algorithm fallback change must preserve independent upstream eligibility guards; here exact LCS still applies only when at least one line is at most 300 characters.
 - Preserve polling semantics when extracting asynchronous readiness helpers: recording an LSP error must not make the wait return before readiness.
+- Preserve a valid restore buffer when replacing a wipe-on-hide dashboard, so repeated owned-diff updates cannot restore a deleted buffer.
 
 ## The loop
 

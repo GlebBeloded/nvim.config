@@ -448,6 +448,46 @@ T["git: Changes panel review without a changed current file"] = function()
 	eq(result, { row = "lib/c.lua", diff = "lib/c.lua" })
 end
 
+T["git: Changes panel review replaces the dashboard"] = function()
+	local root = F.copy("dirty", vim.fn.tempname() .. "/dirty")
+	eq(child.bo.filetype, "alpha")
+	child.cmd("cd " .. vim.fn.fnameescape(root))
+	child.lua([[
+		local action = assert(require("gleb.actions").state.applicator.catalog:get("changes.review"))
+		action.run(require("gleb.actions.context").capture())
+	]])
+	eq(
+		child.wait(
+			[[(function()
+				local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+				return panel ~= nil and panel.diff_view ~= nil
+			end)()]],
+			ASYNC_MS
+		),
+		true
+	)
+
+	local result = child.lua_get([=[(function()
+		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		local alpha_windows = vim.iter(vim.api.nvim_tabpage_list_wins(0)):filter(function(win)
+			return vim.bo[vim.api.nvim_win_get_buf(win)].filetype == "alpha"
+		end):totable()
+		return {
+			current_win = vim.api.nvim_get_current_win(),
+			panel_win = panel.win,
+			diff = panel.diff_view.relpath,
+			alpha_windows = #alpha_windows,
+		}
+	end)()]=])
+	eq(result.alpha_windows, 0)
+	eq(result, {
+		current_win = result.panel_win,
+		panel_win = result.panel_win,
+		diff = "lib/c.lua",
+		alpha_windows = 0,
+	})
+end
+
 T["git: Changes panel ]f steps through every changed file"] = function()
 	local root = F.copy("dirty", vim.fn.tempname() .. "/dirty")
 	observe_show()
