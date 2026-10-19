@@ -8,6 +8,7 @@ Scenarios: `file-tree: Directory argument opens the project tree`
 - Folds receive drawing hooks so fold coordination moves out without creating a module cycle.
 - The public ops module keeps thin move wrappers because clipboard paste also dispatches through `M.move`.
 - The clipboard module owns the shared operation-state table so public state inspection stays stable across the extraction.
+- The deletion module receives the public operation state so trash overrides keep following resets without duplicate state.
 
 ## 2. Extract file-tree folds
 Scenarios: `file-tree: za toggles a nest`
@@ -23,7 +24,7 @@ Scenarios: `file-tree: Project tree c and p copy a file into another folder`
 
 ## 5. Extract file-tree deletion
 Scenarios: `file-tree: Project tree d moves a file to the Trash after confirmation`
-- [ ] 5.1 Run `make test FILE=tests/integration/file-tree/test_project_ops.lua CASE="Project tree d moves a file to the Trash after confirmation"` and see it pass, move trash, permanent-delete, and deleted-buffer cleanup into `lua/gleb/file_tree/ops/delete.lua`, run it again and see it pass
+- [x] 5.1 Run `make test FILE=tests/integration/file-tree/test_project_ops.lua CASE="Project tree d moves a file to the Trash after confirmation"` and see it pass, move trash, permanent-delete, and deleted-buffer cleanup into `lua/gleb/file_tree/ops/delete.lua`, run it again and see it pass
 
 ## 6. Extract diff-view mappings
 Scenarios: `diff: Diff view mappings come from diff actions`
