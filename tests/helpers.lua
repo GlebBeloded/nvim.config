@@ -314,10 +314,42 @@ local function read_surface_state(path)
 	return ok and state or nil
 end
 
+---@param pid integer
+---@param descendants integer[]
+---@return boolean
+local function collect_process_tree(pid, descendants)
+	local ok_children, children = pcall(vim.api.nvim_get_proc_children, pid)
+	if not ok_children then
+		return false
+	end
+	for _, child_pid in ipairs(children) do
+		collect_process_tree(child_pid, descendants)
+		table.insert(descendants, child_pid)
+	end
+	return true
+end
+
+---@param pid integer
+---@return string commands
+---@return integer[] pids
+local function child_subprocesses(pid)
+	local descendants = {}
+	if not collect_process_tree(pid, descendants) then
+		return "<unavailable>", {}
+	end
+	local commands = {}
+	for _, child_pid in ipairs(descendants) do
+		local process = vim.system({ "ps", "-o", "args=", "-p", tostring(child_pid) }, { text = true }):wait()
+		local command = process.code == 0 and vim.trim(process.stdout or "") or "<unavailable>"
+		table.insert(commands, ("%d: %s"):format(child_pid, command))
+	end
+	return #commands > 0 and table.concat(commands, ", ") or "<none>", descendants
+end
+
 ---@param child MiniTest.child
 ---@param pid integer
----@param subprocess_pids integer[]
-local function stop_blocked_child(child, pid, subprocess_pids)
+local function stop_blocked_child(child, pid)
+	local _, subprocess_pids = child_subprocesses(pid)
 	for _, subprocess_pid in ipairs(subprocess_pids) do
 		pcall(vim.uv.kill, subprocess_pid, "sigkill")
 	end
@@ -328,23 +360,6 @@ local function stop_blocked_child(child, pid, subprocess_pids)
 	pcall(vim.fn.delete, child.job.address)
 	child.job = nil
 	M.delete_debug_log(pid)
-end
-
----@param pid integer
----@return string commands
----@return integer[] pids
-local function child_subprocesses(pid)
-	local ok_children, children = pcall(vim.api.nvim_get_proc_children, pid)
-	if not ok_children then
-		return "<unavailable>", {}
-	end
-	local commands = {}
-	for _, child_pid in ipairs(children) do
-		local process = vim.system({ "ps", "-o", "args=", "-p", tostring(child_pid) }, { text = true }):wait()
-		local command = process.code == 0 and vim.trim(process.stdout or "") or "<unavailable>"
-		table.insert(commands, ("%d: %s"):format(child_pid, command))
-	end
-	return #commands > 0 and table.concat(commands, ", ") or "<none>", children
 end
 
 --- Open a child surface without making a blocking RPC request while waiting.
@@ -371,15 +386,14 @@ function M.open_surface(child, spec)
 	end, 20)
 	local elapsed = math.floor((vim.uv.hrtime() - started) / 1000000)
 	state = state or {}
-	local subprocess_pids
-	state.subprocesses, subprocess_pids = child_subprocesses(pid)
+	state.subprocesses = child_subprocesses(pid)
 	vim.fn.delete(state_file)
 
 	if completed and state.phase == "ready" then
 		return
 	end
 	if not completed and child.job then
-		stop_blocked_child(child, pid, subprocess_pids)
+		stop_blocked_child(child, pid)
 	end
 
 	error(
