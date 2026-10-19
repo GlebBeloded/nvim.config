@@ -22,7 +22,3 @@ Scenarios: `references: gr classifies every Go variable usage`, `references: gop
 
 - The readiness options include request method, content-modified retry, error capture, and origin filtering so later migrations can preserve their existing variants without callback hooks.
 - The readiness helper retains the qualifying locations so kind classification consumes the exact response that satisfied its minimum and filtering contract.
-
-## Stuck
-
-- After removing the language case's error short-circuit, its TypeScript scenario passed alone and the first required full-file run passed all 19 cases in 14.1 s. The second full-file run failed `languages: Each references facet gets a gr run | rust` after 42.6 s at the preserved 30 s references wait, while the same run's dedicated Rust case completed in 12.4 s. An isolated full-config Rust probe became quiescent and returned three references on its first request in 321 ms. Extending or scaling the wait would violate this refactor's preserved-bounds contract, and the failure did not reproduce in the isolated probe.
