@@ -17,9 +17,9 @@ Scenarios: `ui: Tree flattens open groups depth first`, `ui: Tree keeps fold sta
 
 Scenarios: `ui: Selection follows its id after a rebuild`, `ui: Selection on a hidden node moves to its visible ancestor`, `ui: Tree fold keys are the same in every tree`
 
-- [ ] 3.1 Write the scenarios in `tests/unit/ui/test_tree_view.lua` and `tests/unit/ui/test_tree_keys.lua` and see them fail
-- [ ] 3.2 Add `lua/gleb/ui/tree/view.lua`, `lua/gleb/ui/tree/actions.lua` and `lua/gleb/ui/tree/init.lua` (design Decisions 4 and 5); add the new action keys to `settings/keymap.json` and move `l` from `file_tree.open` to `file_tree.expand_node`
-- [ ] 3.3 Run both files and see them pass
+- [x] 3.1 Write the scenarios in `tests/unit/ui/test_tree_view.lua` and `tests/unit/ui/test_tree_keys.lua` and see them fail
+- [x] 3.2 Add `lua/gleb/ui/tree/view.lua`, `lua/gleb/ui/tree/actions.lua` and `lua/gleb/ui/tree/init.lua` (design Decisions 4 and 5); add the new action keys to `settings/keymap.json` and move `l` from `file_tree.open` to `file_tree.expand_node`
+- [x] 3.3 Run both files and see them pass
 
 ## 4. Changes panel on the shared tree
 
@@ -60,3 +60,4 @@ Scenarios: `folding: Collapse Fold key folds the group under the tree cursor`, `
 ## Agent decisions
 
 - Store a folded boolean for every foldable id, so rebuilds preserve both explicit opens and closes.
+- Cache each attached tree's last rendered rows and renderer, so redraws recover the old cursor id and shared actions can redraw without feature-specific dispatch.
