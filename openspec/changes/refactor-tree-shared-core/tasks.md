@@ -8,7 +8,7 @@ Scenarios: `file-tree: Project tree watchers stop when the tree closes`
 
 ## 2. Migrate project-tree git and expansion debounce
 Scenarios: `file-tree: Project tree runs git status once per burst`, `file-tree: Project tree expanded folders persist per root`
-- [ ] 2.1 Run `make test FILE=tests/integration/file-tree/test_project_git.lua CASE="Project tree runs git status once per burst"` and `make test FILE=tests/integration/file-tree/test_project_live.lua CASE="Project tree expanded folders persist per root"` and see them pass, migrate `file_tree/git.lua` and `file_tree/expanded.lua` to `gleb.util.debounce`, then run them again and see them pass
+- [x] 2.1 Run `make test FILE=tests/integration/file-tree/test_project_git.lua CASE="Project tree runs git status once per burst"` and `make test FILE=tests/integration/file-tree/test_project_live.lua CASE="Project tree expanded folders persist per root"` and see them pass, migrate `file_tree/git.lua` and `file_tree/expanded.lua` to `gleb.util.debounce`, then run them again and see them pass
 
 ## 3. Migrate project-tree redraw debounce
 Scenarios: `file-tree: Project tree redraw meets the large-tree bound`

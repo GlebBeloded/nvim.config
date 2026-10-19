@@ -2,6 +2,7 @@
 
 local M = {}
 
+local debounce = require("gleb.util.debounce")
 local fs = require("gleb.file_tree.fs")
 local model = require("gleb.file_tree.model")
 
@@ -172,23 +173,15 @@ function M.request(root)
 		state.dirty = true
 		return
 	end
-	if not state.timer then
-		state.timer = assert(vim.uv.new_timer())
-	end
-	state.timer:stop()
 	local generation = state.generation
-	state.timer:start(
-		GIT_DEBOUNCE_MS,
-		0,
-		vim.schedule_wrap(function()
-			if M.state.roots[root] ~= state or generation ~= state.generation or not state.timer then
-				return
-			end
-			state.timer:stop()
-			state.timer:close()
-			run(root, state)
-		end)
-	)
+	state.timer = debounce.schedule(state.timer, GIT_DEBOUNCE_MS, function()
+		if M.state.roots[root] ~= state or generation ~= state.generation or not state.timer then
+			return
+		end
+		state.timer:stop()
+		state.timer:close()
+		run(root, state)
+	end)
 end
 
 --- Start one root's status refresh without the watcher debounce.

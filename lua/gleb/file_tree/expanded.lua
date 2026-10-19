@@ -2,6 +2,8 @@
 
 local M = {}
 
+local debounce = require("gleb.util.debounce")
+
 local SAVE_DEBOUNCE_MS = 500
 
 ---@class FileTreeExpandedState
@@ -228,11 +230,7 @@ end
 ---@return nil
 function M.save(root, expanded)
 	M.state.pending[root] = sorted_paths(expanded)
-	if not M.state.timer then
-		M.state.timer = assert(vim.uv.new_timer())
-	end
-	M.state.timer:stop()
-	M.state.timer:start(SAVE_DEBOUNCE_MS, 0, vim.schedule_wrap(M.flush))
+	M.state.timer = debounce.schedule(M.state.timer, SAVE_DEBOUNCE_MS, M.flush)
 end
 
 --- Load one root's expansion set, omitting folders that no longer exist.
