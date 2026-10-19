@@ -10,7 +10,8 @@ local original_paste = vim.paste
 ---@param phase integer
 ---@return boolean?
 local function paste(lines, phase)
-	if not vim.bo.modifiable then
+	local edits_current_buffer = vim.fn.getcmdtype() == "" and vim.bo.buftype ~= "terminal"
+	if edits_current_buffer and not vim.bo.modifiable then
 		return false
 	end
 	return original_paste(lines, phase)

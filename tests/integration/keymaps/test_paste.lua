@@ -53,4 +53,24 @@ T["keymaps: Terminal paste edits a normal buffer"] = function()
 	eq(child.lua_get([[vim.api.nvim_buf_get_lines(0, 0, -1, false)]]), { "probe" })
 end
 
+T["keymaps: Terminal paste writes to a terminal buffer"] = function()
+	child.cmd("terminal cat")
+
+	local result = child.lua_get([[{ pcall(vim.paste, { "probe" }, -1) }]])
+
+	eq(result, { true, true })
+	assert(child.wait([[vim.api.nvim_buf_get_lines(0, 0, -1, false)[1] == "probe"]]), "Terminal did not receive paste")
+end
+
+T["keymaps: Terminal paste edits the command line from a read-only project tree"] = function()
+	open_project_tree()
+	child.type_keys(":")
+
+	local result = child.lua_get([[{ pcall(vim.paste, { "probe" }, -1) }]])
+
+	eq(result, { true, true })
+	eq(child.lua_get([[vim.fn.getcmdline()]]), "probe")
+	child.type_keys("<Esc>")
+end
+
 return T
