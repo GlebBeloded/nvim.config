@@ -11,7 +11,6 @@ local MIN_MOVE_LINES = 3
 local MIN_SIMILARITY = 0.90
 local SIMILAR_RATIO = 0.6
 local SIMILAR_MIN_CHARS = 10
-local MAX_SIMILAR_LINE = 300
 local JOIN_MAX_GAP = 2
 local MIN_MOVE_CHARS = 15
 local MIN_LINE_CHARS = 2
@@ -292,9 +291,6 @@ local function lines_similar(line1, line2, context)
 	end
 	local chars1 = codepoints(line1)
 	local chars2 = codepoints(line2)
-	if #chars1 > MAX_SIMILAR_LINE and #chars2 > MAX_SIMILAR_LINE then
-		return false
-	end
 
 	local sequence1 = similar_line_sequence(chars1, line1)
 	local sequence2 = similar_line_sequence(chars2, line2)
@@ -316,7 +312,7 @@ local function lines_similar(line1, line2, context)
 		end
 		values2[index] = keys[char]
 	end
-	local result = lcs.diff(values1, values2, context)
+	local result = lcs.diff_exact(values1, values2, context)
 	if result.status ~= "ok" then
 		return false
 	end
@@ -582,7 +578,7 @@ local function remove_moves_in_same_change(changes, moves, context)
 				modified_id = id
 			end
 		end
-		if original_id ~= modified_id then
+		if original_id == nil or modified_id == nil or original_id ~= modified_id then
 			result[#result + 1] = current
 		end
 	end
