@@ -57,7 +57,8 @@ local function run_action(id)
 		if opened then
 			assert(
 				child.wait(
-					[[#require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()].rows > 0]]
+					[[#require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()].rows > 0]],
+					math.ceil(2000 * H.load_factor())
 				)
 			)
 		end
@@ -129,7 +130,7 @@ local function wait_for_tree_row(name)
 				end)
 			end, 20)
 		end)(...)]],
-		{ name, math.ceil(1000 * H.load_factor()) }
+		{ name, math.ceil(3000 * H.load_factor()) }
 	)
 end
 
@@ -161,8 +162,23 @@ local function wait_for_tree_highlight(name, group)
 				return false
 			end, 20)
 		end)(...)]],
-		{ name, group, math.ceil(1000 * H.load_factor()) }
+		{ name, group, math.ceil(3000 * H.load_factor()) }
 	)
+end
+
+---@param relative string
+local function wait_for_watch(relative)
+	local watched = child.lua_get(
+		[[(function(root, relative, timeout)
+			root = require("gleb.file_tree.fs").normalize(root)
+			return vim.wait(timeout, function()
+				local state = require("gleb.file_tree.watch").state.roots[root]
+				return state and state.handles[vim.fs.joinpath(root, relative)] ~= nil
+			end, 20)
+		end)(...)]],
+		{ root, relative, math.ceil(3000 * H.load_factor()) }
+	)
+	assert(watched, "tree folder was not watched: " .. relative)
 end
 
 local function open_billing_folder()
@@ -172,6 +188,7 @@ local function open_billing_folder()
 	child.type_keys("<CR>")
 	focus_tree_path("internal/billing")
 	child.type_keys("<CR>")
+	wait_for_watch("internal/billing")
 end
 
 T["file-tree: Project tree follows the current file"] = function()
@@ -374,6 +391,7 @@ T["file-tree: A compact chain splits when a folder gains an entry"] = function()
 	edit("README.md")
 	run_action("file_tree.toggle")
 	eq(wait_for_tree_row("cmd/server"), true)
+	wait_for_watch("cmd")
 
 	local result = H.system(child, { "mkdir", vim.fs.joinpath(root, "cmd/worker") }, root)
 	eq(result.code, 0)

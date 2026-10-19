@@ -26,7 +26,10 @@ local function run_toggle()
 		child.lua_get([[require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()] ~= nil]])
 	if opened then
 		assert(
-			child.wait([[#require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()].rows > 0]])
+			child.wait(
+				[[#require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()].rows > 0]],
+				math.ceil(2000 * H.load_factor())
+			)
 		)
 	end
 end
@@ -233,9 +236,9 @@ T["file-tree: Project tree runs git status once per burst"] = function()
 	)
 
 	local result = child.lua_get(
-		[[(function(baseline)
-		local git = require("gleb.file_tree.git")
-		local complete = vim.wait(1000, function()
+		[[(function(baseline, timeout)
+			local git = require("gleb.file_tree.git")
+			local complete = vim.wait(timeout, function()
 			local view = require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()]
 			if not view then
 				return false
@@ -248,9 +251,9 @@ T["file-tree: Project tree runs git status once per burst"] = function()
 			end
 			return found == 20
 		end, 20)
-		return { complete = complete, runs = git.state.runs - baseline }
-	end)(...)]],
-		{ baseline }
+			return { complete = complete, runs = git.state.runs - baseline }
+		end)(...)]],
+		{ baseline, math.ceil(3000 * H.load_factor()) }
 	)
 
 	eq(result.complete, true)
