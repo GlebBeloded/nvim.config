@@ -57,6 +57,12 @@ class ChangeMode(unittest.TestCase):
         self.change()
         self.assertEqual(self.branches(), {"loop/c-20261014-185117", "loop/cx"})
 
+    def test_branch_deleted_after_the_listing_is_skipped(self) -> None:
+        # run 3561c2d3's ship: loop-clean listed loop/c, then its ref was gone before classify (traceback, exit 1)
+        self.branch("loop/c-20261014-185117", 1)
+        loop_clean.clean(["loop/c", "loop/c-20261014-185117"], True, "loop/c-20261014-185117")
+        self.assertIn("loop/c-20261014-185117", self.branches())
+
     def test_unmerged_sibling_with_own_work_is_kept(self) -> None:
         self.branch("loop/c", 2)
         self.branch("loop/c-20261014-174246", 1)

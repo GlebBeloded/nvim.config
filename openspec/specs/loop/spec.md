@@ -1074,3 +1074,10 @@ a test child SHALL exit when its test worker is gone, `make test FILE=<directory
 #### Scenario: Test bootstrap ignores a leaked GIT_DIR
 - **WHEN** both scripts are read, and `git init <dir>` runs after that unset with `GIT_DIR` naming another repository's `.git`
 - **THEN** both scripts carry the unset, the other repository's `core.bare` stays `false` and `<dir>` gets its own `.git`
+
+### Requirement: Loop clean skips a branch that is already gone
+`loop_clean.py` SHALL skip a listed loop branch whose ref no longer exists when it classifies it, instead of failing on `git rev-parse`, so a ship's cleanup never ends in a traceback.
+
+#### Scenario: Loop clean skips a branch that is already gone
+- **WHEN** `loop_clean.clean` gets a branch list holding `loop/c`, which does not exist, and an existing `loop/c-<stamp>` that is the keeper
+- **THEN** it finishes without an error and keeps `loop/c-<stamp>` (`.archon/scripts/test_loop_clean.py`)
