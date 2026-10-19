@@ -203,6 +203,36 @@ local function install_replacement_counter()
 	]=])
 end
 
+local function install_open_replacement_counter()
+	child.lua([=[
+		FileTreeOriginalSetLines = vim.api.nvim_buf_set_lines
+		FileTreeReplacementCount = 0
+		vim.api.nvim_buf_set_lines = function(buf, ...)
+			local name = vim.api.nvim_buf_is_valid(buf) and vim.api.nvim_buf_get_name(buf) or ""
+			if vim.startswith(name, "gleb-file-tree://") then
+				FileTreeReplacementCount = FileTreeReplacementCount + 1
+			end
+			return FileTreeOriginalSetLines(buf, ...)
+		end
+	]=])
+end
+
+local function delay_next_expansion_read()
+	child.lua([=[
+		local original = vim.uv.fs_open
+		vim.uv.fs_open = function(path, flags, mode, callback)
+			if callback and flags == "r" and vim.endswith(path, "/file_tree/expanded.json") then
+				vim.uv.fs_open = original
+				vim.defer_fn(function()
+					original(path, flags, mode, callback)
+				end, 500)
+				return
+			end
+			return original(path, flags, mode, callback)
+		end
+	]=])
+end
+
 local function change_tracked_file()
 	child.lua(
 		[=[(function(path)
@@ -407,6 +437,45 @@ T["file-tree: Project tree follows an already listed row promptly"] = function()
 	eq(result.focused, true)
 end
 
+T["file-tree: Project tree opens once with saved expansion"] = function()
+	assert(
+		child.wait([[next(require("gleb.file_tree.expanded").state.pending) == nil]], math.ceil(1000 * H.load_factor())),
+		"initial expansion state did not persist"
+	)
+	child.restart_config({ "--cmd", "cd " .. vim.fn.fnameescape(root) })
+	child.wait_very_lazy()
+	F.disable_file_tree_nesting(child)
+	child.cmd("edit " .. vim.fn.fnameescape(vim.fs.joinpath(root, "root-file-001")))
+	delay_next_expansion_read()
+	install_open_replacement_counter()
+
+	child.type_keys("<M-e>")
+
+	assert(
+		child.wait(
+			[[(function()
+				local view = require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()]
+				return view
+					and not view.initializing
+					and not require("gleb.file_tree.expanded").state.loading
+					and view.expanded["directory-0001"] == true
+			end)()]],
+			math.ceil(3000 * H.load_factor())
+		),
+		"project tree did not open with saved expansion state"
+	)
+	local result = child.lua_get([[(function()
+		local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+		vim.api.nvim_buf_set_lines = FileTreeOriginalSetLines
+		return {
+			replacements = FileTreeReplacementCount,
+			child_listed = view.rows_by_path[vim.fs.joinpath(view.root, "directory-0001", "file-001")] ~= nil,
+		}
+	end)()]])
+	eq(result.child_listed, true)
+	eq(result.replacements, 1)
+end
+
 T["file-tree: Project tree re-roots without waiting for repository discovery"] = function()
 	create_second_worktree()
 
@@ -431,6 +500,45 @@ T["file-tree: Project tree re-roots without waiting for repository discovery"] =
 		),
 		"re-rooted tree did not settle with a git-directory watch"
 	)
+end
+
+T["file-tree: Project tree re-roots once with saved expansion"] = function()
+	create_second_worktree()
+	child.lua([[require("gleb.file_tree.expanded").save(..., { ["directory-0001"] = true })]], { second_root })
+	assert(
+		child.wait([[next(require("gleb.file_tree.expanded").state.pending) == nil]], math.ceil(1000 * H.load_factor())),
+		"second-root expansion state did not persist"
+	)
+	child.lua([[require("gleb.file_tree.expanded").reset()]])
+	delay_next_expansion_read()
+	install_replacement_counter()
+
+	child.cmd("cd " .. vim.fn.fnameescape(second_root))
+
+	assert(
+		child.wait(
+			([[(function(path)
+				local view = require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()]
+				return view
+					and view.root == path
+					and not view.initializing
+					and not require("gleb.file_tree.expanded").state.loading
+					and view.expanded["directory-0001"] == true
+			end)(%q)]]):format(second_root),
+			math.ceil(3000 * H.load_factor())
+		),
+		"re-rooted tree did not load saved expansion state"
+	)
+	local rerooted = child.lua_get([[(function()
+		local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+		vim.api.nvim_buf_set_lines = FileTreeOriginalSetLines
+		return {
+			replacements = FileTreeReplacementCount,
+			child_listed = view.rows_by_path[vim.fs.joinpath(view.root, "directory-0001", "file-001")] ~= nil,
+		}
+	end)()]])
+	eq(rerooted.child_listed, true)
+	eq(rerooted.replacements, 1)
 end
 
 T["file-tree: Project tree persists folds off the action path"] = function()
@@ -473,6 +581,48 @@ T["file-tree: Project tree persists folds off the action path"] = function()
 		),
 		"collapsed expansion state was not persisted"
 	)
+end
+
+T["file-tree: Project tree persists a last-moment fold on exit"] = function()
+	local found = child.lua_get([=[(function()
+		local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+		for index, row in ipairs(view.rows) do
+			if row.label == "directory-0001" then
+				vim.api.nvim_set_current_win(view.win)
+				vim.api.nvim_win_set_cursor(view.win, { index, 0 })
+				return row.expanded
+			end
+		end
+		return false
+	end)()]=])
+	eq(found, true)
+
+	child.type_keys("za")
+	child.api_notify.nvim_command("qa!")
+	child.restart_config({ "--cmd", "cd " .. vim.fn.fnameescape(root) })
+	child.wait_very_lazy()
+	F.disable_file_tree_nesting(child)
+	child.cmd("edit " .. vim.fn.fnameescape(vim.fs.joinpath(root, "root-file-001")))
+	child.type_keys("<M-e>")
+	assert(
+		child.wait(
+			[[(function()
+				local view = require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()]
+				return view and not view.initializing and not require("gleb.file_tree.expanded").state.loading
+			end)()]],
+			math.ceil(3000 * H.load_factor())
+		),
+		"restarted project tree did not settle"
+	)
+	local restored = child.lua_get([[(function()
+		local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+		return {
+			expanded = view.expanded["directory-0001"] == true,
+			child_listed = view.rows_by_path[vim.fs.joinpath(view.root, "directory-0001", "file-001")] ~= nil,
+		}
+	end)()]])
+	eq(restored.expanded, false)
+	eq(restored.child_listed, false)
 end
 
 return T

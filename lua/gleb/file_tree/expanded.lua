@@ -71,7 +71,8 @@ end
 ---@param path string
 ---@param content string
 ---@param callback fun(ok: boolean)
-local function replace_file(path, content, callback)
+---@param active? fun(): boolean
+local function replace_file(path, content, callback, active)
 	local directory = vim.fs.dirname(path)
 	local temporary = ("%s.%d.%d.tmp"):format(path, vim.fn.getpid(), M.state.sequence)
 	vim.uv.fs_mkdir(directory, 493, function()
@@ -85,6 +86,13 @@ local function replace_file(path, content, callback)
 			vim.uv.fs_write(file, content, 0, function(write_error)
 				vim.uv.fs_close(file, function(close_error)
 					if write_error or close_error then
+						vim.uv.fs_unlink(temporary)
+						vim.schedule(function()
+							callback(false)
+						end)
+						return
+					end
+					if active and not active() then
 						vim.uv.fs_unlink(temporary)
 						vim.schedule(function()
 							callback(false)
@@ -134,6 +142,8 @@ local function write_pending()
 			if ok and next(state.pending) ~= nil then
 				write_pending()
 			end
+		end, function()
+			return M.state == state and sequence == state.sequence
 		end)
 	end)
 end
@@ -143,6 +153,74 @@ end
 function M.flush()
 	stop_timer()
 	write_pending()
+end
+
+---@return table<string, string[]>
+local function read_state_sync()
+	local path = state_path()
+	local file = vim.uv.fs_open(path, "r", 420)
+	if not file then
+		return vim.deepcopy(M.state.stored or {})
+	end
+	local stat = vim.uv.fs_fstat(file)
+	local content = stat and vim.uv.fs_read(file, stat.size, 0) or nil
+	vim.uv.fs_close(file)
+	local ok, decoded = pcall(vim.json.decode, content or "")
+	return ok and type(decoded) == "table" and decoded or vim.deepcopy(M.state.stored or {})
+end
+
+---@param path string
+---@param content string
+---@return boolean
+local function replace_file_sync(path, content)
+	local directory = vim.fs.dirname(path)
+	local _, mkdir_error = vim.uv.fs_mkdir(directory, 493)
+	if mkdir_error and not mkdir_error:find("EEXIST", 1, true) then
+		return false
+	end
+	local temporary = ("%s.%d.%d.tmp"):format(path, vim.fn.getpid(), M.state.sequence)
+	local file = vim.uv.fs_open(temporary, "w", 420)
+	if not file then
+		return false
+	end
+	local written = vim.uv.fs_write(file, content, 0)
+	local closed = vim.uv.fs_close(file)
+	if not written or not closed then
+		vim.uv.fs_unlink(temporary)
+		return false
+	end
+	local renamed = vim.uv.fs_rename(temporary, path)
+	if not renamed then
+		vim.uv.fs_unlink(temporary)
+		return false
+	end
+	return true
+end
+
+--- Write all queued roots synchronously for process shutdown.
+---@return nil
+function M.flush_sync()
+	stop_timer()
+	local state = M.state
+	if next(state.pending) == nil then
+		return
+	end
+	state.sequence = state.sequence + 1
+	local snapshot = vim.deepcopy(state.pending)
+	local stored = read_state_sync()
+	for root, paths in pairs(snapshot) do
+		stored[root] = paths
+	end
+	if not replace_file_sync(state_path(), vim.json.encode(stored)) then
+		return
+	end
+	state.writing = false
+	state.stored = stored
+	for root, paths in pairs(snapshot) do
+		if vim.deep_equal(state.pending[root], paths) then
+			state.pending[root] = nil
+		end
+	end
 end
 
 ---@param root string

@@ -15,6 +15,8 @@ Scenarios: `file-tree: Project tree redraw meets the large-tree bound`, `file-tr
 - Notify views when asynchronous repository discovery completes so the ignored-status deadline starts from repository readiness.
 - Merge loaded expansion keys into the live view so user expansion state survives asynchronous state reads.
 - Leave ignored-directory children unprepared so expanding a visible ignored folder performs its first scan.
+- Use a synchronous atomic replacement only during `VimLeavePre` so session persistence remains asynchronous while exit cannot drop pending folds.
+- Gate the initial tree draw on expansion loading so open and re-root render saved state in their first replacement.
 
 ## 2. Coalesce watcher, write and git refreshes
 Scenarios: `file-tree: Project tree coalesces a save burst`, `file-tree: Unchanged git status does not redraw the project tree`, `file-tree: Project tree save leaves the main path promptly`
@@ -41,6 +43,12 @@ Scenarios: `file-tree: Project tree unfold all meets the large-tree bound`
 - [x] 5.3 Run `make test FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree unfold all meets the large-tree bound"` and see it pass
 - [x] 5.4 Run `make probe SCRIPT=openspec/changes/file-tree-performance/probe.lua` on the same disposable config fixture before and after implementation and record the post-change values beside the baseline below
 - [x] 5.5 Run `make quick`, then run `make check`, and fix implementation defects without weakening any scenario
+
+## 6. Honor audited exit persistence and first-paint decisions
+Scenarios: `file-tree: Project tree persists a last-moment fold on exit`, `file-tree: Project tree opens once with saved expansion`, `file-tree: Project tree re-roots once with saved expansion`
+- [x] 6.1 Add integration regressions that quit inside the persistence debounce and count tree-buffer replacements during saved-state open and re-root
+- [x] 6.2 Flush pending expansion state synchronously on `VimLeavePre` and hold initial drawing until expansion loading completes
+- [x] 6.3 Run each new case five times, then the performance file and file-tree integration directory
 
 ## Measurements
 

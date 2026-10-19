@@ -37,6 +37,8 @@ local INVALIDATION_WINDOW_MS = 50
 ---@field dirty_scans table<string, boolean>
 ---@field git_pending boolean
 ---@field initializing boolean
+---@field initial_source_ready boolean
+---@field initial_expansions_loaded boolean
 
 ---@class FileTreeViewState
 ---@field by_tab table<integer, FileTreeView>
@@ -476,13 +478,15 @@ end
 ---@param path string
 ---@return boolean
 local function finish_initial_draw(view, path)
-	local timer = view.initial_draw_timer
-	if not timer then
+	if not view.initializing or not view.initial_source_ready or not view.initial_expansions_loaded then
 		return false
 	end
-	timer:stop()
-	timer:close()
-	view.initial_draw_timer = nil
+	local timer = view.initial_draw_timer
+	if timer then
+		timer:stop()
+		timer:close()
+		view.initial_draw_timer = nil
+	end
 	view.initializing = false
 	if M.state.by_tab[view.tab] == view and vim.api.nvim_buf_is_valid(view.buf) then
 		select_path(view, path)
@@ -499,6 +503,7 @@ local function start_initial_draw_deadline(view, path)
 		IGNORE_WAIT_MS,
 		0,
 		vim.schedule_wrap(function()
+			view.initial_source_ready = true
 			finish_initial_draw(view, path)
 		end)
 	)
@@ -516,8 +521,8 @@ local function repository_ready(view, root, path, toplevel)
 		start_initial_draw_deadline(view, path)
 		git.refresh(root)
 	else
-		view.initializing = false
-		select_path(view, path)
+		view.initial_source_ready = true
+		finish_initial_draw(view, path)
 	end
 end
 
@@ -916,9 +921,8 @@ local function open_view(path, requested_root)
 			and vim.api.nvim_buf_is_valid(view.buf)
 		then
 			merge_loaded_expansions(view, loaded)
-			if not view.initializing then
-				select_path(view, initial_path)
-			end
+			view.initial_expansions_loaded = true
+			finish_initial_draw(view, initial_path)
 		end
 	end)
 	local buf = vim.api.nvim_create_buf(false, true)
@@ -948,13 +952,16 @@ local function open_view(path, requested_root)
 		dirty_scans = {},
 		git_pending = false,
 		initializing = true,
+		initial_source_ready = false,
+		initial_expansions_loaded = false,
 	}
 	M.state.by_tab[tab] = view
 	M.state.last_editor_by_tab[tab] = editor
 	initial_path = reveal_target(view, path, true) or root
 	git.start_root(root, tab, function(changed)
+		view.initial_source_ready = true
 		local initial_drawn = finish_initial_draw(view, initial_path)
-		if M.state.by_tab[tab] == view and vim.api.nvim_buf_is_valid(buf) then
+		if M.state.by_tab[tab] == view and vim.api.nvim_buf_is_valid(buf) and not view.initializing then
 			apply_git_result(view, not initial_drawn and changed)
 		end
 	end)
@@ -1034,20 +1041,22 @@ local function reroot(view, root)
 	view.dirty_scans = {}
 	view.git_pending = false
 	view.initializing = true
+	view.initial_source_ready = false
+	view.initial_expansions_loaded = false
 	view.root = root
 	view.expanded = expanded.load(root, function(loaded)
 		if M.state.by_tab[view.tab] == view and view.root == root and vim.api.nvim_buf_is_valid(view.buf) then
 			merge_loaded_expansions(view, loaded)
-			if not view.initializing then
-				draw(view, root)
-			end
+			view.initial_expansions_loaded = true
+			finish_initial_draw(view, root)
 		end
 	end)
 	view.expanded_nests = {}
 	vim.api.nvim_buf_set_name(view.buf, ("gleb-file-tree://%s#%d"):format(root, view.tab))
 	git.start_root(root, view.tab, function(changed)
+		view.initial_source_ready = true
 		local initial_drawn = finish_initial_draw(view, root)
-		if M.state.by_tab[view.tab] == view and vim.api.nvim_buf_is_valid(view.buf) then
+		if M.state.by_tab[view.tab] == view and vim.api.nvim_buf_is_valid(view.buf) and not view.initializing then
 			apply_git_result(view, not initial_drawn and changed)
 		end
 	end)
@@ -1287,7 +1296,7 @@ function M.setup()
 			end
 		end,
 	})
-	vim.api.nvim_create_autocmd("VimLeavePre", { group = view_group, callback = expanded.flush })
+	vim.api.nvim_create_autocmd("VimLeavePre", { group = view_group, callback = expanded.flush_sync })
 	vim.api.nvim_create_autocmd("BufWritePost", {
 		group = view_group,
 		callback = function()

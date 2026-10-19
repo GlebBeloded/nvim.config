@@ -54,6 +54,18 @@ Repository discovery, watch-handle reconciliation and expansion-state persistenc
 - **WHEN** a 5000-row tree is open and `za` is pressed in normal mode on a folder
 - **THEN** the action returns within 100 ms multiplied by the host load factor and within 1000 ms `expanded.json` contains the resulting valid expansion state
 
+#### Scenario: Project tree persists a last-moment fold on exit
+- **WHEN** `za` changes a folder and Neovim quits before the 500 ms persistence debounce expires
+- **THEN** restarting Neovim restores the changed expansion state
+
+#### Scenario: Project tree opens once with saved expansion
+- **WHEN** the project tree opens with a saved non-empty expansion state
+- **THEN** the first tree-buffer replacement includes that expansion state and the open replaces the buffer exactly once
+
+#### Scenario: Project tree re-roots once with saved expansion
+- **WHEN** global `DirChanged` re-roots an open project tree to a root with saved non-empty expansion state
+- **THEN** the first tree-buffer replacement includes that expansion state and the re-root replaces the buffer exactly once
+
 ### Requirement: Project tree unfolds in linear time
 `file_tree.unfold_all` SHALL discover folders and count visible rows in one traversal, preserve ignored-folder and nesting behavior, and build the final rows once. Its bound SHALL be 500 ms multiplied by the host load factor for a generated fixture that reaches the 5000-row safety limit.
 
