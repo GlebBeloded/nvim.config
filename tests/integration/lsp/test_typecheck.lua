@@ -44,6 +44,7 @@ T["lsp: Type-check toggle reattaches every Python buffer without reloading"] = f
 	child.cmd("edit " .. vim.fn.fnameescape(second))
 	local second_buf = child.api.nvim_get_current_buf()
 	eq(basedpyright_attached(second_buf), true)
+	child.lua([[require("auto-save").off()]])
 	child.api.nvim_buf_set_lines(second_buf, 0, -1, false, { "second: int = 3" })
 
 	child.lua([[_G.typecheck_ok, _G.typecheck_err = pcall(vim.cmd, "PyTypeCheckOn")]])

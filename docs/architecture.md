@@ -36,9 +36,9 @@ Feature code lives in `lua/gleb/<feature>/`; the capability name is the kebab-ca
 | `actions/` | Typed action catalog shared by feature-owned action lists | |
 | `languages/` | Typed language registry whose feature-owned facets keep language support complete | [languages](../openspec/specs/languages/spec.md) |
 | `lsp/`, `cmp.lua`, `select/`, editing modules | LSP, completion, treesitter, folding, comments | |
-| `git/` | Signs, diff viewers, permalinks, AI commit popup | [git](../openspec/specs/git/spec.md) |
+| `git/` | Signs, changes panel, diffview for merges and history, permalinks, AI commit popup | [git](../openspec/specs/git/spec.md) |
 | `diff/` | IntelliJ-port diff engine (pure) and owned aligned viewer | [diff](../openspec/specs/diff/spec.md) |
-| `file_tree/` | Project tree beside neo-tree, with operations coordinated across pure path policy (`paths.lua`), filesystem and view state (`ops.lua`), and the LSP file-rename lifecycle (`lsp_files.lua`); also its git status tree and live diff preview until `tree-diff-cutover` | [file-tree](../openspec/specs/file-tree/spec.md) |
+| `file_tree/` | Project tree sidebar, with operations coordinated across pure path policy (`paths.lua`), filesystem and view state (`ops.lua`), and the LSP file-rename lifecycle (`lsp_files.lua`) | [file-tree](../openspec/specs/file-tree/spec.md) |
 | `picker/input.lua` | Shared framed text input for feature-owned prompts, preserving picker layout and teardown conventions | [picker](../openspec/specs/picker/spec.md) |
 | `references/`, `queries/<lang>/usages.scm` | Find Usages: catalogue-backed usage types captured by language queries, grouped by test scope and folder beside a side-effect-free preview | [references](../openspec/specs/references/spec.md) |
 | `session/` | zellij-aware session save and restore | [session](../openspec/specs/session/spec.md) |
@@ -61,14 +61,14 @@ flowchart LR
 
     init --> dbg & lazy & core & edit & ui & ft & git & ses
     lazy -- "VeryLazy config" --> ai
-    core -- "Alt-e, Alt-G, Alt-g" --> ft
-    ft -- "gc: ai_commit" --> git
+    core -- "Alt-e" --> ft
+    core -- "Alt-G, Alt-g" --> git
     ui -- "palette" --> core
 ```
 
 Most modules are required from `init.lua` after `lazy.setup()` and configure their plugins directly. A
 few run from a plugin spec `config` instead, so they load with their plugin (colors transparency, neotest,
-`debugging/`, copilot, smart-splits, vscode-diff, 99 and `ai/`).
+`debugging/`, copilot, smart-splits, 99 and `ai/`).
 
 ## Startup sequence
 
@@ -155,9 +155,9 @@ flowchart LR
 
 ## Key decisions
 
-- **keymaps**: `<A-g>` opens Differ and `<A-G>` the neo-tree git status, kept side by side to compare both
-  flows. `gr` opens the Find Usages view. Buffers with URI names (`vscodediff://…`) are not revealed in
-  neo-tree, which cannot parse them.
+- **keymaps**: `<A-e>` toggles the project tree, `<A-G>` the changes panel and `<A-g>` opens the changes
+  review; the two sidebars share the left tool-window slot. `gr` opens the Find Usages view. Moved keys
+  from the retired neo-tree: `H` → `I` (Show Ignored), `?` → Find Action, `<`/`>` → Alt+E/Alt+Shift+G.
 - **ai**: 99 loads on `VeryLazy` to stay out of startup. `pi` runs with `--no-session --thinking low`, so
   each prompt is stateless and cheap. 99 prompts submit on write (`acwrite`), so `<S-CR>` maps to
   `:write` inside them. The commit popup uses a separate local Ollama model.
@@ -168,11 +168,12 @@ flowchart LR
   change after zellij resurrection, so a session for the same cwd is the fallback. Only a bare `nvim`
   restores. resession stores layout, never unsaved text, so auto-save keeps buffers written. Restore is
   `nested` so `FileType` and LSP attach fire for restored buffers.
-- **file-tree**: one reusable diff tab, debounced, with stale async results dropped, so fast `j`/`k` only
-  renders the last file. A short focus guard pulls focus back to the tree after each move. vscode-diff is
-  used through its view API, so neo-tree stays the only file list. Every tree panel (neo-tree, differ,
-  diffview, vscode-diff) is 35 columns wide.
-- **git**: three diff viewers on purpose, for comparison. Commit messages come from a local model, the
+- **file-tree**: one owned sidebar instead of neo-tree, so its rows, keys and colours follow the specs.
+  Directory buffers open it, with netrw disabled. macOS folder and git-dir watches poll, as do gitsigns'
+  git-dir watches: FSEvents closes wait for fseventsd, which can stall events and `:quit`. Every left
+  panel (project tree, changes panel, diffview) is 35 columns wide.
+- **git**: the changes panel with the owned diff view reviews changes; diffview stays for merges and
+  history. Commit messages come from a local model, the
   prompt goes on stdin to avoid shell escaping, and the diff is cut to 200 lines to keep the model on
   track. `pgw.dev` permalinks use the GitHub URL format.
 - **diff**: the right pane is the real file buffer, with window-scoped decorations so its other windows

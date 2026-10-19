@@ -39,8 +39,8 @@ bufferline.setup({
 		-- NOTE: this will be called a lot so don't do any heavy processing here
 		custom_filter = buffer_filter,
 		offsets = {
-			{ filetype = "neo-tree", text = "", padding = 1 },
-			{ filetype = "gleb-file-tree", text = "", padding = 1 },
+			{ filetype = "gleb-file-tree", text = "", padding = 1, highlight = "FileTreeNormal" },
+			{ filetype = "gleb-changes", text = "", padding = 1, highlight = "FileTreeNormal" },
 		},
 		show_buffer_icons = true,
 		show_buffer_close_icons = false,

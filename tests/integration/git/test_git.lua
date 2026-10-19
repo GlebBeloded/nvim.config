@@ -200,34 +200,6 @@ local function staged_files()
 	return vim.split(vim.trim(H.git(repo, { "diff", "--cached", "--name-only" })), "\n", { trimempty = true })
 end
 
---- Rows of a file panel that name a file or directory (last word ending in
---- `/` or of the form `name.ext`), as that name indented by two spaces when
---- the row is indented, so a tree listing reads like `{ "dir/", "  b.txt" }`.
----@param lines string[]
----@return string[]
-local function tree_rows(lines)
-	local rows = {}
-	for _, line in ipairs(lines) do
-		local indent, name = line:match("^(%s*).-(%S+)$")
-		if name and (name:find("^[%w_-]+/$") or name:find("^[%w_-]+%.%w+$")) then
-			table.insert(rows, (indent ~= "" and "  " or "") .. name)
-		end
-	end
-	return rows
-end
-
----@param target test.Child
----@param timeout? integer
-local function open_differ(target, timeout)
-	H.open_surface(target, {
-		open = [[vim.cmd("Differ")]],
-		condition = [[TopLeftWindow().filetype == "differpanel"
-			and table.concat(TopLeftWindow().lines, "\n"):find("b.txt", 1, true) ~= nil]],
-		surface = "Differ",
-		timeout = timeout,
-	})
-end
-
 --- Change the middle line of `name` ("top", "base", "bottom") to "ours" on
 --- main and "theirs" on branch `other`, then merge `other` so that line is
 --- left in conflict.
@@ -262,20 +234,31 @@ local T = H.child_set(child, start)
 
 T["git: Git commands are available after startup"] = function()
 	use_repo({ ["a.txt"] = "a\n" })
-	local commands = { "Gitsigns", "Differ", "DiffviewOpen", "Gitlink" }
+	local commands = { "Gitsigns", "DiffviewOpen", "Gitlink" }
 	local exists = vim.tbl_map(function(cmd)
 		return child.fn.exists(":" .. cmd)
 	end, commands)
-	eq(exists, { 2, 2, 2, 2 })
+	eq(exists, { 2, 2, 2 })
 end
 
-T["git: vscode-diff setup runs on plugin load"] = function()
-	child.lua([[require("lazy").load({ plugins = { "vscode-diff.nvim" } })]])
+T["git: Removed diff plugins are not registered"] = function()
+	local result = child.lua_get([[(function()
+		local commands = {}
+		for _, command in ipairs({ "Neotree", "Differ", "CodeDiff", "VscodeDiff" }) do
+			commands[command] = vim.fn.exists(":" .. command)
+		end
+		local specs = require("lazy.core.config").plugins
+		local plugins = {}
+		for _, plugin in ipairs({ "neo-tree.nvim", "differ.nvim", "vscode-diff.nvim" }) do
+			plugins[plugin] = specs[plugin] ~= nil
+		end
+		return { commands = commands, plugins = plugins }
+	end)()]])
 
-	eq(child.lua_get([[package.loaded["gleb.git.vscode_diff"] ~= nil]]), true)
-	-- the plugin defaults are width 40 and a list view, so these come from the config's setup
-	local explorer = child.lua_get([[require("codediff.config").options.explorer]])
-	eq({ explorer.position, explorer.width, explorer.view_mode }, { "left", 35, "tree" })
+	eq(result, {
+		commands = { CodeDiff = 0, Differ = 0, Neotree = 0, VscodeDiff = 0 },
+		plugins = { ["differ.nvim"] = false, ["neo-tree.nvim"] = false, ["vscode-diff.nvim"] = false },
+	})
 end
 
 T["git: Added line has no competing hunk sign"] = function()
@@ -302,26 +285,6 @@ T["git: Blame is off by default"] = function()
 	eq(child.lua(EOL_VIRT_TEXT_LUA), {})
 end
 
-T["git: Differ opens panel on the left"] = function()
-	use_repo({ ["a.txt"] = "a\n", ["dir/b.txt"] = "b\n" })
-	change({ ["a.txt"] = "a2\n", ["dir/b.txt"] = "b2\n" })
-	H.expect_blocked_differ_diagnostic({
-		repo = repo,
-		file = "a.txt",
-		setup = WINDOW_PROBES_LUA,
-		condition = [[TopLeftWindow().filetype == "differpanel"
-			and table.concat(TopLeftWindow().lines, "\n"):find("b.txt", 1, true) ~= nil]],
-	})
-	child.lua(WINDOW_PROBES_LUA)
-	local windows = #child.api.nvim_tabpage_list_wins(0)
-	open_differ(child)
-
-	local panel = child.lua_get("TopLeftWindow()")
-	eq(#child.api.nvim_tabpage_list_wins(0) > windows, true)
-	eq(panel.width, 35)
-	eq(tree_rows(panel.lines), { "dir/", "  b.txt", "a.txt" })
-end
-
 T["git: Diffview file panel on the left"] = function()
 	use_repo({ ["a.txt"] = "a\n" })
 	change({ ["a.txt"] = "a2\n" })
@@ -342,47 +305,6 @@ T["git: Diffview mappings come from git actions"] = function()
 	expect_action_shortcut("diffview.select_next_entry", "<Tab>")
 	eq(window_mapping(win, "<Tab>").desc, "Git | Diff: Select Next Diffview Entry")
 	eq(window_mapping(win, "g<C-x>").mapped, false)
-end
-
-T["git: Differ mappings come from git actions"] = function()
-	use_repo({ ["a.txt"] = "a\n" })
-	change({ ["a.txt"] = "a2\n" })
-	child.lua(WINDOW_PROBES_LUA)
-	child.cmd("Differ")
-	eq(child.wait("TopLeftWindow().filetype == 'differpanel'", ASYNC_MS), true)
-	local win = child.lua_get("TopLeftWindow().win")
-
-	expect_action_shortcut("differ.next_hunk", "]c")
-	eq(window_mapping(win, "]c").buffer, true)
-	eq(window_mapping(win, "[c").mapped, false)
-end
-
-T["git: Codediff mappings come from git actions"] = function()
-	use_repo({ ["a.txt"] = "a\n" })
-	change({ ["a.txt"] = "a2\n" })
-	child.lua(WINDOW_PROBES_LUA)
-	child.cmd("CodeDiff")
-	eq(child.wait("WindowWithFt('codediff-explorer') ~= nil", ASYNC_MS), true)
-	eq(
-		child.wait(
-			[[vim.iter(vim.api.nvim_tabpage_list_wins(0)):any(function(candidate)
-		return vim.api.nvim_win_call(candidate, function()
-			return next(vim.fn.maparg("]c", "n", false, true)) ~= nil
-		end)
-	end)]],
-			ASYNC_MS
-		),
-		true
-	)
-	local win = child.lua_get([[vim.iter(vim.api.nvim_tabpage_list_wins(0)):find(function(candidate)
-		return vim.api.nvim_win_call(candidate, function()
-			return next(vim.fn.maparg("]c", "n", false, true)) ~= nil
-		end)
-	end)]])
-
-	expect_action_shortcut("codediff.next_hunk", "]c")
-	eq(window_mapping(win, "]c").buffer, true)
-	eq(window_mapping(win, "[c").mapped, false)
 end
 
 T["git: tab moves to next entry"] = function()

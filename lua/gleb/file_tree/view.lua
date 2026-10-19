@@ -26,6 +26,7 @@ local IGNORE_WAIT_MS = 300
 ---@field autocmds integer[]
 ---@field watching boolean
 ---@field directory_hijacks table<integer, boolean>
+---@field buffer_leave_cursor? integer[]
 ---@field skip_follow_buf? integer
 ---@field initial_draw_timer? uv.uv_timer_t
 
@@ -77,7 +78,6 @@ function M.is_eligible_editor(win)
 	local filetype = vim.bo[buf].filetype
 	local name = vim.api.nvim_buf_get_name(buf)
 	return vim.bo[buf].buftype == ""
-		and filetype ~= "neo-tree"
 		and filetype ~= "gleb-file-tree"
 		and filetype ~= "gleb-changes"
 		and not vim.startswith(filetype, "Diffview")
@@ -87,12 +87,12 @@ end
 
 ---@param win integer
 ---@return boolean
-local function is_tree_window(win)
+local function is_sidebar_window(win)
 	if not vim.api.nvim_win_is_valid(win) then
 		return false
 	end
 	local filetype = vim.bo[vim.api.nvim_win_get_buf(win)].filetype
-	return filetype == "gleb-file-tree" or filetype == "neo-tree"
+	return filetype == "gleb-file-tree" or filetype == "gleb-changes"
 end
 
 local function remember_editor()
@@ -144,6 +144,9 @@ end
 
 ---@param view FileTreeView
 local function close_view(view)
+	if vim.api.nvim_buf_is_valid(view.buf) then
+		vim.bo[view.buf].bufhidden = "wipe"
+	end
 	forget(view)
 	if vim.api.nvim_win_is_valid(view.win) then
 		vim.api.nvim_win_close(view.win, true)
@@ -369,7 +372,7 @@ end
 ---@param buf integer
 local function configure_buffer(buf)
 	vim.bo[buf].buftype = "nofile"
-	vim.bo[buf].bufhidden = "wipe"
+	vim.bo[buf].bufhidden = "hide"
 	vim.bo[buf].swapfile = false
 	vim.bo[buf].buflisted = false
 	vim.bo[buf].filetype = "gleb-file-tree"
@@ -678,9 +681,20 @@ local function protect_tree_buffer(view)
 end
 
 ---@param view FileTreeView
+local function keep_tree_buffer(view)
+	if
+		vim.api.nvim_win_is_valid(view.win)
+		and vim.api.nvim_get_current_win() == view.win
+		and vim.api.nvim_win_get_buf(view.win) == view.buf
+	then
+		vim.bo[view.buf].bufhidden = "hide"
+	end
+end
+
+---@param view FileTreeView
 ---@param buf integer
 local function follow_buffer(view, buf)
-	if vim.api.nvim_get_current_tabpage() ~= view.tab or buf == view.buf then
+	if not vim.api.nvim_buf_is_valid(buf) or vim.api.nvim_get_current_tabpage() ~= view.tab or buf == view.buf then
 		return
 	end
 	if view.skip_follow_buf == buf then
@@ -710,6 +724,7 @@ local function add_teardown_autocmds(view)
 			group = view_group,
 			buffer = view.buf,
 			callback = function()
+				view.buffer_leave_cursor = vim.api.nvim_win_get_cursor(view.win)
 				vim.bo[view.buf].bufhidden = "hide"
 			end,
 		}),
@@ -726,6 +741,7 @@ local function add_teardown_autocmds(view)
 		vim.api.nvim_create_autocmd({ "WinEnter", "ModeChanged" }, {
 			group = view_group,
 			callback = function()
+				keep_tree_buffer(view)
 				update_cursor()
 			end,
 		}),
@@ -733,6 +749,7 @@ local function add_teardown_autocmds(view)
 			group = view_group,
 			callback = function(args)
 				protect_tree_buffer(view)
+				keep_tree_buffer(view)
 				follow_buffer(view, args.buf)
 			end,
 		}),
@@ -754,11 +771,14 @@ local function add_teardown_autocmds(view)
 end
 
 ---@param path string
+---@param requested_root? string
 ---@return FileTreeView
-local function open_view(path)
+local function open_view(path, requested_root)
 	state.load()
 	local tab = vim.api.nvim_get_current_tabpage()
-	local root = fs.normalize(vim.fn.getcwd())
+	remember_editor()
+	local editor = M.state.last_editor_by_tab[tab]
+	local root = fs.normalize(requested_root or vim.fn.getcwd())
 	local buf = vim.api.nvim_create_buf(false, true)
 	vim.api.nvim_buf_set_name(buf, ("gleb-file-tree://%s#%d"):format(root, tab))
 	configure_buffer(buf)
@@ -783,6 +803,7 @@ local function open_view(path)
 		directory_hijacks = {},
 	}
 	M.state.by_tab[tab] = view
+	M.state.last_editor_by_tab[tab] = editor
 	watch.start_root(root, tab)
 	local initial_path = reveal_target(view, path, true) or root
 	git.start_root(root, tab, function()
@@ -810,6 +831,38 @@ local function open_view(path)
 	end
 	update_cursor()
 	return view
+end
+
+---@param args { buf: integer }
+local function hijack_directory(args)
+	if not vim.api.nvim_buf_is_valid(args.buf) then
+		return
+	end
+	local directory = vim.api.nvim_buf_get_name(args.buf)
+	local stat = directory ~= "" and vim.uv.fs_stat(directory) or nil
+	if vim.bo[args.buf].buftype ~= "" or not stat or stat.type ~= "directory" then
+		return
+	end
+
+	local view = M.state.by_tab[vim.api.nvim_get_current_tabpage()]
+	if view and vim.api.nvim_win_is_valid(view.win) then
+		if vim.api.nvim_get_current_win() == view.win then
+			vim.api.nvim_win_set_buf(view.win, view.buf)
+			if view.buffer_leave_cursor then
+				vim.api.nvim_win_set_cursor(view.win, view.buffer_leave_cursor)
+				view.buffer_leave_cursor = nil
+			end
+		else
+			vim.api.nvim_win_set_buf(0, vim.api.nvim_create_buf(true, false))
+		end
+		vim.api.nvim_set_current_win(view.win)
+	else
+		vim.api.nvim_win_set_buf(0, vim.api.nvim_create_buf(true, false))
+		open_view(directory, directory)
+	end
+	if vim.api.nvim_buf_is_valid(args.buf) then
+		vim.api.nvim_buf_delete(args.buf, { force = true })
+	end
 end
 
 ---@param view FileTreeView
@@ -849,7 +902,7 @@ end
 local function close_tree_windows(tab)
 	local view = M.state.by_tab[tab]
 	for _, win in ipairs(vim.api.nvim_tabpage_list_wins(tab)) do
-		if is_tree_window(win) and (not view or win ~= view.win) and vim.api.nvim_win_is_valid(win) then
+		if is_sidebar_window(win) and (not view or win ~= view.win) and vim.api.nvim_win_is_valid(win) then
 			vim.api.nvim_win_close(win, true)
 		end
 	end
@@ -1011,11 +1064,13 @@ end
 function M.toggle()
 	local tab = vim.api.nvim_get_current_tabpage()
 	local view = M.state.by_tab[tab]
+	local path = vim.api.nvim_buf_get_name(0)
 	if view and vim.api.nvim_win_is_valid(view.win) then
 		if vim.api.nvim_get_current_win() == view.win then
 			close_view(view)
 		else
 			vim.api.nvim_set_current_win(view.win)
+			reveal_path(view, path, true)
 		end
 		return
 	end
@@ -1023,7 +1078,6 @@ function M.toggle()
 	if changes then
 		changes.close()
 	end
-	local path = vim.api.nvim_buf_get_name(0)
 	open_view(path)
 end
 
@@ -1055,6 +1109,8 @@ end
 function M.setup()
 	render.setup()
 	view_group = vim.api.nvim_create_augroup("gleb_file_tree_view", { clear = true })
+	local hijack_group = vim.api.nvim_create_augroup("gleb_file_tree_hijack", { clear = true })
+	vim.api.nvim_create_autocmd("BufEnter", { group = hijack_group, callback = hijack_directory })
 	remember_editor()
 	vim.api.nvim_create_autocmd("WinEnter", { group = view_group, callback = remember_editor })
 	vim.api.nvim_create_autocmd("QuitPre", { group = view_group, callback = on_quit_pre })

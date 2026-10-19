@@ -154,10 +154,10 @@ local function wait_for_absence(relative)
 	local path = vim.fs.joinpath(tree_root, relative)
 	assert(
 		child.lua_get(
-			[[(function(target)
-			return vim.wait(1000, function() return vim.uv.fs_lstat(target) == nil end, 20)
+			[[(function(target, timeout)
+			return vim.wait(timeout, function() return vim.uv.fs_lstat(target) == nil end, 20)
 		end)(...)]],
-			{ path }
+			{ path, math.ceil(1000 * H.load_factor()) }
 		),
 		"deleted path still exists: " .. relative
 	)

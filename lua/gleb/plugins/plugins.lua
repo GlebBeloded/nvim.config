@@ -136,15 +136,6 @@ local plugins = {
 
 	-- file explorer
 	"nvim-tree/nvim-web-devicons",
-	{
-		"nvim-neo-tree/neo-tree.nvim",
-		branch = "v3.x",
-		dependencies = {
-			"nvim-lua/plenary.nvim",
-			"nvim-tree/nvim-web-devicons",
-			"MunifTanjim/nui.nvim",
-		},
-	},
 
 	-- buffer line (bottom line)
 	"nvim-lualine/lualine.nvim",
@@ -172,21 +163,8 @@ local plugins = {
 	-- git
 	"lewis6991/gitsigns.nvim",
 	{
-		"undont/differ.nvim", -- unified diffs, staging, PR review, merge conflicts
-		build = "make go-build", -- Go sidecar; only needed for PR review
-	}, -- configured in lua/gleb/git/differ.lua
-	-- kept installed so the old flow stays comparable against differ.nvim
-	{
 		"sindrets/diffview.nvim",
 		dependencies = "nvim-lua/plenary.nvim",
-	},
-	{
-		"esmuellert/vscode-diff.nvim",
-		cmd = { "CodeDiff", "VscodeDiff" },
-		dependencies = { "MunifTanjim/nui.nvim" },
-		config = function()
-			require("gleb.git.vscode_diff")
-		end,
 	},
 	{
 		"ruifm/gitlinker.nvim", -- Generate links to code

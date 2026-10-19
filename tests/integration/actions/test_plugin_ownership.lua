@@ -31,6 +31,11 @@ function PluginMapped(filetype, lhs, mode)
 	return vim.api.nvim_buf_call(assert(PluginBuffer(filetype), filetype .. " window is not open"), function()
 		return vim.fn.maparg(lhs, mode or "n", false, true).buffer == 1
 	end)
+end
+function RunAction(id)
+	local catalog = require("gleb.actions").state.applicator.catalog
+	local action = assert(catalog:get(id), id .. " is not registered")
+	return action.run(require("gleb.actions.context").capture())
 end]]
 
 --- Open a plugin surface under the process-level deadline.
@@ -60,40 +65,52 @@ end
 
 T["actions: Plugin-window mappings are action-owned"] = function()
 	child.lua(PLUGIN_MAPPED)
-	open_surface([[vim.cmd("Neotree filesystem")]], "neo-tree")
+	open_surface(
+		[[RunAction("file_tree.toggle")]],
+		"gleb-file-tree",
+		"project tree",
+		[[PluginBuffer("gleb-file-tree") ~= nil and #require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()].rows > 0]]
+	)
 	eq(
 		child.lua_get([[(function()
-			local buf = assert(PluginBuffer("neo-tree"))
+			local buf = assert(PluginBuffer("gleb-file-tree"))
 			vim.keymap.set("n", "z", "<Nop>", { buffer = buf })
 			local report = require("gleb.actions").audit()
 			vim.keymap.del("n", "z", { buffer = buf })
-			return vim.tbl_contains(report, "neo-tree n z")
+			return vim.tbl_contains(report, "gleb-file-tree n z")
 		end)()]]),
 		true
 	)
 	eq(
 		child.lua_get([[(function()
 			local store = require("gleb.actions").state.store
-			local assigned = store.last_good["neo_tree.delete"]
-			store.last_good["neo_tree.delete"] = nil
+			local assigned = store.last_good["file_tree.delete"]
+			store.last_good["file_tree.delete"] = nil
 			local report = require("gleb.actions").audit()
-			store.last_good["neo_tree.delete"] = assigned
-			return vim.tbl_contains(report, "neo-tree n d")
+			store.last_good["file_tree.delete"] = assigned
+			return vim.tbl_contains(report, "gleb-file-tree n d")
 		end)()]]),
 		true
 	)
 	expect_audit_empty()
+	child.lua([[RunAction("file_tree.toggle")]])
+	open_surface(
+		[[RunAction("changes.toggle")]],
+		"gleb-changes",
+		"changes panel",
+		[[PluginBuffer("gleb-changes") ~= nil and #require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()].rows > 0]]
+	)
+	expect_audit_empty()
+	child.lua([[RunAction("changes.toggle")]])
+	open_surface([[RunAction("diff.open_file")]], "gleb-diff", "diff view")
+	expect_audit_empty()
+	child.lua([[RunAction("diff.close")]])
 	open_surface(
 		[[require("lazy").load({ plugins = { "nvim-dap" } }) require("dapui.windows").layouts[1]:open()]],
 		"dapui_scopes"
 	)
 	expect_audit_empty()
 	open_surface([[vim.cmd("DiffviewOpen")]], "DiffviewFiles")
-	expect_audit_empty()
-	open_surface([[vim.cmd("Differ")]], "differdiff")
-	expect_audit_empty()
-	child.lua([[pcall(vim.cmd, "tabclose")]])
-	open_surface([[vim.cmd("CodeDiff")]], "codediff-explorer")
 	expect_audit_empty()
 	open_surface([[require("neotest").summary.open()]], "neotest-summary")
 	expect_audit_empty()
@@ -144,14 +161,11 @@ T["actions: Plugin-window mappings are action-owned"] = function()
 			},
 		}
 	)
-	H.expect_blocked_differ_diagnostic({ repo = repo, file = "sample.go" })
 end
 
 T["actions: Unconfigured defaults are absent"] = function()
 	child.lua(PLUGIN_MAPPED)
 	local found = {}
-	open_surface([[vim.cmd("Neotree filesystem")]], "neo-tree")
-	found.neo_tree = plugin_mapped("neo-tree", "C")
 	open_surface(
 		[[require("lazy").load({ plugins = { "nvim-dap" } }) require("dapui.windows").layouts[1]:open()]],
 		"dapui_scopes"
@@ -159,12 +173,6 @@ T["actions: Unconfigured defaults are absent"] = function()
 	found.dap_ui = plugin_mapped("dapui_scopes", "<CR>")
 	open_surface([[vim.cmd("DiffviewOpen")]], "DiffviewFiles")
 	found.diffview = plugin_mapped("DiffviewFiles", "-")
-	child.lua([[pcall(vim.cmd, "tabclose")]])
-	open_surface([[vim.cmd("Differ")]], "differdiff")
-	found.differ = plugin_mapped("differdiff", "dl")
-	child.lua([[pcall(vim.cmd, "tabclose")]])
-	open_surface([[vim.cmd("CodeDiff")]], "codediff-explorer")
-	found.codediff = plugin_mapped("codediff-explorer", "<CR>")
 	child.lua([[pcall(vim.cmd, "tabclose")]])
 	open_surface([[require("neotest").summary.open()]], "neotest-summary")
 	found.neotest = plugin_mapped("neotest-summary", "<CR>")
@@ -179,13 +187,10 @@ T["actions: Unconfigured defaults are absent"] = function()
 
 	eq(found, {
 		blink = false,
-		codediff = false,
 		dap_ui = false,
-		differ = false,
 		diffview = false,
 		lazy = false,
 		mason = false,
-		neo_tree = false,
 		neotest = false,
 	})
 end

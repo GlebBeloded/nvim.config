@@ -41,6 +41,7 @@ local config = {
 	checker = { enabled = false },
 	-- no plugin needs luarocks (else :checkhealth lazy wants hererocks)
 	rocks = { enabled = false },
+	performance = { rtp = { disabled_plugins = { "netrwPlugin" } } },
 }
 
 -- Setup lazy.nvim

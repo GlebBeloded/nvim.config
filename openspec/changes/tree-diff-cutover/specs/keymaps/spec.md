@@ -5,7 +5,7 @@ The config SHALL map `<A-g>` in normal mode to the `changes.review` action.
 
 #### Scenario: Alt-g opens the changes review
 - **WHEN** `internal/billing/invoice.go` of a fresh copy of the `billing` fixture is edited and `<A-g>` is pressed in normal mode
-- **THEN** the current window has filetype `gleb-changes` with its cursor on the `invoice.go` row, and within 100 ms the editor area shows the diff view of `internal/billing/invoice.go`
+- **THEN** the current window has filetype `gleb-changes` with its cursor on the `invoice.go` row, and within the integration async wait budget the editor area shows the diff view of `internal/billing/invoice.go`
 
 ### Requirement: Project tree and changes panel toggles
 The config SHALL map `<A-e>` in normal mode to the `file_tree.toggle` action and `<A-G>` to the `changes.toggle` action. Opening the project tree from a buffer whose file exists under the root SHALL put the tree cursor on that file's row. Each key SHALL close its panel when that panel is the current window, and opening one panel SHALL close the other.
@@ -62,7 +62,7 @@ The config SHALL run the Ex commands behind the normal-mode maps `<C-Up>`, `<C-D
 
 ### Requirement: File tree and git panel toggles
 **Reason**: neo-tree's smart toggle between its `filesystem` and `git_status` sources is removed; `<A-e>` and `<A-G>` open two separate panels.
-**Migration**: replaced by "Project tree and changes panel toggles": "Alt-e reveals current file" and "Alt-e tolerates a deleted current file" keep their titles there; "Alt-e on URI buffer focuses filesystem" → `keymaps: Alt-e on URI buffer focuses the project tree`; "Alt-e closes focused filesystem tree" → `keymaps: Alt-e closes the focused project tree`; "Alt-G switches tree to git status" → `keymaps: Alt-G replaces the project tree with the changes panel`; "Alt-G closes focused git status tree" → `keymaps: Alt-G closes the focused changes panel`.
+**Migration**: replaced by "Project tree and changes panel toggles". The two retained titles stay verbatim; the other four map in order to its URI-buffer, close-project-tree, replace-with-changes-panel and close-changes-panel scenarios. design.md's Removed scenarios table keeps every title and successor.
 
 ### Requirement: Pending file tree work does not override a toggle
 **Reason**: neo-tree's asynchronous filesystem render is gone.
