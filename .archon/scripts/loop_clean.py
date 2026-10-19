@@ -120,6 +120,9 @@ def forced(name: str, tip: str, base: str, keeper: str, shipped: set[str]) -> st
 
 
 def classify(branch: Branch, runs: list[tuple[str, str]] | None, shipped: set[str], keeper: str | None = None) -> None:
+    if not ok("rev-parse", "--verify", "--quiet", f"refs/heads/{branch.name}"):  # deleted after the listing (ship's own
+        branch.reason = "already gone"  # cleanup removed it): a traceback here ended loop-clean after a ship
+        return
     tip, base = git("rev-parse", branch.name), git("rev-parse", BASE)
     live = live_status(branch, runs)
     if branch.name in NEVER or not branch.name.startswith("loop/"):
