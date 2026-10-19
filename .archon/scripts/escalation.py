@@ -18,7 +18,7 @@ from pathlib import Path
 
 from blocked import blocked_text, loop_notes, stuck_text
 from findings import minor_findings
-from integrity import breaking_changes, hard_rule_violations, readded_requirements, rewritten_decisions, still_dropped
+from integrity import breaking_changes, commit_paths, hard_rule_violations, readded_requirements, rewritten_decisions, still_dropped
 from lessons import persist_lessons
 
 FINDINGS_CHARS = 4000  # indented: no finding line reads as a markdown heading of the proposal
@@ -40,6 +40,8 @@ def flag(name: str) -> bool:
 
 artifacts = Path(os.environ.get("ARTIFACTS_DIR", "."))
 persist_lessons(artifacts)
+if os.path.isfile("docs/workflow.md"):  # committed on the run branch: a follow-up adopts it, ship merges it
+    commit_paths("docs(workflow): loop lessons", "docs/workflow.md")
 reject = hard_rule_violations()
 if flag("weakened_scenario"):
     reject.append("review: spec scenario weakened")
