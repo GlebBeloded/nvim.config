@@ -88,6 +88,7 @@ The queue builds an IntelliJ-style project tree (`file-tree-view` … `file-tree
 - **Directory buffers open the sidebar,** not a tree in the current window as neo-tree's `open_current` did: there is one kind of tree window.
 - **nui.nvim stays** for the commit popup; plenary and devicons stay for their other users.
 - **Requirements that lose a scenario are replaced** (removed and added under a new name) because OpenSpec refuses a MODIFIED block that drops one; surviving scenario titles are kept so their tests keep their names.
+- **The three rejected replacement bounds stay unchanged except for the named cutover:** bufferline keeps the 35-column panel plus one separator, blank label/separator, panel highlight and column-1 no-panel case; close-if-last keeps `:q`, `:close`, cross-tab isolation and mixed-sidebar exit while changes panel replaces neo-tree; pending refreshes still cannot reopen or focus a closed panel, with the changes-panel race added alongside the tree race.
 
 ## Rejected run
 Run on `loop/tree-diff-cutover-20261018-235135` was rejected by the judge:
@@ -96,3 +97,5 @@ Run on `loop/tree-diff-cutover-20261018-235135` was rejected by the judge:
 - removes and re-adds requirement 'Pending file tree work does not override a toggle' as 'Pending panel work does not override a toggle' (openspec/changes/tree-diff-cutover/specs/keymaps/spec.md): check its bounds
 - stuck: tasks.md `## Stuck` (earlier attempts, kept on the branch: not quoted here)
 - note: loop: sandbox: Lume still reports nvim-e2e unknown while its lume run process is alive, after one restart; giving up (/Users/hlebbeladzed/.cache/nvim-e2e-sandbox/vm.log)
+
+The replacement-bound findings are settled by the explicit bounds above and by tasks 2, 4c and 6, whose scenarios exercise those preserved limits.

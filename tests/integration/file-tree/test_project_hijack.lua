@@ -160,7 +160,7 @@ T["file-tree: Directory buffer entered from project tree focuses it"] = function
 
 	eq(actual.root, vim.uv.fs_realpath(root))
 	assert(actual.line:find("go.mod", 1, true), "tree cursor moved from go.mod")
-	eq(actual.editor_name, vim.fs.joinpath(root, "README.md"))
+	eq(actual.editor_name, vim.uv.fs_realpath(vim.fs.joinpath(root, "README.md")))
 	eq(actual.directory_buffers, 0)
 end
 

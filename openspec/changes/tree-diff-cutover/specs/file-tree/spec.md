@@ -127,12 +127,12 @@ While the tree is open, entering a file under its root SHALL reveal it without m
 **Migration**: replaced by "Project tree and changes panel close-if-last isolation": "Project tree closes before last editor with close" keeps its title; "Project and neo-tree close before the last editor" → `file-tree: Project tree and changes panel close before the last editor`.
 
 ### Requirement: Tree sources and window
-**Reason**: neo-tree is removed; its `filesystem` and `git_status` sources become two panels of our own.
+**Reason**: neo-tree is removed; its two sources become owned panels.
 **Migration**: "Filesystem tree opens on the left at width 35" → `file-tree: Project tree opens on the left at width 35`; "Git status tree opens on the left at width 35" → `git: Changes panel opens on the left at width 35`; "Tree closes with last window" → `file-tree: Project tree closes with the last window`; "Missing neo-tree is tolerated" → none (the tree is own code with no plugin to miss).
 
 ### Requirement: Common tree open mappings
 **Reason**: neo-tree's window mappings go away with neo-tree.
-**Migration**: "v opens file in vertical split" → `file-tree: Project tree v opens a vertical split`; "t opens file in new tab" → `file-tree: Project tree t opens a new tab`; "Next source switches tree source" → none (the two panels have their own keys: Alt+E and Alt+Shift+G, `keymaps: Alt-G replaces the project tree with the changes panel`); "o and l keep native open in git status tree" → none (there is no git status source; the changes panel opens with Enter, `git: Changes panel Enter opens the file`).
+**Migration**: "v opens file in vertical split" → `file-tree: Project tree v opens a vertical split`; "t opens file in new tab" → `file-tree: Project tree t opens a new tab`; "Next source switches tree source" → `keymaps: Alt-G replaces the project tree with the changes panel`; "o and l keep native open in git status tree" → `git: Changes panel Enter opens the file`.
 
 ### Requirement: Common tree edit mappings
 **Reason**: neo-tree's add and rename commands go away with neo-tree.
@@ -140,11 +140,11 @@ While the tree is open, entering a file under its root SHALL reveal it without m
 
 ### Requirement: Filesystem source behaviour
 **Reason**: the neo-tree `filesystem` source is removed.
-**Migration**: "Dotfiles and gitignored files are listed" → `file-tree: Project tree lists folders first in case-insensitive order` (dotfiles listed) and `file-tree: I toggles ignored entries` (ignored files hidden until Show Ignored, a user decision); "Directory argument opens tree in current window" → `file-tree: Directory argument opens the project tree` (as a sidebar, not in the current window); "Current file is followed" → `file-tree: Project tree follows the current file`. The `H` hidden toggle has no successor.
+**Migration**: "Dotfiles and gitignored files are listed" → `file-tree: Project tree lists folders first in case-insensitive order` and `file-tree: I toggles ignored entries`; "Directory argument opens tree in current window" → `file-tree: Directory argument opens the project tree`; "Current file is followed" → `file-tree: Project tree follows the current file`. The `H` hidden toggle has no successor.
 
 ### Requirement: Git status navigation previews diffs
 **Reason**: the git status tree and its tab preview are replaced by the changes panel with the diff view in the editor area.
-**Migration**: "j skips directories and previews next file" → `git: Changes panel j shows the next file in the diff view`; "k skips directories and previews previous file" → `git: Changes panel keeps the diff on a directory row` (folders are rows the cursor may rest on, as in IntelliJ); "Deleted file is not previewed" → `git: Changes panel shows a deleted file` (deleted files now show their `HEAD` text).
+**Migration**: "j skips directories and previews next file" → `git: Changes panel j shows the next file in the diff view`; "k skips directories and previews previous file" → `git: Changes panel keeps the diff on a directory row`; "Deleted file is not previewed" → `git: Changes panel shows a deleted file`.
 
 ### Requirement: Git status open, close and staging actions
 **Reason**: the git status tree is replaced by the changes panel.
@@ -152,11 +152,11 @@ While the tree is open, entering a file under its root SHALL reveal it without m
 
 ### Requirement: Git status staging matches exact paths
 **Reason**: the exact-path staging rule moves to the changes panel unchanged.
-**Migration**: "Space stages a file whose name is a suffix of a staged file" → `git: Changes panel Space stages a file whose name is a suffix of a staged file`; "Space stages when cwd is outside the repository" → `git: Changes panel stages when cwd is outside the repository`; "Space unstages when cwd is outside the repository" → `git: Changes panel unstages when cwd is outside the repository`; "Space stages from a subdirectory cwd" → `git: Changes panel stages from a subdirectory cwd`; "Space unstages from a subdirectory cwd" → `git: Changes panel unstages from a subdirectory cwd`; "Space reports a staging failure" → `git: Changes panel reports a staging failure`.
+**Migration**: all six scenarios map one-for-one to the `git: Changes panel …` successors in design.md's Removed scenarios table, preserving suffix-path, outside-repository, subdirectory-cwd and failure bounds.
 
 ### Requirement: Git status revert and key ownership
 **Reason**: the git status tree is replaced by the changes panel.
-**Migration**: "X reverts a file after confirmation" → `git: Changes panel X reverts a file after confirmation`; "X keeps a file when revert is declined" → `git: Changes panel X keeps a file when revert is declined`; "gr keeps its global meaning in git status tree" → `git: Changes panel leaves gr global`; "c is copy in git status tree" → `file-tree: Project tree c and p copy a file into another folder` (the changes panel has no file operations).
+**Migration**: the two `X` scenarios map to the same-titled changes-panel successors; `gr` → `git: Changes panel leaves gr global`; `c` → `file-tree: Project tree c and p copy a file into another folder`.
 
 ### Requirement: Git status AI commit
 **Reason**: the git status tree is replaced by the changes panel, which opens the same AI commit popup.
@@ -184,11 +184,11 @@ While the tree is open, entering a file under its root SHALL reveal it without m
 
 ### Requirement: Diff preview focus and closing
 **Reason**: the preview tab, its focus guard and the return to the original tab are gone: the diff view never takes focus and lives in the current tab.
-**Migration**: "Focus returns false without neo-tree", "Focus moves to neo-tree" and "Focus guard pulls focus back during navigation" → `git: Changes panel j shows the next file in the diff view` (the panel stays current); "Return to original tab", "Return clears current file", "Return clears tab state and focus guard", "Next preview records the new original tab" and "Return cancels a pending preview" → `git: Changes panel q closes the panel and the diff view` (no tab to return to).
+**Migration**: the three focus scenarios → `git: Changes panel j shows the next file in the diff view`; the five return/state scenarios → `git: Changes panel q closes the panel and the diff view`. design.md's Removed scenarios table keeps every title.
 
 ### Requirement: Tree icons
 **Reason**: the neo-tree renderer is removed.
-**Migration**: "Collapsed directory shows expander and folder icon", "Expanded directory shows open expander and folder icon" and "Empty directory shows empty folder icon" → `file-tree: Project tree rows have icons and no guides`; "Tree shows diagnostic glyph of a file" → none (diagnostics in the tree are out of scope of `file-tree-view`); "Conflicted file shows conflict symbol" → `file-tree: Project tree colours renamed and conflicted files` (colour, no symbol: user decision "git status = name colour only"); "filesystem tree matches reference screenshot" → `file-tree: Project tree matches the approved render`.
+**Migration**: the three folder-icon scenarios → `file-tree: Project tree rows have icons and no guides`; diagnostics → none; conflict symbol → `file-tree: Project tree colours renamed and conflicted files`; screenshot → `file-tree: Project tree matches the approved render`.
 
 ### Requirement: Neo-tree mapping ownership
 **Reason**: neo-tree and its mapping adapter are removed.
