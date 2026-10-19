@@ -7,6 +7,7 @@ Scenarios: `file-tree: Project tree redraw meets the large-tree bound`, `file-tr
 ## Agent decisions
 
 - Store scan identity on cached entries so cached ordinary directories need no realpath call while symlink targets remain available for loop detection.
+- Store prepared row indices on each view so visible-path follow can select directly while absent paths retain reconstruction behavior.
 
 ## 2. Coalesce watcher, write and git refreshes
 Scenarios: `file-tree: Project tree coalesces a save burst`, `file-tree: Unchanged git status does not redraw the project tree`, `file-tree: Project tree save leaves the main path promptly`
@@ -23,9 +24,9 @@ Scenarios: `file-tree: Project tree coalesces a save burst`, `file-tree: Unchang
 
 ## 3. Follow an existing row without drawing
 Scenarios: `file-tree: Project tree follows an already listed row promptly`
-- [ ] 3.1 Write the integration test in `tests/integration/file-tree/test_performance.lua`, driving real `:edit`/`BufEnter` with a populated 5000-row tree, and see the load-scaled timing or tree-buffer-replacement assertion fail
-- [ ] 3.2 Index prepared rows by normalized path and move the tree cursor directly when follow targets an already listed row, scheduling reconstruction only when ancestors must be expanded
-- [ ] 3.3 Run `make test FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree follows an already listed row promptly"` and see it pass
+- [x] 3.1 Write the integration test in `tests/integration/file-tree/test_performance.lua`, driving real `:edit`/`BufEnter` with a populated 5000-row tree, and see the load-scaled timing or tree-buffer-replacement assertion fail
+- [x] 3.2 Index prepared rows by normalized path and move the tree cursor directly when follow targets an already listed row, scheduling reconstruction only when ancestors must be expanded
+- [x] 3.3 Run `make test FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree follows an already listed row promptly"` and see it pass
 
 ## 4. Defer repository, watch and persistence maintenance
 Scenarios: `file-tree: Project tree re-roots without waiting for repository discovery`, `file-tree: Project tree persists folds off the action path`

@@ -23,6 +23,7 @@ local IGNORE_WAIT_MS = 300
 ---@field expanded table<string, boolean>
 ---@field expanded_nests table<string, boolean>
 ---@field rows FileTreeRow[]
+---@field rows_by_path table<string, integer>
 ---@field autocmds integer[]
 ---@field watching boolean
 ---@field directory_hijacks table<integer, boolean>
@@ -272,7 +273,18 @@ end
 
 ---@class FileTreePreparedDraw
 ---@field rows FileTreeRow[]
+---@field rows_by_path table<string, integer>
 ---@field watched table<string, boolean>
+
+---@param rows FileTreeRow[]
+---@return table<string, integer>
+local function index_rows(rows)
+	local rows_by_path = {}
+	for index, row in ipairs(rows) do
+		rows_by_path[row.path] = index
+	end
+	return rows_by_path
+end
 
 ---@param view FileTreeView
 ---@param path string
@@ -299,8 +311,10 @@ local function prepare_draw(view, path)
 			view.expanded_nests[relative] = nil
 		end
 	end
+	local rows = model.rows(tree, view.expanded, opts, nesting_settings, view.expanded_nests)
 	return {
-		rows = model.rows(tree, view.expanded, opts, nesting_settings, view.expanded_nests),
+		rows = rows,
+		rows_by_path = index_rows(rows),
 		watched = watched,
 	}
 end
@@ -313,6 +327,7 @@ local function draw(view, path, prepared)
 	local cursor_line = vim.api.nvim_win_get_cursor(view.win)[1]
 	prepared = prepared or prepare_draw(view, path)
 	view.rows = prepared.rows
+	view.rows_by_path = prepared.rows_by_path
 	render.draw(view.buf, view.rows)
 	restore_cursor(view, path, rows_before, cursor_line)
 	watch.sync(view.root, view.tab, prepared.watched, function(changed_path)
@@ -341,6 +356,11 @@ end
 ---@param path string
 local function select_path(view, path)
 	local normalized = fs.normalize(path)
+	local row = view.rows_by_path[normalized]
+	if row then
+		vim.api.nvim_win_set_cursor(view.win, { row, 0 })
+		return
+	end
 	expand_to(view, normalized)
 	local loaded_settings = settings.load()
 	local nesting_settings = loaded_settings.nesting
@@ -812,6 +832,7 @@ local function open_view(path, requested_root)
 		expanded = expanded.load(root),
 		expanded_nests = {},
 		rows = {},
+		rows_by_path = {},
 		autocmds = {},
 		watching = true,
 		directory_hijacks = {},

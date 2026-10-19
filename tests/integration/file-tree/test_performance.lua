@@ -266,4 +266,41 @@ T["file-tree: Project tree save leaves the main path promptly"] = function()
 	assert(result.complete, vim.inspect(result))
 end
 
+T["file-tree: Project tree follows an already listed row promptly"] = function()
+	child.lua([=[
+		local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+		view.expanded["expand-me"] = true
+		require("gleb.file_tree.view").redraw_all()
+	]=])
+	eq(child.lua_get([[#require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()].rows]]), 5000)
+	install_replacement_counter()
+
+	local target = assert(vim.uv.fs_realpath(vim.fs.joinpath(root, "root-file-050")))
+	local result = child.lua_get(
+		[=[(function(path)
+			local view_module = require("gleb.file_tree.view")
+			local view = assert(view_module.state.by_tab[vim.api.nvim_get_current_tabpage()])
+			local editor = assert(view_module.state.last_editor_by_tab[view.tab])
+			vim.api.nvim_set_current_win(editor)
+			local started = vim.uv.hrtime()
+			vim.cmd.edit(vim.fn.fnameescape(path))
+			local elapsed_ms = (vim.uv.hrtime() - started) / 1e6
+			local selected = view.rows[vim.api.nvim_win_get_cursor(view.win)[1]]
+			vim.api.nvim_buf_set_lines = FileTreeOriginalSetLines
+			return {
+				elapsed_ms = elapsed_ms,
+				focused = vim.api.nvim_get_current_win() == editor,
+				replacements = FileTreeReplacementCount,
+				selected = selected and selected.path,
+			}
+		end)(...)]=],
+		{ target }
+	)
+
+	assert(result.elapsed_ms <= 50 * H.load_factor(), ("follow took %.2f ms"):format(result.elapsed_ms))
+	eq(result.replacements, 0)
+	eq(result.selected, target)
+	eq(result.focused, true)
+end
+
 return T
