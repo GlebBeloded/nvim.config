@@ -3,13 +3,19 @@
 local Context = require("gleb.actions.context")
 
 ---@param ctx gleb.ActionContext
+---@param command string
+local function run_one(ctx, command)
+	pcall(vim.cmd.normal, { args = { Context.counted(ctx, command) }, bang = true })
+end
+
+---@param ctx gleb.ActionContext
 local function open_one(ctx)
-	vim.cmd.normal({ args = { Context.counted(ctx, "zo") }, bang = true })
+	run_one(ctx, "zo")
 end
 
 ---@param ctx gleb.ActionContext
 local function close_one(ctx)
-	vim.cmd.normal({ args = { Context.counted(ctx, "zc") }, bang = true })
+	run_one(ctx, "zc")
 end
 
 ---@type gleb.Action[]
