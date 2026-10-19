@@ -86,3 +86,12 @@ Run on `loop/tree-diff-cutover` was rejected by the judge:
 - note: loop: FAIL in tests/e2e/git/test_changes_review.lua | git: Cmd+G opens the changes review of a dirty repo: /Users/lume/nvim/tests/shortcuts/stack.lua:171: stack: timed out waiting for owned changes diff view (last error: stack: Neovim is blocked in mode r; screen: … command selene is not executable (make sure it's installed and on your $PATH)
 - note: loop: Error: VM 'nvim-e2e' is not running
 - note: loop: vim.schedule callback: Vim:E482: Can't open file /var/folders/9c/yg1yg4td727dkq_blbwbwn1w0000gn/T/nvim.hlebbeladzed/2Rxlnm/18.json.progress for writing: no space left on device
+
+## Decision (auditor, 2026-10-19, host fseventsd)
+
+- From about 00:45 to 08:25 on 2026-10-19 the host's fseventsd delivered no file events (a minimal `vim.uv.new_fs_event`
+  probe got nothing in 20 s; a commit that passed on 2026-10-18 failed all 7 `test_project_live.lua` cases). Live-watch
+  failures, stuck notes and review findings from that window are host noise, not this change's bugs: re-check each
+  against a fresh run before acting on it. fseventsd was restarted at 08:25; the live file passes again.
+- No platform-specific watcher (a `watch_darwin.lua`, polling fallbacks) to work around missing events: the watcher
+  uses `vim.uv.new_fs_event` as it is.

@@ -42,3 +42,12 @@ Run on `loop/fix-file-tree-live-flakes` was rejected by the judge:
   [minor] lua/gleb/file_tree/view.lua:804-809: the deferred-deadline `result_pending` branch still has no case of its own, a result that arrives late or fails at the deadline (carried over from passes 1–2).
   Checked and fine: the tests are not weakened. The fake git now answers synchronously and the `status` index is fixed, with assertions unchanged. The load-scaled waits in tab-isolation and the git highlight cases have no time bound in the spec. The quit `jobwait` load-scaled bound keeps the exit-code-0 assertion. `go.sum` keeps the cursor assertion. The VimLeavePre watch stop (autocommands/init.lua:22-36) and `rename_unformatted` (ops.lua:135-149) are covered by tasks 3.1 and 3.2 and reuse the existing `vim.g.format_on_save_disabled` flag.
 - note: flaky test cases (failed, then passed on rerun): tests/integration/file-tree/test_project_lsp_rename.lua | file-tree: Project tree rename waits for servers at most one second | continues after the deadline: tests/integration/file-tree/test_project_lsp_rename.lua:210: rename took 2329 ms, tests/integration/git/test_changes_stage.lua | git: Changes panel A stages everything, tests/integration/lsp/test_typecheck.lua | lsp: Type-check toggle reattaches every Python buffer without reloading, e2e: Error: VM 'nvim-e2e' is not running
+
+## Decision (auditor, 2026-10-19, host fseventsd)
+
+- From about 00:45 to 08:25 on 2026-10-19 the host's fseventsd delivered no file events (a minimal `vim.uv.new_fs_event`
+  probe got nothing in 20 s; a commit that passed on 2026-10-18 failed all 7 `test_project_live.lua` cases). Live-watch
+  failures, stuck notes and review findings from that window are host noise, not this change's bugs: re-check each
+  against a fresh run before acting on it. fseventsd was restarted at 08:25; the live file passes again.
+- No platform-specific watcher (a `watch_darwin.lua`, polling fallbacks) to work around missing events: the watcher
+  uses `vim.uv.new_fs_event` as it is.
