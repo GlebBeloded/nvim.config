@@ -1,6 +1,6 @@
 -- File-tree settings state keeps test and user configuration paths separate.
 
-local fs = require("gleb.file_tree.fs")
+local fs = require("gleb.workspace")
 local ignore = require("gleb.file_tree.ignore")
 
 local M = {}

@@ -5,6 +5,7 @@ local eq = MiniTest.expect.equality
 
 local model = require("gleb.file_tree.model")
 local fs = require("gleb.file_tree.fs")
+local git_status = require("gleb.git.status")
 
 ---@param status? table<string, string>
 ---@return FileTreeRowOptions
@@ -114,7 +115,7 @@ T["file-tree: Project tree colours changed files"]["parses tracked and untracked
 		"! build/",
 	}, "\0") .. "\0"
 
-	local status, ignored = model.parse_status(output, "")
+	local status, ignored = git_status.parse(output, "")
 	eq(status, {
 		["internal/invoice.go"] = "modified",
 		["internal/tax.go"] = "added",
@@ -131,7 +132,7 @@ T["file-tree: Project tree colours changed files"]["parses rename and unmerged r
 		"u UU N... 100644 100644 100644 100644 abcdef1 abcdef2 abcdef3 go.mod",
 	}, "\0") .. "\0"
 
-	eq(model.parse_status(output, ""), {
+	eq(git_status.parse(output, ""), {
 		["new name.md"] = "renamed",
 		["go.mod"] = "conflict",
 	})
@@ -140,7 +141,7 @@ end
 T["file-tree: Project tree colours changed files"]["keeps only paths below a repository prefix"] = function()
 	local output = "1 .M N... 100644 100644 100644 abcdef1 abcdef1 apps/web/src/app.ts\0"
 
-	eq(model.parse_status(output, "apps/web"), { ["src/app.ts"] = "modified" })
+	eq(git_status.parse(output, "apps/web"), { ["src/app.ts"] = "modified" })
 end
 
 T["file-tree: Project tree colours changed files"]["uses documented folder precedence"] = function()
@@ -183,7 +184,7 @@ T["file-tree: Shared parser preserves rename and copy origins"]["consumes each o
 		"source.md",
 	}, "\0") .. "\0"
 
-	eq(model.parse_status_records(output), {
+	eq(git_status.parse_records(output), {
 		{ kind = "2", xy = "R.", sub = "N...", path = "new name.md", orig = "old name.md" },
 		{ kind = "2", xy = "C.", sub = "S.M.", path = "copy.md", orig = "source.md" },
 	})
@@ -197,7 +198,7 @@ T["file-tree: Shared parser classifies added and unmerged records"]["maps worktr
 		"u UU N... 100644 100644 100644 100644 abcdef1 abcdef2 abcdef3 conflicted.lua",
 	}, "\0") .. "\0"
 
-	local status, ignored = model.parse_status(output, "")
+	local status, ignored = git_status.parse(output, "")
 	eq(status, { ["added.lua"] = "added", ["conflicted.lua"] = "conflict" })
 	eq(ignored, {})
 end
@@ -211,7 +212,7 @@ T["file-tree: Shared parser keeps ignored records separate"]["keeps ignored path
 		"! build/",
 	}, "\0") .. "\0"
 
-	local status, ignored = model.parse_status(output, "")
+	local status, ignored = git_status.parse(output, "")
 	eq(status, { ["tracked.lua"] = "modified", ["notes.md"] = "untracked" })
 	eq(ignored, { ["build/"] = true })
 end

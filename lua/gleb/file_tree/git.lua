@@ -3,8 +3,8 @@
 local M = {}
 
 local debounce = require("gleb.util.debounce")
-local fs = require("gleb.file_tree.fs")
-local model = require("gleb.file_tree.model")
+local git_status = require("gleb.git.status")
+local workspace = require("gleb.workspace")
 
 local GIT_DEBOUNCE_MS = 150
 
@@ -32,14 +32,14 @@ M.state = { roots = {}, runs = 0 }
 ---@return table<string, string> status
 ---@return table<string, boolean> ignored
 local function parse_status(output, prefix)
-	return model.parse_status(output, prefix)
+	return git_status.parse(output, prefix)
 end
 
 --- Return the latest status snapshot for a root.
 ---@param root string
 ---@return table<string, string>
 function M.status(root)
-	root = fs.normalize(root)
+	root = workspace.normalize(root)
 	local state = M.state.roots[root]
 	return state and state.status or {}
 end
@@ -48,7 +48,7 @@ end
 ---@param root string
 ---@return table<string, boolean>
 function M.ignored(root)
-	root = fs.normalize(root)
+	root = workspace.normalize(root)
 	local state = M.state.roots[root]
 	return state and state.ignored or {}
 end
@@ -57,7 +57,7 @@ end
 ---@param root string
 ---@return integer
 function M.ignored_generation(root)
-	root = fs.normalize(root)
+	root = workspace.normalize(root)
 	local state = M.state.roots[root]
 	return state and state.ignored_generation or 0
 end
@@ -68,7 +68,7 @@ end
 ---@param callback fun(changed: boolean)
 ---@return nil
 function M.start_root(root, owner, callback)
-	root = fs.normalize(root)
+	root = workspace.normalize(root)
 	local state = M.state.roots[root]
 	if not state then
 		state = {
@@ -94,7 +94,7 @@ end
 ---@param owner integer
 ---@return nil
 function M.stop_root(root, owner)
-	root = fs.normalize(root)
+	root = workspace.normalize(root)
 	local state = M.state.roots[root]
 	if not state or not state.callbacks[owner] then
 		return
@@ -166,7 +166,7 @@ end
 ---@param root string
 ---@return nil
 function M.request(root)
-	root = fs.normalize(root)
+	root = workspace.normalize(root)
 	local state = assert(M.state.roots[root], "git root was not started")
 	state.generation = state.generation + 1
 	if state.in_flight then
@@ -188,7 +188,7 @@ end
 ---@param root string
 ---@return nil
 function M.refresh(root)
-	root = fs.normalize(root)
+	root = workspace.normalize(root)
 	local state = assert(M.state.roots[root], "git root was not started")
 	state.generation = state.generation + 1
 	if state.timer then

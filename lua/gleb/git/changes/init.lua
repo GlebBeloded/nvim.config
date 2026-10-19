@@ -2,7 +2,7 @@
 
 local M = {}
 
-local fs = require("gleb.file_tree.fs")
+local workspace = require("gleb.workspace")
 local git = require("gleb.git.changes.git")
 local view = require("gleb.git.changes.view")
 
@@ -17,9 +17,9 @@ M.state = { by_tab = {} }
 local function current_location()
 	local path = vim.api.nvim_buf_get_name(0)
 	if vim.bo.buftype ~= "" or path == "" or path:match("^[%a][%w+.-]*://") then
-		return "", fs.normalize(vim.fn.getcwd())
+		return "", workspace.normalize(vim.fn.getcwd())
 	end
-	path = fs.normalize(path)
+	path = workspace.normalize(path)
 	return path, vim.fs.dirname(path)
 end
 

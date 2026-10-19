@@ -2,8 +2,8 @@
 
 local M = {}
 
-local fs = require("gleb.file_tree.fs")
-local file_tree_model = require("gleb.file_tree.model")
+local git_status = require("gleb.git.status")
+local workspace = require("gleb.workspace")
 
 ---@class ChangesGitState
 ---@field last_cmd? string[]
@@ -17,9 +17,9 @@ M.state = {}
 ---@return nil
 function M.resolve_root(dir, callback)
 	local command = { "git", "rev-parse", "--show-toplevel" }
-	vim.system(command, { cwd = fs.normalize(dir), text = true }, function(result)
+	vim.system(command, { cwd = workspace.normalize(dir), text = true }, function(result)
 		vim.schedule(function()
-			local root = result.code == 0 and fs.normalize(vim.trim(result.stdout or "")) or nil
+			local root = result.code == 0 and workspace.normalize(vim.trim(result.stdout or "")) or nil
 			callback(result, root)
 		end)
 	end)
@@ -42,7 +42,7 @@ function M.refresh(root, callback)
 	}
 	local numstat_command =
 		{ "git", "--no-optional-locks", "--literal-pathspecs", "diff-index", "-M", "--numstat", "-z", "HEAD" }
-	local cwd = fs.normalize(root)
+	local cwd = workspace.normalize(root)
 	local status_result
 	local numstat_result
 
@@ -159,7 +159,7 @@ function M.load_diff(root, row, callback)
 	end)
 end
 
----@param records FileTreeStatusRecord[]
+---@param records GitStatusRecord[]
 ---@return boolean
 local function fully_staged(records)
 	if #records == 0 then
@@ -190,7 +190,7 @@ local function add_pathspec(command, paths)
 	return command, opts
 end
 
----@param records FileTreeStatusRecord[]
+---@param records GitStatusRecord[]
 ---@return boolean
 local function has_conflict(records)
 	return vim.iter(records):any(function(record)
@@ -199,7 +199,7 @@ local function has_conflict(records)
 end
 
 ---@param root string
----@param records FileTreeStatusRecord[]
+---@param records GitStatusRecord[]
 ---@return string[]
 local function record_paths(root, records)
 	local paths = {}
@@ -214,8 +214,8 @@ end
 
 ---@param root string
 ---@param paths string[]
----@param records FileTreeStatusRecord[]
----@return FileTreeStatusRecord[]
+---@param records GitStatusRecord[]
+---@return GitStatusRecord[]
 local function selected_records(root, paths, records)
 	local selected = {}
 	for _, path in ipairs(paths) do
@@ -233,8 +233,8 @@ end
 ---@param callback fun(result: vim.SystemCompleted)
 ---@return nil
 function M.toggle_stage(root, paths, callback)
-	root = fs.normalize(root)
-	paths = vim.tbl_map(fs.normalize, paths)
+	root = workspace.normalize(root)
+	paths = vim.tbl_map(workspace.normalize, paths)
 	local status_command = {
 		"git",
 		"--literal-pathspecs",
@@ -250,8 +250,7 @@ function M.toggle_stage(root, paths, callback)
 				callback(status_result)
 				return
 			end
-			local records =
-				selected_records(root, paths, file_tree_model.parse_status_records(status_result.stdout or ""))
+			local records = selected_records(root, paths, git_status.parse_records(status_result.stdout or ""))
 			if has_conflict(records) then
 				callback({ code = 1, signal = 0, stdout = "", stderr = "resolve conflicts in the merge tool" })
 				return
@@ -281,7 +280,7 @@ end
 function M.stage_all(root, callback)
 	local command = { "git", "--literal-pathspecs", "add", "-A" }
 	M.state.last_cmd = command
-	vim.system(command, { cwd = fs.normalize(root), text = true }, function(result)
+	vim.system(command, { cwd = workspace.normalize(root), text = true }, function(result)
 		vim.schedule(function()
 			callback(result)
 		end)
@@ -295,7 +294,7 @@ end
 ---@return nil
 function M.commit(root, message, callback)
 	local command = { "git", "--literal-pathspecs", "commit", "-m", message }
-	vim.system(command, { cwd = fs.normalize(root), text = true }, function(result)
+	vim.system(command, { cwd = workspace.normalize(root), text = true }, function(result)
 		vim.schedule(function()
 			callback(result)
 		end)
@@ -307,7 +306,7 @@ end
 ---@param callback fun(result: vim.SystemCompleted)
 ---@return nil
 function M.push(root, callback)
-	vim.system({ "git", "push" }, { cwd = fs.normalize(root), text = true }, function(result)
+	vim.system({ "git", "push" }, { cwd = workspace.normalize(root), text = true }, function(result)
 		vim.schedule(function()
 			callback(result)
 		end)
@@ -319,7 +318,7 @@ end
 ---@param callback fun(result: vim.SystemCompleted)
 ---@return nil
 function M.revert(root, row, callback)
-	root = fs.normalize(root)
+	root = workspace.normalize(root)
 	local relpath = assert(row.path, "file row path missing")
 	local path = vim.fs.joinpath(root, relpath)
 	local command

@@ -6,6 +6,7 @@ Scenarios: `file-tree: Project tree watchers stop when the tree closes`
 
 - `gleb.util.debounce.schedule` accepts and returns a reusable timer so each consumer retains ownership of lifecycle cleanup.
 - Project-tree redraw replaces its timer before scheduling so a queued stale callback remains distinguishable from the current debounce.
+- Shared scanning lives at `gleb.workspace` and porcelain parsing at `gleb.git.status`, matching their workspace and Git ownership while retaining the old filesystem import as a compatibility alias.
 
 ## 2. Migrate project-tree git and expansion debounce
 Scenarios: `file-tree: Project tree runs git status once per burst`, `file-tree: Project tree expanded folders persist per root`
@@ -21,7 +22,7 @@ Scenarios: `git: Changes panel debounces rapid moves`, `git: Changes panel drops
 
 ## 5. Extract shared filesystem scan and porcelain parser
 Scenarios: `file-tree: Shared parser preserves rename and copy origins`, `file-tree: Shared parser classifies added and unmerged records`, `file-tree: Shared parser keeps ignored records separate`, `git: Changes panel status avoids optional locks`
-- [ ] 5.1 Run `make test FILE=tests/unit/file-tree/test_model.lua CASE="Shared parser preserves rename and copy origins"`, `make test FILE=tests/unit/file-tree/test_model.lua CASE="Shared parser classifies added and unmerged records"`, `make test FILE=tests/unit/file-tree/test_model.lua CASE="Shared parser keeps ignored records separate"`, and `make test FILE=tests/integration/git/test_changes.lua CASE="Changes panel status avoids optional locks"` and see them pass, move the shared filesystem scan and porcelain-v2 parsing into neutral modules and update both consumers, then run them again and see them pass
+- [x] 5.1 Run `make test FILE=tests/unit/file-tree/test_model.lua CASE="Shared parser preserves rename and copy origins"`, `make test FILE=tests/unit/file-tree/test_model.lua CASE="Shared parser classifies added and unmerged records"`, `make test FILE=tests/unit/file-tree/test_model.lua CASE="Shared parser keeps ignored records separate"`, and `make test FILE=tests/integration/git/test_changes.lua CASE="Changes panel status avoids optional locks"` and see them pass, move the shared filesystem scan and porcelain-v2 parsing into neutral modules and update both consumers, then run them again and see them pass
 
 ## 6. Extract shared nesting from project-tree internals
 Scenarios: `file-tree: Nesting rule nests by capture`, `git: Changes panel nests tests under their file`

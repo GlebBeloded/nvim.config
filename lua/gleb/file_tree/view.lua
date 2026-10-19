@@ -3,7 +3,7 @@
 local M = {}
 
 local expanded = require("gleb.file_tree.expanded")
-local fs = require("gleb.file_tree.fs")
+local fs = require("gleb.workspace")
 local git = require("gleb.file_tree.git")
 local ignore = require("gleb.file_tree.ignore")
 local model = require("gleb.file_tree.model")

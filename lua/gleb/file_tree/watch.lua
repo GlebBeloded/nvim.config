@@ -5,7 +5,7 @@
 
 local M = {}
 
-local fs = require("gleb.file_tree.fs")
+local fs = require("gleb.workspace")
 local debounce = require("gleb.util.debounce")
 
 local WATCH_DEBOUNCE_MS = 100

@@ -3,7 +3,7 @@
 local M = {}
 
 local debounce = require("gleb.util.debounce")
-local fs = require("gleb.file_tree.fs")
+local workspace = require("gleb.workspace")
 local file_tree_view = require("gleb.file_tree.view")
 local git = require("gleb.git.changes.git")
 local model = require("gleb.git.changes.model")
@@ -366,7 +366,7 @@ local function add_refresh_sources(view)
 	view.autocmds[#view.autocmds + 1] = vim.api.nvim_create_autocmd("BufWritePost", {
 		group = augroup,
 		callback = function(args)
-			local path = fs.normalize(vim.api.nvim_buf_get_name(args.buf))
+			local path = workspace.normalize(vim.api.nvim_buf_get_name(args.buf))
 			if path:sub(1, #view.root + 1) == view.root .. "/" then
 				M.schedule_refresh(view)
 			end
@@ -502,7 +502,7 @@ function M.open(root, selected_path, review)
 	---@type ChangesView
 	local view = {
 		tab = tab,
-		root = fs.normalize(root),
+		root = workspace.normalize(root),
 		buf = buf,
 		win = win,
 		editor_win = editor_win,
@@ -515,7 +515,7 @@ function M.open(root, selected_path, review)
 		selection_generation = 0,
 		autocmds = {},
 		loaded_buffers = {},
-		initial_selected_path = fs.normalize(selected_path),
+		initial_selected_path = workspace.normalize(selected_path),
 		review_on_refresh = review == true,
 	}
 	changes.state.by_tab[tab] = view
