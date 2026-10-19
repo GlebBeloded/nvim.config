@@ -22,5 +22,5 @@ Moves SHALL keep VS Code's thresholds:
 - **THEN** the move is retained because neither side belongs to a change
 
 #### Scenario: Long similar lines extend a move
-- **WHEN** `moves.compute` receives changes `{ { 0, 4, 0, 0 }, { 8, 8, 4, 8 } }`, with three equal anchor lines followed by 220 `a` and 130 `b` characters on the original side, four stable lines, then the same anchors followed by 220 `a` and 130 `c` characters on the modified side
-- **THEN** it returns `{ { 0, 4, 4, 8 } }`, extending the move through the 350-character lines without exceeding the shared deadline
+- **WHEN** `moves.compute` receives changes `{ { 0, 4, 0, 0 }, { 8, 8, 4, 8 } }`, with three equal anchor lines followed by 220 `a` and 80 `b` characters on the original side, four stable lines, then the same anchors followed by 220 `a` and 130 `c` characters on the modified side
+- **THEN** it returns `{ { 0, 4, 4, 8 } }`, extending the move through the 300- and 350-character lines without exceeding the shared deadline

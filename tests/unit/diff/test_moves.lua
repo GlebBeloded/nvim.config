@@ -50,7 +50,7 @@ end
 T["diff: Long similar lines extend a move"] = function()
 	local anchors = { "local alpha = 1", "local beta = 2", "local gamma = 3" }
 	local stable_lines = { "function a() end", "function b() end", "function c() end", "function d() end" }
-	local lines1 = vim.list_extend(vim.deepcopy(anchors), { string.rep("a", 220) .. string.rep("b", 130) })
+	local lines1 = vim.list_extend(vim.deepcopy(anchors), { string.rep("a", 220) .. string.rep("b", 80) })
 	vim.list_extend(lines1, stable_lines)
 	local lines2 = vim.list_extend(vim.deepcopy(stable_lines), anchors)
 	lines2[#lines2 + 1] = string.rep("a", 220) .. string.rep("c", 130)
