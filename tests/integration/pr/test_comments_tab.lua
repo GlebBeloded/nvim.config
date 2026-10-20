@@ -341,14 +341,18 @@ T["pr: Enter on a thread opens its line"] = function()
 	assert(
 		child.wait(
 			([[(function(root)
-		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
-		return vim.api.nvim_get_current_win() == panel.editor_win
-			and vim.fn.line(".") == 22
-			and vim.fs.normalize(vim.api.nvim_buf_get_name(0)) == vim.fs.joinpath(%q, "internal/billing/invoice.go")
-	end)(%q)]]):format(root, root),
+				local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+				local thread = require("gleb.pr.thread_window").state.by_tab[vim.api.nvim_get_current_tabpage()]
+				return thread
+					and thread.thread.id == "PRRT_t1"
+					and vim.api.nvim_get_current_win() == thread.reply_win
+					and vim.api.nvim_win_get_cursor(panel.editor_win)[1] == 22
+					and vim.fs.normalize(vim.api.nvim_buf_get_name(vim.api.nvim_win_get_buf(panel.editor_win)))
+						== vim.fs.joinpath(%q, "internal/billing/invoice.go")
+			end)(%q)]]):format(root, root),
 			async_timeout()
 		),
-		"Enter did not open the thread's line"
+		"Enter did not open the mapped thread window after navigating to its line"
 	)
 	eq(
 		child.lua_get([[(function()
@@ -436,21 +440,31 @@ T["pr: Enter on an unmapped thread shows its diff hunk"] = function()
 		child.wait(
 			[[(function()
 				local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
-				return vim.api.nvim_get_current_win() == panel.editor_win
-					and vim.bo[vim.api.nvim_get_current_buf()].filetype == "diff"
-					and not vim.bo[vim.api.nvim_get_current_buf()].modifiable
+				local hunk_buf = vim.api.nvim_win_get_buf(panel.editor_win)
+				local thread = require("gleb.pr.thread_window").state.by_tab[vim.api.nvim_get_current_tabpage()]
+				return thread
+					and thread.thread.id == "PRRT_t1"
+					and vim.api.nvim_get_current_win() == thread.reply_win
+					and vim.bo[hunk_buf].filetype == "diff"
+					and not vim.bo[hunk_buf].modifiable
 			end)()]],
 			async_timeout()
 		),
-		"Enter did not focus the unmapped thread's hunk"
+		"Enter did not open the unmapped thread window after showing its hunk"
 	)
 	eq(
 		child.lua_get([[require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()].active_tab]]),
 		"comments"
 	)
 	eq(
-		child.lua_get([[vim.api.nvim_buf_get_lines(vim.api.nvim_get_current_buf(), 0, -1, false)]]),
-		vim.split(diff_hunk, "\n", { plain = true })
+		child.lua_get([[(function()
+			local thread = require("gleb.pr.thread_window").state.by_tab[vim.api.nvim_get_current_tabpage()]
+			return vim.api.nvim_buf_get_lines(thread.messages_buf, 0, 3, false)
+		end)()]]),
+		(function()
+			local lines = vim.split(diff_hunk, "\n", { plain = true })
+			return vim.list_slice(lines, math.max(1, #lines - 2), #lines)
+		end)()
 	)
 end
 
