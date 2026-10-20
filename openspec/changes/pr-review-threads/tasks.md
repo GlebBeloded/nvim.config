@@ -63,4 +63,4 @@ Scenarios: `pr: pr.refresh is an unbound Find Action entry`
 
 - The write trigger resolves files through `gleb.git.base.resolve`, so symlinked paths share the canonical root's debounce and throttle.
 - The refresh action resolves the current buffer path, falling back to the working directory, so Find Action does not depend on a pre-populated base cache.
-- PR autocmds load at startup, while base-change refresh remains conditional on cached review state so initial base discovery does not fetch threads.
+- PR autocmds load at startup, while base-change refresh requires cached or in-flight review state so initial base discovery does not fetch threads.

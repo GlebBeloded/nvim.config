@@ -93,6 +93,10 @@ Threads SHALL be cached per root under the pull request's `headRefOid`; `get(roo
 - **WHEN** after a `pr482` refresh the fake `gh` reports a new `headRefOid` and `require("gleb.git.base").refresh(root, { force = true })` runs
 - **THEN** one more `query ReviewThreads` line is logged and `get(root).head` is the new oid
 
+#### Scenario: A new PR head during forced refresh fetches again
+- **WHEN** `pr.refresh` runs with `FAKE_GH_SLEEP`, then the fake `gh` reports a new `headRefOid` and `require("gleb.git.base").refresh(root, { force = true })` runs before the fetch completes
+- **THEN** the stale result is dropped, one more `query ReviewThreads` line is logged, `get(root).head` is the new oid, and `PR #482: 3 open threads` is notified at INFO
+
 #### Scenario: PR thread updates fire an event
 - **WHEN** a `User GlebPrThreads` autocmd is registered and a `pr482` refresh completes
 - **THEN** it ran once with `data.root` equal to the normalized fixture root

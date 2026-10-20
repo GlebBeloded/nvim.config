@@ -331,6 +331,36 @@ T["pr: A new PR head fetches the threads again"] = function()
 	end, vim.fn.readfile(log)), 2)
 end
 
+T["pr: A new PR head during forced refresh fetches again"] = function()
+	local root, log, gh_dir = billing_branch(true)
+	local notifications = H.record_notify(child)
+	local pr_file = vim.fs.joinpath(gh_dir, "pr.json")
+	local response = vim.json.decode(table.concat(vim.fn.readfile(pr_file), "\n"))
+	local new_head = string.rep("a", 40)
+
+	child.lua([[vim.env.FAKE_GH_SLEEP = "1"]])
+	force_refresh(root)
+	eq(child.wait([[#vim.fn.readfile(vim.env.FAKE_GH_LOG) == 1]], 3000), true)
+	child.lua([[vim.env.FAKE_GH_SLEEP = nil]])
+	response.headRefOid = new_head
+	vim.fn.writefile({ vim.json.encode(response) }, pr_file)
+	child.lua(
+		[[ExpectedRoot, ExpectedHead = ...
+		require("gleb.git.base").refresh(ExpectedRoot, { force = true })]],
+		{ root, new_head }
+	)
+
+	eq(
+		child.wait(
+			[[require("gleb.pr").get(ExpectedRoot) ~= nil and require("gleb.pr").get(ExpectedRoot).head == ExpectedHead]],
+			3000
+		),
+		true
+	)
+	eq(graphql_calls(log), 2)
+	eq(notifications(), { { msg = "PR #482: 3 open threads", level = vim.log.levels.INFO } })
+end
+
 T["pr: PR thread updates fire an event"] = function()
 	local root = billing_branch(true)
 	child.lua(

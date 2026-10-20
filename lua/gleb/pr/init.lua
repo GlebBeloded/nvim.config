@@ -146,6 +146,9 @@ function M.refresh(root, opts)
 			reported[failure.kind] = true
 			M.state.reported_failures[root] = reported
 		end
+		if not current_result and opts.force then
+			queue_refresh(root, opts)
+		end
 		finish_refresh(root)
 	end)
 end
@@ -310,7 +313,7 @@ local function base_changed(args)
 	end
 	M.state.generations[root] = (M.state.generations[root] or 0) + 1
 	M.state.by_root[root] = nil
-	if review and info and info.pr then
+	if (review or M.state.in_flight[root]) and info and info.pr then
 		M.refresh(root)
 	end
 end
