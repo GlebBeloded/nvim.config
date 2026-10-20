@@ -24,9 +24,9 @@ Scenarios: `pr: Thread line shifts below inserted lines`, `pr: Thread line insid
 
 ## 5. Working-file anchors
 Scenarios: `pr: PR threads map onto the working file`, `pr: PR threads follow unsaved edits`, `pr: A PR thread on a removed line is unmapped`
-- [ ] 5.1 Write the scenarios in `tests/integration/pr/test_threads.lua`, driving `require("gleb.pr").locate(0)` on the populated `billing-branch` fixture buffer, and see them fail
-- [ ] 5.2 Implement `anchor` and `locate` with buffer lines, `git show`, and the bounded `oid:path` blob cache
-- [ ] 5.3 Run `make test FILE=tests/integration/pr/test_threads.lua CASE="PR threads map onto the working file"`, `make test FILE=tests/integration/pr/test_threads.lua CASE="PR threads follow unsaved edits"`, and `make test FILE=tests/integration/pr/test_threads.lua CASE="A PR thread on a removed line is unmapped"` and see them pass
+- [x] 5.1 Write the scenarios in `tests/integration/pr/test_threads.lua`, driving `require("gleb.pr").locate(0)` on the populated `billing-branch` fixture buffer, and see them fail
+- [x] 5.2 Implement `anchor` and `locate` with buffer lines, `git show`, and the bounded `oid:path` blob cache
+- [x] 5.3 Run `make test FILE=tests/integration/pr/test_threads.lua CASE="PR threads map onto the working file"`, `make test FILE=tests/integration/pr/test_threads.lua CASE="PR threads follow unsaved edits"`, and `make test FILE=tests/integration/pr/test_threads.lua CASE="A PR thread on a removed line is unmapped"` and see them pass
 
 ## 6. Exceptional anchors
 Scenarios: `pr: An outdated PR thread anchors at its original commit`, `pr: A PR thread at a missing commit is unmapped`, `pr: Left-side and file PR threads are unmapped`

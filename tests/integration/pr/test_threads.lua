@@ -32,6 +32,37 @@ local function billing_branch(with_pr)
 	return root, log
 end
 
+---@param root string
+---@return nil
+local function refresh_and_open_invoice(root)
+	child.lua(
+		[[PrReady = false
+		vim.api.nvim_create_autocmd("User", { pattern = "GlebPrThreads", once = true, callback = function()
+			PrReady = true
+		end })
+		require("gleb.pr").refresh(...)]],
+		{ root }
+	)
+	eq(child.wait("PrReady == true", 3000), true)
+	child.cmd("edit " .. vim.fn.fnameescape(vim.fs.joinpath(root, "internal/billing/invoice.go")))
+end
+
+---@return table<string, table>
+local function locate_invoice()
+	child.lua([[LocateDone = false
+		Locations = require("gleb.pr").locate(0, function(locations)
+			Locations = locations
+			LocateDone = true
+		end)]])
+	eq(child.wait("LocateDone == true", 3000), true)
+	local locations = child.lua_get("Locations")
+	local by_id = {}
+	for _, location in ipairs(locations) do
+		by_id[location.thread.id] = location
+	end
+	return by_id
+end
+
 T["pr: PR threads are fetched with gh api graphql"] = function()
 	local root, log = billing_branch(true)
 	child.lua(
@@ -71,6 +102,41 @@ T["pr: No pull request runs no GraphQL"] = function()
 		end, calls),
 		{}
 	)
+end
+
+T["pr: PR threads map onto the working file"] = function()
+	local root = billing_branch(true)
+	refresh_and_open_invoice(root)
+
+	local locations = locate_invoice()
+	eq(locations.PRRT_t1.line, 22)
+	eq(locations.PRRT_t2.line, 13)
+	eq(locations.PRRT_t4.line, 11)
+	eq(locations.PRRT_t1.reason, nil)
+	eq(locations.PRRT_t2.reason, nil)
+	eq(locations.PRRT_t4.reason, nil)
+	eq(locations.PRRT_t3, nil)
+end
+
+T["pr: PR threads follow unsaved edits"] = function()
+	local root = billing_branch(true)
+	refresh_and_open_invoice(root)
+	child.api.nvim_buf_set_lines(0, 0, 0, false, { "// first", "// second" })
+
+	local locations = locate_invoice()
+	eq(locations.PRRT_t1.line, 24)
+	eq(locations.PRRT_t2.line, 15)
+end
+
+T["pr: A PR thread on a removed line is unmapped"] = function()
+	local root = billing_branch(true)
+	refresh_and_open_invoice(root)
+	child.api.nvim_buf_set_lines(0, 21, 22, false, {})
+
+	local locations = locate_invoice()
+	eq(locations.PRRT_t1.line, nil)
+	eq(locations.PRRT_t1.reason, "removed")
+	eq(locations.PRRT_t2.line, 13)
 end
 
 return T

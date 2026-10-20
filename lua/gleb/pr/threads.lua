@@ -97,6 +97,16 @@ function M.open_count(threads)
 	return count
 end
 
+---@param thread gleb.pr.Thread
+---@param head string
+---@return string? oid
+---@return integer? line
+function M.anchor(thread, head)
+	if thread.line then
+		return head, thread.line
+	end
+end
+
 ---@param from string[]
 ---@param to string[]
 ---@param line integer
