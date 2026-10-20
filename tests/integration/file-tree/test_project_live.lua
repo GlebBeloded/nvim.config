@@ -29,6 +29,29 @@ local function record_fs_poll_calls()
 	]])
 end
 
+---@param relative string
+local function record_fallback_scans(relative)
+	child.lua(
+		[[
+		local fs = require("gleb.file_tree.fs")
+		local tree_root, target = ...
+		_G.fallback_root = fs.normalize(tree_root)
+		target = fs.normalize(target)
+		_G.fallback_scans = 0
+		local scan_stamp_async = fs.scan_stamp_async
+		fs.scan_stamp_async = function(path, callback)
+			scan_stamp_async(path, function(stamp)
+				if path == target then
+					_G.fallback_scans = _G.fallback_scans + 1
+				end
+				callback(stamp)
+			end)
+		end
+	]],
+		{ root, vim.fs.joinpath(root, relative) }
+	)
+end
+
 local function expect_no_fs_poll_on_macos()
 	local result = child.lua_get([[{ vim.uv.os_uname().sysname, _G.fs_poll_calls }]])
 	if result[1] == "Darwin" then
@@ -411,7 +434,31 @@ end
 
 T["file-tree: Project tree shows files created outside Neovim"] = function()
 	record_fs_poll_calls()
+	record_fallback_scans("internal/billing")
 	open_billing_folder()
+	assert(
+		child.wait(
+			[[
+			_G.fallback_scans >= 2
+				and not require("gleb.file_tree.watch").state.roots[_G.fallback_root].fallback_scanning
+		]],
+			math.ceil(3000 * H.load_factor())
+		),
+		"two fallback scans did not complete"
+	)
+	eq(child.lua_get([[require("gleb.file_tree.watch").state.roots[_G.fallback_root].fallback_timer ~= nil]]), true)
+
+	local canary = H.system(child, { "touch", vim.fs.joinpath(root, "internal/billing/invoice.go") }, root)
+	eq(canary.code, 0)
+	assert(
+		child.wait(
+			[[
+			require("gleb.file_tree.watch").state.roots[_G.fallback_root].event_confirmed
+		]],
+			math.ceil(1000 * H.load_factor())
+		),
+		"watch event stream was not confirmed"
+	)
 
 	local result = H.system(child, { "touch", vim.fs.joinpath(root, "internal/billing/fee.go") }, root)
 	eq(result.code, 0)
