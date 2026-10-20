@@ -187,6 +187,28 @@ local function show_file(win, path)
 	end)
 end
 
+---@param thread gleb.pr.Thread
+---@param win integer
+---@param focus boolean
+---@return nil
+local function show_hunk(thread, win, focus)
+	local name = "gleb-pr://hunk/" .. thread.id
+	local buf = vim.fn.bufnr(name)
+	if buf == -1 then
+		buf = vim.api.nvim_create_buf(false, true)
+		vim.api.nvim_buf_set_name(buf, name)
+		vim.bo[buf].buftype = "nofile"
+		vim.bo[buf].bufhidden = "wipe"
+		vim.bo[buf].filetype = "diff"
+		vim.api.nvim_buf_set_lines(buf, 0, -1, false, vim.split(thread.comments[1].diff_hunk, "\n", { plain = true }))
+		vim.bo[buf].modifiable = false
+	end
+	vim.api.nvim_win_set_buf(win, buf)
+	if focus then
+		vim.api.nvim_set_current_win(win)
+	end
+end
+
 ---@param view ChangesView
 ---@param row ChangesRow
 ---@param focus boolean
@@ -203,27 +225,7 @@ function M.preview(view, row, focus)
 		return
 	end
 	if thread.side == "LEFT" or thread.subject == "file" then
-		local name = "gleb-pr://hunk/" .. thread.id
-		local buf = vim.fn.bufnr(name)
-		if buf == -1 then
-			buf = vim.api.nvim_create_buf(false, true)
-			vim.api.nvim_buf_set_name(buf, name)
-			vim.bo[buf].buftype = "nofile"
-			vim.bo[buf].bufhidden = "wipe"
-			vim.bo[buf].filetype = "diff"
-			vim.api.nvim_buf_set_lines(
-				buf,
-				0,
-				-1,
-				false,
-				vim.split(thread.comments[1].diff_hunk, "\n", { plain = true })
-			)
-			vim.bo[buf].modifiable = false
-		end
-		vim.api.nvim_win_set_buf(editor, buf)
-		if focus then
-			vim.api.nvim_set_current_win(editor)
-		end
+		show_hunk(thread, editor, focus)
 		return
 	end
 	show_file(editor, vim.fs.joinpath(view.root, thread.path))
@@ -235,7 +237,11 @@ function M.preview(view, row, focus)
 		local location = vim.iter(locations):find(function(item)
 			return item.thread.id == thread.id
 		end)
-		if location and location.line then
+		if location then
+			if not location.line then
+				show_hunk(thread, editor, focus)
+				return
+			end
 			vim.api.nvim_win_set_cursor(editor, { location.line, 0 })
 		end
 		if focus then

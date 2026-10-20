@@ -24,8 +24,9 @@ local function run_action(id)
 end
 
 ---@param with_pr boolean
+---@param mutate? fun(files: table<string, string>)
 ---@return string root
-local function open_billing_branch(with_pr)
+local function open_billing_branch(with_pr, mutate)
 	child.wait_very_lazy()
 	local root, manifest = F.copy("billing-branch", vim.fn.tempname() .. "/billing-branch")
 	root = vim.fs.normalize(vim.fn.resolve(root))
@@ -33,6 +34,9 @@ local function open_billing_branch(with_pr)
 	local files = pr482(manifest)
 	if not with_pr then
 		files["pr.json"] = nil
+	end
+	if mutate then
+		mutate(files)
 	end
 	H.write_files(gh_dir, files)
 	child.lua([[vim.env.FAKE_GH_DIR = ...]], { gh_dir })
@@ -274,19 +278,38 @@ T["pr: Comments tab folds a file"] = function()
 end
 
 T["pr: Comments tab shows a fetch failure"] = function()
-	local root = open_billing_branch(true)
-	child.lua(
-		[[
-		local root = ...
-		require("gleb.pr").state.by_root[root] = nil
-		require("gleb.pr").state.failures = require("gleb.pr").state.failures or {}
-		require("gleb.pr").state.failures[root] = "PR comments unavailable: error connecting to pgw.dev"
-	]],
-		{ root }
-	)
+	local root = open_billing_branch(true, function(files)
+		files["ReviewThreads.json.code"] = "1"
+		files["ReviewThreads.json.stderr"] = "error connecting to pgw.dev"
+	end)
 	run_action("changes.show_comments")
 	wait_for_tab("comments", false)
+	assert(
+		child.wait(
+			([[(function(root)
+				local pr = require("gleb.pr")
+				return pr.state.in_flight[root] == nil
+					and pr.state.failures[root] == "PR comments unavailable: error connecting to pgw.dev"
+			end)(%q)]]):format(root),
+			async_timeout()
+		),
+		"failed thread fetch did not finish"
+	)
 	eq(panel_lines()[2], " PR comments unavailable: error connecting to pgw.dev")
+	run_action("changes.show_local")
+	assert(
+		child.wait(
+			[[require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()].active_tab == "local"]]
+		)
+	)
+	eq(table.concat(panel_lines(), "\n"):find("invoice.go", 1, true) ~= nil, true)
+	run_action("changes.show_branch")
+	assert(
+		child.wait(
+			[[require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()].active_tab == "branch"]]
+		)
+	)
+	eq(table.concat(panel_lines(), "\n"):find("invoice.go", 1, true) ~= nil, true)
 end
 
 T["pr: Selecting a thread shows its line"] = function()
@@ -338,19 +361,11 @@ end
 
 T["pr: Selecting an unmapped thread shows its diff hunk"] = function()
 	open_comments()
-	child.lua([[
+	child.lua([[(function()
 		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
-		local review = require("gleb.pr").get(panel.root)
-		table.insert(review.threads, 1, {
-			id = "PRRT_left", path = "internal/billing/invoice.go", side = "LEFT", original_line = 9,
-			resolved = false, outdated = false, subject = "line", comments = {{
-				id = "left", author = "reviewer", body = "Removed line", created_at = "2026-01-01T00:00:00Z",
-				diff_hunk = "@@ -9,1 +9,0 @@\n-removed line", url = "https://example.test/left",
-			}}, can_reply = true, can_resolve = true, can_unresolve = false,
-		})
-		vim.api.nvim_exec_autocmds("User", { pattern = "GlebPrThreads", data = { root = panel.root } })
-	]])
-	select_row(":9")
+		vim.api.nvim_buf_set_lines(vim.api.nvim_win_get_buf(panel.editor_win), 21, 22, false, {})
+	end)()]])
+	select_row(":22")
 	assert(
 		child.wait(
 			[[(function()
@@ -366,7 +381,34 @@ T["pr: Selecting an unmapped thread shows its diff hunk"] = function()
 		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
 		return vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(panel.editor_win), 0, -1, false)
 	end)()]])
-	eq(lines, { "@@ -9,1 +9,0 @@", "-removed line" })
+	eq(lines[1]:find("@@", 1, true) ~= nil, true)
+	eq(table.concat(lines, "\n"):find("+\tif i.Tax == nil {", 1, true) ~= nil, true)
+end
+
+T["pr: Enter on an unmapped thread shows its diff hunk"] = function()
+	open_comments()
+	child.lua([[(function()
+		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		vim.api.nvim_buf_set_lines(vim.api.nvim_win_get_buf(panel.editor_win), 21, 22, false, {})
+	end)()]])
+	select_row(":22")
+	child.type_keys("<CR>")
+	assert(
+		child.wait(
+			[[(function()
+				local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+				return vim.api.nvim_get_current_win() == panel.editor_win
+					and vim.bo[vim.api.nvim_get_current_buf()].filetype == "diff"
+					and not vim.bo[vim.api.nvim_get_current_buf()].modifiable
+			end)()]],
+			async_timeout()
+		),
+		"Enter did not focus the unmapped thread's hunk"
+	)
+	eq(
+		child.lua_get([[require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()].active_tab]]),
+		"comments"
+	)
 end
 
 return T

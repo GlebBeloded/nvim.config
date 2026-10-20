@@ -110,16 +110,36 @@ T["pr: Outdated threads are hidden in code"] = function()
 end
 
 T["pr: Peeks follow the threads"] = function()
-	child.lua(
-		[[
-		local review = require("gleb.pr").get((...))
-		review.threads = vim.tbl_filter(function(thread) return thread.id ~= "PRRT_t2" end, review.threads)
-		vim.api.nvim_exec_autocmds("User", { pattern = "GlebPrThreads", data = { root = review.root } })
-	]],
-		{ child.lua_get([[require("gleb.pr").get(vim.fn.getcwd()).root]]) }
-	)
+	local gh_dir = child.lua_get([[vim.env.FAKE_GH_DIR]])
+	local response = vim.json.decode(table.concat(vim.fn.readfile(vim.fs.joinpath(gh_dir, "ReviewThreads.json")), "\n"))
+	local nodes = response.data.repository.pullRequest.reviewThreads.nodes
+	response.data.repository.pullRequest.reviewThreads.nodes = vim.tbl_filter(function(thread)
+		return thread.id ~= "PRRT_t2"
+	end, nodes)
+	vim.fn.writefile({ vim.json.encode(response) }, vim.fs.joinpath(gh_dir, "ReviewThreads.json"))
+	child.lua([[ThreadsDone = false
+		vim.api.nvim_create_autocmd("User", { pattern = "GlebPrThreads", once = true, callback = function()
+			ThreadsDone = true
+		end })
+		require("gleb.pr").refresh(vim.fn.getcwd())]])
+	assert(child.wait("ThreadsDone == true", math.floor(5000 * H.load_factor())), "PR refresh did not finish")
 	eq(#virt_lines(13), 0)
 	eq(#virt_lines(22), 1)
+end
+
+T["pr: Peek cut follows window width"] = function()
+	child.cmd("vsplit")
+	local narrow = virt_text(22)[1]
+	child.lua([[vim.api.nvim_win_set_cursor(0, { 22, 0 })]])
+	local narrow_border = virt_text(22)[1]
+	child.cmd("only")
+	assert(child.wait([[vim.api.nvim_win_get_width(0) > 60]]), "editor did not widen")
+	local wide_border = virt_text(22)[1]
+	child.lua([[vim.api.nvim_win_set_cursor(0, { 23, 0 })]])
+	local wide = virt_text(22)[1]
+	eq(vim.fn.strdisplaywidth(wide) > vim.fn.strdisplaywidth(narrow), true)
+	eq(vim.fn.strdisplaywidth(wide_border) > vim.fn.strdisplaywidth(narrow_border), true)
+	eq(wide, "╰─ 󰆈 maria.k Should a nil rate mean no tax at all? +1 reply")
 end
 
 ---@param id string
@@ -295,6 +315,19 @@ T["pr: Local diff peeks once"] = function()
 		end, left),
 		{ { "" } }
 	)
+end
+
+T["pr: Diff peek cut follows pane width"] = function()
+	show_invoice_diff("changes.show_branch", "branch")
+	local narrow = vim.tbl_filter(function(mark)
+		return mark.line == 22 and not mark.above
+	end, diff_virt_lines("right"))[1].text[1]
+	child.o.columns = 160
+	child.cmd("doautocmd VimResized")
+	local wide = vim.tbl_filter(function(mark)
+		return mark.line == 22 and not mark.above
+	end, diff_virt_lines("right"))[1].text[1]
+	eq(vim.fn.strdisplaywidth(wide) > vim.fn.strdisplaywidth(narrow), true)
 end
 
 return T

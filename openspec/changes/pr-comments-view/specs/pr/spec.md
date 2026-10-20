@@ -60,6 +60,10 @@ Moving the panel cursor onto a thread row SHALL, after the panel's 50 ms debounc
 - **WHEN** the panel cursor is on the `:22` row of the Comments tab and `<CR>` is pressed in normal mode
 - **THEN** the current window edits `internal/billing/invoice.go` with its cursor on line 22, and the `gleb-changes` window is still open on the Comments tab
 
+#### Scenario: Enter on an unmapped thread shows its diff hunk
+- **WHEN** line 22 is removed from the edited `invoice.go`, the panel cursor is on its `:22` thread and `<CR>` is pressed in normal mode
+- **THEN** the current window is a read-only `diff` buffer containing that thread's `diffHunk`, and the panel stays open on Comments
+
 ### Requirement: Thread peeks
 For each mapped, non-outdated thread of a file, an editor window SHALL draw `gleb_pr_peek` virt_lines under its line, from the line's indent. Open: `╰─ <icon> <author> <first line>` plus ` +1 reply` or ` +<n> replies`, expanded to the whole thread in a box while the window is current with its cursor on the line, or the thread is selected in the current Comments tab. Resolved: one `╰─ <check> Resolved · <author>: <first line>` line. Peeks SHALL follow `GlebPrThreads`.
 
@@ -94,6 +98,10 @@ A collapsed or resolved peek and a Comments tab row SHALL show only the first li
 - **WHEN** `require("gleb.pr.peek").truncate(text, width)` runs for `Should a nil rate mean no tax at all?\nA missing config would silently drop tax.` at 34 and 40, `Rate or *Rate here?` at 16, `Supercalifragilistic` at 8, and any text at 0
 - **THEN** it returns `Should a nil rate mean no tax at…`, `Should a nil rate mean no tax at all?`, `Rate or *Rate…`, `Superca…` and an empty string
 
+#### Scenario: Peek cut follows window width
+- **WHEN** an editor or diff window showing a peek is narrowed and widened
+- **THEN** its collapsed text and expanded box are redrawn to fit the new text width
+
 #### Scenario: Resolved thread matches the approved render
 - **WHEN** the approved peek screen is shown
 - **THEN** its editor rows of lines 11 and 12 match the approved render "Proposed — resolved thread, smart cut (r3_truncate)" of the pr-comments-view design.md, text and colour mask
@@ -108,6 +116,10 @@ A diff view whose right side is a file of a root with a pull request SHALL draw 
 #### Scenario: Local diff peeks once
 - **WHEN** the Local tab shows the diff of `invoice.go`, whose right side is the file buffer
 - **THEN** the right window shows the `PRRT_t1` peek once and the left window holds one blank virt_line at its row
+
+#### Scenario: Diff peek cut follows pane width
+- **WHEN** the Branch diff of `invoice.go` is widened across a `VimResized` event
+- **THEN** its right-side peek is redrawn to use the wider pane's text width
 
 ### Requirement: Thread navigation
 `pr.next_thread` and `pr.prev_thread` ("Next Review Thread", "Previous Review Thread", `Git | Pull Request`, no key) SHALL move the cursor of the current editor or diff window to the next or previous line with an open, mapped thread in its buffer; past the last, an editor window SHALL edit the next file in Comments tab order at its first thread. With none left they SHALL notify `No next thread` or `No previous thread` at INFO.

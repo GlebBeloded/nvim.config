@@ -370,6 +370,11 @@ local function threads_changed()
 	redecorate_diffs(true)
 end
 
+local function layout_changed()
+	redraw_visible()
+	redecorate_diffs(true)
+end
+
 require("gleb.diff.view").add_provider(diff_peeks)
 
 local group = vim.api.nvim_create_augroup("gleb_pr_peek", { clear = true })
@@ -378,6 +383,7 @@ vim.api.nvim_create_autocmd(
 	{ "BufWinEnter", "BufWritePost", "WinClosed" },
 	{ group = group, callback = redraw_visible }
 )
+vim.api.nvim_create_autocmd({ "WinResized", "VimResized" }, { group = group, callback = layout_changed })
 vim.api.nvim_create_autocmd("User", { group = group, pattern = "GlebPrThreads", callback = threads_changed })
 
 return M
