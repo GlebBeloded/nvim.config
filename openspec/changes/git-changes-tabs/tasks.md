@@ -121,7 +121,7 @@ Scenarios: `git: Toggle reopens the last tab`, `git: Review starts the cycle aga
 
 Scenarios: `git: Changes panel j shows the next file in the diff view`, `git: Changes panel debounces rapid moves`, `git: Changes panel shows an untracked file as added`, `git: Changes panel shows a deleted file`, `git: Changes panel keeps the diff on a directory row`
 
-- [ ] 16.1 Run each named scenario in tests/integration/git/test_changes_diff.lua and see it pass before the shared diff-pipeline changes; after task 11, run each again and see it pass
+- [x] 16.1 Run each named scenario in tests/integration/git/test_changes_diff.lua and see it pass before the shared diff-pipeline changes; after task 11, run each again and see it pass
 
 ## 17. Existing Local diff generation behaviour
 
