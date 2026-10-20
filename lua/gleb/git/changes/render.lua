@@ -10,6 +10,7 @@ local FOLDER_OPEN = ""
 local FILE = ""
 local ELLIPSIS = "…"
 local RIGHT_MARGIN = 1
+local PR_ICON = ""
 
 ---@type table<string, string>
 local STATUS_GROUPS = {
@@ -117,12 +118,14 @@ local function file_segments(row, width)
 			group = row.fold_id and "FileTreeExpander" or nil,
 		},
 		{ text = " " },
-		{ text = row.checkbox or "", group = "ChangesCheckbox" },
-		{ text = " " },
-		{ text = icon, group = icon_group },
-		{ text = " " },
 	}
-	local name_group = STATUS_GROUPS[row.status] or "FileTreeFileName"
+	if row.checkbox then
+		segments[#segments + 1] = { text = row.checkbox, group = "ChangesCheckbox" }
+		segments[#segments + 1] = { text = " " }
+	end
+	segments[#segments + 1] = { text = icon, group = icon_group }
+	segments[#segments + 1] = { text = " " }
+	local name_group = row.committed and "ChangesCommittedFile" or STATUS_GROUPS[row.status] or "FileTreeFileName"
 	if row.added == nil or row.removed == nil then
 		segments[#segments + 1] = { text = row.label, group = name_group }
 		return segments
@@ -147,9 +150,35 @@ local function file_segments(row, width)
 end
 
 ---@param row ChangesRow
+---@return ChangesRenderSegment[]
+local function branch_fixed_segments(row)
+	if row.kind == "blank" then
+		return {}
+	end
+	if row.kind == "summary" then
+		return { { text = " " }, { text = row.label, group = "ChangesCount" } }
+	end
+	if not row.pr then
+		return { { text = " " }, { text = row.label, group = "ChangesCount" } }
+	end
+	local number, names = row.label:match("^(#%d+) (.*)$")
+	return {
+		{ text = " " },
+		{
+			text = PR_ICON .. " " .. assert(number, "branch header has no pull request number"),
+			group = "ChangesBranchHeader",
+		},
+		{ text = " " .. assert(names, "branch header has no names"), group = "ChangesCount" },
+	}
+end
+
+---@param row ChangesRow
 ---@param width integer
 ---@return ChangesRenderSegment[]
 local function segments_for(row, width)
+	if row.kind == "header" or row.kind == "summary" or row.kind == "blank" then
+		return branch_fixed_segments(row)
+	end
 	if row.kind == "root" then
 		return root_segments(row)
 	end

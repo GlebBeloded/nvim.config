@@ -57,9 +57,9 @@ Scenarios: `git: Changes panel review shows the current file's diff`, `git: Chan
 
 Scenarios: `git: Branch tab lists the branch files`, `git: Branch tab header without a pull request`, `git: Branch tab colours committed files`
 
-- [ ] 8.1 Write the scenarios in tests/integration/git/test_changes_tabs.lua against the real Branch tab and populated fixture and run `make test FILE=tests/integration/git/test_changes_tabs.lua` to see them fail
-- [ ] 8.2 Finish lua/gleb/git/changes/branch.lua with async files and generation guards, shared-tree nodes with the ids of design.md Decision 4, and render the header, summary, purple names and stats in lua/gleb/git/changes/render.lua
-- [ ] 8.3 Run `make test FILE=tests/integration/git/test_changes_tabs.lua` and see the scenarios pass
+- [x] 8.1 Write the scenarios in tests/integration/git/test_changes_tabs.lua against the real Branch tab and populated fixture and run `make test FILE=tests/integration/git/test_changes_tabs.lua` to see them fail
+- [x] 8.2 Finish lua/gleb/git/changes/branch.lua with async files and generation guards, shared-tree nodes with the ids of design.md Decision 4, and render the header, summary, purple names and stats in lua/gleb/git/changes/render.lua
+- [x] 8.3 Run `make test FILE=tests/integration/git/test_changes_tabs.lua` and see the scenarios pass
 
 ## 9. Branch commit view
 
@@ -197,3 +197,5 @@ Scenarios: `git: Local tab matches the approved render`, `git: Branch tab matche
 - `parse_name_status` returns normalized status names and keeps a rename's source in `orig`, matching the existing changes-row vocabulary for later tree and diff consumers.
 - `parse_commits` keeps every parent in an ordered array so later commit diffs can use the first parent without losing merge ancestry.
 - The strip counts Branch files with a name-only merge-base diff, so drawing the pill does not load the later Branch row model.
+- Branch loading uses `git rev-list --count` alongside the two file commands, because the files view needs summary wording without loading commit details.
+- Branch directory nodes use `branch:directory:<path>` IDs, keeping their fold state distinct from the specified `branch:file:<path>` leaf IDs.

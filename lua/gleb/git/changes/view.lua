@@ -4,6 +4,7 @@ local M = {}
 
 local debounce = require("gleb.util.debounce")
 local workspace = require("gleb.workspace")
+local branch = require("gleb.git.changes.branch")
 local git = require("gleb.git.changes.git")
 local model = require("gleb.git.changes.model")
 local render = require("gleb.git.changes.render")
@@ -30,6 +31,7 @@ local augroup = vim.api.nvim_create_augroup("gleb_changes", { clear = true })
 ---@field editor_win integer
 ---@field rows ChangesRow[]
 ---@field all_rows ChangesRow[]
+---@field local_rows ChangesRow[]
 ---@field tree gleb.ui.tree.Model
 ---@field timer uv.uv_timer_t
 ---@field diff_timer uv.uv_timer_t
@@ -47,6 +49,9 @@ local augroup = vim.api.nvim_create_augroup("gleb_changes", { clear = true })
 ---@field branch_count integer
 ---@field branch_available boolean
 ---@field branch_request integer
+---@field branch_generation integer
+---@field branch_info? gleb.git.base.Info
+---@field branch_nodes? gleb.ui.tree.Node[]
 ---@field local_ready boolean
 ---@field tabs_ready boolean
 ---@field on_ready? fun(view: ChangesView)
@@ -118,12 +123,12 @@ local function finish_ready(view)
 end
 
 ---@param view ChangesView
----@param merge_base string
+---@param info gleb.git.base.Info
 ---@return nil
-local function load_branch_count(view, merge_base)
+local function load_branch_count(view, info)
 	view.branch_request = view.branch_request + 1
 	local request = view.branch_request
-	vim.system({ "git", "diff", "--name-only", "-z", "-M", merge_base, "HEAD" }, {
+	vim.system({ "git", "diff", "--name-only", "-z", "-M", info.merge_base, "HEAD" }, {
 		cwd = view.root,
 		text = true,
 	}, function(result)
@@ -136,6 +141,7 @@ local function load_branch_count(view, merge_base)
 					and #vim.split(result.stdout or "", "\0", { plain = true, trimempty = true })
 				or 0
 			view.branch_available = true
+			view.branch_info = info
 			draw_tabs(view)
 			view.tabs_ready = true
 			finish_ready(view)
@@ -155,7 +161,7 @@ local function resolve_tabs(view)
 		view.branch_count = 0
 		draw_tabs(view)
 		if info then
-			load_branch_count(view, info.merge_base)
+			load_branch_count(view, info)
 		else
 			view.tabs_ready = true
 			finish_ready(view)
@@ -189,7 +195,7 @@ local function row_key(row)
 	if not row then
 		return nil
 	end
-	return row.root .. ":" .. (row.path or row.fold_id or row.label)
+	return row.id or row.root .. ":" .. (row.path or row.fold_id or row.label)
 end
 
 ---@param rows ChangesRow[]
@@ -262,6 +268,7 @@ local function refresh_now(view)
 		end
 		local current = view.rows[vim.api.nvim_win_get_cursor(view.win)[1]]
 		view.all_rows = model.rows(result.stdout or "", settings.load().nesting.rules, numstat_z)
+		view.local_rows = view.all_rows
 		view.local_count = vim.iter(view.all_rows)
 			:filter(function(row)
 				return row.kind == "file"
@@ -269,8 +276,10 @@ local function refresh_now(view)
 			:fold(0, function(count)
 				return count + 1
 			end)
-		tree_model.rebuild(view.tree, tree_nodes(view.all_rows))
-		draw(view, row_key(current))
+		if view.active_tab == "local" then
+			tree_model.rebuild(view.tree, tree_nodes(view.local_rows))
+			draw(view, row_key(current))
+		end
 		draw_tabs(view)
 		if view.initial_selected_path then
 			select_file(view, view.initial_selected_path)
@@ -616,6 +625,7 @@ function M.open(root, selected_path, review, on_ready)
 		editor_win = editor_win,
 		rows = {},
 		all_rows = {},
+		local_rows = {},
 		tree = tree_model.new({}),
 		timer = assert(vim.uv.new_timer()),
 		diff_timer = assert(vim.uv.new_timer()),
@@ -630,6 +640,7 @@ function M.open(root, selected_path, review, on_ready)
 		branch_count = 0,
 		branch_available = false,
 		branch_request = 0,
+		branch_generation = 0,
 		local_ready = false,
 		tabs_ready = false,
 		on_ready = on_ready,
@@ -672,6 +683,26 @@ end
 function M.activate_tab(panel, id)
 	panel.active_tab = id
 	draw_tabs(panel)
+	if id == "local" then
+		tree_model.rebuild(panel.tree, tree_nodes(panel.local_rows))
+		draw(panel)
+	elseif panel.branch_nodes then
+		tree_model.rebuild(panel.tree, panel.branch_nodes)
+		draw(panel)
+	elseif panel.branch_info then
+		panel.branch_generation = panel.branch_generation + 1
+		local generation = panel.branch_generation
+		local info = assert(panel.branch_info, "Branch tab has no base")
+		branch.load_files(panel.root, info, generation, function(candidate)
+			return require("gleb.git.changes").state.by_tab[panel.tab] == panel and panel.branch_generation == candidate
+		end, function(nodes)
+			panel.branch_nodes = nodes
+			if panel.active_tab == "branch" then
+				tree_model.rebuild(panel.tree, nodes)
+				draw(panel)
+			end
+		end)
+	end
 	M.review(panel)
 end
 

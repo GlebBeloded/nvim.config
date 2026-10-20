@@ -23,6 +23,25 @@ local function review_changes()
 	]])
 end
 
+---@param root string
+local function report_pull_request(root)
+	local output = vim.fn.tempname()
+	local base = vim.trim(H.git(root, { "rev-parse", "origin/main" }))
+	local head = vim.trim(H.git(root, { "rev-parse", "HEAD" }))
+	vim.fn.writefile({
+		vim.json.encode({
+			number = 482,
+			url = "https://example.test/pull/482",
+			state = "OPEN",
+			baseRefName = "main",
+			baseRefOid = base,
+			headRefName = "feat/tax",
+			headRefOid = head,
+		}),
+	}, output)
+	child.lua([[vim.env.FAKE_GH_STDOUT = ...; vim.env.FAKE_GH_CODE = "0"]], { output })
+end
+
 ---@param active string
 ---@param require_diff? boolean
 local function wait_for_tab(active, require_diff)
@@ -92,6 +111,60 @@ local function winbar()
 			}
 		end)()
 	]])
+end
+
+---@return table
+local function branch_panel()
+	assert(
+		child.wait(
+			[[(function()
+				local view = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+				return view and view.active_tab == "branch" and view.rows[8] ~= nil
+			end)()]],
+			3000
+		),
+		"Branch rows did not load"
+	)
+	return child.lua_get([[(function()
+		local view = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		local lines = vim.api.nvim_buf_get_lines(view.buf, 0, -1, false)
+		local marks = {}
+		for _, mark in ipairs(vim.api.nvim_buf_get_extmarks(
+			view.buf,
+			require("gleb.git.changes.render").namespace,
+			0,
+			-1,
+			{ details = true }
+		)) do
+			local details = mark[4]
+			marks[#marks + 1] = {
+				row = mark[2] + 1,
+				group = details.hl_group,
+				text = lines[mark[2] + 1]:sub(mark[3] + 1, details.end_col),
+			}
+		end
+		local rows = vim.iter(view.rows):map(function(row)
+			return {
+				kind = row.kind,
+				label = row.label,
+				count = row.count,
+				added = row.added,
+				removed = row.removed,
+			}
+		end):totable()
+		return { lines = lines, marks = marks, rows = rows }
+	end)()]])
+end
+
+---@param items table
+---@param key string
+---@return table
+local function values_for(items, key)
+	return vim.iter(items)
+		:map(function(item)
+			return item[key]
+		end)
+		:totable()
 end
 
 T["git: Changes tabs show Local and Branch on a feature branch"] = function()
@@ -211,6 +284,91 @@ T["git: Review from the diff window advances the tab"] = function()
 	local after = panel_state()
 	eq(after.current, after.panel)
 	eq(after.windows, before)
+end
+
+T["git: Branch tab lists the branch files"] = function()
+	local root = F.copy("billing-branch", vim.fn.tempname() .. "/billing-branch")
+	report_pull_request(root)
+	local invoice = vim.fs.joinpath(root, "internal/billing/invoice.go")
+	child.cmd("cd " .. vim.fn.fnameescape(root))
+	child.cmd("edit " .. vim.fn.fnameescape(invoice))
+
+	review_changes()
+	wait_for_tab("local", true)
+	review_changes()
+	local panel = branch_panel()
+
+	eq(panel.rows, {
+		{ kind = "header", label = "#482 feat/tax → main" },
+		{ kind = "summary", label = "3 commits · merge-base 4ccefde" },
+		{ kind = "blank", label = "" },
+		{ kind = "directory", label = "internal/billing", count = 4 },
+		{ kind = "file", label = "invoice.go", added = 11, removed = 2 },
+		{ kind = "file", label = "invoice_test.go", added = 20, removed = 1 },
+		{ kind = "file", label = "tax.go", added = 41, removed = 0 },
+		{ kind = "file", label = "tax_test.go", added = 33, removed = 0 },
+	})
+end
+
+T["git: Branch tab header without a pull request"] = function()
+	local root = F.copy("billing-branch", vim.fn.tempname() .. "/billing-branch")
+	local invoice = vim.fs.joinpath(root, "internal/billing/invoice.go")
+	child.cmd("cd " .. vim.fn.fnameescape(root))
+	child.cmd("edit " .. vim.fn.fnameescape(invoice))
+
+	review_changes()
+	wait_for_tab("local", true)
+	review_changes()
+	local panel = branch_panel()
+
+	eq(panel.lines[1], " feat/tax → main")
+	eq(
+		vim.iter(panel.marks)
+			:filter(function(mark)
+				return mark.group == "ChangesBranchHeader"
+			end)
+			:totable(),
+		{}
+	)
+end
+
+T["git: Branch tab colours committed files"] = function()
+	local root = F.copy("billing-branch", vim.fn.tempname() .. "/billing-branch")
+	report_pull_request(root)
+	local invoice = vim.fs.joinpath(root, "internal/billing/invoice.go")
+	child.cmd("cd " .. vim.fn.fnameescape(root))
+	child.cmd("edit " .. vim.fn.fnameescape(invoice))
+
+	review_changes()
+	wait_for_tab("local", true)
+	review_changes()
+	local panel = branch_panel()
+	local committed = vim.iter(panel.marks)
+		:filter(function(mark)
+			return mark.group == "ChangesCommittedFile"
+		end)
+		:totable()
+
+	eq(values_for(committed, "text"), { "invoice.go", "invoice_test.go", "tax.go", "tax_test.go" })
+	eq(
+		vim.iter(panel.marks)
+			:filter(function(mark)
+				return mark.group == "ChangesBranchHeader"
+			end)
+			:map(function(mark)
+				return mark.text
+			end)
+			:totable(),
+		{ " #482" }
+	)
+	eq(
+		vim.iter(panel.marks)
+			:filter(function(mark)
+				return mark.group == "ChangesCheckbox"
+			end)
+			:totable(),
+		{}
+	)
 end
 
 return T
