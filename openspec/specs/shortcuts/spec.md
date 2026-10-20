@@ -287,7 +287,7 @@ After booting the VM, `tests/sandbox/sandbox.sh` SHALL poll the guest's port 22 
 - **THEN** `lume run` comes first, the two closed `nc -z -G 2 <ip> 22` checks precede the first open one, no `lume ssh` comes before that open check, and the e2e layer runs
 
 ### Requirement: Test harness deadlines scale with host load
-The stack harness deadlines (`M.wait_for` default, zellij CLI retry) and the smoke startup budget SHALL be multiplied by the host load factor `max(1, 1-min load average / CPU count)` from `tests/helpers.lua`. An idle host (load ≤ CPU count) keeps the unscaled values exactly.
+The child-Neovim wait default, stack-harness deadlines and smoke startup budget SHALL be multiplied by the host load factor `max(1, 1-min load average / CPU count)` from `tests/helpers.lua`. Explicit asynchronous waits in affected performance and LSP tests SHALL use the same factor. An idle host keeps unscaled values exactly.
 
 #### Scenario: The load factor is 1 on an idle host
 - **WHEN** `H.load_factor()` is called in a child with `vim.uv.loadavg` returning `7, 7, 7` and `vim.uv.available_parallelism` returning `14`
@@ -296,6 +296,10 @@ The stack harness deadlines (`M.wait_for` default, zellij CLI retry) and the smo
 #### Scenario: The load factor is the load per CPU on a busy host
 - **WHEN** `H.load_factor()` is called with `vim.uv.loadavg` returning `70, 60, 50` and `vim.uv.available_parallelism` returning `14`
 - **THEN** it returns `5`
+
+#### Scenario: Child wait default stretches with host load
+- **WHEN** `child.wait` polls without an explicit timeout while the host load factor is 3
+- **THEN** its 2000 ms default deadline is multiplied by 3
 
 #### Scenario: The stack harness wait stretches with host load
 - **WHEN** `M.wait_for` from `tests.shortcuts.stack` polls a predicate that turns true 600 ms after the call, with timeout 300 ms and `vim.uv.loadavg` returning a load of 3 times `available_parallelism()`
