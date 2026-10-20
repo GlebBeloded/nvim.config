@@ -360,12 +360,45 @@ T["pr: Enter on a thread opens its line"] = function()
 end
 
 T["pr: Selecting an unmapped thread shows its diff hunk"] = function()
-	open_comments()
-	child.lua([[(function()
-		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
-		vim.api.nvim_buf_set_lines(vim.api.nvim_win_get_buf(panel.editor_win), 21, 22, false, {})
-	end)()]])
-	select_row(":22")
+	local diff_hunk = "@@ -9,1 +9,0 @@\n-removed line"
+	open_billing_branch(true, function(files)
+		local response = vim.json.decode(files["ReviewThreads.json"])
+		table.insert(response.data.repository.pullRequest.reviewThreads.nodes, 1, {
+			id = "PRRT_left",
+			isResolved = false,
+			isOutdated = false,
+			path = "internal/billing/invoice.go",
+			line = 9,
+			originalLine = 9,
+			startLine = vim.NIL,
+			originalStartLine = vim.NIL,
+			diffSide = "LEFT",
+			subjectType = "LINE",
+			resolvedBy = vim.NIL,
+			viewerCanReply = true,
+			viewerCanResolve = true,
+			viewerCanUnresolve = false,
+			comments = {
+				pageInfo = { hasNextPage = false, endCursor = vim.NIL },
+				nodes = {
+					{
+						id = "PRRRC_left",
+						author = { login = "reviewer" },
+						body = "Removed line",
+						createdAt = "2026-01-01T00:00:00Z",
+						url = "https://example.test/left",
+						diffHunk = diff_hunk,
+						originalCommit = { oid = "left" },
+						replyTo = vim.NIL,
+					},
+				},
+			},
+		})
+		files["ReviewThreads.json"] = vim.json.encode(response)
+	end)
+	run_action("changes.show_comments")
+	wait_for_tab("comments", false)
+	select_row(":9")
 	assert(
 		child.wait(
 			[[(function()
@@ -381,12 +414,18 @@ T["pr: Selecting an unmapped thread shows its diff hunk"] = function()
 		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
 		return vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(panel.editor_win), 0, -1, false)
 	end)()]])
-	eq(lines[1]:find("@@", 1, true) ~= nil, true)
-	eq(table.concat(lines, "\n"):find("+\tif i.Tax == nil {", 1, true) ~= nil, true)
+	eq(lines, vim.split(diff_hunk, "\n", { plain = true }))
 end
 
 T["pr: Enter on an unmapped thread shows its diff hunk"] = function()
-	open_comments()
+	local diff_hunk
+	open_billing_branch(true, function(files)
+		local response = vim.json.decode(files["ReviewThreads.json"])
+		local thread = response.data.repository.pullRequest.reviewThreads.nodes[1]
+		diff_hunk = thread.comments.nodes[1].diffHunk
+	end)
+	run_action("changes.show_comments")
+	wait_for_tab("comments", false)
 	child.lua([[(function()
 		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
 		vim.api.nvim_buf_set_lines(vim.api.nvim_win_get_buf(panel.editor_win), 21, 22, false, {})
@@ -408,6 +447,10 @@ T["pr: Enter on an unmapped thread shows its diff hunk"] = function()
 	eq(
 		child.lua_get([[require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()].active_tab]]),
 		"comments"
+	)
+	eq(
+		child.lua_get([[vim.api.nvim_buf_get_lines(vim.api.nvim_get_current_buf(), 0, -1, false)]]),
+		vim.split(diff_hunk, "\n", { plain = true })
 	)
 end
 
