@@ -6,9 +6,13 @@ Scenarios: `git: Changes tabs show Local and Branch on a feature branch`, `git: 
 
 ## 2. Branch tab render
 Scenarios: `git: Branch tab lists the branch files`, `git: Branch tab header without a pull request`, `git: Branch tab colours committed files`, `git: Branch summary wording`, `git: Branch tab matches the approved render`
-- [ ] 2.1 Update the Branch reference assertion in `tests/screen/git/test_changes_tabs.lua`; run `make test FILE=tests/screen/git/test_changes_tabs.lua CASE="git: Branch tab matches the approved render"` and see it fail on the missing Comments pill
-- [ ] 2.2 Make the shared tab renderer append Comments without changing Branch rows, colours, summary or diff ownership
-- [ ] 2.3 Run `make test FILE=tests/screen/git/test_changes_tabs.lua CASE="git: Branch tab matches the approved render"` and the Branch cases in `tests/integration/git/test_changes_tabs.lua` and see them pass
+- [x] 2.1 Update the Branch reference assertion in `tests/screen/git/test_changes_tabs.lua`; run `make test FILE=tests/screen/git/test_changes_tabs.lua CASE="git: Branch tab matches the approved render"` and see it fail on the missing Comments pill
+- [x] 2.2 Make the shared tab renderer append Comments without changing Branch rows, colours, summary or diff ownership
+- [x] 2.3 Run `make test FILE=tests/screen/git/test_changes_tabs.lua CASE="git: Branch tab matches the approved render"` and the Branch cases in `tests/integration/git/test_changes_tabs.lua` and see them pass
+
+## Agent decisions
+
+- Task 2 needed no further code edit because Task 1's shared renderer and approved-text helper already covered the Branch render; preserve that working implementation and verify the complete Branch scenario set.
 
 ## 3. Comments tab actions and cycle
 Scenarios: `pr: Comments tab follows Branch with a pull request`, `pr: Cmd+G cycles Local, Branch, Comments, then closes`, `pr: Show Pull Request Comments opens the Comments tab`, `pr: Show Pull Request Comments without a pull request`
