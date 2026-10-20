@@ -838,11 +838,11 @@ The loop SHALL keep the user's contract unasked: no step changes a requirement's
 - **THEN** each says to append a `loop: <failure>` line to `$ARTIFACTS_DIR/loop-notes.md`, not tasks.md, and neither says to write `## Blocked` with `loop:`
 
 ### Requirement: Stuck work goes to the fix passes
-A `## Stuck` section in tasks.md (a behaviour red after both attempts, no decision needed) SHALL never ask the user nor hold a queued change before spec nor stop later tasks: the build loop stays red on it and sends it to a fix pass on the default model at `effort: xhigh`, then to Claude at `xhigh` while it stays red, and an exhausted loop is rejected and re-queued with it. Agents SHALL decide small design choices themselves and record them under `## Agent decisions`.
+A `## Stuck` section in tasks.md (a behaviour red after both attempts, no decision needed) SHALL never ask the user nor hold a queued change before spec nor stop later tasks: the build loop stays red on it and sends it to one fix pass on Claude at `effort: xhigh`; still stuck after it, verdict ends the loop as exhausted, and an exhausted loop is rejected and re-queued with it. Agents SHALL decide small design choices themselves and record them under `## Agent decisions`.
 
 #### Scenario: Verdict sends a Stuck section to the fix pass
 - **WHEN** `.archon/scripts/verdict.py` runs on an otherwise green pass for a change whose tasks.md has a `## Stuck` section
-- **THEN** it reports `done`, `passed` and `blocked` false, `stuck` true, `failed_gates` `stuck`, feedback quoting the section and `stuck_passes` 1 (2 on a second run in the same artifacts dir); nvim-deliver's `fix-stuck` node (the fix command at `effort: xhigh`) runs the next pass when `stuck_passes` is 1 and `fix-stuck-claude` (`provider: claude`, `effort: xhigh`) otherwise, and fix.md tells it to solve it itself
+- **THEN** it reports `done`, `passed` and `blocked` false, `stuck` true, `failed_gates` `stuck`, feedback quoting the section and `stuck_passes` 1, `exhausted` false; a second run in the same artifacts dir reports `stuck_passes` 2 with `done` and `exhausted` true; nvim-deliver has no `fix-stuck` node, its `fix-stuck-claude` (`provider: claude`, `effort: xhigh`) runs every stuck pass, and fix.md tells it to solve it itself
 
 #### Scenario: A Stuck change never asks and is never held before spec
 - **WHEN** blocked.py, escalation.py (`exhausted` true) and tasks.py run for a change whose tasks.md has a `## Stuck` section

@@ -321,21 +321,24 @@ T["loop: Verdict sends a Stuck section to the fix pass"] = function()
 	local out, artifacts = run("verdict.py", repo, env)
 	eq({ out.done, out.passed, out.blocked, out.stuck, out.failed_gates }, { false, false, false, true, "stuck" })
 	has(out.feedback, "stuck (tasks.md, earlier attempts; fix it, then delete the section): " .. STUCK)
-	eq({ out.stuck_passes, run("verdict.py", repo, env, artifacts).stuck_passes }, { 1, 2 })
+	local second = run("verdict.py", repo, env, artifacts)
+	eq(
+		{ out.stuck_passes, out.exhausted, second.stuck_passes, second.done, second.exhausted },
+		{ 1, false, 2, true, true }
+	)
 	local workflow = read(vim.fs.joinpath(H.root, ".archon/workflows/nvim-deliver/nvim-deliver.yaml"))
-	has(workflow, "- id: fix-stuck # the same fix pass at xhigh effort when tasks.md has `## Stuck`")
+	eq(workflow:find("- id: fix-stuck ", 1, true), nil)
 	has(
 		workflow,
-		'effort: xhigh\n          idle_timeout: 900000\n          when: "$LOOP_PREV.verdict.output.done == false && $LOOP_PREV.verdict.output.stuck == true && $LOOP_PREV.verdict.output.blocked == false && $LOOP_PREV.verdict.output.stuck_passes == 1"'
+		"- id: fix-stuck-claude # tasks.md has `## Stuck` (both attempts red): one Claude pass at xhigh, then verdict ends the loop\n          command: fix\n          provider: claude\n          effort: xhigh"
 	)
 	has(
 		workflow,
-		"- id: fix-stuck-claude # Stuck still red after the xhigh pass: Claude takes it\n          command: fix\n          provider: claude\n          effort: xhigh"
+		'when: "$LOOP_PREV.verdict.output.done == false && $LOOP_PREV.verdict.output.stuck == true && $LOOP_PREV.verdict.output.blocked == false"'
 	)
-	has(workflow, '$LOOP_PREV.verdict.output.stuck_passes != 1"')
 	has(
 		read(vim.fs.joinpath(H.root, ".archon/commands/fix.md")),
-		"solve it yourself (the run hands it to Claude only if you leave it red)"
+		"solve it yourself (this is the one stuck pass: left red, the run ends and hands it back)"
 	)
 end
 
