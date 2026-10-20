@@ -66,9 +66,9 @@ Scenarios: `file-tree: Project tree save burst observes both debounce deadlines`
 
 ## 12. Restore repository-discovery instrumentation on every path
 Scenarios: `file-tree: Project tree re-roots without waiting for repository discovery`
-- [ ] 12.1 Tighten `tests/integration/file-tree/test_performance.lua` to assert that the real `vim.system` is restored after the re-root case; temporarily suppress the matching discovery call, run `make test FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree re-roots without waiting for repository discovery"`, see the restoration assertion fail and record it, then remove the fault
-- [ ] 12.2 Return and register an unconditional cleanup from the discovery hold helper before driving real `:cd`, while preserving the pending-discovery assertion and existing 100 ms and 1000 ms bounds
-- [ ] 12.3 Run `make test FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree re-roots without waiting for repository discovery"` and see it pass
+- [x] 12.1 Tighten `tests/integration/file-tree/test_performance.lua` to assert that the real `vim.system` is restored after the re-root case; temporarily suppress the matching discovery call, run `make test FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree re-roots without waiting for repository discovery"`, see the restoration assertion fail and record it, then remove the fault
+- [x] 12.2 Return and register an unconditional cleanup from the discovery hold helper before driving real `:cd`, while preserving the pending-discovery assertion and existing 100 ms and 1000 ms bounds
+- [x] 12.3 Run `make test FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree re-roots without waiting for repository discovery"` and see it pass
 
 ## 13. End unfold timing at child-side completion
 Scenarios: `file-tree: Project tree unfold all meets the large-tree bound`

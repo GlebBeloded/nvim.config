@@ -241,6 +241,7 @@ local function hold_next_repository_discovery(path)
 		[=[
 		(function(expected)
 		local original = vim.system
+		FileTreeOriginalSystem = original
 		vim.system = function(cmd, opts, callback)
 			if callback and vim.deep_equal(cmd, { "git", "-C", expected, "rev-parse", "--show-toplevel", "--absolute-git-dir" }) then
 				vim.system = original
@@ -260,6 +261,15 @@ local function hold_next_repository_discovery(path)
 	]=],
 		{ path }
 	)
+	return function()
+		local restored = child.lua_get([[(function()
+			local result = vim.system == FileTreeOriginalSystem
+			vim.system = FileTreeOriginalSystem
+			FileTreeOriginalSystem = nil
+			return result
+		end)()]])
+		eq(restored, true)
+	end
 end
 
 local function make_next_git_refresh_immediate()
@@ -741,7 +751,8 @@ end
 
 T["file-tree: Project tree re-roots without waiting for repository discovery"] = function()
 	create_second_worktree()
-	hold_next_repository_discovery(second_root)
+	local cleanup_repository_discovery = hold_next_repository_discovery(second_root)
+	MiniTest.finally(cleanup_repository_discovery)
 	install_cpu_measurement()
 
 	local result = child.lua_get(
