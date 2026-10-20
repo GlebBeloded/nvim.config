@@ -7,6 +7,7 @@
 if [ -n "${FAKE_GH_SLEEP:-}" ]; then
 	sleep "$FAKE_GH_SLEEP" &
 	sleeper=$!
+	[ -n "${FAKE_GH_PID_FILE:-}" ] && printf '%s\n' "$sleeper" >"$FAKE_GH_PID_FILE"
 	trap 'kill "$sleeper" 2>/dev/null; wait "$sleeper" 2>/dev/null; exit 124' TERM INT
 	wait "$sleeper"
 	trap - TERM INT

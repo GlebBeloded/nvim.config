@@ -149,7 +149,8 @@ end
 ---@param default_branch string
 ---@param refs table<string, string>
 ---@param pr? gleb.git.base.Pr
-local function resolve_base(root, entry, branch, head, default_branch, refs, pr)
+---@param request integer
+local function resolve_base(root, entry, branch, head, default_branch, refs, pr, request)
 	local base_ref = "origin/" .. default_branch
 	local base_oid = refs[base_ref]
 	local source = "default"
@@ -172,6 +173,9 @@ local function resolve_base(root, entry, branch, head, default_branch, refs, pr)
 			return
 		end
 		git(root, { "merge-base", base_oid, head }, function(result)
+			if M.state.roots[root] ~= entry or entry.request ~= request then
+				return
+			end
 			local merge_base_oid = output(result.stdout)
 			if result.code ~= 0 or not merge_base_oid then
 				complete(root, entry, nil)
@@ -204,6 +208,9 @@ local function resolve_base(root, entry, branch, head, default_branch, refs, pr)
 		return
 	end
 	git(root, { "cat-file", "-e", pr.base_ref_oid .. "^{commit}" }, function(result)
+		if M.state.roots[root] ~= entry or entry.request ~= request then
+			return
+		end
 		if result.code == 0 then
 			base_ref = pr.base_ref_name
 			base_oid = pr.base_ref_oid
@@ -221,7 +228,8 @@ end
 ---@param refs table<string, string>
 ---@param remote_url? string
 ---@param opts table
-local function resolve_pr(root, entry, branch, head, default_branch, refs, remote_url, opts)
+---@param request integer
+local function resolve_pr(root, entry, branch, head, default_branch, refs, remote_url, opts, request)
 	local last = entry.last_pr
 	local elapsed = last and (vim.uv.now() - last.at) or math.huge
 	local due = not last
@@ -231,7 +239,7 @@ local function resolve_pr(root, entry, branch, head, default_branch, refs, remot
 
 	local function use(pr)
 		entry.branch = branch
-		resolve_base(root, entry, branch, head, default_branch, refs, pr)
+		resolve_base(root, entry, branch, head, default_branch, refs, pr, request)
 	end
 
 	if not due then
@@ -337,16 +345,31 @@ function run_refresh(root, entry, opts)
 				return
 			end
 			assert(branch and head and default_branch, "branch base state is incomplete")
-			resolve_pr(
-				root,
-				entry,
-				branch,
-				head,
-				default_branch,
-				refs,
-				results.remote_url.code == 0 and output(results.remote_url.stdout) or nil,
-				opts
-			)
+			local default_oid = refs["origin/" .. default_branch]
+			if not default_oid then
+				complete(root, entry, nil)
+				return
+			end
+			git(root, { "merge-base", default_oid, head }, function(merge_result)
+				if M.state.roots[root] ~= entry or entry.request ~= request then
+					return
+				end
+				if merge_result.code ~= 0 or not output(merge_result.stdout) then
+					complete(root, entry, nil)
+					return
+				end
+				resolve_pr(
+					root,
+					entry,
+					branch,
+					head,
+					default_branch,
+					refs,
+					results.remote_url.code == 0 and output(results.remote_url.stdout) or nil,
+					opts,
+					request
+				)
+			end)
 		end)
 	end
 end

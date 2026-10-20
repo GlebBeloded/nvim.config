@@ -17,7 +17,7 @@ Scenarios: `git: Branch base rules pick the default branch`, `git: Branch base r
 
 ## 3. Resolver and pull request lookup
 
-Scenarios: `git: Branch base defaults to the remote default branch`, `git: Branch base follows the open pull request`, `git: Branch base uses the pull request base commit when its ref is missing`, `git: Branch base is absent on the default branch`, `git: Branch base is absent on master`, `git: Branch base is absent on a detached HEAD`, `git: Branch base is absent outside a repository`, `git: Branch base is absent without a remote default branch`, `git: Branch base passes the remote host to gh`, `git: Branch base ignores a merged pull request`, `git: Branch base falls back when gh fails`, `git: Branch base works without gh`, `git: Branch base gives up on a slow gh`, `git: Branch base keeps the last pull request when gh fails`, `git: Branch base clears the pull request when none is found`
+Scenarios: `git: Branch base defaults to the remote default branch`, `git: Branch base follows the open pull request`, `git: Branch base uses the pull request base commit when its ref is missing`, `git: Branch base is absent on the default branch`, `git: Branch base is absent on master`, `git: Branch base is absent on a detached HEAD`, `git: Branch base is absent outside a repository`, `git: Branch base is absent without a remote default branch`, `git: Branch base is absent for unrelated histories`, `git: Branch base passes the remote host to gh`, `git: Branch base ignores a merged pull request`, `git: Branch base falls back when gh fails`, `git: Branch base works without gh`, `git: Branch base gives up on a slow gh`, `git: Branch base keeps the last pull request when gh fails`, `git: Branch base clears the pull request when none is found`
 
 - [x] 3.1 Write the scenarios in tests/integration/git/test_base.lua. The canned JSON comes from design.md Decision 6 with the manifest oids, and the odd repos from Decision 7. See them fail.
 - [x] 3.2 Add `lua/gleb/git/base/init.lua`: the types and API of Decision 1, the steps of Decision 2 and the lookup of Decision 3. Use `vim.system` argument lists with exit-code checks (rule 6.4) and scheduled callbacks that re-check the request is current (rule 6.3). It shows no message (rule 8.4).
@@ -25,7 +25,7 @@ Scenarios: `git: Branch base defaults to the remote default branch`, `git: Branc
 
 ## 4. Cache, watch and refresh
 
-Scenarios: `git: Branch base is cached`, `git: Branch base refreshes after a commit`, `git: Branch base refreshes after a checkout`, `git: Branch base asks gh again after the TTL on focus`, `git: Branch base stops watching on reset`
+Scenarios: `git: Branch base is cached`, `git: Branch base refreshes after a commit`, `git: Branch base refreshes after a checkout`, `git: Branch base asks gh again after the TTL on focus`, `git: Branch base stops watching on reset`, `git: Branch base discards stale asynchronous results`
 
 - [x] 4.1 Write the scenarios in tests/integration/git/test_base.lua. Commits and checkouts run on the host with `H.git` in the copy. Event counts come from a `User GlebGitBaseChanged` recorder autocmd in the child. See them fail.
 - [x] 4.2 Implement the cache key, the `pending` coalescing, the TTL, the `FocusGained` augroup `gleb_git_base`, and the git-dir and common-dir watches with their teardown (Decisions 2.7, 3 and 5).

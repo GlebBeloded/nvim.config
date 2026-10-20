@@ -146,6 +146,21 @@ T["git: Branch base is absent without a remote default branch"] = function()
 	eq(vim.fn.filereadable(log) == 1 and vim.fn.readfile(log) or {}, {})
 end
 
+T["git: Branch base is absent for unrelated histories"] = function()
+	local root = H.git_repo({ ["a.txt"] = "main" })
+	H.git(root, { "update-ref", "refs/remotes/origin/main", "HEAD" })
+	H.git(root, { "symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/main" })
+	H.git(root, { "checkout", "-q", "--orphan", "feat/unrelated" })
+	H.git(root, { "rm", "-q", "-rf", "." })
+	H.write_files(root, { ["b.txt"] = "unrelated" })
+	H.git(root, { "add", "-A" })
+	H.git(root, { "commit", "-q", "-m", "unrelated" })
+	local log = vim.fn.tempname()
+	child.lua([[vim.env.FAKE_GH_LOG = ...]], { log })
+	eq(resolve(root), vim.NIL)
+	eq(vim.fn.filereadable(log) == 1 and vim.fn.readfile(log) or {}, {})
+end
+
 T["git: Branch base passes the remote host to gh"] = function()
 	local root, _, log = prbranch()
 	resolve(root)
@@ -180,11 +195,18 @@ end
 
 T["git: Branch base gives up on a slow gh"] = function()
 	local root = prbranch()
-	child.lua([[vim.env.FAKE_GH_SLEEP = "30"; require("gleb.git.base").GH_TIMEOUT_MS = 200]])
+	local pid_file = vim.fn.tempname()
+	child.lua(
+		[[vim.env.FAKE_GH_SLEEP = "30"; vim.env.FAKE_GH_PID_FILE = ...
+		require("gleb.git.base").GH_TIMEOUT_MS = 200]],
+		{ pid_file }
+	)
 	local before = vim.uv.hrtime()
 	eq(resolve(root).base_ref, "origin/main")
 	eq((vim.uv.hrtime() - before) / 1e9 < 2, true)
 	eq(child.lua_get([[require("gleb.git.base").state.roots[...].process == nil]], { root }), true)
+	local pid = tonumber(vim.fn.readfile(pid_file)[1])
+	eq(vim.system({ "kill", "-0", tostring(pid) }):wait().code ~= 0, true)
 end
 
 T["git: Branch base keeps the last pull request when gh fails"] = function()
@@ -286,6 +308,51 @@ T["git: Branch base stops watching on reset"] = function()
 		),
 		{ true, false }
 	)
+end
+
+T["git: Branch base discards stale asynchronous results"] = function()
+	local function check(stage, with_pr)
+		local root, manifest = prbranch()
+		if with_pr then
+			write_pr(root, manifest)
+			H.git(root, { "update-ref", "-d", "refs/remotes/origin/release/1.4" })
+		end
+		record_events()
+		child.lua(
+			[[local stage, root = ...
+			local original = vim.system
+			local merge_base_calls = 0
+			StaleGitCallback = nil
+			BaseDone = false
+			vim.system = function(command, opts, callback)
+				if command[1] == "git" and command[2] == "merge-base" then
+					merge_base_calls = merge_base_calls + 1
+				end
+				local hold = command[1] == "git" and command[2] == stage
+					and (command[2] ~= "merge-base" or merge_base_calls == 2)
+				if hold then
+					return original(command, opts, function(result)
+						StaleGitCallback = function() callback(result) end
+					end)
+				end
+				return original(command, opts, callback)
+			end
+			OriginalSystem = original
+			require("gleb.git.base").resolve(root, function() BaseDone = true end)]],
+			{ stage, root }
+		)
+		eq(child.wait("StaleGitCallback ~= nil", 3000), true)
+		child.lua([[require("gleb.git.base").reset(); StaleGitCallback(); vim.system = OriginalSystem
+			vim.wait(100, function() return false end)]])
+		eq(child.lua_get([[{ BaseDone, #BaseEvents, vim.tbl_isempty(require("gleb.git.base").state.roots) }]]), {
+			false,
+			0,
+			true,
+		})
+	end
+
+	check("cat-file", true)
+	check("merge-base", false)
 end
 
 return T
