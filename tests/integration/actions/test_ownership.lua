@@ -9,7 +9,7 @@ local function start()
 	child.wait_very_lazy()
 end
 
-local T = H.child_set(child, start)
+local T = H.child_set(child, start, { reuse = true })
 
 T["actions: Feature actions contain no shortcut keys"] = function()
 	local offenders = child.lua_get([[(function()

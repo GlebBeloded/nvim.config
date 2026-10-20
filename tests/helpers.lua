@@ -420,11 +420,56 @@ function M.open_surface(child, spec)
 	)
 end
 
---- Test set whose cases each get a fresh child started by `start`.
+local INSTALL_CASE_RESET = [[
+local original_cwd = vim.fn.getcwd()
+local original_globals = {}
+for name, value in pairs(_G) do
+	original_globals[name] = value
+end
+
+package.loaded["tests.case_reset"] = function()
+	vim.cmd("silent! tabonly!")
+	vim.cmd("silent! %bwipeout!")
+	vim.cmd("silent! lcd " .. vim.fn.fnameescape(original_cwd))
+	for name in pairs(_G) do
+		if original_globals[name] == nil then
+			_G[name] = nil
+		end
+	end
+	for name, value in pairs(original_globals) do
+		_G[name] = value
+	end
+end
+]]
+
+---@class test.ChildSetOpts
+---@field reuse? boolean Start once per file and reset case state before later cases.
+
+--- Test set whose cases get a fresh child by default or explicitly reuse one.
 ---@param child test.Child
 ---@param start fun()
+---@param opts? test.ChildSetOpts
 ---@return table
-function M.child_set(child, start)
+function M.child_set(child, start, opts)
+	if opts and opts.reuse then
+		local first_case = true
+		return MiniTest.new_set({
+			hooks = {
+				pre_once = function()
+					start()
+					child.lua(INSTALL_CASE_RESET)
+				end,
+				pre_case = function()
+					if first_case then
+						first_case = false
+						return
+					end
+					child.lua([[package.loaded["tests.case_reset"]()]])
+				end,
+				post_once = child.stop,
+			},
+		})
+	end
 	return MiniTest.new_set({
 		hooks = {
 			pre_case = start,

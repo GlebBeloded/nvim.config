@@ -4,6 +4,8 @@
 vim.g.mapleader = " "
 vim.g.maplocalleader = "\\"
 
+vim.loader.enable() -- before configuration imports: cache every module
+
 -- debug plugin which writes to /tmp before any plugin loads
 require("gleb.nvim_debug_log").setup()
 
