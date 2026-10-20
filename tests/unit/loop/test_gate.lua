@@ -491,8 +491,21 @@ T["loop: Gate runs the quick tier before the full check"] = function()
 	eq(shared_calls, quick .. " CAPS=\n" .. full)
 	local _, docs_calls = tier_gate(base, { ["docs/a.md"] = "a", ["openspec/changes/c/proposal.md"] = "# c" }, 0)
 	eq(docs_calls, full)
-	local _, e2e_calls = tier_gate(base, { ["lua/gleb/pr/view.lua"] = "-- v", ["tests/e2e/test_x.lua"] = "-- x" }, 0)
-	eq(e2e_calls, full)
+	local e2e = { ["lua/gleb/pr/view.lua"] = "-- v", ["tests/e2e/find-action/test_x.lua"] = "-- x" }
+	local _, e2e_calls =
+		tier_gate(vim.tbl_extend("force", base, { ["tests/unit/find-action/test_f.lua"] = "-- f" }), e2e, 0)
+	eq(e2e_calls, quick .. " CAPS=find-action,pr\n" .. full)
+	-- a support file maps to the tests that name it; a shared one, or one no test names, to every capability
+	local used = vim.tbl_extend("force", base, { ["tests/fixtures/gh/data.lua"] = "-- d" })
+	used["tests/integration/pr/test_a.lua"] = "local D = require('tests.fixtures.gh.data')"
+	local _, used_calls = tier_gate(used, { ["tests/fixtures/gh/data.lua"] = "-- d2" }, 0)
+	eq(used_calls, quick .. " CAPS=pr\n" .. full)
+	local _, unused_calls = tier_gate(base, { ["tests/fixtures/other/x.lua"] = "-- x" }, 0)
+	eq(unused_calls, quick .. " CAPS=\n" .. full)
+	local _, plugin_calls = tier_gate(base, { ["lua/gleb/plugins/editor.lua"] = "-- p" }, 0)
+	eq(plugin_calls, quick .. " CAPS=\n" .. full)
+	local _, sandbox_calls = tier_gate(base, { ["lua/gleb/pr/view.lua"] = "-- v", ["tests/sandbox/x.sh"] = "x" }, 0)
+	eq(sandbox_calls, full)
 end
 
 T["loop: Gate reruns a known flaky case up to three times"] = function()

@@ -596,11 +596,11 @@ verdict.py SHALL pass on the last review's findings even when it approves; on sh
 - **THEN** the decision is `ship` and escalation.md has a `- note: review (minor):` line for each of the two, and none for the summary line
 
 ### Requirement: Gate runs a quick tier first
-gate.py SHALL first run `make check CHECK_TARGETS="lint types trace specs test"` with `CAPS` the capabilities the branch diff touches (`lua/gleb/<area>`, `tests/<layer>/<cap>`; `loop` plus `loop-test` for `.archon/`; empty for an unmapped file); red (after reruns) ends the gate, green runs the full `make check E2E=1`. Planning and docs only, or a shortcut-layer or sandbox path, runs the full check alone.
+gate.py SHALL first run `make check CHECK_TARGETS="lint types trace specs test"` with `CAPS` the capabilities the branch diff touches (`lua/gleb/<area>`, `tests/<layer>/<cap>` including the shortcut layers, the capabilities whose tests name any other file; `loop` plus `loop-test` for `.archon/`; empty for a shared file or one no test names); red (after reruns) ends the gate, green runs the full `make check E2E=1`. Planning and docs only, or a sandbox, smoke or terminal path, runs the full check alone.
 
 #### Scenario: Gate runs the quick tier before the full check
-- **WHEN** gate.py runs with a recording `make` stub on branches editing `lua/gleb/pr/` and its tests (quick tier red, then green), `.archon/`, `init.lua`, only docs and a change folder, and `lua/gleb/pr/` with `tests/e2e/`
-- **THEN** the red quick tier is the only call (`CAPS=pr`, noted in the check log); green adds `make check E2E=1` and keeps `quick-1.log`; `.archon/` adds `loop-test` with `CAPS=loop`; `init.lua` runs `CAPS=` empty; the last two run only the full check
+- **WHEN** gate.py runs with a recording `make` stub on branches editing `lua/gleb/pr/` and its tests (quick tier red, then green), `.archon/`, `init.lua`, only docs and a change folder, and `lua/gleb/pr/` with `tests/e2e/find-action/`, a fixture a pr test requires, a fixture no test names, `lua/gleb/plugins/`, and `lua/gleb/pr/` with `tests/sandbox/`
+- **THEN** the red quick tier is the only call (`CAPS=pr`, noted in the check log); green adds `make check E2E=1` and keeps `quick-1.log`; `.archon/` adds `loop-test` with `CAPS=loop`; `init.lua` runs `CAPS=` empty; docs only runs only the full check; the e2e branch runs `CAPS=find-action,pr`, the used fixture `CAPS=pr`, the unused fixture and the plugin spec `CAPS=` empty, and the sandbox branch only the full check
 
 ### Requirement: Gate reruns known flaky cases up to three times
 A failing case listed in `tests/flaky.txt` (`<file> | <case>`, by name prefix) that gate.py would rerun SHALL rerun up to 3 times, serially, and count as flaky on its first pass; other cases rerun once. A branch adding a case to `tests/flaky.txt` SHALL be a hard rule.

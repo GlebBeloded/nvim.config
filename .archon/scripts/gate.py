@@ -289,8 +289,29 @@ def rerun_flaky(out: str, log: str) -> tuple[list[str], str, list[str]]:
 
 TEST_LAYERS = ("unit", "integration", "screen")
 QUICK_TARGETS = "lint types trace specs test"
-# paths only the full check tests (shortcut layers, the sandbox VM): a quick tier would prove nothing about them
-FULL_ONLY = re.compile(r"^(tests/(e2e|chain|stack|shortcuts|sandbox|smoke)/|terminal/)")
+# every test depends on these: a change to one runs the whole quick tier
+SHARED = {"tests/helpers.lua", "tests/minimal_init.lua", "tests/child_init.lua", "tests/runner.lua", "tests/parallel.lua", "init.lua", "Makefile"}
+SHARED_DIRS = ("lua/gleb/plugins/", "settings/", "lua/gleb/util/")  # every area's plugin specs, keymaps, helpers
+# paths only the full check tests (the sandbox VM, smoke, the terminal configs): a quick tier would prove nothing
+FULL_ONLY = re.compile(r"^(tests/(sandbox|smoke)/|terminal/)")
+# the shortcut layers run in the full check only; their files still name the capability they cover
+SHORTCUT_LAYERS = ("e2e", "chain", "stack", "shortcuts")
+
+
+def referencing_caps(path: str, known: set[str]) -> set[str]:
+    """Capabilities whose test files name `path`: its module (`tests.fixtures.gh.mutations`, `gleb.alpha`), its folder's
+    module, or its repo path without `.lua`. A support file maps to the tests that use it, not to every test (pr
+    gates fell back to the whole suite for one fixture, Oct 2026)."""
+    stem = path.removesuffix(".lua").removesuffix("/init")
+    module = stem.removeprefix("lua/").replace("/", ".")
+    needles = {module, stem.removeprefix("tests/"), module.rsplit(".", 1)[0]} - {"tests", "gleb", ""}
+    caps = set()
+    for layer in TEST_LAYERS:
+        for test in pathlib.Path("tests", layer).glob("*/**/*.lua"):
+            cap = test.parts[2]
+            if cap in known and cap not in caps and any(n in test.read_text(errors="replace") for n in needles):
+                caps.add(cap)
+    return caps
 
 
 def test_caps() -> set[str]:
@@ -299,9 +320,10 @@ def test_caps() -> set[str]:
 
 def affected() -> tuple[str, bool] | None:
     """(CAPS, loop) of the quick tier for the branch diff against its base (committed or not): the capability of
-    each `lua/gleb/<area>` and `tests/<layer>/<cap>` path, `loop` and loop-test for `.archon/`; "" (every
-    capability) when a changed file maps to none; None when no quick tier applies: nothing to test (planning
-    and docs only) or a path only the full check tests."""
+    each `lua/gleb/<area>` and `tests/<layer>/<cap>` path (shortcut layers included), of the tests naming any
+    other file (referencing_caps), `loop` and loop-test for `.archon/`; "" (every capability) for a SHARED file or
+    one no test names; None when no quick tier applies: nothing to test (planning and docs only) or a path only
+    the full check tests."""
     try:
         git("add", "-A")
         paths = git("diff", "--cached", "--name-only", git("merge-base", "HEAD", BASE).strip()).split()
@@ -319,15 +341,18 @@ def affected() -> tuple[str, bool] | None:
             caps.add("loop")
             loop = True
             continue
-        if len(parts) > 3 and parts[0] == "tests" and parts[1] in TEST_LAYERS and parts[2] in known:
-            caps.add(parts[2])
+        if len(parts) > 3 and parts[0] == "tests" and parts[1] in TEST_LAYERS + SHORTCUT_LAYERS:
+            caps.update({parts[2]} & known)  # a shortcut-layer file: its capability's quick tests, the layer in the full check
             continue
         if len(parts) > 2 and parts[:2] == ["lua", "gleb"]:
             area = parts[2].removesuffix(".lua").replace("_", "-")
             if area in known and area != "plugins":  # lua/gleb/plugins holds every area's plugin specs
                 caps.add(area)
                 continue
-        every = True
+        # a shared file (tests/helpers.lua, init.lua, settings) has no single owner; a support file maps by its users
+        found = set() if path in SHARED or path.startswith(SHARED_DIRS) else referencing_caps(path, known)
+        caps |= found
+        every = every or not found
     if not caps and not every:
         return None
     return ("" if every else ",".join(sorted(caps))), loop
