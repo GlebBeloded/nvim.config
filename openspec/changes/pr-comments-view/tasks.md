@@ -28,6 +28,21 @@ Scenarios: `pr: Comments tab lists the threads by file`, `pr: Comments tab row c
 - [ ] 4.2 Add `lua/gleb/pr/comments_tab.lua` on `lua/gleb/ui/tree/`, then implement the real selection, peek, cache-only statusline and palette-backed highlights from design.md Decisions 2–5, 7 and 8 so the approved screen needs no stand-ins
 - [ ] 4.3 Run `make test FILE=tests/integration/pr/test_comments_tab.lua`, `make test FILE=tests/unit/pr/test_peek.lua`, `make test FILE=tests/integration/pr/test_peek.lua`, `make test FILE=tests/integration/statusline/test_pr.lua`, `make test FILE=tests/screen/pr/test_comments.lua`, and `make test FILE=tests/screen/statusline/test_pr.lua` and see them pass, including the whole text and colour mask of `pr: Comments tab matches the approved render`
 
+## Stuck
+
+- Task 4 is stuck on the approved Comments render. Probe output for `type Invoice struct {}` was
+  `captures = { "type", "type.definition" }`, with `@type -> TSType` and
+  `@type.definition -> TSTypeDefinition`; the drawn `Invoice` cell resolves green while the approved mask
+  requires `@type.definition`.
+- Attempt 1 implemented the shared-tree rows, debounced selection, editor peeks, cache-only statusline and
+  palette highlights. The unit and non-screen integration scenarios passed, while the Comments mask first
+  exposed the resolved-row prefix and statusline spacing differences.
+- Attempt 2 corrected those two visual differences and made the complete statusline screen pass. The full
+  Comments mask still fails at row 2, column 48: expected `@type.definition`, drawn the green type capture.
+- The second implementation is saved at
+  `/Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/2f059f83-351e-498d-ac62-8c488d579a8c/stuck-attempt-4.diff`;
+  production edits were reverted and the red Task 4 tests remain for the fix pass.
+
 ## 6. Comments Enter
 Scenarios: `pr: Enter on a thread opens its line`
 - [ ] 6.1 Write the scenario in `tests/integration/pr/test_comments_tab.lua`, press `<CR>` on the real `:22` row, and see it fail
