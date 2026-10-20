@@ -55,7 +55,7 @@ This change adds that data layer with no UI beyond one Find Action entry and its
   - Changed:
     - `lua/gleb/git/changes/init.lua`: the opening `changes.review` calls `require("gleb.pr").refresh(root)`
       when the base has a pull request;
-    - the module list that registers feature actions.
+    - `init.lua`: register `lua/gleb/pr/actions.lua` in the feature-action module list.
 - Tests:
   - New:
     - unit `tests/unit/pr/test_threads.lua` (model, mapping, anchors) and `tests/unit/pr/test_gh.lua`
@@ -67,6 +67,22 @@ This change adds that data layer with no UI beyond one Find Action entry and its
   The `gh` CLI is an optional external tool.
 - Core keymaps: none. `pr.refresh` is unbound.
 - Unchanged scenarios:
+  - `file-tree: Project tree coalesces a save burst` still holds: the PR write hook is a separate augroup and does not add a project-tree draw or git-status request.
+  - `git: Changes panel review replaces the dashboard` still holds: the background fetch starts only after the panel has opened and does not change its window replacement.
+  - `git: Branch base passes the remote host to gh` still holds: `gh pr view` keeps its existing argv, `GH_HOST` and log entry; the new GraphQL routing is a separate fake-`gh` mode.
+  - `git: Branch base clears the pull request when none is found` still holds: clearing the base PR still emits `GlebGitBaseChanged`; the thread listener only drops its cache and runs no GraphQL without a PR.
+  - `git: Branch base is cached` still holds: thread caching consumes the resolved base and does not alter base lookup or its event count.
+  - `git: Branch base refreshes after a commit` still holds: the thread listener observes `GlebGitBaseChanged` without changing HEAD discovery, merge-base state or base `gh` calls.
+  - `git: Branch base refreshes after a checkout` still holds: the thread listener only clears its own cache when the base cache becomes nil.
+  - `git: Requirement: Committed signs follow the buffer` still holds: PR locations use a separate module and namespace, and only observe the same base-change event.
+  - `git: Local tab matches the approved render` still holds: fetching threads draws no UI and changes no panel text, highlights or layout.
+  - `git: Cmd+G cycles Local, Branch, then closes` still holds: only opening a closed panel triggers the asynchronous fetch; tab order, focus, diffs and close behavior are untouched.
+  - `git: Async Branch activation reviews a Branch row` still holds: a thread fetch neither selects a row nor requests a panel diff.
+  - `git: First review opens Branch when nothing is uncommitted` still holds: the asynchronous fetch does not participate in first-tab selection or panel closing.
+  - `git: Review on the default branch opens only Local` still holds: the default branch has no pull request, so no thread fetch runs and the tab cycle is unchanged.
+  - `git: Review from the diff window advances the tab` still holds: the panel is already open, so this invocation does not trigger a fetch and keeps the existing focus transition.
+  - `git: Branch tab matches the approved render` still holds: the PR 482 fetch is data-only and draws no thread content in this change.
+  - `git: Review starts the cycle again after a close` still holds: reopening still selects Local; the background refresh does not restore or select a tab.
   - `git: Changes panel review shows the current file's diff` still holds: the fetch runs in the background after the panel opens and changes no row, focus or diff.
   - `git: Changes panel review without a changed current file` still holds: same reason.
   - `git: Changes panel with the diff view matches the approved render` still holds: the `billing` fixture has no pull request, so nothing is fetched or drawn.

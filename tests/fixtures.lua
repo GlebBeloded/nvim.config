@@ -20,6 +20,7 @@ local M = {}
 ---@field files? fixtures.Entry[] one entry per changed-file listing (staged and unstaged apart)
 ---@field hunks? table<string, integer[]> worktree start lines of unstaged hunks, by path
 ---@field head? string short HEAD hash
+---@field commits? string[] short commit hashes, newest first
 ---@field merge_base? string
 ---@field base? string
 ---@field pr_base? string
