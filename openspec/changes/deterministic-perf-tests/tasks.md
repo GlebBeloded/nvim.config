@@ -36,9 +36,9 @@ Scenarios: `file-tree: Project tree re-roots without waiting for repository disc
 
 ## 7. Measure unfold work without scheduler noise
 Scenarios: `file-tree: Project tree unfold all meets the large-tree bound`
-- [ ] 7.1 Replace the cross-RPC elapsed assertion in `tests/integration/file-tree/test_performance.lua` with process CPU measured around the real `zR`; temporarily reduce the allowed row count below the generated result, run `make test FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree unfold all meets the large-tree bound"`, see it fail and record the failure, then remove the fault
-- [ ] 7.2 Preserve the 500 ms CPU/wall bounds, 5001-row ceiling and exact WARN notification, and load-scale the setup waits
-- [ ] 7.3 Run `make test FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree unfold all meets the large-tree bound"` and see it pass
+- [x] 7.1 Replace the cross-RPC elapsed assertion in `tests/integration/file-tree/test_performance.lua` with process CPU measured around the real `zR`; temporarily reduce the allowed row count below the generated result, run `make test FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree unfold all meets the large-tree bound"`, see it fail and record the failure, then remove the fault
+- [x] 7.2 Preserve the 500 ms CPU/wall bounds, 5001-row ceiling and exact WARN notification, and load-scale the setup waits
+- [x] 7.3 Run `make test FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree unfold all meets the large-tree bound"` and see it pass
 
 ## 8. Run wall-clock performance checks serially
 Scenarios: `file-tree: Project tree redraw meets the large-tree bound`, `file-tree: Project tree expansion meets the large-tree bound`, `file-tree: Project tree save leaves the main path promptly`, `file-tree: Project tree follows an already listed row promptly`, `file-tree: Project tree re-roots without waiting for repository discovery`
@@ -58,3 +58,4 @@ Scenarios: `file-tree: Project tree persists folds off the action path`, `file-t
 - Use `PERF=1` to enable retained wall-clock assertions because the later serial target can pass it directly to the existing test process.
 - Expose `use_test_scheduler`, `advance` and `reset` on the debounce utility so tests control its clock without adding user configuration.
 - Hold the real repository-discovery process result at its callback boundary so the re-root test observes pending state without replacing Git discovery.
+- Let the shared CPU measurement installer target either child so the unfold fixture uses the same instrumentation as the populated-tree cases.

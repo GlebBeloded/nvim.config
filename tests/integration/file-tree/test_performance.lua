@@ -96,6 +96,29 @@ local T = H.child_set(child, start)
 
 local unfold_child = H.new_child()
 
+local function install_cpu_measurement(target_child)
+	target_child = target_child or child
+	target_child.lua([=[
+		local function process_cpu_ms(usage)
+			return (usage.utime.sec + usage.stime.sec) * 1000 + (usage.utime.usec + usage.stime.usec) / 1000
+		end
+
+		FileTreeStartMeasurement = function()
+			return {
+				cpu_ms = process_cpu_ms(vim.uv.getrusage()),
+				elapsed_ns = vim.uv.hrtime(),
+			}
+		end
+
+		FileTreeFinishMeasurement = function(started)
+			return {
+				cpu_ms = process_cpu_ms(vim.uv.getrusage()) - started.cpu_ms,
+				elapsed_ms = (vim.uv.hrtime() - started.elapsed_ns) / 1e6,
+			}
+		end
+	]=])
+end
+
 local function create_unfold_tree()
 	unfold_root = vim.fn.tempname() .. "/unfold-tree"
 	vim.fn.mkdir(unfold_root, "p")
@@ -165,18 +188,24 @@ T["file-tree: Project tree unfold all meets the large-tree bound"]["stops prompt
 		),
 		0
 	)
-	unfold_child.lua([[FileTreeUnfoldStarted = vim.uv.hrtime()]])
+	install_cpu_measurement(unfold_child)
+	unfold_child.lua([[FileTreeUnfoldStarted = FileTreeStartMeasurement()]])
 
 	unfold_child.type_keys("zR")
 
 	local result = unfold_child.lua_get([[(function()
 		local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+		local measurement = FileTreeFinishMeasurement(FileTreeUnfoldStarted)
 		return {
-			elapsed_ms = (vim.uv.hrtime() - FileTreeUnfoldStarted) / 1e6,
+			cpu_ms = measurement.cpu_ms,
+			elapsed_ms = measurement.elapsed_ms,
 			rows = #view.rows,
 		}
 	end)()]])
-	assert(result.elapsed_ms <= 500 * H.load_factor(), ("unfold all took %.2f ms"):format(result.elapsed_ms))
+	assert(result.cpu_ms <= 500, ("unfold all consumed %.2f ms process CPU"):format(result.cpu_ms))
+	if vim.env.PERF == "1" then
+		assert(result.elapsed_ms <= 500 * H.load_factor(), ("unfold all took %.2f ms"):format(result.elapsed_ms))
+	end
 	assert(result.rows <= 5001, "unfold all exceeded the row limit")
 	eq(notifications(), {
 		{ msg = "Unfold all stopped at 5000 rows", level = vim.log.levels.WARN },
@@ -199,28 +228,6 @@ local function install_replacement_counter()
 				FileTreeReplacementCount = FileTreeReplacementCount + 1
 			end
 			return FileTreeOriginalSetLines(buf, ...)
-		end
-	]=])
-end
-
-local function install_cpu_measurement()
-	child.lua([=[
-		local function process_cpu_ms(usage)
-			return (usage.utime.sec + usage.stime.sec) * 1000 + (usage.utime.usec + usage.stime.usec) / 1000
-		end
-
-		FileTreeStartMeasurement = function()
-			return {
-				cpu_ms = process_cpu_ms(vim.uv.getrusage()),
-				elapsed_ns = vim.uv.hrtime(),
-			}
-		end
-
-		FileTreeFinishMeasurement = function(started)
-			return {
-				cpu_ms = process_cpu_ms(vim.uv.getrusage()) - started.cpu_ms,
-				elapsed_ms = (vim.uv.hrtime() - started.elapsed_ns) / 1e6,
-			}
 		end
 	]=])
 end
