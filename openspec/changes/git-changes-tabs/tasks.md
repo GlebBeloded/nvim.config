@@ -73,9 +73,9 @@ Scenarios: `git: c shows the branch commits`, `git: c again shows the branch fil
 
 Scenarios: `git: Branch tab hint names the commit view key`, `git: Branch tab hint follows a reassigned key`, `git: Branch tab keeps the last row above the hint`, `git: Local tab has no hint row`
 
-- [ ] 10.1 Write the scenarios in tests/integration/git/test_changes_tabs.lua against the real panel and keymap settings and run `make test FILE=tests/integration/git/test_changes_tabs.lua` to see them fail
-- [ ] 10.2 Add lua/gleb/git/changes/hint.lua exactly as design.md Decision 7 requires, including resize handling and two virtual lines above the rule
-- [ ] 10.3 Run `make test FILE=tests/integration/git/test_changes_tabs.lua` and see the scenarios pass
+- [x] 10.1 Write the scenarios in tests/integration/git/test_changes_tabs.lua against the real panel and keymap settings and run `make test FILE=tests/integration/git/test_changes_tabs.lua` to see them fail
+- [x] 10.2 Add lua/gleb/git/changes/hint.lua exactly as design.md Decision 7 requires, including resize handling and two virtual lines above the rule
+- [x] 10.3 Run `make test FILE=tests/integration/git/test_changes_tabs.lua` and see the scenarios pass
 
 ## 11. Branch diff navigation
 
@@ -141,7 +141,7 @@ Scenarios: `git: Local tab matches the approved render`
 
 Scenarios: `git: Branch tab matches the approved render`
 
-- [ ] 19.1 Write the scenario in tests/screen/git/test_changes_tabs.lua from design.md "Proposed — Branch tab, files" and run `make test FILE=tests/screen/git/test_changes_tabs.lua CASE="Branch tab matches the approved render"` to see it fail
+- [x] 19.1 Write the scenario in tests/screen/git/test_changes_tabs.lua from design.md "Proposed — Branch tab, files" and run `make test FILE=tests/screen/git/test_changes_tabs.lua CASE="Branch tab matches the approved render"` to see it fail
 - [ ] 19.2 Add a `changes-branch` case to tests/render/cases.lua with the `billing-branch` fixture, fake `gh` and stubbed clock and make the Branch files screen match the approved text and colour mask
 - [ ] 19.3 Run `make test FILE=tests/screen/git/test_changes_tabs.lua CASE="Branch tab matches the approved render"` and compare `make render CASE=changes-branch COLUMNS=100 LINES=30` with renders/branch_files.ansi
 
@@ -149,7 +149,7 @@ Scenarios: `git: Branch tab matches the approved render`
 
 Scenarios: `git: Branch commits match the approved render`
 
-- [ ] 20.1 Write the scenario in tests/screen/git/test_changes_tabs.lua from design.md "Proposed — Branch tab, commits" and run `make test FILE=tests/screen/git/test_changes_tabs.lua CASE="Branch commits match the approved render"` to see it fail
+- [x] 20.1 Write the scenario in tests/screen/git/test_changes_tabs.lua from design.md "Proposed — Branch tab, commits" and run `make test FILE=tests/screen/git/test_changes_tabs.lua CASE="Branch commits match the approved render"` to see it fail
 - [ ] 20.2 Make the Branch commit screen match the approved text and colour mask
 - [ ] 20.3 Run `make test FILE=tests/screen/git/test_changes_tabs.lua CASE="Branch commits match the approved render"` and see it pass
 
@@ -157,33 +157,33 @@ Scenarios: `git: Branch commits match the approved render`
 
 Scenarios: `git: Changes panel with the diff view matches the approved render`
 
-- [ ] 21.1 Point the scenario in tests/screen/git/test_changes_screen.lua at design.md "Proposed — Local only on main" and run `make test FILE=tests/screen/git/test_changes_screen.lua CASE="Changes panel with the diff view matches the approved render"` to see it fail
-- [ ] 21.2 Make the Local-only panel and diff match the approved text and colour mask without changing the editor-side diff
-- [ ] 21.3 Run `make test FILE=tests/screen/git/test_changes_screen.lua CASE="Changes panel with the diff view matches the approved render"` and see it pass
+- [x] 21.1 Point the scenario in tests/screen/git/test_changes_screen.lua at design.md "Proposed — Local only on main" and run `make test FILE=tests/screen/git/test_changes_screen.lua CASE="Changes panel with the diff view matches the approved render"` to see it fail
+- [x] 21.2 Make the Local-only panel and diff match the approved text and colour mask without changing the editor-side diff
+- [x] 21.3 Run `make test FILE=tests/screen/git/test_changes_screen.lua CASE="Changes panel with the diff view matches the approved render"` and see it pass
 
 ## 22. Existing Local panel screen
 
 Scenarios: `git: Changes panel matches the approved render`
 
-- [ ] 22.1 Point the scenario in tests/screen/git/test_changes_screen.lua at design.md "Proposed — Local only on main" and run `make test FILE=tests/screen/git/test_changes_screen.lua CASE="Changes panel matches the approved render"` to see it fail
-- [ ] 22.2 Make the Local-only panel match the approved text and colour mask
-- [ ] 22.3 Run `make test FILE=tests/screen/git/test_changes_screen.lua CASE="Changes panel matches the approved render"` and see it pass
+- [x] 22.1 Point the scenario in tests/screen/git/test_changes_screen.lua at design.md "Proposed — Local only on main" and run `make test FILE=tests/screen/git/test_changes_screen.lua CASE="Changes panel matches the approved render"` to see it fail
+- [x] 22.2 Make the Local-only panel match the approved text and colour mask
+- [x] 22.3 Run `make test FILE=tests/screen/git/test_changes_screen.lua CASE="Changes panel matches the approved render"` and see it pass
 
 ## 23. Bufferline offset over the panel
 
 Scenarios: `bufferline: tabs start after the open project tree`, `bufferline: tabs start after the open changes panel`, `bufferline: tabline over the changes panel matches the approved render`, `bufferline: tabline with tree open matches reference screenshot`, `bufferline: tabline without tree matches reference screenshot`
 
-- [ ] 23.1 Run the five named scenarios in tests/screen/bufferline/test_bufferline_screen.lua and see the existing four pass while `bufferline: tabline over the changes panel matches the approved render` fails against the new panel strip
-- [ ] 23.2 Update only the changes-panel reference to use the panel columns of design.md "Proposed — Local only on main"; keep the tabline row and project-tree/no-tree references unchanged
-- [ ] 23.3 Run `make test FILE=tests/screen/bufferline/test_bufferline_screen.lua` and see all five scenarios pass
+- [x] 23.1 Run the five named scenarios in tests/screen/bufferline/test_bufferline_screen.lua and see the existing four pass while `bufferline: tabline over the changes panel matches the approved render` fails against the new panel strip
+- [x] 23.2 Update only the changes-panel reference to use the panel columns of design.md "Proposed — Local only on main"; keep the tabline row and project-tree/no-tree references unchanged
+- [x] 23.3 Run `make test FILE=tests/screen/bufferline/test_bufferline_screen.lua` and see all five scenarios pass
 
 ## 24. Real Cmd+G cycle
 
 Scenarios: `git: Real Cmd+G presses cycle the changes tabs`
 
-- [ ] 24.1 Add the scenario to tests/e2e/git/test_changes_review.lua against the populated `billing-branch` fixture and real Cmd+G key events, run it through `make e2e` in the sandbox VM and see it fail
-- [ ] 24.2 Complete the real-key cycle wiring without changing the `<A-g>` action assignment
-- [ ] 24.3 Run `make e2e` in the sandbox VM and see the scenario pass
+- [x] 24.1 Add the scenario to tests/e2e/git/test_changes_review.lua against the populated `billing-branch` fixture and real Cmd+G key events, run it through `make e2e` in the sandbox VM and see it fail
+- [x] 24.2 Complete the real-key cycle wiring without changing the `<A-g>` action assignment
+- [x] 24.3 Run `make e2e` in the sandbox VM and see the scenario pass
 
 ## 25. Full verification
 
@@ -203,14 +203,13 @@ Scenarios: `git: Local tab matches the approved render`, `git: Branch tab matche
 - Branch actions resolve availability before replacing another sidebar, so unavailable tabs leave the current UI unchanged.
 - Repository state is snapshotted in the shared view close path so action, cycle and window closes retain the same tab state.
 - The Local-tab ANSI reference is copied under tests so the screen case remains valid after the change is archived.
+- The Branch footer uses a cursor-clamped sentinel row because below-EOF virtual lines do not extend Neovim's scroll range.
+- Branch commit loading captures its generation after file rows arrive, so an early commit-view action remains current.
+- The changes panel uses colorizer's native filetype exclusion so pull-request numbers keep their semantic highlight.
 
 ## Stuck
 
-- Task 10: the Branch hint regression test is red after two production attempts; the saved second attempt is `stuck-attempt-10.diff`.
-- Probe: an empty Branch diff retained three structural rows and two trailing `virt_lines`; the multibyte hint was 38 bytes and 35 cells; `VimResized` kept the valid 35-column footer across the layout breakpoint; `:close` invalidated both panel and hint windows.
-- Attempt 1: added the panel-relative float, live action-store glyphs, resize/close lifecycle and two virtual lines; the rule rendered one screen row too low and `G` left `tax_test.go` under the float.
-- Attempt 2: compensated for the winbar offset and adjusted the panel topline on `CursorMoved`; the naming, reassigned-key and Local-tab scenarios passed, but `G` still left `tax_test.go` hidden because below-EOF virtual lines did not affect its scroll result.
-- Task 11: the Branch diff navigation regression tests are red after two production attempts; the saved second attempt is `stuck-attempt-11.diff`.
-- Probe: the cause was visible in the existing pipeline, so no headless state probe was needed; isolated real-entry runs showed merge-base, commit and added-file diffs passing, while `]f` recorded `invoice.go` twice and `<CR>` left the panel current with one `gleb-diff` window.
-- Attempt 1: added committed `git show` comparisons and tab-qualified diff identity; replacing the Local diff scheduled the panel's orphan check after both editor panes became read-only diff windows, which closed the panel.
-- Attempt 2: kept the panel alive while its owned diff windows were valid; committed content scenarios passed in isolation, but `]f` exposed the duplicate initial selection and Branch file rows still routed `<CR>` through fold handling instead of opening the working file.
+- Task 11: the Branch diff navigation regression is still intermittent after two production attempts; the saved second attempt is `stuck-attempt-11b.diff`.
+- Probe: before `<CR>` the real Branch panel was current with its owned diff at windows 1005/1000; afterward the panel remained current, the working file was not open and an `invoice.go` `gleb-diff` window remained beside blank editor windows.
+- Attempt 1: restored committed `git show` comparisons, tab-qualified diff identity and Branch-file `<CR>` routing; the content and navigation cases passed repeatedly, but the strengthened Enter assertion later caught the owned diff remaining open.
+- Attempt 2: stopped the selection debounce and invalidated its generation before closing the diff; a later five-run audit still failed on run 3 with `Branch Enter did not open the working file`.

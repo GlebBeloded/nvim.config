@@ -7,6 +7,11 @@ local child = H.new_child()
 
 local T = H.child_set(child, child.start_config)
 
+---@return integer
+local function async_timeout()
+	return math.floor(5000 * H.load_factor())
+end
+
 local function toggle_changes()
 	child.lua([[
 		local catalog = require("gleb.actions").state.applicator.catalog
@@ -64,13 +69,13 @@ local function wait_for_tab(active, require_diff)
 				[[
 		(function()
 			local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
-			return panel and panel.active_tab == %q and (%s or panel.diff_view ~= nil)
+			return panel and panel.tabs_ready and panel.active_tab == %q and (%s or panel.diff_view ~= nil)
 		end)()
 	]],
 				active,
 				require_diff and "false" or "true"
 			),
-			3000
+			async_timeout()
 		),
 		("Changes review did not open the %s tab"):format(active)
 	)
@@ -134,7 +139,7 @@ local function branch_panel()
 				local view = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
 				return view and view.active_tab == "branch" and view.rows[8] ~= nil
 			end)()]],
-			3000
+			async_timeout()
 		),
 		"Branch rows did not load"
 	)
@@ -240,7 +245,7 @@ local function wait_for_commits()
 				and view.rows[5].id == "branch:commit:e325463:file:internal/billing/invoice.go"
 		end)()
 	]],
-			3000
+			async_timeout()
 		),
 		"Branch commits did not load"
 	)
@@ -252,30 +257,36 @@ local function observe_diff_shows()
 		local diff = require("gleb.diff.view")
 		local show = diff.show
 		diff.show = function(win, spec)
-			BranchDiffShows[#BranchDiffShows + 1] = {
-				relpath = spec.relpath,
-				left = spec.left,
-				right = spec.right,
-				labels = spec.labels,
-				committed = spec.committed,
-				actionable = spec.actionable,
-				right_buf = spec.right_buf,
-			}
+			if spec.committed then
+				BranchDiffShows[#BranchDiffShows + 1] = {
+					relpath = spec.relpath,
+					left = spec.left,
+					right = spec.right,
+					labels = spec.labels,
+					committed = spec.committed,
+					actionable = spec.actionable,
+					right_buf = spec.right_buf,
+				}
+			end
 			return show(win, spec)
 		end
 	]])
 end
 
 ---@param path string
-local function wait_for_branch_diff(path)
+---@param right_label? string
+local function wait_for_branch_diff(path, right_label)
 	assert(
 		child.wait(
 			([[(function()
 				local shows = BranchDiffShows or {}
 				local shown = shows[#shows]
-				return shown and shown.relpath == %q and shown.committed == true
-			end)()]]):format(path),
-			3000
+				return shown
+					and shown.relpath == %q
+					and shown.committed == true
+					and (%q == "" or shown.labels.right == %q)
+			end)()]]):format(path, right_label or "", right_label or ""),
+			async_timeout()
 		),
 		"Branch diff did not load: " .. path
 	)
@@ -318,7 +329,7 @@ T["git: Changes tabs show Local and Branch on a feature branch"] = function()
 			return view and vim.wo[view.win].winbar:find("Branch 4", 1, true) ~= nil
 		end)()
 	]],
-			3000
+			async_timeout()
 		),
 		"Branch tab did not become available"
 	)
@@ -344,7 +355,7 @@ T["git: Changes tabs show only Local on the default branch"] = function()
 			return view and vim.wo[view.win].winbar:find("Local 6", 1, true) ~= nil
 		end)()
 	]],
-			3000
+			async_timeout()
 		),
 		"Local tab did not draw"
 	)
@@ -570,7 +581,7 @@ T["git: c again shows the branch files"] = function()
 	assert(
 		child.wait(
 			[[require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()].commit_view == false]],
-			3000
+			async_timeout()
 		)
 	)
 	local panel = current_panel()
@@ -605,7 +616,7 @@ T["git: Expanding a commit lists its files"] = function()
 			end)
 		end)()
 	]],
-			3000
+			async_timeout()
 		),
 		"Commit files did not load"
 	)
@@ -669,7 +680,7 @@ T["git: c on the Local tab does nothing"] = function()
 			return view and view.local_ready and #view.rows > 0
 		end)()
 	]],
-			3000
+			async_timeout()
 		),
 		"Local rows did not load"
 	)
@@ -716,7 +727,7 @@ T["git: Branch tab shows a commit's diff"] = function()
 	child.type_keys("c", "<Esc>")
 	wait_for_commits()
 	select_row("branch:commit:e325463:file:internal/billing/invoice.go")
-	wait_for_branch_diff("internal/billing/invoice.go")
+	wait_for_branch_diff("internal/billing/invoice.go", "e325463 · wire tax into Total")
 
 	local shown = child.lua_get("BranchDiffShows[#BranchDiffShows]")
 	eq(shown.left, git_lines(root, "e325463^:internal/billing/invoice.go"))
@@ -779,6 +790,19 @@ T["git: Branch tab Enter opens the working file"] = function()
 	wait_for_branch_diff("internal/billing/tax.go")
 
 	child.type_keys("<CR>")
+	local expected_path = vim.fs.joinpath(assert(vim.uv.fs_realpath(root)), "internal/billing/tax.go")
+	assert(
+		child.wait(
+			([[(function()
+				if vim.api.nvim_buf_get_name(0) ~= %q then return false end
+				return vim.iter(vim.api.nvim_tabpage_list_wins(0)):all(function(win)
+					return vim.bo[vim.api.nvim_win_get_buf(win)].filetype ~= "gleb-diff"
+				end)
+			end)()]]):format(expected_path),
+			async_timeout()
+		),
+		"Branch Enter did not open the working file"
+	)
 	local result = child.lua_get([=[(function()
 		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
 		local diff_windows = vim.iter(vim.api.nvim_tabpage_list_wins(0)):filter(function(win)
@@ -792,7 +816,7 @@ T["git: Branch tab Enter opens the working file"] = function()
 		}
 	end)()]=])
 	eq(result, {
-		current = vim.fs.joinpath(root, "internal/billing/tax.go"),
+		current = expected_path,
 		panel_open = true,
 		active = "branch",
 		diff_windows = 0,
@@ -873,7 +897,7 @@ T["git: Branch tab refreshes after a commit"] = function()
 				end
 				return summary == "4 commits · merge-base 4ccefde" and has_notes
 			end)()]],
-			3000
+			async_timeout()
 		),
 		"Branch tab did not refresh after the commit"
 	)

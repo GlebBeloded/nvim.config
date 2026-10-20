@@ -6,6 +6,7 @@ local debounce = require("gleb.util.debounce")
 local workspace = require("gleb.workspace")
 local branch = require("gleb.git.changes.branch")
 local git = require("gleb.git.changes.git")
+local hint = require("gleb.git.changes.hint")
 local model = require("gleb.git.changes.model")
 local render = require("gleb.git.changes.render")
 local tabs = require("gleb.git.changes.tabs")
@@ -57,6 +58,7 @@ local augroup = vim.api.nvim_create_augroup("gleb_changes", { clear = true })
 ---@field commit_files table<string, gleb.ui.tree.Node[]>
 ---@field commit_view boolean
 ---@field commit_generation integer
+---@field hint? ChangesHint
 ---@field local_ready boolean
 ---@field tabs_ready boolean
 ---@field on_ready? fun(view: ChangesView)
@@ -247,6 +249,7 @@ local function draw(view, selected_key)
 		end
 		view.rows = visible
 		render.draw(buf, visible, WIDTH)
+		hint.update(view)
 	end, selected_key)
 end
 
@@ -280,7 +283,6 @@ local function refresh_branch(view, info)
 	view.commit_nodes = nil
 	view.commit_files = {}
 	local branch_generation = view.branch_generation
-	local commit_generation = view.commit_generation
 	branch.load_files(view.root, info, branch_generation, function(candidate)
 		return require("gleb.git.changes").state.by_tab[view.tab] == view and view.branch_generation == candidate
 	end, function(nodes)
@@ -292,6 +294,7 @@ local function refresh_branch(view, info)
 			draw_branch(view, nodes)
 			return
 		end
+		local commit_generation = view.commit_generation
 		branch.load_commits(view.root, info, nodes, commit_generation, function(candidate)
 			return require("gleb.git.changes").state.by_tab[view.tab] == view
 				and view.branch_generation == branch_generation
@@ -546,6 +549,7 @@ local function add_refresh_sources(view)
 		group = augroup,
 		buffer = view.buf,
 		callback = function()
+			hint.ensure_cursor(view)
 			schedule_diff(view)
 		end,
 	})
@@ -621,6 +625,7 @@ end
 ---@return nil
 cleanup = function(view)
 	forget(view)
+	hint.close(view)
 	if not view.timer:is_closing() then
 		view.timer:stop()
 		view.timer:close()
@@ -854,6 +859,9 @@ function M.toggle_commits(panel)
 		return
 	end
 	panel.commit_view = true
+	if not panel.branch_nodes then
+		return
+	end
 	if panel.commit_nodes then
 		tree_model.rebuild(panel.tree, panel.commit_nodes)
 		local first = panel.commit_nodes[4]

@@ -184,7 +184,7 @@ local function all_changes_segments(row, width)
 		{ text = " " },
 		{ text = COMMIT_ICON, group = "ChangesCommitIcon" },
 		{ text = " " },
-		{ text = row.label, group = "ChangesCommittedFile" },
+		{ text = row.label, group = "ChangesRoot" },
 	}
 	local padding = math.max(1, width - RIGHT_MARGIN - segments_width(segments) - vim.fn.strdisplaywidth(count))
 	segments[#segments + 1] = { text = string.rep(" ", padding) }
@@ -208,7 +208,7 @@ local function commit_segments(row, width)
 	}
 	local subject_width = math.max(1, width - RIGHT_MARGIN - segments_width(segments) - vim.fn.strdisplaywidth(age) - 1)
 	local subject, cut = truncate(row.label, subject_width)
-	segments[#segments + 1] = { text = subject, group = "ChangesCommittedFile" }
+	segments[#segments + 1] = { text = subject, group = "FileTreeFileName" }
 	if cut then
 		segments[#segments + 1] = { text = ELLIPSIS, group = "ChangesCount" }
 	end
