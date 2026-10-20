@@ -39,6 +39,6 @@ Scenarios: `git: Committed signs match the approved render`
 
 Scenarios: `git: Added line shows bar sign`, `git: Added line has no competing hunk sign`, `git: Added line sign matches reference screenshot`, `git: Blame is off by default`, `git: Missing optional git plugins are tolerated`
 
-- [ ] 5.1 Re-run `grep -rn "H.root" tests/screen`. Every case that opens a file must open a fixture copy or a temp repo, never this checkout (design.md Risks).
+- [x] 5.1 Re-run `grep -rn "H.root" tests/screen`. Every case that opens a file must open a fixture copy or a temp repo, never this checkout (design.md Risks).
 - [ ] 5.2 Run `make quick`, then `make check`. `make smoke` keeps its startup budget and shows no new message.
-- [ ] 5.3 `make trace` lists every new scenario as tested, and `make colorize FILE=openspec/changes/git-committed-signs/design.md` reports only `GitCommittedSign` as unknown until the code defines it.
+- [x] 5.3 `make trace` lists every new scenario as tested, and `make colorize FILE=openspec/changes/git-committed-signs/design.md` reports only `GitCommittedSign` as unknown until the code defines it.
