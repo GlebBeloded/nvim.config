@@ -48,7 +48,7 @@ local function start()
 	]])
 end
 
-local T = H.child_set(child, start, { reuse = true })
+local T = H.child_set(child, start)
 
 local function open_palette()
 	child.type_keys("<M-A>")
