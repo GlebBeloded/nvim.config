@@ -7,6 +7,7 @@ local workspace = require("gleb.workspace")
 local git = require("gleb.git.changes.git")
 local model = require("gleb.git.changes.model")
 local render = require("gleb.git.changes.render")
+local tabs = require("gleb.git.changes.tabs")
 local settings = require("gleb.tree.settings")
 local watch = require("gleb.tree.watch")
 local windows = require("gleb.tree.windows")
@@ -41,6 +42,11 @@ local augroup = vim.api.nvim_create_augroup("gleb_changes", { clear = true })
 ---@field initial_selected_path? string
 ---@field review_on_refresh boolean
 ---@field loaded_buffers table<integer, boolean>
+---@field active_tab string
+---@field local_count integer
+---@field branch_count integer
+---@field branch_available boolean
+---@field branch_request integer
 
 ---@param buf integer
 ---@return nil
@@ -66,8 +72,76 @@ local function configure_window(win)
 	vim.wo[win].wrap = false
 	vim.wo[win].list = false
 	vim.wo[win].spell = false
-	vim.wo[win].winhighlight = "Normal:FileTreeNormal,CursorLine:FileTreeCursorLine,EndOfBuffer:FileTreeNormal"
+	vim.wo[win].winhighlight =
+		"Normal:FileTreeNormal,CursorLine:FileTreeCursorLine,EndOfBuffer:FileTreeNormal,WinBar:FileTreeNormal,WinBarNC:FileTreeNormal"
 	vim.api.nvim_win_set_width(win, WIDTH)
+end
+
+---@param text string
+---@return string
+local function statusline_escape(text)
+	return (text:gsub("%%", "%%%%"))
+end
+
+---@param view ChangesView
+---@return nil
+local function draw_tabs(view)
+	local parts = { " " }
+	---@type gleb.git.changes.TabView
+	local tab_view = {
+		local_count = view.local_count,
+		branch_count = view.branch_count,
+		branch_available = view.branch_available,
+	}
+	for _, tab in ipairs(tabs.items) do
+		if tab.available(tab_view) then
+			local group = tab.id == view.active_tab and tab.group or "ChangesTabInactive"
+			parts[#parts + 1] =
+				string.format("%%#%s# %s %d %%* ", group, statusline_escape(tab.title), tab.count(tab_view))
+		end
+	end
+	vim.wo[view.win].winbar = table.concat(parts):sub(1, -2)
+end
+
+---@param view ChangesView
+---@param merge_base string
+---@return nil
+local function load_branch_count(view, merge_base)
+	view.branch_request = view.branch_request + 1
+	local request = view.branch_request
+	vim.system({ "git", "diff", "--name-only", "-z", "-M", merge_base, "HEAD" }, {
+		cwd = view.root,
+		text = true,
+	}, function(result)
+		vim.schedule(function()
+			local changes = require("gleb.git.changes")
+			if changes.state.by_tab[view.tab] ~= view or request ~= view.branch_request then
+				return
+			end
+			view.branch_count = result.code == 0
+					and #vim.split(result.stdout or "", "\0", { plain = true, trimempty = true })
+				or 0
+			view.branch_available = true
+			draw_tabs(view)
+		end)
+	end)
+end
+
+---@param view ChangesView
+---@return nil
+local function resolve_tabs(view)
+	require("gleb.git.base").resolve(view.root, function(info)
+		if require("gleb.git.changes").state.by_tab[view.tab] ~= view then
+			return
+		end
+		view.branch_request = view.branch_request + 1
+		view.branch_available = false
+		view.branch_count = 0
+		draw_tabs(view)
+		if info then
+			load_branch_count(view, info.merge_base)
+		end
+	end)
 end
 
 ---@param view ChangesView
@@ -169,8 +243,16 @@ local function refresh_now(view)
 		end
 		local current = view.rows[vim.api.nvim_win_get_cursor(view.win)[1]]
 		view.all_rows = model.rows(result.stdout or "", settings.load().nesting.rules, numstat_z)
+		view.local_count = vim.iter(view.all_rows)
+			:filter(function(row)
+				return row.kind == "file"
+			end)
+			:fold(0, function(count)
+				return count + 1
+			end)
 		tree_model.rebuild(view.tree, tree_nodes(view.all_rows))
 		draw(view, row_key(current))
+		draw_tabs(view)
 		if view.initial_selected_path then
 			select_file(view, view.initial_selected_path)
 			view.initial_selected_path = nil
@@ -521,6 +603,11 @@ function M.open(root, selected_path, review)
 		loaded_buffers = {},
 		initial_selected_path = workspace.normalize(selected_path),
 		review_on_refresh = review == true,
+		active_tab = "local",
+		local_count = 0,
+		branch_count = 0,
+		branch_available = false,
+		branch_request = 0,
 	}
 	tree_view.attach(buf, view.tree, {
 		fallback = function()
@@ -529,6 +616,8 @@ function M.open(root, selected_path, review)
 	})
 	changes.state.by_tab[tab] = view
 	add_refresh_sources(view)
+	draw_tabs(view)
+	resolve_tabs(view)
 	refresh_now(view)
 	return view
 end

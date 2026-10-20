@@ -35,9 +35,9 @@ Scenarios: `diff: Diff view draws a committed spec in purple`, `diff: Diff view 
 
 Scenarios: `git: Changes tabs show Local and Branch on a feature branch`, `git: Changes tabs show only Local on the default branch`, `git: Changes tab colours`
 
-- [ ] 5.1 Write the scenarios in tests/integration/git/test_changes_tabs.lua and run `make test FILE=tests/integration/git/test_changes_tabs.lua` to see them fail
-- [ ] 5.2 Build the winbar strip from lua/gleb/git/changes/tabs.lua in lua/gleb/git/changes/view.lua, map its WinBar highlights to `FileTreeNormal`, add the tab groups in lua/gleb/git/changes/highlights.lua and derive Branch availability from `gleb.git.base`
-- [ ] 5.3 Run `make test FILE=tests/integration/git/test_changes_tabs.lua` and see the scenarios pass
+- [x] 5.1 Write the scenarios in tests/integration/git/test_changes_tabs.lua and run `make test FILE=tests/integration/git/test_changes_tabs.lua` to see them fail
+- [x] 5.2 Build the winbar strip from lua/gleb/git/changes/tabs.lua in lua/gleb/git/changes/view.lua, map its WinBar highlights to `FileTreeNormal`, add the tab groups in lua/gleb/git/changes/highlights.lua and derive Branch availability from `gleb.git.base`
+- [x] 5.3 Run `make test FILE=tests/integration/git/test_changes_tabs.lua` and see the scenarios pass
 
 ## 6. Cmd+G tab cycle
 
@@ -196,3 +196,4 @@ Scenarios: `git: Local tab matches the approved render`, `git: Branch tab matche
 - The fixture manifest uses `branch_files` and `local_files` string arrays, keeping committed and worktree expectations explicit for later scenarios.
 - `parse_name_status` returns normalized status names and keeps a rename's source in `orig`, matching the existing changes-row vocabulary for later tree and diff consumers.
 - `parse_commits` keeps every parent in an ordered array so later commit diffs can use the first parent without losing merge ancestry.
+- The strip counts Branch files with a name-only merge-base diff, so drawing the pill does not load the later Branch row model.
