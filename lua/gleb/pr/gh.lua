@@ -9,6 +9,12 @@ M.REVIEW_THREADS_QUERY =
 	"query ReviewThreads($owner:String!,$name:String!,$number:Int!,$cursor:String){repository(owner:$owner,name:$name){pullRequest(number:$number){reviewThreads(first: 100,after:$cursor){pageInfo{hasNextPage endCursor} nodes{id isResolved isOutdated path line originalLine startLine originalStartLine diffSide subjectType resolvedBy{login} viewerCanReply viewerCanResolve viewerCanUnresolve comments(first: 100){pageInfo{hasNextPage endCursor} nodes{id author{login} body createdAt url diffHunk originalCommit{oid} replyTo{id}}}}}}}}"
 M.THREAD_COMMENTS_QUERY =
 	"query ThreadComments($id:ID!,$cursor:String){node(id:$id){... on PullRequestReviewThread{comments(first: 100,after:$cursor){pageInfo{hasNextPage endCursor} nodes{id author{login} body createdAt url diffHunk originalCommit{oid} replyTo{id}}}}}}"
+M.ADD_REPLY_MUTATION =
+	"mutation AddReply($id:ID!,$body:String!){addPullRequestReviewThreadReply(input:{pullRequestReviewThreadId:$id,body:$body}){comment{id}}}"
+M.RESOLVE_THREAD_MUTATION =
+	"mutation ResolveThread($id:ID!){resolveReviewThread(input:{threadId:$id}){thread{id isResolved}}}"
+M.UNRESOLVE_THREAD_MUTATION =
+	"mutation UnresolveThread($id:ID!){unresolveReviewThread(input:{threadId:$id}){thread{id isResolved}}}"
 
 ---@alias gleb.pr.Runner fun(argv: string[], opts: table, callback: fun(result: vim.SystemCompleted))
 
@@ -69,6 +75,26 @@ local function thread_comments_argv(id, cursor)
 	}
 end
 
+---@param document string
+---@param id string
+---@param body? string
+---@return string[]
+local function mutation_argv(document, id, body)
+	local argv = {
+		"gh",
+		"api",
+		"graphql",
+		"-f",
+		"query=" .. document,
+		"-f",
+		"id=" .. id,
+	}
+	if body then
+		vim.list_extend(argv, { "-f", "body=" .. body })
+	end
+	return argv
+end
+
 ---@param review gleb.pr.Review
 ---@return table
 local function request_opts(review)
@@ -111,6 +137,46 @@ function M.failure(result, host)
 		kind = "failed",
 		message = "PR comments unavailable: " .. detail,
 	}
+end
+
+---@param result vim.SystemCompleted
+---@param host string
+---@param callback fun(ok: boolean, message?: string)
+local function finish_mutation(result, host, callback)
+	local ok, response = pcall(vim.json.decode, result.stdout or "")
+	if result.code == 0 and ok and response.data and not response.errors then
+		callback(true)
+		return
+	end
+	local message = M.failure(result, host).message:gsub("^PR comments unavailable: ", "")
+	callback(false, message)
+end
+
+---@param review gleb.pr.Review
+---@param thread_id string
+---@param body string
+---@param run? gleb.pr.Runner
+---@param callback fun(ok: boolean, message?: string)
+---@return nil
+function M.reply(review, thread_id, body, run, callback)
+	run = run or system_runner
+	run(mutation_argv(M.ADD_REPLY_MUTATION, thread_id, body), request_opts(review), function(result)
+		finish_mutation(result, review.host, callback)
+	end)
+end
+
+---@param review gleb.pr.Review
+---@param thread_id string
+---@param resolved boolean
+---@param run? gleb.pr.Runner
+---@param callback fun(ok: boolean, message?: string)
+---@return nil
+function M.set_resolved(review, thread_id, resolved, run, callback)
+	run = run or system_runner
+	local document = resolved and M.RESOLVE_THREAD_MUTATION or M.UNRESOLVE_THREAD_MUTATION
+	run(mutation_argv(document, thread_id), request_opts(review), function(result)
+		finish_mutation(result, review.host, callback)
+	end)
 end
 
 ---@param review gleb.pr.Review
