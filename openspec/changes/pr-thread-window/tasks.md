@@ -42,9 +42,9 @@ Scenarios: `pr: Send confirmation matches the approved render`
 
 ## 8. Resolve confirmation
 Scenarios: `pr: R asks before resolving`, `pr: y resolves the thread`, `pr: y unresolves a resolved thread`, `pr: A failed resolve is reported`
-- [ ] 8.1 Write the four tests in `tests/integration/pr/test_thread_window.lua`, driving `R` and `y` against populated threads and fake `gh` responses; run each with `make test FILE=tests/integration/pr/test_thread_window.lua CASE="<scenario title>"` and see it fail
-- [ ] 8.2 Add the resolve and unresolve confirmation states, call the existing `gh.set_resolved`, silently refresh and update the title on success, and restore normal state on failure
-- [ ] 8.3 Run each scenario with `make test FILE=tests/integration/pr/test_thread_window.lua CASE="<scenario title>"` and see it pass
+- [x] 8.1 Write the four tests in `tests/integration/pr/test_thread_window.lua`, driving `R` and `y` against populated threads and fake `gh` responses; run each with `make test FILE=tests/integration/pr/test_thread_window.lua CASE="<scenario title>"` and see it fail
+- [x] 8.2 Add the resolve and unresolve confirmation states, call the existing `gh.set_resolved`, silently refresh and update the title on success, and restore normal state on failure
+- [x] 8.3 Run each scenario with `make test FILE=tests/integration/pr/test_thread_window.lua CASE="<scenario title>"` and see it pass
 
 ## 9. Mutation progress
 Scenarios: `pr: A mutation shows progress and ignores keys`

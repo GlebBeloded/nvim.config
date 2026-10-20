@@ -100,6 +100,32 @@ local function ask_to_send(text)
 	assert(child.wait([[vim.bo.filetype == "gleb-pr-confirm"]], timeout()), "send confirmation did not open")
 end
 
+---@param line integer
+local function ask_to_resolve(line)
+	open_thread_at(line)
+	child.type_keys("R")
+	assert(child.wait([[vim.bo.filetype == "gleb-pr-confirm"]], timeout()), "resolve confirmation did not open")
+end
+
+---@param id string
+---@param resolved boolean
+local function serve_resolution(id, resolved)
+	child.lua(
+		[[local id, resolved = ...
+		local path = vim.fs.joinpath(vim.env.FAKE_GH_DIR, "ReviewThreads.json")
+		local response = vim.json.decode(table.concat(vim.fn.readfile(path), "\n"))
+		for _, thread in ipairs(response.data.repository.pullRequest.reviewThreads.nodes) do
+			if thread.id == id then
+				thread.isResolved = resolved
+				thread.viewerCanUnresolve = resolved
+				thread.resolvedBy = resolved and { login = "gleb-beloded" } or vim.NIL
+			end
+		end
+		vim.fn.writefile({ vim.json.encode(response) }, path)]],
+		{ id, resolved }
+	)
+end
+
 ---@param gh_log string
 ---@param needle string
 ---@return string[]
@@ -399,6 +425,81 @@ T["pr: The reply goes to gh as one argument"] = function()
 	eq(#lines, 1)
 	eq(lines[1]:find("-f body=" .. body, 1, true) ~= nil, true)
 	eq(vim.uv.fs_stat("/tmp/pwned"), nil)
+end
+
+T["pr: R asks before resolving"] = function()
+	local _, gh_log = open_review(function(files)
+		files["ResolveThread.json"] = mutations.resolve
+	end)
+	ask_to_resolve(22)
+
+	local windows = thread_windows()
+	eq(vim.startswith(windows[3].lines[1], " Resolve this thread?"), true)
+	eq(vim.endswith(windows[3].lines[1], "Resolve y · Cancel n "), true)
+	eq(child.lua_get([[vim.bo.modifiable]]), false)
+	eq(log_lines(gh_log, "mutation"), {})
+end
+
+T["pr: y resolves the thread"] = function()
+	local _, gh_log = open_review(function(files)
+		files["ResolveThread.json"] = mutations.resolve
+	end)
+	local notifications = H.record_notify(child)
+	ask_to_resolve(22)
+	serve_resolution("PRRT_t1", true)
+	child.type_keys("y")
+	wait_unblocked()
+
+	assert(
+		child.wait(
+			[[#Notifications == 1 and require("gleb.pr.thread_window").state.by_tab[vim.api.nvim_get_current_tabpage()].thread.resolved]],
+			timeout()
+		),
+		"resolve mutation and refresh did not finish"
+	)
+	local lines = log_lines(gh_log, "mutation ResolveThread")
+	eq(#lines, 1)
+	eq(lines[1]:find("-f id=PRRT_t1", 1, true) ~= nil, true)
+	eq(notifications(), { { msg = "Thread resolved", level = vim.log.levels.INFO } })
+	eq(vim.endswith(thread_windows()[1].title, "· resolved "), true)
+end
+
+T["pr: y unresolves a resolved thread"] = function()
+	local _, gh_log = open_review(function(files)
+		files["UnresolveThread.json"] = mutations.unresolve
+	end)
+	local notifications = H.record_notify(child)
+	ask_to_resolve(11)
+	eq(vim.startswith(thread_windows()[3].lines[1], " Unresolve this thread?"), true)
+	serve_resolution("PRRT_t4", false)
+	child.type_keys("y")
+	wait_unblocked()
+
+	assert(child.wait([[#Notifications == 1]], timeout()), "unresolve mutation did not finish")
+	local lines = log_lines(gh_log, "mutation UnresolveThread")
+	eq(#lines, 1)
+	eq(lines[1]:find("-f id=PRRT_t4", 1, true) ~= nil, true)
+	eq(notifications(), { { msg = "Thread unresolved", level = vim.log.levels.INFO } })
+end
+
+T["pr: A failed resolve is reported"] = function()
+	open_review(function(files)
+		files["ResolveThread.json"] = mutations.errors
+		files["ResolveThread.json.stderr"] = "Resource not accessible by integration\n"
+		files["ResolveThread.json.code"] = "1\n"
+	end)
+	local notifications = H.record_notify(child)
+	ask_to_resolve(22)
+	child.type_keys("y")
+	wait_unblocked()
+
+	assert(child.wait([[#Notifications == 1]], timeout()), "resolve failure was not reported")
+	eq(notifications(), {
+		{ msg = "Resolve failed: Resource not accessible by integration", level = vim.log.levels.ERROR },
+	})
+	eq(vim.endswith(thread_windows()[1].title, "· open "), true)
+	eq(child.lua_get([[vim.bo.filetype]]), "gleb-pr-thread")
+	eq(vim.endswith(thread_windows()[3].lines[1], " Reply ↩ · Resolve R · Open on web gx · Close q "), true)
 end
 
 return T

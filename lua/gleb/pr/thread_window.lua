@@ -20,7 +20,8 @@ local action_rows = require("gleb.find_action.rows")
 ---@field hint_win integer
 ---@field group integer
 ---@field closing boolean
----@field mode "normal"|"confirm_send"|"running"
+---@field mode "normal"|"confirm_send"|"confirm_resolve"|"running"
+---@field operation? "send"|"resolve"|"unresolve"
 
 ---@class gleb.pr.ThreadWindowState
 ---@field by_tab table<integer, gleb.pr.ThreadWindow>
@@ -168,6 +169,7 @@ end
 ---@param resume_insert boolean
 local function restore_editing(state, resume_insert)
 	state.mode = "normal"
+	state.operation = nil
 	vim.bo[state.reply_buf].filetype = "gleb-pr-thread"
 	vim.bo[state.reply_buf].modifiable = true
 	layout(state)
@@ -205,20 +207,40 @@ end
 ---@return nil
 function M.confirm_no()
 	local state = current()
-	if not state or state.mode ~= "confirm_send" then
+	if not state or (state.mode ~= "confirm_send" and state.mode ~= "confirm_resolve") then
 		return
 	end
-	restore_editing(state, true)
+	restore_editing(state, state.mode == "confirm_send")
 end
 
 ---@return nil
 function M.confirm_yes()
 	local state = current()
-	if not state or state.mode ~= "confirm_send" then
+	if not state or (state.mode ~= "confirm_send" and state.mode ~= "confirm_resolve") then
+		return
+	end
+	if state.mode == "confirm_resolve" then
+		local resolved = not state.thread.resolved
+		state.mode = "running"
+		state.operation = resolved and "resolve" or "unresolve"
+		layout(state)
+		require("gleb.pr.gh").set_resolved(state.review, state.thread.id, resolved, nil, function(ok, message)
+			local verb = resolved and "Resolve" or "Unresolve"
+			if M.state.by_tab[state.tab] == state and vim.api.nvim_buf_is_valid(state.reply_buf) then
+				restore_editing(state, false)
+			end
+			if not ok then
+				vim.notify(verb .. " failed: " .. (message or "Unknown error"), vim.log.levels.ERROR)
+				return
+			end
+			vim.notify("Thread " .. (resolved and "resolved" or "unresolved"), vim.log.levels.INFO)
+			require("gleb.pr").refresh(state.review.root, { force = true, silent = true })
+		end)
 		return
 	end
 	local body = reply_text(state)
 	state.mode = "running"
+	state.operation = "send"
 	layout(state)
 	require("gleb.pr.gh").reply(state.review, state.thread.id, body, nil, function(ok, message)
 		if ok then
@@ -242,13 +264,17 @@ end
 ---@return nil
 function M.resolve()
 	local state = current()
-	if not state then
+	if not state or state.mode ~= "normal" then
 		return
 	end
 	local permitted = state.thread.resolved and state.thread.can_unresolve or state.thread.can_resolve
 	if not permitted then
 		return
 	end
+	state.mode = "confirm_resolve"
+	vim.bo[state.reply_buf].modifiable = false
+	vim.bo[state.reply_buf].filetype = "gleb-pr-confirm"
+	layout(state)
 end
 
 ---@return nil
@@ -316,8 +342,16 @@ layout = function(state)
 		local padding = math.max(inner_width - vim.fn.strdisplaywidth(question) - vim.fn.strdisplaywidth(hint), 1)
 		line = question .. string.rep(" ", padding) .. hint
 		hint_start = #question + padding
+	elseif state.mode == "confirm_resolve" then
+		local verb = state.thread.resolved and "Unresolve" or "Resolve"
+		local question = " " .. verb .. " this thread?"
+		local hint = verb .. " " .. shortcut("pr.confirm_yes") .. " · Cancel " .. shortcut("pr.confirm_no") .. " "
+		local padding = math.max(inner_width - vim.fn.strdisplaywidth(question) - vim.fn.strdisplaywidth(hint), 1)
+		line = question .. string.rep(" ", padding) .. hint
+		hint_start = #question + padding
 	elseif state.mode == "running" then
-		line = " Sending..." .. string.rep(" ", math.max(inner_width - 11, 0))
+		local progress = state.operation == "send" and "Sending..." or "Resolving..."
+		line = " " .. progress .. string.rep(" ", math.max(inner_width - vim.fn.strdisplaywidth(progress) - 1, 0))
 	else
 		local hints = {}
 		if state.thread.can_reply then
