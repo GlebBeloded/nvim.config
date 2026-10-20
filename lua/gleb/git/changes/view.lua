@@ -255,8 +255,9 @@ end
 
 ---@param view ChangesView
 ---@param nodes gleb.ui.tree.Node[]
+---@param review boolean?
 ---@return nil
-local function draw_branch(view, nodes)
+local function draw_branch(view, nodes, review)
 	local selected = tree_view.selected_id(view.tree)
 	local saved_view
 	if vim.api.nvim_win_is_valid(view.win) then
@@ -272,12 +273,16 @@ local function draw_branch(view, nodes)
 			vim.fn.winrestview(saved_view)
 		end)
 	end
+	if review then
+		M.review(view)
+	end
 end
 
 ---@param view ChangesView
 ---@param info gleb.git.base.Info
+---@param review boolean?
 ---@return nil
-local function refresh_branch(view, info)
+local function refresh_branch(view, info, review)
 	view.branch_generation = view.branch_generation + 1
 	view.commit_generation = view.commit_generation + 1
 	view.commit_nodes = nil
@@ -290,7 +295,7 @@ local function refresh_branch(view, info)
 			return
 		end
 		if not view.commit_view then
-			draw_branch(view, nodes)
+			draw_branch(view, nodes, review)
 			return
 		end
 		local commit_generation = view.commit_generation
@@ -312,7 +317,7 @@ local function refresh_branch(view, info)
 			if newest and newest.data and newest.data.full_hash then
 				view.commit_files[newest.data.full_hash] = newest.children or {}
 			end
-			draw_branch(view, commit_nodes)
+			draw_branch(view, commit_nodes, review)
 		end)
 	end)
 end
@@ -547,9 +552,10 @@ end
 ---@return nil
 local function schedule_diff(view)
 	local row = view.rows[vim.api.nvim_win_get_cursor(view.win)[1]]
+	local active_tab = view.active_tab
 	drop_pending_diff(view, row)
 	view.diff_timer = debounce.schedule(view.diff_timer, DIFF_DEBOUNCE_MS, function()
-		if not vim.api.nvim_win_is_valid(view.win) then
+		if not vim.api.nvim_win_is_valid(view.win) or view.active_tab ~= active_tab then
 			return
 		end
 		request_diff(view, row, false)
@@ -904,6 +910,11 @@ end
 ---@param id string
 ---@return nil
 function M.activate_tab(panel, id)
+	if panel.active_tab ~= id then
+		panel.diff_timer:stop()
+		panel.selection_generation = panel.selection_generation + 1
+		panel.diff_pending_path = nil
+	end
 	panel.active_tab = id
 	if id ~= "branch" then
 		panel.commit_view = false
@@ -919,7 +930,9 @@ function M.activate_tab(panel, id)
 		tree_model.rebuild(panel.tree, panel.branch_nodes)
 		draw(panel)
 	elseif panel.branch_info then
-		refresh_branch(panel, assert(panel.branch_info, "Branch tab has no base"))
+		vim.api.nvim_set_current_win(panel.win)
+		refresh_branch(panel, assert(panel.branch_info, "Branch tab has no base"), true)
+		return
 	end
 	M.review(panel)
 end
