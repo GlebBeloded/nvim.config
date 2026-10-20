@@ -24,9 +24,9 @@ Scenarios: `pr: Enter on an empty reply starts writing`, `pr: gx opens the threa
 
 ## 5. Thread key ownership
 Scenarios: `pr: Thread window keys come from the shortcut file`
-- [ ] 5.1 Write the test `pr: Thread window keys come from the shortcut file` in `tests/integration/pr/test_thread_window.lua` against the real post-`VeryLazy` mappings; run `make test FILE=tests/integration/pr/test_thread_window.lua CASE="Thread window keys come from the shortcut file"` and see it fail
-- [ ] 5.2 Add the `pr.thread_*` entries scoped to `gleb-pr-thread` in `settings/keymap.json` and build the hint text from their assigned keys
-- [ ] 5.3 Run `make test FILE=tests/integration/pr/test_thread_window.lua CASE="Thread window keys come from the shortcut file"` and see it pass
+- [x] 5.1 Write the test `pr: Thread window keys come from the shortcut file` in `tests/integration/pr/test_thread_window.lua` against the real post-`VeryLazy` mappings; run `make test FILE=tests/integration/pr/test_thread_window.lua CASE="Thread window keys come from the shortcut file"` and see it fail
+- [x] 5.2 Add the `pr.thread_*` entries scoped to `gleb-pr-thread` in `settings/keymap.json` and build the hint text from their assigned keys
+- [x] 5.3 Run `make test FILE=tests/integration/pr/test_thread_window.lua CASE="Thread window keys come from the shortcut file"` and see it pass
 
 ## 6. Reply confirmation
 Scenarios: `pr: Enter asks before sending a reply`, `pr: y sends the reply`, `pr: n keeps editing`, `pr: A failed reply keeps the draft`, `pr: The reply goes to gh as one argument`

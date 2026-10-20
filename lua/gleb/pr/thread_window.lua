@@ -6,6 +6,7 @@ local MAX_WIDTH = 72
 local MIN_REPLY_HEIGHT = 3
 local MAX_REPLY_HEIGHT = 8
 local namespace = vim.api.nvim_create_namespace("gleb_pr_thread_window")
+local action_rows = require("gleb.find_action.rows")
 
 ---@class gleb.pr.ThreadWindow
 ---@field tab integer
@@ -196,6 +197,17 @@ local function fill(buf, lines, modifiable)
 	vim.bo[buf].modifiable = modifiable
 end
 
+---@param id string
+---@return string
+local function shortcut(id)
+	local store = assert(require("gleb.actions").state.store, "actions are not set up")
+	local lhs = assert(store.last_good[id], "shortcut is not configured")[1]
+	if lhs == "<CR>" then
+		return "↩"
+	end
+	return action_rows.physical_label(lhs)
+end
+
 ---@param state gleb.pr.ThreadWindow
 ---@return nil
 local function layout(state)
@@ -218,13 +230,17 @@ local function layout(state)
 	local col = math.floor((vim.o.columns - outer_width) / 2)
 	local hints = {}
 	if state.thread.can_reply then
-		hints[#hints + 1] = "Reply ↩"
+		hints[#hints + 1] = "Reply " .. shortcut("pr.thread_send")
 	end
 	local can_change_resolution = state.thread.resolved and state.thread.can_unresolve or state.thread.can_resolve
 	if can_change_resolution then
-		hints[#hints + 1] = state.thread.resolved and "Unresolve R" or "Resolve R"
+		local label = state.thread.resolved and "Unresolve " or "Resolve "
+		hints[#hints + 1] = label .. shortcut("pr.thread_resolve")
 	end
-	vim.list_extend(hints, { "Open on web gx", "Close q" })
+	vim.list_extend(hints, {
+		"Open on web " .. shortcut("pr.thread_open_web"),
+		"Close " .. shortcut("pr.thread_close"),
+	})
 	local line = " " .. table.concat(hints, " · ") .. " "
 	local padding = math.max(inner_width - vim.fn.strdisplaywidth(line), 0)
 	fill(state.hint_buf, { string.rep(" ", padding) .. line }, false)

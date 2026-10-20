@@ -16,15 +16,6 @@ end
 ---@return string
 local function open_review(mutate)
 	child.wait_very_lazy()
-	child.lua([[(function()
-		local actions = require("gleb.actions")
-		local shortcuts = vim.deepcopy(actions.state.store.last_good)
-		shortcuts["pr.thread_send"] = { "<CR>" }
-		shortcuts["pr.thread_resolve"] = { "R" }
-		shortcuts["pr.thread_open_web"] = { "gx" }
-		shortcuts["pr.thread_close"] = { "q" }
-		actions.state.applicator:apply(shortcuts)
-	end)()]])
 	child.o.lines = 30
 	child.o.columns = 100
 	local root, manifest = F.copy("billing-branch", vim.fn.tempname() .. "/billing-branch")
@@ -252,6 +243,39 @@ T["pr: Resolve is hidden without permission"] = function()
 		end, vim.fn.readfile(gh_log)),
 		{}
 	)
+end
+
+T["pr: Thread window keys come from the shortcut file"] = function()
+	open_review()
+	open_thread_at(22)
+
+	local mappings = child.lua_get([[
+		(function()
+			local context = require("gleb.actions.context")
+			local original = context.execute
+			local invoked
+			context.execute = function(action)
+				invoked = action.id
+				return true
+			end
+			local result = {}
+			for _, mapping in ipairs(vim.api.nvim_buf_get_keymap(0, "n")) do
+				invoked = nil
+				mapping.callback()
+				table.insert(result, { mapping.lhs, mapping.desc, invoked })
+			end
+			context.execute = original
+			table.sort(result, function(a, b) return a[1] < b[1] end)
+			return result
+		end)()
+	]])
+	eq(mappings, {
+		{ "<CR>", "Git | Pull Request: Reply to Thread", "pr.thread_send" },
+		{ "R", "Git | Pull Request: Resolve or Unresolve Thread", "pr.thread_resolve" },
+		{ "gx", "Git | Pull Request: Open Thread on Web", "pr.thread_open_web" },
+		{ "q", "Git | Pull Request: Close Thread", "pr.thread_close" },
+	})
+	eq(vim.endswith(thread_windows()[3].lines[1], " Reply ↩ · Resolve R · Open on web gx · Close q "), true)
 end
 
 return T
