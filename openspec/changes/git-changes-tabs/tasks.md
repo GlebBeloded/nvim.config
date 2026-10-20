@@ -51,7 +51,7 @@ Scenarios: `git: Cmd+G cycles Local, Branch, then closes`, `git: First review op
 
 Scenarios: `git: Changes panel review shows the current file's diff`, `git: Changes panel review without a changed current file`, `git: Changes panel review replaces the dashboard`
 
-- [ ] 7.1 Run each named scenario in tests/integration/git/test_changes_diff.lua and see it pass before changing review; after task 6, run each again through the real `changes.review` action and see it pass
+- [x] 7.1 Run each named scenario in tests/integration/git/test_changes_diff.lua and see it pass before changing review; after task 6, run each again through the real `changes.review` action and see it pass
 
 ## 8. Branch files model and rows
 
