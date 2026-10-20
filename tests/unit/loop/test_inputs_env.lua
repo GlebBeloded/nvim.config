@@ -18,7 +18,11 @@ T["loop: Tests never see an Archon node's inputs"] = function()
 		"-c",
 		"qa!",
 	}, {
-		env = { INPUTS_CANCEL_ON_REJECT = "false", BASE_BRANCH = "loop/x", TEST_DEPS_DIR = vim.fs.joinpath(root, ".tests/deps") },
+		env = {
+			INPUTS_CANCEL_ON_REJECT = "false",
+			BASE_BRANCH = "loop/x",
+			TEST_DEPS_DIR = vim.fs.joinpath(root, ".tests/deps"),
+		},
 		text = true,
 	}):wait()
 	eq(result.code, 0, { fail_reason = result.stderr })
