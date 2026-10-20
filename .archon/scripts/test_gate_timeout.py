@@ -15,7 +15,7 @@ GIT = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": 
 class GateTimeout(unittest.TestCase):
     def test_check_past_the_timeout_is_infra_with_its_log(self) -> None:
         repo, scratch, artifacts = (tempfile.mkdtemp() for _ in range(3))
-        env = {**os.environ, **GIT}
+        env = {**{k: v for k, v in os.environ.items() if not k.startswith("INPUTS_")}, **GIT}
         pathlib.Path(repo, "README.md").write_text("x")
         for args in (["init", "-q", "-b", "auto"], ["add", "-A"], ["commit", "-q", "-m", "i"], ["checkout", "-q", "-b", "run"]):
             subprocess.run(["git", *args], cwd=repo, env=env, check=True, capture_output=True)
@@ -34,6 +34,22 @@ class GateTimeout(unittest.TestCase):
         self.assertIn("ok   lint", log)
         self.assertIn("check: TIMEOUT after 1 s", log)
         self.assertEqual(pathlib.Path(artifacts, "attempts").read_text(), "0")
+
+    def test_check_never_sees_the_node_inputs(self) -> None:
+        """The full gate's INPUTS_TIER=full (and every other INPUTS_*) stays out of the `make check` it runs."""
+        repo, scratch, artifacts = (tempfile.mkdtemp() for _ in range(3))
+        env = {**{k: v for k, v in os.environ.items() if not k.startswith("INPUTS_")}, **GIT}
+        pathlib.Path(repo, "README.md").write_text("x")
+        for args in (["init", "-q", "-b", "auto"], ["add", "-A"], ["commit", "-q", "-m", "i"], ["checkout", "-q", "-b", "run"]):
+            subprocess.run(["git", *args], cwd=repo, env=env, check=True, capture_output=True)
+        make = pathlib.Path(scratch, "make")
+        make.write_text(f"#!/bin/sh\nenv | grep '^INPUTS_' >{scratch}/seen\nexit 0\n")
+        make.chmod(0o755)
+        env.update(PATH=f"{scratch}:{env['PATH']}", ARTIFACTS_DIR=artifacts, BASE_BRANCH="auto", INPUTS_CHANGE="", INPUTS_TIER="full")
+        proc = subprocess.run(["python3", str(GATE)], cwd=repo, env=env, capture_output=True, text=True, timeout=60)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual(json.loads(proc.stdout)["green"], True)
+        self.assertEqual(pathlib.Path(scratch, "seen").read_text(), "")
 
 
 if __name__ == "__main__":
