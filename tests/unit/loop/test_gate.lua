@@ -584,9 +584,9 @@ T["loop: Gate reruns a known flaky case up to three times"] = function()
 	local function runs_dir(offset)
 		local runs = vim.fs.joinpath(H.tempdir(child), "runs") -- as Archon's artifacts/runs/<run id>
 		for _, run in ipairs({ "r1", "r2", "r3" }) do
-			local log = vim.fs.joinpath(runs, run, "check-1.log")
+			local path = vim.fs.joinpath(runs, run, "check-1.log")
 			write(runs, { [run .. "/check-1.log"] = "===== rerun " .. file .. " | a: slow case: boom: ok =====" })
-			vim.uv.fs_utime(log, os.time() + offset, os.time() + offset)
+			vim.uv.fs_utime(path, os.time() + offset, os.time() + offset)
 		end
 		return vim.fs.joinpath(runs, "now")
 	end
