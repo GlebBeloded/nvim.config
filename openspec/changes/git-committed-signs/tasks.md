@@ -22,7 +22,7 @@ Scenarios: `git: Committed signs move with unsaved edits`, `git: Committed signs
 - [x] 3.1 Add the scenarios to tests/integration/git/test_committed_signs.lua and see them fail.
 - [x] 3.2 Implement Decision 6: `nvim_buf_attach` with a debounced re-map, the `User GlebGitBaseChanged` recompute or clear, and teardown on `BufWipeout`/`on_detach` with current-key checks on async results (rules 6.3 and 6.5).
 - [x] 3.3 Run the file and see every scenario in it pass.
-- [x] 3.4 Keep each buffer's repository root when base resolution returns no Info, and cover the no-base-to-base transition.
+- [x] 3.4 Pass the repository root to `base.resolve` callbacks, keep it for each buffer when base resolution returns no Info, and cover the no-base-to-base transition.
 
 ## 4. Screen
 

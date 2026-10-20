@@ -47,8 +47,9 @@ PR itself changed. IntelliJ's review mode marks those lines in the gutter. The a
 - Code:
   - New: `lua/gleb/git/committed_signs/init.lua`, `lua/gleb/git/committed_signs/map.lua`,
     `lua/gleb/git/sign_text.lua`.
-  - Changed: `lua/gleb/git/init.lua` (requires `gleb.git.committed_signs` after `gleb.git.gitsigns`) and
-    `lua/gleb/git/gitsigns.lua` (sign texts from `sign_text.lua`, same characters).
+  - Changed: `lua/gleb/git/init.lua` (requires `gleb.git.committed_signs` after `gleb.git.gitsigns`),
+    `lua/gleb/git/gitsigns.lua` (sign texts from `sign_text.lua`, same characters), and
+    `lua/gleb/git/base/init.lua` (`resolve` callbacks also receive the repository root).
 - Tests:
   - New: `tests/unit/git/test_committed_map.lua`, `tests/integration/git/test_committed_signs.lua`,
     `tests/screen/git/test_committed_signs_screen.lua` with its reference screenshot.
