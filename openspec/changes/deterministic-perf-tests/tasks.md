@@ -12,9 +12,9 @@ Scenarios: `lsp: Type-check toggle reattaches every Python buffer without reload
 
 ## 3. Make bounded redraw measurements deterministic
 Scenarios: `file-tree: Project tree redraw meets the large-tree bound`, `file-tree: Project tree expansion meets the large-tree bound`
-- [ ] 3.1 Replace elapsed-only assertions in `tests/integration/file-tree/test_performance.lua` with child-side process-CPU assertions while preserving the elapsed assertions behind perf mode; temporarily add one extra buffer replacement, run `make test FILE=tests/integration/file-tree/test_performance.lua CASE="large-tree bound"`, see it fail and record the failure, then remove the fault
-- [ ] 3.2 Add reusable child-side CPU measurement and keep the 100 ms bounds, row state, selection and one-replacement assertions unchanged
-- [ ] 3.3 Run `make test FILE=tests/integration/file-tree/test_performance.lua CASE="large-tree bound"` and see it pass
+- [x] 3.1 Replace elapsed-only assertions in `tests/integration/file-tree/test_performance.lua` with child-side process-CPU assertions while preserving the elapsed assertions behind perf mode; temporarily add one extra buffer replacement, run `make test FILE=tests/integration/file-tree/test_performance.lua CASE="large-tree bound"`, see it fail and record the failure, then remove the fault
+- [x] 3.2 Add reusable child-side CPU measurement and keep the 100 ms bounds, row state, selection and one-replacement assertions unchanged
+- [x] 3.3 Run `make test FILE=tests/integration/file-tree/test_performance.lua CASE="large-tree bound"` and see it pass
 
 ## 4. Control save-burst debounce deterministically
 Scenarios: `file-tree: Project tree coalesces a save burst`, `file-tree: Project tree save leaves the main path promptly`
@@ -55,3 +55,4 @@ Scenarios: `file-tree: Project tree persists folds off the action path`, `file-t
 ## Agent decisions
 
 - Round a scaled default deadline up to the next millisecond so host-load scaling never shortens the intended wait.
+- Use `PERF=1` to enable retained wall-clock assertions because the later serial target can pass it directly to the existing test process.

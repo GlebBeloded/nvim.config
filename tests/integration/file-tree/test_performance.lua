@@ -203,6 +203,28 @@ local function install_replacement_counter()
 	]=])
 end
 
+local function install_cpu_measurement()
+	child.lua([=[
+		local function process_cpu_ms(usage)
+			return (usage.utime.sec + usage.stime.sec) * 1000 + (usage.utime.usec + usage.stime.usec) / 1000
+		end
+
+		FileTreeStartMeasurement = function()
+			return {
+				cpu_ms = process_cpu_ms(vim.uv.getrusage()),
+				elapsed_ns = vim.uv.hrtime(),
+			}
+		end
+
+		FileTreeFinishMeasurement = function(started)
+			return {
+				cpu_ms = process_cpu_ms(vim.uv.getrusage()) - started.cpu_ms,
+				elapsed_ms = (vim.uv.hrtime() - started.elapsed_ns) / 1e6,
+			}
+		end
+	]=])
+end
+
 local function make_next_git_refresh_immediate()
 	child.lua(
 		[=[
@@ -318,24 +340,29 @@ end
 T["file-tree: Project tree redraw meets the large-tree bound"] = function()
 	eq(child.lua_get([[#require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()].rows]]), 4900)
 	install_replacement_counter()
+	install_cpu_measurement()
 
 	local result = child.lua_get([=[(function()
 		local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
 		local lines = vim.api.nvim_buf_get_lines(view.buf, 0, -1, false)
 		local selected = view.rows[vim.api.nvim_win_get_cursor(view.win)[1]].path
-		local started = vim.uv.hrtime()
+		local started = FileTreeStartMeasurement()
 		require("gleb.file_tree.view").redraw_all()
-		local elapsed_ms = (vim.uv.hrtime() - started) / 1e6
+		local measurement = FileTreeFinishMeasurement(started)
 		vim.api.nvim_buf_set_lines = FileTreeOriginalSetLines
 		return {
-			elapsed_ms = elapsed_ms,
+			cpu_ms = measurement.cpu_ms,
+			elapsed_ms = measurement.elapsed_ms,
 			replacements = FileTreeReplacementCount,
 			rows_preserved = vim.deep_equal(lines, vim.api.nvim_buf_get_lines(view.buf, 0, -1, false)),
 			selection_preserved = selected == view.rows[vim.api.nvim_win_get_cursor(view.win)[1]].path,
 		}
 	end)()]=])
 
-	assert(result.elapsed_ms <= 100 * H.load_factor(), ("redraw took %.2f ms"):format(result.elapsed_ms))
+	assert(result.cpu_ms <= 100, ("redraw consumed %.2f ms process CPU"):format(result.cpu_ms))
+	if vim.env.PERF == "1" then
+		assert(result.elapsed_ms <= 100 * H.load_factor(), ("redraw took %.2f ms"):format(result.elapsed_ms))
+	end
 	eq(result.replacements, 1)
 	eq(result.rows_preserved, true)
 	eq(result.selection_preserved, true)
@@ -356,23 +383,28 @@ T["file-tree: Project tree expansion meets the large-tree bound"] = function()
 	end)()]=])
 	eq(found, true)
 	install_replacement_counter()
-	child.lua([[FileTreeExpansionStarted = vim.uv.hrtime()]])
+	install_cpu_measurement()
+	child.lua([[FileTreeExpansionStarted = FileTreeStartMeasurement()]])
 
 	child.type_keys("<CR>")
 
 	local result = child.lua_get([=[(function()
 		local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
-		local elapsed_ms = (vim.uv.hrtime() - FileTreeExpansionStarted) / 1e6
+		local measurement = FileTreeFinishMeasurement(FileTreeExpansionStarted)
 		vim.api.nvim_buf_set_lines = FileTreeOriginalSetLines
 		return {
-			elapsed_ms = elapsed_ms,
+			cpu_ms = measurement.cpu_ms,
+			elapsed_ms = measurement.elapsed_ms,
 			replacements = FileTreeReplacementCount,
 			rows = #view.rows,
 			expanded = view.expanded["expand-me"] == true,
 		}
 	end)()]=])
 
-	assert(result.elapsed_ms <= 100 * H.load_factor(), ("expansion took %.2f ms"):format(result.elapsed_ms))
+	assert(result.cpu_ms <= 100, ("expansion consumed %.2f ms process CPU"):format(result.cpu_ms))
+	if vim.env.PERF == "1" then
+		assert(result.elapsed_ms <= 100 * H.load_factor(), ("expansion took %.2f ms"):format(result.elapsed_ms))
+	end
 	eq(result.replacements, 1)
 	eq(result.rows, 5000)
 	eq(result.expanded, true)
