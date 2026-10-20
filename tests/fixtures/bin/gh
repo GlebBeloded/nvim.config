@@ -1,0 +1,13 @@
+#!/bin/sh
+# Stand-in for the GitHub CLI in test children: never touches the network.
+# FAKE_GH_LOG: append "<GH_HOST>\t<args>"; FAKE_GH_SLEEP: seconds; FAKE_GH_STDOUT: file printed on
+# stdout (exit FAKE_GH_CODE, default 0); otherwise FAKE_GH_STDERR (default: no pull request) and
+# exit FAKE_GH_CODE (default 1).
+[ -n "${FAKE_GH_LOG:-}" ] && printf '%s\t%s\n' "${GH_HOST:-}" "$*" >>"$FAKE_GH_LOG"
+[ -n "${FAKE_GH_SLEEP:-}" ] && sleep "$FAKE_GH_SLEEP"
+if [ -n "${FAKE_GH_STDOUT:-}" ]; then
+	cat "$FAKE_GH_STDOUT"
+	exit "${FAKE_GH_CODE:-0}"
+fi
+printf '%s\n' "${FAKE_GH_STDERR:-no pull requests found for branch \"$(git branch --show-current)\"}" >&2
+exit "${FAKE_GH_CODE:-1}"

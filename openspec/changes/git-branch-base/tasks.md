@@ -2,9 +2,9 @@
 
 Scenarios: `git: Branch base passes the remote host to gh`
 
-- [ ] 1.1 Write the scenario in tests/integration/git/test_base.lua: a fresh `F.copy("prbranch", …)`, `FAKE_GH_LOG` set in the child, and the PATH left as `M.isolate()` makes it. See it fail (`gleb.git.base` is missing).
-- [ ] 1.2 Add `tests/fixtures/bin/gh` (design.md Decision 6, mode 0755), and prepend `tests/fixtures/bin` to `PATH` in `M.isolate()` (tests/helpers.lua).
-- [ ] 1.3 Add `prbranch` and `committed_lines` to tests/fixtures/build.sh exactly as design.md "Fixture" gives them, add the name to its header and `case` list, and add the new manifest keys to `fixtures.Manifest` in tests/fixtures.lua. Check that the built manifest equals the one in design.md.
+- [x] 1.1 Write the scenario in tests/integration/git/test_base.lua: a fresh `F.copy("prbranch", …)`, `FAKE_GH_LOG` set in the child, and the PATH left as `M.isolate()` makes it. See it fail (`gleb.git.base` is missing).
+- [x] 1.2 Add `tests/fixtures/bin/gh` (design.md Decision 6, mode 0755), and prepend `tests/fixtures/bin` to `PATH` in `M.isolate()` (tests/helpers.lua).
+- [x] 1.3 Add `prbranch` and `committed_lines` to tests/fixtures/build.sh exactly as design.md "Fixture" gives them, add the name to its header and `case` list, and add the new manifest keys to `fixtures.Manifest` in tests/fixtures.lua. Check that the built manifest equals the one in design.md.
 - [ ] 1.4 Run `make test FILE=tests/integration/git/test_base.lua` once task 3 lands. Until then the case stays red, and no xfail is needed: it is a new scenario.
 
 ## 2. Pure rules
