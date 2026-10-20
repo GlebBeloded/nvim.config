@@ -215,6 +215,8 @@ def drain(limit: int | None, lanes: bool = False) -> int:
 # host processes that starve the timing tests while drains run (gate logs, Oct 2026: torrents, Spotlight, an updater)
 HOGS = ("transmission", "mds_stores", "mdworker", "mdsync", "logioptionsplus_updater")
 HOG_CPU = 30.0
+# three concurrent runs (two drains and a plugin update, Oct 2026) made every gate's timing layer flaky
+MAX_LANES = int(os.environ.get("DRAIN_MAX_LANES") or 2)
 
 
 def hogs() -> list[str]:
@@ -265,6 +267,9 @@ def main() -> int:
     args = parser.parse_args()
     limit = args.max if args.max and args.max > 0 else None
     try:
+        if args.lanes and args.lanes > MAX_LANES:
+            print(f"drain: at most {MAX_LANES} lanes (DRAIN_MAX_LANES): more concurrent runs starve the timing tests", file=sys.stderr)
+            return 2
         if args.lanes and args.lanes > 1:
             return lanes(args.lanes, limit)
         return drain(limit, lanes=args.lane)

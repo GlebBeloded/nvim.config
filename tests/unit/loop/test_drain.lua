@@ -186,6 +186,9 @@ T["loop: Drains run two lanes and never take one change twice"] = function()
 	local names = ran(stubs)
 	table.sort(names)
 	eq(names, { "t-a", "t-b", "t-c" })
+	local three = H.system(child, { "make", "drains", "LANES=3" }, repo, stubs.env)
+	eq(three.code ~= 0, true)
+	eq((three.stdout .. three.stderr):find("at most 2 lanes", 1, true) ~= nil, true)
 	for _, needle in ipairs({
 		"drain: t-d Depends: t-a, but they share no Impact path",
 		"[lane 1] drain: t-a starting",

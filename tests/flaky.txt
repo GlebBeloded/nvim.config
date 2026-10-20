@@ -7,6 +7,7 @@ tests/integration/file-tree/test_project_live.lua | file-tree: A compact chain s
 tests/integration/file-tree/test_project_live.lua | file-tree: Project tree recolours after staging outside Neovim
 tests/integration/file-tree/test_project_live.lua | file-tree: Project tree shows files created outside Neovim
 tests/integration/file-tree/test_performance.lua | file-tree: Project tree coalesces a save burst
+tests/integration/file-tree/test_performance.lua | file-tree: Project tree re-roots without waiting for repository discovery
 tests/integration/file-tree/test_project_ops.lua | file-tree: Project tree r renames a folder and the buffers inside
 tests/integration/file-tree/test_ignored.lua | file-tree: First paint waits for ignored status
 tests/integration/lsp/test_typecheck.lua | lsp: Type-check toggle reattaches every Python buffer without reloading
