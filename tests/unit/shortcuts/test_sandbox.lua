@@ -528,7 +528,8 @@ end
 T["shortcuts: sandbox.sh e2e waits while another checkout holds the sandbox lock"] = function()
 	local env = sandbox_env()
 	local dir = vim.fs.joinpath(env.SANDBOX_STATE, "lock")
-	local holder = start_locker("holder", dir, 2)
+	-- held past sandbox.sh's start even on a loaded check, so it always meets the held lock (a 2 s hold ran out first under 12 workers)
+	local holder = start_locker("holder", dir, math.ceil(5 * H.load_factor()))
 	wait_owner(dir, holder.pid)
 
 	child.lua("_G.e2e_run = vim.system(..., { cwd = select(2, ...), env = select(3, ...), text = true })", {
@@ -542,7 +543,7 @@ T["shortcuts: sandbox.sh e2e waits while another checkout holds the sandbox lock
 	local run = child.lua_get("_G.e2e_run:wait(...)", { math.ceil(60000 * H.load_factor()) })
 
 	eq({ synced_early = synced_early, code = run.code }, { synced_early = false, code = 0 })
-	eq(run.stderr:find("sandbox: waiting for", 1, true) ~= nil, true)
+	eq(run.stderr:find("sandbox: waiting for", 1, true) ~= nil, true, { fail_reason = run.stderr })
 	expect_sync_restore_e2e(read_lines(env.GUEST_LOG))
 	eq(wait_locker("holder").code, 0)
 end
