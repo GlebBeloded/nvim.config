@@ -10,9 +10,9 @@ Scenarios: `loop: Reusable child resets case state`, `loop: Fresh child remains 
 
 ## 2. Enable cached Lua loading before configuration imports
 Scenarios: `loop: Cached loader precedes configuration modules`
-- [ ] 2.1 Write the test `loop: Cached loader precedes configuration modules` in `tests/integration/loop/test_startup.lua`, starting the real config with a startup hook that records loader activation and the first configuration require, and see it fail
-- [ ] 2.2 Move `vim.loader.enable()` in `init.lua` ahead of the first configuration `require`
-- [ ] 2.3 Run `make test FILE=tests/integration/loop/test_startup.lua CASE="Cached loader precedes configuration modules"` and see it pass
+- [x] 2.1 Write the test `loop: Cached loader precedes configuration modules` in `tests/integration/loop/test_startup.lua`, starting the real config with a startup hook that records loader activation and the first configuration require, and see it fail
+- [x] 2.2 Move `vim.loader.enable()` in `init.lua` ahead of the first configuration `require`
+- [x] 2.3 Run `make test FILE=tests/integration/loop/test_startup.lua CASE="Cached loader precedes configuration modules"` and see it pass
 
 ## 3. Reuse children in actions and find-action suites
 Scenarios: `actions: Invocation captures editor state`, `actions: Global bindings exist after VeryLazy`, `find-action: Find Action opens from its shortcut`, `find-action: Catalog rows use standalone Title Case labels`, `find-action: Assign float captures a free shortcut`
