@@ -10,9 +10,15 @@ local sidebar = require("gleb.tree.sidebar")
 
 ---@class ChangesState
 ---@field by_tab table<integer, ChangesView>
+---@field by_root table<string, ChangesRootState>
+
+---@class ChangesRootState
+---@field tab string
+---@field commit_view boolean
+---@field folds table<string, boolean>
 
 ---@type ChangesState
-M.state = { by_tab = {} }
+M.state = { by_tab = {}, by_root = {} }
 
 ---@return string path
 ---@return string dir
@@ -51,6 +57,26 @@ local function replace_tree_and_open(review, on_ready)
 	sidebar.close("file_tree")
 	local selected_path, dir = current_location()
 	resolve_and_open(dir, selected_path, review, on_ready)
+end
+
+---@param panel ChangesView
+---@param saved ChangesRootState?
+---@return nil
+local function restore(panel, saved)
+	if not saved then
+		return
+	end
+	if saved.tab == "branch" and panel.branch_available then
+		panel.tree.folds = vim.deepcopy(saved.folds)
+		view.activate_tab(panel, "branch")
+		if saved.commit_view then
+			panel.tree.folds = vim.deepcopy(saved.folds)
+			view.toggle_commits(panel)
+		end
+		return
+	end
+	panel.tree.folds = vim.deepcopy(saved.folds)
+	view.activate_tab(panel, "local")
 end
 
 ---@param panel ChangesView
@@ -143,7 +169,9 @@ function M.toggle()
 		end
 		return
 	end
-	replace_tree_and_open()
+	replace_tree_and_open(false, function(panel)
+		restore(panel, M.state.by_root[panel.root])
+	end)
 end
 
 --- Open or focus the Changes panel for review.
@@ -399,7 +427,7 @@ function M.reset()
 	for _, current in pairs(M.state.by_tab) do
 		view.close(current)
 	end
-	M.state = { by_tab = {} }
+	M.state = { by_tab = {}, by_root = {} }
 end
 
 require("gleb.git.changes.highlights").setup()

@@ -640,6 +640,12 @@ end
 ---@param view ChangesView
 ---@return nil
 function M.close(view)
+	local changes = require("gleb.git.changes")
+	changes.state.by_root[view.root] = {
+		tab = view.active_tab,
+		commit_view = view.commit_view,
+		folds = vim.deepcopy(view.tree.folds),
+	}
 	cleanup(view)
 	if view.diff_view then
 		require("gleb.diff.view").close(view.diff_view)

@@ -962,6 +962,32 @@ T["git: Show Branch on the default branch"] = function()
 	eq(after.lines, before.lines)
 end
 
+T["git: Toggle reopens the last tab"] = function()
+	open_branch_tab()
+	child.type_keys("c", "<Esc>")
+	wait_for_commits()
+
+	child.type_keys("q", "<Esc>")
+	eq(child.wait([[require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()] == nil]], 1000), true)
+	toggle_changes()
+	wait_for_commits()
+	local panel = current_panel()
+
+	eq(panel.active, "branch")
+	eq(panel.rows[3].id, "branch:all")
+end
+
+T["git: Review starts the cycle again after a close"] = function()
+	open_branch_tab()
+
+	child.type_keys("q", "<Esc>")
+	eq(child.wait([[require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()] == nil]], 1000), true)
+	review_changes()
+	wait_for_tab("local")
+
+	eq(current_panel().active, "local")
+end
+
 T["git: Branch tab hint names the commit view key"] = function()
 	child.o.lines = 30
 	child.o.columns = 100

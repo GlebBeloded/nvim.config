@@ -113,9 +113,9 @@ Scenarios: `git: Tab actions are in the catalog`, `git: Show Branch Commits open
 
 Scenarios: `git: Toggle reopens the last tab`, `git: Review starts the cycle again after a close`
 
-- [ ] 15.1 Write the scenarios in tests/integration/git/test_changes_tabs.lua through the real toggle and review actions and run `make test FILE=tests/integration/git/test_changes_tabs.lua` to see them fail
-- [ ] 15.2 Keep `M.state.by_root` with tab, commit view and folds in lua/gleb/git/changes/init.lua as design.md Decision 9 requires and clear it in `M.reset()`
-- [ ] 15.3 Run `make test FILE=tests/integration/git/test_changes_tabs.lua` and see the scenarios pass
+- [x] 15.1 Write the scenarios in tests/integration/git/test_changes_tabs.lua through the real toggle and review actions and run `make test FILE=tests/integration/git/test_changes_tabs.lua` to see them fail
+- [x] 15.2 Keep `M.state.by_root` with tab, commit view and folds in lua/gleb/git/changes/init.lua as design.md Decision 9 requires and clear it in `M.reset()`
+- [x] 15.3 Run `make test FILE=tests/integration/git/test_changes_tabs.lua` and see the scenarios pass
 
 ## 16. Existing Local diff behaviour
 
@@ -201,6 +201,7 @@ Scenarios: `git: Local tab matches the approved render`, `git: Branch tab matche
 - Branch directory nodes use `branch:directory:<path>` IDs, keeping their fold state distinct from the specified `branch:file:<path>` leaf IDs.
 - Commit-file caches are panel-local and keyed by full commit hash, so reopening a fold avoids Git while stale callbacks remain generation-guarded.
 - Branch actions resolve availability before replacing another sidebar, so unavailable tabs leave the current UI unchanged.
+- Repository state is snapshotted in the shared view close path so action, cycle and window closes retain the same tab state.
 
 ## Stuck
 
