@@ -97,4 +97,32 @@ function M.open_count(threads)
 	return count
 end
 
+---@param from string[]
+---@param to string[]
+---@param line integer
+---@return integer?
+function M.map_line(from, to, line)
+	local hunks = vim.text.diff(table.concat(from, "\n"), table.concat(to, "\n"), { result_type = "indices" })
+	---@cast hunks integer[][]
+	local offset = 0
+	for _, hunk in ipairs(hunks) do
+		local start_a, count_a, start_b, count_b = unpack(hunk)
+		if count_a == 0 then
+			if start_a < line then
+				offset = offset + count_b
+			end
+		elseif line < start_a then
+			break
+		elseif line < start_a + count_a then
+			if count_b == 0 then
+				return nil
+			end
+			return start_b + math.min(line - start_a, count_b - 1)
+		else
+			offset = offset + count_b - count_a
+		end
+	end
+	return line + offset
+end
+
 return M

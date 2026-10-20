@@ -18,9 +18,9 @@ Scenarios: `pr: PR thread pages follow the end cursor`, `pr: Long PR threads loa
 
 ## 4. Line mapping
 Scenarios: `pr: Thread line shifts below inserted lines`, `pr: Thread line inside a replaced block keeps its offset`, `pr: Thread line on a removed line is unmapped`
-- [ ] 4.1 Write the three tables in `tests/unit/pr/test_threads.lua`, driving `require("gleb.pr.threads").map_line`, and see them fail
-- [ ] 4.2 Implement `map_line` with `vim.text.diff` hunks in `lua/gleb/pr/threads.lua`
-- [ ] 4.3 Run `make test FILE=tests/unit/pr/test_threads.lua CASE="Thread line shifts below inserted lines"`, `make test FILE=tests/unit/pr/test_threads.lua CASE="Thread line inside a replaced block keeps its offset"`, and `make test FILE=tests/unit/pr/test_threads.lua CASE="Thread line on a removed line is unmapped"` and see them pass
+- [x] 4.1 Write the three tables in `tests/unit/pr/test_threads.lua`, driving `require("gleb.pr.threads").map_line`, and see them fail
+- [x] 4.2 Implement `map_line` with `vim.text.diff` hunks in `lua/gleb/pr/threads.lua`
+- [x] 4.3 Run `make test FILE=tests/unit/pr/test_threads.lua CASE="Thread line shifts below inserted lines"`, `make test FILE=tests/unit/pr/test_threads.lua CASE="Thread line inside a replaced block keeps its offset"`, and `make test FILE=tests/unit/pr/test_threads.lua CASE="Thread line on a removed line is unmapped"` and see them pass
 
 ## 5. Working-file anchors
 Scenarios: `pr: PR threads map onto the working file`, `pr: PR threads follow unsaved edits`, `pr: A PR thread on a removed line is unmapped`

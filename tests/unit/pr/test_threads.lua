@@ -82,4 +82,46 @@ T["pr: Open PR threads are counted"]["excludes resolved threads"] = function()
 	eq(threads.open_count(threads.parse(pr482_nodes())), 3)
 end
 
+T["pr: Thread line shifts below inserted lines"] = MiniTest.new_set()
+
+T["pr: Thread line shifts below inserted lines"]["maps every source line"] = function()
+	local cases = {
+		{ line = 1, want = 1 },
+		{ line = 2, want = 4 },
+		{ line = 3, want = 5 },
+		{ line = 4, want = 6 },
+	}
+	for _, case in ipairs(cases) do
+		eq(threads.map_line({ "a", "b", "c", "d" }, { "a", "x", "y", "b", "c", "d" }, case.line), case.want)
+	end
+end
+
+T["pr: Thread line inside a replaced block keeps its offset"] = MiniTest.new_set()
+
+T["pr: Thread line inside a replaced block keeps its offset"]["caps the replaced offset at the last new line"] = function()
+	local cases = {
+		{ line = 1, want = 1 },
+		{ line = 2, want = 2 },
+		{ line = 3, want = 3 },
+		{ line = 4, want = 3 },
+		{ line = 5, want = 4 },
+	}
+	for _, case in ipairs(cases) do
+		eq(threads.map_line({ "a", "b", "c", "d", "e" }, { "a", "B", "C", "e" }, case.line), case.want)
+	end
+end
+
+T["pr: Thread line on a removed line is unmapped"] = MiniTest.new_set()
+
+T["pr: Thread line on a removed line is unmapped"]["returns nil only for the deleted line"] = function()
+	local cases = {
+		{ line = 1, want = 1 },
+		{ line = 2 },
+		{ line = 3, want = 2 },
+	}
+	for _, case in ipairs(cases) do
+		eq(threads.map_line({ "a", "b", "c" }, { "a", "c" }, case.line), case.want)
+	end
+end
+
 return T
