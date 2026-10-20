@@ -73,6 +73,8 @@ perf: deps
 	@PERF=1 FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree save leaves the main path promptly" $(call MINITEST,integration)
 	@PERF=1 FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree follows an already listed row promptly" $(call MINITEST,integration)
 	@PERF=1 FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree re-roots without waiting for repository discovery" $(call MINITEST,integration)
+	@PERF=1 FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree persists folds off the action path" $(call MINITEST,integration)
+	@PERF=1 FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree unfold all meets the large-tree bound" $(call MINITEST,integration)
 
 screenshots: deps
 	@UPDATE_SCREENSHOTS=1 $(call MINITEST,screen)

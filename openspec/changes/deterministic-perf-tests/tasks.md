@@ -48,9 +48,9 @@ Scenarios: `file-tree: Project tree redraw meets the large-tree bound`, `file-tr
 
 ## 9. Cover the remaining serial wall-clock bounds
 Scenarios: `file-tree: Project tree persists folds off the action path`, `file-tree: Project tree unfold all meets the large-tree bound`
-- [ ] 9.1 Add both real-key cases to the `make perf` selection; temporarily set one elapsed bound to zero, run `make perf`, see it fail and record the failure, then remove the fault
-- [ ] 9.2 Keep the original 100 ms and 500 ms load-scaled wall bounds and avoid duplicating either scenario in another test file
-- [ ] 9.3 Run `make perf` and see it pass
+- [x] 9.1 Add both real-key cases to the `make perf` selection; temporarily set one elapsed bound to zero, run `make perf`, see it fail and record the failure, then remove the fault
+- [x] 9.2 Keep the original 100 ms and 500 ms load-scaled wall bounds and avoid duplicating either scenario in another test file
+- [x] 9.3 Run `make perf` and see it pass
 
 ## Agent decisions
 
