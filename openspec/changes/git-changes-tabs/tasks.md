@@ -1,52 +1,196 @@
-## 1. Fixture and pure rules
+## 1. Branch fixture and tab cycle rules
 
-Scenarios: `git: Cycle rules`, `git: Branch summary wording`, `git: Commit ages are short relative times`
+Scenarios: `git: Cycle rules`
 
-- [ ] 1.1 Write the scenarios in tests/unit/git/test_changes_tabs.lua and see them fail
-- [ ] 1.2 Add the `billing-branch` fixture to tests/fixtures/build.sh exactly as design.md Decision 8 (reuse the `billing` file contents; per-commit author and committer dates; `origin/main` and `origin/HEAD` refs; manifest with merge-base, HEAD, commits, Branch and Local files) and check that `git log` shows `e325463`, `07cb52e`, `b5435c5` on `4ccefde`
-- [ ] 1.3 Add `lua/gleb/git/changes/tabs.lua` (tab descriptors, `first`, `next`) and the pure parts of `lua/gleb/git/changes/branch.lua` (`summary`, `age`, `now`, commit and name-status parsing), with LuaCATS types
-- [ ] 1.4 Run `make test FILE=tests/unit/git/test_changes_tabs.lua` and see it pass
+- [x] 1.1 Write `git: Cycle rules` in tests/unit/git/test_changes_tabs.lua and run `make test FILE=tests/unit/git/test_changes_tabs.lua CASE="Cycle rules"` to see it fail
+- [x] 1.2 Add the `billing-branch` fixture to tests/fixtures/build.sh exactly as design.md Decision 8 (reuse the `billing` file contents; per-commit author and committer dates; `origin/main` and `origin/HEAD` refs; manifest with merge-base, HEAD, commits, Branch and Local files) and verify `git log` shows `e325463`, `07cb52e`, `b5435c5` on `4ccefde`
+- [x] 1.3 Add lua/gleb/git/changes/tabs.lua with typed tab descriptors, `first` and `next`
+- [x] 1.4 Run `make test FILE=tests/unit/git/test_changes_tabs.lua CASE="Cycle rules"` and see it pass
 
-## 2. Committed layer in the diff view
+## 2. Branch summary rules
+
+Scenarios: `git: Branch summary wording`
+
+- [ ] 2.1 Write `git: Branch summary wording` in tests/unit/git/test_changes_tabs.lua and run `make test FILE=tests/unit/git/test_changes_tabs.lua CASE="Branch summary wording"` to see it fail
+- [ ] 2.2 Add the typed pure summary and name-status parsing parts of lua/gleb/git/changes/branch.lua
+- [ ] 2.3 Run `make test FILE=tests/unit/git/test_changes_tabs.lua CASE="Branch summary wording"` and see it pass
+
+## 3. Commit age rules
+
+Scenarios: `git: Commit ages are short relative times`
+
+- [ ] 3.1 Write `git: Commit ages are short relative times` in tests/unit/git/test_changes_tabs.lua and run `make test FILE=tests/unit/git/test_changes_tabs.lua CASE="Commit ages are short relative times"` to see it fail
+- [ ] 3.2 Add typed `age`, `now` and commit parsing helpers to lua/gleb/git/changes/branch.lua
+- [ ] 3.3 Run `make test FILE=tests/unit/git/test_changes_tabs.lua CASE="Commit ages are short relative times"` and see it pass
+
+## 4. Committed layer in the diff view
 
 Scenarios: `diff: Diff view draws a committed spec in purple`, `diff: Diff view committed colours`, `diff: Diff view without committed keeps its kind colours`
 
-- [ ] 2.1 Write the scenarios in tests/integration/diff/test_committed.lua and see them fail
-- [ ] 2.2 Add `committed?: boolean` to `gleb.diff.view.Spec`/`View`; in `diff/view/render.lua` use the `Committed` suffix for added, changed and deleted rows and `DiffViewCommittedWord` for words, keep moved groups, leave the checkbox column blank; define the four groups in `diff/view/highlights.lua` from the palette (design.md Decision 6)
-- [ ] 2.3 Run the file and see it pass, together with tests/integration/diff/ (no existing diff scenario changes)
+- [ ] 4.1 Write the scenarios in tests/integration/diff/test_committed.lua and run `make test FILE=tests/integration/diff/test_committed.lua` to see them fail
+- [ ] 4.2 Add `committed?: boolean` to `gleb.diff.view.Spec` and its view state; in lua/gleb/diff/view/render.lua use the `Committed` suffix for added, changed and deleted rows and `DiffViewCommittedWord` for words, keep moved groups and leave the checkbox column blank; define the four palette-derived groups in lua/gleb/diff/view/highlights.lua as design.md Decision 6 requires
+- [ ] 4.3 Run `make test FILE=tests/integration/diff/test_committed.lua` and tests/integration/diff/ and see them pass
 
-## 3. Tab strip, cycle and state
+## 5. Tab strip availability and colours
 
-Scenarios: `git: Changes tabs show Local and Branch on a feature branch`, `git: Changes tabs show only Local on the default branch`, `git: Changes tab colours`, `git: Cmd+G cycles Local, Branch, then closes`, `git: First review opens Branch when nothing is uncommitted`, `git: Review on the default branch opens only Local`, `git: Review from the diff window advances the tab`, `git: Changes panel review shows the current file's diff`, `git: Changes panel review without a changed current file`, `git: Toggle reopens the last tab`, `git: Review starts the cycle again after a close`
+Scenarios: `git: Changes tabs show Local and Branch on a feature branch`, `git: Changes tabs show only Local on the default branch`, `git: Changes tab colours`
 
-- [ ] 3.1 Write the scenarios in tests/integration/git/test_changes_tabs.lua (fake `gh` and fixture from `git-branch-base`) and see the new ones fail; the two existing review scenarios keep passing
-- [ ] 3.2 Build the winbar strip from `tabs.lua` in `git/changes/view.lua` (`winhighlight` `WinBar`/`WinBarNC` → `FileTreeNormal`), add the tab groups to `git/changes/highlights.lua`, and the Branch availability from `gleb.git.base`
-- [ ] 3.3 Rewrite `review` in `git/changes/init.lua` with `first`/`next` (design.md Decision 2) and keep `M.state.by_root` (Decision 9); `M.reset()` clears it
-- [ ] 3.4 Run the file and tests/integration/git/test_changes.lua and see them pass
+- [ ] 5.1 Write the scenarios in tests/integration/git/test_changes_tabs.lua and run `make test FILE=tests/integration/git/test_changes_tabs.lua` to see them fail
+- [ ] 5.2 Build the winbar strip from lua/gleb/git/changes/tabs.lua in lua/gleb/git/changes/view.lua, map its WinBar highlights to `FileTreeNormal`, add the tab groups in lua/gleb/git/changes/highlights.lua and derive Branch availability from `gleb.git.base`
+- [ ] 5.3 Run `make test FILE=tests/integration/git/test_changes_tabs.lua` and see the scenarios pass
 
-## 4. Branch tab files, commits and hint row
+## 6. Cmd+G tab cycle
 
-Scenarios: `git: Branch tab lists the branch files`, `git: Branch tab header without a pull request`, `git: Branch tab colours committed files`, `git: c shows the branch commits`, `git: c again shows the branch files`, `git: Expanding a commit lists its files`, `git: Expanding All changes shows every branch file`, `git: c on the Local tab does nothing`, `git: Branch tab hint names the commit view key`, `git: Branch tab hint follows a reassigned key`, `git: Branch tab keeps the last row above the hint`, `git: Local tab has no hint row`, `git: Branch tab refreshes after a commit`
+Scenarios: `git: Cmd+G cycles Local, Branch, then closes`, `git: First review opens Branch when nothing is uncommitted`, `git: Review on the default branch opens only Local`, `git: Review from the diff window advances the tab`
 
-- [ ] 4.1 Write the scenarios in tests/integration/git/test_changes_tabs.lua and see them fail
-- [ ] 4.2 Finish `branch.lua` (async files, commits and per-commit files with generation guards; `ui/tree` nodes with the ids of design.md Decision 4) and its rows in `git/changes/render.lua` (header, summary, purple names, commit rows with `…` and ages)
-- [ ] 4.3 Add `changes.toggle_commits` to `git/changes/actions.lua` and `c` to `settings/keymap.json`
-- [ ] 4.4 Add `lua/gleb/git/changes/hint.lua` (design.md Decision 7) and refresh the Branch tab with the Local tab's triggers and `gleb.git.base` updates
-- [ ] 4.5 Run the file and see it pass
+- [ ] 6.1 Write the scenarios in tests/integration/git/test_changes_tabs.lua against the real `changes.review` action, panel and populated `billing-branch` fixture and run `make test FILE=tests/integration/git/test_changes_tabs.lua` to see them fail
+- [ ] 6.2 Rewrite `review` in lua/gleb/git/changes/init.lua with `first` and `next` as design.md Decision 2 requires
+- [ ] 6.3 Run `make test FILE=tests/integration/git/test_changes_tabs.lua` and see the scenarios pass
 
-## 5. Branch diffs and tab actions
+## 7. Existing review entry behaviour
 
-Scenarios: `git: Branch tab shows the merge-base diff`, `git: Branch tab shows a commit's diff`, `git: Branch tab shows an added file`, `git: Branch tab ]f steps through the branch files`, `git: Branch tab Enter opens the working file`, `git: Branch tab ignores staging keys`, `git: Tab actions are in the catalog`, `git: Show Branch Commits opens the commit view`, `git: Show Branch on the default branch`
+Scenarios: `git: Changes panel review shows the current file's diff`, `git: Changes panel review without a changed current file`, `git: Changes panel review replaces the dashboard`
 
-- [ ] 5.1 Write the scenarios in tests/integration/git/test_changes_tabs.lua and see them fail
-- [ ] 5.2 Add the branch variant of `git.load_diff` in `git/changes/git.lua` (design.md Decision 5, labels of Decision 10) and route selection, `]f` and `<CR>` by the active tab; make `<Space>`, `A` and `X` no-ops on the Branch tab
-- [ ] 5.3 Add `changes.show_local`, `changes.show_branch`, `changes.show_branch_commits` to `git/changes/actions.lua` (no keys) with the WARN on the default branch
-- [ ] 5.4 Run the file and see it pass
+- [ ] 7.1 Run each named scenario in tests/integration/git/test_changes_diff.lua and see it pass before changing review; after task 6, run each again through the real `changes.review` action and see it pass
 
-## 6. Screens and the real-key cycle
+## 8. Branch files model and rows
 
-Scenarios: `git: Local tab matches the approved render`, `git: Branch tab matches the approved render`, `git: Branch commits match the approved render`, `git: Changes panel with the diff view matches the approved render`, `git: Changes panel matches the approved render`, `git: Real Cmd+G presses cycle the changes tabs`
+Scenarios: `git: Branch tab lists the branch files`, `git: Branch tab header without a pull request`, `git: Branch tab colours committed files`
 
-- [ ] 6.1 Write tests/screen/git/test_changes_tabs.lua from design.md "Proposed — Local tab", "Proposed — Branch tab, files" and "Proposed — Branch tab, commits" (real glyphs where the render has stand-ins, full colour masks), point the two existing panel screen cases at "Proposed — Local only on main", add the e2e Cmd+G cycle on `billing-branch`, and see them fail
-- [ ] 6.2 Add a `changes-branch` case to tests/render/cases.lua (Branch tab of `billing-branch`, fake `gh`, stubbed clock)
-- [ ] 6.3 Make `make test-screen` and `make e2e` (sandbox VM) pass, then `make check`; compare `make render CASE=changes-branch COLUMNS=100 LINES=30` with `renders/branch_files.ansi`
+- [ ] 8.1 Write the scenarios in tests/integration/git/test_changes_tabs.lua against the real Branch tab and populated fixture and run `make test FILE=tests/integration/git/test_changes_tabs.lua` to see them fail
+- [ ] 8.2 Finish lua/gleb/git/changes/branch.lua with async files and generation guards, shared-tree nodes with the ids of design.md Decision 4, and render the header, summary, purple names and stats in lua/gleb/git/changes/render.lua
+- [ ] 8.3 Run `make test FILE=tests/integration/git/test_changes_tabs.lua` and see the scenarios pass
+
+## 9. Branch commit view
+
+Scenarios: `git: c shows the branch commits`, `git: c again shows the branch files`, `git: Expanding a commit lists its files`, `git: Expanding All changes shows every branch file`, `git: c on the Local tab does nothing`
+
+- [ ] 9.1 Write the scenarios in tests/integration/git/test_changes_tabs.lua against the real Branch tab and `c` mapping and run `make test FILE=tests/integration/git/test_changes_tabs.lua` to see them fail
+- [ ] 9.2 Add async commits and per-commit files with generation guards and caching to lua/gleb/git/changes/branch.lua, render commit rows with truncation and ages, add `changes.toggle_commits` to lua/gleb/git/changes/actions.lua and assign `c` in settings/keymap.json
+- [ ] 9.3 Run `make test FILE=tests/integration/git/test_changes_tabs.lua` and see the scenarios pass
+
+## 10. Branch hint row
+
+Scenarios: `git: Branch tab hint names the commit view key`, `git: Branch tab hint follows a reassigned key`, `git: Branch tab keeps the last row above the hint`, `git: Local tab has no hint row`
+
+- [ ] 10.1 Write the scenarios in tests/integration/git/test_changes_tabs.lua against the real panel and keymap settings and run `make test FILE=tests/integration/git/test_changes_tabs.lua` to see them fail
+- [ ] 10.2 Add lua/gleb/git/changes/hint.lua exactly as design.md Decision 7 requires, including resize handling and two virtual lines above the rule
+- [ ] 10.3 Run `make test FILE=tests/integration/git/test_changes_tabs.lua` and see the scenarios pass
+
+## 11. Branch diff navigation
+
+Scenarios: `git: Branch tab shows the merge-base diff`, `git: Branch tab shows a commit's diff`, `git: Branch tab shows an added file`, `git: Branch tab ]f steps through the branch files`, `git: Branch tab Enter opens the working file`
+
+- [ ] 11.1 Write the scenarios in tests/integration/git/test_changes_tabs.lua against the real picker rows, `<CR>` and `]f`, then run `make test FILE=tests/integration/git/test_changes_tabs.lua` to see them fail
+- [ ] 11.2 Add the branch variant of `git.load_diff` in lua/gleb/git/changes/git.lua as design.md Decision 5 requires and route selection, `]f` and `<CR>` by active tab with the labels of Decision 10
+- [ ] 11.3 Run `make test FILE=tests/integration/git/test_changes_tabs.lua` and see the scenarios pass
+
+## 12. Branch staging keys are inert
+
+Scenarios: `git: Branch tab ignores staging keys`
+
+- [ ] 12.1 Write `git: Branch tab ignores staging keys` in tests/integration/git/test_changes_tabs.lua against the real Branch tab mappings and run `make test FILE=tests/integration/git/test_changes_tabs.lua CASE="Branch tab ignores staging keys"` to see it fail
+- [ ] 12.2 Make `<Space>`, `A` and `X` no-ops on the Branch tab
+- [ ] 12.3 Run `make test FILE=tests/integration/git/test_changes_tabs.lua CASE="Branch tab ignores staging keys"` and see it pass
+
+## 13. Branch refresh
+
+Scenarios: `git: Branch tab refreshes after a commit`
+
+- [ ] 13.1 Write `git: Branch tab refreshes after a commit` in tests/integration/git/test_changes_tabs.lua and run `make test FILE=tests/integration/git/test_changes_tabs.lua CASE="Branch tab refreshes after a commit"` to see it fail
+- [ ] 13.2 Refresh the Branch tab with the Local tab's triggers and `gleb.git.base` updates while preserving cursor, fold and view state and dropping stale generations
+- [ ] 13.3 Run `make test FILE=tests/integration/git/test_changes_tabs.lua CASE="Branch tab refreshes after a commit"` and see it pass
+
+## 14. Changes tab actions
+
+Scenarios: `git: Tab actions are in the catalog`, `git: Show Branch Commits opens the commit view`, `git: Show Branch on the default branch`
+
+- [ ] 14.1 Write the scenarios in tests/integration/git/test_changes_tabs.lua against the real action catalog and run `make test FILE=tests/integration/git/test_changes_tabs.lua` to see them fail
+- [ ] 14.2 Add `changes.show_local`, `changes.show_branch` and `changes.show_branch_commits` to lua/gleb/git/changes/actions.lua with no keys and the default-branch WARN behaviour
+- [ ] 14.3 Run `make test FILE=tests/integration/git/test_changes_tabs.lua` and see the scenarios pass
+
+## 15. Repository-local tab state
+
+Scenarios: `git: Toggle reopens the last tab`, `git: Review starts the cycle again after a close`
+
+- [ ] 15.1 Write the scenarios in tests/integration/git/test_changes_tabs.lua through the real toggle and review actions and run `make test FILE=tests/integration/git/test_changes_tabs.lua` to see them fail
+- [ ] 15.2 Keep `M.state.by_root` with tab, commit view and folds in lua/gleb/git/changes/init.lua as design.md Decision 9 requires and clear it in `M.reset()`
+- [ ] 15.3 Run `make test FILE=tests/integration/git/test_changes_tabs.lua` and see the scenarios pass
+
+## 16. Existing Local diff behaviour
+
+Scenarios: `git: Changes panel j shows the next file in the diff view`, `git: Changes panel debounces rapid moves`, `git: Changes panel shows an untracked file as added`, `git: Changes panel shows a deleted file`, `git: Changes panel keeps the diff on a directory row`
+
+- [ ] 16.1 Run each named scenario in tests/integration/git/test_changes_diff.lua and see it pass before the shared diff-pipeline changes; after task 11, run each again and see it pass
+
+## 17. Existing Local diff generation behaviour
+
+Scenarios: `git: Changes panel drops a stale diff result`, `git: Changes panel skips an unchanged selection`
+
+- [ ] 17.1 Run each named scenario in tests/integration/git/test_changes_diff.lua and see it pass before the shared generation changes; after tasks 11 and 13, run each again and see it pass
+
+## 18. Local tab screen
+
+Scenarios: `git: Local tab matches the approved render`
+
+- [ ] 18.1 Write the scenario in tests/screen/git/test_changes_tabs.lua from design.md "Proposed — Local tab" and run `make test FILE=tests/screen/git/test_changes_tabs.lua CASE="Local tab matches the approved render"` to see it fail
+- [ ] 18.2 Make the strip and Local panel match the approved text and colour mask
+- [ ] 18.3 Run `make test FILE=tests/screen/git/test_changes_tabs.lua CASE="Local tab matches the approved render"` and see it pass
+
+## 19. Branch files screen
+
+Scenarios: `git: Branch tab matches the approved render`
+
+- [ ] 19.1 Write the scenario in tests/screen/git/test_changes_tabs.lua from design.md "Proposed — Branch tab, files" and run `make test FILE=tests/screen/git/test_changes_tabs.lua CASE="Branch tab matches the approved render"` to see it fail
+- [ ] 19.2 Add a `changes-branch` case to tests/render/cases.lua with the `billing-branch` fixture, fake `gh` and stubbed clock and make the Branch files screen match the approved text and colour mask
+- [ ] 19.3 Run `make test FILE=tests/screen/git/test_changes_tabs.lua CASE="Branch tab matches the approved render"` and compare `make render CASE=changes-branch COLUMNS=100 LINES=30` with renders/branch_files.ansi
+
+## 20. Branch commits screen
+
+Scenarios: `git: Branch commits match the approved render`
+
+- [ ] 20.1 Write the scenario in tests/screen/git/test_changes_tabs.lua from design.md "Proposed — Branch tab, commits" and run `make test FILE=tests/screen/git/test_changes_tabs.lua CASE="Branch commits match the approved render"` to see it fail
+- [ ] 20.2 Make the Branch commit screen match the approved text and colour mask
+- [ ] 20.3 Run `make test FILE=tests/screen/git/test_changes_tabs.lua CASE="Branch commits match the approved render"` and see it pass
+
+## 21. Existing Local diff screen
+
+Scenarios: `git: Changes panel with the diff view matches the approved render`
+
+- [ ] 21.1 Point the scenario in tests/screen/git/test_changes_screen.lua at design.md "Proposed — Local only on main" and run `make test FILE=tests/screen/git/test_changes_screen.lua CASE="Changes panel with the diff view matches the approved render"` to see it fail
+- [ ] 21.2 Make the Local-only panel and diff match the approved text and colour mask without changing the editor-side diff
+- [ ] 21.3 Run `make test FILE=tests/screen/git/test_changes_screen.lua CASE="Changes panel with the diff view matches the approved render"` and see it pass
+
+## 22. Existing Local panel screen
+
+Scenarios: `git: Changes panel matches the approved render`
+
+- [ ] 22.1 Point the scenario in tests/screen/git/test_changes_screen.lua at design.md "Proposed — Local only on main" and run `make test FILE=tests/screen/git/test_changes_screen.lua CASE="Changes panel matches the approved render"` to see it fail
+- [ ] 22.2 Make the Local-only panel match the approved text and colour mask
+- [ ] 22.3 Run `make test FILE=tests/screen/git/test_changes_screen.lua CASE="Changes panel matches the approved render"` and see it pass
+
+## 23. Bufferline offset over the panel
+
+Scenarios: `bufferline: tabs start after the open project tree`, `bufferline: tabs start after the open changes panel`, `bufferline: tabline over the changes panel matches the approved render`, `bufferline: tabline with tree open matches reference screenshot`, `bufferline: tabline without tree matches reference screenshot`
+
+- [ ] 23.1 Run the five named scenarios in tests/screen/bufferline/test_bufferline_screen.lua and see the existing four pass while `bufferline: tabline over the changes panel matches the approved render` fails against the new panel strip
+- [ ] 23.2 Update only the changes-panel reference to use the panel columns of design.md "Proposed — Local only on main"; keep the tabline row and project-tree/no-tree references unchanged
+- [ ] 23.3 Run `make test FILE=tests/screen/bufferline/test_bufferline_screen.lua` and see all five scenarios pass
+
+## 24. Real Cmd+G cycle
+
+Scenarios: `git: Real Cmd+G presses cycle the changes tabs`
+
+- [ ] 24.1 Add the scenario to tests/e2e/git/test_changes_review.lua against the populated `billing-branch` fixture and real Cmd+G key events, run it through `make e2e` in the sandbox VM and see it fail
+- [ ] 24.2 Complete the real-key cycle wiring without changing the `<A-g>` action assignment
+- [ ] 24.3 Run `make e2e` in the sandbox VM and see the scenario pass
+
+## 25. Full verification
+
+Scenarios: `git: Local tab matches the approved render`, `git: Branch tab matches the approved render`, `git: Branch commits match the approved render`, `git: Real Cmd+G presses cycle the changes tabs`
+
+- [ ] 25.1 Run `make test-screen`, run `make e2e` in the sandbox VM, then run `make check`
+
+## Agent decisions
+
+- The fixture manifest uses `branch_files` and `local_files` string arrays, keeping committed and worktree expectations explicit for later scenarios.

@@ -192,6 +192,10 @@ The `changes.review` action SHALL open the changes panel when it is closed, on t
 - **WHEN** `:enew` is current in a copy of the `dirty` fixture and the `changes.review` action runs
 - **THEN** the panel cursor is on the `c.lua` row and the diff view shows `lib/c.lua`
 
+#### Scenario: Changes panel review replaces the dashboard
+- **WHEN** Neovim starts on the Alpha dashboard in a copy of the `dirty` fixture and the `changes.review` action runs
+- **THEN** the `gleb-changes` window is current, the diff view shows `lib/c.lua`, and no window displays an `alpha` buffer
+
 ### Requirement: Changes panel diff view
 After a 50 ms debounce, the panel SHALL asynchronously build a full `gleb.diff.view.Spec` for the selected file, with normalized root, repo-relative path, filetype, final-newline state and left text from `HEAD:<orig or path>`. Root and selection generations SHALL drop stale results. One panel-owned view SHALL be reused without changing focus or tab; other rows keep the last diff.
 

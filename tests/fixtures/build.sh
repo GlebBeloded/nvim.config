@@ -11,6 +11,7 @@
 #   build.sh tfproj  Terraform module with variable usages
 #   build.sh dirty   repo with staged, unstaged and untracked changes (changes review)
 #   build.sh billing  Go/TS repo with staged, unstaged and untracked changes (changes panel)
+#   build.sh billing-branch  billing feature branch with committed and local changes
 #   build.sh prbranch  billing branch over origin/main and origin/release/1.4 (branch base, committed signs)
 #   build.sh diffgo  Go files with changed, inserted, deleted and moved lines
 #   build.sh treeproj Project-tree sample with modified, added, untracked and ignored files
@@ -1100,6 +1101,32 @@ TS
 	printf '{"files":[%s,%s,%s]}\n' "$staged" "$unstaged" "$untracked" >../manifest.json
 }
 
+billing_branch() {
+	billing
+	git reset -q
+	git update-ref refs/remotes/origin/main main
+	git symbolic-ref refs/remotes/origin/HEAD refs/remotes/origin/main
+	git checkout -q -b feat/tax
+
+	git add internal/billing/tax.go
+	GIT_AUTHOR_DATE=2026-01-01T01:00:00Z GIT_COMMITTER_DATE=2026-01-01T01:00:00Z \
+		git commit -q -m "add tax.go"
+	git add internal/billing/tax_test.go internal/billing/invoice_test.go
+	GIT_AUTHOR_DATE=2026-01-01T22:00:00Z GIT_COMMITTER_DATE=2026-01-01T22:00:00Z \
+		git commit -q -m "add Rate and tax tests"
+	replace_line internal/billing/invoice.go 11 '	ID    string'
+	git add internal/billing/invoice.go
+	GIT_AUTHOR_DATE=2026-01-02T00:00:00Z GIT_COMMITTER_DATE=2026-01-02T00:00:00Z \
+		git commit -q -m "wire tax into Total"
+
+	replace_line internal/billing/invoice.go 11 '	ID    string // invoice number'
+	merge_base=$(git merge-base origin/main HEAD)
+	printf '{"merge_base":"%s","head":"%s","commits":["%s","%s","%s"],"branch_files":["internal/billing/invoice.go","internal/billing/invoice_test.go","internal/billing/tax.go","internal/billing/tax_test.go"],"local_files":["internal/billing/invoice.go","web/src/price.ts","notes.md"]}\n' \
+		"$(git rev-parse --short=7 "$merge_base")" "$(git rev-parse --short=7 HEAD)" \
+		"$(git rev-parse --short=7 HEAD)" "$(git rev-parse --short=7 HEAD~1)" \
+		"$(git rev-parse --short=7 HEAD~2)" >../manifest.json
+}
+
 # $1 first, $2 last: one 4-line block per step (blank, func, body, close)
 ctl_steps() {
 	i=$1
@@ -1244,12 +1271,14 @@ key_input() {
 }
 
 case "$name" in
-gomod | luaproj | pyproj | tsproj | rustproj | bashproj | tfproj | dirty | billing | prbranch | diffgo | treeproj) ;;
+gomod | luaproj | pyproj | tsproj | rustproj | bashproj | tfproj | dirty | billing | billing-branch | prbranch | diffgo | treeproj) ;;
 *)
 	echo "build.sh: unknown fixture '$name'" >&2
 	exit 2
 	;;
 esac
+fixture_builder=$name
+[ "$name" = billing-branch ] && fixture_builder=billing_branch
 dir="$out/$name-$(key_input | shasum | cut -c1-12)"
 # parallel test workers in a fresh worktree all miss the cache at once: one builds, the others wait
 lock="$out/$name.lock"
@@ -1265,7 +1294,7 @@ if [ ! -f "$dir/manifest.json" ]; then
 	if [ ! -f "$dir/manifest.json" ]; then
 		find "$out" -maxdepth 1 -name "$name-*" -exec rm -rf {} +
 		mkdir -p "$dir.tmp/repo"
-		(cd "$dir.tmp/repo" && "$name")
+		(cd "$dir.tmp/repo" && "$fixture_builder")
 		mv "$dir.tmp" "$dir"
 	fi
 fi
