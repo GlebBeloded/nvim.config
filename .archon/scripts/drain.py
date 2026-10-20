@@ -212,9 +212,26 @@ def drain(limit: int | None, lanes: bool = False) -> int:
     return 0
 
 
+# host processes that starve the timing tests while drains run (gate logs, Oct 2026: torrents, Spotlight, an updater)
+HOGS = ("transmission", "mds_stores", "mdworker", "mdsync", "logioptionsplus_updater")
+HOG_CPU = 30.0
+
+
+def hogs() -> list[str]:
+    """`drain: host busy` lines for HOGS processes above HOG_CPU % CPU."""
+    out = subprocess.run(["ps", "-Ao", "pcpu=,comm="], capture_output=True, text=True).stdout
+    lines = []
+    for row in out.splitlines():
+        cpu, _, comm = row.strip().partition(" ")
+        name = comm.strip().rsplit("/", 1)[-1]
+        if any(h in name.lower() for h in HOGS) and float(cpu or 0) >= HOG_CPU:
+            lines.append(f"drain: host busy: {name} at {cpu}% CPU; timing tests flake under load, so pause it while drains run")
+    return lines
+
+
 def lanes(count: int, limit: int | None) -> int:
     """`count` drains at once (`--lane` children), each line prefixed `[lane <k>]`; the worst exit code."""
-    for line in ordering_only():
+    for line in ordering_only() + hogs():
         print(line, flush=True)
     cmd = [sys.executable, __file__, "--lane"] + (["--max", str(limit)] if limit else [])
     fd, skip_file = tempfile.mkstemp(prefix="drain-skip-")

@@ -72,7 +72,7 @@ running() {
 	# again before it counts, so a blip never sends boot down the "lume run alive, not running" path
 	local try state
 	for try in 1 2 3; do
-		state=$(vm_field status)
+		state=$(vm_field status) || state= # a failed `lume get` (pipefail) is no answer
 		[ -n "$state" ] && break
 		sleep 1
 	done
@@ -253,19 +253,21 @@ ensure_share() {
 }
 
 # until the guest answers `lume ssh`, tried only once its SSH port is open (see port_open). A `lume run` that Lume reports as not running for over
-# SANDBOX_MISMATCH_S s (default 20, load-scaled) never answers: kill it and boot once more ($1 = 1)
+# SANDBOX_MISMATCH_S s (default 20, load-scaled) never answers: kill it and boot once more ($1 = 1); an empty status
+# (Lume did not answer) is no report
 boot_wait() {
-	local retry=${1:-1} deadline=$((SECONDS + 180)) grace since=
+	local retry=${1:-1} deadline=$((SECONDS + 180)) grace since= state
 	grace=$(load_scaled "${SANDBOX_MISMATCH_S:-20}")
 	until port_open && lume ssh "$VM" -t 10 true >/dev/null 2>&1; do
 		run_alive || die "$VM stopped while booting ($STATE/vm.log)"
-		if running; then
+		state=$(vm_field status) || state= # a failed `lume get` (pipefail) is no answer
+		# only a status Lume states counts: a busy Lume answers `lume get` with nothing (gate logs, Oct 2026:
+		# 32 healthy boots a day were killed as "unknown"), and the 180 s deadline still bounds the wait
+		if [ "$state" = running ] || [ -z "$state" ]; then
 			since=
 		elif [ -z "$since" ]; then
 			since=$SECONDS
 		elif [ $((SECONDS - since)) -ge "$grace" ]; then
-			local state
-			state=$(vm_field status)
 			[ "$retry" = 1 ] || die "Lume still reports $VM ${state:-unknown} while its lume run process is alive, after one restart; giving up ($STATE/vm.log)"
 			log "Lume reports $VM ${state:-unknown} while its lume run process is alive for ${grace} s; killing it and booting once more"
 			kill_run

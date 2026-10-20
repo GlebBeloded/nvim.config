@@ -612,6 +612,19 @@ T["shortcuts: sandbox.sh restarts a VM Lume reports stopped while its lume run l
 	eq(first_index(log, is_e2e_layer) ~= nil, true)
 end
 
+T["shortcuts: sandbox.sh never restarts a booting VM while Lume answers nothing"] = function()
+	local env = vim.tbl_extend("force", sandbox_env(), { SANDBOX_MISMATCH_S = "1", NC_CLOSED = "4" })
+	child.fn.writefile({}, vim.fs.joinpath(env.SANDBOX_STATE, "run-alive"))
+	child.fn.writefile({ "24" }, vim.fs.joinpath(env.SANDBOX_STATE, "get-empty")) -- a busy Lume: `lume get` fails
+
+	local run = system({ "tests/sandbox/sandbox.sh", "e2e" }, H.root, env)
+
+	eq(run.code, 0, { fail_reason = run.stderr })
+	eq(run.stderr:find("killing it and booting once more", 1, true), nil, { fail_reason = run.stderr })
+	eq(run_and_kill_lines(read_lines(env.GUEST_LOG)), {})
+	eq(first_index(read_lines(env.GUEST_LOG), is_e2e_layer) ~= nil, true)
+end
+
 T["shortcuts: sandbox.sh gives up when Lume loses track of the VM again after one restart"] = function()
 	local env = vim.tbl_extend("force", sandbox_env(), { SANDBOX_MISMATCH_S = "1", LUME_MISMATCH_RUNS = "2" })
 	child.fn.writefile({}, vim.fs.joinpath(env.SANDBOX_STATE, "stopped"))

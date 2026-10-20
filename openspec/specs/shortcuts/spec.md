@@ -260,6 +260,10 @@ Every `tests/sandbox/sandbox.sh` command that changes the guest (`up`, `provisio
 - **WHEN** `tests/sandbox/sandbox.sh e2e` runs with stubs where Lume reports the VM stopped while its `lume run` process is alive, and a new `lume run` boots normally
 - **THEN** it kills that process (`pkill -TERM`) before its only `lume run`, which has no `--detach`, and runs the e2e layer
 
+#### Scenario: sandbox.sh never restarts a booting VM while Lume answers nothing
+- **WHEN** `tests/sandbox/sandbox.sh e2e` runs with a live `lume run` process, the guest's SSH port closed for its first checks and `lume get` failing for its first 24 calls (a busy Lume)
+- **THEN** it exits 0 with no `killing it and booting once more`, no `pkill` and no second `lume run`, and runs the e2e layer
+
 #### Scenario: sandbox.sh gives up when Lume loses track of the VM again after one restart
 - **WHEN** `tests/sandbox/sandbox.sh e2e` runs with the VM stopped and stubs where every `lume run` stays alive while Lume reports the VM stopped
 - **THEN** it runs `lume run`, kills it, runs `lume run` once more, then exits non-zero with `after one restart; giving up` and no e2e layer
