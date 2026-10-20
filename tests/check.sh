@@ -2,7 +2,8 @@
 # Run make targets concurrently: one status line per target as it finishes,
 # then the full log of every failed target. Exit 1 if any failed.
 #   tests/check.sh lint types test +smoke-startup
-# A target prefixed with "+" runs alone after all the others (timing-sensitive).
+# A target prefixed with "+" runs alone after all the others (timing-sensitive); one prefixed with "^"
+# starts first and the others once its setup is done (lead(): the e2e sandbox).
 # The whole run holds the host-wide check lock (tests/sandbox/lock.sh), so checks of other
 # checkouts on this host wait instead of skewing each other's timing layers:
 #   CHECK_LOCK=0        run without it
@@ -85,7 +86,22 @@ wait_all() {
 # shellcheck source=.archon/scripts/loop_changed.sh
 source "$ROOT/.archon/scripts/loop_changed.sh"
 
-parallel="" serial=""
+# the sandbox's "tests run from here" marker (Makefile E2E_STARTED): the setup before it is what a loaded host breaks
+E2E_STARTED=${SANDBOX_STATE:-$HOME/.cache/nvim-e2e-sandbox}/e2e.started
+
+# $1 lead target: started alone; the rest wait until its tests run (e2e: the VM booted, synced and answered),
+# it ends, or CHECK_LEAD_S (default 300) passes. Under the full check's load Lume stopped answering during
+# the VM setup (gate logs, Oct 2026: 38 of 111 e2e runs a day retried their setup, ~280 s each).
+lead() {
+	local deadline=$((SECONDS + ${CHECK_LEAD_S:-300}))
+	[ "$1" = e2e ] && rm -f "$E2E_STARTED"
+	start "$1"
+	until [ -f "$logs/$1.rc" ] || { [ "$1" = e2e ] && [ -f "$E2E_STARTED" ]; } || [ $SECONDS -ge $deadline ]; do
+		sleep 0.5
+	done
+}
+
+parallel="" serial="" first=""
 for t in "$@"; do
 	# loop-test (~90 s) only when a file it reads changed vs auto (loop_changed.sh says which)
 	if [ "${t#+}" = loop-test ] && ! loop_changed "$ROOT"; then
@@ -94,11 +110,15 @@ for t in "$@"; do
 	fi
 	case "$t" in
 	+*) serial="$serial ${t#+}" ;;
+	^*) first="$first ${t#^}" parallel="$parallel ${t#^}" ;;
 	*) parallel="$parallel $t" ;;
 	esac
 done
 
-for t in $parallel; do start "$t"; done
+for t in $first; do lead "$t"; done
+for t in $parallel; do
+	case " $first " in *" $t "*) ;; *) start "$t" ;; esac
+done
 # shellcheck disable=SC2086 # word splitting is the target list
 wait_all $parallel
 for t in $serial; do

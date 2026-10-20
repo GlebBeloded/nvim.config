@@ -27,7 +27,7 @@ endif
 
 # timing-sensitive layers run alone after the rest, so other layers do not skew them;
 # CHECK_TARGETS narrows the run (the gate's quick tier: .archon/scripts/gate.py)
-CHECK_TARGETS ?= lint types test trace specs chain stack e2e smoke-health loop-test +smoke-startup +test-readiness
+CHECK_TARGETS ?= ^e2e lint types test trace specs chain stack smoke-health loop-test +smoke-startup +test-readiness
 check:
 	@SANDBOX_START=$${E2E:-0} tests/check.sh $(CHECK_TARGETS)
 

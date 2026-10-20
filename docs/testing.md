@@ -4,7 +4,7 @@
 
 | Command | What runs | Wall time (14-core Mac) |
 |---|---|---|
-| `make check` | every layer below, concurrently (`tests/check.sh`); smoke startup and LSP readiness timing run alone afterwards. e2e runs only while the sandbox VM is up (else `skip`) | ~25 s |
+| `make check` | every layer below, concurrently (`tests/check.sh`), the others starting once e2e's sandbox setup is done (`^e2e`: Lume stops answering on a loaded host); smoke startup and LSP readiness timing run alone afterwards. e2e runs only while the sandbox VM is up (else `skip`) | ~25 s |
 | `make check E2E=1` | the same, booting the sandbox VM for e2e if it is down; the loop's gate (`.archon/scripts/gate.py`) | ~15 s (VM up) |
 | `make quick` | lint + trace, plus only the layers the changes vs `BASE` (default `auto`) can affect (`tests/quick.sh` has the mapping) | <1 s docs only, ~7 s one capability |
 | `make test FILE=… CASE=…` | one file / matching cases | ~1–3 s |
