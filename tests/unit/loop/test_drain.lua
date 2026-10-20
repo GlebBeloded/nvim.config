@@ -285,4 +285,12 @@ T["loop: Queue waits for archived dependencies"] = function()
 	eq(pick(repo, stubs.env), "t-a")
 end
 
+T["loop: Queue picks a high-priority change first"] = function()
+	local repo, stubs = make_repo(), stub_env()
+	write_change(repo, "t-a", "2026-01-01")
+	write_change(repo, "t-b", "2026-01-05", { "## Why", "w", "", "Kind: bug", "Priority: high" })
+	write_change(repo, "t-c", "2026-01-03", { "## Why", "w", "", "Kind: bug", "Priority: high" })
+	eq(pick(repo, stubs.env), "t-c")
+end
+
 return T

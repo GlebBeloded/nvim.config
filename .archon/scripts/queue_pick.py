@@ -1,6 +1,7 @@
 """Pick the next queue item: an active change in openspec/changes/ (archive excluded). Uses
 INPUTS_CHANGE when given, otherwise the oldest change (by `created` in .openspec.yaml, then name)
-that has no `loop/<change>` branch yet (a branch means a run already took it). `update-<plugin>`
+that has no `loop/<change>` branch yet (a branch means a run already took it); a `Priority: high` line in proposal.md
+goes first. `update-<plugin>`
 changes are skipped: they need the new plugin commit, so `make update PLUGIN=<plugin>` works them.
 A change whose proposal.md has a `Depends: <change>[, <change>...]` line waits (even when named)
 until each of those changes is archived. QUEUE_SKIP (space- or comma-separated) excludes changes
@@ -60,6 +61,12 @@ def waits_for(name: str) -> list[str]:
     return [dep for dep in depends(CHANGES / name) if not archived(dep)]
 
 
+def high(path: pathlib.Path) -> bool:
+    """A `Priority: high` line in proposal.md: picked before every other change (loop infrastructure fixes)."""
+    proposal = path / "proposal.md"
+    return proposal.exists() and re.search(r"^Priority:\s*high\b", proposal.read_text(), re.M | re.I) is not None
+
+
 def kind(path: pathlib.Path) -> str:
     proposal = path / "proposal.md"
     text = proposal.read_text() if proposal.exists() else ""
@@ -81,7 +88,7 @@ if wanted:
         candidates = []
 else:
     pending = (n for n in names if not n.startswith("update-") and n not in skip and not taken(n) and not waits_for(n))
-    candidates = sorted(pending, key=lambda n: (created(CHANGES / n), n))
+    candidates = sorted(pending, key=lambda n: (not high(CHANGES / n), created(CHANGES / n), n))
 
 # changes an automatic pick passes over only for a `Depends:` change not archived yet (drain.py's lanes wait for them)
 waiting = [] if wanted else [n for n in names if not n.startswith("update-") and n not in skip and not taken(n) and waits_for(n)]
