@@ -407,6 +407,16 @@ T["pr: Writing a file fetches the threads once"] = function()
 	eq(graphql_calls(log), 2)
 end
 
+T["pr: Writing a file fetches threads before any manual refresh"] = function()
+	local root, log = billing_branch(true)
+	child.cmd("edit " .. vim.fn.fnameescape(vim.fs.joinpath(root, "internal/billing/invoice.go")))
+
+	child.cmd("write")
+	eq(child.wait("#vim.fn.readfile(vim.env.FAKE_GH_LOG) == 1", 3000), true)
+
+	eq(graphql_calls(log), 1)
+end
+
 T["pr: A trigger during a fetch queues one more"] = function()
 	local root, log = billing_branch(true)
 	child.lua([[vim.env.FAKE_GH_SLEEP = "1"; PrEvents = 0

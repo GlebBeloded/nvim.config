@@ -310,7 +310,7 @@ local function base_changed(args)
 	end
 	M.state.generations[root] = (M.state.generations[root] or 0) + 1
 	M.state.by_root[root] = nil
-	if info and info.pr then
+	if review and info and info.pr then
 		M.refresh(root)
 	end
 end

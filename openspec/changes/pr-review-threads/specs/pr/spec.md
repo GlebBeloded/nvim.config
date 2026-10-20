@@ -112,6 +112,10 @@ Threads SHALL be fetched on `pr.refresh`, when `changes.review` opens a closed c
 - **WHEN** after a `pr482` refresh `invoice.go` is written with `:write`, 1500 ms pass, then it is written again
 - **THEN** exactly one more `query ReviewThreads` line is logged within 3000 ms of the first write
 
+#### Scenario: Writing a file fetches threads before any manual refresh
+- **WHEN** `invoice.go` is written in a fresh configured child with `pr482` served and no prior PR refresh
+- **THEN** one `query ReviewThreads` line is logged within 3000 ms
+
 #### Scenario: A trigger during a fetch queues one more
 - **WHEN** `FAKE_GH_SLEEP` is 1 and `require("gleb.pr").refresh(root)` runs three times within 100 ms
 - **THEN** exactly two `query ReviewThreads` lines are logged

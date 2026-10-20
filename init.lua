@@ -45,6 +45,7 @@ require("gleb.folding") -- must be after treesitter
 require("gleb.autopairs") -- must be after treesitter
 require("gleb.comments") -- must be after treesitter
 require("gleb.git")
+require("gleb.pr")
 require("gleb.run")
 require("gleb.bufferline")
 require("gleb.indentline")
