@@ -10,10 +10,10 @@ Scenarios: `git: Committed signs kinds and mapping follow the unit table`, `git:
 
 Scenarios: `git: Committed signs mark the branch's lines`, `git: Committed signs mark every line of a file added on the branch`, `git: Committed signs mark deleted lines`, `git: Committed signs colour is gruvbox purple`, `git: Committed signs are absent without a base`, `git: Committed signs skip files the branch did not change`, `git: Committed signs compare a renamed file with its old path`, `git: Committed signs skip a file over the line limit`
 
-- [ ] 2.1 Write the scenarios in tests/integration/git/test_committed_signs.lua. Use `F.copy("prbranch", …)` and the repos of design.md Decision 9. "no `git cat-file` ran" is read from a `vim.system` recorder the case installs in the child. See them fail.
-- [ ] 2.2 Add `lua/gleb/git/sign_text.lua` and point `gitsigns.lua` at it (same characters; `grep -n '= ""'` stays empty, rule 9.5).
-- [ ] 2.3 Add `lua/gleb/git/committed_signs/init.lua` (Decisions 1 and 5-8): the augroup, the `GitCommittedSign` highlight with its `ColorScheme` refresh, the changed-file list, blob reads by oid with the binary and size limits, and the extmarks. Require it from `lua/gleb/git/init.lua` after `gleb.git.gitsigns`, with the order comment.
-- [ ] 2.4 Run `make test FILE=tests/integration/git/test_committed_signs.lua` and see these pass.
+- [x] 2.1 Write the scenarios in tests/integration/git/test_committed_signs.lua. Use `F.copy("prbranch", …)` and the repos of design.md Decision 9. "no `git cat-file` ran" is read from a `vim.system` recorder the case installs in the child. See them fail.
+- [x] 2.2 Add `lua/gleb/git/sign_text.lua` and point `gitsigns.lua` at it (same characters; `grep -n '= ""'` stays empty, rule 9.5).
+- [x] 2.3 Add `lua/gleb/git/committed_signs/init.lua` (Decisions 1 and 5-8): the augroup, the `GitCommittedSign` highlight with its `ColorScheme` refresh, the changed-file list, blob reads by oid with the binary and size limits, and the extmarks. Require it from `lua/gleb/git/init.lua` after `gleb.git.gitsigns`, with the order comment.
+- [x] 2.4 Run `make test FILE=tests/integration/git/test_committed_signs.lua` and see these pass.
 
 ## 3. Following the buffer and the base
 
