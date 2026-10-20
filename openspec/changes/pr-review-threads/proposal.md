@@ -67,6 +67,8 @@ This change adds that data layer with no UI beyond one Find Action entry and its
   The `gh` CLI is an optional external tool.
 - Core keymaps: none. `pr.refresh` is unbound.
 - Unchanged scenarios:
+  - `file-tree: Requirement: Project tree refresh and operation keys` still holds: `pr.refresh` is a distinct action and does not change `file_tree.refresh` or its configured mappings.
+  - `file-tree: Requirement: Project tree refresh isolation` still holds: PR refreshes do not invoke `file_tree.refresh` or modify any project-tree view state.
   - `file-tree: Project tree coalesces a save burst` still holds: the PR write hook is a separate augroup and does not add a project-tree draw or git-status request.
   - `git: Changes panel review replaces the dashboard` still holds: the background fetch starts only after the panel has opened and does not change its window replacement.
   - `git: Branch base passes the remote host to gh` still holds: `gh pr view` keeps its existing argv, `GH_HOST` and log entry; the new GraphQL routing is a separate fake-`gh` mode.
@@ -74,6 +76,7 @@ This change adds that data layer with no UI beyond one Find Action entry and its
   - `git: Branch base is cached` still holds: thread caching consumes the resolved base and does not alter base lookup or its event count.
   - `git: Branch base refreshes after a commit` still holds: the thread listener observes `GlebGitBaseChanged` without changing HEAD discovery, merge-base state or base `gh` calls.
   - `git: Branch base refreshes after a checkout` still holds: the thread listener only clears its own cache when the base cache becomes nil.
+  - `git: Branch base keeps the last pull request when gh fails` still holds: thread refresh failure handling does not replace the branch-base cache or alter its `gh pr view` failure path.
   - `git: Requirement: Committed signs follow the buffer` still holds: PR locations use a separate module and namespace, and only observe the same base-change event.
   - `git: Local tab matches the approved render` still holds: fetching threads draws no UI and changes no panel text, highlights or layout.
   - `git: Cmd+G cycles Local, Branch, then closes` still holds: only opening a closed panel triggers the asynchronous fetch; tab order, focus, diffs and close behavior are untouched.
@@ -93,6 +96,8 @@ This change adds that data layer with no UI beyond one Find Action entry and its
   - `git: Cmd+G opens the changes review of a dirty repo` still holds: the `dirty` fixture has no pull request, so no `gh` call is made.
   - `keymaps: Requirement: Changes review entry point` still holds: `<A-g>` still maps to `changes.review`.
   - `session: Requirement: Save on write and exit` still holds: the new `BufWritePost` autocmd is in its own `gleb_pr` augroup and does not touch session saving.
+  - `statusline: refresh timer stops when idle` still holds: PR refreshes do not change the LSP progress timer or call `lualine.refresh`.
+  - `statusline: refresh timer stops on exit` still holds: the PR augroup does not change the LSP progress timer's `VimLeavePre` cleanup.
   - `diff: A too big comparison falls back to xdiff` still holds: thread mapping calls `vim.text.diff` on its own inputs; the diff engine is unchanged.
   - `diff: Requirement: Diff view hunk staging` still holds: no staging code changes.
   - `actions: Every configured action is registered` still holds: `pr.refresh` is registered and has no entry in the shortcut file.
