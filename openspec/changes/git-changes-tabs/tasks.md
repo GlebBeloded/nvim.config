@@ -127,7 +127,7 @@ Scenarios: `git: Changes panel j shows the next file in the diff view`, `git: Ch
 
 Scenarios: `git: Changes panel drops a stale diff result`, `git: Changes panel skips an unchanged selection`
 
-- [ ] 17.1 Run each named scenario in tests/integration/git/test_changes_diff.lua and see it pass before the shared generation changes; after tasks 11 and 13, run each again and see it pass
+- [x] 17.1 Run each named scenario in tests/integration/git/test_changes_diff.lua and see it pass before the shared generation changes; after tasks 11 and 13, run each again and see it pass
 
 ## 18. Local tab screen
 
