@@ -494,19 +494,21 @@ function M.get(root)
 end
 
 ---@param path string
----@param callback fun(info?: gleb.git.base.Info)
+---@param callback fun(info?: gleb.git.base.Info, root?: string)
 function M.resolve(path, callback)
 	local dir = directory(path)
 	local known = M.state.root_of[dir]
 	local function use_root(root, git_dir, common_dir)
 		if not root then
 			vim.schedule(function()
-				callback(nil)
+				callback(nil, nil)
 			end)
 			return
 		end
 		local entry = root_state(root, git_dir, common_dir)
-		table.insert(entry.callbacks, callback)
+		table.insert(entry.callbacks, function(info)
+			callback(info, root)
+		end)
 		if entry.resolved and not entry.dirty then
 			vim.schedule(function()
 				if M.state.roots[root] == entry then

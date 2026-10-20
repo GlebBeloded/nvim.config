@@ -29,7 +29,6 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 
 ## Loop lessons
 
-- Complete per-view pending state on every current asynchronous result, including failures and first-paint callbacks, so later invalidations cannot deadlock.
 - Merge traversal discoveries into retained UI state when the traversal intentionally skips user-expandable nodes.
 - Preserve polling semantics when extracting asynchronous readiness helpers: recording an LSP error must not make the wait return before readiness.
 - Preserve a valid restore buffer when replacing a wipe-on-hide dashboard, so repeated owned-diff updates cannot restore a deleted buffer.
@@ -44,6 +43,7 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - Shared tree redraws need an owner lifecycle hook when visible-row count controls the owning window's geometry.
 - Resolve repository roots canonically before exercising root-keyed cache and refresh APIs on macOS.
 - Wait for asynchronous refresh completion before asserting retained cache state; subprocess-start logs can precede callback resolution.
+- When a fix broadens a shared callback contract, name the owning module and contract change in both Impact and its implementation task.
 
 ## The loop
 
