@@ -189,17 +189,27 @@ T["file-tree: Project tree unfold all meets the large-tree bound"]["stops prompt
 		0
 	)
 	install_cpu_measurement(unfold_child)
-	unfold_child.lua([[FileTreeUnfoldStarted = FileTreeStartMeasurement()]])
+	unfold_child.lua([[
+		local notify = vim.notify
+		vim.notify = function(msg, level, ...)
+			if msg == "Unfold all stopped at 5000 rows" and level == vim.log.levels.WARN then
+				FileTreeUnfoldMeasurement = FileTreeFinishMeasurement(FileTreeUnfoldStarted)
+			end
+			return notify(msg, level, ...)
+		end
+		FileTreeUnfoldStarted = FileTreeStartMeasurement()
+	]])
 
 	unfold_child.type_keys("zR")
 	assert(
 		unfold_child.wait([[#Notifications > 0]], math.ceil(500 * H.load_factor())),
 		"unfold all did not reach the row limit"
 	)
+	eq(unfold_child.lua_get([[FileTreeUnfoldMeasurement ~= nil]]), true)
 
 	local result = unfold_child.lua_get([[(function()
 		local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
-		local measurement = FileTreeFinishMeasurement(FileTreeUnfoldStarted)
+		local measurement = FileTreeUnfoldMeasurement
 		return {
 			cpu_ms = measurement.cpu_ms,
 			elapsed_ms = measurement.elapsed_ms,
