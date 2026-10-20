@@ -251,6 +251,65 @@ local function draw(view, selected_key)
 end
 
 ---@param view ChangesView
+---@param nodes gleb.ui.tree.Node[]
+---@return nil
+local function draw_branch(view, nodes)
+	local selected = tree_view.selected_id(view.tree)
+	local saved_view
+	if vim.api.nvim_win_is_valid(view.win) then
+		saved_view = vim.api.nvim_win_call(view.win, vim.fn.winsaveview)
+	end
+	tree_model.rebuild(view.tree, nodes)
+	draw(view, selected)
+	if saved_view and vim.api.nvim_win_is_valid(view.win) then
+		local cursor = vim.api.nvim_win_get_cursor(view.win)
+		saved_view.lnum = cursor[1]
+		saved_view.col = cursor[2]
+		vim.api.nvim_win_call(view.win, function()
+			vim.fn.winrestview(saved_view)
+		end)
+	end
+end
+
+---@param view ChangesView
+---@param info gleb.git.base.Info
+---@return nil
+local function refresh_branch(view, info)
+	view.branch_generation = view.branch_generation + 1
+	view.commit_generation = view.commit_generation + 1
+	view.commit_nodes = nil
+	view.commit_files = {}
+	local branch_generation = view.branch_generation
+	local commit_generation = view.commit_generation
+	branch.load_files(view.root, info, branch_generation, function(candidate)
+		return require("gleb.git.changes").state.by_tab[view.tab] == view and view.branch_generation == candidate
+	end, function(nodes)
+		view.branch_nodes = nodes
+		if view.active_tab ~= "branch" then
+			return
+		end
+		if not view.commit_view then
+			draw_branch(view, nodes)
+			return
+		end
+		branch.load_commits(view.root, info, nodes, commit_generation, function(candidate)
+			return require("gleb.git.changes").state.by_tab[view.tab] == view
+				and view.branch_generation == branch_generation
+				and view.commit_generation == candidate
+				and view.commit_view
+				and view.active_tab == "branch"
+		end, function(commit_nodes)
+			view.commit_nodes = commit_nodes
+			local newest = commit_nodes[4]
+			if newest and newest.data and newest.data.full_hash then
+				view.commit_files[newest.data.full_hash] = newest.children or {}
+			end
+			draw_branch(view, commit_nodes)
+		end)
+	end)
+end
+
+---@param view ChangesView
 ---@return nil
 local function refresh_now(view)
 	local changes = require("gleb.git.changes")
@@ -286,6 +345,12 @@ local function refresh_now(view)
 			draw(view, row_key(current))
 		end
 		draw_tabs(view)
+		if view.branch_info then
+			load_branch_count(view, view.branch_info)
+			if view.active_tab == "branch" or view.branch_nodes then
+				refresh_branch(view, view.branch_info)
+			end
+		end
 		if view.initial_selected_path then
 			select_file(view, view.initial_selected_path)
 			view.initial_selected_path = nil
@@ -497,6 +562,24 @@ local function add_refresh_sources(view)
 		group = augroup,
 		callback = function()
 			M.schedule_refresh(view)
+		end,
+	})
+	view.autocmds[#view.autocmds + 1] = vim.api.nvim_create_autocmd("User", {
+		group = augroup,
+		pattern = "GlebGitBaseChanged",
+		callback = function(args)
+			local root = args.data and args.data.root
+			if not root or workspace.normalize(root) ~= view.root then
+				return
+			end
+			local info = require("gleb.git.base").get(view.root)
+			if not info or not view.branch_info then
+				return
+			end
+			load_branch_count(view, info)
+			if view.active_tab == "branch" or view.branch_nodes then
+				refresh_branch(view, info)
+			end
 		end,
 	})
 	view.autocmds[#view.autocmds + 1] = vim.api.nvim_create_autocmd("WinClosed", {
@@ -745,18 +828,7 @@ function M.activate_tab(panel, id)
 		tree_model.rebuild(panel.tree, panel.branch_nodes)
 		draw(panel)
 	elseif panel.branch_info then
-		panel.branch_generation = panel.branch_generation + 1
-		local generation = panel.branch_generation
-		local info = assert(panel.branch_info, "Branch tab has no base")
-		branch.load_files(panel.root, info, generation, function(candidate)
-			return require("gleb.git.changes").state.by_tab[panel.tab] == panel and panel.branch_generation == candidate
-		end, function(nodes)
-			panel.branch_nodes = nodes
-			if panel.active_tab == "branch" then
-				tree_model.rebuild(panel.tree, nodes)
-				draw(panel)
-			end
-		end)
+		refresh_branch(panel, assert(panel.branch_info, "Branch tab has no base"))
 	end
 	M.review(panel)
 end

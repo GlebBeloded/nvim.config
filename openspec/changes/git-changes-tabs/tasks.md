@@ -97,9 +97,9 @@ Scenarios: `git: Branch tab ignores staging keys`
 
 Scenarios: `git: Branch tab refreshes after a commit`
 
-- [ ] 13.1 Write `git: Branch tab refreshes after a commit` in tests/integration/git/test_changes_tabs.lua and run `make test FILE=tests/integration/git/test_changes_tabs.lua CASE="Branch tab refreshes after a commit"` to see it fail
-- [ ] 13.2 Refresh the Branch tab with the Local tab's triggers and `gleb.git.base` updates while preserving cursor, fold and view state and dropping stale generations
-- [ ] 13.3 Run `make test FILE=tests/integration/git/test_changes_tabs.lua CASE="Branch tab refreshes after a commit"` and see it pass
+- [x] 13.1 Write `git: Branch tab refreshes after a commit` in tests/integration/git/test_changes_tabs.lua and run `make test FILE=tests/integration/git/test_changes_tabs.lua CASE="Branch tab refreshes after a commit"` to see it fail
+- [x] 13.2 Refresh the Branch tab with the Local tab's triggers and `gleb.git.base` updates while preserving cursor, fold and view state and dropping stale generations
+- [x] 13.3 Run `make test FILE=tests/integration/git/test_changes_tabs.lua CASE="Branch tab refreshes after a commit"` and see it pass
 
 ## 14. Changes tab actions
 

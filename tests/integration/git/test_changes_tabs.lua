@@ -828,6 +828,51 @@ T["git: Branch tab ignores staging keys"] = function()
 	)
 end
 
+T["git: Branch tab refreshes after a commit"] = function()
+	local root = open_branch_tab()
+	select_row("branch:file:internal/billing/invoice_test.go")
+	local before = child.lua_get([=[(function()
+		local view = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		return {
+			selected = view.rows[vim.api.nvim_win_get_cursor(view.win)[1]].id,
+			folded = view.tree.folds["branch:directory:internal/billing"],
+		}
+	end)()]=])
+
+	H.git(root, { "add", "notes.md" })
+	H.git(root, { "commit", "-q", "-m", "notes" })
+	child.cmd("checktime")
+
+	assert(
+		child.wait(
+			[[(function()
+				local view = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+				local bar = view and vim.wo[view.win].winbar or ""
+				if not bar:find("Local 2", 1, true) or not bar:find("Branch 5", 1, true) then
+					return false
+				end
+				local summary
+				local has_notes = false
+				for _, row in ipairs(view.rows) do
+					if row.kind == "summary" then summary = row.label end
+					if row.kind == "file" and row.path == "notes.md" then has_notes = true end
+				end
+				return summary == "4 commits · merge-base 4ccefde" and has_notes
+			end)()]],
+			3000
+		),
+		"Branch tab did not refresh after the commit"
+	)
+	local after = child.lua_get([=[(function()
+		local view = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		return {
+			selected = view.rows[vim.api.nvim_win_get_cursor(view.win)[1]].id,
+			folded = view.tree.folds["branch:directory:internal/billing"],
+		}
+	end)()]=])
+	eq(after, before)
+end
+
 T["git: Branch tab hint names the commit view key"] = function()
 	child.o.lines = 30
 	child.o.columns = 100
