@@ -8,6 +8,7 @@ Scenarios: `loop: Reusable child resets case state`, `loop: Fresh child remains 
 
 - Opt in with `H.child_set(child, start, { reuse = true })` so existing callers retain fresh children without changes.
 - Reuse children in apply, ownership, plugin-ownership, assign, hidden, and open; keep adapters, context, and run fresh because the isolation trial exposed retained invocation history, a deleted startup fixture, and stale MiniPick buffers respectively.
+- Reuse children in paste, dashboard, input, and PR statusline; keep core keymaps and the main statusline fresh because child restarts remove the installed reset and a later statusline case requires the startup dashboard.
 
 ## 2. Enable cached Lua loading before configuration imports
 Scenarios: `loop: Cached loader precedes configuration modules`
@@ -23,9 +24,9 @@ Scenarios: `actions: Invocation captures editor state`, `actions: Global binding
 
 ## 4. Reuse children in keymaps, picker and statusline suites
 Scenarios: `keymaps: Core mappings resolve through actions`, `keymaps: Terminal paste edits a normal buffer`, `picker: Dashboard opens shared list pickers`, `picker: Input prompt submits its query`, `statusline: statusline is global`
-- [ ] 4.1 Run the named cases through their real mappings, populated pickers and statusline; temporarily disable the reusable lifecycle's case reset, opt the candidate files into reuse, run `make test FILE=tests/integration/keymaps`, `make test FILE=tests/integration/picker` and `make test FILE=tests/integration/statusline`, see state-leak failures, record them, then restore the reset
-- [ ] 4.2 Opt safe files in `tests/integration/keymaps/`, `tests/integration/picker/` and `tests/integration/statusline/` into the reusable lifecycle, leaving any file that touches non-resettable state on fresh children
-- [ ] 4.3 Run `make test FILE=tests/integration/keymaps`, `make test FILE=tests/integration/picker` and `make test FILE=tests/integration/statusline` and see them pass
+- [x] 4.1 Run the named cases through their real mappings, populated pickers and statusline; temporarily disable the reusable lifecycle's case reset, opt the candidate files into reuse, run `make test FILE=tests/integration/keymaps`, `make test FILE=tests/integration/picker` and `make test FILE=tests/integration/statusline`, see state-leak failures, record them, then restore the reset
+- [x] 4.2 Opt safe files in `tests/integration/keymaps/`, `tests/integration/picker/` and `tests/integration/statusline/` into the reusable lifecycle, leaving any file that touches non-resettable state on fresh children
+- [x] 4.3 Run `make test FILE=tests/integration/keymaps`, `make test FILE=tests/integration/picker` and `make test FILE=tests/integration/statusline` and see them pass
 
 ## 5. Measure the integration layer
 Scenarios: `loop: Reusable child resets case state`

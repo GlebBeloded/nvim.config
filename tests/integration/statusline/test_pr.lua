@@ -34,7 +34,7 @@ local function setup(with_pr, with_threads)
 	return root
 end
 
-local T = H.child_set(child, child.start_config)
+local T = H.child_set(child, child.start_config, { reuse = true })
 
 T["statusline: Statusline shows the pull request and its open threads"] = function()
 	setup(true, true)
