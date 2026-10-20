@@ -112,6 +112,10 @@ Threads SHALL be fetched on `pr.refresh`, when `changes.review` opens a closed c
 - **WHEN** after a `pr482` refresh `invoice.go` is written with `:write`, 1500 ms pass, then it is written again
 - **THEN** exactly one more `query ReviewThreads` line is logged within 3000 ms of the first write
 
+#### Scenario: Writing a file fetches threads before any manual refresh
+- **WHEN** `invoice.go` is written in a fresh configured child with `pr482` served and no prior PR refresh
+- **THEN** one `query ReviewThreads` line is logged within 3000 ms
+
 #### Scenario: A trigger during a fetch queues one more
 - **WHEN** `FAKE_GH_SLEEP` is 1 and `require("gleb.pr").refresh(root)` runs three times within 100 ms
 - **THEN** exactly two `query ReviewThreads` lines are logged
@@ -126,6 +130,10 @@ A failed fetch SHALL keep the cached threads and notify at WARN once per root an
 #### Scenario: PR fetch failures are classified
 - **WHEN** `require("gleb.pr.gh").failure(result, host)` runs for a missing `gh`; exit 4 with `To get started with GitHub CLI, please run:  gh auth login`; exit 1 with `HTTP 401: Bad credentials (https://pgw.dev/api/graphql)`; exit 1 with `error connecting to pgw.dev` and a second line; exit 0 with `{"errors":[{"message":"Could not resolve to a PullRequest with the number of 482."}]}`
 - **THEN** the messages are `PR comments unavailable: gh not found`, `PR comments unavailable: gh is not authenticated for pgw.dev` twice, `PR comments unavailable: error connecting to pgw.dev` and `PR comments unavailable: Could not resolve to a PullRequest with the number of 482.`
+
+#### Scenario: A missing gh fetch warns and clears in-flight refresh
+- **WHEN** a cached `pr482` root loses `gh` from `PATH` and `require("gleb.pr").refresh(root)` runs
+- **THEN** `PR comments unavailable: gh not found` is notified at WARN, the root has no in-flight refresh, and a later refresh completes after `gh` returns
 
 #### Scenario: A failed PR fetch warns once and keeps the threads
 - **WHEN** after a `pr482` refresh the fake `gh` answers `query ReviewThreads` with exit 1 and `error connecting to pgw.dev`, and `require("gleb.pr").refresh(root)` runs twice
