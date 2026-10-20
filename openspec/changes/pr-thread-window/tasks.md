@@ -18,9 +18,9 @@ Scenarios: `pr: Enter on a thread opens its line`, `pr: Enter on an unmapped thr
 
 ## 4. Thread keys, hints and drafts
 Scenarios: `pr: Enter on an empty reply starts writing`, `pr: gx opens the thread on the web`, `pr: q keeps the draft for the next open`, `pr: Resolved thread offers Unresolve`, `pr: Resolve is hidden without permission`
-- [ ] 4.1 Write the five tests in `tests/integration/pr/test_thread_window.lua`, driving the real mappings against populated thread data; run each with `make test FILE=tests/integration/pr/test_thread_window.lua CASE="<scenario title>"` and see it fail
-- [ ] 4.2 Add the `pr.thread_*` actions, permission-aware hints, per-thread drafts, `vim.ui.open` call and focus-leave close to `lua/gleb/pr/thread_window.lua` and `lua/gleb/pr/actions.lua`
-- [ ] 4.3 Run each scenario with `make test FILE=tests/integration/pr/test_thread_window.lua CASE="<scenario title>"` and see it pass
+- [x] 4.1 Write the five tests in `tests/integration/pr/test_thread_window.lua`, driving the real mappings against populated thread data; run each with `make test FILE=tests/integration/pr/test_thread_window.lua CASE="<scenario title>"` and see it fail
+- [x] 4.2 Add the `pr.thread_*` actions, permission-aware hints, per-thread drafts, `vim.ui.open` call and focus-leave close to `lua/gleb/pr/thread_window.lua` and `lua/gleb/pr/actions.lua`
+- [x] 4.3 Run each scenario with `make test FILE=tests/integration/pr/test_thread_window.lua CASE="<scenario title>"` and see it pass
 
 ## 5. Thread key ownership
 Scenarios: `pr: Thread window keys come from the shortcut file`

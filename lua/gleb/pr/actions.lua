@@ -28,6 +28,14 @@ local function open_thread(ctx)
 	require("gleb.pr.thread_window").open_at_cursor(ctx.win, ctx.buf)
 end
 
+---@param name "send"|"resolve"|"open_web"|"close_current"
+---@return fun()
+local function thread_action(name)
+	return function()
+		require("gleb.pr.thread_window")[name]()
+	end
+end
+
 ---@type gleb.Action[]
 local actions = {
 	{
@@ -53,6 +61,34 @@ local actions = {
 		title = "Open Review Thread",
 		category = "Git | Pull Request",
 		run = open_thread,
+	},
+	{
+		id = "pr.thread_send",
+		title = "Reply to Thread",
+		category = "Git | Pull Request",
+		ft = "gleb-pr-thread",
+		run = thread_action("send"),
+	},
+	{
+		id = "pr.thread_resolve",
+		title = "Resolve or Unresolve Thread",
+		category = "Git | Pull Request",
+		ft = "gleb-pr-thread",
+		run = thread_action("resolve"),
+	},
+	{
+		id = "pr.thread_open_web",
+		title = "Open Thread on Web",
+		category = "Git | Pull Request",
+		ft = "gleb-pr-thread",
+		run = thread_action("open_web"),
+	},
+	{
+		id = "pr.thread_close",
+		title = "Close Thread",
+		category = "Git | Pull Request",
+		ft = "gleb-pr-thread",
+		run = thread_action("close_current"),
 	},
 }
 

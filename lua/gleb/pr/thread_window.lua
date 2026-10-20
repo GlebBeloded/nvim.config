@@ -22,9 +22,10 @@ local namespace = vim.api.nvim_create_namespace("gleb_pr_thread_window")
 
 ---@class gleb.pr.ThreadWindowState
 ---@field by_tab table<integer, gleb.pr.ThreadWindow>
+---@field drafts table<string, string[]>
 
 ---@type gleb.pr.ThreadWindowState
-M.state = { by_tab = {} }
+M.state = { by_tab = {}, drafts = {} }
 
 ---@param text string
 ---@param width integer
@@ -121,12 +122,68 @@ function M.close(state)
 		return
 	end
 	state.closing = true
+	if vim.api.nvim_buf_is_valid(state.reply_buf) then
+		M.state.drafts[state.thread.id] = vim.api.nvim_buf_get_lines(state.reply_buf, 0, -1, false)
+	end
 	M.state.by_tab[state.tab] = nil
 	pcall(vim.api.nvim_del_augroup_by_id, state.group)
 	for _, win in ipairs({ state.messages_win, state.reply_win, state.hint_win }) do
 		if vim.api.nvim_win_is_valid(win) then
 			vim.api.nvim_win_close(win, true)
 		end
+	end
+end
+
+---@return gleb.pr.ThreadWindow?
+local function current()
+	return M.state.by_tab[vim.api.nvim_get_current_tabpage()]
+end
+
+---@param state gleb.pr.ThreadWindow
+---@return boolean
+local function reply_is_empty(state)
+	return vim.iter(vim.api.nvim_buf_get_lines(state.reply_buf, 0, -1, false)):all(function(line)
+		return line == ""
+	end)
+end
+
+---@return nil
+function M.send()
+	local state = current()
+	if not state or not state.thread.can_reply or not reply_is_empty(state) then
+		return
+	end
+	vim.api.nvim_set_current_win(state.reply_win)
+	vim.api.nvim_win_set_cursor(state.reply_win, { 1, 0 })
+	vim.cmd.startinsert()
+end
+
+---@return nil
+function M.resolve()
+	local state = current()
+	if not state then
+		return
+	end
+	local permitted = state.thread.resolved and state.thread.can_unresolve or state.thread.can_resolve
+	if not permitted then
+		return
+	end
+end
+
+---@return nil
+function M.open_web()
+	local state = current()
+	local comment = state and state.thread.comments[1] or nil
+	if comment then
+		vim.ui.open(comment.url)
+	end
+end
+
+---@return nil
+function M.close_current()
+	local state = current()
+	if state then
+		M.close(state)
 	end
 end
 
@@ -159,7 +216,16 @@ local function layout(state)
 	local outer_height = #messages + reply_height + 5
 	local row = math.floor((vim.o.lines - 1 - outer_height) / 2)
 	local col = math.floor((vim.o.columns - outer_width) / 2)
-	local line = " Reply ↩ · Resolve R · Open on web gx · Close q "
+	local hints = {}
+	if state.thread.can_reply then
+		hints[#hints + 1] = "Reply ↩"
+	end
+	local can_change_resolution = state.thread.resolved and state.thread.can_unresolve or state.thread.can_resolve
+	if can_change_resolution then
+		hints[#hints + 1] = state.thread.resolved and "Unresolve R" or "Resolve R"
+	end
+	vim.list_extend(hints, { "Open on web gx", "Close q" })
+	local line = " " .. table.concat(hints, " · ") .. " "
 	local padding = math.max(inner_width - vim.fn.strdisplaywidth(line), 0)
 	fill(state.hint_buf, { string.rep(" ", padding) .. line }, false)
 
@@ -225,7 +291,7 @@ function M.open(review, thread)
 	vim.bo[messages_buf].filetype = "gleb-pr-thread"
 	vim.bo[reply_buf].filetype = "gleb-pr-thread"
 	fill(messages_buf, { "" }, false)
-	fill(reply_buf, { "", "", "" }, true)
+	fill(reply_buf, M.state.drafts[thread.id] or { "", "", "" }, true)
 	fill(hint_buf, { "" }, false)
 
 	local messages_win = open_window(false, {
@@ -257,10 +323,14 @@ function M.open(review, thread)
 	vim.wo[messages_win].winhighlight = "Normal:Normal,FloatBorder:FloatBorder,FloatTitle:FloatTitle"
 	vim.wo[reply_win].winhighlight = "Normal:Normal,FloatBorder:FloatBorder"
 	vim.wo[hint_win].winhighlight = "Normal:PickerHint,FloatBorder:FloatBorder"
-	vim.api.nvim_buf_set_extmark(reply_buf, namespace, 0, 0, {
-		virt_text = { { "Write a reply…", "PrReplyPlaceholder" } },
-		virt_text_pos = "overlay",
-	})
+	if vim.iter(vim.api.nvim_buf_get_lines(reply_buf, 0, -1, false)):all(function(line)
+		return line == ""
+	end) then
+		vim.api.nvim_buf_set_extmark(reply_buf, namespace, 0, 0, {
+			virt_text = { { "Write a reply…", "PrReplyPlaceholder" } },
+			virt_text_pos = "overlay",
+		})
+	end
 
 	local group = vim.api.nvim_create_augroup("gleb_pr_thread_window_" .. tab, { clear = true })
 	local state = {
@@ -288,6 +358,21 @@ function M.open(review, thread)
 		pattern = vim.tbl_map(tostring, { messages_win, reply_win, hint_win }),
 		callback = function()
 			M.close(state)
+		end,
+	})
+	vim.api.nvim_create_autocmd("WinLeave", {
+		group = group,
+		pattern = vim.tbl_map(tostring, { messages_win, reply_win, hint_win }),
+		callback = function()
+			vim.schedule(function()
+				if state.closing then
+					return
+				end
+				local focused = vim.api.nvim_get_current_win()
+				if not vim.tbl_contains({ state.messages_win, state.reply_win, state.hint_win }, focused) then
+					M.close(state)
+				end
+			end)
 		end,
 	})
 	layout(state)

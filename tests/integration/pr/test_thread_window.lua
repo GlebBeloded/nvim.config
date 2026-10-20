@@ -13,8 +13,18 @@ end
 
 ---@param mutate? fun(files: table<string, string>)
 ---@return string
+---@return string
 local function open_review(mutate)
 	child.wait_very_lazy()
+	child.lua([[(function()
+		local actions = require("gleb.actions")
+		local shortcuts = vim.deepcopy(actions.state.store.last_good)
+		shortcuts["pr.thread_send"] = { "<CR>" }
+		shortcuts["pr.thread_resolve"] = { "R" }
+		shortcuts["pr.thread_open_web"] = { "gx" }
+		shortcuts["pr.thread_close"] = { "q" }
+		actions.state.applicator:apply(shortcuts)
+	end)()]])
 	child.o.lines = 30
 	child.o.columns = 100
 	local root, manifest = F.copy("billing-branch", vim.fn.tempname() .. "/billing-branch")
@@ -24,8 +34,9 @@ local function open_review(mutate)
 		mutate(files)
 	end
 	local gh_dir = vim.fn.tempname()
+	local gh_log = vim.fn.tempname()
 	H.write_files(gh_dir, files)
-	child.lua([[vim.env.FAKE_GH_DIR = ...]], { gh_dir })
+	child.lua([[vim.env.FAKE_GH_DIR = ...; vim.env.FAKE_GH_LOG = select(2, ...)]], { gh_dir, gh_log })
 	child.cmd("cd " .. vim.fn.fnameescape(root))
 	child.cmd("edit " .. vim.fn.fnameescape(vim.fs.joinpath(root, "internal/billing/invoice.go")))
 	child.lua(
@@ -45,7 +56,7 @@ local function open_review(mutate)
 	child.lua([[require("gleb.pr").now = function()
 		return os.time({ year = 2026, month = 1, day = 2, hour = 1 })
 	end]])
-	return root
+	return root, gh_log
 end
 
 ---@param id string
@@ -79,6 +90,13 @@ local function thread_windows()
 		table.sort(result, function(a, b) return a.row < b.row end)
 		return result
 	end)()]])
+end
+
+---@param line integer
+local function open_thread_at(line)
+	child.lua([[vim.api.nvim_win_set_cursor(0, { ..., 0 })]], { line })
+	run_action("pr.open_thread")
+	assert(child.wait([[vim.bo.filetype == "gleb-pr-thread"]], timeout()), "thread reply did not take focus")
 end
 
 T["pr: Thread window colours"] = function()
@@ -167,6 +185,73 @@ T["pr: An unmapped thread window shows its diff hunk"] = function()
 	local messages = thread_windows()[1]
 	eq(vim.list_slice(messages.lines, 1, 4), { "-first", "-second", "-third", "-fourth" })
 	eq(vim.endswith(messages.title, "· open "), true)
+end
+
+T["pr: Enter on an empty reply starts writing"] = function()
+	open_review()
+	open_thread_at(22)
+	child.type_keys("<CR>")
+
+	assert(child.wait([[vim.fn.mode() == "i"]], timeout()), "empty reply did not enter Insert mode")
+	eq(
+		child.lua_get(
+			[[vim.api.nvim_get_current_win() == require("gleb.pr.thread_window").state.by_tab[vim.api.nvim_get_current_tabpage()].reply_win]]
+		),
+		true
+	)
+end
+
+T["pr: gx opens the thread on the web"] = function()
+	open_review()
+	child.lua([[OpenedUrls = {} vim.ui.open = function(url) table.insert(OpenedUrls, url) end]])
+	open_thread_at(22)
+	child.type_keys("gx")
+
+	eq(child.lua_get([[OpenedUrls]]), {
+		"https://pgw.dev/finteqhub/billing/pull/482#discussion_r1",
+	})
+end
+
+T["pr: q keeps the draft for the next open"] = function()
+	open_review()
+	open_thread_at(22)
+	child.type_keys("<CR>Draft<Esc>")
+	eq(child.lua_get([[vim.fn.maparg("q", "n") ~= ""]]), true)
+	child.type_keys("q")
+	assert(child.wait([[#vim.api.nvim_list_wins() == 1]], timeout()), "thread window did not close")
+	eq(#thread_windows(), 0)
+
+	open_thread_at(22)
+	eq(thread_windows()[2].lines, { "Draft", "", "" })
+end
+
+T["pr: Resolved thread offers Unresolve"] = function()
+	open_review()
+	open_thread_at(11)
+
+	local windows = thread_windows()
+	eq(vim.endswith(windows[1].title, "· resolved "), true)
+	eq(vim.endswith(windows[3].lines[1], " Reply ↩ · Unresolve R · Open on web gx · Close q "), true)
+end
+
+T["pr: Resolve is hidden without permission"] = function()
+	local _, gh_log = open_review(function(files)
+		local response = vim.json.decode(files["ReviewThreads.json"])
+		response.data.repository.pullRequest.reviewThreads.nodes[1].viewerCanResolve = false
+		files["ReviewThreads.json"] = vim.json.encode(response)
+	end)
+	open_thread_at(22)
+	local before = thread_windows()[3].lines[1]
+	child.type_keys("R")
+
+	eq(vim.endswith(before, " Reply ↩ · Open on web gx · Close q "), true)
+	eq(thread_windows()[3].lines[1], before)
+	eq(
+		vim.tbl_filter(function(line)
+			return line:find("mutation", 1, true) ~= nil
+		end, vim.fn.readfile(gh_log)),
+		{}
+	)
 end
 
 return T
