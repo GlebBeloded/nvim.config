@@ -1,7 +1,7 @@
 -- Non-recursive libuv watches invalidate only changed scans and coalesce redraws from event bursts. Listed folders
 -- beyond MAX_WATCH_HANDLES (or whose watch failed) are covered by one recursive root watch where libuv supports it,
--- else polled every FALLBACK_RESCAN_MS. Every listed folder is also polled for FALLBACK_SETTLE_PASSES after a watch
--- change, which can drop events.
+-- else polled every FALLBACK_RESCAN_MS. Every listed folder is also polled through watch startup and for
+-- FALLBACK_SETTLE_PASSES after the event stream is confirmed live, covering changes while libuv rebuilds the stream.
 
 local M = {}
 
@@ -25,6 +25,7 @@ M.MAX_WATCH_HANDLES = 256
 ---@field fallback_timer? uv.uv_timer_t
 ---@field tree_handle? uv.uv_fs_event_t
 ---@field fallback_scanning boolean
+---@field event_confirmed boolean
 ---@field settle_passes integer
 ---@field git_handle? uv.uv_fs_event_t
 ---@field git_dir? string
@@ -52,6 +53,20 @@ M.state = { roots = {} }
 
 local schedule_sync
 local update_coverage
+
+---@param state FileTreeWatchRoot
+local function arm_settle_scans(state)
+	state.event_confirmed = false
+	state.settle_passes = FALLBACK_SETTLE_PASSES
+end
+
+---@param root string
+---@param state FileTreeWatchRoot
+local function confirm_event(root, state)
+	if M.state.roots[root] == state then
+		state.event_confirmed = true
+	end
+end
 
 ---@param stat uv.fs_stat.result?
 ---@return string|false
@@ -131,10 +146,11 @@ end
 ---@param state FileTreeWatchRoot
 local function watch_folder(root, path, state)
 	state.handles[path] = watch_path(path, function()
+		confirm_event(root, state)
 		queue_redraw(root, path)
 	end)
 	if state.handles[path] then
-		state.settle_passes = FALLBACK_SETTLE_PASSES
+		arm_settle_scans(state)
 	end
 	return state.handles[path] ~= nil
 end
@@ -159,6 +175,7 @@ local function watch_git_dir(root, state)
 						state.git_dir = path
 						poll_git_index(root, state)
 						state.git_handle = watch_path(path, function()
+							confirm_event(root, state)
 							vim.schedule(function()
 								if M.state.roots[root] == state then
 									for _, client in pairs(state.clients) do
@@ -167,7 +184,9 @@ local function watch_git_dir(root, state)
 								end
 							end)
 						end)
-						state.settle_passes = FALLBACK_SETTLE_PASSES
+						if state.git_handle then
+							arm_settle_scans(state)
+						end
 						schedule_sync(root, state)
 					end
 				end
@@ -192,7 +211,7 @@ local function close_folder(state, path)
 		handle:stop()
 		handle:close()
 		state.handles[path] = nil
-		state.settle_passes = FALLBACK_SETTLE_PASSES
+		arm_settle_scans(state)
 	end
 	local timer = state.timers[path]
 	if timer then
@@ -253,6 +272,7 @@ function M.start_root(root, owner, repository_ready)
 		wanted_order = {},
 		sync_scheduled = false,
 		fallback_scanning = false,
+		event_confirmed = true,
 		settle_passes = 0,
 		discovery_complete = false,
 	}
@@ -384,6 +404,7 @@ end
 ---@return uv.uv_fs_event_t?
 local function watch_tree(root, state)
 	return watch_path(root, function(filename)
+		confirm_event(root, state)
 		if filename then
 			redraw_unwatched_parent(root, state, filename)
 		end
@@ -490,7 +511,9 @@ local function poll_folders(root, state)
 	end
 	local settling = state.settle_passes > 0
 	if settling then
-		state.settle_passes = state.settle_passes - 1
+		if state.event_confirmed then
+			state.settle_passes = state.settle_passes - 1
+		end
 		if state.git_dir then
 			poll_git_index(root, state)
 		end
@@ -533,7 +556,7 @@ update_coverage = function(root, state)
 	if unwatched and RECURSIVE_WATCH and not state.tree_handle then
 		state.tree_handle = watch_tree(root, state)
 		if state.tree_handle then
-			state.settle_passes = FALLBACK_SETTLE_PASSES
+			arm_settle_scans(state)
 		end
 	elseif not unwatched then
 		stop_tree_watch(state)

@@ -71,9 +71,18 @@ end
 ---@param present boolean
 local function wait_for_tree_line(name, present)
 	assert(
-		vim.wait(math.ceil(1000 * H.load_factor()), function()
-			return has_tree_line(name) == present
-		end, 20),
+		child.lua_get(
+			[[(function(name, present, timeout)
+				return vim.wait(timeout, function()
+					local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+					local found = vim.iter(vim.api.nvim_buf_get_lines(view.buf, 0, -1, false)):any(function(line)
+						return line:find(name, 1, true) ~= nil
+					end)
+					return found == present
+				end, 20)
+			end)(...)]],
+			{ name, present, math.ceil(3000 * H.load_factor()) }
+		),
 		("tree line %s did not become %s"):format(name, present and "visible" or "hidden")
 	)
 end
@@ -438,6 +447,7 @@ T["file-tree: Renaming a nest parent migrates its state"] = function()
 			vim.fs.joinpath(root, "internal/billing/bill_test.go")
 		)
 	)
+	wait_for_tree_line("bill_test.go", true)
 	rename("bill.go")
 	assert(
 		child.wait(
@@ -465,6 +475,7 @@ end
 T["file-tree: Renaming a folder migrates nest state in every view"] = function()
 	focus_tree_row("invoice.go")
 	child.type_keys("za")
+	wait_for_tree_line("invoice_test.go", true)
 	local first_tab = child.api.nvim_get_current_tabpage()
 
 	child.cmd("tabnew")
@@ -479,6 +490,7 @@ T["file-tree: Renaming a folder migrates nest state in every view"] = function()
 	)
 	focus_tree_row("invoice.go")
 	child.type_keys("za")
+	wait_for_tree_line("invoice_test.go", true)
 	focus_tree_path("internal/billing")
 	rename("accounts")
 	assert(

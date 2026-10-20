@@ -21,7 +21,20 @@ The tests also mutate the filesystem right after `handles[...] ~= nil`, which do
 - The watcher tests wait for a canary event (touch a known file, wait for its redraw) before the mutation they assert,
   and the nesting cases wait for a copied file's row before renaming. No assertion is weakened.
 
+## Evidence
+
+- `lua/gleb/tree/watch.lua:133` starts a folder watch and `lua/gleb/tree/watch.lua:137` arms only two settle passes;
+  starts of the git and recursive watches arm the same counter at `lua/gleb/tree/watch.lua:170` and
+  `lua/gleb/tree/watch.lua:536`.
+- `lua/gleb/tree/watch.lua:491` decrements those passes on fallback-timer ticks without observing a watch event, and
+  `lua/gleb/tree/watch.lua:541` stops fallback coverage when the counter reaches zero.
+- `tests/integration/file-tree/test_project_live.lua:395` accepts allocated handles as ready before the external
+  mutation, while `tests/integration/file-tree/test_nesting.lua:436` copies a nested child and immediately renames its
+  parent without first observing the copied row.
+
 ## Impact
 
 - `lua/gleb/tree/watch.lua` and the file-tree watcher tests (`tests/integration/file-tree/test_project_live.lua`,
-  `test_nesting.lua`, `test_project_ops.lua`); the spec step works out the rest.
+  `test_nesting.lua`, `test_project_ops.lua`).
+- No plugin dependency is added, removed or upgraded, and no core keymap changes.
+- Out of scope: changing the project-tree rendering, watch-handle cap, debounce interval, or filesystem backend.

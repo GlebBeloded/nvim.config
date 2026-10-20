@@ -211,7 +211,7 @@ One normalizer SHALL identify roots, buffers, git toplevels and HOME-relative pa
 - **THEN** the folder remains a row with no children and no error or notification is raised
 
 ### Requirement: Project tree live updates
-The tree SHALL cache scans and watch every folder whose scan feeds a row, every expanded folder, and the repository git dir. If a safety cap or watch-start failure leaves a listed directory unwatched, the tree SHALL periodically invalidate and rescan it. A filesystem change SHALL redraw within 1000 ms and rerun git status when relevant. Handles and fallback work SHALL stop when no tree for their root needs them. Global `DirChanged` SHALL re-root the current tab's tree.
+The tree SHALL cache scans and watch every folder whose scan feeds a row, every expanded folder, and the repository git dir. Changes during watch startup or restart SHALL remain covered until the event stream is confirmed live. Unwatched listed directories SHALL be polled after a safety cap or start failure. A filesystem change SHALL redraw within 1000 ms and rerun relevant git status. Handles and fallback work SHALL stop when unused. Global `DirChanged` SHALL re-root the current tab's tree.
 
 #### Scenario: Project tree shows files created outside Neovim
 - **WHEN** the project tree shows the expanded `internal/billing` folder and `touch internal/billing/fee.go` runs as an external process
@@ -223,6 +223,10 @@ The tree SHALL cache scans and watch every folder whose scan feeds a row, every 
 
 #### Scenario: Project tree recolours after staging outside Neovim
 - **WHEN** the project tree shows `notes.md` and `git add notes.md` runs as an external process
+- **THEN** within 1000 ms `notes.md` is drawn with `FileTreeGitAdded`
+
+#### Scenario: Project tree recolours staging during watch startup
+- **WHEN** the project tree shows untracked `notes.md`, no watch event has confirmed the started git dir watch, that watch delivers no event, and `git add notes.md` runs as an external process
 - **THEN** within 1000 ms `notes.md` is drawn with `FileTreeGitAdded`
 
 #### Scenario: Project tree watchers stop when the tree closes

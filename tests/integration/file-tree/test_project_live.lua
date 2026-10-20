@@ -29,6 +29,29 @@ local function record_fs_poll_calls()
 	]])
 end
 
+---@param relative string
+local function record_fallback_scans(relative)
+	child.lua(
+		[[
+		local fs = require("gleb.file_tree.fs")
+		local tree_root, target = ...
+		_G.fallback_root = fs.normalize(tree_root)
+		target = fs.normalize(target)
+		_G.fallback_scans = 0
+		local scan_stamp_async = fs.scan_stamp_async
+		fs.scan_stamp_async = function(path, callback)
+			scan_stamp_async(path, function(stamp)
+				if path == target then
+					_G.fallback_scans = _G.fallback_scans + 1
+				end
+				callback(stamp)
+			end)
+		end
+	]],
+		{ root, vim.fs.joinpath(root, relative) }
+	)
+end
+
 local function expect_no_fs_poll_on_macos()
 	local result = child.lua_get([[{ vim.uv.os_uname().sysname, _G.fs_poll_calls }]])
 	if result[1] == "Darwin" then
@@ -131,6 +154,12 @@ local function wait_for_tree_row(name)
 		end)(...)]],
 		{ name, math.ceil(1000 * H.load_factor()) }
 	)
+end
+
+local function wait_for_live_stream()
+	local result = H.system(child, { "touch", vim.fs.joinpath(root, "watch-canary.lua") }, root)
+	eq(result.code, 0)
+	assert(wait_for_tree_row("watch-canary.lua"), "watch canary row did not appear")
 end
 
 ---@param name string
@@ -374,6 +403,7 @@ T["file-tree: A compact chain splits when a folder gains an entry"] = function()
 	edit("README.md")
 	run_action("file_tree.toggle")
 	eq(wait_for_tree_row("cmd/server"), true)
+	wait_for_live_stream()
 
 	local result = H.system(child, { "mkdir", vim.fs.joinpath(root, "cmd/worker") }, root)
 	eq(result.code, 0)
@@ -401,6 +431,7 @@ T["file-tree: Every compact chain member is watched"] = function()
 		{ root, math.ceil(3000 * H.load_factor()) }
 	)
 	eq(watched, { true, true })
+	wait_for_live_stream()
 
 	local result = H.system(child, { "mkdir", vim.fs.joinpath(root, "cmd/worker") }, root)
 	eq(result.code, 0)
@@ -411,7 +442,31 @@ end
 
 T["file-tree: Project tree shows files created outside Neovim"] = function()
 	record_fs_poll_calls()
+	record_fallback_scans("internal/billing")
 	open_billing_folder()
+	assert(
+		child.wait(
+			[[
+			_G.fallback_scans >= 2
+				and not require("gleb.file_tree.watch").state.roots[_G.fallback_root].fallback_scanning
+		]],
+			math.ceil(3000 * H.load_factor())
+		),
+		"two fallback scans did not complete"
+	)
+	eq(child.lua_get([[require("gleb.file_tree.watch").state.roots[_G.fallback_root].fallback_timer ~= nil]]), true)
+
+	local canary = H.system(child, { "touch", vim.fs.joinpath(root, "internal/billing/invoice.go") }, root)
+	eq(canary.code, 0)
+	assert(
+		child.wait(
+			[[
+			require("gleb.file_tree.watch").state.roots[_G.fallback_root].event_confirmed
+		]],
+			math.ceil(1000 * H.load_factor())
+		),
+		"watch event stream was not confirmed"
+	)
 
 	local result = H.system(child, { "touch", vim.fs.joinpath(root, "internal/billing/fee.go") }, root)
 	eq(result.code, 0)
@@ -561,6 +616,27 @@ T["file-tree: Project tree recolours after staging outside Neovim"] = function()
 
 	eq(wait_for_tree_highlight("notes.md", "FileTreeGitAdded"), true)
 	expect_no_fs_poll_on_macos()
+end
+
+T["file-tree: Project tree recolours staging during watch startup"] = function()
+	edit("README.md")
+	run_action("file_tree.toggle")
+	eq(wait_for_tree_highlight("notes.md", "FileTreeGitUntracked"), true)
+	-- Stopping the git dir handle drops the staging event the way a rebuilding macOS FSEvents stream does.
+	local unconfirmed = child.lua_get(
+		[[(function(tree_root)
+			local state = assert(require("gleb.file_tree.watch").state.roots[require("gleb.file_tree.fs").normalize(tree_root)])
+			assert(state.git_handle):stop()
+			return not state.event_confirmed
+		end)(...)]],
+		{ root }
+	)
+	eq(unconfirmed, true)
+
+	local result = H.system(child, { "git", "add", "notes.md" }, root)
+	eq(result.code, 0)
+
+	eq(wait_for_tree_highlight("notes.md", "FileTreeGitAdded"), true)
 end
 
 T["file-tree: Project tree watchers stop when the tree closes"] = function()
@@ -743,6 +819,7 @@ T["file-tree: Project tree isolates tabpage state"] = function()
 	child.type_keys("<CR>")
 	child.cmd("tabclose")
 	eq(child.api.nvim_get_current_tabpage(), second_tab)
+	wait_for_live_stream()
 
 	local result = H.system(child, { "touch", vim.fs.joinpath(root, "isolated.lua") }, root)
 	eq(result.code, 0)
