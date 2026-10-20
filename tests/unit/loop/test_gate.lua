@@ -456,6 +456,45 @@ local function rerun_gate(log, rerun_code, files, opts)
 	return out, rerun_list, read(vim.fs.joinpath(artifacts, "check-1.log")), artifacts, repo
 end
 
+--- gate.py on a branch editing `branch` (over `base`), its make stub logging each call with CAPS to `calls`
+--- and exiting `quick_code` on the quick tier (a CHECK_TARGETS check), 0 on the full check.
+---@param base table<string, string>
+---@param branch table<string, string>
+---@param quick_code integer
+---@return table verdict, string calls, string artifacts
+local function tier_gate(base, branch, quick_code)
+	local repo = branch_repo(vim.tbl_extend("force", { ["README.md"] = "x" }, base))
+	write(repo, branch)
+	local scratch, artifacts = H.tempdir(child), H.tempdir(child)
+	local body = 'echo "$* CAPS=$CAPS" >>"%s/calls"\ncase "$2" in CHECK_TARGETS=*) exit %d;; esac\nexit 0'
+	local bin = fake_tool(scratch, "make", body:format(scratch, quick_code))
+	local out = loop_script("gate.py", repo, { ARTIFACTS_DIR = artifacts, PATH = bin .. ":" .. vim.env.PATH })
+	return out, read(vim.fs.joinpath(scratch, "calls")), artifacts
+end
+
+T["loop: Gate runs the quick tier before the full check"] = function()
+	local base = { ["tests/integration/pr/test_a.lua"] = "-- a", ["tests/unit/loop/test_b.lua"] = "-- b" }
+	local quick = "check CHECK_TARGETS=lint types trace specs test"
+	local full = "check E2E=1 CAPS="
+	local pr = { ["lua/gleb/pr/view.lua"] = "-- v", ["tests/integration/pr/test_a.lua"] = "-- a2" }
+
+	local red, red_calls, artifacts = tier_gate(base, pr, 1)
+	eq({ red.green, red_calls }, { false, quick .. " CAPS=pr" })
+	has(read(vim.fs.joinpath(artifacts, "check-1.log")), "quick tier: lint types trace specs test with CAPS=pr")
+	local green, calls, green_artifacts = tier_gate(base, pr, 0)
+	eq({ green.green, calls }, { true, quick .. " CAPS=pr\n" .. full })
+	eq(vim.fn.filereadable(vim.fs.joinpath(green_artifacts, "quick-1.log")), 1)
+
+	local _, loop_calls = tier_gate(base, { [".archon/scripts/x.py"] = "x" }, 0)
+	eq(loop_calls, quick .. " loop-test CAPS=loop\n" .. full)
+	local _, shared_calls = tier_gate(base, { ["init.lua"] = "-- i", ["docs/a.md"] = "a" }, 0)
+	eq(shared_calls, quick .. " CAPS=\n" .. full)
+	local _, docs_calls = tier_gate(base, { ["docs/a.md"] = "a", ["openspec/changes/c/proposal.md"] = "# c" }, 0)
+	eq(docs_calls, full)
+	local _, e2e_calls = tier_gate(base, { ["lua/gleb/pr/view.lua"] = "-- v", ["tests/e2e/test_x.lua"] = "-- x" }, 0)
+	eq(e2e_calls, full)
+end
+
 T["loop: Gate reruns a failed readiness case once"] = function()
 	local case = "tests/integration/lsp/test_readiness.lua | lsp: slow case"
 	local log = {
@@ -615,10 +654,9 @@ T["loop: Gate reruns an old case in a test file the change edits"] = function()
 	local edited = { [file] = 'T["a: old case"] = function() end\n\nT["a: new case"] = function()\n\tlocal x = 1\nend' }
 	local outputs = { ["test.out"] = file .. " | a: old case: o\n" .. file .. " | a: new case: o" }
 	local old, old_reruns = rerun_gate(log, 0, base, { outputs = outputs, branch = edited })
-	eq(
-		{ old.green, old.flaky, old_reruns },
-		{ true, { file .. " | a: old case" }, "test FILE=" .. file .. " CASE=a: old case" }
-	)
+	-- the stub's quick tier and full check both fail on it: one rerun in each
+	local rerun = "test FILE=" .. file .. " CASE=a: old case"
+	eq({ old.green, old.flaky, old_reruns }, { true, { file .. " | a: old case" }, rerun .. "\n" .. rerun })
 
 	local both = vim.list_extend(vim.list_slice(log, 1, 3), { "FAIL in " .. file .. " | a: new case:", log[4] })
 	local mixed, mixed_reruns = rerun_gate(both, 0, base, { outputs = outputs, branch = edited })

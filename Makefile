@@ -25,9 +25,11 @@ endif
 .PHONY: check quick install deps fmt lint types test test-unit test-integration test-screen test-readiness \
 	screenshots smoke smoke-health smoke-startup trace probe specs render colorize clean
 
-# timing-sensitive layers run alone after the rest, so other layers do not skew them
+# timing-sensitive layers run alone after the rest, so other layers do not skew them;
+# CHECK_TARGETS narrows the run (the gate's quick tier: .archon/scripts/gate.py)
+CHECK_TARGETS ?= lint types test trace specs chain stack e2e smoke-health loop-test +smoke-startup +test-readiness
 check:
-	@SANDBOX_START=$${E2E:-0} tests/check.sh lint types test trace specs chain stack e2e smoke-health loop-test +smoke-startup +test-readiness
+	@SANDBOX_START=$${E2E:-0} tests/check.sh $(CHECK_TARGETS)
 
 quick:
 	@tests/quick.sh

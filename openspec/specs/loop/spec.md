@@ -588,6 +588,13 @@ verdict.py SHALL pass on the last review's findings even when it approves; on sh
 - **WHEN** verdict.py passes with an approving review whose findings hold a `[minor]` line and a `Minor (non-blocking):` heading with one item, and the judge runs on verdict's `review_findings`
 - **THEN** the decision is `ship` and escalation.md has a `- note: review (minor):` line for each of the two, and none for the summary line
 
+### Requirement: Gate runs a quick tier first
+gate.py SHALL first run `make check CHECK_TARGETS="lint types trace specs test"` with `CAPS` the capabilities the branch diff touches (`lua/gleb/<area>`, `tests/<layer>/<cap>`; `loop` plus `loop-test` for `.archon/`; empty for an unmapped file); red (after reruns) ends the gate, green runs the full `make check E2E=1`. Planning and docs only, or a shortcut-layer or sandbox path, runs the full check alone.
+
+#### Scenario: Gate runs the quick tier before the full check
+- **WHEN** gate.py runs with a recording `make` stub on branches editing `lua/gleb/pr/` and its tests (quick tier red, then green), `.archon/`, `init.lua`, only docs and a change folder, and `lua/gleb/pr/` with `tests/e2e/`
+- **THEN** the red quick tier is the only call (`CAPS=pr`, noted in the check log); green adds `make check E2E=1` and keeps `quick-1.log`; `.archon/` adds `loop-test` with `CAPS=loop`; `init.lua` runs `CAPS=` empty; the last two run only the full check
+
 ### Requirement: Gate reruns failed test cases once
 When `make check` fails only in `test`, `test-readiness` or `e2e`, gate.py SHALL rerun each `FAIL in` case once, serially (`make test FILE=<file> CASE=<name>`, `make test-readiness CASE=<name>`); e2e only when its log has no `FAIL in` and only sandbox/Lume infra lines (`make e2e E2E=1`). All passing: green, listed in `flaky` and the check log, a judge note. A rerun failing stays red; other targets never rerun.
 
