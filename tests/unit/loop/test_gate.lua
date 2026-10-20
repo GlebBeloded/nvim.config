@@ -486,7 +486,7 @@ T["loop: Gate runs the quick tier before the full check"] = function()
 	eq(vim.fn.filereadable(vim.fs.joinpath(green_artifacts, "quick-1.log")), 1)
 
 	local _, loop_calls = tier_gate(base, { [".archon/scripts/x.py"] = "x" }, 0)
-	eq(loop_calls, quick .. " loop-test CAPS=loop\n" .. full)
+	eq(loop_calls, "check CHECK_TARGETS=lint types trace specs loop-test CAPS=\n" .. full)
 	local _, shared_calls = tier_gate(base, { ["init.lua"] = "-- i", ["docs/a.md"] = "a" }, 0)
 	eq(shared_calls, quick .. " CAPS=\n" .. full)
 	local _, docs_calls = tier_gate(base, { ["docs/a.md"] = "a", ["openspec/changes/c/proposal.md"] = "# c" }, 0)
@@ -505,7 +505,17 @@ T["loop: Gate runs the quick tier before the full check"] = function()
 	local _, plugin_calls = tier_gate(base, { ["lua/gleb/plugins/editor.lua"] = "-- p" }, 0)
 	eq(plugin_calls, quick .. " CAPS=\n" .. full)
 	local _, sandbox_calls = tier_gate(base, { ["lua/gleb/pr/view.lua"] = "-- v", ["tests/sandbox/x.sh"] = "x" }, 0)
-	eq(sandbox_calls, full)
+	eq(sandbox_calls, quick .. " loop-test CAPS=pr\n" .. full)
+	local _, smoke_calls = tier_gate(base, { ["lua/gleb/pr/view.lua"] = "-- v", ["tests/smoke/x.lua"] = "x" }, 0)
+	eq(smoke_calls, full)
+	-- a module other areas require runs their tests too
+	local graph = vim.tbl_extend("force", base, {
+		["tests/integration/git/test_g.lua"] = "-- g",
+		["lua/gleb/git/base.lua"] = "return {}",
+		["lua/gleb/pr/init.lua"] = 'local base = require("gleb.git.base")',
+	})
+	local _, graph_calls = tier_gate(graph, { ["lua/gleb/git/base.lua"] = "return { x = 1 }" }, 0)
+	eq(graph_calls, quick .. " CAPS=git,pr\n" .. full)
 end
 
 T["loop: Gate reruns a known flaky case up to three times"] = function()

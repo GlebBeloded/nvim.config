@@ -13,6 +13,27 @@ T["loop: Test children keep the Go build cache under .tests"] = function()
 	eq(vim.trim(out.stdout), cache, { fail_reason = out.stderr })
 end
 
+T["loop: Product test runs skip the loop's own tests"] = function()
+	local runner = require("tests.runner")
+	local saved = { FILE = vim.env.FILE, CAPS = vim.env.CAPS, LOOP_TESTS = vim.env.LOOP_TESTS }
+	local function files(env)
+		vim.env.FILE, vim.env.CAPS, vim.env.LOOP_TESTS = env.FILE, env.CAPS, env.LOOP_TESTS
+		local found = runner.find_files("unit")
+		vim.env.FILE, vim.env.CAPS, vim.env.LOOP_TESTS = saved.FILE, saved.CAPS, saved.LOOP_TESTS
+		return found
+	end
+	local function has(list, file)
+		return vim.tbl_contains(list, file)
+	end
+	local sandbox, gate = "tests/unit/shortcuts/test_sandbox.lua", "tests/unit/loop/test_gate.lua"
+	local product = files({})
+	eq({ has(product, sandbox), has(product, gate), has(product, "tests/unit/pr/test_gh.lua") }, { false, false, true })
+	local only = files({ LOOP_TESTS = "only" })
+	eq({ has(only, sandbox), has(only, gate), has(only, "tests/unit/pr/test_gh.lua") }, { true, true, false })
+	eq(has(files({ CAPS = "loop" }), gate), true)
+	eq(has(files({ LOOP_TESTS = "1" }), sandbox), true)
+end
+
 T["loop: A test directory runs its files"] = function()
 	local dir = vim.fn.tempname()
 	vim.fn.mkdir(vim.fs.joinpath(dir, "area/nested"), "p")

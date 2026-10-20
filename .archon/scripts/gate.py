@@ -292,10 +292,39 @@ QUICK_TARGETS = "lint types trace specs test"
 # every test depends on these: a change to one runs the whole quick tier
 SHARED = {"tests/helpers.lua", "tests/minimal_init.lua", "tests/child_init.lua", "tests/runner.lua", "tests/parallel.lua", "init.lua", "Makefile"}
 SHARED_DIRS = ("lua/gleb/plugins/", "settings/", "lua/gleb/util/")  # every area's plugin specs, keymaps, helpers
-# paths only the full check tests (the sandbox VM, smoke, the terminal configs): a quick tier would prove nothing
-FULL_ONLY = re.compile(r"^(tests/(sandbox|smoke)/|terminal/)")
+# paths only the full check tests (smoke, the terminal configs): a quick tier would prove nothing
+FULL_ONLY = re.compile(r"^(tests/smoke/|terminal/)")
+LOOP_PATHS = (".archon/", "tests/unit/loop/", "tests/unit/shortcuts/test_sandbox.lua", "tests/sandbox/")
 # the shortcut layers run in the full check only; their files still name the capability they cover
 SHORTCUT_LAYERS = ("e2e", "chain", "stack", "shortcuts")
+
+
+REQUIRE = re.compile(r"""require\(?\s*["'](gleb\.[\w.]+)["']""")
+
+
+def module_of(path: str) -> str:
+    return path.removeprefix("lua/").removesuffix(".lua").removesuffix("/init").replace("/", ".")
+
+
+def dependent_caps(path: str, known: set[str]) -> set[str]:
+    """Areas of the `lua/gleb` modules that require the module at `path`, transitively: `gleb.git.base` changes the
+    pr and file-tree code that requires it, so their tests run too (a git-only quick tier missed them, Oct 2026)."""
+    users: dict[str, set[str]] = {}
+    for file in pathlib.Path("lua/gleb").rglob("*.lua"):
+        for dep in REQUIRE.findall(file.read_text(errors="replace")):
+            users.setdefault(dep, set()).add(str(file))
+    seen, todo, caps = set(), [module_of(path)], set()
+    while todo:
+        module = todo.pop()
+        for dep, files in users.items():
+            if dep != module and not dep.startswith(module + "."):
+                continue
+            for file in files - seen:
+                seen.add(file)
+                area = file.split("/")[2].removesuffix(".lua").replace("_", "-")
+                caps.update({area} & known)
+                todo.append(module_of(file))
+    return caps
 
 
 def referencing_caps(path: str, known: set[str]) -> set[str]:
@@ -318,7 +347,7 @@ def test_caps() -> set[str]:
     return {d.name for layer in TEST_LAYERS for d in pathlib.Path("tests", layer).glob("*") if d.is_dir()}
 
 
-def affected() -> tuple[str, bool] | None:
+def affected() -> tuple[str | None, bool] | None:
     """(CAPS, loop) of the quick tier for the branch diff against its base (committed or not): the capability of
     each `lua/gleb/<area>` and `tests/<layer>/<cap>` path (shortcut layers included), of the tests naming any
     other file (referencing_caps), `loop` and loop-test for `.archon/`; "" (every capability) for a SHARED file or
@@ -337,8 +366,7 @@ def affected() -> tuple[str, bool] | None:
             return None
         if path.startswith(("openspec/", "docs/")) or path.endswith(".md"):
             continue
-        if path.startswith(".archon/"):
-            caps.add("loop")
+        if path.startswith(LOOP_PATHS):  # loop-test runs these and the loop's Lua tests (tests/runner.lua LOOP_FILES)
             loop = True
             continue
         if len(parts) > 3 and parts[0] == "tests" and parts[1] in TEST_LAYERS + SHORTCUT_LAYERS:
@@ -348,14 +376,15 @@ def affected() -> tuple[str, bool] | None:
             area = parts[2].removesuffix(".lua").replace("_", "-")
             if area in known and area != "plugins":  # lua/gleb/plugins holds every area's plugin specs
                 caps.add(area)
+                caps |= dependent_caps(path, known)
                 continue
         # a shared file (tests/helpers.lua, init.lua, settings) has no single owner; a support file maps by its users
         found = set() if path in SHARED or path.startswith(SHARED_DIRS) else referencing_caps(path, known)
         caps |= found
         every = every or not found
-    if not caps and not every:
+    if not caps and not every and not loop:
         return None
-    return ("" if every else ",".join(sorted(caps))), loop
+    return ("" if every else ",".join(sorted(caps)) if caps else None), loop
 
 
 def timed_out(out: str, log: str) -> None:
@@ -387,10 +416,11 @@ def check() -> tuple[bool, str, list[str], list[str]]:
     tier = affected()
     if tier is not None:
         caps, loop = tier
-        targets = QUICK_TARGETS + (" loop-test" if loop else "")
-        note = f"quick tier: {targets} with CAPS={caps or '(all)'}; the full make check E2E=1 runs once it is green\n"
+        targets = (QUICK_TARGETS if caps is not None else QUICK_TARGETS.removesuffix(" test")) + (" loop-test" if loop else "")
+        shown = "(none)" if caps is None else caps or "(all)"
+        note = f"quick tier: {targets} with CAPS={shown}; the full make check E2E=1 runs once it is green\n"
         cmd = ["make", "check", f"CHECK_TARGETS={targets}"]
-        green, out, quick_flaky, owned = checked(cmd, log, {"CAPS": caps}, note)
+        green, out, quick_flaky, owned = checked(cmd, log, {"CAPS": caps or ""}, note)
         if not green:
             return green, out, quick_flaky, owned
         (artifacts / log).rename(artifacts / f"quick-{attempt}.log")
