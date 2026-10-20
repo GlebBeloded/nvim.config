@@ -22,7 +22,7 @@ import sys
 
 from blocked import blocked_text
 from check_log import failed_targets, failing_cases, sections, strip_ansi, summarize
-from integrity import BASE, commit_paths, CASE_CHAIN, CASE_KEY, case_names, git, hard_rule_violations, plan_edits, record_dropped
+from integrity import BASE, commit_paths, staged, CASE_CHAIN, CASE_KEY, case_names, git, hard_rule_violations, plan_edits, record_dropped
 from pinned import pinned
 from scenarios import covered, untested
 from spec_trial import archived_specs_ok as trial_archive
@@ -101,7 +101,17 @@ def hard_rules() -> list[str]:
     reasons += ["test added then removed during build: " + ", ".join(dropped) + remedy] if dropped else []
     # main-spec scenarios the proposal or the branch diff touches with no delta and no Impact line
     pins = pinned(change) if change else []
+    reasons += [f"tests/flaky.txt gains a case on this branch (only the loop auditor adds one): {c}" for c in quarantined()]
     return reasons + [f"pinned scenario with no MODIFIED delta or Impact line: {p}" for p in pins]
+
+
+def quarantined() -> list[str]:
+    """Cases the branch adds to tests/flaky.txt: a change never quarantines its own failure."""
+    try:
+        diff = staged("diff", "--cached", "-U0", git("merge-base", "HEAD", BASE).strip(), "--", "tests/flaky.txt")
+    except subprocess.CalledProcessError:
+        return []
+    return [line[1:].strip() for line in diff.splitlines() if line.startswith("+") and " | " in line and not line.startswith("+++")]
 
 
 def record_fix_scope() -> None:
@@ -238,16 +248,34 @@ def rerun_passed(case: str, cmd: list[str], ok: bool, out: str) -> bool:
     return any(line.startswith(prefix) and re.fullmatch("o+", line[len(prefix) :]) for line in out.splitlines())
 
 
+KNOWN_RERUNS = 3
+
+
+def known_flaky() -> list[str]:
+    """The `<file> | <case>` lines of tests/flaky.txt: known timing-sensitive cases, rerun up to KNOWN_RERUNS times."""
+    try:
+        lines = pathlib.Path("tests/flaky.txt").read_text().splitlines()
+    except OSError:
+        return []
+    return [line.strip() for line in lines if " | " in line and not line.lstrip().startswith("#")]
+
+
 def rerun_flaky(out: str, log: str) -> tuple[list[str], str, list[str]]:
     """(flaky cases, infra reason, owned failures) of a check whose failed targets all rerun (rerun_plan):
-    the cases when each passes on one serial rerun; the sandbox line when e2e fails on infra again and every
+    the cases when each passes on one serial rerun (up to KNOWN_RERUNS for a tests/flaky.txt case); the sandbox line when e2e fails on infra again and every
     other rerun passes; otherwise neither. Reruns are appended to `log`."""
     (plan, owned), infra = rerun_plan(out), ""
+    known = known_flaky()
     for index, (case, cmd) in enumerate(plan):
-        ok, rerun_out = run(cmd, f"rerun-{attempt}-{index + 1}.log")
-        ok = rerun_passed(case, cmd, ok, rerun_out)
-        with (artifacts / log).open("a") as f:
-            f.write(f"\n===== rerun {case}: {'ok' if ok else 'FAIL'} =====\n{tail(rerun_out)}\n")
+        tries = KNOWN_RERUNS if any(case == k or case.startswith(k + ":") or case.startswith(k + " | ") for k in known) else 1
+        for n in range(tries):
+            ok, rerun_out = run(cmd, f"rerun-{attempt}-{index + 1}.log")
+            ok = rerun_passed(case, cmd, ok, rerun_out)
+            label = f" ({n + 1}/{tries}, known flaky)" if tries > 1 else ""
+            with (artifacts / log).open("a") as f:
+                f.write(f"\n===== rerun {case}{label}: {'ok' if ok else 'FAIL'} =====\n{tail(rerun_out)}\n")
+            if ok:
+                break
         if not ok and not (case.startswith("e2e: ") and (infra := e2e_infra(rerun_out.splitlines()))):
             return [], "", owned
     if infra:  # with an owned failure the pass is the change's to fix, not the host's

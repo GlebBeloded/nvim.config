@@ -595,6 +595,13 @@ gate.py SHALL first run `make check CHECK_TARGETS="lint types trace specs test"`
 - **WHEN** gate.py runs with a recording `make` stub on branches editing `lua/gleb/pr/` and its tests (quick tier red, then green), `.archon/`, `init.lua`, only docs and a change folder, and `lua/gleb/pr/` with `tests/e2e/`
 - **THEN** the red quick tier is the only call (`CAPS=pr`, noted in the check log); green adds `make check E2E=1` and keeps `quick-1.log`; `.archon/` adds `loop-test` with `CAPS=loop`; `init.lua` runs `CAPS=` empty; the last two run only the full check
 
+### Requirement: Gate reruns known flaky cases up to three times
+A failing case listed in `tests/flaky.txt` (`<file> | <case>`, by name prefix) that gate.py would rerun SHALL rerun up to 3 times, serially, and count as flaky on its first pass; other cases rerun once. A branch adding a case to `tests/flaky.txt` SHALL be a hard rule.
+
+#### Scenario: Gate reruns a known flaky case up to three times
+- **WHEN** gate.py runs with a `make` stub whose check fails one case listed in the base's `tests/flaky.txt`, its rerun passing on the 3rd try, then never; then the case unlisted, passing on the 2nd try; then a branch adding it to `tests/flaky.txt`
+- **THEN** the first is green after 3 reruns with the case in `flaky`; the second red after 3; the third red after 1; the fourth red with `hard rule: tests/flaky.txt gains a case on this branch`
+
 ### Requirement: Gate reruns failed test cases once
 When `make check` fails only in `test`, `test-readiness` or `e2e`, gate.py SHALL rerun each `FAIL in` case once, serially (`make test FILE=<file> CASE=<name>`, `make test-readiness CASE=<name>`); e2e only when its log has no `FAIL in` and only sandbox/Lume infra lines (`make e2e E2E=1`). All passing: green, listed in `flaky` and the check log, a judge note. A rerun failing stays red; other targets never rerun.
 

@@ -495,6 +495,48 @@ T["loop: Gate runs the quick tier before the full check"] = function()
 	eq(e2e_calls, full)
 end
 
+T["loop: Gate reruns a known flaky case up to three times"] = function()
+	local file = "tests/unit/a/test_a.lua"
+	local log = {
+		"FAIL test 1.0 s",
+		"===== test =====",
+		"FAIL in " .. file .. " | a: slow case:",
+		"check: FAILED: test (1.0 s)",
+	}
+	local base = {
+		[file] = 'T["a: slow case"] = function() end',
+		["tests/flaky.txt"] = "# known\n" .. file .. " | a: slow case",
+	}
+	--- make stub: the check prints `log`; rerun n passes when n reaches `pass_at`
+	local function gate(pass_at, files, branch)
+		local repo = branch_repo(vim.tbl_extend("force", { ["README.md"] = "x" }, files))
+		write(repo, branch or {})
+		local scratch, artifacts = H.tempdir(child), H.tempdir(child)
+		write(scratch, { ["check.log"] = table.concat(log, "\n") })
+		local body = table.concat({
+			'if [ "$1" = check ]; then cat "%s/check.log"; exit 1; fi',
+			'echo x >>"%s/reruns"; n=$(wc -l <"%s/reruns")',
+			'[ "$n" -ge %d ] && { echo "%s | a: slow case: o"; exit 0; }',
+			"exit 1",
+		}, "\n")
+		local s = scratch
+		local bin = fake_tool(scratch, "make", body:format(s, s, s, pass_at, file))
+		local out = loop_script("gate.py", repo, { ARTIFACTS_DIR = artifacts, PATH = bin .. ":" .. vim.env.PATH })
+		local reruns = vim.fs.joinpath(scratch, "reruns")
+		return out, vim.fn.filereadable(reruns) == 1 and #vim.fn.readfile(reruns) or 0
+	end
+
+	local third, third_runs = gate(3, base)
+	eq({ third.green, third.flaky, third_runs }, { true, { file .. " | a: slow case" }, 3 })
+	local never, never_runs = gate(4, base)
+	eq({ never.green, never_runs }, { false, 3 })
+	local plain, plain_runs = gate(2, { [file] = base[file] })
+	eq({ plain.green, plain_runs }, { false, 1 })
+	local added = gate(1, { [file] = base[file] }, { ["tests/flaky.txt"] = file .. " | a: slow case" })
+	eq(added.green, false)
+	has(added.failures, "hard rule: tests/flaky.txt gains a case on this branch")
+end
+
 T["loop: Gate reruns a failed readiness case once"] = function()
 	local case = "tests/integration/lsp/test_readiness.lua | lsp: slow case"
 	local log = {
