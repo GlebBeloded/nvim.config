@@ -60,6 +60,7 @@ Each run works in its own git worktree cut from `auto` and, when every gate is g
 | `make feature IDEA="…"` | `new-feature`: brainstorm, proposal with renders and a preview, then build (no approval stop) |
 | `make queue [CHANGE=<id>]` | `work-queue`: the oldest change in `openspec/changes/` that no run has taken (no `loop/<id>` branch); afterwards `loop_clean.py --change` keeps one loop branch per change (drops reruns whose tip is on the kept one or on `auto`) |
 | `make drain [N=<runs>]` | `drain.py`: foreground `make queue CHANGE=<id>` one change at a time (status read from the Archon DB) until the queue is empty, N runs, a paused run (a loop bug: no node pauses), or stop-infra cancels a run (broken host, exit 1); a `## Blocked` change runs too (its unblock step settles it) |
+| `make drains [LANES=2] [N=<runs per lane>]` | `drain.py --lanes`: that many drains at once, lines prefixed `[lane <k>]`; a pick lock and a shared skip list keep two lanes off one change, a lane whose pick is empty waits while a live run works a change the rest `Depends:` on, and each `Depends:` edge sharing no `## Impact` path is printed first (ordering-only: drop it) |
 | `make loop-clean [APPLY=1]` | `loop_clean.py`: remove worktree and branch of shipped or superseded `loop/*` runs; dry run unless `APPLY=1` |
 | `make outdated` | plugins with commits past `lazy-lock.json` (read-only) |
 | `make update PLUGIN=<name>` | `plugin-update`: update that one plugin, test it, ship it or adapt the config |
@@ -84,8 +85,8 @@ input, output and limits). Scripts do everything that needs no judgment:
 | plan (only when spec wrote no tasks) | agent, low effort | `superpowers:writing-plans` | `tasks.md` |
 | pack | script `context_pack.py` | none | `context.md`: next task, a bug's `## Evidence`, change, named files, lessons, last failures; `has_task` (false skips implement) |
 | implement, once per task (one session for ≤ 4 tasks) | agent, fresh | `superpowers:test-driven-development` | 1 commit per task, ticked |
-| check | script `gate.py` | none | a `## Blocked` change first (red with `blocked`, at once: no `make check`, no review), then hard rules (a violation is red at once: no `make check`, no review), then `make check E2E=1` once per pass (a failed case reruns once unless the change owns it; e2e failing on sandbox infra twice is `infra`: the run stops with no fix pass, no attempt, no reject), strict validate, untested change scenarios (`scenarios.py`, replaces a verify agent), JSON |
-| fix (pass 2-3 only) | agent, fresh | `superpowers:systematic-debugging` (none when every finding is a hard rule) | 1 commit for the listed findings: one headless probe first for a non-obvious failure, at most 2 attempts, then `## Stuck` with the probe output, reverting only non-test edits and committing the red test with it (implement follows the same rule); after a Stuck pass the `fix-stuck` node runs it at xhigh effort with the Stuck text as its first finding (`fix-stuck-claude`, on Claude, while it stays red), and deletes the section once green |
+| check | script `gate.py` | none | a `## Blocked` change first (red with `blocked`, at once: no `make check`, no review), then hard rules (a violation is red at once: no `make check`, no review), then a quick tier (`make check CHECK_TARGETS=…` with `CAPS` of the touched capabilities, no e2e; red ends the pass) and, once it is green, `make check E2E=1` (a failed case reruns once unless the change owns it, a `tests/flaky.txt` case up to 3 times; e2e failing on sandbox infra twice is `infra`: the run stops with no fix pass, no attempt, no reject), strict validate, untested change scenarios (`scenarios.py`, replaces a verify agent), JSON |
+| fix (pass 2-3 only) | agent, fresh | `superpowers:systematic-debugging` (none when every finding is a hard rule) | 1 commit for the listed findings: one headless probe first for a non-obvious failure, at most 2 attempts, then `## Stuck` with the probe output, reverting only non-test edits and committing the red test with it (implement follows the same rule); after a Stuck pass the `fix-stuck-claude` node runs it once on Claude at xhigh effort with the Stuck text as its first finding and deletes the section once green; still stuck after it, the loop ends as exhausted (the judge rejects) |
 | unblock (a `## Blocked` section) | agent, xhigh: default model, then Claude if one is left | none | 1 commit: each section settled on its recommendation, logged under `## Agent decisions` |
 | review | agent, Claude | `superpowers:requesting-code-review` | JSON |
 | verdict, judge, ship, follow-up | scripts | none | JSON, `escalation.md`, merge commit |
@@ -167,7 +168,7 @@ Known issues and planned work are queued changes in `openspec/changes/`; there i
   changed look), architecture when proposal.md `## Impact` or tasks.md names plugin wiring or load-order files
   (`lua/gleb/plugins/`, `init.lua`, `lazy-lock.json`, `docs/architecture.md`); a skip_specs change is neither.
   Visible UI sends a fix to the preview.
-- Order: a `Depends: <change>[, <change>]` line in proposal.md holds the change until those are archived.
+- Order: a `Depends: <change>[, <change>]` line in proposal.md holds the change until those are archived. Write it only when the change needs the other's code (it idles a `make drains` lane otherwise), and keep changes small (one behaviour, few files), so both lanes stay busy.
 - A test that pins a known bug wraps the case in `H.xfail("<change id>", fn)` ([testing](testing.md)).
 
 ### Where to look

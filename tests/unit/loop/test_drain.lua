@@ -8,17 +8,19 @@ local T = H.child_set(child, child.start_bare)
 
 --- `archon` stub: a foreground `workflow run` logs its arguments, prints a line and records a run
 --- of its change in the sqlite $ARCHON_DB with the status in $OUTCOMES/<change> (default completed;
---- `infra`: cancelled by the stop-infra node, as its workflow_cancelled event records).
+--- `infra`: cancelled by the stop-infra node, as its workflow_cancelled event records); with
+--- $OUTCOMES/<change>.sleep it records the run `running` first and sleeps that many seconds.
 local ARCHON_STUB = [[#!/bin/sh
 [ "$1 $2" = "workflow run" ] || exit 0
 echo "$*" >>"$ARCHON_RUNS"
 for arg; do case $arg in change=*) change=${arg#change=} ;; esac; done
 echo "stub run of $change"
-status=$(cat "$OUTCOMES/$change" 2>/dev/null || echo completed)
-python3 - "$ARCHON_DB" "$change" "$status" <<'PY'
+record() {
+python3 - "$ARCHON_DB" "$change" "$1" <<'PY'
 import sqlite3, sys
 db = sqlite3.connect(sys.argv[1])
 db.execute("create table if not exists remote_agent_workflow_runs (id text primary key default (lower(hex(randomblob(16)))), user_message text, status text, started_at text default (datetime('now')))")
+db.execute("delete from remote_agent_workflow_runs where user_message = ? and status = 'running'", (f"Work queued change {sys.argv[2]}",))
 status = "cancelled" if sys.argv[3] == "infra" else sys.argv[3]
 run = db.execute("insert into remote_agent_workflow_runs (user_message, status) values (?, ?) returning id", (f"Work queued change {sys.argv[2]}", status)).fetchone()[0]
 if sys.argv[3] == "infra":
@@ -26,6 +28,9 @@ if sys.argv[3] == "infra":
     db.execute("insert into remote_agent_workflow_events values (?, 'workflow_cancelled', 'deliver__stop-infra')", (run,))
 db.commit()
 PY
+}
+if [ -f "$OUTCOMES/$change.sleep" ]; then record running; sleep "$(cat "$OUTCOMES/$change.sleep")"; fi
+record "$(cat "$OUTCOMES/$change" 2>/dev/null || echo completed)"
 exit 0
 ]]
 
@@ -160,6 +165,36 @@ T["loop: Drain works queued changes until the queue is empty"] = function()
 	eq(ran(stubs), { "t-a", "t-b", "t-c" })
 	eq(out:find("t-a failed", 1, true) ~= nil, true, { fail_reason = out })
 	eq(out:find("queue is empty", 1, true) ~= nil, true, { fail_reason = out })
+end
+
+T["loop: Drains run two lanes and never take one change twice"] = function()
+	local repo, stubs = make_repo(), stub_env()
+	local impact = function(path)
+		return { "## Why", "w", "", "Kind: bug", "", "## Impact", "", "- `" .. path .. "`" }
+	end
+	write_change(repo, "t-a", "2026-01-01", impact("lua/gleb/a/{x,y}.lua"))
+	write_change(repo, "t-b", "2026-01-02")
+	write_change(repo, "t-c", "2026-01-03")
+	local d = impact("lua/gleb/d/z.lua")
+	table.insert(d, 4, "Depends: t-a")
+	write_change(repo, "t-d", "2026-01-04", d)
+	set_outcome(stubs, "t-a", "failed")
+	child.fn.writefile({ "3" }, vim.fs.joinpath(stubs.outcomes, "t-a.sleep")) -- lane 1 is busy when lane 2 picks
+	stubs.env.DRAIN_STAGGER_S = "1"
+	-- two lanes, each running make queue in turn: a loaded host outruns the default 30 s
+	local out = output(H.system(child, { "make", "drains" }, repo, stubs.env, math.ceil(120000 * H.load_factor())))
+	local names = ran(stubs)
+	table.sort(names)
+	eq(names, { "t-a", "t-b", "t-c" })
+	for _, needle in ipairs({
+		"drain: t-d Depends: t-a, but they share no Impact path",
+		"[lane 1] drain: t-a starting",
+		"[lane 2] drain: t-b starting",
+		"[lane 2] drain: queue is empty",
+		"[lane 1] drain: queue is empty",
+	}) do
+		eq(out:find(needle, 1, true) ~= nil, true, { fail_reason = out })
+	end
 end
 
 T["loop: Drain gives a re-queued change one more run"] = function()

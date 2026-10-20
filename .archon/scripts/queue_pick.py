@@ -83,8 +83,10 @@ else:
     pending = (n for n in names if not n.startswith("update-") and n not in skip and not taken(n) and not waits_for(n))
     candidates = sorted(pending, key=lambda n: (created(CHANGES / n), n))
 
+# changes an automatic pick passes over only for a `Depends:` change not archived yet (drain.py's lanes wait for them)
+waiting = [] if wanted else [n for n in names if not n.startswith("update-") and n not in skip and not taken(n) and waits_for(n)]
 if not candidates:
-    print(json.dumps({"found": False, "change": "", "kind": "", "has_tasks": False}))
+    print(json.dumps({"found": False, "change": "", "kind": "", "has_tasks": False, "waiting": waiting}))
 else:
     path = CHANGES / candidates[0]
     print(
@@ -94,6 +96,7 @@ else:
                 "change": path.name,
                 "kind": kind(path),
                 "has_tasks": (path / "tasks.md").exists(),
+                "waiting": waiting,
             }
         )
     )

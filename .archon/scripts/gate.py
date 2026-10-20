@@ -7,7 +7,7 @@ listed as `flaky` (a note, not a finding). A case the branch adds or edits, or n
 change, never reruns: it stays red (other failing cases still rerun). An e2e rerun failing on sandbox infra again, with every other rerun
 passing, prints `infra` (the sandbox line): the loop stops on it with no fix pass, and the pass is no attempt. A test case the previous pass had and that is now gone (on base neither:
 verdict.py's case snapshot) is a hard rule, recorded for the judge. Planning files the fix pass edited (vs. the snapshot verdict.py took
-at the pass's start) go to $ARTIFACTS_DIR/fix-scope.md for the review. Then make check (lint, types, tests, smoke, trace), strict OpenSpec
+at the pass's start) go to $ARTIFACTS_DIR/fix-scope.md for the review. Then the quick tier (check(): the touched capabilities' tests, no e2e) and, once it is green, the full make check E2E=1, strict OpenSpec
 validation of the change and of the main specs after a trial archive, and tasks.md completion. Never fails the node: prints one JSON verdict so
 the build loop can feed failures back to the next implement pass. Counts attempts in ARTIFACTS_DIR.
 """
@@ -22,7 +22,7 @@ import sys
 
 from blocked import blocked_text
 from check_log import failed_targets, failing_cases, sections, strip_ansi, summarize
-from integrity import BASE, commit_paths, CASE_CHAIN, CASE_KEY, case_names, git, hard_rule_violations, plan_edits, record_dropped
+from integrity import BASE, commit_paths, staged, CASE_CHAIN, CASE_KEY, case_names, git, hard_rule_violations, plan_edits, record_dropped
 from pinned import pinned
 from scenarios import covered, untested
 from spec_trial import archived_specs_ok as trial_archive
@@ -46,10 +46,10 @@ CHECK_TIMEOUT_S = int(os.environ.get("CHECK_TIMEOUT_S") or 2700)
 TIMED_OUT = "check: TIMEOUT"
 
 
-def run(cmd: list[str], log: str, timeout: int | None = None) -> tuple[bool, str]:
+def run(cmd: list[str], log: str, timeout: int | None = None, extra: dict[str, str] | None = None) -> tuple[bool, str]:
     """Runs `cmd` writing its output to the log as it goes (a killed gate still leaves evidence); past
     `timeout` s the whole process group is killed and the output ends with a TIMED_OUT line."""
-    env = {**os.environ, "LSP_TIMEOUT_MS": os.environ.get("LSP_TIMEOUT_MS") or LSP_TIMEOUT_MS}
+    env = {**os.environ, "LSP_TIMEOUT_MS": os.environ.get("LSP_TIMEOUT_MS") or LSP_TIMEOUT_MS, **(extra or {})}
     path = artifacts / log
     with path.open("w") as f:
         proc = subprocess.Popen(cmd, stdout=f, stderr=subprocess.STDOUT, text=True, env=env, start_new_session=True)
@@ -101,7 +101,17 @@ def hard_rules() -> list[str]:
     reasons += ["test added then removed during build: " + ", ".join(dropped) + remedy] if dropped else []
     # main-spec scenarios the proposal or the branch diff touches with no delta and no Impact line
     pins = pinned(change) if change else []
+    reasons += [f"tests/flaky.txt gains a case on this branch (only the loop auditor adds one): {c}" for c in quarantined()]
     return reasons + [f"pinned scenario with no MODIFIED delta or Impact line: {p}" for p in pins]
+
+
+def quarantined() -> list[str]:
+    """Cases the branch adds to tests/flaky.txt: a change never quarantines its own failure."""
+    try:
+        diff = staged("diff", "--cached", "-U0", git("merge-base", "HEAD", BASE).strip(), "--", "tests/flaky.txt")
+    except subprocess.CalledProcessError:
+        return []
+    return [line[1:].strip() for line in diff.splitlines() if line.startswith("+") and " | " in line and not line.startswith("+++")]
 
 
 def record_fix_scope() -> None:
@@ -238,16 +248,34 @@ def rerun_passed(case: str, cmd: list[str], ok: bool, out: str) -> bool:
     return any(line.startswith(prefix) and re.fullmatch("o+", line[len(prefix) :]) for line in out.splitlines())
 
 
+KNOWN_RERUNS = 3
+
+
+def known_flaky() -> list[str]:
+    """The `<file> | <case>` lines of tests/flaky.txt: known timing-sensitive cases, rerun up to KNOWN_RERUNS times."""
+    try:
+        lines = pathlib.Path("tests/flaky.txt").read_text().splitlines()
+    except OSError:
+        return []
+    return [line.strip() for line in lines if " | " in line and not line.lstrip().startswith("#")]
+
+
 def rerun_flaky(out: str, log: str) -> tuple[list[str], str, list[str]]:
     """(flaky cases, infra reason, owned failures) of a check whose failed targets all rerun (rerun_plan):
-    the cases when each passes on one serial rerun; the sandbox line when e2e fails on infra again and every
+    the cases when each passes on one serial rerun (up to KNOWN_RERUNS for a tests/flaky.txt case); the sandbox line when e2e fails on infra again and every
     other rerun passes; otherwise neither. Reruns are appended to `log`."""
     (plan, owned), infra = rerun_plan(out), ""
+    known = known_flaky()
     for index, (case, cmd) in enumerate(plan):
-        ok, rerun_out = run(cmd, f"rerun-{attempt}-{index + 1}.log")
-        ok = rerun_passed(case, cmd, ok, rerun_out)
-        with (artifacts / log).open("a") as f:
-            f.write(f"\n===== rerun {case}: {'ok' if ok else 'FAIL'} =====\n{tail(rerun_out)}\n")
+        tries = KNOWN_RERUNS if any(case == k or case.startswith(k + ":") or case.startswith(k + " | ") for k in known) else 1
+        for n in range(tries):
+            ok, rerun_out = run(cmd, f"rerun-{attempt}-{index + 1}.log")
+            ok = rerun_passed(case, cmd, ok, rerun_out)
+            label = f" ({n + 1}/{tries}, known flaky)" if tries > 1 else ""
+            with (artifacts / log).open("a") as f:
+                f.write(f"\n===== rerun {case}{label}: {'ok' if ok else 'FAIL'} =====\n{tail(rerun_out)}\n")
+            if ok:
+                break
         if not ok and not (case.startswith("e2e: ") and (infra := e2e_infra(rerun_out.splitlines()))):
             return [], "", owned
     if infra:  # with an owned failure the pass is the change's to fix, not the host's
@@ -259,18 +287,96 @@ def rerun_flaky(out: str, log: str) -> tuple[list[str], str, list[str]]:
     return cases, "", owned
 
 
-# E2E=1: e2e runs in the sandbox VM and boots it when it is down (docs/testing.md, Sandbox VM)
-check_log = f"check-{attempt}.log"
-green, check_out = run(["make", "check", "E2E=1"], check_log, CHECK_TIMEOUT_S)
-if TIMED_OUT in check_out:  # not the change's failure: no fix pass, no attempt; the loop stops as infra
-    counter.write_text(str(attempt - 1))
-    red(f"infra: make check timed out after {CHECK_TIMEOUT_S} s\nfull log: {artifacts / check_log}", infra="check timed out")
+TEST_LAYERS = ("unit", "integration", "screen")
+QUICK_TARGETS = "lint types trace specs test"
+# paths only the full check tests (shortcut layers, the sandbox VM): a quick tier would prove nothing about them
+FULL_ONLY = re.compile(r"^(tests/(e2e|chain|stack|shortcuts|sandbox|smoke)/|terminal/)")
+
+
+def test_caps() -> set[str]:
+    return {d.name for layer in TEST_LAYERS for d in pathlib.Path("tests", layer).glob("*") if d.is_dir()}
+
+
+def affected() -> tuple[str, bool] | None:
+    """(CAPS, loop) of the quick tier for the branch diff against its base (committed or not): the capability of
+    each `lua/gleb/<area>` and `tests/<layer>/<cap>` path, `loop` and loop-test for `.archon/`; "" (every
+    capability) when a changed file maps to none; None when no quick tier applies: nothing to test (planning
+    and docs only) or a path only the full check tests."""
+    try:
+        git("add", "-A")
+        paths = git("diff", "--cached", "--name-only", git("merge-base", "HEAD", BASE).strip()).split()
+    except subprocess.CalledProcessError:
+        return None
+    caps, loop, every = set(), False, False
+    known = test_caps()
+    for path in paths:
+        parts = path.split("/")
+        if FULL_ONLY.match(path):
+            return None
+        if path.startswith(("openspec/", "docs/")) or path.endswith(".md"):
+            continue
+        if path.startswith(".archon/"):
+            caps.add("loop")
+            loop = True
+            continue
+        if len(parts) > 3 and parts[0] == "tests" and parts[1] in TEST_LAYERS and parts[2] in known:
+            caps.add(parts[2])
+            continue
+        if len(parts) > 2 and parts[:2] == ["lua", "gleb"]:
+            area = parts[2].removesuffix(".lua").replace("_", "-")
+            if area in known and area != "plugins":  # lua/gleb/plugins holds every area's plugin specs
+                caps.add(area)
+                continue
+        every = True
+    if not caps and not every:
+        return None
+    return ("" if every else ",".join(sorted(caps))), loop
+
+
+def timed_out(out: str, log: str) -> None:
+    if TIMED_OUT in out:  # not the change's failure: no fix pass, no attempt; the loop stops as infra
+        counter.write_text(str(attempt - 1))
+        red(f"infra: make check timed out after {CHECK_TIMEOUT_S} s\nfull log: {artifacts / log}", infra="check timed out")
+
+
+def checked(cmd: list[str], log: str, extra: dict[str, str] | None = None, note: str = "") -> tuple[bool, str, list[str], list[str]]:
+    """(green, output, flaky, owned) of one check run and its reruns (rerun_flaky); infra ends the gate."""
+    green, out = run(cmd, log, CHECK_TIMEOUT_S, extra)
+    if note:
+        out = note + out
+        (artifacts / log).write_text(out)
+    timed_out(out, log)
+    flaky, infra, owned = ([], "", []) if green else rerun_flaky(out, log)
+    if infra:  # the host failed twice, not the change: the loop stops with no fix pass, and this pass is no attempt
+        counter.write_text(str(attempt - 1))
+        red(f"infra: e2e did not run (sandbox failed twice): {infra}\nfull log: {artifacts / log}", infra=infra)
+    return green or (bool(flaky) and not owned), out, flaky, owned
+
+
+def check() -> tuple[bool, str, list[str], list[str]]:
+    """(green, output, flaky, owned) of the gate's check, its log `check-<attempt>.log`. A gate first runs the
+    quick tier on the capabilities the branch touches (`affected`: lint, types, trace, specs, their tests,
+    loop-test for loop files; no e2e): red ends the gate there, and only a green quick tier (kept as
+    `quick-<attempt>.log`) runs the full `make check E2E=1`."""
+    log, quick_flaky = f"check-{attempt}.log", []
+    tier = affected()
+    if tier is not None:
+        caps, loop = tier
+        targets = QUICK_TARGETS + (" loop-test" if loop else "")
+        note = f"quick tier: {targets} with CAPS={caps or '(all)'}; the full make check E2E=1 runs once it is green\n"
+        cmd = ["make", "check", f"CHECK_TARGETS={targets}"]
+        green, out, quick_flaky, owned = checked(cmd, log, {"CAPS": caps}, note)
+        if not green:
+            return green, out, quick_flaky, owned
+        (artifacts / log).rename(artifacts / f"quick-{attempt}.log")
+    # E2E=1: e2e runs in the sandbox VM and boots it when it is down (docs/testing.md, Sandbox VM)
+    green, out, flaky, owned = checked(["make", "check", "E2E=1"], log)
+    return green, out, quick_flaky + [f for f in flaky if f not in quick_flaky], owned
+
+
 change_dir = pathlib.Path("openspec/changes") / change
-flaky, infra, owned = ([], "", []) if green else rerun_flaky(check_out, check_log)
-green = green or (bool(flaky) and not owned)
-if infra:  # the host failed twice, not the change: the loop stops with no fix pass, and this pass is no attempt
-    counter.write_text(str(attempt - 1))
-    red(f"infra: e2e did not run (sandbox failed twice): {infra}\nfull log: {artifacts / check_log}", infra=infra)
+check_log = f"check-{attempt}.log"
+green, check_out, flaky, owned = check()
 spec_ok, spec_tail = True, ""
 tasks_done = True
 if change and change_dir.is_dir():

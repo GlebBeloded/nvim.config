@@ -17,7 +17,7 @@ deliver__plan-gate: "valid"
 pack: { has_task: false, context: context.md }
 implement: "MUST-NOT-RUN"
 fix: "MUST-NOT-RUN"
-fix-stuck: "MUST-NOT-RUN"
+fix-stuck-claude: "MUST-NOT-RUN"
 gate: { green: false, spec_ok: true, tasks_done: false, untested: 0, attempt: 3, failures: "FAIL in x", blocked: false }
 review: "MUST-NOT-RUN"
 deliver__escalation: { decision: reject, escalate: false, reasons: "- fix loop exhausted with gates still red: tests,tasks,stuck" }

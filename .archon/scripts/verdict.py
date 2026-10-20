@@ -6,7 +6,8 @@ reviewed passes (a gate-red pass skips the review, so it burns no attempt) or MA
 counts consecutive blocked passes (1: the next pass settles, 2: Claude unblocks, 3: the end), so an exhausted or blocked
 loop reaches the judge instead of failing the run. A `## Stuck` section (a behaviour still red after
 both attempts) is a failed gate `stuck`, never an end: its text leads the feedback and `stuck_passes` (consecutive)
-sends the next pass to fix-stuck at xhigh (1), then to Claude (2 or more); the fix pass deletes it once green. Lessons are persisted by the judge
+sends the next pass to Claude at xhigh (fix-stuck-claude), once: still stuck after it (STUCK_PASSES) ends the loop as exhausted,
+so the judge rejects and hands it back; the fix pass deletes it once green. Lessons are persisted by the judge
 (escalation.py) after the loop, never here: docs/workflow.md stays clean between passes.
 """
 
@@ -23,6 +24,7 @@ from lessons import drop_overturned
 MAX_ATTEMPTS = 3
 MAX_PASSES = 10  # nvim-deliver build max_iterations: Stuck, Blocked and infra passes fit before the 3 reviews (run 8ce36755)
 BLOCKED_PASSES = 3  # settle, unblock, then the end
+STUCK_PASSES = 2  # one stuck-fix pass, then the end: a second costs a pass and rarely lands (gate time, Oct 2026)
 FEEDBACK_CHARS = 6000
 
 
@@ -76,7 +78,8 @@ reviews += "review" in gates  # all passes so far, not consecutive: only reviewe
 (artifacts / "reviews").write_text(str(reviews))
 blocked_passes = streak("blocked-passes", bool(blocked))
 stuck_passes = streak("stuck-passes", bool(stuck) and not blocked)
-exhausted = not passed and not blocked and not infra and (reviews >= MAX_ATTEMPTS or passes >= MAX_PASSES)
+stuck_end = bool(stuck) and stuck_passes >= STUCK_PASSES
+exhausted = not passed and not blocked and not infra and (reviews >= MAX_ATTEMPTS or passes >= MAX_PASSES or stuck_end)
 blocked_end = bool(blocked) and (blocked_passes >= BLOCKED_PASSES or passes >= MAX_PASSES)
 red = [failures] + [f"hard rule: {v}" for v in violations if f"hard rule: {v}" not in failures]  # gate.py may list them
 feedback = [f"stuck (tasks.md, earlier attempts; fix it, then delete the section): {stuck}" if stuck else "", *red]

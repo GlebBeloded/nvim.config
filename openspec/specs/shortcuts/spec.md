@@ -230,6 +230,13 @@ Every `tests/sandbox/sandbox.sh` command that changes the guest (`up`, `provisio
 - **WHEN** a live process holds `$SANDBOX_STATE/lock` and `tests/sandbox/sandbox.sh e2e` starts with the same stubs, and the holder exits 2 s later
 - **THEN** no `rsync` is logged while the holder lives, stderr says `sandbox: waiting for`, and after the holder exits the run syncs, restores and runs `make -s e2e-local`, then exits 0
 
+### Requirement: make check sets up the e2e sandbox before the other targets
+A `tests/check.sh` target prefixed `^` SHALL start first, and the other parallel targets SHALL start once it ends, its tests start (for `e2e`, a fresh `$SANDBOX_STATE/e2e.started`; a stale one is removed first) or `CHECK_LEAD_S` (default 300) passes. `make check` SHALL lead with `^e2e`, so the VM boots and syncs on an idle host.
+
+#### Scenario: make check starts the other targets once the e2e sandbox is set up
+- **WHEN** `tests/check.sh ^e2e a b` runs with the `make` stub, whose `e2e` writes `$SANDBOX_STATE/e2e.started` after 1 s and ends 2 s later, and a stale marker already exists
+- **THEN** it exits 0 and prints `ok   e2e`; `e2e` starts first, and `a` starts after the marker is written and before `e2e` ends
+
 ### Requirement: Concurrent make check runs on one host run one at a time
 `tests/check.sh` (`make check`) SHALL hold one host-wide check lock (`$CHECK_LOCK_DIR`, default `~/.cache/nvim-check-lock`, the `tests/sandbox/lock.sh` mkdir lock) for its whole run, so checks of different checkouts never skew each other's timing layers. A check that finds it held waits and says so. A check started inside a check uses its holder's lock. `CHECK_LOCK=0` runs unlocked. The sandbox lock is taken only inside it.
 
@@ -259,6 +266,10 @@ Every `tests/sandbox/sandbox.sh` command that changes the guest (`up`, `provisio
 #### Scenario: sandbox.sh restarts a VM Lume reports stopped while its lume run lives
 - **WHEN** `tests/sandbox/sandbox.sh e2e` runs with stubs where Lume reports the VM stopped while its `lume run` process is alive, and a new `lume run` boots normally
 - **THEN** it kills that process (`pkill -TERM`) before its only `lume run`, which has no `--detach`, and runs the e2e layer
+
+#### Scenario: sandbox.sh never restarts a booting VM while Lume answers nothing
+- **WHEN** `tests/sandbox/sandbox.sh e2e` runs with a live `lume run` process, the guest's SSH port closed for its first checks and `lume get` failing for its first 24 calls (a busy Lume)
+- **THEN** it exits 0 with no `killing it and booting once more`, no `pkill` and no second `lume run`, and runs the e2e layer
 
 #### Scenario: sandbox.sh gives up when Lume loses track of the VM again after one restart
 - **WHEN** `tests/sandbox/sandbox.sh e2e` runs with the VM stopped and stubs where every `lume run` stays alive while Lume reports the VM stopped

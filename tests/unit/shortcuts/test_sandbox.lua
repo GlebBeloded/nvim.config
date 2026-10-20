@@ -538,7 +538,8 @@ T["shortcuts: sandbox.sh e2e waits while another checkout holds the sandbox lock
 	})
 	vim.uv.sleep(1000)
 	local synced_early = first_index(read_lines(env.GUEST_LOG), is_repo_sync) ~= nil
-	local run = child.lua_get("_G.e2e_run:wait(30000)")
+	-- as system(): the stubbed e2e path takes ~12 s idle, so a loaded check scales the budget
+	local run = child.lua_get("_G.e2e_run:wait(...)", { math.ceil(60000 * H.load_factor()) })
 
 	eq({ synced_early = synced_early, code = run.code }, { synced_early = false, code = 0 })
 	eq(run.stderr:find("sandbox: waiting for", 1, true) ~= nil, true)
@@ -612,6 +613,19 @@ T["shortcuts: sandbox.sh restarts a VM Lume reports stopped while its lume run l
 	eq(first_index(log, is_e2e_layer) ~= nil, true)
 end
 
+T["shortcuts: sandbox.sh never restarts a booting VM while Lume answers nothing"] = function()
+	local env = vim.tbl_extend("force", sandbox_env(), { SANDBOX_MISMATCH_S = "1", NC_CLOSED = "4" })
+	child.fn.writefile({}, vim.fs.joinpath(env.SANDBOX_STATE, "run-alive"))
+	child.fn.writefile({ "24" }, vim.fs.joinpath(env.SANDBOX_STATE, "get-empty")) -- a busy Lume: `lume get` fails
+
+	local run = system({ "tests/sandbox/sandbox.sh", "e2e" }, H.root, env)
+
+	eq(run.code, 0, { fail_reason = run.stderr })
+	eq(run.stderr:find("killing it and booting once more", 1, true), nil, { fail_reason = run.stderr })
+	eq(run_and_kill_lines(read_lines(env.GUEST_LOG)), {})
+	eq(first_index(read_lines(env.GUEST_LOG), is_e2e_layer) ~= nil, true)
+end
+
 T["shortcuts: sandbox.sh gives up when Lume loses track of the VM again after one restart"] = function()
 	local env = vim.tbl_extend("force", sandbox_env(), { SANDBOX_MISMATCH_S = "1", LUME_MISMATCH_RUNS = "2" })
 	child.fn.writefile({}, vim.fs.joinpath(env.SANDBOX_STATE, "stopped"))
@@ -655,7 +669,8 @@ end
 
 --- `make` stub for tests/check.sh: `deps` passes; every other target appends "<target> start
 --- <held>" and "<target> end" to $MAKE_LOG, held = whether $CHECK_LOCK_DIR exists. Target `slow`
---- lasts 2 s; `nested` runs tests/check.sh `inner` with CHECK_LOCK_TIMEOUT=1 and returns its code.
+--- lasts 2 s; `e2e` writes $SANDBOX_STATE/e2e.started after 1 s (logging "e2e ready") and ends 2 s later;
+--- `nested` runs tests/check.sh `inner` with CHECK_LOCK_TIMEOUT=1 and returns its code.
 local MAKE_STUB = [[#!/bin/sh
 target=$2
 [ "$target" = deps ] && exit 0
@@ -665,6 +680,7 @@ echo "$target start $held" >>"$MAKE_LOG"
 rc=0
 case "$target" in
 slow) sleep 2 ;;
+e2e) sleep 1; touch "$SANDBOX_STATE/e2e.started"; echo "e2e ready" >>"$MAKE_LOG"; sleep 2 ;;
 nested) CHECK_LOCK_TIMEOUT=1 "$CHECK_SH" inner >>"$MAKE_LOG.nested" 2>&1 || rc=$? ;;
 esac
 echo "$target end" >>"$MAKE_LOG"
@@ -717,6 +733,27 @@ T["shortcuts: make check holds the check lock for its whole run"] = function()
 	table.sort(starts)
 	eq(starts, { "a start yes", "b start yes", "c start yes" })
 	eq(child.fn.isdirectory(env.CHECK_LOCK_DIR), 0)
+end
+
+T["shortcuts: make check starts the other targets once the e2e sandbox is set up"] = function()
+	local env = vim.tbl_extend("force", check_env(), { SANDBOX_STATE = tempdir() })
+	child.fn.writefile({}, vim.fs.joinpath(env.SANDBOX_STATE, "e2e.started")) -- a previous run's marker
+
+	local run = system({ "tests/check.sh", "^e2e", "a", "b" }, H.root, env)
+
+	eq(run.code, 0, { fail_reason = run.stdout .. run.stderr })
+	local log = read_lines(env.MAKE_LOG)
+	local ready = first_index(log, function(line)
+		return line == "e2e ready"
+	end)
+	local a = first_index(log, function(line)
+		return line == "a start yes"
+	end)
+	local e2e_end = first_index(log, function(line)
+		return line == "e2e end"
+	end)
+	eq({ log[1], ready < a, a < e2e_end }, { "e2e start yes", true, true }, { fail_reason = table.concat(log, "\n") })
+	MiniTest.expect.no_equality(run.stdout:find("ok   e2e", 1, true), nil)
 end
 
 T["shortcuts: A second make check waits for the check lock and says so"] = function()

@@ -25,9 +25,11 @@ endif
 .PHONY: check quick install deps fmt lint types test test-unit test-integration test-screen test-readiness \
 	screenshots smoke smoke-health smoke-startup trace probe specs render colorize clean
 
-# timing-sensitive layers run alone after the rest, so other layers do not skew them
+# timing-sensitive layers run alone after the rest, so other layers do not skew them;
+# CHECK_TARGETS narrows the run (the gate's quick tier: .archon/scripts/gate.py)
+CHECK_TARGETS ?= ^e2e lint types test trace specs chain stack smoke-health loop-test +smoke-startup +test-readiness
 check:
-	@SANDBOX_START=$${E2E:-0} tests/check.sh lint types test trace specs chain stack e2e smoke-health loop-test +smoke-startup +test-readiness
+	@SANDBOX_START=$${E2E:-0} tests/check.sh $(CHECK_TARGETS)
 
 quick:
 	@tests/quick.sh
@@ -152,7 +154,7 @@ STAMP := $(shell date +%Y%m%d-%H%M%S)
 CLEANUP = { git fetch -q local; $(ARCHON) isolation cleanup --merged; } >/dev/null 2>&1 || true
 # make queue then keeps one loop branch per change: loop_clean.py --change drops the superseded reruns.
 
-.PHONY: loop-setup loop-register loop-validate self-check loop-test loop-clean fix feature queue drain update outdated console loop-report loop-status preview
+.PHONY: loop-setup loop-register loop-validate self-check loop-test loop-clean fix feature queue drain drains update outdated console loop-report loop-status preview
 
 loop-setup: # self-remote: Archon cuts worktrees from <remote>/auto, and auto stays local
 	@git remote get-url local >/dev/null 2>&1 || git remote add local "$$(git rev-parse --path-format=absolute --git-common-dir | sed 's|/.git$$||')"
@@ -212,6 +214,9 @@ queue: loop-setup # make queue [CHANGE=<id>]: work the next (or the given) chang
 
 drain: loop-setup # make drain [N=<max runs>]: work queued changes one by one until empty, N runs or a pause
 	@python3 .archon/scripts/drain.py $(if $(N),--max $(N))
+
+drains: loop-setup # make drains [LANES=2] [N=<max runs per lane>]: that many drains at once (drain.py --lanes)
+	@python3 .archon/scripts/drain.py --lanes $(or $(LANES),2) $(if $(N),--max $(N))
 
 loop-clean: # remove worktree + branch of shipped/superseded loop/* runs; dry run unless APPLY=1
 	@python3 .archon/scripts/loop_clean.py $(if $(filter 1,$(APPLY)),--apply)

@@ -114,6 +114,13 @@ After a judge reject, `.archon/scripts/followup.py` SHALL re-queue the work on `
 - **WHEN** `make drain` runs with the same stubs and one runnable change
 - **THEN** it exits 0, no Archon call gets `--detach`, and the run's output and `completed` status appear in drain's output
 
+### Requirement: Drains run lanes in parallel
+`make drains [LANES=2]` SHALL run that many drains at once with output lines prefixed `[lane <k>]`, never start one change in two lanes (a pick lock held until the run is recorded, a shared skip list), let a lane whose pick is empty wait while a live run works a change the remaining changes depend on, and first print each `Depends:` edge whose two changes share no `## Impact` path.
+
+#### Scenario: Drains run two lanes and never take one change twice
+- **WHEN** `make drains` runs with the drain stubs on `t-a` (a 3 s run recorded `running` first, then `failed`, Impact `lua/gleb/a/{x,y}.lua`), `t-b`, `t-c`, and `t-d` (`Depends: t-a`, Impact `lua/gleb/d/z.lua`)
+- **THEN** it exits 0, `t-a`, `t-b` and `t-c` each run once, lane 1 starts `t-a` while lane 2 starts `t-b`, both lanes end on an empty queue, and the output names `t-d Depends: t-a` as sharing no Impact path
+
 ### Requirement: Done loop runs are cleaned up
 `.archon/scripts/loop_clean.py` SHALL remove the worktree and branch of each `loop/*` branch whose tip is on `auto` (shipped or superseded), and keep and list `auto`/`main`, branches with commits not on `auto` or at its tip, branches a running or paused Archon run holds, and dirty worktrees. `make loop-clean` is a dry run unless `APPLY=1`; ship starts the cleanup of its own run.
 
@@ -588,6 +595,20 @@ verdict.py SHALL pass on the last review's findings even when it approves; on sh
 - **WHEN** verdict.py passes with an approving review whose findings hold a `[minor]` line and a `Minor (non-blocking):` heading with one item, and the judge runs on verdict's `review_findings`
 - **THEN** the decision is `ship` and escalation.md has a `- note: review (minor):` line for each of the two, and none for the summary line
 
+### Requirement: Gate runs a quick tier first
+gate.py SHALL first run `make check CHECK_TARGETS="lint types trace specs test"` with `CAPS` the capabilities the branch diff touches (`lua/gleb/<area>`, `tests/<layer>/<cap>`; `loop` plus `loop-test` for `.archon/`; empty for an unmapped file); red (after reruns) ends the gate, green runs the full `make check E2E=1`. Planning and docs only, or a shortcut-layer or sandbox path, runs the full check alone.
+
+#### Scenario: Gate runs the quick tier before the full check
+- **WHEN** gate.py runs with a recording `make` stub on branches editing `lua/gleb/pr/` and its tests (quick tier red, then green), `.archon/`, `init.lua`, only docs and a change folder, and `lua/gleb/pr/` with `tests/e2e/`
+- **THEN** the red quick tier is the only call (`CAPS=pr`, noted in the check log); green adds `make check E2E=1` and keeps `quick-1.log`; `.archon/` adds `loop-test` with `CAPS=loop`; `init.lua` runs `CAPS=` empty; the last two run only the full check
+
+### Requirement: Gate reruns known flaky cases up to three times
+A failing case listed in `tests/flaky.txt` (`<file> | <case>`, by name prefix) that gate.py would rerun SHALL rerun up to 3 times, serially, and count as flaky on its first pass; other cases rerun once. A branch adding a case to `tests/flaky.txt` SHALL be a hard rule.
+
+#### Scenario: Gate reruns a known flaky case up to three times
+- **WHEN** gate.py runs with a `make` stub whose check fails one case listed in the base's `tests/flaky.txt`, its rerun passing on the 3rd try, then never; then the case unlisted, passing on the 2nd try; then a branch adding it to `tests/flaky.txt`
+- **THEN** the first is green after 3 reruns with the case in `flaky`; the second red after 3; the third red after 1; the fourth red with `hard rule: tests/flaky.txt gains a case on this branch`
+
 ### Requirement: Gate reruns failed test cases once
 When `make check` fails only in `test`, `test-readiness` or `e2e`, gate.py SHALL rerun each `FAIL in` case once, serially (`make test FILE=<file> CASE=<name>`, `make test-readiness CASE=<name>`); e2e only when its log has no `FAIL in` and only sandbox/Lume infra lines (`make e2e E2E=1`). All passing: green, listed in `flaky` and the check log, a judge note. A rerun failing stays red; other targets never rerun.
 
@@ -824,11 +845,11 @@ The loop SHALL keep the user's contract unasked: no step changes a requirement's
 - **THEN** each says to append a `loop: <failure>` line to `$ARTIFACTS_DIR/loop-notes.md`, not tasks.md, and neither says to write `## Blocked` with `loop:`
 
 ### Requirement: Stuck work goes to the fix passes
-A `## Stuck` section in tasks.md (a behaviour red after both attempts, no decision needed) SHALL never ask the user nor hold a queued change before spec nor stop later tasks: the build loop stays red on it and sends it to a fix pass on the default model at `effort: xhigh`, then to Claude at `xhigh` while it stays red, and an exhausted loop is rejected and re-queued with it. Agents SHALL decide small design choices themselves and record them under `## Agent decisions`.
+A `## Stuck` section in tasks.md (a behaviour red after both attempts, no decision needed) SHALL never ask the user nor hold a queued change before spec nor stop later tasks: the build loop stays red on it and sends it to one fix pass on Claude at `effort: xhigh`; still stuck after it, verdict ends the loop as exhausted, and an exhausted loop is rejected and re-queued with it. Agents SHALL decide small design choices themselves and record them under `## Agent decisions`.
 
 #### Scenario: Verdict sends a Stuck section to the fix pass
 - **WHEN** `.archon/scripts/verdict.py` runs on an otherwise green pass for a change whose tasks.md has a `## Stuck` section
-- **THEN** it reports `done`, `passed` and `blocked` false, `stuck` true, `failed_gates` `stuck`, feedback quoting the section and `stuck_passes` 1 (2 on a second run in the same artifacts dir); nvim-deliver's `fix-stuck` node (the fix command at `effort: xhigh`) runs the next pass when `stuck_passes` is 1 and `fix-stuck-claude` (`provider: claude`, `effort: xhigh`) otherwise, and fix.md tells it to solve it itself
+- **THEN** it reports `done`, `passed` and `blocked` false, `stuck` true, `failed_gates` `stuck`, feedback quoting the section and `stuck_passes` 1, `exhausted` false; a second run in the same artifacts dir reports `stuck_passes` 2 with `done` and `exhausted` true; nvim-deliver has no `fix-stuck` node, its `fix-stuck-claude` (`provider: claude`, `effort: xhigh`) runs every stuck pass, and fix.md tells it to solve it itself
 
 #### Scenario: A Stuck change never asks and is never held before spec
 - **WHEN** blocked.py, escalation.py (`exhausted` true) and tasks.py run for a change whose tasks.md has a `## Stuck` section
