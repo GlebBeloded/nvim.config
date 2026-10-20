@@ -6,9 +6,9 @@ Scenarios: `shortcuts: The load factor is 1 on an idle host`, `shortcuts: The lo
 
 ## 2. Scale the Python type-check wait
 Scenarios: `lsp: Type-check toggle reattaches every Python buffer without reloading`
-- [ ] 2.1 Tighten `tests/integration/lsp/test_typecheck.lua` so the real `:PyTypeCheckOn` case records its load-scaled attachment deadline; temporarily restore the unscaled deadline, run `make test FILE=tests/integration/lsp/test_typecheck.lua CASE="Type-check toggle reattaches every Python buffer without reloading"`, see the cited loaded-gate timeout fail and record it, then remove the temporary fault
-- [ ] 2.2 Apply the shared load factor to the test's asynchronous wait budget without changing its attachment or unsaved-buffer assertions
-- [ ] 2.3 Run `make test FILE=tests/integration/lsp/test_typecheck.lua CASE="Type-check toggle reattaches every Python buffer without reloading"` and see it pass
+- [x] 2.1 Tighten `tests/integration/lsp/test_typecheck.lua` so the real `:PyTypeCheckOn` case records its load-scaled attachment deadline; temporarily restore the unscaled deadline, run `make test FILE=tests/integration/lsp/test_typecheck.lua CASE="Type-check toggle reattaches every Python buffer without reloading"`, see the cited loaded-gate timeout fail and record it, then remove the temporary fault
+- [x] 2.2 Apply the shared load factor to the test's asynchronous wait budget without changing its attachment or unsaved-buffer assertions
+- [x] 2.3 Run `make test FILE=tests/integration/lsp/test_typecheck.lua CASE="Type-check toggle reattaches every Python buffer without reloading"` and see it pass
 
 ## 3. Make bounded redraw measurements deterministic
 Scenarios: `file-tree: Project tree redraw meets the large-tree bound`, `file-tree: Project tree expansion meets the large-tree bound`
