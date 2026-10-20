@@ -24,11 +24,6 @@ Scenarios: `file-tree: Project tree R picks up changes at once`
 - Track event confirmation per root because libuv rebuilds one shared stream for that root's folder, git, and recursive handles.
 - Put the refresh canary in the already-expanded billing folder so its row directly proves the restarted folder watcher delivered an event.
 - Wait for copied rows inside the child process with a load-scaled bound so loaded-host RPC scheduling cannot consume the observation window.
-
-## Stuck
-
-- Finding: the three project-tree save performance cases can advance the manual debounce scheduler before the save's watcher debounce is pending; the gate repeatedly failed with `git refresh did not schedule the final draw`.
-- Probe: a fired real debounce remains a retained inactive `userdata`; after enabling the test scheduler, scheduling through that handle replaces it with a `table` whose `due_ms = 100` (`replaced = true`).
-- Attempt 1: changed `wait_for_watch_debounce()` to require a pending manual timer (`type(timer) == "table" and timer.due_ms ~= nil`). Each failing case passed alone and five consecutive reruns, but the whole file exposed a git run before the asserted 150 ms deadline.
-- Attempt 2: made idle detection include active watcher timers and moved the idle wait after the live-stream sentinel, before installing the manual scheduler. The three cases again passed alone and five consecutive reruns, but the whole file still failed `Project tree coalesces a save burst` at the final-draw wait; it also failed the existing re-root expansion case under the same parallel run.
-- Saved attempt: `/Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/c0099c25-ccff-445c-bc56-ef7f7ea3bc1d/stuck-attempt-performance.diff` is empty because both attempts modify only the retained regression fixture; the test diff remains in this commit.
+- Turn auto-save off before the save cases edit their file because its debounced write of that edit is a second write the scenarios exclude and raced the measured write.
+- Bump a tracked file's mtime until the large tree's watch confirms an event because, without that autosave write, no event ends the startup settle passes.
+- Poll the git index on every settling pass and count passes only after confirmation, so staging during the watch start gap is still picked up.

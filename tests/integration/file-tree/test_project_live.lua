@@ -618,6 +618,27 @@ T["file-tree: Project tree recolours after staging outside Neovim"] = function()
 	expect_no_fs_poll_on_macos()
 end
 
+T["file-tree: Project tree recolours staging during watch startup"] = function()
+	edit("README.md")
+	run_action("file_tree.toggle")
+	eq(wait_for_tree_highlight("notes.md", "FileTreeGitUntracked"), true)
+	-- Stopping the git dir handle drops the staging event the way a rebuilding macOS FSEvents stream does.
+	local unconfirmed = child.lua_get(
+		[[(function(tree_root)
+			local state = assert(require("gleb.file_tree.watch").state.roots[require("gleb.file_tree.fs").normalize(tree_root)])
+			assert(state.git_handle):stop()
+			return not state.event_confirmed
+		end)(...)]],
+		{ root }
+	)
+	eq(unconfirmed, true)
+
+	local result = H.system(child, { "git", "add", "notes.md" }, root)
+	eq(result.code, 0)
+
+	eq(wait_for_tree_highlight("notes.md", "FileTreeGitAdded"), true)
+end
+
 T["file-tree: Project tree watchers stop when the tree closes"] = function()
 	edit("README.md")
 	run_action("file_tree.toggle")

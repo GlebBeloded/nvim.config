@@ -337,6 +337,8 @@ local function change_tracked_file()
 			local editor = assert(view_module.state.last_editor_by_tab[tab])
 			vim.api.nvim_set_current_win(editor)
 			vim.cmd.edit(vim.fn.fnameescape(path))
+			-- auto-save's own debounced write of this edit would race the write each case measures
+			require("auto-save").off()
 			vim.api.nvim_buf_set_lines(0, 0, -1, false, { "changed" })
 		end)(...)]=],
 		{ vim.fs.joinpath(root, "directory-0001", "file-001") }
@@ -422,9 +424,27 @@ local function wait_for_changed_folder_watch()
 	)
 end
 
--- libuv rebuilds its single macOS FSEvents stream after each watch start and drops events meanwhile; a sentinel
--- event on a later-started watch proves the stream carrying every tree watch is live before the write.
+-- libuv rebuilds its single macOS FSEvents stream after each watch start and drops events meanwhile; a canary mtime
+-- bump confirms the tree's own watch so its settle passes run out, and a sentinel event on a later-started watch
+-- proves the stream carrying every tree watch is live before the write.
 local function wait_for_live_watch_stream()
+	assert(
+		child.wait(
+			([=[(function()
+				local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+				local state = assert(require("gleb.tree.watch").state.roots[view.root])
+				if state.event_confirmed then
+					return true
+				end
+				local now = vim.uv.clock_gettime("realtime")
+				local stamp = now.sec + now.nsec / 1e9
+				vim.uv.fs_utime(%q, stamp, stamp)
+				return false
+			end)()]=]):format(vim.fs.joinpath(root, "directory-0001", "file-002")),
+			math.ceil(3000 * H.load_factor())
+		),
+		"tree watch did not confirm its canary event"
+	)
 	assert(
 		child.wait(
 			[=[(function()

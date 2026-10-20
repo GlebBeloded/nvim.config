@@ -1414,7 +1414,7 @@ T["file-tree: Project tree R picks up changes at once"] = function()
 
 	refresh()
 
-	assert(wait_for_tree_path("internal/billing/fee.go", true), "refresh did not show fee.go")
+	eq(tree_has_path("internal/billing/fee.go"), true)
 	assert(
 		child.wait(([[require("gleb.file_tree.git").state.runs == %d]]):format(before + 1)),
 		"refresh did not start exactly one git status run"

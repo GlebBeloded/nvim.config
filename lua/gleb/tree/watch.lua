@@ -510,8 +510,10 @@ local function poll_folders(root, state)
 		return
 	end
 	local settling = state.settle_passes > 0
-	if settling and state.event_confirmed then
-		state.settle_passes = state.settle_passes - 1
+	if settling then
+		if state.event_confirmed then
+			state.settle_passes = state.settle_passes - 1
+		end
 		if state.git_dir then
 			poll_git_index(root, state)
 		end

@@ -15,6 +15,10 @@ The tree SHALL cache scans and watch every folder whose scan feeds a row, every 
 - **WHEN** the project tree shows `notes.md` and `git add notes.md` runs as an external process
 - **THEN** within 1000 ms `notes.md` is drawn with `FileTreeGitAdded`
 
+#### Scenario: Project tree recolours staging during watch startup
+- **WHEN** the project tree shows untracked `notes.md`, no watch event has confirmed the started git dir watch, that watch delivers no event, and `git add notes.md` runs as an external process
+- **THEN** within 1000 ms `notes.md` is drawn with `FileTreeGitAdded`
+
 #### Scenario: Project tree watchers stop when the tree closes
 - **WHEN** the project tree with expanded folders is closed with `q`
 - **THEN** `require("gleb.file_tree.watch").state.handles` is empty
