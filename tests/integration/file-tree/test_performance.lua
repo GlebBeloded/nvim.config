@@ -590,6 +590,25 @@ T["file-tree: Project tree coalesces a save burst"] = function()
 	eq(result.runs, 1)
 end
 
+T["file-tree: Project tree save burst observes both debounce deadlines"] = function()
+	change_tracked_file()
+	wait_for_idle_tree()
+	wait_for_changed_folder_watch()
+	wait_for_live_watch_stream()
+	install_replacement_counter()
+	install_manual_debounce()
+	local baseline_runs = child.lua_get([[require("gleb.file_tree.git").state.runs]])
+
+	child.cmd("write")
+	advance_save_debounce(baseline_runs)
+	local result = wait_for_save_result(baseline_runs)
+	child.lua([[require("gleb.util.debounce").reset()]])
+
+	assert(result.complete, vim.inspect(result))
+	eq(result.replacements, 1)
+	eq(result.runs, 1)
+end
+
 T["file-tree: Unchanged git status does not redraw the project tree"] = function()
 	make_next_git_refresh_immediate()
 	install_replacement_counter()

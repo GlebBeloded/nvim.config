@@ -60,9 +60,9 @@ Scenarios: `lsp: Type-check toggle reattaches every Python buffer without reload
 
 ## 11. Specify and trace both save debounce stages
 Scenarios: `file-tree: Project tree save burst observes both debounce deadlines`
-- [ ] 11.1 Write the test `file-tree: Project tree save burst observes both debounce deadlines` in `tests/integration/file-tree/test_performance.lua` through the real write, watcher, git refresh and draw path; temporarily advance only 149 ms of the watcher deadline, run `make test FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree save burst observes both debounce deadlines"`, see it fail and record the failure, then remove the fault
-- [ ] 11.2 Reuse the manual scheduler to prove the 149+1 ms watcher deadline and the following 49+1 ms draw deadline independently, with no early git request or replacement
-- [ ] 11.3 Run `make test FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree save burst observes both debounce deadlines"` and see it pass
+- [x] 11.1 Write the test `file-tree: Project tree save burst observes both debounce deadlines` in `tests/integration/file-tree/test_performance.lua` through the real write, watcher, git refresh and draw path; temporarily advance only 149 ms of the watcher deadline, run `make test FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree save burst observes both debounce deadlines"`, see it fail and record the failure, then remove the fault
+- [x] 11.2 Reuse the manual scheduler to prove the 149+1 ms watcher deadline and the following 49+1 ms draw deadline independently, with no early git request or replacement
+- [x] 11.3 Run `make test FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree save burst observes both debounce deadlines"` and see it pass
 
 ## 12. Restore repository-discovery instrumentation on every path
 Scenarios: `file-tree: Project tree re-roots without waiting for repository discovery`
