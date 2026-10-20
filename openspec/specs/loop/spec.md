@@ -596,7 +596,7 @@ verdict.py SHALL pass on the last review's findings even when it approves; on sh
 - **THEN** the decision is `ship` and escalation.md has a `- note: review (minor):` line for each of the two, and none for the summary line
 
 ### Requirement: Gate runs a quick tier first
-gate.py SHALL first run `make check CHECK_TARGETS="lint types trace specs test"` with `CAPS` the capabilities the branch diff touches (`lua/gleb/<area>`, `tests/<layer>/<cap>` including the shortcut layers, the capabilities whose tests name any other file; `loop` plus `loop-test` for `.archon/`; empty for a shared file or one no test names); red (after reruns) ends the gate, green runs the full `make check E2E=1`. Planning and docs only, or a sandbox, smoke or terminal path, runs the full check alone.
+gate.py SHALL first run `make check CHECK_TARGETS="lint types trace specs test"` with `CAPS` the touched capabilities: `lua/gleb/<area>`, `tests/<layer>/<cap>` (shortcut layers too), those whose tests name any other file, `loop` plus `loop-test` for `.archon/`, all for a shared or unnamed file. Red (after reruns) ends the gate; green runs `make check E2E=1`. Docs only, or a sandbox, smoke or terminal path, runs the full check alone.
 
 #### Scenario: Gate runs the quick tier before the full check
 - **WHEN** gate.py runs with a recording `make` stub on branches editing `lua/gleb/pr/` and its tests (quick tier red, then green), `.archon/`, `init.lua`, only docs and a change folder, and `lua/gleb/pr/` with `tests/e2e/find-action/`, a fixture a pr test requires, a fixture no test names, `lua/gleb/plugins/`, and `lua/gleb/pr/` with `tests/sandbox/`
