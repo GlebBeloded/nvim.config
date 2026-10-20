@@ -15,6 +15,17 @@ file run serially took 44 s versus 200 s inside a loaded gate. Many files never 
 - Opt in the files where it is safe (keymaps, actions, find-action, statusline, picker and similar) and measure the
   layer before and after.
 
+## Capabilities
+
+- `loop`: extend the test harness with an opt-in reusable child lifecycle and require cached Lua loading before
+  configuration modules load.
+
 ## Impact
 
-- `tests/helpers.lua` (`H.child_set` / reuse mode), `init.lua` (loader order), the opted-in test files.
+- Architecture: `init.lua` enables cached Lua loading before configuration modules are required.
+- Test tooling: `tests/helpers.lua` gains the reusable lifecycle; safe files under `tests/integration/actions/`,
+  `tests/integration/find-action/`, `tests/integration/keymaps/`, `tests/integration/picker/`, and
+  `tests/integration/statusline/` opt in after isolation checks.
+- No plugin dependency is added, removed, or upgraded. Core keymaps do not change.
+- Out of scope: reusing children in tests that touch sessions, shada, filesystem watchers, or whose state cannot be
+  reset reliably; changing product behavior or UI.

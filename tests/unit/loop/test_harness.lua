@@ -75,4 +75,35 @@ T["loop: Hard-rule checks leave the real index alone"] = function()
 	eq(git("diff", "--cached", "--name-only"), "")
 end
 
+T["loop: Reusable child resets case state"] = function()
+	local hooks = getmetatable(H.child_set(child, child.start_bare, { reuse = true })).opts.hooks
+	hooks.pre_once()
+	hooks.pre_case()
+	local reusable_pid = child.fn.getpid()
+	local reusable_cwd = child.fn.getcwd()
+	local changed_cwd = vim.fn.tempname()
+	vim.fn.mkdir(changed_cwd, "p")
+	child.cmd("tabnew")
+	child.cmd("enew")
+	child.fn.chdir(changed_cwd)
+	child.lua("_G.ReusableChildCaseState = true")
+	eq({ #child.api.nvim_list_tabpages(), child.fn.getcwd() }, { 2, vim.uv.fs_realpath(changed_cwd) })
+	hooks.pre_case()
+	eq(child.fn.getpid(), reusable_pid)
+	eq({
+		child.fn.getcwd(),
+		#child.api.nvim_list_tabpages(),
+		#child.api.nvim_list_bufs(),
+		child.lua_get("_G.ReusableChildCaseState == nil"),
+	}, { reusable_cwd, 1, 1, true })
+end
+
+T["loop: Fresh child remains the default"] = function()
+	local hooks = getmetatable(H.child_set(child, child.start_bare)).opts.hooks
+	hooks.pre_case()
+	local first_pid = child.fn.getpid()
+	hooks.pre_case()
+	eq(child.fn.getpid() == first_pid, false)
+end
+
 return T
