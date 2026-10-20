@@ -29,7 +29,6 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 
 ## Loop lessons
 
-- A git-directory event can be dropped while macOS rebuilds its watch stream; compare the index stamp during the existing settle passes.
 - Preserve explicit branches when one branch can validly return false; Lua's and/or selection otherwise executes the fallback.
 - An aggregate expansion bound needs an operation-level tree adapter so unfold-all warns once instead of retrying every node left folded by the bound.
 - Shared tree redraws need an owner lifecycle hook when visible-row count controls the owning window's geometry.
@@ -44,6 +43,7 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - When focusing a retained tab mode, rebuild from that mode's model so rendered rows cannot diverge from saved state.
 - Commit-file caches keyed by immutable full hashes should survive Branch model refreshes and be reattached to rebuilt nodes so open folds retain their children.
 - Bind debounced selection callbacks to the tab that scheduled them, and defer only data-dependent review work so tab focus changes synchronously without stale rows.
+- Name every main-spec contract pinned by newly shared symbols in Impact, with the concrete reason its behavior remains unchanged.
 
 ## The loop
 
