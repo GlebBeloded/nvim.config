@@ -192,6 +192,10 @@ T["file-tree: Project tree unfold all meets the large-tree bound"]["stops prompt
 	unfold_child.lua([[FileTreeUnfoldStarted = FileTreeStartMeasurement()]])
 
 	unfold_child.type_keys("zR")
+	assert(
+		unfold_child.wait([[#Notifications > 0]], math.ceil(500 * H.load_factor())),
+		"unfold all did not reach the row limit"
+	)
 
 	local result = unfold_child.lua_get([[(function()
 		local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
