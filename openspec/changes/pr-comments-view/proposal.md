@@ -87,6 +87,14 @@ bar").
   - `git: Cmd+G opens the changes review of a dirty repo` and `git: Cmd+G with the project tree open replaces it` still hold: the `dirty` fixture has no pull request, so there is no Comments tab.
   - `git: Changes panel with the diff view matches the approved render` and `git: Changes panel matches the approved render` still hold: the `billing` fixture is on `main` with no pull request, so no peek, tab or statusline part is drawn.
   - `git: Changes panel Enter opens the file` still holds: `changes.open` on Local rows is unchanged; only Comments rows get the thread behaviour.
+  - `diff: Diff view shows in a given window without focus` still holds: providers add decorations during render without changing `show`'s target-window or focus handling.
+  - `diff: Diff view reverting the last change keeps the view open` still holds: provider decorations do not change apply or empty-fragment view lifecycle handling.
+  - `diff: Diff view draws a committed spec in purple` still holds: peeks use provider virtual lines and do not change committed row highlights or actionability.
+  - `diff: Diff view without committed keeps its kind colours` still holds: provider virtual lines do not change the existing added and changed row highlight selection.
+  - `file-tree: Requirement: File tree nest state` still holds: the Comments tree has its own model and does not read or mutate file-tree `expanded_nests` state.
+  - `find-action: Toggle changes without closing the palette` still holds: the new entries are regular actions and do not alter toggle execution or palette refresh behavior.
+  - `references: gr classifies Lua function calls and redefinitions` still holds: this change does not alter the Lua usage query, `gr`, or reference classification.
+  - `references: Lua usage types match the approved render` still holds: this change does not alter the references view or its Lua usage rendering.
   - `statusline: statusline matches reference screenshot` and `statusline: insert mode accent matches reference screenshot` still hold: their Lua file is outside any pull request, so the component draws nothing.
   - `statusline: Requirement: Global statusline layout` still holds: section b keeps the branch and diff components; the new component sits between them and is empty without a pull request.
   - `git: Requirement: Changes panel outside a repository` still holds: no Comments tab exists without a resolved root and pull request.
