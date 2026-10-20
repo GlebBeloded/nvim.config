@@ -9,6 +9,7 @@ Scenarios: `loop: Reusable child resets case state`, `loop: Fresh child remains 
 - Opt in with `H.child_set(child, start, { reuse = true })` so existing callers retain fresh children without changes.
 - Reuse children in apply, ownership, plugin-ownership, assign, hidden, and open; keep adapters, context, and run fresh because the isolation trial exposed retained invocation history, a deleted startup fixture, and stale MiniPick buffers respectively.
 - Reuse children in paste, dashboard, input, and PR statusline; keep core keymaps and the main statusline fresh because child restarts remove the installed reset and a later statusline case requires the startup dashboard.
+- Measure the gate-shaped integration layer with `JOBS=12`: base `d60a6e5f` ran 767 cases in 247.09 s with 759 full-config starts; after the safe opt-ins `31e8c375` ran 768 cases in 252.30 s with 757 starts.
 
 ## 2. Enable cached Lua loading before configuration imports
 Scenarios: `loop: Cached loader precedes configuration modules`
@@ -30,4 +31,4 @@ Scenarios: `keymaps: Core mappings resolve through actions`, `keymaps: Terminal 
 
 ## 5. Measure the integration layer
 Scenarios: `loop: Reusable child resets case state`
-- [ ] 5.1 Record the integration layer's elapsed time and full-config child-start count on the base revision, run the same measurement after the safe opt-ins, and include both results in the implementation handoff
+- [x] 5.1 Record the integration layer's elapsed time and full-config child-start count on the base revision, run the same measurement after the safe opt-ins, and include both results in the implementation handoff
