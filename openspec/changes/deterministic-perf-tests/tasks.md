@@ -52,6 +52,36 @@ Scenarios: `file-tree: Project tree persists folds off the action path`, `file-t
 - [x] 9.2 Keep the original 100 ms and 500 ms load-scaled wall bounds and avoid duplicating either scenario in another test file
 - [x] 9.3 Run `make perf` and see it pass
 
+## 10. Observe the real type-check attachment deadline
+Scenarios: `lsp: Type-check toggle reattaches every Python buffer without reloading`
+- [x] 10.1 Tighten `tests/integration/lsp/test_typecheck.lua` to record the timeout received by the real `child.wait`; temporarily pass the unscaled timeout from `basedpyright_mode`, run `make test FILE=tests/integration/lsp/test_typecheck.lua CASE="Type-check toggle reattaches every Python buffer without reloading"`, see the deadline assertion fail and record it, then remove the fault
+- [x] 10.2 Replace the self-recorded deadline with an observation of the actual attachment wait while retaining the real `:PyTypeCheckOn`, both loaded buffers and the unsaved-buffer assertion
+- [x] 10.3 Run `make test FILE=tests/integration/lsp/test_typecheck.lua CASE="Type-check toggle reattaches every Python buffer without reloading"` and see it pass
+
+## 11. Specify and trace both save debounce stages
+Scenarios: `file-tree: Project tree save burst observes both debounce deadlines`
+- [ ] 11.1 Write the test `file-tree: Project tree save burst observes both debounce deadlines` in `tests/integration/file-tree/test_performance.lua` through the real write, watcher, git refresh and draw path; temporarily advance only 149 ms of the watcher deadline, run `make test FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree save burst observes both debounce deadlines"`, see it fail and record the failure, then remove the fault
+- [ ] 11.2 Reuse the manual scheduler to prove the 149+1 ms watcher deadline and the following 49+1 ms draw deadline independently, with no early git request or replacement
+- [ ] 11.3 Run `make test FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree save burst observes both debounce deadlines"` and see it pass
+
+## 12. Restore repository-discovery instrumentation on every path
+Scenarios: `file-tree: Project tree re-roots without waiting for repository discovery`
+- [ ] 12.1 Tighten `tests/integration/file-tree/test_performance.lua` to assert that the real `vim.system` is restored after the re-root case; temporarily suppress the matching discovery call, run `make test FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree re-roots without waiting for repository discovery"`, see the restoration assertion fail and record it, then remove the fault
+- [ ] 12.2 Return and register an unconditional cleanup from the discovery hold helper before driving real `:cd`, while preserving the pending-discovery assertion and existing 100 ms and 1000 ms bounds
+- [ ] 12.3 Run `make test FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree re-roots without waiting for repository discovery"` and see it pass
+
+## 13. End unfold timing at child-side completion
+Scenarios: `file-tree: Project tree unfold all meets the large-tree bound`
+- [ ] 13.1 Tighten `tests/integration/file-tree/test_performance.lua` to assert that the sample is captured when the real WARN notification is emitted; temporarily capture it only after the host poll, run `make test FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree unfold all meets the large-tree bound"`, see it fail and record the failure, then remove the fault
+- [ ] 13.2 Finish the process-CPU and elapsed sample at the child-side completion boundary so the serial 500 ms wall sample excludes host polling, while retaining the real `zR`, 5001-row ceiling and exact warning
+- [ ] 13.3 Run `make test FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree unfold all meets the large-tree bound"` and see it pass
+
+## 14. Drive unchanged-status refresh without a real timer
+Scenarios: `file-tree: Unchanged git status does not redraw the project tree`
+- [ ] 14.1 Use the recorded gate failure `FAIL in tests/integration/file-tree/test_performance.lua | file-tree: Unchanged git status does not redraw the project tree: tests/integration/file-tree/test_performance.lua:431: unchanged git status did not finish` as the failing evidence
+- [ ] 14.2 In `tests/integration/file-tree/test_performance.lua`, run the real `require("gleb.file_tree.git").refresh(root)` with the manual debounce scheduler, advance its deadline explicitly, restore the scheduler, and retain the zero-replacement assertion for equal status and ignored maps
+- [ ] 14.3 Run `make test FILE=tests/integration/file-tree/test_performance.lua CASE="Unchanged git status does not redraw the project tree"` and see it pass
+
 ## Agent decisions
 
 - Round a scaled default deadline up to the next millisecond so host-load scaling never shortens the intended wait.
@@ -60,3 +90,4 @@ Scenarios: `file-tree: Project tree persists folds off the action path`, `file-t
 - Hold the real repository-discovery process result at its callback boundary so the re-root test observes pending state without replacing Git discovery.
 - Let the shared CPU measurement installer target either child so the unfold fixture uses the same instrumentation as the populated-tree cases.
 - Before a save-burst write, wait for the edit's follow draw, watch reconciliation and a sentinel event on a later watch, because libuv drops events while it rebuilds its single macOS FSEvents stream.
+- Wrap `child.wait` only around the type-check mode poll and restore it immediately so the test observes the real timeout without recording unrelated waits.

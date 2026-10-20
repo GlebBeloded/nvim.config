@@ -21,7 +21,6 @@ local function basedpyright_attached(bufnr)
 end
 
 local function basedpyright_mode(bufnrs, mode)
-	table.insert(attachment_deadlines, ATTACHMENT_TIMEOUT_MS)
 	return child.wait(
 		([[vim.iter({ %s }):all(function(bufnr)
 		local client = vim.lsp.get_clients({ bufnr = bufnr, name = "basedpyright" })[1]
@@ -29,6 +28,18 @@ local function basedpyright_mode(bufnrs, mode)
 	end)]]):format(table.concat(bufnrs, ", "), mode),
 		ATTACHMENT_TIMEOUT_MS
 	)
+end
+
+local function record_attachment_wait(callback)
+	local wait = child.wait
+	child.wait = function(expr, timeout)
+		table.insert(attachment_deadlines, timeout)
+		return wait(expr, timeout)
+	end
+	local ok, result = pcall(callback)
+	child.wait = wait
+	assert(ok, result)
+	return result
 end
 
 local T = H.child_set(child, start)
@@ -58,7 +69,12 @@ T["lsp: Type-check toggle reattaches every Python buffer without reloading"] = f
 	local result = child.lua_get([[{ ok = _G.typecheck_ok, err = _G.typecheck_err }]])
 	eq(result.ok, true)
 	eq(child.bo.modified, true)
-	eq(basedpyright_mode({ first_buf, second_buf }, "basic"), true)
+	eq(
+		record_attachment_wait(function()
+			return basedpyright_mode({ first_buf, second_buf }, "basic")
+		end),
+		true
+	)
 	eq(attachment_deadlines, { math.ceil(TIMEOUT_MS * LOAD_FACTOR) })
 end
 

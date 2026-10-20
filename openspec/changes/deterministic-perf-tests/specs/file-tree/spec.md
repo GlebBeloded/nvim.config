@@ -20,6 +20,10 @@ Each project-tree view SHALL coalesce watcher, write, follow and git invalidatio
 - **WHEN** the tree is settled, one file write triggers `BufWritePost`, a filesystem watch event and a git result, and the debounce interval advances by 50 ms
 - **THEN** the changed row is current, the tree buffer was replaced once, and one new git-status command ran
 
+#### Scenario: Project tree save burst observes both debounce deadlines
+- **WHEN** a settled tree processes a real write while the watcher debounce advances by 149 ms then 1 ms and the resulting draw debounce advances by 49 ms then 1 ms
+- **THEN** no git request runs before 150 ms, no tree-buffer replacement occurs before the final 50 ms, and then one new git request and one replacement occur
+
 #### Scenario: Unchanged git status does not redraw the project tree
 - **WHEN** the settled tree refreshes git status and the returned status and ignored maps equal its current maps
 - **THEN** no tree-buffer replacement occurs
