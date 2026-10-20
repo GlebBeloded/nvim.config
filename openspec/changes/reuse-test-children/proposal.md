@@ -1,7 +1,7 @@
 ## Why
 
 Kind: feature
-Adopt: loop/reuse-test-children
+Adopt: loop/reuse-test-children-20261020-205042
 Priority: high
 
 Loop audit (2026-10-20): the test layer is the gate's critical path (~290 s at 12 workers). Independent profiling:
@@ -21,30 +21,33 @@ file run serially took 44 s versus 200 s inside a loaded gate. Many files never 
 - `tests/helpers.lua` (`H.child_set` / reuse mode), `init.lua` (loader order), the opted-in test files.
 
 ## Rejected run
-Run on `loop/reuse-test-children` was rejected by the judge:
-- fix loop exhausted with gates still red: review
+Run on `loop/reuse-test-children-20261020-205042` was rejected by the judge:
+- fix loop exhausted with gates still red: full
+- last failures:
+  full make check E2E=1 is red:
+  full log: /Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/7a5eae91-6660-4f53-a03f-0d00f487efc7/full-4.log
+  check: waiting for the check lock held by pid 43217 (/Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/worktrees/loop/deterministic-perf-tests) at /Users/hlebbeladzed/.cache/nvim-check-lock
+  ok   e2e             36.0 s
+  ok   trace            0.4 s
+  ok   lint             1.9 s
+  ok   types            3.5 s
+  ok   specs            5.0 s
+  ok   chain            6.5 s
+  ok   smoke-health    14.2 s
+  FAIL stack           29.7 s
+  ok   test           302.5 s
 - review findings:
-  [must-fix] The gate still fails because of the stale-MiniPick reuse leak.
-  - check-3.log:1110 shows FAIL on tests/integration/find-action/test_hidden.lua:54, "Show hidden reveals a separate tier", with `mini/pick.lua:3689: Invalid buffer id: 2`. The case passes on rerun in a fresh child (rerun-3-2.log).
-  - Cause: "Hidden and unavailable actions start absent" (test_hidden.lua:66-70) ends with the palette still open. The reset at tests/helpers.lua:430-431 (`tabonly!` + `%bwipeout!`) wipes the picker's buffer without stopping the picker, so the next case in the same child hits a stale MiniPick.
-  - tests/integration/find-action/test_assign.lua:95 and :108 also end with the picker active, so the file has the same exposure.
-  - Pass 2 asked for this fix in the reset itself. Fix pass b8e0381c only moved test_input back to fresh children, so every other opted-in file that leaves a picker open still leaks.
-  - Fix: in `tests.case_reset`, stop any active picker and drain it before the wipe, e.g. `if _G.MiniPick and MiniPick.is_picker_active() then MiniPick.stop(); vim.wait(1000, function() return not MiniPick.is_picker_active() end) end`. This satisfies the delta scenario "Reusable child resets case state" (one clean buffer, no state left by the first case).
+  Pass 4: no code changes since the Pass 3 approval. Merge 5cdbd732 only brought in the queued fix-remaining-flaky-tests proposal from auto, which is outside this change's diff. The scope matches proposal.md and tasks.md. The init.lua loader move and tests/integration/loop/test_startup.lua implement the ADDED requirement. No tests or scenarios were weakened. Each new case name matches its scenario title and appears in only one place under tests/. The Agent decisions are consistent with the delta, where reuse is a MAY and only safe files opt in.
   
-  [must-fix] The reset still restores globals by reference, so a test table one case mutates carries over to later cases. This contradicts the scenario "no globals left by the first case".
-  - Where: tests/helpers.lua:422-426 snapshots `_G` after `start()`, and tests/helpers.lua:439-441 puts back the same table objects.
-  - Live instances among the opted-in files:
-    - test_assign.lua:42-45 creates `Notifications = {}`. "Adapter assignment reports deferred application" (:187-191) waits for `#Notifications > 0` and checks `Notifications[#Notifications]`. Both checks are satisfied by a notification an earlier case left, so the case can pass or fail on stale data.
-    - test_hidden.lua:12 creates `HiddenRuns = {}`, and :94 expects exactly `{ "zulu" }`.
-  - Pass 2 flagged this. The fix pass isolated only test_input and left the reset unchanged.
-  - Fix: re-run each file's per-case fixture setup (the globals and tables `start` creates) before every case in reuse mode. One way is to split `start` into a once-only part and a per-case part. Alternatively, keep test_assign and test_hidden on fresh children.
+  [minor] check-4.log:1103 and :1111 report failures in file-tree/test_project_live.lua:408 and git/test_changes_diff.lua:168. Neither file is in this diff or opted into reuse. Both passed on rerun (check-4.log tail), so they are flakes this change did not cause.
   
-  [minor] tests/helpers.lua:432 restores the cwd with `lcd`. That sets only a window-local directory, so the child's global cwd stays wherever an earlier `:cd` or `chdir` left it; test_paste.lua:18 calls `cd`. Using `cd` would restore the global state the scenario describes. This was raised in passes 1 and 2.
+  [minor] tests/helpers.lua:433 restores the cwd with `lcd`, which sets only the window-local cwd. The global `cd` at test_paste.lua:18 is not undone. Still open from earlier passes.
   
-  [minor] Reuse saves almost no child starts. The measurement under tasks.md `## Agent decisions` shows 759 → 757 starts and 247.09 s → 252.30 s. The cause is that tests/parallel.lua shards case by case, so a reused file starts one child per worker it lands on. The proposal's Why (speed) is not met.
+  [minor] The reset restores `vim` by reference, so the `vim.system` wrapper from test_pr.lua:66-67 carries over into later cases. It is harmless today.
   
-  [minor] check-3.log:1102 also fails tests/integration/file-tree/test_project_live.lua, "Every compact chain member is watched". That file is not in this diff and not opted into reuse. It passed on rerun (rerun-3-1.log), so it looks like a pre-existing flake and is not attributable to this change.
-- note: flaky test cases (failed, then passed on rerun): tests/integration/file-tree/test_project_live.lua | file-tree: Every compact chain member is watched, tests/integration/find-action/test_hidden.lua | find-action: Show hidden reveals a separate tier: tests/integration/find-action/test_hidden.lua:54: E5108: Lua: ...ed/QtYcIL/256/data/nvim/lazy/mini.nvim/lua/mini/pick.lua:1762: ...ed/QtYcIL/256/data/nvim/lazy/mini.nvim/lua/mini/pick.lua:3689: Invalid buffer id: 2
-- note: loop: No test cases matched
-- note: loop: FAIL in tests/integration/file-tree/test_performance.lua | file-tree: Project tree re-roots without waiting for repository discovery: tests/integration/file-tree/test_performance.lua:525: re-root took 395.94 ms
-- note: loop: FAIL in tests/integration/lsp/test_readiness.lua | lsp: lua_ls ready in this config: lua_ls not ready after 15439 ms, bound 10000 ms (last error: vim.NIL)
+  [minor] test_dashboard.lua:12 has a single case, so `reuse = true` there does nothing.
+  
+  [minor] The speed goal in proposal.md Why is not met. Child starts went 759 → 757 and time went 247.09 s → 252.30 s (tasks.md Agent decisions), because tests/parallel.lua shards the run per case.
+- note: flaky test cases (failed, then passed on rerun): tests/integration/file-tree/test_project_live.lua | file-tree: Every compact chain member is watched, tests/integration/git/test_changes_diff.lua | git: Changes panel shows an untracked file as added
+- note: loop: tests/unit/loop/test_loop_clean_py.lua | loop: Loop clean skips a branch that is already gone: x
+- note: loop: ERROR: test_check_past_the_timeout_is_infra_with_its_log (test_gate_timeout.GateTimeout.test_check_past_the_timeout_is_infra_with_its_log)
