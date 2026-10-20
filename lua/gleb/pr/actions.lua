@@ -22,6 +22,12 @@ local function thread_jumper(direction)
 	end
 end
 
+---@param ctx gleb.ActionContext
+---@return nil
+local function open_thread(ctx)
+	require("gleb.pr.thread_window").open_at_cursor(ctx.win, ctx.buf)
+end
+
 ---@type gleb.Action[]
 local actions = {
 	{
@@ -41,6 +47,12 @@ local actions = {
 		title = "Previous Review Thread",
 		category = "Git | Pull Request",
 		run = thread_jumper(-1),
+	},
+	{
+		id = "pr.open_thread",
+		title = "Open Review Thread",
+		category = "Git | Pull Request",
+		run = open_thread,
 	},
 }
 

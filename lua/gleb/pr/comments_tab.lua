@@ -262,6 +262,12 @@ function M.open(view, row)
 	view.diff_timer:stop()
 	M.preview(view, row, true)
 	view.loaded_buffers[vim.api.nvim_win_get_buf(view.editor_win)] = nil
+	if row.thread then
+		local review = require("gleb.pr").get(view.root)
+		if review then
+			require("gleb.pr.thread_window").open(review, row.thread)
+		end
+	end
 end
 
 return M

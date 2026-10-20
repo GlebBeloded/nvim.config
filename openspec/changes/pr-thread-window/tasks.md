@@ -6,9 +6,9 @@ Scenarios: `pr: Thread window colours`
 
 ## 2. Thread window content and opening
 Scenarios: `pr: Open thread shows the thread centred`, `pr: Open thread without a thread on the line`, `pr: An unmapped thread window shows its diff hunk`
-- [ ] 2.1 Write the three tests in `tests/integration/pr/test_thread_window.lua` using the real `pr.open_thread` action or `<CR>`, the `billing-branch` fixture and populated `pr482` responses; run each with `make test FILE=tests/integration/pr/test_thread_window.lua CASE="<scenario title>"` and see it fail
-- [ ] 2.2 Add `lua/gleb/pr/thread_window.lua`, register `pr.open_thread` in `lua/gleb/pr/actions.lua`, and open the mapped thread or its `diffHunk` in the centred joined-float layout
-- [ ] 2.3 Run each scenario with `make test FILE=tests/integration/pr/test_thread_window.lua CASE="<scenario title>"` and see it pass
+- [x] 2.1 Write the three tests in `tests/integration/pr/test_thread_window.lua` using the real `pr.open_thread` action or `<CR>`, the `billing-branch` fixture and populated `pr482` responses; run each with `make test FILE=tests/integration/pr/test_thread_window.lua CASE="<scenario title>"` and see it fail
+- [x] 2.2 Add `lua/gleb/pr/thread_window.lua`, register `pr.open_thread` in `lua/gleb/pr/actions.lua`, and open the mapped thread or its `diffHunk` in the centred joined-float layout
+- [x] 2.3 Run each scenario with `make test FILE=tests/integration/pr/test_thread_window.lua CASE="<scenario title>"` and see it pass
 
 ## 3. Comments tab Enter
 Scenarios: `pr: Enter on a thread opens its line`, `pr: Enter on an unmapped thread shows its diff hunk`
