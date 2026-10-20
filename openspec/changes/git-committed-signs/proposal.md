@@ -74,6 +74,24 @@ PR itself changed. IntelliJ's review mode marks those lines in the gutter. The a
     committed layer stages nothing.
   - `git: Missing optional git plugins are tolerated` still holds: `gleb.git.committed_signs` requires no
     plugin, and `gitsigns.lua` keeps its `pcall` guard.
+  - `file-tree: Project tree hides the git folder` still holds: the committed-sign layer does not change
+    project-tree filtering.
+  - `file-tree: Requirement: Project tree refresh and operation keys` still holds: the committed-sign
+    refresh path is separate from project-tree refresh and mappings.
+  - `file-tree: Requirement: Project tree refresh isolation` still holds: committed-sign state is scoped
+    to file buffers and does not replace project-tree view state.
+  - `file-tree: Ignored entries are hidden by default` still holds: the committed-sign layer does not
+    change project-tree ignored-entry filtering.
+  - `file-tree: Expanded ignored folder lists ignored children` still holds: the committed-sign layer
+    does not change project-tree expansion or git-status requests.
+  - `file-tree: Project tree refresh survives failed git status` still holds: project-tree refresh and its
+    failure handling are unchanged.
+  - `lsp: diagnostic signs use Nerd Font glyphs` still holds: the new git sign highlight and text do not
+    change diagnostic sign configuration.
+  - `statusline: refresh timer stops when idle` still holds: the committed-sign layer does not change the
+    LSP progress refresh timer.
+  - `statusline: refresh timer stops on exit` still holds: the committed-sign layer does not change the
+    LSP progress timer's exit cleanup.
 - Out of scope:
   - Purple in the diff view and the changes panel (`git-changes-tabs`).
   - Committed-hunk actions (preview, reset, stage).
