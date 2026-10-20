@@ -18,4 +18,22 @@ same way with the user's own git commands.
 
 ## Impact
 
-- `lua/gleb/git/` status/refresh calls, `tests/integration/git/test_changes_stage.lua`, `test_changes_actions.lua`.
+- Capability: `git`.
+- Product code: `lua/gleb/git/changes/git.lua`; tests: `tests/integration/git/test_changes.lua`,
+  `tests/integration/git/test_changes_stage.lua`, and `tests/integration/git/test_changes_actions.lua`.
+- No plugin dependency is added, removed, or upgraded, and no core keymap changes.
+- Out of scope: changing Git mutations, panel rendering, or user-facing staging and commit semantics.
+
+## Evidence
+
+- `tests/integration/git/test_changes_stage.lua:127-130` polls plain `git diff --quiet` every 50 ms while the
+  child may still be running the staging mutation; `tests/integration/git/test_changes_actions.lua:249-253`
+  documents and avoids the same optional-index-lock race for a concurrent checkout.
+- `tests/integration/git/test_changes_stage.lua:8,118-130` uses a fixed 3000 ms budget and repeatedly invokes Git
+  to infer completion instead of waiting for the recorded child process.
+- `lua/gleb/git/changes/git.lua:23-29,50-80` shows the shared runner does not set a lock policy, while the two
+  refresh commands independently carry `--no-optional-locks`; setting the environment for refresh reads makes the
+  lock policy explicit and prevents a future read-command change from reintroducing the race.
+- `tests/integration/git/test_changes_actions.lua:8,137-143` uses an unscaled fixed budget for commit-result
+  notifications even though the popup wait at `tests/integration/git/test_changes_actions.lua:100-108` scales with
+  `H.load_factor()`.
