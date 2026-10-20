@@ -24,9 +24,9 @@ Scenarios: `loop: Known flaky cases use deterministic readiness`, `file-tree: Pr
 
 ## 5. Capture the diff screen only after rendering settles
 Scenarios: `loop: Known flaky cases use deterministic readiness`, `diff: Diff view matches the approved render`
-- [ ] 5.1 Treat the proposal's 4 rerun passes as the failing evidence; tighten `tests/screen/diff/test_view.lua` so the unchanged approved text and colour mask are checked only after the real diff view's asynchronous render state is observable
-- [ ] 5.2 Make `tests/render/cases.lua` wait on the real populated layout, redraw, and highlight readiness rather than only a non-nil view object
-- [ ] 5.3 Run `make test FILE=tests/screen/diff/test_view.lua CASE="Diff view matches the approved render"` and see it pass
+- [x] 5.1 Treat the proposal's 4 rerun passes as the failing evidence; tighten `tests/screen/diff/test_view.lua` so the unchanged approved text and colour mask are checked only after the real diff view's asynchronous render state is observable
+- [x] 5.2 Make `tests/render/cases.lua` wait on the real populated layout, redraw, and highlight readiness rather than only a non-nil view object
+- [x] 5.3 Run `make test FILE=tests/screen/diff/test_view.lua CASE="Diff view matches the approved render"` and see it pass
 
 ## 6. Wait for the final Diffview layout
 Scenarios: `loop: Known flaky cases use deterministic readiness`, `git: Diffview file panel on the left`
@@ -49,3 +49,4 @@ Scenarios: `loop: Known flaky cases use deterministic readiness`, `keymaps: Togg
 - Treesitter readiness means a capture exists at the reference position, while rewritten Go readiness requires two real gopls reference responses from that buffer.
 - The file-tree initial-status hook pauses the initial-draw boundary and suppresses its fallback only while the test controls completion, leaving the production 300 ms deadline unchanged.
 - Project-tree burst readiness uses existing view, Git-root, and watcher state so the run-count assertion is sampled only after every debounce and refresh is quiescent.
+- Diff render readiness requires the fixture's complete 24-row layout and Treesitter captures in both real diff buffers before a forced redraw.

@@ -8,6 +8,7 @@ local function start(case)
 	child.o.lines, child.o.columns = 30, 100
 	child.wait_very_lazy()
 	cases[case].setup(child)
+	child.cmd("redraw!")
 end
 
 local T = H.child_set(child, function()
