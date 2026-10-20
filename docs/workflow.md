@@ -29,9 +29,6 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 
 ## Loop lessons
 
-- When a fix broadens a shared callback contract, name the owning module and contract change in both Impact and its implementation task.
-- Below-EOF virtual lines do not extend Neovim's scroll range; add a cursor-clamped sentinel row when a floating footer must leave the final content row visible.
-- Cancel and invalidate a debounced selection before opening its file, or the queued diff can replace the file immediately afterward.
 - Capture an async child request's generation when its prerequisite completes, not before a user action can advance that generation.
 - A base-change consumer must clear cached branch models when resolution disappears and initialize them when it first appears.
 - Every Changes tab action that opens a panel must restore repository-local view and fold state before applying its requested tab.
@@ -44,6 +41,9 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - `:edit` of the file a window already shows re-reads it (BufRead, LSP reattach, ufo refold) and moves the view after the cursor was placed; edit only when the window shows another file.
 - Guard renderer window IDs as well as buffers because WinEnter can run after a pane closes but before its scheduled view teardown.
 - Serve branch-specific review-thread fixtures through the fake API so integration tests exercise the intended parser and preview path.
+- A write made while libuv rebuilds its single macOS FSEvents stream (after any watch start) emits no event; before asserting a watcher reaction, wait for watch reconciliation to settle and for a sentinel event on a later-started watch.
+- After feeding a key with MiniTest, wait within the behavior's bound for its observable effect before sampling state because `nvim_input()` only queues the key.
+- Measure synchronous mapped actions from immediately before key execution until the mapping returns so final draw work stays inside the sample.
 
 ## The loop
 

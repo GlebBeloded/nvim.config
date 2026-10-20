@@ -21,12 +21,20 @@ are not load-scaled.
 - Pure wall-time bounds move to a serial `make perf` layer that `make check` runs alone; the parallel layer keeps the
   correctness assertions. `child.wait`'s default timeout and the unscaled waits scale with load.
 - No bound is loosened without a load-scaled reason.
+- Test instrumentation observes the timeout passed to the real wait, restores temporary `vim.system` overrides on
+  every path, captures unfold timing at the child-side completion boundary, and manually drives unchanged-status
+  refreshes instead of waiting on a real debounce timer.
+
+## Capabilities
+
+- `file-tree`: make large-tree, coalescing and deferred-maintenance performance checks deterministic while preserving their bounds.
+- `shortcuts`: extend the shared test-harness deadline policy to child-Neovim waits.
 
 ## Impact
 
 - `tests/integration/file-tree/test_performance.lua`, `tests/helpers.lua`, `lua/gleb/util/debounce.lua` (a test hook),
   `Makefile`/`tests/check.sh` (the `perf` layer).
-
+- `statusline: Statusline pull request component runs nothing on redraw` still holds because the shared wait and performance-test changes do not touch statusline redraw code.
 ## Rejected run
 Run on `loop/deterministic-perf-tests-20261020-230531` was rejected by the judge:
 - fix loop exhausted with gates still red: full
@@ -50,3 +58,8 @@ Run on `loop/deterministic-perf-tests-20261020-230531` was rejected by the judge
   [minor] tests/integration/lsp/test_typecheck.lua:7,78: when LOAD_FACTOR is 1 the expected deadline equals the unscaled TIMEOUT_MS (carried over).
   [minor] specs/file-tree/spec.md: the coalesce scenario's "advances by 50 ms" and "149+1" wording does not match the 150+50 advances and GIT_DEBOUNCE_MS=150 (carried over).
   Checked with no finding: scope against proposal Impact, the debounce hook callers, the child.wait default scaling, the serial `+perf` target, unique case names, and no bounds loosened. check-3.log is green.
+
+- `tests/integration/lsp/test_typecheck.lua`; `lsp: Type-check toggle reattaches every Python buffer without reloading` still holds because only its wait budget changes, not the command or attachment assertions.
+- `file-tree: Expanded ignored folder lists ignored children` still holds because manual debounce control changes when the existing callback runs, not ignored-folder expansion, colouring or git calls.
+- No plugin dependency is added, removed or upgraded. Core keymaps do not change.
+- Out of scope: changing project-tree behavior or its numeric performance bounds, changing LSP behavior, and changing editor UI.
