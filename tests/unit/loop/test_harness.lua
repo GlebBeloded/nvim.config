@@ -8,9 +8,30 @@ local T = H.child_set(child, child.start_bare)
 
 T["loop: Test children keep the Go build cache under .tests"] = function()
 	local cache = vim.fs.joinpath(H.root, ".tests/go/cache")
-	eq(child.lua_get("vim.env.GOCACHE"), cache)
+	eq({ child.lua_get("vim.env.GOCACHE"), child.lua_get("vim.env.GOMAXPROCS") }, { cache, "2" })
 	local out = H.system(child, { "go", "env", "GOCACHE" }, H.root)
 	eq(vim.trim(out.stdout), cache, { fail_reason = out.stderr })
+end
+
+T["loop: Product test runs skip the loop's own tests"] = function()
+	local runner = require("tests.runner")
+	local saved = { FILE = vim.env.FILE, CAPS = vim.env.CAPS, LOOP_TESTS = vim.env.LOOP_TESTS }
+	local function files(env)
+		vim.env.FILE, vim.env.CAPS, vim.env.LOOP_TESTS = env.FILE, env.CAPS, env.LOOP_TESTS
+		local found = runner.find_files("unit")
+		vim.env.FILE, vim.env.CAPS, vim.env.LOOP_TESTS = saved.FILE, saved.CAPS, saved.LOOP_TESTS
+		return found
+	end
+	local function has(list, file)
+		return vim.tbl_contains(list, file)
+	end
+	local sandbox, gate = "tests/unit/shortcuts/test_sandbox.lua", "tests/unit/loop/test_gate.lua"
+	local product = files({})
+	eq({ has(product, sandbox), has(product, gate), has(product, "tests/unit/pr/test_gh.lua") }, { false, false, true })
+	local only = files({ LOOP_TESTS = "only" })
+	eq({ has(only, sandbox), has(only, gate), has(only, "tests/unit/pr/test_gh.lua") }, { true, true, false })
+	eq(has(files({ CAPS = "loop" }), gate), true)
+	eq(has(files({ LOOP_TESTS = "1" }), sandbox), true)
 end
 
 T["loop: A test directory runs its files"] = function()

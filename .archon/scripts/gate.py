@@ -21,6 +21,7 @@ import re
 import sys
 
 from blocked import blocked_text
+from flake_stats import flaky_cases
 from check_log import failed_targets, failing_cases, sections, strip_ansi, summarize
 from integrity import BASE, commit_paths, staged, CASE_CHAIN, CASE_KEY, case_names, git, hard_rule_violations, plan_edits, record_dropped
 from pinned import pinned
@@ -32,8 +33,10 @@ from tasks import tick_gate_items, unchecked
 
 change = os.environ.get("INPUTS_CHANGE", "")
 artifacts = pathlib.Path(os.environ.get("ARTIFACTS_DIR", ".")).resolve()
+# `quick` (each pass's gate node) or `full` (the full-gate node, once the quick tier is green and the review approves)
+TIER = os.environ.get("INPUTS_TIER") or "quick"
 counter = artifacts / "attempts"
-attempt = int(counter.read_text()) + 1 if counter.exists() else 1
+attempt = int(counter.read_text()) + (TIER == "quick") if counter.exists() else 1  # the full gate is the same pass
 counter.write_text(str(attempt))
 
 
@@ -131,14 +134,15 @@ def red(failures: str, blocked: bool = False, infra: str = "") -> None:
     sys.exit(0)
 
 
-if os.environ.get("INPUTS_SYNC_BASE") == "true":  # the base moved since the fork (its fixes, approved renders)
+if os.environ.get("INPUTS_SYNC_BASE") == "true":  # (the full gate passes "false") the base moved since the fork (its fixes, approved renders)
     print(sync() or "sync: base already merged", file=sys.stderr)
-blocked = blocked_text(change)
+blocked = blocked_text(change) if TIER == "quick" else ""
 if blocked:  # the next pass settles it (unblock.md), so checking or reviewing it is wasted; no attempt either
     counter.write_text(str(attempt - 1))
     red("blocked: " + blocked, blocked=True)
-record_fix_scope()
-violations = hard_rules()
+if TIER == "quick":  # the full gate checks the tree this pass's quick gate already held to the rules
+    record_fix_scope()
+violations = hard_rules() if TIER == "quick" else []
 if violations:  # never shipped: a full make check and a review would be wasted on it
     red("\n".join(f"hard rule: {v}" for v in violations))
 
@@ -252,12 +256,15 @@ KNOWN_RERUNS = 3
 
 
 def known_flaky() -> list[str]:
-    """The `<file> | <case>` lines of tests/flaky.txt: known timing-sensitive cases, rerun up to KNOWN_RERUNS times."""
+    """Known timing-sensitive cases, rerun up to KNOWN_RERUNS times: the `<file> | <case>` lines of tests/flaky.txt and
+    the cases the gates' own history shows flaky (flake_stats.py over the sibling run dirs of ARTIFACTS_DIR)."""
     try:
         lines = pathlib.Path("tests/flaky.txt").read_text().splitlines()
     except OSError:
-        return []
-    return [line.strip() for line in lines if " | " in line and not line.lstrip().startswith("#")]
+        lines = []
+    listed = [line.strip() for line in lines if " | " in line and not line.lstrip().startswith("#")]
+    history = flaky_cases(artifacts.parent) if artifacts.parent.name == "runs" else []  # Archon's artifacts/runs only
+    return listed + [case for case in history if case not in listed]
 
 
 def rerun_flaky(out: str, log: str) -> tuple[list[str], str, list[str]]:
@@ -289,19 +296,70 @@ def rerun_flaky(out: str, log: str) -> tuple[list[str], str, list[str]]:
 
 TEST_LAYERS = ("unit", "integration", "screen")
 QUICK_TARGETS = "lint types trace specs test"
-# paths only the full check tests (shortcut layers, the sandbox VM): a quick tier would prove nothing about them
-FULL_ONLY = re.compile(r"^(tests/(e2e|chain|stack|shortcuts|sandbox|smoke)/|terminal/)")
+# every test depends on these: a change to one runs the whole quick tier
+SHARED = {"tests/helpers.lua", "tests/minimal_init.lua", "tests/child_init.lua", "tests/runner.lua", "tests/parallel.lua", "init.lua", "Makefile"}
+SHARED_DIRS = ("lua/gleb/plugins/", "settings/", "lua/gleb/util/")  # every area's plugin specs, keymaps, helpers
+# paths only the full check tests (smoke, the terminal configs): a quick tier would prove nothing
+FULL_ONLY = re.compile(r"^(tests/smoke/|terminal/)")
+LOOP_PATHS = (".archon/", "tests/unit/loop/", "tests/unit/shortcuts/test_sandbox.lua", "tests/sandbox/")
+# the shortcut layers run in the full check only; their files still name the capability they cover
+SHORTCUT_LAYERS = ("e2e", "chain", "stack", "shortcuts")
+
+
+REQUIRE = re.compile(r"""require\(?\s*["'](gleb\.[\w.]+)["']""")
+
+
+def module_of(path: str) -> str:
+    return path.removeprefix("lua/").removesuffix(".lua").removesuffix("/init").replace("/", ".")
+
+
+def dependent_caps(path: str, known: set[str]) -> set[str]:
+    """Areas of the `lua/gleb` modules that require the module at `path`, transitively: `gleb.git.base` changes the
+    pr and file-tree code that requires it, so their tests run too (a git-only quick tier missed them, Oct 2026)."""
+    users: dict[str, set[str]] = {}
+    for file in pathlib.Path("lua/gleb").rglob("*.lua"):
+        for dep in REQUIRE.findall(file.read_text(errors="replace")):
+            users.setdefault(dep, set()).add(str(file))
+    seen, todo, caps = set(), [module_of(path)], set()
+    while todo:
+        module = todo.pop()
+        for dep, files in users.items():
+            if dep != module and not dep.startswith(module + "."):
+                continue
+            for file in files - seen:
+                seen.add(file)
+                area = file.split("/")[2].removesuffix(".lua").replace("_", "-")
+                caps.update({area} & known)
+                todo.append(module_of(file))
+    return caps
+
+
+def referencing_caps(path: str, known: set[str]) -> set[str]:
+    """Capabilities whose test files name `path`: its module (`tests.fixtures.gh.mutations`, `gleb.alpha`), its folder's
+    module, or its repo path without `.lua`. A support file maps to the tests that use it, not to every test (pr
+    gates fell back to the whole suite for one fixture, Oct 2026)."""
+    stem = path.removesuffix(".lua").removesuffix("/init")
+    module = stem.removeprefix("lua/").replace("/", ".")
+    needles = {module, stem.removeprefix("tests/"), module.rsplit(".", 1)[0]} - {"tests", "gleb", ""}
+    caps = set()
+    for layer in TEST_LAYERS:
+        for test in pathlib.Path("tests", layer).glob("*/**/*.lua"):
+            cap = test.parts[2]
+            if cap in known and cap not in caps and any(n in test.read_text(errors="replace") for n in needles):
+                caps.add(cap)
+    return caps
 
 
 def test_caps() -> set[str]:
     return {d.name for layer in TEST_LAYERS for d in pathlib.Path("tests", layer).glob("*") if d.is_dir()}
 
 
-def affected() -> tuple[str, bool] | None:
+def affected() -> tuple[str | None, bool] | None:
     """(CAPS, loop) of the quick tier for the branch diff against its base (committed or not): the capability of
-    each `lua/gleb/<area>` and `tests/<layer>/<cap>` path, `loop` and loop-test for `.archon/`; "" (every
-    capability) when a changed file maps to none; None when no quick tier applies: nothing to test (planning
-    and docs only) or a path only the full check tests."""
+    each `lua/gleb/<area>` and `tests/<layer>/<cap>` path (shortcut layers included), of the tests naming any
+    other file (referencing_caps), `loop` and loop-test for `.archon/`; "" (every capability) for a SHARED file or
+    one no test names; None when no quick tier applies: nothing to test (planning and docs only) or a path only
+    the full check tests."""
     try:
         git("add", "-A")
         paths = git("diff", "--cached", "--name-only", git("merge-base", "HEAD", BASE).strip()).split()
@@ -311,31 +369,34 @@ def affected() -> tuple[str, bool] | None:
     known = test_caps()
     for path in paths:
         parts = path.split("/")
-        if FULL_ONLY.match(path):
-            return None
+        if FULL_ONLY.match(path):  # nothing quick tests it: the full gate does
+            continue
         if path.startswith(("openspec/", "docs/")) or path.endswith(".md"):
             continue
-        if path.startswith(".archon/"):
-            caps.add("loop")
+        if path.startswith(LOOP_PATHS):  # loop-test runs these and the loop's Lua tests (tests/runner.lua LOOP_FILES)
             loop = True
             continue
-        if len(parts) > 3 and parts[0] == "tests" and parts[1] in TEST_LAYERS and parts[2] in known:
-            caps.add(parts[2])
+        if len(parts) > 3 and parts[0] == "tests" and parts[1] in TEST_LAYERS + SHORTCUT_LAYERS:
+            caps.update({parts[2]} & known)  # a shortcut-layer file: its capability's quick tests, the layer in the full check
             continue
         if len(parts) > 2 and parts[:2] == ["lua", "gleb"]:
             area = parts[2].removesuffix(".lua").replace("_", "-")
             if area in known and area != "plugins":  # lua/gleb/plugins holds every area's plugin specs
                 caps.add(area)
+                caps |= dependent_caps(path, known)
                 continue
-        every = True
-    if not caps and not every:
+        # a shared file (tests/helpers.lua, init.lua, settings) has no single owner; a support file maps by its users
+        found = set() if path in SHARED or path.startswith(SHARED_DIRS) else referencing_caps(path, known)
+        caps |= found
+        every = every or not found
+    if not caps and not every and not loop:
         return None
-    return ("" if every else ",".join(sorted(caps))), loop
+    return ("" if every else ",".join(sorted(caps)) if caps else None), loop
 
 
 def timed_out(out: str, log: str) -> None:
     if TIMED_OUT in out:  # not the change's failure: no fix pass, no attempt; the loop stops as infra
-        counter.write_text(str(attempt - 1))
+        counter.write_text(str(attempt - (TIER == "quick")))
         red(f"infra: make check timed out after {CHECK_TIMEOUT_S} s\nfull log: {artifacts / log}", infra="check timed out")
 
 
@@ -348,33 +409,43 @@ def checked(cmd: list[str], log: str, extra: dict[str, str] | None = None, note:
     timed_out(out, log)
     flaky, infra, owned = ([], "", []) if green else rerun_flaky(out, log)
     if infra:  # the host failed twice, not the change: the loop stops with no fix pass, and this pass is no attempt
-        counter.write_text(str(attempt - 1))
+        counter.write_text(str(attempt - (TIER == "quick")))
         red(f"infra: e2e did not run (sandbox failed twice): {infra}\nfull log: {artifacts / log}", infra=infra)
     return green or (bool(flaky) and not owned), out, flaky, owned
 
 
 def check() -> tuple[bool, str, list[str], list[str]]:
-    """(green, output, flaky, owned) of the gate's check, its log `check-<attempt>.log`. A gate first runs the
-    quick tier on the capabilities the branch touches (`affected`: lint, types, trace, specs, their tests,
-    loop-test for loop files; no e2e): red ends the gate there, and only a green quick tier (kept as
-    `quick-<attempt>.log`) runs the full `make check E2E=1`."""
-    log, quick_flaky = f"check-{attempt}.log", []
-    tier = affected()
-    if tier is not None:
-        caps, loop = tier
-        targets = QUICK_TARGETS + (" loop-test" if loop else "")
-        note = f"quick tier: {targets} with CAPS={caps or '(all)'}; the full make check E2E=1 runs once it is green\n"
-        cmd = ["make", "check", f"CHECK_TARGETS={targets}"]
-        green, out, quick_flaky, owned = checked(cmd, log, {"CAPS": caps}, note)
-        if not green:
-            return green, out, quick_flaky, owned
-        (artifacts / log).rename(artifacts / f"quick-{attempt}.log")
-    # E2E=1: e2e runs in the sandbox VM and boots it when it is down (docs/testing.md, Sandbox VM)
+    """(green, output, flaky, owned) of the pass's quick tier, its log `check-<attempt>.log`: the capabilities the
+    branch touches (`affected`: lint, types, trace, specs, their tests, loop-test for loop files; no e2e), or only the
+    static targets when no test maps (docs, smoke or terminal paths). The full `make check E2E=1` runs once per
+    approved pass in the full-gate node (`full_check`), not on every pass (6-7 min each, Oct 2026)."""
+    tier = affected() or (None, False)
+    caps, loop = tier
+    targets = (QUICK_TARGETS if caps is not None else QUICK_TARGETS.removesuffix(" test")) + (" loop-test" if loop else "")
+    shown = "(none)" if caps is None else caps or "(all)"
+    note = f"quick tier: {targets} with CAPS={shown}; the full make check E2E=1 runs after an approving review\n"
+    cmd = ["make", "check", f"CHECK_TARGETS={targets}"]
+    return checked(cmd, f"check-{attempt}.log", {"CAPS": caps or ""}, note)
+
+
+def full_check() -> None:
+    """The full-gate node: `make check E2E=1` (e2e in the sandbox VM, booted when down) with the usual reruns, as
+    `full-<attempt>.log`; prints the gate JSON (green, failures, flaky, infra) and exits."""
+    log = f"full-{attempt}.log"
     green, out, flaky, owned = checked(["make", "check", "E2E=1"], log)
-    return green, out, quick_flaky + [f for f in flaky if f not in quick_flaky], owned
+    failures = "" if green else "full make check E2E=1 is red:\n" + summarize(out, str(artifacts / log))
+    if not green and owned and flaky:
+        failures += "\n\npassed on rerun (flaky, not this change's): " + ", ".join(flaky)
+    out = {"green": green, "spec_ok": True, "tasks_done": True, "untested": 0, "attempt": attempt}
+    print(json.dumps({**out, "failures": failures, "flaky": flaky if green else [], "infra": "", "blocked": False}))
+    sys.exit(0)
 
 
 change_dir = pathlib.Path("openspec/changes") / change
+if TIER == "full":
+    full_check()
+
+
 check_log = f"check-{attempt}.log"
 green, check_out, flaky, owned = check()
 spec_ok, spec_tail = True, ""

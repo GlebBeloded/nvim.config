@@ -152,7 +152,7 @@ nodes:
           idle_timeout: 900000
           when: "$LOOP_PREV.verdict.output.done == false && $LOOP_PREV.verdict.output.blocked == true && $LOOP_PREV.verdict.output.blocked_passes == 2"
 
-        - id: gate # make check (incl. make trace) + openspec validate --strict + tasks ticked
+        - id: gate # the quick tier of the touched capabilities (gate.py) + openspec validate --strict + tasks ticked
           script: gate
           runtime: uv
           timeout: 3600000 # above gate.py CHECK_TIMEOUT_S
@@ -161,7 +161,8 @@ nodes:
           with:
             change: $INPUTS.change
             sync_base: "true" # sync_base.py: merge a moved auto first when clean
-          output_format:
+            tier: quick
+          output_format: &gate_output
             type: object
             properties:
               green: { type: boolean }
@@ -191,10 +192,22 @@ nodes:
               weakened_test: { type: boolean }
             required: [approve, findings, weakened_scenario, weakened_test]
 
+        - id: full-gate # the full make check E2E=1, once per approved pass instead of on every pass (gate.py full_check)
+          script: gate
+          runtime: uv
+          timeout: 3600000 # above gate.py CHECK_TIMEOUT_S
+          depends_on: [review]
+          when: "$review.output.approve == true"
+          with:
+            change: $INPUTS.change
+            sync_base: "false" # the pass's quick gate merged a moved auto already
+            tier: full
+          output_format: *gate_output
+
         - id: verdict # also runs the hard-rule checks (integrity.py); a `## Blocked` section left after Claude ends the loop
           script: verdict
           runtime: uv
-          depends_on: [gate, review]
+          depends_on: [gate, review, full-gate]
           trigger_rule: all_done
           with:
             change: $INPUTS.change
@@ -210,6 +223,10 @@ nodes:
             review_findings: { from: $review.output.findings, if_skipped: "" }
             weakened_scenario: { from: $review.output.weakened_scenario, if_skipped: false }
             weakened_test: { from: $review.output.weakened_test, if_skipped: false }
+            full_green: { from: $full-gate.output.green, if_skipped: "skipped" } # ran only after an approving review
+            full_failures: { from: $full-gate.output.failures, if_skipped: "" }
+            full_flaky: { from: $full-gate.output.flaky, if_skipped: [] }
+            full_infra: { from: $full-gate.output.infra, if_skipped: "" }
           output_format:
             type: object
             properties:
@@ -341,6 +358,7 @@ nodes:
           with:
             change: $INPUTS.change
             sync_base: "false" # resolve just merged auto
+            tier: full # the merged result ships next: the full check, not the quick tier
           output_format:
             type: object
             properties:

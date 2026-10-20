@@ -1,5 +1,5 @@
-"""End of one build pass: passed when every gate holds (check, spec, tasks, hard rules, /opsx:verify
-without CRITICAL, AI review approves). `feedback` carries only the failures and blocking review findings
+"""End of one build pass: passed when every gate holds (the quick tier, spec, tasks, hard rules, /opsx:verify
+without CRITICAL, AI review approves, then the full make check E2E=1 of the full-gate node). `feedback` carries only the failures and blocking review findings
 (minor ones are the judge's notes on ship, findings.py), so the next pass's fix step reads nothing else; `notes` (flaky cases gate.py passed on rerun) is no finding. The loop stops when passed, after MAX_ATTEMPTS
 reviewed passes (a gate-red pass skips the review, so it burns no attempt) or MAX_PASSES passes, when the gate reports `infra` (the sandbox failed twice: no fix pass can resolve it), or when a `## Blocked` section
 (blocked.py) is still there after the settle pass (default model, xhigh) and the unblock pass (Claude): `blocked_passes`
@@ -57,10 +57,19 @@ gates = {
 }
 if value("green", False) is not True or value("spec_ok", False) is not True or int(value("critical", -1)) != 0:
     gates.pop("review")  # review did not run this pass: not a failed gate (tests, spec or verify already is)
+# the full make check E2E=1 (full-gate node) runs only after an approving review; without it nothing passes
+full_green = value("full_green", "skipped")
+if gates.get("review"):
+    gates["full"] = full_green is True
+full_failures = str(value("full_failures", "") or "")
+if gates.get("full") is False and full_failures:
+    failures = (failures + "\n\n" + full_failures).strip()
+elif gates.get("full") is False:
+    failures = (failures + "\n\nfull make check E2E=1 did not report (full-gate node)").strip()
 passed = all(gates.values())
 attempt = int(value("attempt", 0))
 blocked = "" if passed else blocked_text(os.environ.get("INPUTS_CHANGE", ""))
-infra = "" if passed else str(value("infra", "") or "")
+infra = "" if passed else str(value("infra", "") or value("full_infra", "") or "")
 artifacts = pathlib.Path(os.environ.get("ARTIFACTS_DIR", "."))
 
 
@@ -104,7 +113,7 @@ if "review" in gates:
     feedback += [f"review: {blocking}" if blocking else ""]
 elif OPEN_REVIEW.exists():  # a red pass skipped the review: its findings still need fixing (run 3bc4065f)
     feedback.append(f"review (last review, still open): {OPEN_REVIEW.read_text().strip()}")
-flaky = value("flaky", []) or []
+flaky = [*(value("flaky", []) or []), *(value("full_flaky", []) or [])]
 notes = "flaky test cases (failed, then passed on rerun): " + ", ".join(map(str, flaky)) if isinstance(flaky, list) and flaky else ""
 print(
     json.dumps(

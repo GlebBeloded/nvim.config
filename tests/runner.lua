@@ -17,6 +17,22 @@ local SERIAL_FILES = {
 	["tests/integration/lsp/test_readiness.lua"] = true,
 }
 
+-- The loop's own tests (its scripts, the sandbox and check harness): `make loop-test` runs them (LOOP_TESTS=only), when
+-- a file they cover changed (.archon/scripts/loop_changed.sh); `make test` skips them unless CAPS or FILE names them or
+-- LOOP_TESTS=1. They were the top two flakes of every product gate and ~14% of its test time (Oct 2026).
+M.LOOP_FILES = { "tests/unit/loop/", "tests/unit/shortcuts/test_sandbox.lua" }
+
+---@param file string
+---@return boolean
+function M.is_loop_file(file)
+	for _, prefix in ipairs(M.LOOP_FILES) do
+		if vim.startswith(file, prefix) then
+			return true
+		end
+	end
+	return false
+end
+
 ---@param layer string? comma-separated layer directories, nil/"" for the default layers
 ---@return string[]
 function M.find_files(layer)
@@ -37,8 +53,16 @@ function M.find_files(layer)
 			vim.list_extend(files, vim.fn.globpath(vim.fs.joinpath("tests", dir, cap), "**/test_*.lua", false, true))
 		end
 	end
+	local loop = vim.env.LOOP_TESTS or ""
+	local named = vim.tbl_contains(caps, "loop")
 	files = vim.tbl_filter(function(file)
-		return not SERIAL_FILES[file]
+		if SERIAL_FILES[file] then
+			return false
+		end
+		if loop == "only" then
+			return M.is_loop_file(file)
+		end
+		return loop == "1" or named or not M.is_loop_file(file)
 	end, files)
 	table.sort(files)
 	return files

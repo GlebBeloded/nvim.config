@@ -46,6 +46,7 @@ local function run_verdict(repo, artifacts)
 		INPUTS_TASKS_DONE = "true",
 		INPUTS_CRITICAL = "0",
 		INPUTS_APPROVE = "true",
+		INPUTS_FULL_GREEN = "true",
 		INPUTS_ATTEMPT = "2",
 	})
 	return H.system(child, { "python3", VERDICT }, repo, env)

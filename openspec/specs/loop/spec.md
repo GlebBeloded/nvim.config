@@ -595,19 +595,33 @@ verdict.py SHALL pass on the last review's findings even when it approves; on sh
 - **WHEN** verdict.py passes with an approving review whose findings hold a `[minor]` line and a `Minor (non-blocking):` heading with one item, and the judge runs on verdict's `review_findings`
 - **THEN** the decision is `ship` and escalation.md has a `- note: review (minor):` line for each of the two, and none for the summary line
 
+### Requirement: The loop's own tests run apart from the product tests
+`make test` SHALL skip `tests/unit/loop/` and `tests/unit/shortcuts/test_sandbox.lua` unless `CAPS` names `loop`, `FILE` names them or `LOOP_TESTS=1`; `make loop-test` SHALL run them (`LOOP_TESTS=only`), and `loop_changed.sh` SHALL count them and the harness they test.
+
+#### Scenario: Product test runs skip the loop's own tests
+- **WHEN** `require("tests.runner").find_files("unit")` runs with no narrowing, with `LOOP_TESTS=only`, with `CAPS=loop` and with `LOOP_TESTS=1`
+- **THEN** the first lists `tests/unit/pr/test_gh.lua` but neither `tests/unit/loop/test_gate.lua` nor `tests/unit/shortcuts/test_sandbox.lua`; the second lists both and not the pr file; the third lists the gate file; the fourth lists the sandbox file
+
+### Requirement: The full check runs once per approved pass
+nvim-deliver's `full-gate` node SHALL run `gate.py` with `tier: full` (only `make check E2E=1` with its reruns, no attempt of its own) after an approving review; verdict.py SHALL pass a reviewed pass only when its `full_green` is true, sending the full gate's failures to the next fix pass otherwise.
+
+#### Scenario: Verdict passes only after the full gate is green
+- **WHEN** verdict.py runs on an approving pass with `full_green` false and full failures, with `full_green` `skipped`, with `full_green` true, and on a quick-red pass
+- **THEN** the first is not passed with `failed_gates` `full` and the failures in its feedback, the second fails `full` too, the third passes, and the last fails only `tests`
+
 ### Requirement: Gate runs a quick tier first
-gate.py SHALL first run `make check CHECK_TARGETS="lint types trace specs test"` with `CAPS` the capabilities the branch diff touches (`lua/gleb/<area>`, `tests/<layer>/<cap>`; `loop` plus `loop-test` for `.archon/`; empty for an unmapped file); red (after reruns) ends the gate, green runs the full `make check E2E=1`. Planning and docs only, or a shortcut-layer or sandbox path, runs the full check alone.
+gate.py SHALL first run `make check CHECK_TARGETS="lint types trace specs test"` with `CAPS` the touched capabilities: `lua/gleb/<area>` and the areas requiring it, `tests/<layer>/<cap>` (shortcut layers too), those whose tests name any other file, all for a shared or unnamed file; `loop-test` for the loop's paths. Red (after reruns) ends the gate; green runs `make check E2E=1`. Docs only, or a smoke or terminal path, runs the full check alone.
 
 #### Scenario: Gate runs the quick tier before the full check
-- **WHEN** gate.py runs with a recording `make` stub on branches editing `lua/gleb/pr/` and its tests (quick tier red, then green), `.archon/`, `init.lua`, only docs and a change folder, and `lua/gleb/pr/` with `tests/e2e/`
-- **THEN** the red quick tier is the only call (`CAPS=pr`, noted in the check log); green adds `make check E2E=1` and keeps `quick-1.log`; `.archon/` adds `loop-test` with `CAPS=loop`; `init.lua` runs `CAPS=` empty; the last two run only the full check
+- **WHEN** gate.py runs with a recording `make` stub on branches editing `lua/gleb/pr/` and its tests (quick tier red, then green), `.archon/`, `init.lua`, only docs and a change folder, and `lua/gleb/pr/` with `tests/e2e/find-action/`, a fixture a pr test requires, a fixture no test names, `lua/gleb/plugins/`, `lua/gleb/pr/` with `tests/sandbox/` or `tests/smoke/`, and a required git module
+- **THEN** the red quick tier is the only call (`CAPS=pr`, noted in the check log); green adds `make check E2E=1` and keeps `quick-1.log`; `.archon/` runs `lint types trace specs loop-test` with no `test`; `init.lua` runs `CAPS=` empty; docs only runs only the full check; the e2e branch runs `CAPS=find-action,pr`, the used fixture `CAPS=pr`, the unused fixture and the plugin spec `CAPS=` empty, the sandbox branch `CAPS=pr` plus `loop-test`, a smoke branch only the full check, and a change to `lua/gleb/git/base.lua` that `lua/gleb/pr/` requires `CAPS=git,pr`
 
 ### Requirement: Gate reruns known flaky cases up to three times
-A failing case listed in `tests/flaky.txt` (`<file> | <case>`, by name prefix) that gate.py would rerun SHALL rerun up to 3 times, serially, and count as flaky on its first pass; other cases rerun once. A branch adding a case to `tests/flaky.txt` SHALL be a hard rule.
+A failing case listed in `tests/flaky.txt` (`<file> | <case>`, by name prefix), or one that passed on rerun in 3 or more runs of the last 14 days (`flake_stats.py` over Archon's `artifacts/runs`), that gate.py would rerun SHALL rerun up to 3 times, serially, and count as flaky on its first pass; other cases rerun once. A branch adding a case to `tests/flaky.txt` SHALL be a hard rule.
 
 #### Scenario: Gate reruns a known flaky case up to three times
-- **WHEN** gate.py runs with a `make` stub whose check fails one case listed in the base's `tests/flaky.txt`, its rerun passing on the 3rd try, then never; then the case unlisted, passing on the 2nd try; then a branch adding it to `tests/flaky.txt`
-- **THEN** the first is green after 3 reruns with the case in `flaky`; the second red after 3; the third red after 1; the fourth red with `hard rule: tests/flaky.txt gains a case on this branch`
+- **WHEN** gate.py runs with a `make` stub whose check fails one case listed in the base's `tests/flaky.txt`, its rerun passing on the 3rd try, then never; then the case unlisted, passing on the 2nd try; then unlisted but passed on rerun in 3 sibling runs of an `artifacts/runs` dir, then a branch adding it to `tests/flaky.txt`
+- **THEN** the first is green after 3 reruns with the case in `flaky`; the second red after 3; the third red after 1; the history one green after 3; the last red with `hard rule: tests/flaky.txt gains a case on this branch`
 
 ### Requirement: Gate reruns failed test cases once
 When `make check` fails only in `test`, `test-readiness` or `e2e`, gate.py SHALL rerun each `FAIL in` case once, serially (`make test FILE=<file> CASE=<name>`, `make test-readiness CASE=<name>`); e2e only when its log has no `FAIL in` and only sandbox/Lume infra lines (`make e2e E2E=1`). All passing: green, listed in `flaky` and the check log, a judge note. A rerun failing stays red; other targets never rerun.
@@ -1099,7 +1113,7 @@ a test child SHALL exit when its test worker is gone, `make test FILE=<directory
 
 #### Scenario: Test children keep the Go build cache under .tests
 - **WHEN** a test child starts through `tests/helpers.lua` and runs `go env GOCACHE`
-- **THEN** its `GOCACHE` and the `go` answer are `<repo>/.tests/go/cache` (`tests/check.sh` empties it past `CHECK_GOCACHE_GB`, default 5)
+- **THEN** its `GOCACHE` and the `go` answer are `<repo>/.tests/go/cache` (`tests/check.sh` empties it past `CHECK_GOCACHE_GB`, default 5) and its `GOMAXPROCS` is `2`
 
 ### Requirement: Test bootstrap ignores a leaked GIT_DIR
 `tests/bootstrap.sh` and `tests/fixtures/build.sh` SHALL unset Git's local environment (`git rev-parse --local-env-vars`) before any git command, so a `make test` run from `git bisect run` or a hook never re-initializes the real repository, and `followup.py` SHALL refuse to move the base branch while the repository reads as bare.

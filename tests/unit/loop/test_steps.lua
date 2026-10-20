@@ -139,6 +139,7 @@ T["loop: Verdict sends hard-rule violations back to fix"] = function()
 		INPUTS_TASKS_DONE = "true",
 		INPUTS_CRITICAL = "0",
 		INPUTS_APPROVE = "true",
+		INPUTS_FULL_GREEN = "true",
 		INPUTS_ATTEMPT = "1",
 	})
 	local out = vim.json.decode(result.stdout)
@@ -525,7 +526,12 @@ T["loop: Each review sees the run's earlier reviews"] = function()
 	local passes = {
 		{ INPUTS_GREEN = "true", INPUTS_APPROVE = "false", INPUTS_REVIEW_FINDINGS = "[must-fix] a.lua:1 first" },
 		{ INPUTS_GREEN = "false", INPUTS_FAILURES = "FAIL in t.lua" },
-		{ INPUTS_GREEN = "true", INPUTS_APPROVE = "true", INPUTS_REVIEW_FINDINGS = "[minor] a.lua:2 second" },
+		{
+			INPUTS_GREEN = "true",
+			INPUTS_APPROVE = "true",
+			INPUTS_FULL_GREEN = "true",
+			INPUTS_REVIEW_FINDINGS = "[minor] a.lua:2 second",
+		},
 	}
 	for _, env in ipairs(passes) do
 		local result = run("verdict.py", repo, vim.tbl_extend("force", base, env))
@@ -566,7 +572,7 @@ T["loop: A red pass keeps the last review's open findings"] = function()
 	pass({ INPUTS_GREEN = "true", INPUTS_APPROVE = "false", INPUTS_REVIEW_FINDINGS = finding })
 	local red = pass({ INPUTS_GREEN = "false", INPUTS_FAILURES = "FAIL in t.lua" })
 	eq(red:find("review (last review, still open): " .. finding, 1, true) ~= nil, true, { fail_reason = red })
-	pass({ INPUTS_GREEN = "true", INPUTS_APPROVE = "true", INPUTS_REVIEW_FINDINGS = "" })
+	pass({ INPUTS_GREEN = "true", INPUTS_APPROVE = "true", INPUTS_FULL_GREEN = "true", INPUTS_REVIEW_FINDINGS = "" })
 	local after = pass({ INPUTS_GREEN = "false", INPUTS_FAILURES = "FAIL in t.lua" })
 	eq(after:find("still open", 1, true), nil)
 end

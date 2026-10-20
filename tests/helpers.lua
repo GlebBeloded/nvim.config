@@ -70,6 +70,8 @@ function M.isolate()
 		-- the Go build cache of every gopls a test starts (the fixtures' too, tests/fixtures.lua): the default
 		-- ~/Library/Caches/go-build grew 17 GB in two hours of gates (Oct 2026); tests/check.sh trims this one
 		vim.env.GOCACHE = vim.fs.joinpath(M.root, ".tests/go/cache")
+		-- a test's gopls on 2 threads, not all 14: 12 workers' servers each took every core, slowing the rest (Oct 2026)
+		vim.env.GOMAXPROCS = vim.env.GOMAXPROCS or "2"
 		vim.env.NVIM_APPNAME = nil
 		for _, name in ipairs(MULTIPLEXER_ENV) do
 			vim.env[name] = nil
@@ -83,7 +85,7 @@ end
 ---@field env? table<string, string> env vars set for this start only (e.g. ZELLIJ_PANE_ID)
 
 ---@class test.Child: MiniTest.child
----@field start_config fun() Restart with the real config (init.lua); copilot.lua disabled.
+---@field start_config fun(opts?: test.RestartOpts) Restart with the real config (init.lua); copilot.lua disabled.
 ---@field restart_config fun(args?: string[], opts?: test.RestartOpts) Start the real config again on the previous start's data/state (sessions, shada kept), with extra Neovim args.
 ---@field start_bare fun(plugins?: string[]) Restart with tests/minimal_init.lua plus the named lazy plugins on rtp.
 ---@field disable_plugin fun(name: string) Remove lazy.nvim load handlers of a plugin.
@@ -183,10 +185,13 @@ function M.new_child()
 		stop()
 	end
 
-	function child.start_config()
+	---@param opts? test.RestartOpts env vars for this start (27 test files passed `{ env = F.go_env() }`, which was ignored)
+	function child.start_config(opts)
 		-- mini.test always passes --clean, which drops stdpath("config") from rtp
 		M.isolate()
-		child.restart(M.config_args())
+		with_env(opts and opts.env or {}, function()
+			child.restart(M.config_args())
+		end)
 		vim.iter(M.DISABLED_PLUGINS):each(child.disable_plugin)
 	end
 

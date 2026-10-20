@@ -18,6 +18,7 @@ pack: { has_task: false, context: context.md }
 implement: "MUST-NOT-RUN"
 gate: { green: true, spec_ok: true, tasks_done: true, untested: 0, attempt: 1, failures: "", blocked: false }
 review: { approve: true, findings: "", weakened_scenario: false, weakened_test: false }
+full-gate: { green: true, spec_ok: true, tasks_done: true, untested: 0, attempt: 1, failures: "", blocked: false }
 deliver__escalation: { decision: ship, escalate: false, reasons: "- none" }
 deliver__followup: "MUST-NOT-RUN"
 deliver__ship: { merged: true, conflict: false, branch: loop/demo-change, commit: abc123 }

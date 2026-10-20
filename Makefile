@@ -190,6 +190,7 @@ self-check:
 # exec-code fixtures see the fixture-owned changes, never the live queue
 loop-test: deps # test_stall.py runs the mini.test runner; fixture repos use base auto, whatever BASE_BRANCH the caller runs on
 	@.archon/scripts/loop_changed_test.sh
+	@LOOP_TESTS=only JOBS=$${LOOP_JOBS:-4} $(call PARALLEL,unit) # beside the product tests' workers in make check
 	@BASE_BRANCH=auto python3 -m unittest discover -q -s .archon/scripts -p 'test_*.py'
 	@LOG_LEVEL=error LOOP_CHANGES_DIR=.archon/workflows/work-queue/fixtures/changes $(ARCHON) workflow test
 
