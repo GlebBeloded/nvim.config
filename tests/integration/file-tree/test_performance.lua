@@ -337,6 +337,59 @@ local function wait_for_save_result(baseline_runs)
 	)
 end
 
+local function install_manual_debounce()
+	child.lua([[require("gleb.util.debounce").use_test_scheduler()]])
+end
+
+local function advance_debounce(delay_ms)
+	child.lua([[require("gleb.util.debounce").advance(...) ]], { delay_ms })
+end
+
+local function wait_for_watch_debounce()
+	assert(
+		child.wait(
+			[=[(function()
+				local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+				local state = assert(require("gleb.tree.watch").state.roots[view.root])
+				return next(state.timers) ~= nil
+			end)()]=],
+			math.ceil(1000 * H.load_factor())
+		),
+		"filesystem watch debounce was not scheduled"
+	)
+end
+
+local function advance_save_debounce(baseline_runs)
+	wait_for_watch_debounce()
+	advance_debounce(149)
+	eq(child.lua_get([[require("gleb.file_tree.git").state.runs]]), baseline_runs)
+	eq(child.lua_get([[FileTreeReplacementCount]]), 0)
+	advance_debounce(1)
+	assert(
+		child.wait(
+			([=[(function()
+				local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+				local git = require("gleb.file_tree.git")
+				local state = assert(git.state.roots[view.root])
+				return git.state.runs > %d and state.timer == nil and not state.in_flight and view.dirty_timer ~= nil
+			end)()]=]):format(baseline_runs),
+			math.ceil(1000 * H.load_factor())
+		),
+		"git refresh did not schedule the final draw"
+	)
+	advance_debounce(49)
+	eq(child.lua_get([[FileTreeReplacementCount]]), 0)
+	advance_debounce(1)
+end
+
+local function write_with_measurement()
+	return child.lua_get([[(function()
+		local started = FileTreeStartMeasurement()
+		vim.cmd.write()
+		return FileTreeFinishMeasurement(started)
+	end)()]])
+end
+
 T["file-tree: Project tree redraw meets the large-tree bound"] = function()
 	eq(child.lua_get([[#require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()].rows]]), 4900)
 	install_replacement_counter()
@@ -413,11 +466,16 @@ end
 T["file-tree: Project tree coalesces a save burst"] = function()
 	change_tracked_file()
 	install_replacement_counter()
+	install_cpu_measurement()
+	install_manual_debounce()
 	local baseline_runs = child.lua_get([[require("gleb.file_tree.git").state.runs]])
 
-	child.cmd("write")
+	local measurement = write_with_measurement()
+	advance_save_debounce(baseline_runs)
 	local result = wait_for_save_result(baseline_runs)
+	child.lua([[require("gleb.util.debounce").reset()]])
 
+	assert(measurement.cpu_ms <= 100, ("write consumed %.2f ms process CPU"):format(measurement.cpu_ms))
 	assert(result.complete, vim.inspect(result))
 	eq(result.replacements, 1)
 	eq(result.runs, 1)
@@ -453,16 +511,19 @@ T["file-tree: Project tree save leaves the main path promptly"] = function()
 	eq(child.lua_get([[#require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()].rows]]), 5000)
 	change_tracked_file()
 	install_replacement_counter()
+	install_cpu_measurement()
+	install_manual_debounce()
 	local baseline_runs = child.lua_get([[require("gleb.file_tree.git").state.runs]])
 
-	local elapsed_ms = child.lua_get([=[(function()
-		local started = vim.uv.hrtime()
-		vim.cmd.write()
-		return (vim.uv.hrtime() - started) / 1e6
-	end)()]=])
+	local measurement = write_with_measurement()
+	advance_save_debounce(baseline_runs)
 	local result = wait_for_save_result(baseline_runs)
+	child.lua([[require("gleb.util.debounce").reset()]])
 
-	assert(elapsed_ms <= 100 * H.load_factor(), ("write took %.2f ms"):format(elapsed_ms))
+	assert(measurement.cpu_ms <= 100, ("write consumed %.2f ms process CPU"):format(measurement.cpu_ms))
+	if vim.env.PERF == "1" then
+		assert(measurement.elapsed_ms <= 100 * H.load_factor(), ("write took %.2f ms"):format(measurement.elapsed_ms))
+	end
 	assert(result.complete, vim.inspect(result))
 end
 

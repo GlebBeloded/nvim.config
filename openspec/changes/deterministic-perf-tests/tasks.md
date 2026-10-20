@@ -18,9 +18,9 @@ Scenarios: `file-tree: Project tree redraw meets the large-tree bound`, `file-tr
 
 ## 4. Control save-burst debounce deterministically
 Scenarios: `file-tree: Project tree coalesces a save burst`, `file-tree: Project tree save leaves the main path promptly`
-- [ ] 4.1 Update the real-write cases in `tests/integration/file-tree/test_performance.lua` to advance an injected debounce scheduler and assert child-side CPU time; with the scheduler held before its 50 ms deadline, run `make test FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree coalesces a save burst"`, see it fail and record the failure, then remove the fault
-- [ ] 4.2 Add a resettable scheduler hook to `lua/gleb/util/debounce.lua`, use it through the real file-tree watcher/write path, and preserve the 50 ms debounce, one replacement, one git command, 100 ms CPU/wall bounds and 1000 ms final-state deadline
-- [ ] 4.3 Run `make test FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree coalesces a save burst"` and `make test FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree save leaves the main path promptly"` and see them pass
+- [x] 4.1 Update the real-write cases in `tests/integration/file-tree/test_performance.lua` to advance an injected debounce scheduler and assert child-side CPU time; with the scheduler held before its 50 ms deadline, run `make test FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree coalesces a save burst"`, see it fail and record the failure, then remove the fault
+- [x] 4.2 Add a resettable scheduler hook to `lua/gleb/util/debounce.lua`, use it through the real file-tree watcher/write path, and preserve the 50 ms debounce, one replacement, one git command, 100 ms CPU/wall bounds and 1000 ms final-state deadline
+- [x] 4.3 Run `make test FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree coalesces a save burst"` and `make test FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree save leaves the main path promptly"` and see them pass
 
 ## 5. Measure listed-row following inside the child
 Scenarios: `file-tree: Project tree follows an already listed row promptly`
@@ -56,3 +56,4 @@ Scenarios: `file-tree: Project tree persists folds off the action path`, `file-t
 
 - Round a scaled default deadline up to the next millisecond so host-load scaling never shortens the intended wait.
 - Use `PERF=1` to enable retained wall-clock assertions because the later serial target can pass it directly to the existing test process.
+- Expose `use_test_scheduler`, `advance` and `reset` on the debounce utility so tests control its clock without adding user configuration.
