@@ -35,6 +35,8 @@ colours, and calls these functions.
 
 - Code: `lua/gleb/pr/gh.lua` (the two functions and the three documents).
 - Tests: unit cases in `tests/unit/pr/test_gh.lua`; recorded responses in `tests/fixtures/gh/mutations.lua`.
+- Pinned scenario `git: Branch base passes the remote host to gh` still holds because mutations reuse the existing
+  request environment convention without changing branch-base lookup.
 - Plugins, keymaps, UI: none (`pr-thread-window` adds the UI).
 - Out of scope: everything the thread window shows or asks; that stays in `pr-thread-window`.
 
