@@ -6,9 +6,9 @@ Scenarios: `pr: PR threads are fetched with gh api graphql`, `pr: No pull reques
 
 ## 2. Thread model
 Scenarios: `pr: PR thread model keeps the GraphQL fields`, `pr: PR thread author falls back to ghost`, `pr: Open PR threads are counted`
-- [ ] 2.1 Write the scenarios in `tests/unit/pr/test_threads.lua`, driving `require("gleb.pr.threads").parse` and `open_count` with the `pr482` page, and see them fail
-- [ ] 2.2 Add the typed `parse` and `open_count` implementation to `lua/gleb/pr/threads.lua`
-- [ ] 2.3 Run `make test FILE=tests/unit/pr/test_threads.lua CASE="PR thread model keeps the GraphQL fields"`, `make test FILE=tests/unit/pr/test_threads.lua CASE="PR thread author falls back to ghost"`, and `make test FILE=tests/unit/pr/test_threads.lua CASE="Open PR threads are counted"` and see them pass
+- [x] 2.1 Write the scenarios in `tests/unit/pr/test_threads.lua`, driving `require("gleb.pr.threads").parse` and `open_count` with the `pr482` page, and see them fail
+- [x] 2.2 Add the typed `parse` and `open_count` implementation to `lua/gleb/pr/threads.lua`
+- [x] 2.3 Run `make test FILE=tests/unit/pr/test_threads.lua CASE="PR thread model keeps the GraphQL fields"`, `make test FILE=tests/unit/pr/test_threads.lua CASE="PR thread author falls back to ghost"`, and `make test FILE=tests/unit/pr/test_threads.lua CASE="Open PR threads are counted"` and see them pass
 
 ## 3. Pagination
 Scenarios: `pr: PR thread pages follow the end cursor`, `pr: Long PR threads load every comment`
