@@ -59,3 +59,10 @@ Scenarios: `file-tree: Project tree persists folds off the action path`, `file-t
 - Expose `use_test_scheduler`, `advance` and `reset` on the debounce utility so tests control its clock without adding user configuration.
 - Hold the real repository-discovery process result at its callback boundary so the re-root test observes pending state without replacing Git discovery.
 - Let the shared CPU measurement installer target either child so the unfold fixture uses the same instrumentation as the populated-tree cases.
+
+## Stuck
+
+- `file-tree: Project tree coalesces a save burst` remains intermittently red with `filesystem watch debounce was not scheduled`.
+- Probe: a real `:write` produced an fs event within 1000 ms (`filename = "1"`, `change = true`), so host fs events are available.
+- Attempt 1 moved manual-scheduler installation before buffer setup; five isolated runs still included the same failure, disproving a scheduler-install boundary race.
+- Attempt 2 waits until the changed folder has a direct watcher or recursive-tree coverage before installing the scheduler. Isolated runs passed three times, then failed with the same assertion, so missing initial coverage is not sufficient cause. The retained test change records this prerequisite; non-test attempt archive: `stuck-attempt-4.diff`.

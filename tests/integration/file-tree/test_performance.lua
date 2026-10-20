@@ -374,6 +374,21 @@ local function install_manual_debounce()
 	child.lua([[require("gleb.util.debounce").use_test_scheduler()]])
 end
 
+local function wait_for_changed_folder_watch()
+	assert(
+		child.wait(
+			[=[(function()
+				local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+				local state = assert(require("gleb.tree.watch").state.roots[view.root])
+				local path = vim.fs.joinpath(view.root, "directory-0001")
+				return state.handles[path] ~= nil or state.tree_handle ~= nil
+			end)()]=],
+			math.ceil(3000 * H.load_factor())
+		),
+		"filesystem watch coverage did not settle"
+	)
+end
+
 local function advance_debounce(delay_ms)
 	child.lua([[require("gleb.util.debounce").advance(...) ]], { delay_ms })
 end
@@ -500,6 +515,7 @@ T["file-tree: Project tree coalesces a save burst"] = function()
 	change_tracked_file()
 	install_replacement_counter()
 	install_cpu_measurement()
+	wait_for_changed_folder_watch()
 	install_manual_debounce()
 	local baseline_runs = child.lua_get([[require("gleb.file_tree.git").state.runs]])
 
@@ -545,6 +561,7 @@ T["file-tree: Project tree save leaves the main path promptly"] = function()
 	change_tracked_file()
 	install_replacement_counter()
 	install_cpu_measurement()
+	wait_for_changed_folder_watch()
 	install_manual_debounce()
 	local baseline_runs = child.lua_get([[require("gleb.file_tree.git").state.runs]])
 
