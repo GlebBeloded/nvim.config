@@ -27,7 +27,8 @@ end
 
 ---@param project_root string
 ---@param settings_path string
-local function open_tree(project_root, settings_path)
+---@param wait_for_initial_draw? boolean
+local function open_tree(project_root, settings_path, wait_for_initial_draw)
 	root = project_root
 	child.lua([[require("gleb.file_tree.settings").setup({ path = ... })]], { settings_path })
 	child.cmd("cd " .. vim.fn.fnameescape(root))
@@ -37,6 +38,9 @@ local function open_tree(project_root, settings_path)
 		local action = assert(require("gleb.actions").state.applicator.catalog:get("file_tree.toggle"))
 		action.run(require("gleb.actions.context").capture())
 	]])
+	if wait_for_initial_draw == false then
+		return
+	end
 	assert(
 		child.wait(
 			[[(function()
@@ -315,6 +319,10 @@ T["file-tree: First paint waits for ignored status"]["omits ignored entries from
 	child.lua(
 		[[
 		local status_output = ...
+		local view = require("gleb.file_tree.view")
+		view.state.initial_status_hook = function(complete)
+			_G.file_tree_release_initial_status = complete
+		end
 		local original_system = vim.system
 		vim.system = function(command, options, callback)
 			if callback and command[4] == "rev-parse" and command[5] == "--show-prefix" then
@@ -338,7 +346,21 @@ T["file-tree: First paint waits for ignored status"]["omits ignored entries from
 	]],
 		{ status.stdout }
 	)
-	open_tree(project, settings_file({}))
+	open_tree(project, settings_file({}), false)
+	assert(
+		child.wait([[_G.file_tree_release_initial_status ~= nil]], math.ceil(3000 * H.load_factor())),
+		"initial status completion was not held"
+	)
+	eq(child.lua_get([[#_G.file_tree_draw_frames]]), 0)
+	child.lua([[
+		local release = assert(_G.file_tree_release_initial_status)
+		_G.file_tree_release_initial_status = nil
+		release()
+	]])
+	assert(
+		child.wait([[#_G.file_tree_draw_frames > 0]], math.ceil(3000 * H.load_factor())),
+		"file tree did not draw after initial status completed"
+	)
 	wait_for_git()
 
 	local first_frame = child.lua_get([=[_G.file_tree_draw_frames[1]]=])

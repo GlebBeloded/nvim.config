@@ -27,6 +27,35 @@ fix-file-tree-watch-start-gap, deterministic-perf-tests and the shipped fix-git-
 - A case whose intent cannot be tested deterministically is deleted together with its scenario, saying why.
 - No assertion is loosened to make a case pass.
 
+## Capabilities
+
+- `loop`: require the named flaky cases to use deterministic readiness under gate load.
+
+## Evidence
+
+- `tests/helpers.lua:380` and `tests/helpers.lua:393` use an unscaled 10-second surface-open deadline;
+  `tests/integration/actions/test_plugin_ownership.lua:175` also gives the blocked-descendant probe an unscaled 500 ms.
+- `lua/gleb/references/preview.lua:56` starts Treesitter highlighting without exposing parse completion, while
+  `tests/integration/references/test_preview.lua:103` treats an active highlighter as ready and reads captures at line 108.
+- `tests/integration/file-tree/test_ignored.lua:321` and `tests/integration/file-tree/test_ignored.lua:325` schedule fake
+  git callbacks, racing the fixed first-paint deadline at `lua/gleb/file_tree/view.lua:443` before inspecting frame one.
+- `tests/integration/file-tree/test_project_git.lua:238` gives watcher and debounce work a bare 1000 ms wall-clock
+  window before checking rows and run count.
+- `tests/render/cases.lua:320` waits only for a diff view object; `tests/screen/diff/test_view.lua:18` captures the screen
+  immediately, before asynchronous redraw and highlighting have an observed settled state.
+- `tests/integration/references/test_keys.lua:153` rewrites the Go source immediately before opening references, while
+  its helper at lines 24-29 waits for client attachment but not for gopls to observe the rewritten position.
+- `tests/integration/git/test_git.lua:7` fixes all Diffview readiness waits at 5000 ms, and lines 139-140 observe windows
+  before line 295 reads the final leftmost layout.
+- `tests/integration/keymaps/test_keymaps.lua:805` waits a fixed 1000 ms before asserting that a pending tree refresh did
+  not reopen the panel instead of observing the refresh settle after the toggle.
+
 ## Impact
 
-- The test files above and whatever product code a real race lives in; the spec step works out the rest.
+- Tests: the eight files named above and shared synchronization in `tests/helpers.lua` and `tests/render/cases.lua`.
+- Product code is changed only if deterministic hooks are needed in `lua/gleb/file_tree/` or
+  `lua/gleb/references/`; feature behavior and approved renders remain unchanged.
+- No plugin dependency is added, removed or upgraded; core keymaps do not change.
+- No visible UI, module layout, load order, plugin wiring, `init.lua`, or `lazy-lock.json` change is intended.
+- Out of scope: unrelated flaky cases, performance-bound migrations, watcher-start races covered by queued changes,
+  and loosening any existing assertion or numeric product bound.

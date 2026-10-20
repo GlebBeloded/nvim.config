@@ -359,18 +359,28 @@ end
 
 ---@param child MiniTest.child
 ---@param pid integer
+---@return string cleanup
 local function stop_blocked_child(child, pid)
 	local _, subprocess_pids = child_subprocesses(pid)
 	for _, subprocess_pid in ipairs(subprocess_pids) do
 		pcall(vim.uv.kill, subprocess_pid, "sigkill")
 	end
 	vim.uv.kill(pid, "sigkill")
-	vim.fn.jobwait({ child.job.id }, 1000)
+	local job_status = vim.fn.jobwait({ child.job.id }, math.ceil(1000 * M.load_factor()))[1]
+	local descendants_stopped = vim.wait(math.ceil(1000 * M.load_factor()), function()
+		return vim.iter(subprocess_pids):all(function(subprocess_pid)
+			return vim.uv.kill(subprocess_pid, 0) ~= 0
+		end)
+	end, 20)
 	pcall(vim.fn.chanclose, child.job.channel)
 	pcall(vim.fn.chanclose, child.job.id)
 	pcall(vim.fn.delete, child.job.address)
 	child.job = nil
 	M.delete_debug_log(pid)
+	return ("child=%s, descendants=%s"):format(
+		job_status ~= -1 and "stopped" or "pending",
+		descendants_stopped and "stopped" or "pending"
+	)
 end
 
 --- Open a child surface without making a blocking RPC request while waiting.
@@ -378,9 +388,10 @@ end
 ---@param spec tests.SurfaceOpen
 function M.open_surface(child, spec)
 	local state_file = vim.fn.tempname()
-	local timeout = spec.timeout or 10000
+	local timeout = math.ceil((spec.timeout or 10000) * M.load_factor())
 	local started = vim.uv.hrtime()
 	local state
+	local cleanup = "not-needed"
 	local pid = vim.fn.jobpid(child.job.id)
 	child.lua_notify(
 		SURFACE_OPEN_LUA,
@@ -404,13 +415,15 @@ function M.open_surface(child, spec)
 		return
 	end
 	if not completed and child.job then
-		stop_blocked_child(child, pid)
+		cleanup = stop_blocked_child(child, pid)
 	end
 
 	error(
-		("%s surface open failed (phase: %s; elapsed: %d ms; mode: %s; getchar: %s; messages: %s; subprocesses: %s%s)"):format(
+		("%s surface open failed (phase: %s; readiness: %s; cleanup: %s; elapsed: %d ms; mode: %s; getchar: %s; messages: %s; subprocesses: %s%s)"):format(
 			spec.surface,
 			state.phase or "no-state",
+			spec.condition,
+			cleanup,
 			elapsed,
 			state.mode or "<unavailable>",
 			state.getchar or "<unavailable>",
@@ -1167,6 +1180,27 @@ function M.wait_references_ready(child, server, opts)
 	local condition = opts.capture_error and "_G.references_ready == true or _G.references_error ~= nil"
 		or "_G.references_ready == true"
 	assert(child.wait(condition, opts.timeout), "references did not become ready")
+end
+
+--- Wait until Treesitter exposes a capture at a buffer position.
+---@param child test.AsyncLspDriver
+---@param buf integer
+---@param row integer zero-based row
+---@param col integer zero-based byte column
+---@param timeout integer
+function M.wait_treesitter_captures(child, buf, row, col, timeout)
+	child.lua(
+		[[
+			local buf, row, col = ...
+			_G.treesitter_captures_ready = function()
+				local ok, captures = pcall(vim.treesitter.get_captures_at_pos, buf, row, col)
+				return ok and #captures > 0
+			end
+		]],
+		{ buf, row, col }
+	)
+	assert(child.wait("_G.treesitter_captures_ready()", timeout), "Treesitter captures did not become ready")
+	child.lua([[_G.treesitter_captures_ready = nil]])
 end
 
 --- Record rust-analyzer's quiescent status while preserving its current handler.
