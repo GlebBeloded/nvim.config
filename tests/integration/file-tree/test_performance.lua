@@ -563,14 +563,14 @@ T["file-tree: Project tree expansion meets the large-tree bound"] = function()
 	eq(found, true)
 	install_replacement_counter()
 	install_cpu_measurement()
-	child.lua([[FileTreeExpansionStarted = FileTreeStartMeasurement()]])
-
-	child.type_keys("<CR>")
-
 	local result = child.lua_get([=[(function()
 		local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
-		local measurement = FileTreeFinishMeasurement(FileTreeExpansionStarted)
+		local started = FileTreeStartMeasurement()
+		vim.api.nvim_feedkeys(vim.keycode("<CR>"), "mx", false)
+		local measurement = FileTreeFinishMeasurement(started)
 		vim.api.nvim_buf_set_lines = FileTreeOriginalSetLines
+		assert(#view.rows == 5000, "expansion did not add the expected rows")
+		assert(view.expanded["expand-me"] == true, "expand-me was not expanded")
 		return {
 			cpu_ms = measurement.cpu_ms,
 			elapsed_ms = measurement.elapsed_ms,
@@ -856,11 +856,14 @@ T["file-tree: Project tree persists folds off the action path"] = function()
 	end)()]=])
 	eq(found, true)
 	install_cpu_measurement()
-	child.lua([[FileTreeFoldStarted = FileTreeStartMeasurement()]])
-
-	child.type_keys("za")
-
-	local measurement = child.lua_get([[FileTreeFinishMeasurement(FileTreeFoldStarted)]])
+	local measurement = child.lua_get([[(function()
+		local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+		local started = FileTreeStartMeasurement()
+		vim.api.nvim_feedkeys(vim.keycode("za"), "mx", false)
+		local result = FileTreeFinishMeasurement(started)
+		assert(view.expanded["directory-0001"] ~= true, "directory-0001 was not collapsed")
+		return result
+	end)()]])
 	assert(measurement.cpu_ms <= 100, ("fold consumed %.2f ms process CPU"):format(measurement.cpu_ms))
 	if vim.env.PERF == "1" then
 		assert(measurement.elapsed_ms <= 100 * H.load_factor(), ("fold took %.2f ms"):format(measurement.elapsed_ms))
