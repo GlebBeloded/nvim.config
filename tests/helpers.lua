@@ -216,7 +216,8 @@ function M.new_child()
 	end
 
 	function child.wait(expr, timeout)
-		local ok = vim.wait(timeout or 2000, function()
+		local deadline = timeout or math.ceil(2000 * M.load_factor())
+		local ok = vim.wait(deadline, function()
 			local value = child.lua_get(expr)
 			return value ~= nil and value ~= vim.NIL and value ~= false
 		end, 20)

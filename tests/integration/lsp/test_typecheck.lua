@@ -4,6 +4,9 @@ local H = require("tests.helpers")
 local eq = MiniTest.expect.equality
 local child = H.new_child()
 local TIMEOUT_MS = H.lsp_timeout(10000)
+local LOAD_FACTOR = H.load_factor()
+local ATTACHMENT_TIMEOUT_MS = math.ceil(TIMEOUT_MS * LOAD_FACTOR)
+local attachment_deadlines = {}
 
 local function start()
 	child.start_config()
@@ -11,7 +14,10 @@ local function start()
 end
 
 local function basedpyright_attached(bufnr)
-	return child.wait(([[#vim.lsp.get_clients({ bufnr = %d, name = "basedpyright" }) > 0]]):format(bufnr), TIMEOUT_MS)
+	return child.wait(
+		([[#vim.lsp.get_clients({ bufnr = %d, name = "basedpyright" }) > 0]]):format(bufnr),
+		ATTACHMENT_TIMEOUT_MS
+	)
 end
 
 local function basedpyright_mode(bufnrs, mode)
@@ -20,8 +26,20 @@ local function basedpyright_mode(bufnrs, mode)
 		local client = vim.lsp.get_clients({ bufnr = bufnr, name = "basedpyright" })[1]
 		return client and client.config.settings.basedpyright.analysis.typeCheckingMode == %q
 	end)]]):format(table.concat(bufnrs, ", "), mode),
-		TIMEOUT_MS
+		ATTACHMENT_TIMEOUT_MS
 	)
+end
+
+local function record_attachment_wait(callback)
+	local wait = child.wait
+	child.wait = function(expr, timeout)
+		table.insert(attachment_deadlines, timeout)
+		return wait(expr, timeout)
+	end
+	local ok, result = pcall(callback)
+	child.wait = wait
+	assert(ok, result)
+	return result
 end
 
 local T = H.child_set(child, start)
@@ -51,7 +69,13 @@ T["lsp: Type-check toggle reattaches every Python buffer without reloading"] = f
 	local result = child.lua_get([[{ ok = _G.typecheck_ok, err = _G.typecheck_err }]])
 	eq(result.ok, true)
 	eq(child.bo.modified, true)
-	eq(basedpyright_mode({ first_buf, second_buf }, "basic"), true)
+	eq(
+		record_attachment_wait(function()
+			return basedpyright_mode({ first_buf, second_buf }, "basic")
+		end),
+		true
+	)
+	eq(attachment_deadlines, { math.ceil(TIMEOUT_MS * LOAD_FACTOR) })
 end
 
 return T

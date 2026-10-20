@@ -174,6 +174,34 @@ T["load"]["shortcuts: The load factor is the load per CPU on a busy host"] = fun
 	eq(call_under_load({ 70, 60, 50 }, 14, "tests.helpers", "load_factor"), 5)
 end
 
+T["load"]["shortcuts: Child wait default stretches with host load"] = function()
+	local original_wait = vim.wait
+	local original_loadavg = vim.uv.loadavg
+	local original_available_parallelism = vim.uv.available_parallelism
+	local deadlines = {}
+	rawset(vim, "wait", function(timeout)
+		table.insert(deadlines, timeout)
+		return true
+	end)
+	vim.uv.loadavg = function()
+		return 42, 42, 42
+	end
+	vim.uv.available_parallelism = function()
+		return 14
+	end
+
+	local ok, err = pcall(function()
+		eq(child.wait("true"), true)
+		eq(child.wait("true", 700), true)
+	end)
+	rawset(vim, "wait", original_wait)
+	vim.uv.loadavg = original_loadavg
+	vim.uv.available_parallelism = original_available_parallelism
+	assert(ok, err)
+
+	eq(deadlines, { 6000, 700 })
+end
+
 T["load"]["shortcuts: The stack harness wait stretches with host load"] = function()
 	local cpus = child.lua_get("vim.uv.available_parallelism()")
 
