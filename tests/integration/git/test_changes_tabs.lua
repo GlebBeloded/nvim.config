@@ -1014,6 +1014,16 @@ T["git: Show Branch Commits opens the commit view"] = function()
 	eq(panel.commit_view, true)
 	eq(panel.rows[3].id, "branch:all")
 	eq(panel_state().current, panel_state().panel)
+
+	run_action("changes.show_branch")
+	panel = current_panel()
+	eq(panel.commit_view, true)
+	eq(panel.rows[3].id, "branch:all")
+
+	run_action("changes.show_branch_commits")
+	panel = current_panel()
+	eq(panel.commit_view, true)
+	eq(panel.rows[3].id, "branch:all")
 end
 
 T["git: Show Branch on the default branch"] = function()

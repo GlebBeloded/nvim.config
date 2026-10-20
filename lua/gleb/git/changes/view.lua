@@ -907,6 +907,9 @@ function M.activate_tab(panel, id)
 	if id == "local" then
 		tree_model.rebuild(panel.tree, tree_nodes(panel.local_rows))
 		draw(panel)
+	elseif panel.commit_view and panel.commit_nodes then
+		tree_model.rebuild(panel.tree, panel.commit_nodes)
+		draw(panel)
 	elseif panel.branch_nodes then
 		tree_model.rebuild(panel.tree, panel.branch_nodes)
 		draw(panel)
