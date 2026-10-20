@@ -124,4 +124,66 @@ T["pr: Long PR threads load every comment"]["appends comment pages in order"] = 
 	eq(has_argument(calls[2], "cursor=k1"), true)
 end
 
+T["pr: PR fetch failures are classified"] = MiniTest.new_set()
+
+T["pr: PR fetch failures are classified"]["maps process and GraphQL failures to short messages"] = function()
+	eq(type(gh.failure), "function")
+	local executable = vim.fn.executable
+	local cases = {
+		{
+			executable = 0,
+			result = { code = 1, stdout = "", stderr = "" },
+			kind = "missing",
+			message = "PR comments unavailable: gh not found",
+		},
+		{
+			result = {
+				code = 4,
+				stdout = "",
+				stderr = "To get started with GitHub CLI, please run:  gh auth login\n",
+			},
+			kind = "auth",
+			message = "PR comments unavailable: gh is not authenticated for pgw.dev",
+		},
+		{
+			result = {
+				code = 1,
+				stdout = "",
+				stderr = "HTTP 401: Bad credentials (https://pgw.dev/api/graphql)\n",
+			},
+			kind = "auth",
+			message = "PR comments unavailable: gh is not authenticated for pgw.dev",
+		},
+		{
+			result = {
+				code = 1,
+				stdout = "",
+				stderr = "error connecting to pgw.dev\nconnection refused\n",
+			},
+			kind = "failed",
+			message = "PR comments unavailable: error connecting to pgw.dev",
+		},
+		{
+			result = {
+				code = 0,
+				stdout = vim.json.encode({
+					errors = { { message = "Could not resolve to a PullRequest with the number of 482." } },
+				}),
+				stderr = "",
+			},
+			kind = "graphql",
+			message = "PR comments unavailable: Could not resolve to a PullRequest with the number of 482.",
+		},
+	}
+
+	for _, case in ipairs(cases) do
+		rawset(vim.fn, "executable", function(command)
+			return command == "gh" and (case.executable or 1) or executable(command)
+		end)
+		local failure = gh.failure(case.result, "pgw.dev")
+		eq({ failure.kind, failure.message }, { case.kind, case.message })
+	end
+	rawset(vim.fn, "executable", executable)
+end
+
 return T

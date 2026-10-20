@@ -29,6 +29,7 @@ local M = {
 ---@field blob_order string[]
 ---@field in_flight table<string, boolean>
 ---@field pending table<string, gleb.pr.RefreshOptions>
+---@field reported_failures table<string, table<string, boolean>>
 ---@field last_write_fetch table<string, integer>
 ---@field write_timers table<string, uv.uv_timer_t>
 
@@ -40,6 +41,7 @@ M.state = {
 	blob_order = {},
 	in_flight = {},
 	pending = {},
+	reported_failures = {},
 	last_write_fetch = {},
 	write_timers = {},
 }
@@ -116,18 +118,18 @@ function M.refresh(root, opts)
 		threads = {},
 		timeout = M.GH_TIMEOUT_MS,
 	}
-	gh.fetch_threads(review, nil, function(fetched_threads)
+	gh.fetch_threads(review, nil, function(fetched_threads, result)
 		local current = require("gleb.git.base").get(root)
-		local current_result = fetched_threads ~= nil
-			and M.state.generations[root] == generation
+		local current_result = M.state.generations[root] == generation
 			and current
 			and current.pr
 			and current.pr.number == review.pr.number
 			and current.pr.head_ref_oid == review.head
-		if current_result then
+		if current_result and fetched_threads then
 			review.threads = threads.parse(fetched_threads)
 			review.fetched_at = M.now()
 			M.state.by_root[root] = review
+			M.state.reported_failures[root] = nil
 			vim.api.nvim_exec_autocmds("User", { pattern = "GlebPrThreads", data = { root = root } })
 			if opts.force then
 				vim.notify(
@@ -135,6 +137,14 @@ function M.refresh(root, opts)
 					vim.log.levels.INFO
 				)
 			end
+		elseif current_result and result then
+			local failure = gh.failure(result, host)
+			local reported = M.state.reported_failures[root] or {}
+			if opts.force or not reported[failure.kind] then
+				vim.notify(failure.message, vim.log.levels.WARN)
+			end
+			reported[failure.kind] = true
+			M.state.reported_failures[root] = reported
 		end
 		finish_refresh(root)
 	end)
@@ -365,6 +375,7 @@ function M.reset()
 	M.state.blob_order = {}
 	M.state.in_flight = {}
 	M.state.pending = {}
+	M.state.reported_failures = {}
 	M.state.last_write_fetch = {}
 	M.state.write_timers = {}
 end

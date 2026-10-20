@@ -125,6 +125,41 @@ local function review_changes()
 	]])
 end
 
+---@param gh_dir string
+---@return nil
+local function fail_review_threads(gh_dir)
+	vim.fn.writefile({ "1" }, vim.fs.joinpath(gh_dir, "ReviewThreads.json.code"))
+	vim.fn.writefile({ "error connecting to pgw.dev" }, vim.fs.joinpath(gh_dir, "ReviewThreads.json.stderr"))
+end
+
+---@param gh_dir string
+---@return nil
+local function restore_review_threads(gh_dir)
+	vim.fn.delete(vim.fs.joinpath(gh_dir, "ReviewThreads.json.code"))
+	vim.fn.delete(vim.fs.joinpath(gh_dir, "ReviewThreads.json.stderr"))
+end
+
+---@param expected integer
+---@return nil
+local function wait_for_refreshes(expected)
+	eq(
+		child.wait(
+			("#vim.tbl_filter(function(line) return line:find('query ReviewThreads', 1, true) ~= nil end, vim.fn.readfile(vim.env.FAKE_GH_LOG)) == %d and next(require('gleb.pr').state.in_flight) == nil"):format(
+				expected
+			),
+			3000
+		),
+		true
+	)
+end
+
+local function toggle_changes()
+	child.lua([[
+		local action = assert(require("gleb.actions").state.applicator.catalog:get("changes.toggle"))
+		action.run(require("gleb.actions.context").capture())
+	]])
+end
+
 T["pr: PR threads are fetched with gh api graphql"] = function()
 	local root, log = billing_branch(true)
 	child.lua(
@@ -401,6 +436,76 @@ T["pr: pr.refresh without a pull request"] = function()
 
 	eq(notifications(), { { msg = "No pull request for feat/tax", level = vim.log.levels.WARN } })
 	eq(graphql_calls(log), 0)
+end
+
+T["pr: A failed PR fetch warns once and keeps the threads"] = MiniTest.new_set()
+
+T["pr: A failed PR fetch warns once and keeps the threads"]["retains cached threads and the changes panel"] = function()
+	local root, log, gh_dir = billing_branch(true)
+	local notifications = H.record_notify(child)
+	refresh_and_open_invoice(root)
+	fail_review_threads(gh_dir)
+
+	child.lua([[require("gleb.pr").refresh(...)]], { root })
+	wait_for_refreshes(2)
+	child.lua([[require("gleb.pr").refresh(...)]], { root })
+	wait_for_refreshes(3)
+	toggle_changes()
+	eq(
+		child.wait(
+			[[(function()
+			local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+			return panel and vim.api.nvim_buf_get_lines(panel.buf, 0, 1, false)[1]:find("Changes 2 files", 1, true) ~= nil
+		end)()]],
+			3000
+		),
+		true
+	)
+
+	eq(graphql_calls(log), 3)
+	eq(#child.lua_get([[require("gleb.pr").get(...).threads]], { root }), 4)
+	eq(notifications(), {
+		{ msg = "PR comments unavailable: error connecting to pgw.dev", level = vim.log.levels.WARN },
+	})
+end
+
+T["pr: A failed PR fetch warns once and keeps the threads"]["a success resets failure suppression"] = function()
+	local root, _, gh_dir = billing_branch(true)
+	local notifications = H.record_notify(child)
+	refresh_and_open_invoice(root)
+	fail_review_threads(gh_dir)
+
+	child.lua([[require("gleb.pr").refresh(...)]], { root })
+	wait_for_refreshes(2)
+	restore_review_threads(gh_dir)
+	child.lua([[require("gleb.pr").refresh(...)]], { root })
+	wait_for_refreshes(3)
+	fail_review_threads(gh_dir)
+	child.lua([[require("gleb.pr").refresh(...)]], { root })
+	wait_for_refreshes(4)
+
+	eq(notifications(), {
+		{ msg = "PR comments unavailable: error connecting to pgw.dev", level = vim.log.levels.WARN },
+		{ msg = "PR comments unavailable: error connecting to pgw.dev", level = vim.log.levels.WARN },
+	})
+end
+
+T["pr: pr.refresh always reports a failure"] = MiniTest.new_set()
+
+T["pr: pr.refresh always reports a failure"]["forced refreshes each notify"] = function()
+	local root, _, gh_dir = billing_branch(true)
+	local notifications = H.record_notify(child)
+	fail_review_threads(gh_dir)
+
+	force_refresh(root)
+	wait_for_refreshes(1)
+	force_refresh(root)
+	wait_for_refreshes(2)
+
+	eq(notifications(), {
+		{ msg = "PR comments unavailable: error connecting to pgw.dev", level = vim.log.levels.WARN },
+		{ msg = "PR comments unavailable: error connecting to pgw.dev", level = vim.log.levels.WARN },
+	})
 end
 
 return T

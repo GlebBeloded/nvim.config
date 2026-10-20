@@ -48,9 +48,9 @@ Scenarios: `pr: pr.refresh fetches the threads again`, `pr: Opening the review p
 
 ## 9. Errors
 Scenarios: `pr: PR fetch failures are classified`, `pr: A failed PR fetch warns once and keeps the threads`, `pr: pr.refresh always reports a failure`
-- [ ] 9.1 Write the classification table in `tests/unit/pr/test_gh.lua` and the fake-`gh` failure scenarios in `tests/integration/pr/test_threads.lua`, driving the real failure parser and refresh entry point, and see them fail
-- [ ] 9.2 Implement `gh.failure`, the per-root reported-kind set, cache preservation, and reset after success
-- [ ] 9.3 Run `make test FILE=tests/unit/pr/test_gh.lua CASE="PR fetch failures are classified"`, `make test FILE=tests/integration/pr/test_threads.lua CASE="A failed PR fetch warns once and keeps the threads"`, and `make test FILE=tests/integration/pr/test_threads.lua CASE="pr.refresh always reports a failure"` and see them pass
+- [x] 9.1 Write the classification table in `tests/unit/pr/test_gh.lua` and the fake-`gh` failure scenarios in `tests/integration/pr/test_threads.lua`, driving the real failure parser and refresh entry point, and see them fail
+- [x] 9.2 Implement `gh.failure`, the per-root reported-kind set, cache preservation, and reset after success
+- [x] 9.3 Run `make test FILE=tests/unit/pr/test_gh.lua CASE="PR fetch failures are classified"`, `make test FILE=tests/integration/pr/test_threads.lua CASE="A failed PR fetch warns once and keeps the threads"`, and `make test FILE=tests/integration/pr/test_threads.lua CASE="pr.refresh always reports a failure"` and see them pass
 
 ## 10. Refresh action
 Scenarios: `pr: pr.refresh is an unbound Find Action entry`

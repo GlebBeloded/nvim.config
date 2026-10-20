@@ -1,6 +1,10 @@
 -- GitHub review-thread transport: keeps GraphQL details and process execution out of the PR cache.
 local M = {}
 
+---@class gleb.pr.Failure
+---@field kind "missing"|"auth"|"graphql"|"failed"
+---@field message string
+
 M.REVIEW_THREADS_QUERY =
 	"query ReviewThreads($owner:String!,$name:String!,$number:Int!,$cursor:String){repository(owner:$owner,name:$name){pullRequest(number:$number){reviewThreads(first: 100,after:$cursor){pageInfo{hasNextPage endCursor} nodes{id isResolved isOutdated path line originalLine startLine originalStartLine diffSide subjectType resolvedBy{login} viewerCanReply viewerCanResolve viewerCanUnresolve comments(first: 100){pageInfo{hasNextPage endCursor} nodes{id author{login} body createdAt url diffHunk originalCommit{oid} replyTo{id}}}}}}}}"
 M.THREAD_COMMENTS_QUERY =
@@ -71,6 +75,35 @@ local function request_opts(review)
 			GH_NO_UPDATE_NOTIFIER = "1",
 			NO_COLOR = "1",
 		},
+	}
+end
+
+---@param result vim.SystemCompleted
+---@param host string
+---@return gleb.pr.Failure
+function M.failure(result, host)
+	if vim.fn.executable("gh") == 0 then
+		return { kind = "missing", message = "PR comments unavailable: gh not found" }
+	end
+	local stderr = result.stderr or ""
+	if stderr:find("gh auth login", 1, true) or stderr:find("HTTP 401", 1, true) then
+		return {
+			kind = "auth",
+			message = "PR comments unavailable: gh is not authenticated for " .. host,
+		}
+	end
+	if result.code == 0 then
+		local ok, response = pcall(vim.json.decode, result.stdout or "")
+		local message = ok and response.errors and response.errors[1] and response.errors[1].message
+		if message then
+			return { kind = "graphql", message = "PR comments unavailable: " .. message }
+		end
+	end
+	local first_line = stderr:match("([^\r\n]+)")
+	local detail = first_line or ("gh exited " .. result.code)
+	return {
+		kind = "failed",
+		message = "PR comments unavailable: " .. detail,
 	}
 end
 
