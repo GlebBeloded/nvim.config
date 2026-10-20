@@ -181,7 +181,8 @@ T["loop: Drains run two lanes and never take one change twice"] = function()
 	set_outcome(stubs, "t-a", "failed")
 	child.fn.writefile({ "3" }, vim.fs.joinpath(stubs.outcomes, "t-a.sleep")) -- lane 1 is busy when lane 2 picks
 	stubs.env.DRAIN_STAGGER_S = "1"
-	local out = output(H.system(child, { "make", "drains" }, repo, stubs.env))
+	-- two lanes, each running make queue in turn: a loaded host outruns the default 30 s
+	local out = output(H.system(child, { "make", "drains" }, repo, stubs.env, math.ceil(120000 * H.load_factor())))
 	local names = ran(stubs)
 	table.sort(names)
 	eq(names, { "t-a", "t-b", "t-c" })

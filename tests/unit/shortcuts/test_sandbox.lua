@@ -538,7 +538,8 @@ T["shortcuts: sandbox.sh e2e waits while another checkout holds the sandbox lock
 	})
 	vim.uv.sleep(1000)
 	local synced_early = first_index(read_lines(env.GUEST_LOG), is_repo_sync) ~= nil
-	local run = child.lua_get("_G.e2e_run:wait(30000)")
+	-- as system(): the stubbed e2e path takes ~12 s idle, so a loaded check scales the budget
+	local run = child.lua_get("_G.e2e_run:wait(...)", { math.ceil(60000 * H.load_factor()) })
 
 	eq({ synced_early = synced_early, code = run.code }, { synced_early = false, code = 0 })
 	eq(run.stderr:find("sandbox: waiting for", 1, true) ~= nil, true)
