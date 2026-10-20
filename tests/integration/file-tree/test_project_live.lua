@@ -156,6 +156,12 @@ local function wait_for_tree_row(name)
 	)
 end
 
+local function wait_for_live_stream()
+	local result = H.system(child, { "touch", vim.fs.joinpath(root, "watch-canary.lua") }, root)
+	eq(result.code, 0)
+	assert(wait_for_tree_row("watch-canary.lua"), "watch canary row did not appear")
+end
+
 ---@param name string
 ---@param group string
 ---@return boolean
@@ -397,6 +403,7 @@ T["file-tree: A compact chain splits when a folder gains an entry"] = function()
 	edit("README.md")
 	run_action("file_tree.toggle")
 	eq(wait_for_tree_row("cmd/server"), true)
+	wait_for_live_stream()
 
 	local result = H.system(child, { "mkdir", vim.fs.joinpath(root, "cmd/worker") }, root)
 	eq(result.code, 0)
@@ -424,6 +431,7 @@ T["file-tree: Every compact chain member is watched"] = function()
 		{ root, math.ceil(3000 * H.load_factor()) }
 	)
 	eq(watched, { true, true })
+	wait_for_live_stream()
 
 	local result = H.system(child, { "mkdir", vim.fs.joinpath(root, "cmd/worker") }, root)
 	eq(result.code, 0)
@@ -790,6 +798,7 @@ T["file-tree: Project tree isolates tabpage state"] = function()
 	child.type_keys("<CR>")
 	child.cmd("tabclose")
 	eq(child.api.nvim_get_current_tabpage(), second_tab)
+	wait_for_live_stream()
 
 	local result = H.system(child, { "touch", vim.fs.joinpath(root, "isolated.lua") }, root)
 	eq(result.code, 0)

@@ -6,8 +6,8 @@ Scenarios: `file-tree: Project tree shows files created outside Neovim`
 
 ## 2. Prove the live stream before project-tree mutations
 Scenarios: `file-tree: A compact chain splits when a folder gains an entry`, `file-tree: Every compact chain member is watched`, `file-tree: Project tree isolates tabpage state`
-- [ ] 2.1 Add a canary-event wait to `tests/integration/file-tree/test_project_live.lua` before each scenario's external filesystem mutation; with a temporary fault that suppresses the canary write, run each scenario with `make test FILE=tests/integration/file-tree/test_project_live.lua CASE="<scenario title>"`, see and record the failed canary wait, then remove the fault
-- [ ] 2.2 Run each scenario with `make test FILE=tests/integration/file-tree/test_project_live.lua CASE="<scenario title>"` and see it pass
+- [x] 2.1 Add a canary-event wait to `tests/integration/file-tree/test_project_live.lua` before each scenario's external filesystem mutation; with a temporary fault that suppresses the canary write, run each scenario with `make test FILE=tests/integration/file-tree/test_project_live.lua CASE="<scenario title>"`, see and record the failed canary wait, then remove the fault
+- [x] 2.2 Run each scenario with `make test FILE=tests/integration/file-tree/test_project_live.lua CASE="<scenario title>"` and see it pass
 
 ## 3. Observe copied nest rows before renaming
 Scenarios: `file-tree: Renaming a nest parent migrates its state`, `file-tree: Renaming a folder migrates nest state in every view`
