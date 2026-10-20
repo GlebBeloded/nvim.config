@@ -39,7 +39,7 @@ T["loop: Check stops orphaned test processes"] = function()
 	-- a Neovim, not /bin/sleep: macOS hides a system binary's env from `ps eww`
 	local server = ("%q --clean --headless -c 'sleep 300' </dev/null >/dev/null 2>&1 &"):format(vim.v.progpath)
 	H.system(child, { "sh", "-c", server .. (" echo $! > %q"):format(pid_file) }, root, env)
-	local pid = tonumber(vim.fn.readfile(pid_file)[1])
+	local pid = assert(tonumber(vim.fn.readfile(pid_file)[1]))
 	local other = vim.system({ "sleep", "300" }) -- this process's own child: not an orphan, not under root
 	local result = H.system(child, { vim.fs.joinpath(H.root, "tests/prune_tmp.sh"), root .. "/" }, root)
 	eq({ result.code, result.stderr }, { 0, "" }, { fail_reason = result.stdout .. result.stderr })
