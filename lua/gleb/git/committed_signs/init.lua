@@ -306,16 +306,16 @@ local function refresh(buf)
 	if path == "" or vim.fn.filereadable(path) ~= 1 then
 		return
 	end
-	base.resolve(path, function(info)
+	base.resolve(path, function(info, root)
 		if M.state.buffers[buf] ~= state or state.request ~= request or not vim.api.nvim_buf_is_valid(buf) then
 			return
 		end
+		state.root = root
 		if not info then
 			clear_state(state)
 			draw(buf, {})
 			return
 		end
-		state.root = info.root
 		local prefix = info.root .. "/"
 		local normalized = vim.fs.normalize(path)
 		local relative = normalized:sub(1, #prefix) == prefix and normalized:sub(#prefix + 1) or nil

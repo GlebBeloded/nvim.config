@@ -220,6 +220,45 @@ T["git: Committed signs refresh after a commit"] = function()
 	eq(child.wait("CommittedSigns()[tostring(TargetLine)] ~= nil", ASYNC_MS), true)
 end
 
+T["git: Committed signs appear when a root gains a base"] = function()
+	local root = H.git_repo({ ["invoice.go"] = "one\ntwo" })
+	H.git(root, { "update-ref", "refs/remotes/origin/main", "HEAD" })
+	H.git(root, { "symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/main" })
+	install_sign_reader()
+	edit(root, "invoice.go")
+	child.lua([[Root = ...]], { root })
+	eq(
+		child.wait(
+			[[(function()
+		local base = require("gleb.git.base")
+		local committed = require("gleb.git.committed_signs")
+		local entry = base.state.roots[Root]
+		return entry ~= nil and entry.resolved and committed.state.buffers[vim.api.nvim_get_current_buf()] ~= nil
+	end)()]],
+			ASYNC_MS
+		),
+		true
+	)
+	eq(child.lua_get("CommittedSigns()"), {})
+
+	H.git(root, { "checkout", "-q", "-b", "feat/x" })
+	eq(
+		child.wait(
+			[[(function()
+		local info = require("gleb.git.base").get(Root)
+		return info and info.branch == "feat/x"
+	end)()]],
+			ASYNC_MS
+		),
+		true
+	)
+	child.type_keys("G", "o", "three", "<Esc>")
+	child.cmd("write")
+	H.git(root, { "commit", "-qam", "add third line" })
+	child.lua([[TargetLine = 3]])
+	eq(child.wait("CommittedSigns()[tostring(TargetLine)] ~= nil", ASYNC_MS), true)
+end
+
 T["git: Committed signs clear when HEAD is detached"] = function()
 	local root, manifest = prbranch()
 	local path = "internal/billing/invoice.go"

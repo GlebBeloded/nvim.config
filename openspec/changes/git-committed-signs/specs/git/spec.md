@@ -42,6 +42,10 @@ The signs SHALL be re-mapped onto the live buffer, unsaved edits included, withi
 - **WHEN** the edited `invoice.go` of a fresh `prbranch` copy shows its committed signs, and `git commit -qam wip` runs in the copy outside Neovim
 - **THEN** within 3 s the manifest's `hunks` line of `invoice.go` also carries a `GitCommittedSign` sign
 
+#### Scenario: Committed signs appear when a root gains a base
+- **WHEN** `invoice.go` is opened on `main` without a base, then a feature branch is checked out outside Neovim, the buffer is edited and saved, and the change is committed outside Neovim
+- **THEN** within 3 s the committed line carries a `GitCommittedSign` sign without re-entering or reloading the buffer
+
 #### Scenario: Committed signs clear when HEAD is detached
 - **WHEN** the edited `invoice.go` of a fresh `prbranch` copy shows its committed signs, and `git checkout -q --detach` runs in the copy outside Neovim
 - **THEN** within 3 s the namespace has no extmark in that buffer
