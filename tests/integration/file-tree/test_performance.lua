@@ -374,6 +374,25 @@ local function install_manual_debounce()
 	child.lua([[require("gleb.util.debounce").use_test_scheduler()]])
 end
 
+local function wait_for_idle_tree()
+	assert(
+		child.wait(
+			[=[(function()
+				local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+				local git = require("gleb.file_tree.git")
+				local state = assert(git.state.roots[view.root])
+				return state.timer == nil
+					and not state.in_flight
+					and not view.dirty
+					and view.dirty_timer == nil
+					and not view.git_pending
+			end)()]=],
+			math.ceil(1000 * H.load_factor())
+		),
+		"project tree did not settle after the edit"
+	)
+end
+
 local function wait_for_changed_folder_watch()
 	assert(
 		child.wait(
@@ -386,6 +405,41 @@ local function wait_for_changed_folder_watch()
 			math.ceil(3000 * H.load_factor())
 		),
 		"filesystem watch coverage did not settle"
+	)
+end
+
+-- libuv rebuilds its single macOS FSEvents stream after each watch start and drops events meanwhile; a sentinel
+-- event on a later-started watch proves the stream carrying every tree watch is live before the write.
+local function wait_for_live_watch_stream()
+	assert(
+		child.wait(
+			[=[(function()
+				local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+				local state = assert(require("gleb.tree.watch").state.roots[view.root])
+				return state.settle_passes == 0 and not state.sync_scheduled
+			end)()]=],
+			math.ceil(3000 * H.load_factor())
+		),
+		"filesystem watch reconciliation did not settle"
+	)
+	child.lua([=[
+		local directory = vim.fn.tempname()
+		vim.fn.mkdir(directory, "p")
+		FileTreeWatchSentinel = { path = vim.fs.joinpath(directory, "sentinel"), seen = false }
+		FileTreeWatchSentinel.handle = assert(vim.uv.new_fs_event())
+		assert(FileTreeWatchSentinel.handle:start(directory, {}, function()
+			FileTreeWatchSentinel.seen = true
+		end))
+	]=])
+	assert(
+		child.wait(
+			[=[(function()
+				vim.fn.writefile({ tostring(vim.uv.hrtime()) }, FileTreeWatchSentinel.path)
+				return FileTreeWatchSentinel.seen
+			end)()]=],
+			math.ceil(3000 * H.load_factor())
+		),
+		"filesystem watch stream did not deliver its sentinel event"
 	)
 end
 
@@ -513,9 +567,11 @@ end
 
 T["file-tree: Project tree coalesces a save burst"] = function()
 	change_tracked_file()
+	wait_for_idle_tree()
+	wait_for_changed_folder_watch()
+	wait_for_live_watch_stream()
 	install_replacement_counter()
 	install_cpu_measurement()
-	wait_for_changed_folder_watch()
 	install_manual_debounce()
 	local baseline_runs = child.lua_get([[require("gleb.file_tree.git").state.runs]])
 
@@ -559,9 +615,11 @@ T["file-tree: Project tree save leaves the main path promptly"] = function()
 	]=])
 	eq(child.lua_get([[#require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()].rows]]), 5000)
 	change_tracked_file()
+	wait_for_idle_tree()
+	wait_for_changed_folder_watch()
+	wait_for_live_watch_stream()
 	install_replacement_counter()
 	install_cpu_measurement()
-	wait_for_changed_folder_watch()
 	install_manual_debounce()
 	local baseline_runs = child.lua_get([[require("gleb.file_tree.git").state.runs]])
 
