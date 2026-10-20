@@ -61,12 +61,19 @@ local LOCAL_MASK = panel_mask({
 })
 
 local BRANCH_FILES_LEGEND = {
+	a = "BufferLineBackground",
 	b = "DevIconGo",
+	c = "BufferLineFill",
 	d = "ChangesTabInactive",
 	e = "ChangesTabBranch",
 	f = "WinSeparator",
+	g = "DiffViewHeader",
 	h = "ChangesBranchHeader",
 	i = "ChangesCount",
+	j = "DiffViewFold",
+	k = "DiffViewLineNr",
+	l = "DiffViewPadding",
+	m = "@string",
 	n = "FileTreeExpander",
 	o = "FileTreeFolderIcon",
 	p = "FileTreeFolderName",
@@ -74,64 +81,136 @@ local BRANCH_FILES_LEGEND = {
 	r = "ChangesCommittedFile",
 	s = "ChangesStatAdded",
 	t = "ChangesStatRemoved",
+	u = "DiffViewCommitted",
+	v = "@comment",
+	w = "DiffViewArrowCommitted",
+	x = "DiffViewGutterCommitted",
+	y = "@keyword",
+	z = "@type.definition",
+	A = "@function.call",
+	B = "@function",
+	C = "DiffViewCommittedWord",
+	D = "@property",
 	E = "PickerBorder",
 	F = "PickerHint",
+	G = "lualine_a_normal",
+	H = "lualine_b_normal",
+	I = "lualine_x_diagnostics_error_command",
+	J = "lualine_x_diagnostics_warn_command",
+	K = "StatuslineLangCapError",
+	L = "StatuslineLangText",
+	M = "StatuslineLangEdge",
 }
 
-local BRANCH_FILES_MASK = panel_mask(vim.list_extend(
-	{
-		".ddddddddd.eeeeeeeeee..............f",
-		".hhhhhhiiiiiiiiiiiiiiii............f",
-		".iiiiiiiiiiiiiiiiiiiiiiiiiiiiii....f",
-		"...................................f",
-		".n.o.pppppppppppppppp.i............f",
-		"qqqnqbqrrrrrrrrrrqqqqqqqqqqqsssqttqf",
-		".......b.rrrrrrrrrrrrrrr....sss.tt.f",
-		"...n.b.rrrrrr...............sss.tt.f",
-		".......b.rrrrrrrrrrr........sss.tt.f",
-	},
-	vim.list_extend(vim.fn["repeat"]({ "...................................f" }, 17), {
-		"EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEf",
-		"...........FFFFFFFFFFFFFFFFFFFFFFF.f",
-	})
-))
+local BRANCH_FILES_MASK = {
+	"....................................abbaaaaaaaaaaaaccccccccccccccccccccccccccccccccccccccccccccccccc",
+	".ddddddddd.eeeeeeeeee..............fggggggggggggggggggggggggg.gggggggggggggggggggggggggggggggggggggg",
+	".hhhhhhiiiiiiiiiiiiiiii............fjjkkkkkkkkkkkkkkkkkkkjjjjljjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjj",
+	".iiiiiiiiiiiiiiiiiiiiiiiiiiiiii....f.........................l.kkkk.....kkkk........................",
+	"...................................f...mmmmmmmmmmmmmmmmmmmmmml.kkkk.....kkkk........................",
+	".n.o.pppppppppppppppp.i............f.........................l.kkkk.....kkkk........................",
+	"qqqnqbqrrrrrrrrrrqqqqqqqqqqqsssqttqf.........................l.kkkk.....kkkk........................",
+	".......b.rrrrrrrrrrrrrrr....sss.tt.fuvvvvvvvvvvvvvvvvvvvvvvvvlwxxxxuuuuuxxxxxxuuuuuuuuuuuuuuuuuuuuuu",
+	"...n.b.rrrrrr...............sss.tt.f.yyyy.zzzzzzz.yyyyyy.....l.kkkk.....kkkk........................",
+	".......b.rrrrrrrrrrr........sss.tt.f...zz....AAAAAA..........l.kkkk.....kkkk........................",
+	"...................................f...zzzzz...AAA...........l.kkkk.....kkkk........................",
+	"...................................f...zzz...AAAA............l.kkkk.....kkkk........................",
+	"...................................f.........................l.kkkk.....kkkk........................",
+	"...................................f.........................l.kkkk.....kkkk........................",
+	"...................................f.vvvvvvvvvvvvvvvvvvvvvvvvl.kkkk.....kkkk........................",
+	"...................................f.yyyy....AAAAAAA..BBBBB..l.kkkk.....kkkk........................",
+	"...................................fuuuuuuuuuCCCCuuuuuuuuuuuulwxxxxuuuuuxxxxxxuuCCCCuuuuuuCCCuuuuuuu",
+	"...................................f...yyy.zm.zzzzz.yy.yyyyy.l.kkkk.....kkkk........................",
+	"...................................f.....zzzzz.yy.zzzzz......l.kkkk.....kkkk........................",
+	"...................................f.........................l.kkkk.....kkkk........................",
+	"...................................fllllllllllllllllllllllllllwlllluuuuuxxxxxxuuuuuuuuuuuuuuuuuuuuuu",
+	"...................................fllllllllllllllllllllllllll.lllluuuuuxxxxxxuuuuuuuuuuuuuuuuuuuuuu",
+	"...................................fllllllllllllllllllllllllll.lllluuuuuxxxxxxuuuuuuuuuuuuuuuuuuuuuu",
+	"...................................f...yyyyyy.zmDDDmBBBBB.zzzl.kkkk.....kkkk........................",
+	"...................................f.........................l.kkkk.....kkkk........................",
+	"...................................f.........................l.kkkk.....kkkk........................",
+	"...................................f.vvvvvvvvvvvvvvvvvvvvvvvvl.kkkk.....kkkk........................",
+	"EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEf.yyyy....AAAAAAA..BBB...Al.kkkk.....kkkk........................",
+	"...........FFFFFFFFFFFFFFFFFFFFFFF.f...yyyyyy.zzzmBBBBBBB.mmml.kkkk.....kkkk........................",
+	"GGGGGGGGHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHIIIIIJJJJKLLLLLLLLLLLLLLLLM",
+}
 
 local BRANCH_COMMITS_LEGEND = {
+	a = "BufferLineBackground",
 	b = "DevIconGo",
+	c = "BufferLineFill",
 	d = "ChangesTabInactive",
 	e = "ChangesTabBranch",
 	f = "WinSeparator",
+	g = "DiffViewHeader",
 	h = "ChangesBranchHeader",
 	i = "ChangesCount",
+	j = "DiffViewFold",
+	k = "DiffViewLineNr",
+	l = "DiffViewPadding",
 	m = "FileTreeExpander",
 	n = "ChangesCommitIcon",
 	o = "ChangesRoot",
+	p = "@string",
 	q = "ChangesCommitHash",
 	r = "FileTreeFileName",
 	s = "FileTreeCursorLine",
 	t = "ChangesCommittedFile",
 	u = "ChangesStatAdded",
 	v = "ChangesStatRemoved",
+	w = "DiffViewCommitted",
+	x = "@comment",
+	y = "DiffViewArrowCommitted",
+	z = "DiffViewGutterCommitted",
+	A = "@keyword",
+	B = "@type.definition",
+	C = "@function.call",
+	D = "@function",
+	E = "DiffViewCommittedWord",
+	F = "@property",
 	G = "PickerBorder",
 	H = "PickerHint",
+	I = "lualine_a_normal",
+	J = "lualine_b_normal",
+	K = "lualine_x_diagnostics_error_command",
+	L = "lualine_x_diagnostics_warn_command",
+	M = "StatuslineLangCapError",
+	N = "StatuslineLangText",
+	O = "StatuslineLangEdge",
 }
 
-local BRANCH_COMMITS_MASK = panel_mask(vim.list_extend(
-	{
-		".ddddddddd.eeeeeeeeee..............f",
-		".hhhhhhiiiiiiiiiiiiiiii............f",
-		"...................................f",
-		".m.n.ooooooooooo...........iiiiiii.f",
-		".m.n.qqqqqqq.rrrrrrrrrrrrrrrrri.ii.f",
-		"sssssbsttttttttttsssssssssssuuusvvsf",
-		".m.n.qqqqqqq.rrrrrrrrrrrrrrrrri.ii.f",
-		".m.n.qqqqqqq.rrrrrrrrrr.........ii.f",
-	},
-	vim.list_extend(vim.fn["repeat"]({ "...................................f" }, 18), {
-		"GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGf",
-		".............HHHHHHHHHHHHHHHHHHHHH.f",
-	})
-))
+local BRANCH_COMMITS_MASK = {
+	"....................................abbaaaaaaaaaaaaccccccccccccccccccccccccccccccccccccccccccccccccc",
+	".ddddddddd.eeeeeeeeee..............fggggggggggggggggggggggggg.gggggggggggggggggggggggggggggggggggggg",
+	".hhhhhhiiiiiiiiiiiiiiii............fjjkkkkkkkkkkkkkkkkkkkjjjjljjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjj",
+	"...................................f.........................l.kkkk.....kkkk........................",
+	".m.n.ooooooooooo...........iiiiiii.f...ppppppppppppppppppppppl.kkkk.....kkkk........................",
+	".m.n.qqqqqqq.rrrrrrrrrrrrrrrrri.ii.f.........................l.kkkk.....kkkk........................",
+	"sssssbsttttttttttsssssssssssuuusvvsf.........................l.kkkk.....kkkk........................",
+	".m.n.qqqqqqq.rrrrrrrrrrrrrrrrri.ii.fwxxxxxxxxxxxxxxxxxxxxxxxxlyzzzzwwwwwzzzzzzwwwwwwwwwwwwwwwwwwwwww",
+	".m.n.qqqqqqq.rrrrrrrrrr.........ii.f.AAAA.BBBBBBB.AAAAAA.....l.kkkk.....kkkk........................",
+	"...................................f...BB....CCCCCC..........l.kkkk.....kkkk........................",
+	"...................................f...BBBBB...CCC...........l.kkkk.....kkkk........................",
+	"...................................f...BBB...CCCC............l.kkkk.....kkkk........................",
+	"...................................f.........................l.kkkk.....kkkk........................",
+	"...................................f.........................l.kkkk.....kkkk........................",
+	"...................................f.xxxxxxxxxxxxxxxxxxxxxxxxl.kkkk.....kkkk........................",
+	"...................................f.AAAA....CCCCCCC..DDDDD..l.kkkk.....kkkk........................",
+	"...................................fwwwwwwwwwEEEEwwwwwwwwwwwwlyzzzzwwwwwzzzzzzwwEEEEwwwwwwEEEwwwwwww",
+	"...................................f...AAA.Bp.BBBBB.AA.AAAAA.l.kkkk.....kkkk........................",
+	"...................................f.....BBBBB.AA.BBBBB......l.kkkk.....kkkk........................",
+	"...................................f.........................l.kkkk.....kkkk........................",
+	"...................................fllllllllllllllllllllllllllyllllwwwwwzzzzzzwwwwwwwwwwwwwwwwwwwwww",
+	"...................................fllllllllllllllllllllllllll.llllwwwwwzzzzzzwwwwwwwwwwwwwwwwwwwwww",
+	"...................................fllllllllllllllllllllllllll.llllwwwwwzzzzzzwwwwwwwwwwwwwwwwwwwwww",
+	"...................................f...AAAAAA.BpFFFpDDDDD.BBBl.kkkk.....kkkk........................",
+	"...................................f.........................l.kkkk.....kkkk........................",
+	"...................................f.........................l.kkkk.....kkkk........................",
+	"...................................f.xxxxxxxxxxxxxxxxxxxxxxxxl.kkkk.....kkkk........................",
+	"GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGf.AAAA....CCCCCCC..DDD...Cl.kkkk.....kkkk........................",
+	".............HHHHHHHHHHHHHHHHHHHHH.f...AAAAAA.BBBpDDDDDDD.pppl.kkkk.....kkkk........................",
+	"IIIIIIIIJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJKKKKKLLLLMNNNNNNNNNNNNNNNNO",
+}
 
 ---@param root string
 local function report_pull_request(root)
@@ -177,6 +256,8 @@ end
 local function wait_for_branch_panel(commit_view)
 	local ready = commit_view
 			and [[view.rows[5] and view.rows[5].id == "branch:commit:e325463:file:internal/billing/invoice.go"
+				and view.diff_path == "branch:branch:commit:e325463:file:internal/billing/invoice.go"
+				and view.diff_view.relpath == "internal/billing/invoice.go"
 				and view.diff_view.labels.right == "e325463 · wire tax into Total"]]
 		or [[view.rows[8] and view.rows[8].id == "branch:file:internal/billing/tax_test.go"
 				and view.diff_view.labels.right == "e325463 · HEAD"]]
@@ -222,33 +303,23 @@ local function wait_for_local_panel()
 	child.cmd("redraw")
 end
 
+---@param name string
+---@param columns integer
 ---@return string[]
-local function approved_panel_text()
-	local path = vim.fs.joinpath(H.root, "tests/screen/git/local_tab.ansi")
+local function approved_text(name, columns)
+	local path = vim.fs.joinpath(H.root, "tests/screen/git", name .. ".ansi")
 	return vim.tbl_map(function(line)
 		local plain = line:gsub("\27%[[0-9;]*m", "")
-		return table.concat(vim.list_slice(vim.fn.split(plain, [[\zs]]), 1, PANEL_COLUMNS))
+		return table.concat(vim.list_slice(vim.fn.split(plain, [[\zs]]), 1, columns))
 	end, vim.list_slice(vim.fn.readfile(path), 2, 29))
 end
 
+---@param columns integer
 ---@return string[]
-local function panel_text()
+local function screen_text(columns)
 	return vim.tbl_map(function(cells)
-		return table.concat(vim.list_slice(cells, 1, PANEL_COLUMNS))
+		return table.concat(vim.list_slice(cells, 1, columns))
 	end, vim.list_slice(child.get_screenshot().text, 2, 29))
-end
-
----@param head string[]
----@param blank_count integer
----@param hint string
----@return string[]
-local function branch_panel_text(head, blank_count, hint)
-	local blank = (" "):rep(35) .. "┃"
-	local expected = vim.deepcopy(head)
-	vim.list_extend(expected, vim.fn["repeat"]({ blank }, blank_count))
-	expected[#expected + 1] = ("─"):rep(35) .. "┃"
-	expected[#expected + 1] = hint .. "┃"
-	return expected
 end
 
 local T = H.child_set(child, start)
@@ -257,7 +328,7 @@ T["git: Local tab matches the approved render"] = function()
 	review_changes()
 	wait_for_local_panel()
 	H.expect_screen_colors(child, 2, LOCAL_MASK, PANEL_LEGEND, { columns = PANEL_COLUMNS })
-	eq(panel_text(), approved_panel_text())
+	eq(screen_text(PANEL_COLUMNS), approved_text("local_tab", PANEL_COLUMNS))
 end
 
 T["git: Branch tab matches the approved render"] = function()
@@ -265,21 +336,8 @@ T["git: Branch tab matches the approved render"] = function()
 	wait_for_local_panel()
 	review_changes()
 	wait_for_branch_panel(false)
-	eq(
-		panel_text(),
-		branch_panel_text({
-			"  Local 3   Branch 4               ┃",
-			"  #482 feat/tax → main            ┃",
-			" 3 commits · merge-base 4ccefde    ┃",
-			(" "):rep(35) .. "┃",
-			"   internal/billing 4            ┃",
-			"     invoice.go           +11 -2 ┃",
-			"        invoice_test.go    +20 -1 ┃",
-			"     tax.go               +41 -0 ┃",
-			"        tax_test.go        +33 -0 ┃",
-		}, 17, "           Commits c · Next tab ⌘G ")
-	)
-	H.expect_screen_colors(child, 2, BRANCH_FILES_MASK, BRANCH_FILES_LEGEND, { columns = PANEL_COLUMNS })
+	eq(screen_text(100), approved_text("branch_files", 100))
+	H.expect_screen_colors(child, 2, vim.list_slice(BRANCH_FILES_MASK, 2, 29), BRANCH_FILES_LEGEND)
 end
 
 T["git: Branch commits match the approved render"] = function()
@@ -289,20 +347,8 @@ T["git: Branch commits match the approved render"] = function()
 	wait_for_branch_panel(false)
 	child.type_keys("c", "<Esc>")
 	wait_for_branch_panel(true)
-	eq(
-		panel_text(),
-		branch_panel_text({
-			"  Local 3   Branch 4               ┃",
-			"  #482 feat/tax → main            ┃",
-			(" "):rep(35) .. "┃",
-			"  ◆ All changes           4 files ┃",
-			"  ◆ e325463 wire tax into Tot… 1h ┃",
-			"      invoice.go           +11 -2 ┃",
-			"  ◆ 07cb52e add Rate and tax … 3h ┃",
-			"  ◆ b5435c5 add tax.go         1d ┃",
-		}, 18, "             Files c · Next tab ⌘G ")
-	)
-	H.expect_screen_colors(child, 2, BRANCH_COMMITS_MASK, BRANCH_COMMITS_LEGEND, { columns = PANEL_COLUMNS })
+	eq(screen_text(100), approved_text("branch_commits", 100))
+	H.expect_screen_colors(child, 2, vim.list_slice(BRANCH_COMMITS_MASK, 2, 29), BRANCH_COMMITS_LEGEND)
 end
 
 return T

@@ -913,6 +913,49 @@ T["git: Branch tab refreshes after a commit"] = function()
 	eq(after, before)
 end
 
+T["git: Branch tab follows the current branch base"] = function()
+	local root = open_branch_tab()
+	H.git(root, { "stash", "push", "-u", "-q" })
+	H.git(root, { "checkout", "-q", "main" })
+	child.cmd("checktime")
+
+	assert(
+		child.wait(
+			[[(function()
+				local view = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+				local bar = view and vim.wo[view.win].winbar or ""
+				return view
+					and view.active_tab == "local"
+					and not view.branch_available
+					and view.branch_info == nil
+					and view.branch_nodes == nil
+					and view.commit_nodes == nil
+					and not bar:find("Branch", 1, true)
+			end)()]],
+			async_timeout()
+		),
+		"Branch tab remained available on main"
+	)
+
+	H.git(root, { "checkout", "-q", "feat/tax" })
+	child.cmd("checktime")
+	assert(
+		child.wait(
+			[[(function()
+				local view = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+				local bar = view and vim.wo[view.win].winbar or ""
+				return view
+					and view.branch_available
+					and view.branch_info ~= nil
+					and view.branch_count == 4
+					and bar:find("Branch 4", 1, true) ~= nil
+			end)()]],
+			async_timeout()
+		),
+		"Branch tab did not become available on feat/tax"
+	)
+end
+
 T["git: Tab actions are in the catalog"] = function()
 	eq(
 		child.lua_get([[
@@ -1012,6 +1055,75 @@ T["git: Review starts the cycle again after a close"] = function()
 	wait_for_tab("local")
 
 	eq(current_panel().active, "local")
+end
+
+T["git: Tab actions reopen saved state"] = function()
+	open_branch_tab()
+	child.type_keys("c", "<Esc>")
+	wait_for_commits()
+	select_row("branch:commit:e325463")
+	child.type_keys("za", "<Esc>")
+	assert(
+		child.wait(
+			[[require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()].tree.folds["branch:commit:e325463"] == true]],
+			1000
+		),
+		"Commit did not collapse"
+	)
+
+	local actions = { "changes.show_branch", "changes.show_branch_commits" }
+	for _, action in ipairs(actions) do
+		child.type_keys("q", "<Esc>")
+		eq(
+			child.wait([[require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()] == nil]], 1000),
+			true
+		)
+		run_action(action)
+		assert(
+			child.wait(
+				[[(function()
+					local view = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+					return view
+						and view.active_tab == "branch"
+						and view.commit_view
+						and view.commit_nodes ~= nil
+						and view.tree.folds["branch:commit:e325463"] == true
+				end)()]],
+				async_timeout()
+			),
+			action .. " did not restore the collapsed commit view"
+		)
+	end
+
+	run_action("changes.show_local")
+	wait_for_tab("local")
+	child.lua([[
+		local view = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		vim.api.nvim_win_set_cursor(view.win, { 1, 0 })
+	]])
+	child.type_keys("za")
+	assert(
+		child.wait(
+			[[require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()].tree.folds["changes:changes"] == true]],
+			1000
+		),
+		"Local changes did not collapse"
+	)
+	child.type_keys("q", "<Esc>")
+	eq(child.wait([[require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()] == nil]], 1000), true)
+	run_action("changes.show_local")
+	assert(
+		child.wait(
+			[[(function()
+				local view = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+				return view
+					and view.active_tab == "local"
+					and view.tree.folds["changes:changes"] == true
+			end)()]],
+			async_timeout()
+		),
+		"changes.show_local did not restore the saved folds"
+	)
 end
 
 T["git: Branch tab hint names the commit view key"] = function()

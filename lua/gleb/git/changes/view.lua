@@ -631,9 +631,24 @@ local function add_refresh_sources(view)
 				return
 			end
 			local info = require("gleb.git.base").get(view.root)
-			if not info or not view.branch_info then
+			if not info then
+				view.branch_request = view.branch_request + 1
+				view.branch_generation = view.branch_generation + 1
+				view.commit_generation = view.commit_generation + 1
+				view.branch_available = false
+				view.branch_count = 0
+				view.branch_info = nil
+				view.branch_nodes = nil
+				view.commit_nodes = nil
+				view.commit_files = {}
+				if view.active_tab == "branch" then
+					M.activate_tab(view, "local")
+				else
+					draw_tabs(view)
+				end
 				return
 			end
+			view.branch_info = info
 			load_branch_count(view, info)
 			if view.active_tab == "branch" or view.branch_nodes then
 				refresh_branch(view, info)

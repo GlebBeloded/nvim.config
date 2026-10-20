@@ -150,7 +150,13 @@ local function show_branch(commit_view)
 			end
 			sidebar.close("file_tree")
 			view.open(root, selected_path, false, function(panel)
-				activate_branch(panel, commit_view)
+				local saved = M.state.by_root[panel.root]
+				restore(panel, saved)
+				if panel.active_tab ~= "branch" then
+					activate_branch(panel, commit_view)
+				elseif commit_view and not panel.commit_view then
+					view.toggle_commits(panel)
+				end
 			end)
 		end)
 	end)
@@ -196,6 +202,10 @@ function M.show_local()
 		return
 	end
 	replace_tree_and_open(false, function(panel)
+		local saved = M.state.by_root[panel.root]
+		if saved then
+			panel.tree.folds = vim.deepcopy(saved.folds)
+		end
 		view.activate_tab(panel, "local")
 	end)
 end

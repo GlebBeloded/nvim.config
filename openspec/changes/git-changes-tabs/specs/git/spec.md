@@ -153,6 +153,10 @@ The Branch tab SHALL rebuild with the Local tab's refresh triggers and whenever 
 - **WHEN** the Branch tab of the `billing-branch` fixture is shown and `git add notes.md && git commit -m "notes"` runs in the repository, followed by `:checktime`
 - **THEN** within the integration async wait budget the strip reads `Local 2` and `Branch 5`, the summary row reads `4 commits · merge-base 4ccefde`, and `notes.md` is a file row of the Branch tab
 
+#### Scenario: Branch tab follows the current branch base
+- **WHEN** the Branch tab of the `billing-branch` fixture is shown, changes are stashed, `main` is checked out and `:checktime` runs, then `feat/tax` is checked out and `:checktime` runs again
+- **THEN** the panel switches to Local and removes Branch on `main`, then makes Branch available with its current count on `feat/tax`
+
 ### Requirement: Changes tab actions
 `changes.show_local` ("Show Local Changes"), `changes.show_branch` ("Show Branch Changes") and `changes.show_branch_commits` ("Show Branch Commits") SHALL be in category `View | Tool Windows` with no key, opening or focusing the panel on that tab (the last with the commit view). Without a Branch tab the latter two SHALL notify `No branch changes on <branch>` at WARN and change nothing. `changes.toggle_commits` ("Toggle Commits", `gleb-changes`) SHALL be on `c`.
 
@@ -178,6 +182,10 @@ While Neovim runs, the active tab, the Branch tab's view (files or commits) and 
 #### Scenario: Review starts the cycle again after a close
 - **WHEN** the Branch tab of the `billing-branch` fixture is shown, `q` closes the panel and the `changes.review` action runs
 - **THEN** the Local tab is active
+
+#### Scenario: Tab actions reopen saved state
+- **WHEN** a commit is collapsed in the commit view of the `billing-branch` fixture, `q` closes the panel and each Changes tab action reopens it
+- **THEN** `changes.show_branch` and `changes.show_branch_commits` reuse the commit view and collapsed commit, while `changes.show_local` reuses the saved folds on the Local tab
 
 ## MODIFIED Requirements
 

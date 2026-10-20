@@ -11,7 +11,8 @@ local FILE = ""
 local ELLIPSIS = "…"
 local RIGHT_MARGIN = 1
 local PR_ICON = ""
-local COMMIT_ICON = "◆"
+local ALL_CHANGES_ICON = "󰙅"
+local COMMIT_ICON = ""
 
 ---@type table<string, string>
 local STATUS_GROUPS = {
@@ -182,7 +183,7 @@ local function all_changes_segments(row, width)
 		{ text = " " },
 		{ text = row.expanded == false and COLLAPSED or EXPANDED, group = "FileTreeExpander" },
 		{ text = " " },
-		{ text = COMMIT_ICON, group = "ChangesCommitIcon" },
+		{ text = ALL_CHANGES_ICON, group = "ChangesCommitIcon" },
 		{ text = " " },
 		{ text = row.label, group = "ChangesRoot" },
 	}

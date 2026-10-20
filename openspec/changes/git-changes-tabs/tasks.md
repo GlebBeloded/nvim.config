@@ -207,3 +207,10 @@ Scenarios: `git: Local tab matches the approved render`, `git: Branch tab matche
 - Branch commit loading captures its generation after file rows arrive, so an early commit-view action remains current.
 - The changes panel uses colorizer's native filetype exclusion so pull-request numbers keep their semantic highlight.
 - Branch diffs replace the panel-owned diff in its right window, because committed panes are read-only and no editor-eligible window would otherwise receive the next diff.
+
+## Stuck
+
+- Finding 4's full-width Branch screen regressions remain red. Probe output: both approved-render cases report screen row 2, column 62 as `Normal` in the design mask but `WinSeparator`/bg3 in the real split; the commits case also exposes Neovim left-truncating its long right winbar with `<` instead of right-clipping it.
+- Attempt 1 clipped the right winbar to its window width. This fixed the commits text comparison, but both colour masks still failed at row 2, column 62.
+- Attempt 2 also reserved the left winbar's final cell as `Normal`. This moved the first mismatch to column 61 because that cell belongs to `DiffViewHeader`; column 62 is the split boundary, whose highlight also matches `DiffViewPadding` on content rows.
+- The second attempt is saved at `/Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/3563abe7-93aa-4527-bc0b-9df98db0c768/stuck-attempt-4.diff`. The unsuccessful `lua/gleb/diff/view/windows.lua` changes were reverted; the full-width ANSI and colour-mask regression tests remain.
