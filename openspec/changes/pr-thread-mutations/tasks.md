@@ -9,7 +9,7 @@ Scenarios: `pr: Resolve requests name the thread`, `pr: A failed mutation return
 - [x] 2.1 Write the tests `pr: Resolve requests name the thread` and `pr: A failed mutation returns its message` in `tests/unit/pr/test_gh.lua` against a stub `run` and the recorded responses and see them fail
 - [x] 2.2 Add `set_resolved` and shared success/error callback handling to `lua/gleb/pr/gh.lua`
 - [x] 2.3 Run `make test FILE=tests/unit/pr/test_gh.lua CASE="Resolve requests name the thread"` and `make test FILE=tests/unit/pr/test_gh.lua CASE="A failed mutation returns its message"` and see them pass
-- [ ] 2.4 Run `make check` and see it pass
+- [x] 2.4 Run `make check` and see it pass
 
 ## Agent decisions
 
