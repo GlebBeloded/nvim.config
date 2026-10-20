@@ -13,12 +13,13 @@ Scenarios: `git: Branch tab lists the branch files`, `git: Branch tab header wit
 ## Agent decisions
 
 - Task 2 needed no further code edit because Task 1's shared renderer and approved-text helper already covered the Branch render; preserve that working implementation and verify the complete Branch scenario set.
+- `changes.show_comments` fetches threads only when the review cache is empty, so focusing an already populated Comments tab does not duplicate the request.
 
 ## 3. Comments tab actions and cycle
 Scenarios: `pr: Comments tab follows Branch with a pull request`, `pr: Cmd+G cycles Local, Branch, Comments, then closes`, `pr: Show Pull Request Comments opens the Comments tab`, `pr: Show Pull Request Comments without a pull request`
-- [ ] 3.1 Write the scenarios in `tests/integration/pr/test_comments_tab.lua` on fresh `billing-branch` copies with the `pr482` responses and drive `changes.review` or `changes.show_comments`; run the file and see them fail
-- [ ] 3.2 Let a Comments descriptor own the editor window and add `changes.show_comments` to the action catalog without a key
-- [ ] 3.3 Run `make test FILE=tests/integration/pr/test_comments_tab.lua` and see these scenarios pass
+- [x] 3.1 Write the scenarios in `tests/integration/pr/test_comments_tab.lua` on fresh `billing-branch` copies with the `pr482` responses and drive `changes.review` or `changes.show_comments`; run the file and see them fail
+- [x] 3.2 Let a Comments descriptor own the editor window and add `changes.show_comments` to the action catalog without a key
+- [x] 3.3 Run `make test FILE=tests/integration/pr/test_comments_tab.lua` and see these scenarios pass
 
 ## 4. Comments tab rows
 Scenarios: `pr: Comments tab lists the threads by file`, `pr: Comments tab row colours`, `pr: Comments tab folds a file`, `pr: Comments tab shows a fetch failure`, `pr: Comments tab matches the approved render`

@@ -454,6 +454,18 @@ local function diff_target(view)
 end
 
 ---@param view ChangesView
+---@return nil
+local function close_owned_diff(view)
+	if not view.diff_view then
+		return
+	end
+	require("gleb.diff.view").close(view.diff_view)
+	view.diff_view = nil
+	view.diff_path = nil
+	view.diff_pending_path = nil
+end
+
+---@param view ChangesView
 ---@param row ChangesRow
 ---@param generation integer
 ---@param selection_generation integer
@@ -933,6 +945,14 @@ function M.activate_tab(panel, id)
 		panel.commit_view = false
 	end
 	draw_tabs(panel)
+	local descriptor = vim.iter(tabs.items):find(function(item)
+		return item.id == id
+	end)
+	if descriptor and descriptor.editor == "file" then
+		close_owned_diff(panel)
+		vim.api.nvim_set_current_win(panel.win)
+		return
+	end
 	if id == "local" then
 		tree_model.rebuild(panel.tree, tree_nodes(panel.local_rows))
 		draw(panel)

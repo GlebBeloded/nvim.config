@@ -14,6 +14,7 @@ local M = {}
 ---@field group string
 ---@field available fun(view: gleb.git.changes.TabView): boolean
 ---@field count fun(view: gleb.git.changes.TabView): integer
+---@field editor? "file"
 
 ---@class gleb.git.changes.TabCycleState
 ---@field active string
@@ -48,6 +49,7 @@ M.items = {
 		id = "comments",
 		title = "Comments",
 		group = "ChangesTabComments",
+		editor = "file",
 		available = function(view)
 			local info = require("gleb.git.base").get(view.root)
 			return info ~= nil and info.pr ~= nil
