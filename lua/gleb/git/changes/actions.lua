@@ -41,6 +41,12 @@ local actions = {
 		run = run("show_branch_commits"),
 	},
 	{
+		id = "changes.show_comments",
+		title = "Show Pull Request Comments",
+		category = "View | Tool Windows",
+		run = run("show_comments"),
+	},
+	{
 		id = "changes.toggle_commits",
 		title = "Toggle Commits",
 		category = "Changes",

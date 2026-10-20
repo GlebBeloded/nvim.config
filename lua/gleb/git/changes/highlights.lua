@@ -9,6 +9,7 @@ local function apply_highlights()
 	local foreground = palette.foreground
 	vim.api.nvim_set_hl(0, "ChangesTabLocal", { fg = background.bg0, bg = foreground.blue, bold = true })
 	vim.api.nvim_set_hl(0, "ChangesTabBranch", { fg = background.bg0, bg = foreground.purple, bold = true })
+	vim.api.nvim_set_hl(0, "ChangesTabComments", { fg = background.bg0, bg = foreground.yellow, bold = true })
 	vim.api.nvim_set_hl(0, "ChangesTabInactive", { fg = foreground.grey1, bg = background.bg1 })
 	vim.api.nvim_set_hl(0, "ChangesBranchHeader", { fg = foreground.purple, bold = true })
 	vim.api.nvim_set_hl(0, "ChangesCommittedFile", { fg = foreground.purple })

@@ -47,6 +47,7 @@ bar").
 - none
 
 ### Modified Capabilities
+- `git`: the existing changes-panel tabs and Branch render append Comments when a pull request is open.
 - `pr`: added "Comments tab", "Comments tab rows", "Comments tab selection", "Comments tab Enter", "Thread
   peeks", "Peek text cut", "Diff view peeks", "Thread navigation" and "Review highlight colours".
 - `statusline`: added "Pull request component".
@@ -62,6 +63,7 @@ bar").
     - `lua/gleb/diff/view/{init,render}.lua` (a decoration provider for the right side, with left padding);
     - `lua/gleb/statusline/lualine.lua` (the component in section b, after the branch).
 - Tests:
+  - existing `tests/integration/git/test_changes_tabs.lua` and `tests/screen/git/test_changes_tabs.lua`;
   - unit `tests/unit/pr/test_peek.lua` (cut, peek lines, row text);
   - integration `tests/integration/pr/test_comments_tab.lua`, `tests/integration/pr/test_peek.lua`,
     `tests/integration/statusline/test_pr.lua`;
@@ -71,6 +73,13 @@ bar").
 - Core keymaps: none. Cmd+G keeps `changes.review`, whose cycle gains the Comments step when a pull request
   exists. The new actions are unbound.
 - Unchanged scenarios:
+  - `git: Changes panel review replaces the dashboard` still holds: the `dirty` fixture has no pull request, so review still replaces Alpha with Local and its diff.
+  - `git: Cmd+G cycles Local, Branch, then closes` still holds: its fixture does not report a pull request, so Comments is unavailable and the three-step cycle is unchanged.
+  - `git: Async Branch activation reviews a Branch row` still holds: Comments is appended after Branch and does not alter asynchronous Branch activation.
+  - `git: First review opens Branch when nothing is uncommitted` still holds: the fixture reports no pull request, so Branch remains the only nonempty first tab and the next review closes.
+  - `git: Review on the default branch opens only Local` still holds: the default branch has no branch base or pull request, so neither Branch nor Comments is available.
+  - `git: Review from the diff window advances the tab` still holds: Comments follows Branch, so advancing from Local still activates Branch and preserves the window count.
+  - `git: Review starts the cycle again after a close` still holds: closing clears the active cycle regardless of how many tabs were available, so the next review starts at Local.
   - `git: Changes panel mappings come from the shortcut file` still holds: the Comments tab adds no panel mapping; `<CR>` stays `changes.open`.
   - `git: Changes panel entry points are actions` still holds: `changes.toggle` and `changes.review` keep their titles and category.
   - `git: Changes panel review shows the current file's diff` still holds: the first `changes.review` still opens the Local tab with its diff.

@@ -104,6 +104,7 @@ local function draw_tabs(view)
 	local parts = { " " }
 	---@type gleb.git.changes.TabView
 	local tab_view = {
+		root = view.root,
 		local_count = view.local_count,
 		branch_count = view.branch_count,
 		branch_available = view.branch_available,
@@ -453,6 +454,18 @@ local function diff_target(view)
 end
 
 ---@param view ChangesView
+---@return nil
+local function close_owned_diff(view)
+	if not view.diff_view then
+		return
+	end
+	require("gleb.diff.view").close(view.diff_view)
+	view.diff_view = nil
+	view.diff_path = nil
+	view.diff_pending_path = nil
+end
+
+---@param view ChangesView
 ---@param row ChangesRow
 ---@param generation integer
 ---@param selection_generation integer
@@ -663,6 +676,16 @@ local function add_refresh_sources(view)
 			load_branch_count(view, info)
 			if view.active_tab == "branch" or view.branch_nodes then
 				refresh_branch(view, info)
+			end
+		end,
+	})
+	view.autocmds[#view.autocmds + 1] = vim.api.nvim_create_autocmd("User", {
+		group = augroup,
+		pattern = "GlebPrThreads",
+		callback = function(args)
+			local root = args.data and args.data.root
+			if root and workspace.normalize(root) == view.root then
+				draw_tabs(view)
 			end
 		end,
 	})
@@ -892,7 +915,9 @@ end
 ---@return string[]
 function M.available_tabs(view)
 	local available = {}
+	---@type gleb.git.changes.TabView
 	local tab_view = {
+		root = view.root,
 		local_count = view.local_count,
 		branch_count = view.branch_count,
 		branch_available = view.branch_available,
@@ -920,6 +945,14 @@ function M.activate_tab(panel, id)
 		panel.commit_view = false
 	end
 	draw_tabs(panel)
+	local descriptor = vim.iter(tabs.items):find(function(item)
+		return item.id == id
+	end)
+	if descriptor and descriptor.editor == "file" then
+		close_owned_diff(panel)
+		vim.api.nvim_set_current_win(panel.win)
+		return
+	end
 	if id == "local" then
 		tree_model.rebuild(panel.tree, tree_nodes(panel.local_rows))
 		draw(panel)
