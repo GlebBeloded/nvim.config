@@ -632,20 +632,21 @@ end
 T["file-tree: Unchanged git status does not redraw the project tree"] = function()
 	make_next_git_refresh_immediate()
 	install_replacement_counter()
+	install_manual_debounce()
 	local baseline_runs = child.lua_get([[require("gleb.file_tree.git").state.runs]])
 	child.lua([[require("gleb.file_tree.git").refresh(...)]], { root })
-	assert(
-		child.wait(
-			([=[(function()
+	advance_debounce(150)
+	local finished = child.wait(
+		([=[(function()
 				local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
 				local git = require("gleb.file_tree.git")
 				local state = git.state.roots[view.root]
 				return git.state.runs == %d and state.timer == nil and not state.in_flight
 			end)()]=]):format(baseline_runs + 1),
-			math.ceil(1000 * H.load_factor())
-		),
-		"unchanged git status did not finish"
+		math.ceil(1000 * H.load_factor())
 	)
+	child.lua([[require("gleb.util.debounce").reset()]])
+	assert(finished, "unchanged git status did not finish")
 
 	eq(child.lua_get([[FileTreeReplacementCount]]), 0)
 end

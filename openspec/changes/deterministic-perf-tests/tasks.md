@@ -78,9 +78,9 @@ Scenarios: `file-tree: Project tree unfold all meets the large-tree bound`
 
 ## 14. Drive unchanged-status refresh without a real timer
 Scenarios: `file-tree: Unchanged git status does not redraw the project tree`
-- [ ] 14.1 Use the recorded gate failure `FAIL in tests/integration/file-tree/test_performance.lua | file-tree: Unchanged git status does not redraw the project tree: tests/integration/file-tree/test_performance.lua:431: unchanged git status did not finish` as the failing evidence
-- [ ] 14.2 In `tests/integration/file-tree/test_performance.lua`, run the real `require("gleb.file_tree.git").refresh(root)` with the manual debounce scheduler, advance its deadline explicitly, restore the scheduler, and retain the zero-replacement assertion for equal status and ignored maps
-- [ ] 14.3 Run `make test FILE=tests/integration/file-tree/test_performance.lua CASE="Unchanged git status does not redraw the project tree"` and see it pass
+- [x] 14.1 Use the recorded gate failure `FAIL in tests/integration/file-tree/test_performance.lua | file-tree: Unchanged git status does not redraw the project tree: tests/integration/file-tree/test_performance.lua:431: unchanged git status did not finish` as the failing evidence
+- [x] 14.2 In `tests/integration/file-tree/test_performance.lua`, run the real `require("gleb.file_tree.git").refresh(root)` with the manual debounce scheduler, advance its deadline explicitly, restore the scheduler, and retain the zero-replacement assertion for equal status and ignored maps
+- [x] 14.3 Run `make test FILE=tests/integration/file-tree/test_performance.lua CASE="Unchanged git status does not redraw the project tree"` and see it pass
 
 ## Agent decisions
 
