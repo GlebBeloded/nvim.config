@@ -6,13 +6,15 @@ local child = H.new_child()
 
 local T = H.child_set(child, child.start_bare)
 
---- `archon` stub: a foreground `workflow run` logs its arguments, prints a line and records a run
+--- `archon` stub: a foreground `workflow run` logs its arguments (and its DRAIN_SKIP_FILE, `none` when unset, to
+--- $ARCHON_RUNS.env), prints a line and records a run
 --- of its change in the sqlite $ARCHON_DB with the status in $OUTCOMES/<change> (default completed;
 --- `infra`: cancelled by the stop-infra node, as its workflow_cancelled event records); with
 --- $OUTCOMES/<change>.sleep it records the run `running` first and sleeps that many seconds.
 local ARCHON_STUB = [[#!/bin/sh
 [ "$1 $2" = "workflow run" ] || exit 0
 echo "$*" >>"$ARCHON_RUNS"
+echo "${DRAIN_SKIP_FILE:-none}" >>"$ARCHON_RUNS.env"
 for arg; do case $arg in change=*) change=${arg#change=} ;; esac; done
 echo "stub run of $change"
 record() {
@@ -186,6 +188,8 @@ T["loop: Drains run two lanes and never take one change twice"] = function()
 	local names = ran(stubs)
 	table.sort(names)
 	eq(names, { "t-a", "t-b", "t-c" })
+	-- a run never sees the lanes' skip list: its gate's drain tests would write their fixture changes into it
+	eq(read_lines(stubs.runs .. ".env"), { "none", "none", "none" })
 	local three = H.system(child, { "make", "drains", "LANES=3" }, repo, stubs.env)
 	eq(three.code ~= 0, true)
 	eq((three.stdout .. three.stderr):find("at most 2 lanes", 1, true) ~= nil, true)
