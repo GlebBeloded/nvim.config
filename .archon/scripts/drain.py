@@ -29,6 +29,7 @@ MAKE = os.environ.get("MAKE") or "make"
 
 
 CHANGES = pathlib.Path("openspec/changes")
+LANE_ENV = ("DRAIN_SKIP_FILE", "DRAIN_PICK_LOCK")
 REGISTER_S = 300  # a started run shows up in the Archon DB well within this
 
 
@@ -140,6 +141,8 @@ def run(change: str, lock=None) -> tuple[str, str]:
     `completed`, `failed`, `cancelled`, `infra` (stop-infra cancelled it) or `paused` (any other status
     still needs the user)."""
     env = {**os.environ, "MAKEFLAGS": "", "MAKELEVEL": ""}
+    for name in LANE_ENV:  # the lanes' own state: a run's tests drain fixture queues, which must not share it
+        env.pop(name, None)
     before = run_ids(change)
     proc = subprocess.Popen([MAKE, "-s", "queue", f"CHANGE={change}"], env=env)
     started = time.monotonic()
@@ -183,7 +186,7 @@ def drain(limit: int | None, lanes: bool = False) -> int:
     runs = 0
     while limit is None or runs < limit:
         lock = pick_lock() if lanes else None
-        found = picked(skip | shared())
+        found = picked(skip | (shared() if lanes else set()))
         change = found["change"]
         if not change:
             lock and lock.close()
@@ -193,7 +196,7 @@ def drain(limit: int | None, lanes: bool = False) -> int:
             print("drain: queue is empty")
             return 0
         skip.add(change)
-        share(change, True)
+        lanes and share(change, True)
         print(f"drain: {change} starting", flush=True)
         runs += 1
         run_id, status = run(change, lock)
@@ -201,7 +204,7 @@ def drain(limit: int | None, lanes: bool = False) -> int:
         if status == "cancelled" and change not in retried and requeued(change):  # one more run adopts its branch
             retried.add(change)
             skip.discard(change)
-            share(change, False)
+            lanes and share(change, False)
         if status == "paused":
             print(f"drain: stopped, {change} paused (no node should pause: a loop bug): archon workflow status (run {run_id})")
             return 0

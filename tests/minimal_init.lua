@@ -17,8 +17,11 @@ for name in pairs(vim.fn.environ()) do
 		vim.env[name] = nil
 	end
 end
--- the same for the gate's BASE_BRANCH: loop scripts default to auto, which every fixture repo uses
-vim.env.BASE_BRANCH = nil
+-- the same for the gate's BASE_BRANCH (loop scripts default to auto, which every fixture repo uses) and the state of
+-- the `make drains` lanes that started the run (a drain test wrote its fixture changes into their skip list)
+for _, name in ipairs({ "BASE_BRANCH", "DRAIN_SKIP_FILE", "DRAIN_PICK_LOCK" }) do
+	vim.env[name] = nil
+end
 
 vim.o.swapfile = false
 vim.o.shadafile = "NONE"
