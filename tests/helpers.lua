@@ -151,7 +151,8 @@ end
 --- Polls the parent every second; once it is gone (the child was reparented), stops the LSP clients (their
 --- servers exit with them) and quits, then kills itself if a blocking wait keeps it from quitting.
 M.WATCHDOG = "lua local p = vim.uv.os_getppid() local t = vim.uv.new_timer() "
-	.. "t:start(1000, 1000, function() if vim.uv.os_getppid() == p then return end t:stop() "
+	-- p == 1: the parent died before this ran (a loaded host starts Neovim slowly), so p could never change
+	.. "t:start(p == 1 and 0 or 1000, 1000, function() if p ~= 1 and vim.uv.os_getppid() == p then return end t:stop() "
 	.. "vim.schedule(function() pcall(vim.lsp.stop_client, vim.lsp.get_clients(), true) vim.cmd('qa!') end) "
 	.. "vim.uv.new_timer():start(3000, 0, function() vim.uv.kill(vim.uv.os_getpid(), 'sigkill') end) end)"
 
