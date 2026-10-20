@@ -508,4 +508,25 @@ T["pr: pr.refresh always reports a failure"]["forced refreshes each notify"] = f
 	})
 end
 
+T["pr: pr.refresh is an unbound Find Action entry"] = function()
+	local entry = child.lua_get([[(function()
+		local action = require("gleb.actions").state.applicator.catalog:get("pr.refresh")
+		local shortcuts = vim.json.decode(table.concat(vim.fn.readfile(
+			vim.fs.joinpath(vim.fn.stdpath("config"), "settings/keymap.json")
+		), "\n"))
+		return {
+			id = action and action.id,
+			title = action and action.title,
+			category = action and action.category,
+			shortcut = shortcuts["pr.refresh"],
+		}
+	end)()]])
+
+	eq(entry, {
+		id = "pr.refresh",
+		title = "Refresh Pull Request Comments",
+		category = "Git | Pull Request",
+	})
+end
+
 return T

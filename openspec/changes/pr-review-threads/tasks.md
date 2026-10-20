@@ -54,10 +54,11 @@ Scenarios: `pr: PR fetch failures are classified`, `pr: A failed PR fetch warns 
 
 ## 10. Refresh action
 Scenarios: `pr: pr.refresh is an unbound Find Action entry`
-- [ ] 10.1 Write the scenario in `tests/integration/pr/test_threads.lua`, driving the real Find Action registry, and see it fail
-- [ ] 10.2 Add `lua/gleb/pr/actions.lua` with `pr.refresh`, register it from `init.lua`, and leave `settings/keymap.json` unchanged
-- [ ] 10.3 Run `make test FILE=tests/integration/pr/test_threads.lua CASE="pr.refresh is an unbound Find Action entry"`, then `make check`, and see them pass
+- [x] 10.1 Write the scenario in `tests/integration/pr/test_threads.lua`, driving the real Find Action registry, and see it fail
+- [x] 10.2 Add `lua/gleb/pr/actions.lua` with `pr.refresh`, register it from `init.lua`, and leave `settings/keymap.json` unchanged
+- [x] 10.3 Run `make test FILE=tests/integration/pr/test_threads.lua CASE="pr.refresh is an unbound Find Action entry"`, then `make check`, and see them pass
 
 ## Agent decisions
 
 - The write trigger resolves files through `gleb.git.base.resolve`, so symlinked paths share the canonical root's debounce and throttle.
+- The refresh action resolves the current buffer path, falling back to the working directory, so Find Action does not depend on a pre-populated base cache.

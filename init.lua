@@ -21,6 +21,7 @@ require("gleb.actions").setup({
 	require("gleb.folding.actions"),
 	require("gleb.ai.actions"),
 	require("gleb.git.actions"),
+	require("gleb.pr.actions"),
 	require("gleb.diff.actions"),
 	require("gleb.file_tree.actions"),
 	require("gleb.autocommands.actions"),
