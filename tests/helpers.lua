@@ -66,6 +66,7 @@ function M.isolate()
 		vim.fn.mkdir(vim.fs.joinpath(sandbox, "cache/nvim/luac"), "p")
 		vim.env.XDG_CONFIG_HOME = vim.fs.joinpath(sandbox, "config")
 		vim.env.XDG_CACHE_HOME = vim.fs.joinpath(sandbox, "cache")
+		vim.env.PATH = vim.fs.joinpath(M.root, "tests/fixtures/bin") .. ":" .. vim.env.PATH
 		vim.env.NVIM_APPNAME = nil
 		for _, name in ipairs(MULTIPLEXER_ENV) do
 			vim.env[name] = nil

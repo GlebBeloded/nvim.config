@@ -11,6 +11,7 @@
 #   build.sh tfproj  Terraform module with variable usages
 #   build.sh dirty   repo with staged, unstaged and untracked changes (changes review)
 #   build.sh billing  Go/TS repo with staged, unstaged and untracked changes (changes panel)
+#   build.sh prbranch  billing branch over origin/main and origin/release/1.4 (branch base, committed signs)
 #   build.sh diffgo  Go files with changed, inserted, deleted and moved lines
 #   build.sh treeproj Project-tree sample with modified, added, untracked and ignored files
 # Git is hermetic: no user or system config, fixed author, committer and dates.
@@ -30,6 +31,21 @@ git() { command git -c init.defaultBranch=main "$@"; }
 commit() {
 	git add -A
 	git commit -q -m "$1"
+}
+
+# $1 merge-base, $2 path: {"add":[…],"change":[…],"delete":[…]} HEAD lines of the committed hunks
+committed_lines() {
+	git diff -U0 -M "$1" HEAD -- "$2" | awk '
+		function list(name, s) { return "\"" name "\":[" s "]" }
+		/^@@/ {
+			split($2, o, ","); split($3, n, ",")
+			oc = (o[2] == "" ? 1 : o[2]); nc = (n[2] == "" ? 1 : n[2]); start = substr(n[1], 2)
+			if (nc == 0) { del = del sd (start == 0 ? 1 : start); sd = "," }
+			else for (i = 0; i < nc; i++) {
+				if (oc == 0) { add = add sa (start + i); sa = "," } else { chg = chg sc (start + i); sc = "," }
+			}
+		}
+		END { printf "{%s,%s,%s}", list("add", add), list("change", chg), list("delete", del) }'
 }
 
 # $@ Go files: JSON locations of `Format(` (declaration and calls), file order
@@ -1123,6 +1139,90 @@ ids() {
 	if [ "$1" = old ]; then ids_validate; ids_rest; else ids_rest; ids_validate; fi
 }
 
+prbranch() {
+	git init -q -b main
+	mkdir -p internal/billing internal/money
+	printf 'module example.com/billing\n\ngo 1.23\n' >go.mod
+	printf '# billing\n\nInvoices, tax and prices.\n' >README.md
+	cat >internal/money/money.go <<'GO'
+package money
+
+import "fmt"
+
+// Format renders cents as dollars.
+func Format(cents int) string {
+	return fmt.Sprintf("$%d.%02d", cents/100, cents%100)
+}
+GO
+	cat >internal/billing/invoice.go <<'GO'
+package billing
+
+import (
+	"fmt"
+
+	"example.com/billing/internal/money"
+)
+
+// Invoice is a list of line amounts in cents.
+type Invoice struct {
+	ID    string
+	Lines []int
+	Tax   TaxRate
+}
+
+// Total sums the lines and applies the tax rate.
+func (i Invoice) Total() int {
+	total := 0
+	for _, cents := range i.Lines {
+		total += cents
+	}
+	return i.Tax.Apply(total)
+}
+
+// Due renders the total as dollars.
+func (i Invoice) Due() string {
+	return fmt.Sprintf("due %s", money.Format(i.Total()))
+}
+GO
+	printf 'package billing\n\n// TaxRate applies a tax to an amount in cents.\ntype TaxRate interface {\n\tApply(cents int) int\n}\n' >internal/billing/rate.go
+	commit "billing: invoices"
+	git checkout -q -b release/1.4
+	sed -i.bak 's/Tax   TaxRate/Tax   Rate/' internal/billing/invoice.go
+	sed -i.bak 's/TaxRate/Rate/g' internal/billing/rate.go
+	rm internal/billing/*.bak
+	commit "billing: rename TaxRate to Rate"
+	git checkout -q -b feat/tax
+	replace_line internal/billing/invoice.go 18 '	var total int'
+	awk 'NR == 22 { print "\tif i.Tax == nil {"; print "\t\treturn total"; print "\t}" } { print }' \
+		internal/billing/invoice.go >invoice.new
+	mv invoice.new internal/billing/invoice.go
+	commit "billing: a nil rate means no tax"
+	printf 'package billing\n\n// Flat adds a fixed amount.\ntype Flat struct {\n\tValue int\n}\n\n// Apply implements Rate.\nfunc (r Flat) Apply(cents int) int {\n\treturn cents + r.Value\n}\n' >internal/billing/tax.go
+	commit "billing: flat rate"
+	git checkout -q main
+	printf '# billing\n\nInvoices, tax and prices in cents.\n' >README.md
+	commit "docs: cents"
+	git checkout -q feat/tax
+	# remote-tracking refs as a clone has them; the URL names the real host and is never contacted
+	git update-ref refs/remotes/origin/main main
+	git update-ref refs/remotes/origin/release/1.4 release/1.4
+	git update-ref refs/remotes/origin/feat/tax feat/tax
+	git branch -q -D release/1.4
+	git symbolic-ref refs/remotes/origin/HEAD refs/remotes/origin/main
+	git remote add origin git@pgw.dev:finteqhub/billing.git
+	git config branch.feat/tax.remote origin
+	git config branch.feat/tax.merge refs/heads/feat/tax
+	# unstaged: invoice.go line 11
+	replace_line internal/billing/invoice.go 11 '	ID    string // invoice number'
+	base=$(git merge-base origin/main HEAD)
+	printf '{"head":"%s","merge_base":"%s","base":"origin/main","pr_base":"origin/release/1.4","pr_merge_base":"%s","committed":{"internal/billing/invoice.go":%s,"internal/billing/rate.go":%s,"internal/billing/tax.go":%s},"hunks":{"internal/billing/invoice.go":[%s]}}\n' \
+		"$(git rev-parse --short=7 HEAD)" "$base" "$(git merge-base origin/release/1.4 HEAD)" \
+		"$(committed_lines "$base" internal/billing/invoice.go)" \
+		"$(committed_lines "$base" internal/billing/rate.go)" \
+		"$(committed_lines "$base" internal/billing/tax.go)" \
+		"$(hunk_starts internal/billing/invoice.go)" >../manifest.json
+}
+
 diffgo() {
 	git init -q
 	mkdir -p internal/user
@@ -1144,7 +1244,7 @@ key_input() {
 }
 
 case "$name" in
-gomod | luaproj | pyproj | tsproj | rustproj | bashproj | tfproj | dirty | billing | diffgo | treeproj) ;;
+gomod | luaproj | pyproj | tsproj | rustproj | bashproj | tfproj | dirty | billing | prbranch | diffgo | treeproj) ;;
 *)
 	echo "build.sh: unknown fixture '$name'" >&2
 	exit 2

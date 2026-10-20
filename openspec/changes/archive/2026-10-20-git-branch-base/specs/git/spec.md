@@ -46,6 +46,10 @@ There SHALL be no base, and `gh` SHALL not run, outside a repository, on a detac
 - **WHEN** a temp repo with commits on `main` and `feat/x` and no remote is on `feat/x` and `resolve` is called on it
 - **THEN** `cb` receives nil and the `gh` stub log is empty
 
+#### Scenario: Branch base is absent for unrelated histories
+- **WHEN** a temp repo's branch and `origin/main` have no common commit and `resolve` is called on it
+- **THEN** `cb` receives nil and the `gh` stub log is empty
+
 #### Scenario: Branch base rules list the no-base cases
 - **WHEN** `rules.skip_reason(branch, head, default)` runs over the design.md "No-base table"
 - **THEN** detached (`branch` nil), unborn (`head` nil), the default branch, `main`, `master` and a missing default return their reason strings, and `feat/tax` with a head and default `main` returns nil
@@ -103,3 +107,7 @@ Results SHALL be cached per root. `get(root)` returns the cache without running 
 #### Scenario: Branch base stops watching on reset
 - **WHEN** a first `resolve` on the `prbranch` copy has started the git-dir watch and `require("gleb.git.base").reset()` runs
 - **THEN** `state.roots` is empty and no libuv fs_event handle of the module is active
+
+#### Scenario: Branch base discards stale asynchronous results
+- **WHEN** `reset()` removes a root while its pull-request commit check or merge-base check is in flight
+- **THEN** the discarded request calls no resolver callback, publishes no event and does not recreate root state

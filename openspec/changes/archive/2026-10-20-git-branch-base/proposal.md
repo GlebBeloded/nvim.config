@@ -75,6 +75,16 @@ the Branch tab (`git-changes-tabs`) and the review threads (`pr-review-threads`)
   - `git: Git commands are available after startup` still holds: no user command is added or removed.
   - `keymaps: Toggle wins over a pending changes refresh` still holds: the base's own `FocusGained` refresh
     opens and focuses no window and leaves the changes panel's refresh untouched.
+  - `file-tree: Project tree hides the git folder` still holds: the shared test isolation change does not
+    alter project-tree filtering.
+  - `file-tree: Ignored entries are hidden by default` still holds: putting the `gh` stub on `PATH` does not
+    alter ignored-entry filtering.
+  - `file-tree: Expanded ignored folder lists ignored children` still holds: putting the `gh` stub on `PATH`
+    does not alter ignored-folder expansion.
+  - `file-tree: Project tree refresh survives failed git status` still holds: the `gh` stub does not alter
+    git status execution or failure handling.
+  - `references: gr classifies Terraform module usages` still holds: the shared test isolation change does
+    not alter LSP reference classification.
 - Out of scope:
   - Fetching. The base is the local remote-tracking ref as of the last `git fetch`, and the editor never
     fetches.
