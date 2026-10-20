@@ -52,6 +52,7 @@ local INVALIDATION_WINDOW_MS = 50
 ---@class FileTreeViewState
 ---@field by_tab table<integer, FileTreeView>
 ---@field last_editor_by_tab table<integer, integer>
+---@field initial_status_hook? fun(release: fun())
 
 ---@type FileTreeViewState
 M.state = { by_tab = {}, last_editor_by_tab = editor.state.last_editor_by_tab }
@@ -417,9 +418,16 @@ end
 
 ---@param view FileTreeView
 ---@param path string
+---@param released? boolean
 ---@return boolean
-local function finish_initial_draw(view, path)
+local function finish_initial_draw(view, path, released)
 	if not view.initializing or not view.initial_source_ready or not view.initial_expansions_loaded then
+		return false
+	end
+	if M.state.initial_status_hook and not released then
+		M.state.initial_status_hook(function()
+			finish_initial_draw(view, path, true)
+		end)
 		return false
 	end
 	local timer = view.initial_draw_timer
@@ -439,6 +447,9 @@ end
 ---@param path string
 local function start_initial_draw_deadline(view, path)
 	view.initializing = true
+	if M.state.initial_status_hook then
+		return
+	end
 	view.initial_draw_timer = assert(vim.uv.new_timer())
 	view.initial_draw_timer:start(
 		IGNORE_WAIT_MS,

@@ -12,9 +12,9 @@ Scenarios: `loop: Known flaky cases use deterministic readiness`, `references: P
 
 ## 3. Drive first-paint status completion deterministically
 Scenarios: `loop: Known flaky cases use deterministic readiness`, `file-tree: First paint waits for ignored status`
-- [ ] 3.1 Treat the proposal's 6 rerun passes as the failing evidence; tighten `tests/integration/file-tree/test_ignored.lua` so the existing first-frame omission assertion fails if paint precedes a controlled pending status result, without racing a scheduled callback against 300 ms
-- [ ] 3.2 Add the smallest file-tree test hook needed to release the real first-status callback and observe the first draw after that event; keep the 300 ms product fallback unchanged
-- [ ] 3.3 Run `make test FILE=tests/integration/file-tree/test_ignored.lua CASE="First paint waits for ignored status"` and see it pass
+- [x] 3.1 Treat the proposal's 6 rerun passes as the failing evidence; tighten `tests/integration/file-tree/test_ignored.lua` so the existing first-frame omission assertion fails if paint precedes a controlled pending status result, without racing a scheduled callback against 300 ms
+- [x] 3.2 Add the smallest file-tree test hook needed to release the real first-status callback and observe the first draw after that event; keep the 300 ms product fallback unchanged
+- [x] 3.3 Run `make test FILE=tests/integration/file-tree/test_ignored.lua CASE="First paint waits for ignored status"` and see it pass
 
 ## 4. Observe project-tree burst quiescence
 Scenarios: `loop: Known flaky cases use deterministic readiness`, `file-tree: Project tree runs git status once per burst`
@@ -47,3 +47,4 @@ Scenarios: `loop: Known flaky cases use deterministic readiness`, `keymaps: Togg
 - The stale proposal label “Toggle wins over pending filesystem render” maps to the existing `keymaps: Toggle wins over a pending tree refresh` scenario located by symbol.
 - Surface timeout errors report the readiness expression and `child`/`descendants` cleanup states so a loaded-host miss identifies both the wait and teardown outcome.
 - Treesitter readiness means a capture exists at the reference position, while rewritten Go readiness requires two real gopls reference responses from that buffer.
+- The file-tree initial-status hook pauses the initial-draw boundary and suppresses its fallback only while the test controls completion, leaving the production 300 ms deadline unchanged.
