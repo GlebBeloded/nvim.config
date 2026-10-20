@@ -100,3 +100,9 @@ thread. Or to resolve thread. With hints on which button does what. Also that sh
   outer border (title only), and this is a section rule inside the frame, like the picker's section rows.
 - **No separate dialog**: the user picked the hint-row question over the `r3_confirm_dialog` mock.
 - **Draft text is plain `Normal`**: no group is needed for it.
+
+## Decision (user, 2026-10-20)
+
+- Don't guess the GitHub API: the agent may call the real API on this repo's own PRs (GlebBeloded/nvim.config, through
+  `gh`) to learn the exact request and response shapes, then record those responses as fixtures and test against the
+  mocked responses. Tests never call the network.

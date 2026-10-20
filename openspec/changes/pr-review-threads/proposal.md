@@ -123,3 +123,9 @@ This change adds that data layer with no UI beyond one Find Action entry and its
   the explicit `pr.refresh` always reports.
 - **Queries are single-line strings** with a named operation (`query ReviewThreads`). The fake `gh` logs one
   line per call and routes by the name, so tests stay readable.
+
+## Decision (user, 2026-10-20)
+
+- Don't guess the GitHub API: the agent may call the real API on this repo's own PRs (GlebBeloded/nvim.config, through
+  `gh`) to learn the exact request and response shapes, then record those responses as fixtures and test against the
+  mocked responses. Tests never call the network.

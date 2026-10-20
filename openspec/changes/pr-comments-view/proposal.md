@@ -121,3 +121,9 @@ bar").
 - **One fixture state for every render**: the four `pr482` threads. So the peek render also shows the resolved
   `:11` line and the `:13` peek, which the approved mock (one thread) did not.
 - **`No pull request for <branch>` is a WARN**, like `git-changes-tabs`' `No branch changes on <branch>`.
+
+## Decision (user, 2026-10-20)
+
+- Don't guess the GitHub API: the agent may call the real API on this repo's own PRs (GlebBeloded/nvim.config, through
+  `gh`) to learn the exact request and response shapes, then record those responses as fixtures and test against the
+  mocked responses. Tests never call the network.
