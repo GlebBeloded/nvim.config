@@ -19,9 +19,9 @@ Scenarios: `git: Committed signs mark the branch's lines`, `git: Committed signs
 
 Scenarios: `git: Committed signs move with unsaved edits`, `git: Committed signs yield to a local change on the same line`, `git: Committed signs refresh after a commit`, `git: Committed signs clear when HEAD is detached`
 
-- [ ] 3.1 Add the scenarios to tests/integration/git/test_committed_signs.lua and see them fail.
-- [ ] 3.2 Implement Decision 6: `nvim_buf_attach` with a debounced re-map, the `User GlebGitBaseChanged` recompute or clear, and teardown on `BufWipeout`/`on_detach` with current-key checks on async results (rules 6.3 and 6.5).
-- [ ] 3.3 Run the file and see every scenario in it pass.
+- [x] 3.1 Add the scenarios to tests/integration/git/test_committed_signs.lua and see them fail.
+- [x] 3.2 Implement Decision 6: `nvim_buf_attach` with a debounced re-map, the `User GlebGitBaseChanged` recompute or clear, and teardown on `BufWipeout`/`on_detach` with current-key checks on async results (rules 6.3 and 6.5).
+- [x] 3.3 Run the file and see every scenario in it pass.
 
 ## 4. Screen
 

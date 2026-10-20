@@ -40,6 +40,15 @@ local function install_sign_reader()
 			end
 			return signs
 		end
+		function GitsignsSignAt(target)
+			for name, ns in pairs(vim.api.nvim_get_namespaces()) do
+				if name:find("^gitsigns_signs_") then
+					local marks = vim.api.nvim_buf_get_extmarks(0, ns, { target - 1, 0 }, { target - 1, -1 }, {})
+					if #marks > 0 then return true end
+				end
+			end
+			return false
+		end
 	]])
 end
 
@@ -164,6 +173,62 @@ T["git: Committed signs skip a file over the line limit"] = function()
 	edit(root, "internal/billing/tax.go")
 	child.lua([[vim.wait(1000, function() return false end)]])
 	eq(child.lua_get("CommittedSigns()"), {})
+end
+
+T["git: Committed signs move with unsaved edits"] = function()
+	local root, manifest = prbranch()
+	install_sign_reader()
+	edit(root, "internal/billing/invoice.go")
+	wait_for_signs(expected_bars(manifest.committed["internal/billing/invoice.go"]))
+
+	child.type_keys("gg", "O", "// one", "<Esc>", "o", "// two", "<Esc>")
+	local expected = {}
+	for line, sign in pairs(expected_bars(manifest.committed["internal/billing/invoice.go"])) do
+		expected[tostring(tonumber(line) + 2)] = sign
+	end
+	wait_for_signs(expected)
+	eq(child.bo.modified, true)
+end
+
+T["git: Committed signs yield to a local change on the same line"] = function()
+	local root, manifest = prbranch()
+	local path = "internal/billing/invoice.go"
+	local line = manifest.committed[path].change[1]
+	install_sign_reader()
+	edit(root, path)
+	local expected = expected_bars(manifest.committed[path])
+	wait_for_signs(expected)
+
+	child.type_keys(tostring(line) .. "G", "cc", "\tTax   Rate // per invoice", "<Esc>")
+	expected[tostring(line)] = nil
+	wait_for_signs(expected)
+	eq(child.bo.modified, true)
+	child.lua([[TargetLine = ...]], { line })
+	eq(child.wait("GitsignsSignAt(TargetLine)", ASYNC_MS), true)
+end
+
+T["git: Committed signs refresh after a commit"] = function()
+	local root, manifest = prbranch()
+	local path = "internal/billing/invoice.go"
+	install_sign_reader()
+	edit(root, path)
+	wait_for_signs(expected_bars(manifest.committed[path]))
+
+	H.git(root, { "commit", "-qam", "wip" })
+	local line = manifest.hunks[path][1]
+	child.lua([[TargetLine = ...]], { line })
+	eq(child.wait("CommittedSigns()[tostring(TargetLine)] ~= nil", ASYNC_MS), true)
+end
+
+T["git: Committed signs clear when HEAD is detached"] = function()
+	local root, manifest = prbranch()
+	local path = "internal/billing/invoice.go"
+	install_sign_reader()
+	edit(root, path)
+	wait_for_signs(expected_bars(manifest.committed[path]))
+
+	H.git(root, { "checkout", "-q", "--detach" })
+	wait_for_signs({})
 end
 
 return T
