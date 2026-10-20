@@ -42,9 +42,9 @@ Scenarios: `pr: PR threads are cached per head`, `pr: A new PR head fetches the 
 
 ## 8. Refresh triggers
 Scenarios: `pr: pr.refresh fetches the threads again`, `pr: Opening the review panel fetches the threads`, `pr: Writing a file fetches the threads once`, `pr: A trigger during a fetch queues one more`, `pr: pr.refresh without a pull request`
-- [ ] 8.1 Write the scenarios in `tests/integration/pr/test_threads.lua`, driving `pr.refresh`, `changes.review`, `:write`, and concurrent refreshes against the real action and populated fixture, and see them fail
-- [ ] 8.2 Implement forced refresh notifications, `in_flight`/`pending`, the `gleb_pr` write debounce and throttle, and the opening hook in `lua/gleb/git/changes/init.lua`
-- [ ] 8.3 Run each task scenario with `make test FILE=tests/integration/pr/test_threads.lua CASE="<scenario title>"` and see it pass
+- [x] 8.1 Write the scenarios in `tests/integration/pr/test_threads.lua`, driving `pr.refresh`, `changes.review`, `:write`, and concurrent refreshes against the real action and populated fixture, and see them fail
+- [x] 8.2 Implement forced refresh notifications, `in_flight`/`pending`, the `gleb_pr` write debounce and throttle, and the opening hook in `lua/gleb/git/changes/init.lua`
+- [x] 8.3 Run each task scenario with `make test FILE=tests/integration/pr/test_threads.lua CASE="<scenario title>"` and see it pass
 
 ## 9. Errors
 Scenarios: `pr: PR fetch failures are classified`, `pr: A failed PR fetch warns once and keeps the threads`, `pr: pr.refresh always reports a failure`
@@ -57,3 +57,7 @@ Scenarios: `pr: pr.refresh is an unbound Find Action entry`
 - [ ] 10.1 Write the scenario in `tests/integration/pr/test_threads.lua`, driving the real Find Action registry, and see it fail
 - [ ] 10.2 Add `lua/gleb/pr/actions.lua` with `pr.refresh`, register it from `init.lua`, and leave `settings/keymap.json` unchanged
 - [ ] 10.3 Run `make test FILE=tests/integration/pr/test_threads.lua CASE="pr.refresh is an unbound Find Action entry"`, then `make check`, and see them pass
+
+## Agent decisions
+
+- The write trigger resolves files through `gleb.git.base.resolve`, so symlinked paths share the canonical root's debounce and throttle.

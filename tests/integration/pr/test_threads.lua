@@ -104,6 +104,27 @@ local function refresh_and_locate(root, path)
 	return by_id
 end
 
+---@param log string
+---@return integer
+local function graphql_calls(log)
+	return #vim.tbl_filter(function(line)
+		return line:find("query ReviewThreads", 1, true) ~= nil
+	end, vim.fn.filereadable(log) == 1 and vim.fn.readfile(log) or {})
+end
+
+---@param root string
+---@return nil
+local function force_refresh(root)
+	child.lua([[require("gleb.pr").refresh(..., { force = true })]], { root })
+end
+
+local function review_changes()
+	child.lua([[
+		local action = assert(require("gleb.actions").state.applicator.catalog:get("changes.review"))
+		action.run(require("gleb.actions.context").capture())
+	]])
+end
+
 T["pr: PR threads are fetched with gh api graphql"] = function()
 	local root, log = billing_branch(true)
 	child.lua(
@@ -287,6 +308,99 @@ T["pr: PR thread updates fire an event"] = function()
 	)
 	eq(child.wait("#PrEvents == 1", 3000), true)
 	eq(child.lua_get("PrEvents"), { root })
+end
+
+T["pr: pr.refresh fetches the threads again"] = function()
+	local root, log = billing_branch(true)
+	local notifications = H.record_notify(child)
+	child.lua([[PrEvents = 0
+		vim.api.nvim_create_autocmd("User", { pattern = "GlebPrThreads", callback = function()
+			PrEvents = PrEvents + 1
+		end })]])
+
+	force_refresh(root)
+	eq(child.wait("PrEvents == 1", 3000), true)
+	force_refresh(root)
+	eq(child.wait("PrEvents == 2", 3000), true)
+
+	eq(graphql_calls(log), 2)
+	eq(notifications(), {
+		{ msg = "PR #482: 3 open threads", level = vim.log.levels.INFO },
+		{ msg = "PR #482: 3 open threads", level = vim.log.levels.INFO },
+	})
+end
+
+T["pr: Opening the review panel fetches the threads"] = function()
+	local root, log = billing_branch(true)
+	child.cmd("edit " .. vim.fn.fnameescape(vim.fs.joinpath(root, "internal/billing/invoice.go")))
+
+	review_changes()
+	eq(
+		child.wait(
+			[[#vim.tbl_filter(function(line)
+		return line:find("query ReviewThreads", 1, true) ~= nil
+	end, vim.fn.readfile(vim.env.FAKE_GH_LOG)) == 1]],
+			3000
+		),
+		true
+	)
+	review_changes()
+	eq(child.lua_get([[vim.wait(500, function() return false end)]]), false)
+
+	eq(graphql_calls(log), 1)
+end
+
+T["pr: Writing a file fetches the threads once"] = function()
+	local root, log = billing_branch(true)
+	refresh_and_open_invoice(root)
+	child.lua([[WriteStart = vim.uv.now()]])
+
+	child.cmd("write")
+	eq(
+		child.wait(
+			[[#vim.tbl_filter(function(line)
+		return line:find("query ReviewThreads", 1, true) ~= nil
+	end, vim.fn.readfile(vim.env.FAKE_GH_LOG)) == 2]],
+			3000
+		),
+		true
+	)
+	eq(child.wait("vim.uv.now() - WriteStart >= 1500", 2000), true)
+	child.cmd("write")
+	eq(child.lua_get([[vim.wait(1500, function() return false end)]]), false)
+
+	eq(graphql_calls(log), 2)
+end
+
+T["pr: A trigger during a fetch queues one more"] = function()
+	local root, log = billing_branch(true)
+	child.lua([[vim.env.FAKE_GH_SLEEP = "1"; PrEvents = 0
+		vim.api.nvim_create_autocmd("User", { pattern = "GlebPrThreads", callback = function()
+			PrEvents = PrEvents + 1
+		end })]])
+
+	child.lua(
+		[[local root = ...
+		local pr = require("gleb.pr")
+		pr.refresh(root)
+		pr.refresh(root)
+		pr.refresh(root)]],
+		{ root }
+	)
+	eq(child.wait("PrEvents == 2", 5000), true)
+	eq(child.lua_get([[vim.wait(1200, function() return false end)]]), false)
+
+	eq(graphql_calls(log), 2)
+end
+
+T["pr: pr.refresh without a pull request"] = function()
+	local root, log = billing_branch(false)
+	local notifications = H.record_notify(child)
+
+	force_refresh(root)
+
+	eq(notifications(), { { msg = "No pull request for feat/tax", level = vim.log.levels.WARN } })
+	eq(graphql_calls(log), 0)
 end
 
 return T

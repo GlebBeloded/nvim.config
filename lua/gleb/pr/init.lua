@@ -1,8 +1,11 @@
 -- Pull-request review cache: coordinates base metadata, GitHub fetches, and update publication per root.
 local gh = require("gleb.pr.gh")
 local threads = require("gleb.pr.threads")
+local debounce = require("gleb.util.debounce")
 
 local BLOB_CACHE_MAX = 200
+local WRITE_DEBOUNCE_MS = 1000
+local WRITE_MIN_INTERVAL_MS = 30000
 
 local M = {
 	GH_TIMEOUT_MS = 20000,
@@ -24,9 +27,22 @@ local M = {
 ---@field generations table<string, integer>
 ---@field blobs table<string, string[]>
 ---@field blob_order string[]
+---@field in_flight table<string, boolean>
+---@field pending table<string, gleb.pr.RefreshOptions>
+---@field last_write_fetch table<string, integer>
+---@field write_timers table<string, uv.uv_timer_t>
 
 ---@type gleb.pr.State
-M.state = { by_root = {}, generations = {}, blobs = {}, blob_order = {} }
+M.state = {
+	by_root = {},
+	generations = {},
+	blobs = {},
+	blob_order = {},
+	in_flight = {},
+	pending = {},
+	last_write_fetch = {},
+	write_timers = {},
+}
 
 ---@class gleb.pr.Location
 ---@field thread gleb.pr.Thread
@@ -42,18 +58,51 @@ local function repository(pr)
 	return pr.host or host, owner, name
 end
 
+---@class gleb.pr.RefreshOptions
+---@field force? boolean
+
+---@param root string
+---@param opts gleb.pr.RefreshOptions
+---@return nil
+local function queue_refresh(root, opts)
+	local pending = M.state.pending[root] or {}
+	pending.force = pending.force or opts.force
+	M.state.pending[root] = pending
+end
+
 ---@param root string
 ---@return nil
-function M.refresh(root)
+local function finish_refresh(root)
+	M.state.in_flight[root] = nil
+	local pending = M.state.pending[root]
+	M.state.pending[root] = nil
+	if pending then
+		M.refresh(root, pending)
+	end
+end
+
+---@param root string
+---@param opts? gleb.pr.RefreshOptions
+---@return nil
+function M.refresh(root, opts)
+	opts = opts or {}
 	root = vim.fs.normalize(root)
 	local info = require("gleb.git.base").get(root)
 	if not info or not info.pr then
+		if opts.force then
+			vim.notify("No pull request for " .. (info and info.branch or "current branch"), vim.log.levels.WARN)
+		end
+		return
+	end
+	if M.state.in_flight[root] then
+		queue_refresh(root, opts)
 		return
 	end
 	local host, owner, name = repository(info.pr)
 	if not host or not owner or not name then
 		return
 	end
+	M.state.in_flight[root] = true
 	local generation = (M.state.generations[root] or 0) + 1
 	M.state.generations[root] = generation
 	---@type gleb.pr.Review
@@ -69,20 +118,25 @@ function M.refresh(root)
 	}
 	gh.fetch_threads(review, nil, function(fetched_threads)
 		local current = require("gleb.git.base").get(root)
-		if
-			not fetched_threads
-			or M.state.generations[root] ~= generation
-			or not current
-			or not current.pr
-			or current.pr.number ~= review.pr.number
-			or current.pr.head_ref_oid ~= review.head
-		then
-			return
+		local current_result = fetched_threads ~= nil
+			and M.state.generations[root] == generation
+			and current
+			and current.pr
+			and current.pr.number == review.pr.number
+			and current.pr.head_ref_oid == review.head
+		if current_result then
+			review.threads = threads.parse(fetched_threads)
+			review.fetched_at = M.now()
+			M.state.by_root[root] = review
+			vim.api.nvim_exec_autocmds("User", { pattern = "GlebPrThreads", data = { root = root } })
+			if opts.force then
+				vim.notify(
+					("PR #%d: %d open threads"):format(review.pr.number, threads.open_count(review.threads)),
+					vim.log.levels.INFO
+				)
+			end
 		end
-		review.threads = threads.parse(fetched_threads)
-		review.fetched_at = M.now()
-		M.state.by_root[root] = review
-		vim.api.nvim_exec_autocmds("User", { pattern = "GlebPrThreads", data = { root = root } })
+		finish_refresh(root)
 	end)
 end
 
@@ -251,19 +305,68 @@ local function base_changed(args)
 	end
 end
 
+---@param root string
+---@return nil
+local function schedule_write_refresh(root)
+	M.state.write_timers[root] = debounce.schedule(M.state.write_timers[root], WRITE_DEBOUNCE_MS, function()
+		local info = require("gleb.git.base").get(root)
+		if not info or not info.pr then
+			return
+		end
+		local now = M.now()
+		local last = M.state.last_write_fetch[root]
+		if last and now - last < WRITE_MIN_INTERVAL_MS then
+			return
+		end
+		M.state.last_write_fetch[root] = now
+		M.refresh(root)
+	end)
+end
+
+---@param args table
+---@return nil
+local function written(args)
+	if vim.bo[args.buf].buftype ~= "" then
+		return
+	end
+	local path = vim.api.nvim_buf_get_name(args.buf)
+	if path == "" then
+		return
+	end
+	require("gleb.git.base").resolve(path, function(info, root)
+		if info and info.pr and root then
+			schedule_write_refresh(vim.fs.normalize(root))
+		end
+	end)
+end
+
 local group = vim.api.nvim_create_augroup("gleb_pr", { clear = true })
 vim.api.nvim_create_autocmd("User", {
 	group = group,
 	pattern = "GlebGitBaseChanged",
 	callback = base_changed,
 })
+vim.api.nvim_create_autocmd("BufWritePost", {
+	group = group,
+	callback = written,
+})
 
 ---@return nil
 function M.reset()
+	for _, timer in pairs(M.state.write_timers) do
+		timer:stop()
+		if not timer:is_closing() then
+			timer:close()
+		end
+	end
 	M.state.by_root = {}
 	M.state.generations = {}
 	M.state.blobs = {}
 	M.state.blob_order = {}
+	M.state.in_flight = {}
+	M.state.pending = {}
+	M.state.last_write_fetch = {}
+	M.state.write_timers = {}
 end
 
 return M
