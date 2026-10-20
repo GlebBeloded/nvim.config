@@ -42,9 +42,9 @@ Scenarios: `file-tree: Project tree unfold all meets the large-tree bound`
 
 ## 8. Run wall-clock performance checks serially
 Scenarios: `file-tree: Project tree redraw meets the large-tree bound`, `file-tree: Project tree expansion meets the large-tree bound`, `file-tree: Project tree save leaves the main path promptly`, `file-tree: Project tree follows an already listed row promptly`, `file-tree: Project tree re-roots without waiting for repository discovery`
-- [ ] 8.1 Add a `make perf` selection for the real populated-tree cases in `tests/integration/file-tree/test_performance.lua`; temporarily set one elapsed bound to zero, run `make perf`, see it fail and record the failure, then remove the fault
-- [ ] 8.2 Wire `perf` as a serial `tests/check.sh` target after parallel tests, while normal integration runs retain correctness and process-CPU assertions
-- [ ] 8.3 Run `make perf` and see it pass
+- [x] 8.1 Add a `make perf` selection for the real populated-tree cases in `tests/integration/file-tree/test_performance.lua`; temporarily set one elapsed bound to zero, run `make perf`, see it fail and record the failure, then remove the fault
+- [x] 8.2 Wire `perf` as a serial `tests/check.sh` target after parallel tests, while normal integration runs retain correctness and process-CPU assertions
+- [x] 8.3 Run `make perf` and see it pass
 
 ## 9. Cover the remaining serial wall-clock bounds
 Scenarios: `file-tree: Project tree persists folds off the action path`, `file-tree: Project tree unfold all meets the large-tree bound`
