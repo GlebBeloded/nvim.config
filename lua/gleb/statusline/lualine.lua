@@ -32,6 +32,13 @@ local branch = {
 	"branch",
 	icons_enabled = true,
 	icon = "",
+	fmt = require("gleb.pr.statusline").branch,
+}
+
+local pull_request = {
+	require("gleb.pr.statusline").component,
+	cond = require("gleb.pr.statusline").cond,
+	padding = 0,
 }
 
 -- self-contained block: "<status dot> <language logo> <language>", e.g. "●  lua"
@@ -73,7 +80,7 @@ lualine.setup({
 	},
 	sections = {
 		lualine_a = { mode },
-		lualine_b = { branch, diff },
+		lualine_b = { branch, pull_request, diff },
 		lualine_c = { navic },
 		lualine_x = { lsp_progress, copilot, diagnostics, lsp_status },
 		lualine_y = {},

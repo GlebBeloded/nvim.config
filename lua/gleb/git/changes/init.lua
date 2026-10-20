@@ -305,7 +305,7 @@ function M.toggle_commits()
 	end
 end
 
---- Open a file row, or fold a structural row.
+--- Open a file or review-thread row, or fold a structural row.
 ---@return nil
 function M.open_selected()
 	local current = M.state.by_tab[vim.api.nvim_get_current_tabpage()]
@@ -313,7 +313,9 @@ function M.open_selected()
 		return
 	end
 	local row = current.rows[vim.api.nvim_win_get_cursor(current.win)[1]]
-	if row and row.kind == "file" and (current.active_tab == "branch" or not row.fold_id) then
+	if row and row.kind == "thread" then
+		require("gleb.pr.comments_tab").open(current, row)
+	elseif row and row.kind == "file" and (current.active_tab == "branch" or not row.fold_id) then
 		view.open_file(current, row)
 	elseif row and row.fold_id then
 		view.toggle_fold(current)

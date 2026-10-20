@@ -41,7 +41,7 @@ T["statusline: Statusline shows the pull request and its open threads"] = functi
 	eq(require("tests.helpers") ~= nil, true)
 	eq(
 		child.lua_get([[require("gleb.pr.statusline").component()]]),
-		"%#lualine_b_normal# %#PrStatuslineNumber# #482%#lualine_b_normal#  %#PrStatuslineThreads#󰂈 3"
+		"%#lualine_b_normal# %#PrStatuslineNumber# #482%#lualine_b_normal#  %#PrStatuslineThreads#󰆈 3"
 	)
 end
 

@@ -20,7 +20,7 @@ local CHECKBOX_MIXED = "󰡖"
 ---@field files ChangesRow[]
 
 ---@class ChangesRow
----@field kind "root"|"directory"|"file"|"header"|"summary"|"blank"|"all"|"commit"
+---@field kind "root"|"directory"|"file"|"header"|"summary"|"blank"|"all"|"commit"|"comment_file"|"thread"|"comment_state"
 ---@field root string
 ---@field id? string
 ---@field label string
@@ -44,6 +44,8 @@ local CHECKBOX_MIXED = "󰡖"
 ---@field full_hash? string
 ---@field parents? string[]
 ---@field age? string
+---@field line? integer
+---@field thread? gleb.pr.Thread
 
 ---@class ChangesNumstat
 ---@field added integer

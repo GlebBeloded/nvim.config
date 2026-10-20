@@ -463,6 +463,7 @@ local function close_owned_diff(view)
 	view.diff_view = nil
 	view.diff_path = nil
 	view.diff_pending_path = nil
+	view.editor_win = windows.eligible_editor(view, true)
 end
 
 ---@param view ChangesView
@@ -569,6 +570,10 @@ local function schedule_diff(view)
 	drop_pending_diff(view, row)
 	view.diff_timer = debounce.schedule(view.diff_timer, DIFF_DEBOUNCE_MS, function()
 		if not vim.api.nvim_win_is_valid(view.win) or view.active_tab ~= active_tab then
+			return
+		end
+		if active_tab == "comments" then
+			require("gleb.pr.comments_tab").preview(view, row, false)
 			return
 		end
 		request_diff(view, row, false)
@@ -686,6 +691,11 @@ local function add_refresh_sources(view)
 			local root = args.data and args.data.root
 			if root and workspace.normalize(root) == view.root then
 				draw_tabs(view)
+				if view.active_tab == "comments" then
+					local selected = tree_view.selected_id(view.tree)
+					tree_model.rebuild(view.tree, require("gleb.pr.comments_tab").nodes(view.root))
+					draw(view, selected)
+				end
 			end
 		end,
 	})
@@ -950,6 +960,8 @@ function M.activate_tab(panel, id)
 	end)
 	if descriptor and descriptor.editor == "file" then
 		close_owned_diff(panel)
+		tree_model.rebuild(panel.tree, require("gleb.pr.comments_tab").nodes(panel.root))
+		draw(panel)
 		vim.api.nvim_set_current_win(panel.win)
 		return
 	end
@@ -1022,6 +1034,10 @@ end
 ---@return nil
 function M.review(view)
 	vim.api.nvim_set_current_win(view.win)
+	if view.active_tab == "comments" then
+		require("gleb.pr.comments_tab").preview(view, view.rows[vim.api.nvim_win_get_cursor(view.win)[1]], false)
+		return
+	end
 	request_diff(view, view.rows[vim.api.nvim_win_get_cursor(view.win)[1]], false)
 end
 

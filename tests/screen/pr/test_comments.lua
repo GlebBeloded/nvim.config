@@ -1,94 +1,13 @@
 local MiniTest = require("mini.test")
-local F = require("tests.fixtures")
 local H = require("tests.helpers")
-local pr482 = require("tests.fixtures.gh.pr482")
+local screens = require("tests.screen.pr.screens")
 
 local eq = MiniTest.expect.equality
 local child = H.new_child()
 
-local function run_action(id)
-	child.lua(
-		[[
-		local action = assert(require("gleb.actions").state.applicator.catalog:get(...))
-		action.run(require("gleb.actions.context").capture())
-	]],
-		{ id }
-	)
-end
-
-local function start()
-	local root, manifest = F.copy("billing-branch", vim.fn.tempname() .. "/billing-branch")
-	root = vim.fs.normalize(vim.fn.resolve(root))
-	local gh_dir = vim.fn.tempname()
-	H.write_files(gh_dir, pr482(manifest))
-	child.start_config()
-	child.wait_very_lazy()
-	child.o.columns = 100
-	child.o.lines = 30
-	child.lua([[vim.env.FAKE_GH_DIR = ...]], { gh_dir })
-	child.cmd("cd " .. vim.fn.fnameescape(root))
-	child.cmd("edit " .. vim.fn.fnameescape(vim.fs.joinpath(root, "internal/billing/invoice.go")))
-	child.lua(
-		[[
-		local root = ...
-		Ready = false
-		require("gleb.git.base").resolve(root, function()
-			vim.api.nvim_create_autocmd("User", { pattern = "GlebPrThreads", once = true, callback = function() Ready = true end })
-			require("gleb.pr").refresh(root)
-		end)
-	]],
-		{ root }
-	)
-	assert(child.wait("Ready == true", math.floor(5000 * H.load_factor())))
-	child.lua([[require("gleb.pr").now = function() return os.time({ year = 2026, month = 1, day = 2, hour = 1 }) end]])
-	run_action("changes.review")
-	assert(child.wait(
-		[[(function()
-		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
-		return panel and panel.tabs_ready and panel.active_tab == "local"
-	end)()]],
-		math.floor(5000 * H.load_factor())
-	))
-	run_action("changes.review")
-	assert(child.wait(
-		[[(function()
-		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
-		return panel and panel.active_tab == "branch"
-	end)()]],
-		math.floor(5000 * H.load_factor())
-	))
-	run_action("changes.review")
-	assert(child.wait(
-		[[(function()
-		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
-		return panel and panel.active_tab == "comments"
-	end)()]],
-		math.floor(5000 * H.load_factor())
-	))
-	child.lua([[
-		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
-		for index, line in ipairs(vim.api.nvim_buf_get_lines(panel.buf, 0, -1, false)) do
-			if line:find(":22", 1, true) then vim.api.nvim_win_set_cursor(panel.win, { index, 0 }); break end
-		end
-	]])
-	assert(child.wait(
-		[[(function()
-		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
-		local buf = vim.api.nvim_win_get_buf(panel.editor_win)
-		local ns = vim.api.nvim_get_namespaces().gleb_pr_peek
-		local marks = ns and vim.api.nvim_buf_get_extmarks(buf, ns, { 21, 0 }, { 21, -1 }, { details = true }) or {}
-		return vim.api.nvim_win_get_cursor(panel.editor_win)[1] == 22
-			and marks[1] and #marks[1][4].virt_lines == 8
-	end)()]],
-		math.floor(5000 * H.load_factor())
-	))
-	child.lua([[
-		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
-		vim.api.nvim_win_call(panel.editor_win, function() vim.fn.winrestview({ topline = 6 }) end)
-	]])
-end
-
-local T = H.child_set(child, start)
+local T = H.child_set(child, function()
+	screens.show_comments(child)
+end)
 
 local COMMENTS_LEGEND = {
 	a = "BufferLineBufferSelected",
@@ -128,6 +47,7 @@ local COMMENTS_LEGEND = {
 	I = "StatuslineLangText",
 	J = "StatuslineLang_gleb_changes",
 	K = "StatuslineLangEdge",
+	L = "@ibl.scope.underline.1",
 }
 
 local COMMENTS_MASK = {
@@ -141,7 +61,7 @@ local COMMENTS_MASK = {
 	".....u.ttt.vvvvvv.wwwwwwwwwwwwww...f..gggg..........................................................",
 	"xxxxxuxtttxvvvvvvvxwwwwwwwwwwwwwxxxf..gggg..........................................................",
 	".....oooooooooooooooooooooooooooo..f..ggggnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn.........",
-	"...p.b.ssssss.k....................f..gggg..........................................................",
+	"...p.b.ssssss.k....................f..ggggLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL............................",
 	".....u.ttt.vvvvvvv.wwwwww.yyyyyyyy.fzzggggtghhh.iiiii.mmm...........................................",
 	"...................................f..ggggtghhh.iu.iiiii.hh.hhhhh.iuAAAAA...........................",
 	"...................................f..ggggtgggiiiii.hh.iiiii........................................",
@@ -160,7 +80,7 @@ local COMMENTS_MASK = {
 	"...................................f..ggggtghhhhhh.iuAAAulllll.iiiii................................",
 	"...................................f..gggg..........................................................",
 	"...................................f..gggg..........................................................",
-	"BBBBBBBBCCCCCCCCCCCCCDDDDDDCCEEECCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCFFFFGGGGHIJIIIIIIIIIIIIIIK",
+	"BBBBBBBBCCCCCCCCCCCCCDDDDDDCCEEECCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCFFFFFGGGGHIJIIIIIIIIIIIIIIK",
 }
 
 local function padded(lines)
@@ -242,6 +162,7 @@ local PEEK_LEGEND = {
 	K = "StatuslineLangText",
 	L = "StatuslineLang_go",
 	M = "StatuslineLangEdge",
+	N = "@ibl.scope.underline.1",
 }
 
 local PEEK_MASK = {
@@ -258,7 +179,7 @@ local PEEK_MASK = {
 	"...p.b.uuuuuu.k....................h..iiii..........................................................",
 	".....w.xxx.yyyyyyy.zzzzzz.BBBBBBBB.h..iiii..........................................................",
 	"...................................h..iiiimmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm.........",
-	"...................................h..iiii..........................................................",
+	"...................................h..iiiiNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN............................",
 	"...................................hlliiiixinnn.ooooo.ttt...........................................",
 	"...................................h..iiiixinnn.ow.ooooo.nn.nnnnn.owCCCCC...........................",
 	"...................................h..iiiixiiiooooo.nn.ooooo........................................",
@@ -273,12 +194,15 @@ local PEEK_MASK = {
 	"...................................h..iiiimmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm......................",
 	"...................................h..iiiinnnn....ttttttt..sss...tttttt.............................",
 	"...................................h..iiiiiinnnnnn.ooowsssssss.wwwwwwwww.ooooowssssss.owsssss.......",
-	"...................................h..iiii..........................................................",
-	"DDDDDDDDEEEEEEEEEEEEEFFFFFFEEGGGEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEHHHHIIIIJKLKKKKM",
+	"...................................hlliiii..........................................................",
+	"DDDDDDDDEEEEEEEEEEEEEFFFFFFEEGGGEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEHHHHHIIIIJKLKKKKM",
 }
 
 T["pr: Comments tab matches the approved render"] = function()
-	eq(vim.tbl_map(table.concat, H.screen_rows(child, 1, 30).text), COMMENTS_TEXT)
+	local text = vim.tbl_map(function(cells)
+		return H.design_text(table.concat(cells))
+	end, H.screen_rows(child, 1, 30).text)
+	eq(text, COMMENTS_TEXT)
 	H.expect_screen_colors(child, 1, COMMENTS_MASK, COMMENTS_LEGEND)
 end
 
@@ -299,20 +223,12 @@ T["pr: Review highlight colours"] = function()
 end
 
 T["pr: Editor peeks match the approved render"] = function()
-	child.lua([[
-		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
-		vim.api.nvim_set_current_win(panel.editor_win)
-		vim.fn.winrestview({ lnum = 18, topline = 6 })
-	]])
+	screens.show_peeks(child)
 	H.expect_screen_colors(child, 1, PEEK_MASK, PEEK_LEGEND)
 end
 
 T["pr: Resolved thread matches the approved render"] = function()
-	child.lua([[
-		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
-		vim.api.nvim_set_current_win(panel.editor_win)
-		vim.fn.winrestview({ lnum = 18, topline = 6 })
-	]])
+	screens.show_peeks(child)
 	H.expect_screen_colors(child, 6, vim.list_slice(PEEK_MASK, 6, 8), PEEK_LEGEND)
 end
 

@@ -1,7 +1,9 @@
 -- Window-scoped rendering for aligned diff rows.
--- Extmarks tint real lines and insert padding while statuscolumn draws the centre gutter.
+-- Extmarks tint real lines and insert padding while statuscolumn draws the centre gutter; providers' virtual lines
+-- under right lines get blank rows on the left.
 
 local engine = require("gleb.diff.engine")
+local providers = require("gleb.diff.view.providers")
 
 local M = {}
 
@@ -130,11 +132,23 @@ function M.foldtext()
 	return { { "~", "DiffViewFold" }, { " " .. count .. " unchanged lines ", "DiffViewFoldText" } }
 end
 
+--- `count` blank rows that stand for a provider's virtual lines on the other side.
+---@param count integer
+---@return gleb.diff.view.VirtLine[]
+local function blank_rows(count)
+	local rows = {}
+	for index = 1, count do
+		rows[index] = { { "", "DiffViewPadding" } }
+	end
+	return rows
+end
+
 ---@param view gleb.diff.view.View
 ---@param side "left"|"right"
 ---@param rows gleb.diff.view.Row[]
+---@param decorations table<integer, gleb.diff.view.VirtLine[]> provider lines by right line
 ---@param next_line? integer
-local function add_padding(view, side, rows, next_line)
+local function add_padding(view, side, rows, decorations, next_line)
 	local buf = side == "left" and view.left_buf or view.right_buf
 	local win = side == "left" and view.left_win or view.right_win
 	local line_count = vim.api.nvim_buf_line_count(buf)
@@ -148,6 +162,7 @@ local function add_padding(view, side, rows, next_line)
 			table.insert(content, { string.rep("╱", width - 16), "DiffViewPadding" })
 		end
 		contents[#contents + 1] = content
+		vim.list_extend(contents, blank_rows(row.right and #(decorations[row.right] or {}) or 0))
 	end
 	vim.api.nvim_buf_set_extmark(buf, view.ns, at, 0, {
 		virt_lines = contents,
@@ -200,10 +215,28 @@ local function decorate_line(buf, ns, row, kind, words)
 	add_range(buf, ns, row, "DiffView" .. kind, col, -1)
 end
 
+--- Put a provider's virtual lines under right line `row.right`, and as many blank rows under the left line beside it
+--- (inside a fold too, for when it opens).
+---@param view gleb.diff.view.View
+---@param side "left"|"right"
+---@param row gleb.diff.view.Row
+---@param decorations table<integer, gleb.diff.view.VirtLine[]> provider lines by right line
+local function add_decoration(view, side, row, decorations)
+	local virt_lines = row.right and decorations[row.right]
+	if not virt_lines then
+		return
+	end
+	local buf = side == "left" and view.left_buf or view.right_buf
+	vim.api.nvim_buf_set_extmark(buf, view.ns, row[side] - 1, 0, {
+		virt_lines = side == "right" and virt_lines or blank_rows(#virt_lines),
+	})
+end
+
 ---@param view gleb.diff.view.View
 ---@param side "left"|"right"
 ---@param lines string[]
-local function decorate_side(view, side, lines)
+---@param decorations table<integer, gleb.diff.view.VirtLine[]> provider lines by right line
+local function decorate_side(view, side, lines, decorations)
 	local buf = side == "left" and view.left_buf or view.right_buf
 	local words_by_row = {}
 	for _, fragment in ipairs(view.fragments) do
@@ -218,7 +251,7 @@ local function decorate_side(view, side, lines)
 	for _, row in ipairs(view.layout.rows) do
 		local line = row[side]
 		if line and #padding > 0 then
-			add_padding(view, side, padding, line)
+			add_padding(view, side, padding, decorations, line)
 			padding = {}
 		end
 		if line and row.kind then
@@ -226,9 +259,16 @@ local function decorate_side(view, side, lines)
 		elseif not line and row.change then
 			padding[#padding + 1] = row
 		end
+		if row.fold then
+			for offset = 0, row.count - 1 do
+				add_decoration(view, side, { left = row.left + offset, right = row.right + offset }, decorations)
+			end
+		elseif line then
+			add_decoration(view, side, row, decorations)
+		end
 	end
 	if #padding > 0 then
-		add_padding(view, side, padding)
+		add_padding(view, side, padding, decorations)
 	end
 end
 
@@ -237,8 +277,9 @@ function M.draw(view)
 	vim.api.nvim_buf_clear_namespace(view.left_buf, view.ns, 0, -1)
 	vim.api.nvim_buf_clear_namespace(view.right_buf, view.ns, 0, -1)
 	vim.api.nvim__ns_set(view.ns, { wins = { view.left_win, view.right_win } })
-	decorate_side(view, "left", view.left)
-	decorate_side(view, "right", view.right)
+	local decorations = providers.collect(view)
+	decorate_side(view, "left", view.left, decorations)
+	decorate_side(view, "right", view.right, decorations)
 end
 
 return M

@@ -633,6 +633,22 @@ function M.screen_rows(child, from, to)
 	return full
 end
 
+---@type table<integer, string> Nerd Font glyphs with their own design-render stand-in (docs/workflow.md)
+local STAND_INS = { [0xE725] = "⎇", [0xF460] = "▸", [0xF47C] = "▾" }
+
+--- Screen text in design-render notation, to compare a row with an approved render's text: a Nerd Font
+--- glyph (a Private Use Area code point) becomes its stand-in, `◆` when it has none.
+---@param text string
+---@return string
+function M.design_text(text)
+	local chars = vim.tbl_map(function(char)
+		local code = vim.fn.char2nr(char)
+		local private = (code >= 0xE000 and code <= 0xF8FF) or code >= 0xF0000
+		return STAND_INS[code] or (private and "◆") or char
+	end, vim.fn.split(text, [[\zs]]))
+	return table.concat(chars)
+end
+
 ---@type string Highlight group of unmasked cells in design-render masks.
 M.DEFAULT_GROUP = "Normal"
 
@@ -978,6 +994,7 @@ end
 ---@field fg? string `#rrggbb`
 ---@field bg? string `#rrggbb`
 ---@field bold? boolean
+---@field italic? boolean
 
 ---@param hl test.CellAttrs
 ---@return test.HlColors
@@ -986,7 +1003,7 @@ local function hl_colors(hl)
 	local function hex(color)
 		return color and ("#%06x"):format(color)
 	end
-	return { fg = hex(hl.fg), bg = hex(hl.bg), bold = hl.bold or false }
+	return { fg = hex(hl.fg), bg = hex(hl.bg), bold = hl.bold or false, italic = hl.italic or false }
 end
 
 --- Pin the resolved colors of highlight `group`: only the keys `expected` sets.
@@ -1184,6 +1201,27 @@ end
 function M.lsp_timeout(default_ms)
 	local ms = tonumber(vim.env.LSP_TIMEOUT_MS)
 	return ms and ms > 0 and math.floor(ms) == ms and ms or default_ms
+end
+
+--- Attach an in-process language server that answers every request empty to the child's current buffer, so the
+--- buffer has a running client (e.g. for the statusline) without starting a real server.
+---@param child test.Child
+function M.attach_fake_lsp(child)
+	child.lua([[
+		local function server()
+			return {
+				request = function(method, _, callback)
+					callback(nil, method == "initialize" and { capabilities = {} } or {})
+					return true, 1
+				end,
+				notify = function() return true end,
+				is_closing = function() return false end,
+				terminate = function() end,
+			}
+		end
+		vim.lsp.start({ name = "fake", cmd = server, root_dir = vim.fn.getcwd() })
+	]])
+	assert(child.wait("#vim.lsp.get_clients({ bufnr = 0 }) > 0"), "the fake language server did not attach")
 end
 
 --- Fresh temp directory of the child, as a resolved real path.

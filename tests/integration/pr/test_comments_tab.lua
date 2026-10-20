@@ -309,6 +309,33 @@ T["pr: Selecting a thread shows its line"] = function()
 	eq(child.lua_get([[vim.bo.filetype]]), "gleb-changes")
 end
 
+T["pr: Enter on a thread opens its line"] = function()
+	local root = open_billing_branch(true)
+	run_action("changes.show_comments")
+	wait_for_tab("comments", false)
+	select_row(":22")
+	child.type_keys("<CR>")
+	assert(
+		child.wait(
+			([[(function(root)
+		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		return vim.api.nvim_get_current_win() == panel.editor_win
+			and vim.fn.line(".") == 22
+			and vim.fs.normalize(vim.api.nvim_buf_get_name(0)) == vim.fs.joinpath(%q, "internal/billing/invoice.go")
+	end)(%q)]]):format(root, root),
+			async_timeout()
+		),
+		"Enter did not open the thread's line"
+	)
+	eq(
+		child.lua_get([[(function()
+		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		return { open = vim.api.nvim_win_is_valid(panel.win), tab = panel.active_tab }
+	end)()]]),
+		{ open = true, tab = "comments" }
+	)
+end
+
 T["pr: Selecting an unmapped thread shows its diff hunk"] = function()
 	open_comments()
 	child.lua([[
