@@ -18,9 +18,9 @@ Scenarios: `loop: Known flaky cases use deterministic readiness`, `file-tree: Fi
 
 ## 4. Observe project-tree burst quiescence
 Scenarios: `loop: Known flaky cases use deterministic readiness`, `file-tree: Project tree runs git status once per burst`
-- [ ] 4.1 Treat the proposal's 4 rerun passes as the failing evidence; tighten `tests/integration/file-tree/test_project_git.lua` to retain the 20-row and at-most-2-runs assertions while reporting the debounce/watch state that has not settled
-- [ ] 4.2 Replace the bare 1000 ms completion window with a load-scaled event/state wait for all rows and quiescent git work, using an existing counter or the smallest read-only hook
-- [ ] 4.3 Run `make test FILE=tests/integration/file-tree/test_project_git.lua CASE="Project tree runs git status once per burst"` and see it pass
+- [x] 4.1 Treat the proposal's 4 rerun passes as the failing evidence; tighten `tests/integration/file-tree/test_project_git.lua` to retain the 20-row and at-most-2-runs assertions while reporting the debounce/watch state that has not settled
+- [x] 4.2 Replace the bare 1000 ms completion window with a load-scaled event/state wait for all rows and quiescent git work, using an existing counter or the smallest read-only hook
+- [x] 4.3 Run `make test FILE=tests/integration/file-tree/test_project_git.lua CASE="Project tree runs git status once per burst"` and see it pass
 
 ## 5. Capture the diff screen only after rendering settles
 Scenarios: `loop: Known flaky cases use deterministic readiness`, `diff: Diff view matches the approved render`
@@ -48,3 +48,4 @@ Scenarios: `loop: Known flaky cases use deterministic readiness`, `keymaps: Togg
 - Surface timeout errors report the readiness expression and `child`/`descendants` cleanup states so a loaded-host miss identifies both the wait and teardown outcome.
 - Treesitter readiness means a capture exists at the reference position, while rewritten Go readiness requires two real gopls reference responses from that buffer.
 - The file-tree initial-status hook pauses the initial-draw boundary and suppresses its fallback only while the test controls completion, leaving the production 300 ms deadline unchanged.
+- Project-tree burst readiness uses existing view, Git-root, and watcher state so the run-count assertion is sampled only after every debounce and refresh is quiescent.
