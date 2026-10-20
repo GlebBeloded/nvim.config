@@ -20,8 +20,9 @@ local CHECKBOX_MIXED = "󰡖"
 ---@field files ChangesRow[]
 
 ---@class ChangesRow
----@field kind "root"|"directory"|"file"
----@field root "changes"|"unversioned"
+---@field kind "root"|"directory"|"file"|"header"|"summary"|"blank"|"all"|"commit"
+---@field root string
+---@field id? string
 ---@field label string
 ---@field depth integer
 ---@field path? string
@@ -37,6 +38,12 @@ local CHECKBOX_MIXED = "󰡖"
 ---@field checkbox? string
 ---@field added? integer
 ---@field removed? integer
+---@field committed? boolean
+---@field pr? boolean
+---@field hash? string
+---@field full_hash? string
+---@field parents? string[]
+---@field age? string
 
 ---@class ChangesNumstat
 ---@field added integer
@@ -147,13 +154,12 @@ local function parse_numstat(numstat_z)
 end
 
 ---@param root ChangesTreeNode
----@param root_name "changes"|"unversioned"
----@param record GitStatusRecord
----@param stats table<string, ChangesNumstat>
+---@param file ChangesRow
+---@param staged boolean
+---@param unstaged boolean
 ---@return nil
-local function insert_record(root, root_name, record, stats)
-	local staged, unstaged = record_index_state(record)
-	local display_path = record.path:gsub("/+$", "")
+local function insert_file(root, file, staged, unstaged)
+	local display_path = assert(file.path, "grouped file has no path"):gsub("/+$", "")
 	local parts = vim.split(display_path, "/", { plain = true, trimempty = true })
 	local node = root
 	node.count = node.count + 1
@@ -171,16 +177,27 @@ local function insert_record(root, root_name, record, stats)
 		node = child
 	end
 
+	file.label = parts[#parts] or display_path
+	node.files[#node.files + 1] = file
+end
+
+---@param root ChangesTreeNode
+---@param root_name "changes"|"unversioned"
+---@param record GitStatusRecord
+---@param stats table<string, ChangesNumstat>
+---@return nil
+local function insert_record(root, root_name, record, stats)
+	local staged, unstaged = record_index_state(record)
 	local directory_record = record.kind == "?" and record.path:sub(-1) == "/"
 	local submodule = record.sub ~= nil and record.sub:sub(1, 1) == "S"
 	local stat = record.kind ~= "?" and stats[record.path] or nil
 	if stat and stat.orig and stat.orig ~= record.orig then
 		stat = nil
 	end
-	node.files[#node.files + 1] = {
+	insert_file(root, {
 		kind = "file",
 		root = root_name,
-		label = parts[#parts] or display_path,
+		label = "",
 		depth = 0,
 		path = record.path,
 		status = record_status(record),
@@ -192,7 +209,7 @@ local function insert_record(root, root_name, record, stats)
 		checkbox = checkbox(staged, unstaged),
 		added = stat and stat.added or nil,
 		removed = stat and stat.removed or nil,
-	}
+	}, staged, unstaged)
 end
 
 ---@param directories table<string, ChangesTreeNode>
@@ -361,6 +378,32 @@ function M.rows(porcelain_z, nesting_rules, numstat_z)
 	local complete = append_root(rows, roots.changes, "changes", nesting_rules)
 	if complete then
 		complete = append_root(rows, roots.unversioned, "unversioned", nesting_rules)
+	end
+	return rows, not complete
+end
+
+--- Group already-normalized files with the same compaction and nesting as Local changes.
+---@param files ChangesRow[]
+---@param nesting_rules table[]
+---@param root_name string
+---@return ChangesRow[] rows
+---@return boolean capped
+function M.group_files(files, nesting_rules, root_name)
+	local root = tree_node("", "")
+	for _, file in ipairs(files) do
+		insert_file(root, file, false, false)
+	end
+
+	local rows = {}
+	local complete = true
+	for _, directory in ipairs(sorted_directories(root.directories)) do
+		if not append_directory(rows, directory, root_name, 0, nesting_rules) then
+			complete = false
+			break
+		end
+	end
+	if complete then
+		complete = append_files(rows, root.files, "", root_name, 0, nesting_rules)
 	end
 	return rows, not complete
 end

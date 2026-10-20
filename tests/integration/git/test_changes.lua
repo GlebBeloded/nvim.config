@@ -378,6 +378,7 @@ T["git: Changes panel mappings come from the shortcut file"] = function()
 		{ "A", "Changes: Stage All", "changes.stage_all" },
 		{ "P", "Changes: Push", "changes.push" },
 		{ "X", "Changes: Revert", "changes.revert" },
+		{ "c", "Changes: Toggle Commits", "changes.toggle_commits" },
 		{ "gc", "Changes: Commit", "changes.commit" },
 		{ "h", "Changes: Collapse Node", "changes.close_node" },
 		{ "l", "Changes: Expand Node", "changes.expand_node" },

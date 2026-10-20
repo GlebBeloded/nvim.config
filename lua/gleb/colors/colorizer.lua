@@ -1,5 +1,5 @@
 require("colorizer").setup({
-	filetypes = { "*" },
+	filetypes = { "*", "!gleb-changes" },
 	user_default_options = {
 		mode = "virtualtext",
 		virtualtext = "",

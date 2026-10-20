@@ -127,6 +127,19 @@ local DIFF_STATE = [[local panel = require("gleb.git.changes").state.by_tab[vim.
 	local view = panel.diff_view
 	return { win = view.right_win, cursor = vim.api.nvim_win_get_cursor(view.right_win)[1] }]]
 
+local PANEL_CYCLE_STATE = [[local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+	if not panel then return vim.NIL end
+	local summary
+	for _, row in ipairs(panel.rows) do
+		if row.kind == "summary" then summary = row.label end
+	end
+	return {
+		active = panel.active_tab,
+		local_count = panel.local_count,
+		branch_count = panel.branch_count,
+		summary = summary,
+	}]]
+
 ---@param s e2e.Stack
 ---@return changes_review.Entry[]
 local function wait_panel(s)
@@ -241,6 +254,53 @@ T["git: ]c steps to the next change in the changes review"] = function()
 		end, "cursor on the second change of b.txt")
 	end)
 	eq(s:lua(DIFF_STATE).cursor, hunks[2])
+end
+
+T["git: Real Cmd+G presses cycle the changes tabs"] = function()
+	stop()
+	stack, skipped = E.start_or_skip({
+		cwd = function(dir)
+			local root = F.copy("billing-branch", dir .. "/work")
+			return root
+		end,
+		layout = "nvim",
+		columns = 100,
+		lines = 30,
+	})
+	local s = get()
+	s:lua([[
+		vim.env.FAKE_GH_CODE = "1"
+		vim.env.FAKE_GH_STDOUT = nil
+		vim.lsp.enable("gopls", false)
+		require("null-ls").disable({})
+	]])
+
+	E.press(s, "cmd+g")
+	local state
+	S.wait_for(function()
+		state = s:lua(PANEL_CYCLE_STATE)
+		return state ~= vim.NIL and state.active == "local" and state.local_count == 3 and state.branch_count == 4
+	end, "Local 3 tab after first Cmd+G")
+	eq({ state.active, state.local_count }, { "local", 3 })
+
+	E.press(s, "cmd+g")
+	S.wait_for(function()
+		state = s:lua(PANEL_CYCLE_STATE)
+		return state ~= vim.NIL
+			and state.active == "branch"
+			and state.branch_count == 4
+			and state.summary == "3 commits · merge-base 4ccefde"
+	end, "Branch 4 tab after second Cmd+G")
+	eq({ state.active, state.branch_count, state.summary }, {
+		"branch",
+		4,
+		"3 commits · merge-base 4ccefde",
+	})
+
+	E.press(s, "cmd+g")
+	S.wait_for(function()
+		return s:lua(PANEL_CYCLE_STATE) == vim.NIL
+	end, "closed changes panel after third Cmd+G")
 end
 
 return T

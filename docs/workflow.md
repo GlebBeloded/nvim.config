@@ -29,12 +29,6 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 
 ## Loop lessons
 
-- Merge traversal discoveries into retained UI state when the traversal intentionally skips user-expandable nodes.
-- Preserve polling semantics when extracting asynchronous readiness helpers: recording an LSP error must not make the wait return before readiness.
-- Preserve a valid restore buffer when replacing a wipe-on-hide dashboard, so repeated owned-diff updates cannot restore a deleted buffer.
-- Keep mutation refreshes drawing after visible-row selection; a follow-path fast path can otherwise leave invalidated rows rendered.
-- Gate first paint on every asynchronous input it consumes, and use a synchronous atomic persistence path for shutdown events.
-- A live directory handle does not prove macOS FSEvents has settled after watch churn; cover the transition in production instead of extending the scenario's bound.
 - On macOS libuv shares one FSEvents stream per loop and rebuilds it on every fs_event start or stop (a stop blocks the main loop, events during the rebuild are lost): keep watch sets stable, cover overflow with one recursive root watch, and poll listed folders briefly after watch changes instead of continuously.
 - Keep fixed readiness assertions separate from cache-warming waits: honor the gate's LSP setup timeout without scaling the measured bound.
 - A git-directory event can be dropped while macOS rebuilds its watch stream; compare the index stamp during the existing settle passes.
@@ -44,6 +38,12 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - Resolve repository roots canonically before exercising root-keyed cache and refresh APIs on macOS.
 - Wait for asynchronous refresh completion before asserting retained cache state; subprocess-start logs can precede callback resolution.
 - When a fix broadens a shared callback contract, name the owning module and contract change in both Impact and its implementation task.
+- Below-EOF virtual lines do not extend Neovim's scroll range; add a cursor-clamped sentinel row when a floating footer must leave the final content row visible.
+- Cancel and invalidate a debounced selection before opening its file, or the queued diff can replace the file immediately afterward.
+- Capture an async child request's generation when its prerequisite completes, not before a user action can advance that generation.
+- A base-change consumer must clear cached branch models when resolution disappears and initialize them when it first appears.
+- Every Changes tab action that opens a panel must restore repository-local view and fold state before applying its requested tab.
+- When focusing a retained tab mode, rebuild from that mode's model so rendered rows cannot diverge from saved state.
 
 ## The loop
 

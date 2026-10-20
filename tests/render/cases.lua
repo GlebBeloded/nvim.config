@@ -105,6 +105,76 @@ local function changes(driver)
 	)
 end
 
+---@param root string
+---@return string output
+local function fake_pull_request(root)
+	local output = vim.fn.tempname()
+	vim.fn.writefile({
+		vim.json.encode({
+			number = 482,
+			url = "https://example.test/pull/482",
+			state = "OPEN",
+			baseRefName = "main",
+			baseRefOid = vim.trim(H.git(root, { "rev-parse", "origin/main" })),
+			headRefName = "feat/tax",
+			headRefOid = vim.trim(H.git(root, { "rev-parse", "HEAD" })),
+		}),
+	}, output)
+	return output
+end
+
+--- Approved Branch-tab render on the billing branch fixture.
+---@param driver render.Driver
+local function changes_branch(driver)
+	local root = F.copy("billing-branch", vim.fn.tempname() .. "/billing-branch")
+	driver.lua(
+		[[
+		vim.env.FAKE_GH_STDOUT = ...
+		vim.env.FAKE_GH_CODE = "0"
+		vim.lsp.enable("gopls", false)
+		require("null-ls").disable({})
+		vim.diagnostic.enable(false)
+		require("gleb.git.changes.branch").now = function() return 1767315600 end
+	]],
+		{ fake_pull_request(root) }
+	)
+	driver.cmd("cd " .. vim.fn.fnameescape(root) .. " | edit internal/billing/invoice.go")
+	local function review()
+		driver.lua([[
+			local action = assert(require("gleb.actions").state.applicator.catalog:get("changes.review"))
+			action.run(require("gleb.actions.context").capture())
+		]])
+	end
+	review()
+	assert(
+		driver.wait(
+			[[(function()
+			local view = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+			return (view and view.active_tab == "local" and view.branch_count == 4 and view.diff_view ~= nil) == true
+		end)()]],
+			5000
+		),
+		"Local changes review did not load"
+	)
+	review()
+	assert(
+		driver.wait(
+			[[(function()
+			local view = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+			return (
+				view
+				and view.active_tab == "branch"
+				and view.rows[8]
+				and view.diff_view ~= nil
+				and vim.startswith(view.diff_path or "", "branch:")
+			) == true
+		end)()]],
+			5000
+		),
+		"Branch changes review did not load"
+	)
+end
+
 --- Owned aligned diff of the changed Go controller fixture.
 ---@param driver render.Driver
 local function diff_view(driver)
@@ -499,6 +569,7 @@ return {
 	},
 	["project-tree"] = { description = "approved project-tree render", setup = project_tree },
 	changes = { description = "changes panel on the billing fixture", setup = changes },
+	["changes-branch"] = { description = "approved Branch changes render", setup = changes_branch },
 	["f1-proposed"] = { description = "approved project-tree render", setup = project_tree },
 	["lua_l1_apply"] = { description = "Lua function usages grouped by usage type", setup = lua_l1_apply },
 	["bash_b1_rate"] = { description = "Bash variable usages grouped by usage type", setup = bash_b1_rate },

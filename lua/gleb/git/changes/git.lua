@@ -171,6 +171,73 @@ function M.load_diff(root, row, callback)
 	end)
 end
 
+---@class ChangesBranchDiffContext
+---@field merge_base string
+---@field base_name string
+---@field head string
+---@field commit? string
+---@field parent? string
+---@field subject? string
+
+--- Load a committed Branch-tab comparison without using a working-tree buffer.
+---@param root string
+---@param row ChangesRow
+---@param context ChangesBranchDiffContext
+---@param callback fun(spec: gleb.diff.view.Spec)
+---@return nil
+function M.load_branch_diff(root, row, context, callback)
+	local relpath = assert(row.path, "file row path missing")
+	local path = vim.fs.joinpath(root, relpath)
+	local left_path = row.orig or relpath
+	local left_revision = context.parent or context.merge_base
+	local right_revision = context.commit or "HEAD"
+	local left_result = row.status == "added" and { code = 0, stdout = "" } or nil
+	local right_result = row.status == "deleted" and { code = 0, stdout = "" } or nil
+
+	local function finish()
+		if not left_result or not right_result then
+			return
+		end
+		local left_text = left_result.stdout or ""
+		local right_text = right_result.stdout or ""
+		local left_label
+		local right_label
+		if context.commit then
+			left_label = (context.parent or left_revision):sub(1, 7) .. " · parent"
+			right_label = context.commit:sub(1, 7) .. " · " .. assert(context.subject, "Commit subject missing")
+		else
+			left_label = context.merge_base:sub(1, 7) .. " · " .. context.base_name
+			right_label = context.head:sub(1, 7) .. " · HEAD"
+		end
+		callback({
+			path = path,
+			root = root,
+			relpath = relpath,
+			left = text_lines(left_text),
+			right = text_lines(right_text),
+			actionable = false,
+			committed = true,
+			head_final_newline = left_text:sub(-1) == "\n",
+			filetype = vim.filetype.match({ filename = path }) or "",
+			labels = { left = left_label, right = right_label },
+		})
+	end
+
+	if not left_result then
+		run_git({ "git", "show", left_revision .. ":" .. left_path }, root, function(result)
+			left_result = result
+			finish()
+		end)
+	end
+	if not right_result then
+		run_git({ "git", "show", right_revision .. ":" .. relpath }, root, function(result)
+			right_result = result
+			finish()
+		end)
+	end
+	finish()
+end
+
 ---@param records GitStatusRecord[]
 ---@return boolean
 local function fully_staged(records)
