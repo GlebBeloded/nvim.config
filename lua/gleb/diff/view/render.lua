@@ -274,6 +274,14 @@ end
 
 ---@param view gleb.diff.view.View
 function M.draw(view)
+	if
+		not vim.api.nvim_win_is_valid(view.left_win)
+		or not vim.api.nvim_win_is_valid(view.right_win)
+		or not vim.api.nvim_buf_is_valid(view.left_buf)
+		or not vim.api.nvim_buf_is_valid(view.right_buf)
+	then
+		return
+	end
 	vim.api.nvim_buf_clear_namespace(view.left_buf, view.ns, 0, -1)
 	vim.api.nvim_buf_clear_namespace(view.right_buf, view.ns, 0, -1)
 	vim.api.nvim__ns_set(view.ns, { wins = { view.left_win, view.right_win } })

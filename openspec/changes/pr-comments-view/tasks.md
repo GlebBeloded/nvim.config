@@ -57,6 +57,6 @@ Scenarios: `pr: pr.next_thread visits the open threads`, `pr: pr.prev_thread goe
 
 ## 15. Full planning gate
 Scenarios: `statusline: Statusline with a pull request matches the approved render`
-- [ ] 15.1 Run `make render CASE=pr-comments`, compare it with `make colorize FILE=openspec/changes/pr-comments-view/design.md`, and record the mismatch as the failing visual evidence
-- [ ] 15.2 Add the `pr-comments` render case to `tests/render/cases.lua` and fix any integrated render differences without changing the approved design
-- [ ] 15.3 Run `make check` and see it pass
+- [x] 15.1 Run `make render CASE=pr-comments`, compare it with `make colorize FILE=openspec/changes/pr-comments-view/design.md`, and record the mismatch as the failing visual evidence
+- [x] 15.2 Add the `pr-comments` render case to `tests/render/cases.lua` and fix any integrated render differences without changing the approved design
+- [x] 15.3 Run `make check` and see it pass
