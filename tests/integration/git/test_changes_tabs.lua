@@ -371,6 +371,7 @@ T["git: Changes tab colours"] = function()
 
 	H.expect_hl_colors(child, "ChangesTabLocal", { fg = "#282828", bg = "#7daea3", bold = true })
 	H.expect_hl_colors(child, "ChangesTabBranch", { fg = "#282828", bg = "#d3869b", bold = true })
+	H.expect_hl_colors(child, "ChangesTabComments", { fg = "#282828", bg = "#d8a657", bold = true })
 	H.expect_hl_colors(child, "ChangesTabInactive", { fg = "#928374", bg = "#32302f" })
 	H.expect_hl_colors(child, "ChangesBranchHeader", { fg = "#d3869b", bold = true })
 	H.expect_hl_colors(child, "ChangesCommittedFile", { fg = "#d3869b" })
