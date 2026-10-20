@@ -1,7 +1,7 @@
 ## Why
 
 Kind: feature
-Adopt: loop/deterministic-perf-tests
+Adopt: loop/deterministic-perf-tests-20261020-230531
 Priority: high
 
 Loop audit (2026-10-20): wall-clock bounds flake under the gate's load (load average 25–60 on 14 cores):
@@ -28,28 +28,25 @@ are not load-scaled.
   `Makefile`/`tests/check.sh` (the `perf` layer).
 
 ## Rejected run
-Run on `loop/deterministic-perf-tests` was rejected by the judge:
+Run on `loop/deterministic-perf-tests-20261020-230531` was rejected by the judge:
 - fix loop exhausted with gates still red: full
 - last failures:
   full make check E2E=1 is red:
-  full log: /Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/42ab1c75-f5be-4a6e-86b1-961252fefa5d/full-6.log
-  check: waiting for the check lock held by pid 87298 (/Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/worktrees/loop/reuse-test-children-20261020-205042) at /Users/hlebbeladzed/.cache/nvim-check-lock
-  ok   e2e             36.6 s
-  ok   specs            0.5 s
-  ok   lint             1.1 s
-  ok   trace            0.7 s
+  full log: /Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/2ef37bd9-a7ca-4495-bf6e-61b704697a3e/full-3.log
+  ok   e2e             35.1 s
+  ok   trace            0.5 s
+  ok   lint             1.4 s
   ok   types            2.6 s
+  ok   specs            4.2 s
   ok   chain            6.3 s
-  ok   smoke-health    14.5 s
-  FAIL stack           35.6 s
-  FAIL test           322.3 s
+  ok   smoke-health    13.9 s
+  ok   stack           30.2 s
+  ok   test           303.8 s
+  FAIL loop-test      365.0 s
 - review findings:
-  No new findings. Pass 5 approved the branch code, and that code has not changed since. The only new commit is f2387530, a merge of auto. It brings in only openspec/changes/fix-remaining-flaky-tests/ (a queued proposal), which is outside this branch's diff against the new merge-base.
-  [minor] Gate check-6.log line 778: `pr: Comments tab matches the approved render` (tests/screen/pr/test_comments.lua) failed once and passed on rerun (rerun-6-1.log). This change does not touch that file. All performance cases in tests/integration/file-tree/test_performance.lua passed (check-6.log:157-166).
-  Carried over, still open: the pass 3 minors (the typecheck deadline record is tautological, test_typecheck.lua:24,62; the save-burst scenario wording does not describe the two-stage debounce advance; the vim.system override is not restored when no discovery runs) and the pass 5 minor (the unfold PERF wall sample includes up to one 20 ms poll, test_performance.lua:195-198).
-  Checked with no finding: every edited file is listed in proposal Impact, no test was deleted or weakened, case names are unique, and the agent decisions agree with the spec and design.
-- note: flaky test cases (failed, then passed on rerun): tests/screen/pr/test_comments.lua | pr: Comments tab matches the approved render
-- note: loop: FAIL in tests/chain/shortcuts/test_chain.lua | shortcuts: zellij routes every shortcut as in the table: vim/_core/system:324: ENOENT: no such file or directory (cmd): '/Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/worktrees/loop/deterministic-perf-tests/.tests/venv/bin/python'
-- note: loop: FAIL in tests/integration/file-tree/test_performance.lua | file-tree: Unchanged git status does not redraw the project tree: tests/integration/file-tree/test_performance.lua:431: unchanged git status did not finish
-- note: loop: FileNotFoundError: [Errno 2] No such file or directory: '/var/folders/9c/yg1yg4td727dkq_blbwbwn1w0000gn/T/tmptbvjg5xt/check-1.log'
-- note: loop: ERROR: test_check_past_the_timeout_is_infra_with_its_log (test_gate_timeout.GateTimeout.test_check_past_the_timeout_is_infra_with_its_log)
+  Pass 3 review: the pass 2 must-fix is fixed in 8546bb33. tests/integration/file-tree/test_performance.lua:192-201 now starts the measurement, runs the real `zR` with `feedkeys "mx"` and finishes the measurement inside one `lua_get`. `zR` is synchronous (view.lua:588 → ui_tree.open_all → folds.expand_all_shared), so the 500 ms CPU and serial wall bounds now include prepare_draw and rebuild_tree (folds.lua:169-171) and no RPC round trips. The 5001-row ceiling and the exact WARN check through `notifications()` are kept. The narrowing agent decision was removed from tasks.md.
+  [minor] openspec/changes/deterministic-perf-tests/tasks.md:75: the 13.1 rewrite dropped the red step ("temporarily capture after host poll … see it fail"). No make types/check/colorize step was removed, and 13.3 still runs the case.
+  [minor] tests/integration/file-tree/test_performance.lua (save sentinel): `FileTreeWatchSentinel.handle` is never stopped or closed (carried over).
+  [minor] tests/integration/lsp/test_typecheck.lua:7,78: when LOAD_FACTOR is 1 the expected deadline equals the unscaled TIMEOUT_MS (carried over).
+  [minor] specs/file-tree/spec.md: the coalesce scenario's "advances by 50 ms" and "149+1" wording does not match the 150+50 advances and GIT_DEBOUNCE_MS=150 (carried over).
+  Checked with no finding: scope against proposal Impact, the debounce hook callers, the child.wait default scaling, the serial `+perf` target, unique case names, and no bounds loosened. check-3.log is green.
