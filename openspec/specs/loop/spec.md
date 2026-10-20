@@ -602,6 +602,13 @@ verdict.py SHALL pass on the last review's findings even when it approves; on sh
 - **WHEN** `require("tests.runner").find_files("unit")` runs with no narrowing, with `LOOP_TESTS=only`, with `CAPS=loop` and with `LOOP_TESTS=1`
 - **THEN** the first lists `tests/unit/pr/test_gh.lua` but neither `tests/unit/loop/test_gate.lua` nor `tests/unit/shortcuts/test_sandbox.lua`; the second lists both and not the pr file; the third lists the gate file; the fourth lists the sandbox file
 
+### Requirement: The full check runs once per approved pass
+nvim-deliver's `full-gate` node SHALL run `gate.py` with `tier: full` (only `make check E2E=1` with its reruns, no attempt of its own) after an approving review; verdict.py SHALL pass a reviewed pass only when its `full_green` is true, sending the full gate's failures to the next fix pass otherwise.
+
+#### Scenario: Verdict passes only after the full gate is green
+- **WHEN** verdict.py runs on an approving pass with `full_green` false and full failures, with `full_green` `skipped`, with `full_green` true, and on a quick-red pass
+- **THEN** the first is not passed with `failed_gates` `full` and the failures in its feedback, the second fails `full` too, the third passes, and the last fails only `tests`
+
 ### Requirement: Gate runs a quick tier first
 gate.py SHALL first run `make check CHECK_TARGETS="lint types trace specs test"` with `CAPS` the touched capabilities: `lua/gleb/<area>` and the areas requiring it, `tests/<layer>/<cap>` (shortcut layers too), those whose tests name any other file, all for a shared or unnamed file; `loop-test` for the loop's paths. Red (after reruns) ends the gate; green runs `make check E2E=1`. Docs only, or a smoke or terminal path, runs the full check alone.
 
