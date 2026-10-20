@@ -47,6 +47,9 @@ local augroup = vim.api.nvim_create_augroup("gleb_changes", { clear = true })
 ---@field branch_count integer
 ---@field branch_available boolean
 ---@field branch_request integer
+---@field local_ready boolean
+---@field tabs_ready boolean
+---@field on_ready? fun(view: ChangesView)
 
 ---@param buf integer
 ---@return nil
@@ -104,6 +107,17 @@ local function draw_tabs(view)
 end
 
 ---@param view ChangesView
+---@return nil
+local function finish_ready(view)
+	if not view.local_ready or not view.tabs_ready or not view.on_ready then
+		return
+	end
+	local callback = assert(view.on_ready, "ready callback disappeared")
+	view.on_ready = nil
+	callback(view)
+end
+
+---@param view ChangesView
 ---@param merge_base string
 ---@return nil
 local function load_branch_count(view, merge_base)
@@ -123,6 +137,8 @@ local function load_branch_count(view, merge_base)
 				or 0
 			view.branch_available = true
 			draw_tabs(view)
+			view.tabs_ready = true
+			finish_ready(view)
 		end)
 	end)
 end
@@ -140,6 +156,9 @@ local function resolve_tabs(view)
 		draw_tabs(view)
 		if info then
 			load_branch_count(view, info.merge_base)
+		else
+			view.tabs_ready = true
+			finish_ready(view)
 		end
 	end)
 end
@@ -261,6 +280,8 @@ local function refresh_now(view)
 			view.review_on_refresh = false
 			request_diff(view, view.rows[vim.api.nvim_win_get_cursor(view.win)[1]], false)
 		end
+		view.local_ready = true
+		finish_ready(view)
 	end)
 end
 
@@ -571,8 +592,9 @@ end
 ---@param root string
 ---@param selected_path string
 ---@param review? boolean
+---@param on_ready? fun(view: ChangesView)
 ---@return ChangesView
-function M.open(root, selected_path, review)
+function M.open(root, selected_path, review, on_ready)
 	local changes = require("gleb.git.changes")
 	local tab = vim.api.nvim_get_current_tabpage()
 	local editor_win = vim.api.nvim_get_current_win()
@@ -608,6 +630,9 @@ function M.open(root, selected_path, review)
 		branch_count = 0,
 		branch_available = false,
 		branch_request = 0,
+		local_ready = false,
+		tabs_ready = false,
+		on_ready = on_ready,
 	}
 	tree_view.attach(buf, view.tree, {
 		fallback = function()
@@ -620,6 +645,34 @@ function M.open(root, selected_path, review)
 	resolve_tabs(view)
 	refresh_now(view)
 	return view
+end
+
+--- Return the ordered tabs currently available in a Changes panel.
+---@param view ChangesView
+---@return string[]
+function M.available_tabs(view)
+	local available = {}
+	local tab_view = {
+		local_count = view.local_count,
+		branch_count = view.branch_count,
+		branch_available = view.branch_available,
+	}
+	for _, tab in ipairs(tabs.items) do
+		if tab.available(tab_view) then
+			available[#available + 1] = tab.id
+		end
+	end
+	return available
+end
+
+--- Activate a Changes tab, focus its panel and review the selected row.
+---@param panel ChangesView
+---@param id string
+---@return nil
+function M.activate_tab(panel, id)
+	panel.active_tab = id
+	draw_tabs(panel)
+	M.review(panel)
 end
 
 --- Focus a Changes panel and show its selected file without debounce.

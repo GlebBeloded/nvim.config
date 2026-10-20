@@ -43,9 +43,9 @@ Scenarios: `git: Changes tabs show Local and Branch on a feature branch`, `git: 
 
 Scenarios: `git: Cmd+G cycles Local, Branch, then closes`, `git: First review opens Branch when nothing is uncommitted`, `git: Review on the default branch opens only Local`, `git: Review from the diff window advances the tab`
 
-- [ ] 6.1 Write the scenarios in tests/integration/git/test_changes_tabs.lua against the real `changes.review` action, panel and populated `billing-branch` fixture and run `make test FILE=tests/integration/git/test_changes_tabs.lua` to see them fail
-- [ ] 6.2 Rewrite `review` in lua/gleb/git/changes/init.lua with `first` and `next` as design.md Decision 2 requires
-- [ ] 6.3 Run `make test FILE=tests/integration/git/test_changes_tabs.lua` and see the scenarios pass
+- [x] 6.1 Write the scenarios in tests/integration/git/test_changes_tabs.lua against the real `changes.review` action, panel and populated `billing-branch` fixture and run `make test FILE=tests/integration/git/test_changes_tabs.lua` to see them fail
+- [x] 6.2 Rewrite `review` in lua/gleb/git/changes/init.lua with `first` and `next` as design.md Decision 2 requires
+- [x] 6.3 Run `make test FILE=tests/integration/git/test_changes_tabs.lua` and see the scenarios pass
 
 ## 7. Existing review entry behaviour
 

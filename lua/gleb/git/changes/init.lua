@@ -4,6 +4,7 @@ local M = {}
 
 local workspace = require("gleb.workspace")
 local git = require("gleb.git.changes.git")
+local tabs = require("gleb.git.changes.tabs")
 local view = require("gleb.git.changes.view")
 local sidebar = require("gleb.tree.sidebar")
 
@@ -27,8 +28,9 @@ end
 ---@param dir string
 ---@param selected_path string
 ---@param review? boolean
+---@param on_ready? fun(panel: ChangesView)
 ---@return nil
-local function resolve_and_open(dir, selected_path, review)
+local function resolve_and_open(dir, selected_path, review, on_ready)
 	local tab = vim.api.nvim_get_current_tabpage()
 	git.resolve_root(dir, function(result, root)
 		if vim.api.nvim_get_current_tabpage() ~= tab then
@@ -38,16 +40,38 @@ local function resolve_and_open(dir, selected_path, review)
 			vim.notify("Git root error: " .. vim.trim(result.stderr or ""), vim.log.levels.ERROR)
 			return
 		end
-		view.open(root, selected_path, review)
+		view.open(root, selected_path, review, on_ready)
 	end)
 end
 
 ---@param review? boolean
+---@param on_ready? fun(panel: ChangesView)
 ---@return nil
-local function replace_tree_and_open(review)
+local function replace_tree_and_open(review, on_ready)
 	sidebar.close("file_tree")
 	local selected_path, dir = current_location()
-	resolve_and_open(dir, selected_path, review)
+	resolve_and_open(dir, selected_path, review, on_ready)
+end
+
+---@param panel ChangesView
+---@return gleb.git.changes.TabCycleState
+local function cycle_state(panel)
+	return {
+		active = panel.active_tab,
+		available = view.available_tabs(panel),
+		local_count = panel.local_count,
+	}
+end
+
+---@param panel ChangesView
+---@param id string
+---@return nil
+local function apply_review_tab(panel, id)
+	if id == "close" then
+		view.close(panel)
+	else
+		view.activate_tab(panel, id)
+	end
 end
 
 --- Toggle the current tab's Changes panel.
@@ -71,10 +95,12 @@ end
 function M.review()
 	local current = M.state.by_tab[vim.api.nvim_get_current_tabpage()]
 	if current and vim.api.nvim_win_is_valid(current.win) then
-		view.review(current)
+		apply_review_tab(current, tabs.next(cycle_state(current)))
 		return
 	end
-	replace_tree_and_open(true)
+	replace_tree_and_open(false, function(panel)
+		apply_review_tab(panel, tabs.first(cycle_state(panel)))
+	end)
 end
 
 --- Open the Changes panel for a directory.

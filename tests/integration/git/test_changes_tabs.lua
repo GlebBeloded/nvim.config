@@ -15,6 +15,50 @@ local function toggle_changes()
 	]])
 end
 
+local function review_changes()
+	child.lua([[
+		local catalog = require("gleb.actions").state.applicator.catalog
+		local action = assert(catalog:get("changes.review"), "changes.review is not registered")
+		action.run(require("gleb.actions.context").capture())
+	]])
+end
+
+---@param active string
+---@param require_diff? boolean
+local function wait_for_tab(active, require_diff)
+	assert(
+		child.wait(
+			string.format(
+				[[
+		(function()
+			local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+			return panel and panel.active_tab == %q and (%s or panel.diff_view ~= nil)
+		end)()
+	]],
+				active,
+				require_diff and "false" or "true"
+			),
+			3000
+		),
+		("Changes review did not open the %s tab"):format(active)
+	)
+end
+
+local function panel_state()
+	return child.lua_get([[
+		(function()
+			local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+			if not panel then return {} end
+			return {
+				active = panel.active_tab,
+				current = vim.api.nvim_get_current_win(),
+				panel = panel.win,
+				windows = #vim.api.nvim_tabpage_list_wins(0),
+			}
+		end)()
+	]])
+end
+
 ---@param fixture string
 ---@return string root
 local function open_fixture(fixture)
@@ -107,6 +151,66 @@ T["git: Changes tab colours"] = function()
 	H.expect_hl_colors(child, "ChangesCommittedFile", { fg = "#d3869b" })
 	H.expect_hl_colors(child, "ChangesCommitIcon", { fg = "#d3869b" })
 	H.expect_hl_colors(child, "ChangesCommitHash", { fg = "#d8a657" })
+end
+
+T["git: Cmd+G cycles Local, Branch, then closes"] = function()
+	local root = F.copy("billing-branch", vim.fn.tempname() .. "/billing-branch")
+	local invoice = vim.fs.joinpath(root, "internal/billing/invoice.go")
+	child.cmd("cd " .. vim.fn.fnameescape(root))
+	child.cmd("edit " .. vim.fn.fnameescape(invoice))
+
+	review_changes()
+	wait_for_tab("local", true)
+	review_changes()
+	wait_for_tab("branch", true)
+	eq(panel_state().current, panel_state().panel)
+	review_changes()
+	eq(child.wait([[require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()] == nil]], 1000), true)
+end
+
+T["git: First review opens Branch when nothing is uncommitted"] = function()
+	local root = F.copy("billing-branch", vim.fn.tempname() .. "/billing-branch")
+	H.git(root, { "checkout", "--", "." })
+	vim.fn.delete(vim.fs.joinpath(root, "notes.md"))
+	child.cmd("cd " .. vim.fn.fnameescape(root))
+	child.cmd("enew")
+
+	review_changes()
+	wait_for_tab("branch")
+	review_changes()
+	eq(child.wait([[require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()] == nil]], 1000), true)
+end
+
+T["git: Review on the default branch opens only Local"] = function()
+	local root = F.copy("billing", vim.fn.tempname() .. "/billing")
+	local invoice = vim.fs.joinpath(root, "internal/billing/invoice.go")
+	child.cmd("cd " .. vim.fn.fnameescape(root))
+	child.cmd("edit " .. vim.fn.fnameescape(invoice))
+
+	review_changes()
+	wait_for_tab("local", true)
+	review_changes()
+	eq(child.wait([[require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()] == nil]], 1000), true)
+end
+
+T["git: Review from the diff window advances the tab"] = function()
+	local root = F.copy("billing-branch", vim.fn.tempname() .. "/billing-branch")
+	local invoice = vim.fs.joinpath(root, "internal/billing/invoice.go")
+	child.cmd("cd " .. vim.fn.fnameescape(root))
+	child.cmd("edit " .. vim.fn.fnameescape(invoice))
+	review_changes()
+	wait_for_tab("local", true)
+	child.lua([[
+		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		vim.api.nvim_set_current_win(panel.diff_view.right_win)
+	]])
+	local before = panel_state().windows
+
+	review_changes()
+	wait_for_tab("branch", true)
+	local after = panel_state()
+	eq(after.current, after.panel)
+	eq(after.windows, before)
 end
 
 return T
