@@ -29,7 +29,6 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 
 ## Loop lessons
 
-- Preserve explicit branches when one branch can validly return false; Lua's and/or selection otherwise executes the fallback.
 - An aggregate expansion bound needs an operation-level tree adapter so unfold-all warns once instead of retrying every node left folded by the bound.
 - Shared tree redraws need an owner lifecycle hook when visible-row count controls the owning window's geometry.
 - Resolve repository roots canonically before exercising root-keyed cache and refresh APIs on macOS.
@@ -44,6 +43,7 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - Commit-file caches keyed by immutable full hashes should survive Branch model refreshes and be reattached to rebuilt nodes so open folds retain their children.
 - Bind debounced selection callbacks to the tab that scheduled them, and defer only data-dependent review work so tab focus changes synchronously without stale rows.
 - Name every main-spec contract pinned by newly shared symbols in Impact, with the concrete reason its behavior remains unchanged.
+- When a base-change event invalidates an in-flight forced fetch, queue the replacement and carry its force intent so the stale callback cannot lose both the refetch and notification.
 
 ## The loop
 
