@@ -12,125 +12,75 @@ local child = H.new_child()
 local PANEL_COLUMNS = 36
 
 local PANEL_LEGEND = {
-	c = "DevIconGo",
-	d = "FileTreeNormal",
-	e = "FileTreeExpander",
-	f = "ChangesCheckbox",
-	g = "ChangesRoot",
-	h = "ChangesCount",
-	i = "WinSeparator",
-	j = "CursorLineNr",
-	k = "@keyword",
+	b = "DevIconGo",
+	d = "ChangesTabLocal",
+	e = "WinSeparator",
+	g = "ChangesCount",
+	h = "ChangesRoot",
 	l = "FileTreeFolderIcon",
-	m = "FileTreeFolderName",
-	n = "LineNr",
-	o = "FileTreeCursorLine",
-	p = "FileTreeGitModified",
-	q = "ChangesStatAdded",
-	r = "ChangesStatRemoved",
-	s = "@string",
-	t = "FileTreeGitAdded",
-	u = "DevIconTypeScript",
-	v = "@comment",
-	w = "DevIconMd",
-	x = "FileTreeGitUntracked",
-	y = "@type",
-	z = "@type.builtin",
-	A = "@function",
-}
-
-local PANEL_MASK = {
-	"dedfdgggggggdhhhhhhhdddddddddddddddijjjjjkkkkkkk....................................................",
-	"dddedldmmmmmmmmmmmmmmmmdhddddddddddinnnnn...........................................................",
-	"oooooeofocoppppppppppoooooooqqqorroinnnnnkkkkkk.....................................................",
-	"dddddddddfdcdppppppppppppphdqqqdrrdinnnnn....sssss..................................................",
-	"dddddedfdcdttttttdddddddddddqqqdrrdinnnnn...........................................................",
-	"dddddddddfdcdtttttttttttddddqqqdrrdinnnnn....ssssssssssssssssssssssssssssssssssss...................",
-	"dddedldmmmmmmmdhdddddddddddddddddddinnnnn...........................................................",
-	"dddddddfdudppppppppddddddddddqqdrrdinnnnn...........................................................",
-	"dedfdgggggggggggggggggdhhhhhhddddddinnnnnvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv",
-	"dddddfdwdxxxxxxxxddddddddddddddddddinnnnnkkkk.yyyyyyy.kkkkkk........................................",
-	"dddddddddddddddddddddddddddddddddddinnnnn....yy....zzzzzz.vvvvvvvvvvvvvvvvv.........................",
-	"dddddddddddddddddddddddddddddddddddinnnnn....yyyyy...zzz............................................",
-	"dddddddddddddddddddddddddddddddddddinnnnn....yyy...yyyy.............................................",
-	"dddddddddddddddddddddddddddddddddddinnnnn...........................................................",
-	"dddddddddddddddddddddddddddddddddddinnnnn...........................................................",
-	"dddddddddddddddddddddddddddddddddddinnnnnvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv..........",
-	"dddddddddddddddddddddddddddddddddddinnnnnkkkk....yyyyyyy..AAAAA...zzz...............................",
-	"dddddddddddddddddddddddddddddddddddinnnnn....kkk.......zzz..........................................",
-	"dddddddddddddddddddddddddddddddddddinnnnn....kkk.............kkkkk...yyyyy..........................",
-	"dddddddddddddddddddddddddddddddddddinnnnn...........................................................",
-	"dddddddddddddddddddddddddddddddddddinnnnn...........................................................",
-	"dddddddddddddddddddddddddddddddddddinnnnn....kk...yyy....kkk........................................",
-	"dddddddddddddddddddddddddddddddddddinnnnn........kkkkkk.............................................",
-	"dddddddddddddddddddddddddddddddddddinnnnn...........................................................",
-	"dddddddddddddddddddddddddddddddddddinnnnn....kkkkkk...yyy.AAAAA.....................................",
-	"dddddddddddddddddddddddddddddddddddinnnnn...........................................................",
-	"dddddddddddddddddddddddddddddddddddinnnnn...........................................................",
-	"dddddddddddddddddddddddddddddddddddinnnnnvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv.......................",
+	m = "FileTreeCursorLine",
+	o = "ChangesStatAdded",
+	p = "ChangesStatRemoved",
+	y = "DevIconMd",
+	z = "FileTreeGitUntracked",
+	T = "DevIconTypeScript",
 }
 
 local DIFF_LEGEND = vim.tbl_extend("force", PANEL_LEGEND, {
-	j = "DiffViewHeader",
-	k = "FileTreeFolderIcon",
-	l = "FileTreeFolderName",
-	m = "DiffViewFold",
-	n = "DiffViewFoldText",
-	o = "FileTreeCursorLine",
-	p = "FileTreeGitModified",
-	q = "ChangesStatAdded",
-	r = "ChangesStatRemoved",
-	s = "DiffViewLineNr",
-	t = "@string",
-	u = "FileTreeGitAdded",
-	v = "DiffViewChange",
-	w = "@comment",
-	x = "DiffViewArrowChange",
-	y = "DiffViewGutterChange",
-	z = "DevIconTypeScript",
-	A = "@keyword",
-	B = "@type",
-	C = "@type.builtin",
-	D = "DiffViewWord",
-	E = "DevIconMd",
-	F = "FileTreeGitUntracked",
-	G = "@function",
-	H = "DiffViewPadding",
-	I = "DiffViewArrowAdd",
-	J = "DiffViewAdd",
-	K = "DiffViewGutterAdd",
+	f = "DiffViewHeader",
+	i = "DiffViewFold",
+	j = "DiffViewLineNr",
+	k = "DiffViewPadding",
+	n = "@string",
+	q = "DiffViewChange",
+	r = "@comment",
+	s = "DiffViewArrowChange",
+	t = "DiffViewGutterChange",
+	u = "@keyword",
+	v = "@type.definition",
+	w = "DiffViewWord",
+	x = "@function.call",
+	A = "@function",
+	B = "DiffViewArrowAdd",
+	C = "DiffViewAdd",
+	D = "DiffViewGutterAdd",
+	E = "@property",
 })
 
 local DIFF_MASK = {
-	"dedfdgggggggdhhhhhhhdddddddddddddddijjjjjjjjjjjjjjjjjjjjjjjjjijjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjj",
-	"dddedkdlllllllllllllllldhddddddddddimmnnnnnnnnnnnnnnnnnnnmmmmimmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm",
-	"oooooeofocoppppppppppoooooooqqqorroi.........................i.ssss.....ssss........................",
-	"dddddddddfdcdppppppppppppphdqqqdrrdi.....tttttttttttttttttttti.ssss.....ssss......tttttttttttttttttt",
-	"dddddedfdcduuuuuudddddddddddqqqdrrdi.........................i.ssss.....ssss........................",
-	"dddddddddfdcduuuuuuuuuuuddddqqqdrrdi.........................i.ssss.....ssss........................",
-	"dddedkdllllllldhdddddddddddddddddddivwwwwwwwwwwwwwwwwwwwwwwwwixyyyyvvvvvyyyyyywwwwwwwwwwwwwwwwwwwwww",
-	"dddddddfdzdppppppppddddddddddqqdrrdi.AAAA.BBBBBBB.AAAAAA.....i.ssss.....ssss..AAAA.BBBBBBB.AAAAAA...",
-	"dedfdgggggggggggggggggdhhhhhhddddddivvvvvBBvvvvCCCCCCvvvvvvvvixyyyyvvvvvyyyyyyvvvvBBvvvvCCCCCCDDDDDD",
-	"dddddfdEdFFFFFFFFddddddddddddddddddi.....BBBBB...CCC.........i.ssss.....ssss......BBBBB...CCC.......",
-	"dddddddddddddddddddddddddddddddddddi.....BBB...BBBB..........i.ssss.....ssss......BBB...BBBB........",
-	"dddddddddddddddddddddddddddddddddddi.........................i.ssss.....ssss........................",
-	"dddddddddddddddddddddddddddddddddddi.........................i.ssss.....ssss........................",
-	"dddddddddddddddddddddddddddddddddddi.wwwwwwwwwwwwwwwwwwwwwwwwi.ssss.....ssss..wwwwwwwwwwwwwwwwwwwwww",
-	"dddddddddddddddddddddddddddddddddddi.AAAA....BBBBBBB..GGGGG..i.ssss.....ssss..AAAA....BBBBBBB..GGGGG",
-	"dddddddddddddddddddddddddddddddddddivvvvvvvvvvvDDDDvvvvvvvvvvixyyyyvvvvvyyyyyyvvvvDDDvvvvvvvDDDvvvvv",
-	"dddddddddddddddddddddddddddddddddddi.....AAA.............AAAAi.ssss.....ssss......AAA.............AA",
-	"dddddddddddddddddddddddddddddddddddi.........................i.ssss.....ssss........................",
-	"dddddddddddddddddddddddddddddddddddi.........................i.ssss.....ssss........................",
-	"dddddddddddddddddddddddddddddddddddiHHHHHHHHHHHHHHHHHHHHHHHHHiIHHHHJJJJJKKKKKKJJJJAAJJJBBBJJJJAAAJJJ",
-	"dddddddddddddddddddddddddddddddddddiHHHHHHHHHHHHHHHHHHHHHHHHHi.HHHHJJJJJKKKKKKJJJJJJJJAAAAAAJJJJJJJJ",
-	"dddddddddddddddddddddddddddddddddddiHHHHHHHHHHHHHHHHHHHHHHHHHi.HHHHJJJJJKKKKKKJJJJJJJJJJJJJJJJJJJJJJ",
-	"dddddddddddddddddddddddddddddddddddi.....AAAAAA...BBB.GGGGG..i.ssss.....ssss......AAAAAA...BBB.GGGGG",
-	"dddddddddddddddddddddddddddddddddddi.........................i.ssss.....ssss........................",
-	"dddddddddddddddddddddddddddddddddddi.........................i.ssss.....ssss........................",
-	"dddddddddddddddddddddddddddddddddddi.wwwwwwwwwwwwwwwwwwwwwwwwi.ssss.....ssss..wwwwwwwwwwwwwwwwwwwwww",
-	"dddddddddddddddddddddddddddddddddddi.AAAA....BBBBBBB..GGG...Ci.ssss.....ssss..AAAA....BBBBBBB..GGG..",
-	"dddddddddddddddddddddddddddddddddddi.....AAAAAA.....GGGGGGG.ti.ssss.....ssss......AAAAAA.....GGGGGGG",
+	".ddddddddd.........................efffffffffffffffffffffffff.ffffffffffffffffffffffffffffffffffffff",
+	".g.g.hhhhhhh.ggggggg...............eiijjjjjjjjjjjjjjjjjjjiiiikiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii",
+	"...g.l..................g..........e.........................k.jjjj.....jjjj..i.....................",
+	"mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmme...nnnnnnnnnnnnnnnnnnnnnnk.jjjj.....jjjj..iinnnnnnnnnnnnnnnnnnnn",
+	".........g.b.lllllllllllllg.ooo.pp.e.........................k.jjjj.....jjjj........................",
+	".....g.g.b.oooooo...........ooo.pp.e.........................k.jjjj.....jjjj........................",
+	".........g.b.ooooooooooo....ooo.pp.eqrrrrrrrrrrrrrrrrrrrrrrrrksttttqqqqqttttttrrrrrrrrrrrrrrrrrrrrrr",
+	"...g.l.........g...................e.uuuu.vvvvvvv.uuuuuu.....k.jjjj.....jjjj..uuuu.vvvvvvv.uuuuuu...",
+	".......g.T.llllllll..........oo.pp.eqqqqqqqqqqqqqqqqqqqqqqqqqksttttqqqqqttttttqqqqqqqqqqqqqqwrrrrrrr",
+	".g.g.hhhhhhhhhhhhhhhhh.gggggg......e...vvvvv...xxx...........k.jjjj.....jjjj..iivvvvv...xxx.........",
+	".....g.y.zzzzzzzz..................e...vvv...xxxx............k.jjjj.....jjjj..iivvv...xxxx..........",
+	"...................................e.........................k.jjjj.....jjjj........................",
+	"...................................e.........................k.jjjj.....jjjj........................",
+	"...................................e.rrrrrrrrrrrrrrrrrrrrrrrrk.jjjj.....jjjj..rrrrrrrrrrrrrrrrrrrrrr",
+	"...................................e.uuuu....xxxxxxx..AAAAA..k.jjjj.....jjjj..uuuu....xxxxxxx..AAAAA",
+	"...................................eqqqqqqqqqwwwwqqqqqqqqqqqqksttttqqqqqttttttqqwwwwqqqqqqwwwqqqqqqq",
+	"...................................e...uuu.vn.vvvvv.uu.uuuuu.k.jjjj.....jjjj..iiuuu.vn.vvvvv.uu.uuuu",
+	"...................................e.....vvvvv.uu.vvvvv......k.jjjj.....jjjj..iiiivvvvv.uu.vvvvv....",
+	"...................................e.........................k.jjjj.....jjjj..ii....................",
+	"...................................ekkkkkkkkkkkkkkkkkkkkkkkkkkBkkkkCCCCCDDDDDDCCCCCCCCCCCCCCCCCCCCCC",
+	"...................................ekkkkkkkkkkkkkkkkkkkkkkkkkk.kkkkCCCCCDDDDDDCCCCCCCCCCCCCCCCCCCCCC",
+	"...................................ekkkkkkkkkkkkkkkkkkkkkkkkkk.kkkkCCCCCDDDDDDCCCCCCCCCCCCCCCCCCCCCC",
+	"...................................e...uuuuuu.vnEEEnAAAAA.vvvk.jjjj.....jjjj..iiuuuuuu.vnEEEnAAAAA.v",
+	"...................................e.........................k.jjjj.....jjjj........................",
+	"...................................e.........................k.jjjj.....jjjj........................",
+	"...................................e.rrrrrrrrrrrrrrrrrrrrrrrrk.jjjj.....jjjj..rrrrrrrrrrrrrrrrrrrrrr",
+	"...................................e.uuuu....xxxxxxx..AAA...xk.jjjj.....jjjj..uuuu....xxxxxxx..AAA..",
+	"...................................e...uuuuuu.vvvnAAAAAAA.nnnk.jjjj.....jjjj..iiuuuuuu.vvvnAAAAAAA.n",
 }
+
+local PANEL_MASK = vim.tbl_map(function(line)
+	return line:sub(1, PANEL_COLUMNS) .. ("."):rep(100 - PANEL_COLUMNS)
+end, DIFF_MASK)
 
 local function run_action(id)
 	child.lua(
@@ -205,54 +155,24 @@ local function parsed_screen_cells()
 	return H.screen_cells(child, 2, 28)
 end
 
----@param name string render copy under tests/screen/git/
----@return string[][] cells of screen rows 2-29
-local function approved_cells(name)
-	local lines = vim.fn.readfile(vim.fs.joinpath(H.root, "tests/screen/git", name))
-	return vim.tbl_map(function(line)
-		return vim.fn.split((line:gsub("\27%[[0-9;]*m", "")), [[\zs]])
-	end, vim.list_slice(lines, 2, 29))
-end
-
----@param legend table<string, string>
----@return table<string, string> glyph nvim-web-devicons draws for each legend `DevIcon*` group
-local function devicon_glyphs(legend)
-	return child.lua(
-		[[
-		local wanted = {}
-		for _, group in pairs(...) do
-			wanted[group] = true
-		end
-		local glyphs = {}
-		for _, icon in pairs(require("nvim-web-devicons").get_icons()) do
-			if wanted["DevIcon" .. icon.name] then
-				glyphs["DevIcon" .. icon.name] = icon.icon
-			end
-		end
-		return glyphs
-	]],
-		{ legend }
-	)
-end
-
---- The approved panel text of rows 2-29. A devicon cell (design.md's `◆` stand-in)
---- holds the glyph nvim-web-devicons defines for its masked group.
----@param name string render copy under tests/screen/git/
----@param mask string[]
----@param legend table<string, string>
+--- The approved Local-only panel text of rows 2-29.
 ---@return string[]
-local function approved_panel_text(name, mask, legend)
-	local glyphs = devicon_glyphs(legend)
-	return vim.iter(ipairs(approved_cells(name)))
-		:map(function(row, cells)
-			local letters = vim.fn.split(mask[row], [[\zs]])
-			local text = {}
-			for col = 1, PANEL_COLUMNS do
-				text[col] = glyphs[legend[letters[col]]] or cells[col]
-			end
-			return table.concat(text)
-		end)
-		:totable()
+local function approved_panel_text()
+	local lines = {
+		"  Local 6                          ┃",
+		"  󰡖 Changes 5 files               ┃",
+		"     internal/billing 4          ┃",
+		"      󰄱  invoice.go       +12 -3 ┃",
+		"         󰄱  invoice_test.… +20 -1 ┃",
+		"      󰄲  tax.go           +41 -0 ┃",
+		"         󰄲  tax_test.go    +33 -0 ┃",
+		"     web/src 1                   ┃",
+		"       󰄱  price.ts          +4 -4 ┃",
+		"  󰄱 Unversioned Files 1 file      ┃",
+		"     󰄱  notes.md                  ┃",
+	}
+	vim.list_extend(lines, vim.fn["repeat"]({ (" "):rep(35) .. "┃" }, 17))
+	return lines
 end
 
 ---@return string[] drawn panel text of rows 2-29
@@ -387,7 +307,7 @@ T["git: Changes panel matches the approved render"] = function()
 	run_action("changes.toggle")
 	wait_for_panel()
 	H.expect_screen_colors(child, 2, PANEL_MASK, PANEL_LEGEND, { columns = PANEL_COLUMNS })
-	eq(panel_text(), approved_panel_text("proposed_a_changes_panel.ansi", PANEL_MASK, PANEL_LEGEND))
+	eq(panel_text(), approved_panel_text())
 	eq(panel_extmark_groups(), PANEL_GROUPS)
 	eq(editor_difference(parsed_screen_cells(), regular), nil)
 end
@@ -408,7 +328,7 @@ T["git: Changes panel with the diff view matches the approved render"] = functio
 	)
 	child.cmd("redraw")
 	H.expect_screen_colors(child, 2, DIFF_MASK, DIFF_LEGEND, { columns = PANEL_COLUMNS })
-	eq(panel_text(), approved_panel_text("proposed_b_panel_with_diff.ansi", DIFF_MASK, DIFF_LEGEND))
+	eq(panel_text(), approved_panel_text())
 	eq(panel_extmark_groups(), PANEL_GROUPS)
 	local shown = parsed_screen_cells()
 	local spec = panel_diff_spec()

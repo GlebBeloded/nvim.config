@@ -18,7 +18,7 @@ While a project tree (filetype `gleb-file-tree`) or changes panel (filetype `gle
 
 #### Scenario: tabline over the changes panel matches the approved render
 - **WHEN** a `100x30` screen edits `internal/billing/invoice.go` of a fresh copy of the `billing` fixture and the action `changes.toggle` runs
-- **THEN** screen rows 1-4 match design.md "Proposed — tabline over the changes panel", text and colour mask
+- **THEN** screen row 1 and columns 37-100 of screen rows 2-4 match design.md "Proposed — tabline over the changes panel", and columns 1-36 of screen rows 2-4 match rows 2-4 of the git-changes-tabs design.md "Proposed — Local only on main", text and colour mask
 
 #### Scenario: tabline with tree open matches reference screenshot
 - **WHEN** a `100x12` screen shows an empty buffer and the action `file_tree.toggle` has opened the project tree, and a screenshot of the tabline row is taken

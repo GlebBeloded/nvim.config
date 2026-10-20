@@ -4,9 +4,12 @@ local M = {}
 
 local debounce = require("gleb.util.debounce")
 local workspace = require("gleb.workspace")
+local branch = require("gleb.git.changes.branch")
 local git = require("gleb.git.changes.git")
+local hint = require("gleb.git.changes.hint")
 local model = require("gleb.git.changes.model")
 local render = require("gleb.git.changes.render")
+local tabs = require("gleb.git.changes.tabs")
 local settings = require("gleb.tree.settings")
 local watch = require("gleb.tree.watch")
 local windows = require("gleb.tree.windows")
@@ -19,6 +22,7 @@ local DIFF_DEBOUNCE_MS = 50
 local forget
 local cleanup
 local request_diff
+local expand_branch_node
 local augroup = vim.api.nvim_create_augroup("gleb_changes", { clear = true })
 
 ---@class ChangesView
@@ -29,6 +33,7 @@ local augroup = vim.api.nvim_create_augroup("gleb_changes", { clear = true })
 ---@field editor_win integer
 ---@field rows ChangesRow[]
 ---@field all_rows ChangesRow[]
+---@field local_rows ChangesRow[]
 ---@field tree gleb.ui.tree.Model
 ---@field timer uv.uv_timer_t
 ---@field diff_timer uv.uv_timer_t
@@ -41,6 +46,22 @@ local augroup = vim.api.nvim_create_augroup("gleb_changes", { clear = true })
 ---@field initial_selected_path? string
 ---@field review_on_refresh boolean
 ---@field loaded_buffers table<integer, boolean>
+---@field active_tab string
+---@field local_count integer
+---@field branch_count integer
+---@field branch_available boolean
+---@field branch_request integer
+---@field branch_generation integer
+---@field branch_info? gleb.git.base.Info
+---@field branch_nodes? gleb.ui.tree.Node[]
+---@field commit_nodes? gleb.ui.tree.Node[]
+---@field commit_files table<string, gleb.ui.tree.Node[]>
+---@field commit_view boolean
+---@field commit_generation integer
+---@field hint? ChangesHint
+---@field local_ready boolean
+---@field tabs_ready boolean
+---@field on_ready? fun(view: ChangesView)
 
 ---@param buf integer
 ---@return nil
@@ -66,8 +87,93 @@ local function configure_window(win)
 	vim.wo[win].wrap = false
 	vim.wo[win].list = false
 	vim.wo[win].spell = false
-	vim.wo[win].winhighlight = "Normal:FileTreeNormal,CursorLine:FileTreeCursorLine,EndOfBuffer:FileTreeNormal"
+	vim.wo[win].winhighlight =
+		"Normal:FileTreeNormal,CursorLine:FileTreeCursorLine,EndOfBuffer:FileTreeNormal,WinBar:FileTreeNormal,WinBarNC:FileTreeNormal"
 	vim.api.nvim_win_set_width(win, WIDTH)
+end
+
+---@param text string
+---@return string
+local function statusline_escape(text)
+	return (text:gsub("%%", "%%%%"))
+end
+
+---@param view ChangesView
+---@return nil
+local function draw_tabs(view)
+	local parts = { " " }
+	---@type gleb.git.changes.TabView
+	local tab_view = {
+		local_count = view.local_count,
+		branch_count = view.branch_count,
+		branch_available = view.branch_available,
+	}
+	for _, tab in ipairs(tabs.items) do
+		if tab.available(tab_view) then
+			local group = tab.id == view.active_tab and tab.group or "ChangesTabInactive"
+			parts[#parts + 1] =
+				string.format("%%#%s# %s %d %%* ", group, statusline_escape(tab.title), tab.count(tab_view))
+		end
+	end
+	vim.wo[view.win].winbar = table.concat(parts):sub(1, -2)
+end
+
+---@param view ChangesView
+---@return nil
+local function finish_ready(view)
+	if not view.local_ready or not view.tabs_ready or not view.on_ready then
+		return
+	end
+	local callback = assert(view.on_ready, "ready callback disappeared")
+	view.on_ready = nil
+	callback(view)
+end
+
+---@param view ChangesView
+---@param info gleb.git.base.Info
+---@return nil
+local function load_branch_count(view, info)
+	view.branch_request = view.branch_request + 1
+	local request = view.branch_request
+	vim.system({ "git", "diff", "--name-only", "-z", "-M", info.merge_base, "HEAD" }, {
+		cwd = view.root,
+		text = true,
+	}, function(result)
+		vim.schedule(function()
+			local changes = require("gleb.git.changes")
+			if changes.state.by_tab[view.tab] ~= view or request ~= view.branch_request then
+				return
+			end
+			view.branch_count = result.code == 0
+					and #vim.split(result.stdout or "", "\0", { plain = true, trimempty = true })
+				or 0
+			view.branch_available = true
+			view.branch_info = info
+			draw_tabs(view)
+			view.tabs_ready = true
+			finish_ready(view)
+		end)
+	end)
+end
+
+---@param view ChangesView
+---@return nil
+local function resolve_tabs(view)
+	require("gleb.git.base").resolve(view.root, function(info)
+		if require("gleb.git.changes").state.by_tab[view.tab] ~= view then
+			return
+		end
+		view.branch_request = view.branch_request + 1
+		view.branch_available = false
+		view.branch_count = 0
+		draw_tabs(view)
+		if info then
+			load_branch_count(view, info)
+		else
+			view.tabs_ready = true
+			finish_ready(view)
+		end
+	end)
 end
 
 ---@param view ChangesView
@@ -96,7 +202,7 @@ local function row_key(row)
 	if not row then
 		return nil
 	end
-	return row.root .. ":" .. (row.path or row.fold_id or row.label)
+	return row.id or row.root .. ":" .. (row.path or row.fold_id or row.label)
 end
 
 ---@param rows ChangesRow[]
@@ -143,7 +249,77 @@ local function draw(view, selected_key)
 		end
 		view.rows = visible
 		render.draw(buf, visible, WIDTH)
+		hint.update(view)
 	end, selected_key)
+end
+
+---@param view ChangesView
+---@param nodes gleb.ui.tree.Node[]
+---@param review boolean?
+---@return nil
+local function draw_branch(view, nodes, review)
+	local selected = tree_view.selected_id(view.tree)
+	local saved_view
+	if vim.api.nvim_win_is_valid(view.win) then
+		saved_view = vim.api.nvim_win_call(view.win, vim.fn.winsaveview)
+	end
+	tree_model.rebuild(view.tree, nodes)
+	draw(view, selected)
+	if saved_view and vim.api.nvim_win_is_valid(view.win) then
+		local cursor = vim.api.nvim_win_get_cursor(view.win)
+		saved_view.lnum = cursor[1]
+		saved_view.col = cursor[2]
+		vim.api.nvim_win_call(view.win, function()
+			vim.fn.winrestview(saved_view)
+		end)
+	end
+	if review then
+		M.review(view)
+	end
+end
+
+---@param view ChangesView
+---@param info gleb.git.base.Info
+---@param review boolean?
+---@return nil
+local function refresh_branch(view, info, review)
+	view.branch_generation = view.branch_generation + 1
+	view.commit_generation = view.commit_generation + 1
+	view.commit_nodes = nil
+	local branch_generation = view.branch_generation
+	branch.load_files(view.root, info, branch_generation, function(candidate)
+		return require("gleb.git.changes").state.by_tab[view.tab] == view and view.branch_generation == candidate
+	end, function(nodes)
+		view.branch_nodes = nodes
+		if view.active_tab ~= "branch" then
+			return
+		end
+		if not view.commit_view then
+			draw_branch(view, nodes, review)
+			return
+		end
+		local commit_generation = view.commit_generation
+		branch.load_commits(view.root, info, nodes, commit_generation, function(candidate)
+			return require("gleb.git.changes").state.by_tab[view.tab] == view
+				and view.branch_generation == branch_generation
+				and view.commit_generation == candidate
+				and view.commit_view
+				and view.active_tab == "branch"
+		end, function(commit_nodes)
+			view.commit_nodes = commit_nodes
+			for _, commit_node in ipairs(commit_nodes) do
+				local hash = commit_node.data and commit_node.data.full_hash
+				if hash and view.commit_files[hash] then
+					commit_node.children = view.commit_files[hash]
+				end
+			end
+			local newest = commit_nodes[4]
+			if newest and newest.data and newest.data.full_hash then
+				view.commit_files[newest.data.full_hash] = newest.children or {}
+			end
+			draw_branch(view, commit_nodes, review)
+		end)
+	end)
 end
 
 ---@param view ChangesView
@@ -169,8 +345,25 @@ local function refresh_now(view)
 		end
 		local current = view.rows[vim.api.nvim_win_get_cursor(view.win)[1]]
 		view.all_rows = model.rows(result.stdout or "", settings.load().nesting.rules, numstat_z)
-		tree_model.rebuild(view.tree, tree_nodes(view.all_rows))
-		draw(view, row_key(current))
+		view.local_rows = view.all_rows
+		view.local_count = vim.iter(view.all_rows)
+			:filter(function(row)
+				return row.kind == "file"
+			end)
+			:fold(0, function(count)
+				return count + 1
+			end)
+		if view.active_tab == "local" then
+			tree_model.rebuild(view.tree, tree_nodes(view.local_rows))
+			draw(view, row_key(current))
+		end
+		draw_tabs(view)
+		if view.branch_info then
+			load_branch_count(view, view.branch_info)
+			if view.active_tab == "branch" or view.branch_nodes then
+				refresh_branch(view, view.branch_info)
+			end
+		end
 		if view.initial_selected_path then
 			select_file(view, view.initial_selected_path)
 			view.initial_selected_path = nil
@@ -179,6 +372,8 @@ local function refresh_now(view)
 			view.review_on_refresh = false
 			request_diff(view, view.rows[vim.api.nvim_win_get_cursor(view.win)[1]], false)
 		end
+		view.local_ready = true
+		finish_ready(view)
 	end)
 end
 
@@ -217,12 +412,61 @@ end
 
 ---@param view ChangesView
 ---@param row ChangesRow
+---@return string
+local function diff_key(view, row)
+	return view.active_tab .. ":" .. (row.id or assert(row.path, "file row path missing"))
+end
+
+---@param view ChangesView
+---@param row ChangesRow
+---@return ChangesBranchDiffContext
+local function branch_diff_context(view, row)
+	local info = assert(view.branch_info, "Branch tab has no base")
+	local context = {
+		merge_base = info.merge_base,
+		base_name = info.base_ref:gsub("^origin/", ""),
+		head = info.head,
+	}
+	local commit_hash = row.id and row.id:match("^branch:commit:([^:]+):file:") or nil
+	if not commit_hash then
+		return context
+	end
+	local commit = vim.iter(view.rows):find(function(candidate)
+		return candidate.kind == "commit" and candidate.hash == commit_hash
+	end)
+	assert(commit, "Commit row missing for file")
+	context.commit = assert(commit.full_hash, "Commit hash missing")
+	context.parent = assert(commit.parents, "Commit parents missing")[1] or context.commit .. "^"
+	context.subject = commit.label
+	return context
+end
+
+--- Replace the panel's own diff in place: a committed diff has no editor-eligible pane to reuse.
+---@param view ChangesView
+---@return integer
+local function diff_target(view)
+	local owned = view.diff_view
+	if owned and vim.api.nvim_win_is_valid(owned.right_win) then
+		return owned.right_win
+	end
+	return windows.eligible_editor(view, true)
+end
+
+---@param view ChangesView
+---@param row ChangesRow
 ---@param generation integer
 ---@param selection_generation integer
 ---@param focus_right boolean
 ---@return nil
 local function show_diff(view, row, generation, selection_generation, focus_right)
-	git.load_diff(view.root, row, function(spec, loaded_buf)
+	local load = view.active_tab == "branch"
+			and function(callback)
+				git.load_branch_diff(view.root, row, branch_diff_context(view, row), callback)
+			end
+		or function(callback)
+			git.load_diff(view.root, row, callback)
+		end
+	load(function(spec, loaded_buf)
 		local changes = require("gleb.git.changes")
 		local selected = changes.state.by_tab[view.tab] == view
 			and selection_generation == view.selection_generation
@@ -241,7 +485,7 @@ local function show_diff(view, row, generation, selection_generation, focus_righ
 			view.loaded_buffers[loaded_buf] = true
 		end
 		local diff = require("gleb.diff.view")
-		local editor = windows.eligible_editor(view, true)
+		local editor = diff_target(view)
 		view.editor_win = editor
 		spec.on_next_file = function()
 			M.next_file(view)
@@ -258,7 +502,7 @@ local function show_diff(view, row, generation, selection_generation, focus_righ
 			return
 		end
 		view.diff_view = shown
-		view.diff_path = row.path
+		view.diff_path = diff_key(view, row)
 		if focus_right and vim.api.nvim_win_is_valid(shown.right_win) then
 			vim.api.nvim_set_current_win(shown.right_win)
 		end
@@ -277,17 +521,18 @@ request_diff = function(view, row, focus_right)
 		vim.notify("No file content: " .. row.label, vim.log.levels.INFO)
 		return
 	end
-	if row.path == view.diff_pending_path then
+	local key = diff_key(view, row)
+	if key == view.diff_pending_path then
 		return
 	end
-	if row.path == view.diff_path then
+	if key == view.diff_path then
 		if focus_right and view.diff_view and vim.api.nvim_win_is_valid(view.diff_view.right_win) then
 			vim.api.nvim_set_current_win(view.diff_view.right_win)
 		end
 		return
 	end
 	view.selection_generation = view.selection_generation + 1
-	view.diff_pending_path = row.path
+	view.diff_pending_path = key
 	show_diff(view, row, view.generation, view.selection_generation, focus_right)
 end
 
@@ -297,7 +542,7 @@ end
 ---@param row ChangesRow?
 ---@return nil
 local function drop_pending_diff(view, row)
-	if view.diff_pending_path and (not row or row.path ~= view.diff_pending_path) then
+	if view.diff_pending_path and (not row or diff_key(view, row) ~= view.diff_pending_path) then
 		view.selection_generation = view.selection_generation + 1
 		view.diff_pending_path = nil
 	end
@@ -307,9 +552,10 @@ end
 ---@return nil
 local function schedule_diff(view)
 	local row = view.rows[vim.api.nvim_win_get_cursor(view.win)[1]]
+	local active_tab = view.active_tab
 	drop_pending_diff(view, row)
 	view.diff_timer = debounce.schedule(view.diff_timer, DIFF_DEBOUNCE_MS, function()
-		if not vim.api.nvim_win_is_valid(view.win) then
+		if not vim.api.nvim_win_is_valid(view.win) or view.active_tab ~= active_tab then
 			return
 		end
 		request_diff(view, row, false)
@@ -328,9 +574,13 @@ end
 ---@return nil
 local function close_if_orphaned(view)
 	local changes = require("gleb.git.changes")
+	local owns_diff = view.diff_view
+		and vim.api.nvim_win_is_valid(view.diff_view.left_win)
+		and vim.api.nvim_win_is_valid(view.diff_view.right_win)
 	if
 		vim.api.nvim_tabpage_is_valid(view.tab)
 		and changes.state.by_tab[view.tab] == view
+		and not owns_diff
 		and eligible_editor_count(view.tab) == 0
 	then
 		M.close(view)
@@ -364,6 +614,7 @@ local function add_refresh_sources(view)
 		group = augroup,
 		buffer = view.buf,
 		callback = function()
+			hint.ensure_cursor(view)
 			schedule_diff(view)
 		end,
 	})
@@ -380,6 +631,39 @@ local function add_refresh_sources(view)
 		group = augroup,
 		callback = function()
 			M.schedule_refresh(view)
+		end,
+	})
+	view.autocmds[#view.autocmds + 1] = vim.api.nvim_create_autocmd("User", {
+		group = augroup,
+		pattern = "GlebGitBaseChanged",
+		callback = function(args)
+			local root = args.data and args.data.root
+			if not root or workspace.normalize(root) ~= view.root then
+				return
+			end
+			local info = require("gleb.git.base").get(view.root)
+			if not info then
+				view.branch_request = view.branch_request + 1
+				view.branch_generation = view.branch_generation + 1
+				view.commit_generation = view.commit_generation + 1
+				view.branch_available = false
+				view.branch_count = 0
+				view.branch_info = nil
+				view.branch_nodes = nil
+				view.commit_nodes = nil
+				view.commit_files = {}
+				if view.active_tab == "branch" then
+					M.activate_tab(view, "local")
+				else
+					draw_tabs(view)
+				end
+				return
+			end
+			view.branch_info = info
+			load_branch_count(view, info)
+			if view.active_tab == "branch" or view.branch_nodes then
+				refresh_branch(view, info)
+			end
 		end,
 	})
 	view.autocmds[#view.autocmds + 1] = vim.api.nvim_create_autocmd("WinClosed", {
@@ -421,6 +705,7 @@ end
 ---@return nil
 cleanup = function(view)
 	forget(view)
+	hint.close(view)
 	if not view.timer:is_closing() then
 		view.timer:stop()
 		view.timer:close()
@@ -440,6 +725,12 @@ end
 ---@param view ChangesView
 ---@return nil
 function M.close(view)
+	local changes = require("gleb.git.changes")
+	changes.state.by_root[view.root] = {
+		tab = view.active_tab,
+		commit_view = view.commit_view,
+		folds = vim.deepcopy(view.tree.folds),
+	}
 	cleanup(view)
 	if view.diff_view then
 		require("gleb.diff.view").close(view.diff_view)
@@ -473,6 +764,9 @@ function M.open_file(view, row)
 	if not row.path or not row.diffable then
 		return
 	end
+	view.diff_timer:stop()
+	view.selection_generation = view.selection_generation + 1
+	view.diff_pending_path = nil
 	if view.diff_view then
 		require("gleb.diff.view").close(view.diff_view)
 		view.diff_view = nil
@@ -489,8 +783,9 @@ end
 ---@param root string
 ---@param selected_path string
 ---@param review? boolean
+---@param on_ready? fun(view: ChangesView)
 ---@return ChangesView
-function M.open(root, selected_path, review)
+function M.open(root, selected_path, review, on_ready)
 	local changes = require("gleb.git.changes")
 	local tab = vim.api.nvim_get_current_tabpage()
 	local editor_win = vim.api.nvim_get_current_win()
@@ -512,6 +807,7 @@ function M.open(root, selected_path, review)
 		editor_win = editor_win,
 		rows = {},
 		all_rows = {},
+		local_rows = {},
 		tree = tree_model.new({}),
 		timer = assert(vim.uv.new_timer()),
 		diff_timer = assert(vim.uv.new_timer()),
@@ -521,16 +817,171 @@ function M.open(root, selected_path, review)
 		loaded_buffers = {},
 		initial_selected_path = workspace.normalize(selected_path),
 		review_on_refresh = review == true,
+		active_tab = "local",
+		local_count = 0,
+		branch_count = 0,
+		branch_available = false,
+		branch_request = 0,
+		branch_generation = 0,
+		commit_files = {},
+		commit_view = false,
+		commit_generation = 0,
+		local_ready = false,
+		tabs_ready = false,
+		on_ready = on_ready,
 	}
 	tree_view.attach(buf, view.tree, {
+		expand = function(node)
+			return expand_branch_node(view, node)
+		end,
 		fallback = function()
 			select_file(view, "")
 		end,
 	})
 	changes.state.by_tab[tab] = view
 	add_refresh_sources(view)
+	draw_tabs(view)
+	resolve_tabs(view)
 	refresh_now(view)
 	return view
+end
+
+---@param panel ChangesView
+---@return boolean current
+local function commit_request_current(panel, generation)
+	return require("gleb.git.changes").state.by_tab[panel.tab] == panel
+		and panel.commit_generation == generation
+		and panel.commit_view
+		and panel.active_tab == "branch"
+end
+
+---@param panel ChangesView
+---@param node gleb.ui.tree.Node
+---@return boolean expanded
+expand_branch_node = function(panel, node)
+	local row = node.data
+	if panel.active_tab ~= "branch" or not panel.commit_view or not row or row.kind ~= "commit" then
+		return true
+	end
+	local hash = assert(row.full_hash, "Branch commit has no hash")
+	local cached = panel.commit_files[hash]
+	if cached then
+		node.children = cached
+		return true
+	end
+	panel.commit_generation = panel.commit_generation + 1
+	local generation = panel.commit_generation
+	branch.load_commit_files(panel.root, hash, generation, function(candidate)
+		return commit_request_current(panel, candidate)
+	end, function(files)
+		panel.commit_files[hash] = files
+		local current = panel.tree.nodes[node.id]
+		if not current then
+			return
+		end
+		current.children = files
+		tree_model.rebuild(panel.tree, assert(panel.commit_nodes, "Branch commits have not loaded"))
+		tree_model.set_open(panel.tree, node.id, true)
+		draw(panel, node.id)
+	end)
+	return false
+end
+
+--- Return the ordered tabs currently available in a Changes panel.
+---@param view ChangesView
+---@return string[]
+function M.available_tabs(view)
+	local available = {}
+	local tab_view = {
+		local_count = view.local_count,
+		branch_count = view.branch_count,
+		branch_available = view.branch_available,
+	}
+	for _, tab in ipairs(tabs.items) do
+		if tab.available(tab_view) then
+			available[#available + 1] = tab.id
+		end
+	end
+	return available
+end
+
+--- Activate a Changes tab, focus its panel and review the selected row.
+---@param panel ChangesView
+---@param id string
+---@return nil
+function M.activate_tab(panel, id)
+	if panel.active_tab ~= id then
+		panel.diff_timer:stop()
+		panel.selection_generation = panel.selection_generation + 1
+		panel.diff_pending_path = nil
+	end
+	panel.active_tab = id
+	if id ~= "branch" then
+		panel.commit_view = false
+	end
+	draw_tabs(panel)
+	if id == "local" then
+		tree_model.rebuild(panel.tree, tree_nodes(panel.local_rows))
+		draw(panel)
+	elseif panel.commit_view and panel.commit_nodes then
+		tree_model.rebuild(panel.tree, panel.commit_nodes)
+		draw(panel)
+	elseif panel.branch_nodes then
+		tree_model.rebuild(panel.tree, panel.branch_nodes)
+		draw(panel)
+	elseif panel.branch_info then
+		vim.api.nvim_set_current_win(panel.win)
+		refresh_branch(panel, assert(panel.branch_info, "Branch tab has no base"), true)
+		return
+	end
+	M.review(panel)
+end
+
+--- Toggle the Branch tab between its files and commits views.
+---@param panel ChangesView
+---@return nil
+function M.toggle_commits(panel)
+	if panel.active_tab ~= "branch" then
+		return
+	end
+	panel.commit_generation = panel.commit_generation + 1
+	if panel.commit_view then
+		panel.commit_view = false
+		tree_model.rebuild(panel.tree, assert(panel.branch_nodes, "Branch files have not loaded"))
+		draw(panel)
+		return
+	end
+	panel.commit_view = true
+	if not panel.branch_nodes then
+		return
+	end
+	if panel.commit_nodes then
+		tree_model.rebuild(panel.tree, panel.commit_nodes)
+		local first = panel.commit_nodes[4]
+		local selected = first and first.children and first.children[1] and first.children[1].id or nil
+		draw(panel, selected)
+		return
+	end
+	local generation = panel.commit_generation
+	branch.load_commits(
+		panel.root,
+		assert(panel.branch_info, "Branch tab has no base"),
+		assert(panel.branch_nodes, "Branch files have not loaded"),
+		generation,
+		function(candidate)
+			return commit_request_current(panel, candidate)
+		end,
+		function(nodes)
+			panel.commit_nodes = nodes
+			local newest = nodes[4]
+			if newest and newest.data and newest.data.full_hash then
+				panel.commit_files[newest.data.full_hash] = newest.children or {}
+			end
+			tree_model.rebuild(panel.tree, nodes)
+			local selected = newest and newest.children and newest.children[1] and newest.children[1].id or nil
+			draw(panel, selected)
+		end
+	)
 end
 
 --- Focus a Changes panel and show its selected file without debounce.

@@ -84,11 +84,24 @@ function M.add_folds(view, open_ranges)
 	end
 end
 
+-- Neovim truncates a too-long winbar from the left with `<`; labels keep their start instead.
+---@param text string
+---@param width integer
+---@return string
+local function clip(text, width)
+	while vim.fn.strdisplaywidth(text) > width do
+		text = vim.fn.strcharpart(text, 0, vim.fn.strchars(text) - 1)
+	end
+	return text
+end
+
 ---@param view gleb.diff.view.View
 function M.update_labels(view)
 	local suffix = view.approximate and " · approximate diff" or ""
-	vim.wo[view.left_win].winbar = " " .. view.labels.left
-	vim.wo[view.right_win].winbar = string.rep(" ", 16) .. view.labels.right .. suffix
+	local left_width = vim.api.nvim_win_get_width(view.left_win)
+	local right_width = vim.api.nvim_win_get_width(view.right_win)
+	vim.wo[view.left_win].winbar = clip(" " .. view.labels.left, left_width)
+	vim.wo[view.right_win].winbar = clip(string.rep(" ", 16) .. view.labels.right .. suffix, right_width)
 end
 
 ---@param relpath string
@@ -119,6 +132,7 @@ local function resize(view)
 	end
 	local width = vim.api.nvim_win_get_width(view.left_win) + vim.api.nvim_win_get_width(view.right_win) + 1
 	vim.api.nvim_win_set_width(view.left_win, math.floor(width * 0.4))
+	M.update_labels(view)
 end
 
 ---@param view gleb.diff.view.View

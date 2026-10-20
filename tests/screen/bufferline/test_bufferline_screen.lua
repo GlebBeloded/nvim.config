@@ -14,9 +14,9 @@ local TREE_COLUMNS = 36 -- sidebar width 35 plus the window separator
 
 local CHANGES_MASK = {
 	"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabcbbbbbbbbbbbbbddddddddddddddddddddddddddddddddddddddddddddddddd",
-	"aeafagggggggahhhhhhhaaaaaaaaaaaaaaaijjjjjkkkkkkk....................................................",
-	"aaaealammmmmmmmmmmmmmmmahaaaaaaaaaainnnnn...........................................................",
-	"oooooeofocoppppppppppoooooooqqqorroinnnnnkkkkkk.....................................................",
+	"asssssssssaaaaaaaaaaaaaaaaaaaaaaaaaijjjjjkkkkkkk....................................................",
+	"aeafagggggggahhhhhhhaaaaaaaaaaaaaaainnnnn...........................................................",
+	"aaaealammmmmmmmmmmmmmmmahaaaaaaaaaainnnnnkkkkkk.....................................................",
 }
 
 local CHANGES_LEGEND = {
@@ -38,6 +38,7 @@ local CHANGES_LEGEND = {
 	p = "FileTreeGitModified",
 	q = "ChangesStatAdded",
 	r = "ChangesStatRemoved",
+	s = "ChangesTabLocal",
 }
 
 local PANEL_GROUPS = {
@@ -148,11 +149,12 @@ end
 
 ---@return string[]
 local function approved_changes_text()
-	local lines =
-		vim.fn.readfile(vim.fs.joinpath(H.root, "tests/screen/bufferline/proposed_changes_panel_tabline.ansi"))
-	return vim.tbl_map(function(line)
-		return line:gsub("\27%[[0-9;]*m", "")
-	end, lines)
+	return {
+		"                                      invoice.go                                                   ",
+		"  Local 6                          ┃   1 package billing                                            ",
+		"  󰡖 Changes 5 files               ┃   2                                                            ",
+		"     internal/billing 4          ┃   3 import (                                                   ",
+	}
 end
 
 ---@return string[]

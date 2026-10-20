@@ -5,7 +5,15 @@ local M = {}
 local palette = require("gleb.colors.gruvbox-material.palette")
 
 local function apply_highlights()
+	local background = palette.background
 	local foreground = palette.foreground
+	vim.api.nvim_set_hl(0, "ChangesTabLocal", { fg = background.bg0, bg = foreground.blue, bold = true })
+	vim.api.nvim_set_hl(0, "ChangesTabBranch", { fg = background.bg0, bg = foreground.purple, bold = true })
+	vim.api.nvim_set_hl(0, "ChangesTabInactive", { fg = foreground.grey1, bg = background.bg1 })
+	vim.api.nvim_set_hl(0, "ChangesBranchHeader", { fg = foreground.purple, bold = true })
+	vim.api.nvim_set_hl(0, "ChangesCommittedFile", { fg = foreground.purple })
+	vim.api.nvim_set_hl(0, "ChangesCommitIcon", { fg = foreground.purple })
+	vim.api.nvim_set_hl(0, "ChangesCommitHash", { fg = foreground.yellow })
 	vim.api.nvim_set_hl(0, "ChangesRoot", { fg = foreground.fg1, bold = true })
 	vim.api.nvim_set_hl(0, "ChangesCount", { fg = foreground.grey1 })
 	vim.api.nvim_set_hl(0, "ChangesCheckbox", { fg = foreground.grey1 })

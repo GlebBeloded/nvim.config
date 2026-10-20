@@ -36,6 +36,7 @@
   "changes.fold_all": ["zM"],
   "changes.stage_all": ["A"],
   "changes.toggle": ["<A-G>"],
+  "changes.toggle_commits": ["c"],
   "changes.toggle_fold": ["za"],
   "changes.toggle_stage": ["<Space>"],
   "changes.unfold_all": ["zR"],
