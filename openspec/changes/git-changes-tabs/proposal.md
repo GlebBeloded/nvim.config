@@ -1,6 +1,7 @@
 ## Why
 
 Kind: feature
+Adopt: loop/git-changes-tabs
 
 Depends: git-committed-signs
 
@@ -138,3 +139,23 @@ mixed tree.
 - Committed diffs show no include checkboxes and no staging; moved blocks keep their aqua marks.
 - `changes.show_branch` and `changes.show_branch_commits` on the default branch notify
   `No branch changes on main` at WARN and change nothing.
+
+## Rejected run
+Run on `loop/git-changes-tabs` was rejected by the judge:
+- fix loop exhausted with gates still red: review
+- review findings:
+  1. [must-fix] lua/gleb/git/changes/view.lua:300-318 (`refresh_branch`) and :973-993 (`toggle_commits`): every refresh sets `commit_files = {}`, and `load_commits` refills only the newest commit (`commit_nodes[4]`). So an expanded older commit keeps its open fold state but loses its file rows. This breaks "Branch tab refresh" ("keeping the cursor on the same path and the fold and view state") and "Changes tab state" (the fold states are reused when the panel reopens).
+     Probe (child driven step by step, billing-branch): run `changes.show_branch_commits`, put the cursor on `07cb52e` and press `za`. The rows show `invoice_test.go +20 -1` and `tax_test.go +33 -0` under it. Then run `doautocmd FocusGained`, which happens every time the user returns to Neovim: the rows go straight from `07cb52e add Rate and tax…` to `b5435c5 add tax.go`, so the children are gone while the fold is still open. Reopening with `changes.close()` then `changes.toggle()` gives the same result.
+     Fix: after commit nodes rebuild, load the files of every commit whose fold is open (reuse `expand_branch_node` / `branch.load_commit_files`), or keep `commit_files` when HEAD and the merge-base are unchanged.
+     Why earlier passes missed it: pass 3 and pass 6 probed refresh only in the files view, and the reopen probes only a collapsed commit (the "Tab actions reopen saved state" scenario), never an expanded commit other than the newest.
+  2. [must-fix] lua/gleb/git/changes/view.lua:897-917 (`activate_tab`), reached from init.lua:188 (Cmd+G cycle) and from init.lua:119 / `restore` (tab actions). On the first switch to Branch, `branch_nodes` is nil, so `refresh_branch` starts loading and `M.review(panel)` runs right away on `panel.rows`, which still holds the Local rows. It loads a merge-base→HEAD diff for the Local row under the cursor. This breaks "Changes tab cycle" ("activate the next available tab … and show the diff of the row under the cursor").
+     Probe (child, billing-branch, `:edit web/src/price.ts`): the first `changes.review` opens Local with the `price.ts` diff. The second `changes.review` notifies `No content changes: price.ts` and closes the owned diff view. CursorMoved then reopens it on Branch's `invoice.go`. Every Cmd+G from a file that is edited locally but not changed on the branch shows this spurious message and a diff close and reopen. The cycle scenario misses it because `invoice.go` is changed both locally and on the branch.
+     Fix: when Branch rows are not loaded yet, defer the review until `refresh_branch` draws them (review the drawn cursor row then), and never call `request_diff` with a Local row while `active_tab` is `branch`.
+  3. [minor] lua/gleb/git/changes/view.lua:626-628: when `GlebGitBaseChanged` reports no base while Branch is active, the handler calls `M.activate_tab(view, "local")`. That calls `M.review`, which runs `nvim_set_current_win(view.win)`, so a background `:checktime` or FocusGained after an outside `git checkout main` moves focus from the user's editor into the panel. The spec only asks to switch to Local; draw the Local tab without `review`/focus.
+  4. [minor] lua/gleb/diff/view/windows.lua:87-105 is outside the proposal's Impact files. The gate needed it (approved commits render, tasks.md Agent decisions). Already noted in pass 6.
+  5. [minor] lua/gleb/colors/colorizer.lua:2 is outside the proposal's files. The gate needed it (`#482` keeps `ChangesBranchHeader`). Already noted.
+  6. [minor] tests/e2e/find-action/screens.lua:92,106: the palette count goes from 46 to 49 because of the new catalog actions. It is a count update, not a weakened assertion.
+  Checked and fine: pass 6 finding 1 is fixed (view.lua:910-912 now rebuilds from `commit_nodes`, with an integration test for it). The mask cell at row 2, column 62 is now stricter (`f`), not weaker. The spec delta only adds scenarios: "Changes panel review replaces the dashboard" is copied from the main spec, and "follows the current branch base" and "Tab actions reopen saved
+  … (more findings in the run's reviews.md)
+- note: flaky test cases (failed, then passed on rerun): e2e: Error: VM 'nvim-e2e' is not running
+- note: loop: Error: VM 'nvim-e2e' is not running
