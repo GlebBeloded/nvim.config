@@ -114,6 +114,13 @@ After a judge reject, `.archon/scripts/followup.py` SHALL re-queue the work on `
 - **WHEN** `make drain` runs with the same stubs and one runnable change
 - **THEN** it exits 0, no Archon call gets `--detach`, and the run's output and `completed` status appear in drain's output
 
+### Requirement: High-priority changes go first
+queue_pick.py SHALL pick a change whose proposal.md has a `Priority: high` line before every other runnable change, the oldest `created` first among them.
+
+#### Scenario: Queue picks a high-priority change first
+- **WHEN** queue_pick.py runs on `t-a` (created first), and `t-b` and `t-c` (later, both `Priority: high`, `t-c` older)
+- **THEN** it picks `t-c`
+
 ### Requirement: Drains run lanes in parallel
 `make drains [LANES=2]` SHALL run that many drains at once with output lines prefixed `[lane <k>]`, never start one change in two lanes (a pick lock held until the run is recorded, a shared skip list), let a lane whose pick is empty wait while a live run works a change the remaining changes depend on, and first print each `Depends:` edge whose two changes share no `## Impact` path. More than `DRAIN_MAX_LANES` (default 2) lanes SHALL be refused.
 
