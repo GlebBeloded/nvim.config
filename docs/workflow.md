@@ -60,6 +60,7 @@ Each run works in its own git worktree cut from `auto` and, when every gate is g
 | `make feature IDEA="…"` | `new-feature`: brainstorm, proposal with renders and a preview, then build (no approval stop) |
 | `make queue [CHANGE=<id>]` | `work-queue`: the oldest change in `openspec/changes/` that no run has taken (no `loop/<id>` branch); afterwards `loop_clean.py --change` keeps one loop branch per change (drops reruns whose tip is on the kept one or on `auto`) |
 | `make drain [N=<runs>]` | `drain.py`: foreground `make queue CHANGE=<id>` one change at a time (status read from the Archon DB) until the queue is empty, N runs, a paused run (a loop bug: no node pauses), or stop-infra cancels a run (broken host, exit 1); a `## Blocked` change runs too (its unblock step settles it) |
+| `make drains [LANES=2] [N=<runs per lane>]` | `drain.py --lanes`: that many drains at once, lines prefixed `[lane <k>]`; a pick lock and a shared skip list keep two lanes off one change, a lane whose pick is empty waits while a live run works a change the rest `Depends:` on, and each `Depends:` edge sharing no `## Impact` path is printed first (ordering-only: drop it) |
 | `make loop-clean [APPLY=1]` | `loop_clean.py`: remove worktree and branch of shipped or superseded `loop/*` runs; dry run unless `APPLY=1` |
 | `make outdated` | plugins with commits past `lazy-lock.json` (read-only) |
 | `make update PLUGIN=<name>` | `plugin-update`: update that one plugin, test it, ship it or adapt the config |
@@ -167,7 +168,7 @@ Known issues and planned work are queued changes in `openspec/changes/`; there i
   changed look), architecture when proposal.md `## Impact` or tasks.md names plugin wiring or load-order files
   (`lua/gleb/plugins/`, `init.lua`, `lazy-lock.json`, `docs/architecture.md`); a skip_specs change is neither.
   Visible UI sends a fix to the preview.
-- Order: a `Depends: <change>[, <change>]` line in proposal.md holds the change until those are archived.
+- Order: a `Depends: <change>[, <change>]` line in proposal.md holds the change until those are archived. Write it only when the change needs the other's code (it idles a `make drains` lane otherwise), and keep changes small (one behaviour, few files), so both lanes stay busy.
 - A test that pins a known bug wraps the case in `H.xfail("<change id>", fn)` ([testing](testing.md)).
 
 ### Where to look
