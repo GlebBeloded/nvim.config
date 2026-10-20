@@ -15,6 +15,7 @@ pack: { has_task: true, context: context.md }
 implement: "task 1 done"
 gate: { green: true, spec_ok: true, tasks_done: true, untested: 0, attempt: 1, failures: "", blocked: false }
 review: { approve: true, findings: "", weakened_scenario: false, weakened_test: false }
+full-gate: { green: true, spec_ok: true, tasks_done: true, untested: 0, attempt: 1, failures: "", blocked: false }
 escalation: { decision: ship, escalate: false, reasons: "- none" }
 ship: { merged: true, conflict: false, branch: loop/demo-change, commit: abc123 }
 followup: "MUST-NOT-RUN"

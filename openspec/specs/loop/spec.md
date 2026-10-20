@@ -610,11 +610,11 @@ gate.py SHALL first run `make check CHECK_TARGETS="lint types trace specs test"`
 - **THEN** the red quick tier is the only call (`CAPS=pr`, noted in the check log); green adds `make check E2E=1` and keeps `quick-1.log`; `.archon/` runs `lint types trace specs loop-test` with no `test`; `init.lua` runs `CAPS=` empty; docs only runs only the full check; the e2e branch runs `CAPS=find-action,pr`, the used fixture `CAPS=pr`, the unused fixture and the plugin spec `CAPS=` empty, the sandbox branch `CAPS=pr` plus `loop-test`, a smoke branch only the full check, and a change to `lua/gleb/git/base.lua` that `lua/gleb/pr/` requires `CAPS=git,pr`
 
 ### Requirement: Gate reruns known flaky cases up to three times
-A failing case listed in `tests/flaky.txt` (`<file> | <case>`, by name prefix) that gate.py would rerun SHALL rerun up to 3 times, serially, and count as flaky on its first pass; other cases rerun once. A branch adding a case to `tests/flaky.txt` SHALL be a hard rule.
+A failing case listed in `tests/flaky.txt` (`<file> | <case>`, by name prefix), or one that passed on rerun in 3 or more runs of the last 14 days (`flake_stats.py` over Archon's `artifacts/runs`), that gate.py would rerun SHALL rerun up to 3 times, serially, and count as flaky on its first pass; other cases rerun once. A branch adding a case to `tests/flaky.txt` SHALL be a hard rule.
 
 #### Scenario: Gate reruns a known flaky case up to three times
-- **WHEN** gate.py runs with a `make` stub whose check fails one case listed in the base's `tests/flaky.txt`, its rerun passing on the 3rd try, then never; then the case unlisted, passing on the 2nd try; then a branch adding it to `tests/flaky.txt`
-- **THEN** the first is green after 3 reruns with the case in `flaky`; the second red after 3; the third red after 1; the fourth red with `hard rule: tests/flaky.txt gains a case on this branch`
+- **WHEN** gate.py runs with a `make` stub whose check fails one case listed in the base's `tests/flaky.txt`, its rerun passing on the 3rd try, then never; then the case unlisted, passing on the 2nd try; then unlisted but passed on rerun in 3 sibling runs of an `artifacts/runs` dir, then a branch adding it to `tests/flaky.txt`
+- **THEN** the first is green after 3 reruns with the case in `flaky`; the second red after 3; the third red after 1; the history one green after 3; the last red with `hard rule: tests/flaky.txt gains a case on this branch`
 
 ### Requirement: Gate reruns failed test cases once
 When `make check` fails only in `test`, `test-readiness` or `e2e`, gate.py SHALL rerun each `FAIL in` case once, serially (`make test FILE=<file> CASE=<name>`, `make test-readiness CASE=<name>`); e2e only when its log has no `FAIL in` and only sandbox/Lume infra lines (`make e2e E2E=1`). All passing: green, listed in `flaky` and the check log, a judge note. A rerun failing stays red; other targets never rerun.
@@ -1106,7 +1106,7 @@ a test child SHALL exit when its test worker is gone, `make test FILE=<directory
 
 #### Scenario: Test children keep the Go build cache under .tests
 - **WHEN** a test child starts through `tests/helpers.lua` and runs `go env GOCACHE`
-- **THEN** its `GOCACHE` and the `go` answer are `<repo>/.tests/go/cache` (`tests/check.sh` empties it past `CHECK_GOCACHE_GB`, default 5)
+- **THEN** its `GOCACHE` and the `go` answer are `<repo>/.tests/go/cache` (`tests/check.sh` empties it past `CHECK_GOCACHE_GB`, default 5) and its `GOMAXPROCS` is `2`
 
 ### Requirement: Test bootstrap ignores a leaked GIT_DIR
 `tests/bootstrap.sh` and `tests/fixtures/build.sh` SHALL unset Git's local environment (`git rev-parse --local-env-vars`) before any git command, so a `make test` run from `git bisect run` or a hook never re-initializes the real repository, and `followup.py` SHALL refuse to move the base branch while the repository reads as bare.

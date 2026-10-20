@@ -258,8 +258,26 @@ end
 local function verdict_env(artifacts, extra)
 	local env =
 		{ ARTIFACTS_DIR = artifacts, INPUTS_GREEN = "true", INPUTS_SPEC_OK = "true", INPUTS_TASKS_DONE = "true" }
-	env = vim.tbl_extend("force", env, { INPUTS_CRITICAL = "0", INPUTS_APPROVE = "true", INPUTS_ATTEMPT = "1" })
+	env = vim.tbl_extend(
+		"force",
+		env,
+		{ INPUTS_CRITICAL = "0", INPUTS_APPROVE = "true", INPUTS_ATTEMPT = "1", INPUTS_FULL_GREEN = "true" }
+	)
 	return vim.tbl_extend("force", env, extra or {})
+end
+
+T["loop: Verdict passes only after the full gate is green"] = function()
+	local repo = branch_repo({ ["README.md"] = "x" })
+	local full_red = { INPUTS_FULL_GREEN = "false", INPUTS_FULL_FAILURES = "full make check E2E=1 is red: e2e" }
+	local red = loop_script("verdict.py", repo, verdict_env(H.tempdir(child), full_red))
+	eq({ red.passed, red.done, red.failed_gates }, { false, false, "full" })
+	has(red.feedback, "full make check E2E=1 is red: e2e")
+	local skipped = loop_script("verdict.py", repo, verdict_env(H.tempdir(child), { INPUTS_FULL_GREEN = "skipped" }))
+	eq({ skipped.passed, skipped.failed_gates }, { false, "full" })
+	local green = loop_script("verdict.py", repo, verdict_env(H.tempdir(child)))
+	eq(green.passed, true)
+	local quick_red = verdict_env(H.tempdir(child), { INPUTS_GREEN = "false", INPUTS_FULL_GREEN = "skipped" })
+	eq(loop_script("verdict.py", repo, quick_red).failed_gates, "tests")
 end
 
 T["loop: Gate checks hard rules before make check"] = function()
@@ -457,18 +475,19 @@ local function rerun_gate(log, rerun_code, files, opts)
 end
 
 --- gate.py on a branch editing `branch` (over `base`), its make stub logging each call with CAPS to `calls`
---- and exiting `quick_code` on the quick tier (a CHECK_TARGETS check), 0 on the full check.
+--- and exiting `quick_code` on the quick tier (a CHECK_TARGETS check), 0 on the full check; `env` adds inputs.
 ---@param base table<string, string>
 ---@param branch table<string, string>
 ---@param quick_code integer
 ---@return table verdict, string calls, string artifacts
-local function tier_gate(base, branch, quick_code)
+local function tier_gate(base, branch, quick_code, env)
 	local repo = branch_repo(vim.tbl_extend("force", { ["README.md"] = "x" }, base))
 	write(repo, branch)
 	local scratch, artifacts = H.tempdir(child), H.tempdir(child)
 	local body = 'echo "$* CAPS=$CAPS" >>"%s/calls"\ncase "$2" in CHECK_TARGETS=*) exit %d;; esac\nexit 0'
 	local bin = fake_tool(scratch, "make", body:format(scratch, quick_code))
-	local out = loop_script("gate.py", repo, { ARTIFACTS_DIR = artifacts, PATH = bin .. ":" .. vim.env.PATH })
+	env = vim.tbl_extend("force", { ARTIFACTS_DIR = artifacts, PATH = bin .. ":" .. vim.env.PATH }, env or {})
+	local out = loop_script("gate.py", repo, env)
 	return out, read(vim.fs.joinpath(scratch, "calls")), artifacts
 end
 
@@ -482,32 +501,35 @@ T["loop: Gate runs the quick tier before the full check"] = function()
 	eq({ red.green, red_calls }, { false, quick .. " CAPS=pr" })
 	has(read(vim.fs.joinpath(artifacts, "check-1.log")), "quick tier: lint types trace specs test with CAPS=pr")
 	local green, calls, green_artifacts = tier_gate(base, pr, 0)
-	eq({ green.green, calls }, { true, quick .. " CAPS=pr\n" .. full })
-	eq(vim.fn.filereadable(vim.fs.joinpath(green_artifacts, "quick-1.log")), 1)
+	eq({ green.green, calls }, { true, quick .. " CAPS=pr" })
+	eq(vim.fn.filereadable(vim.fs.joinpath(green_artifacts, "check-1.log")), 1)
 
 	local _, loop_calls = tier_gate(base, { [".archon/scripts/x.py"] = "x" }, 0)
-	eq(loop_calls, "check CHECK_TARGETS=lint types trace specs loop-test CAPS=\n" .. full)
+	eq(loop_calls, "check CHECK_TARGETS=lint types trace specs loop-test CAPS=")
 	local _, shared_calls = tier_gate(base, { ["init.lua"] = "-- i", ["docs/a.md"] = "a" }, 0)
-	eq(shared_calls, quick .. " CAPS=\n" .. full)
+	eq(shared_calls, quick .. " CAPS=")
 	local _, docs_calls = tier_gate(base, { ["docs/a.md"] = "a", ["openspec/changes/c/proposal.md"] = "# c" }, 0)
-	eq(docs_calls, full)
+	eq(docs_calls, "check CHECK_TARGETS=lint types trace specs CAPS=")
 	local e2e = { ["lua/gleb/pr/view.lua"] = "-- v", ["tests/e2e/find-action/test_x.lua"] = "-- x" }
 	local _, e2e_calls =
 		tier_gate(vim.tbl_extend("force", base, { ["tests/unit/find-action/test_f.lua"] = "-- f" }), e2e, 0)
-	eq(e2e_calls, quick .. " CAPS=find-action,pr\n" .. full)
+	eq(e2e_calls, quick .. " CAPS=find-action,pr")
 	-- a support file maps to the tests that name it; a shared one, or one no test names, to every capability
 	local used = vim.tbl_extend("force", base, { ["tests/fixtures/gh/data.lua"] = "-- d" })
 	used["tests/integration/pr/test_a.lua"] = "local D = require('tests.fixtures.gh.data')"
 	local _, used_calls = tier_gate(used, { ["tests/fixtures/gh/data.lua"] = "-- d2" }, 0)
-	eq(used_calls, quick .. " CAPS=pr\n" .. full)
+	eq(used_calls, quick .. " CAPS=pr")
 	local _, unused_calls = tier_gate(base, { ["tests/fixtures/other/x.lua"] = "-- x" }, 0)
-	eq(unused_calls, quick .. " CAPS=\n" .. full)
+	eq(unused_calls, quick .. " CAPS=")
 	local _, plugin_calls = tier_gate(base, { ["lua/gleb/plugins/editor.lua"] = "-- p" }, 0)
-	eq(plugin_calls, quick .. " CAPS=\n" .. full)
+	eq(plugin_calls, quick .. " CAPS=")
 	local _, sandbox_calls = tier_gate(base, { ["lua/gleb/pr/view.lua"] = "-- v", ["tests/sandbox/x.sh"] = "x" }, 0)
-	eq(sandbox_calls, quick .. " loop-test CAPS=pr\n" .. full)
+	eq(sandbox_calls, quick .. " loop-test CAPS=pr")
 	local _, smoke_calls = tier_gate(base, { ["lua/gleb/pr/view.lua"] = "-- v", ["tests/smoke/x.lua"] = "x" }, 0)
-	eq(smoke_calls, full)
+	eq(smoke_calls, quick .. " CAPS=pr")
+	-- the full-gate node: only the full check, no attempt of its own
+	local full_out, full_calls = tier_gate(base, pr, 1, { INPUTS_TIER = "full" })
+	eq({ full_out.green, full_calls, full_out.attempt }, { true, full, 1 })
 	-- a module other areas require runs their tests too
 	local graph = vim.tbl_extend("force", base, {
 		["tests/integration/git/test_g.lua"] = "-- g",
@@ -515,7 +537,7 @@ T["loop: Gate runs the quick tier before the full check"] = function()
 		["lua/gleb/pr/init.lua"] = 'local base = require("gleb.git.base")',
 	})
 	local _, graph_calls = tier_gate(graph, { ["lua/gleb/git/base.lua"] = "return { x = 1 }" }, 0)
-	eq(graph_calls, quick .. " CAPS=git,pr\n" .. full)
+	eq(graph_calls, quick .. " CAPS=git,pr")
 end
 
 T["loop: Gate reruns a known flaky case up to three times"] = function()
@@ -531,10 +553,12 @@ T["loop: Gate reruns a known flaky case up to three times"] = function()
 		["tests/flaky.txt"] = "# known\n" .. file .. " | a: slow case",
 	}
 	--- make stub: the check prints `log`; rerun n passes when n reaches `pass_at`
-	local function gate(pass_at, files, branch)
+	local function gate(pass_at, files, branch, artifacts)
 		local repo = branch_repo(vim.tbl_extend("force", { ["README.md"] = "x" }, files))
 		write(repo, branch or {})
-		local scratch, artifacts = H.tempdir(child), H.tempdir(child)
+		local scratch = H.tempdir(child)
+		artifacts = artifacts or H.tempdir(child)
+		vim.fn.mkdir(artifacts, "p")
 		write(scratch, { ["check.log"] = table.concat(log, "\n") })
 		local body = table.concat({
 			'if [ "$1" = check ]; then cat "%s/check.log"; exit 1; fi',
@@ -555,6 +579,13 @@ T["loop: Gate reruns a known flaky case up to three times"] = function()
 	eq({ never.green, never_runs }, { false, 3 })
 	local plain, plain_runs = gate(2, { [file] = base[file] })
 	eq({ plain.green, plain_runs }, { false, 1 })
+	-- the gates' history: passed on rerun in 3 earlier runs (flake_stats.py), with no tests/flaky.txt line
+	local runs = vim.fs.joinpath(H.tempdir(child), "runs") -- as Archon's artifacts/runs/<run id>
+	for _, run in ipairs({ "r1", "r2", "r3" }) do
+		write(runs, { [run .. "/check-1.log"] = "===== rerun " .. file .. " | a: slow case: boom: ok =====" })
+	end
+	local history, history_runs = gate(3, { [file] = base[file] }, nil, vim.fs.joinpath(runs, "now"))
+	eq({ history.green, history_runs }, { true, 3 })
 	local added = gate(1, { [file] = base[file] }, { ["tests/flaky.txt"] = file .. " | a: slow case" })
 	eq(added.green, false)
 	has(added.failures, "hard rule: tests/flaky.txt gains a case on this branch")
@@ -719,9 +750,8 @@ T["loop: Gate reruns an old case in a test file the change edits"] = function()
 	local edited = { [file] = 'T["a: old case"] = function() end\n\nT["a: new case"] = function()\n\tlocal x = 1\nend' }
 	local outputs = { ["test.out"] = file .. " | a: old case: o\n" .. file .. " | a: new case: o" }
 	local old, old_reruns = rerun_gate(log, 0, base, { outputs = outputs, branch = edited })
-	-- the stub's quick tier and full check both fail on it: one rerun in each
 	local rerun = "test FILE=" .. file .. " CASE=a: old case"
-	eq({ old.green, old.flaky, old_reruns }, { true, { file .. " | a: old case" }, rerun .. "\n" .. rerun })
+	eq({ old.green, old.flaky, old_reruns }, { true, { file .. " | a: old case" }, rerun })
 
 	local both = vim.list_extend(vim.list_slice(log, 1, 3), { "FAIL in " .. file .. " | a: new case:", log[4] })
 	local mixed, mixed_reruns = rerun_gate(both, 0, base, { outputs = outputs, branch = edited })

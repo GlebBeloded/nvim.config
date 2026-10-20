@@ -17,6 +17,7 @@ fix: "MUST-NOT-RUN"
 fix-stuck-claude: "MUST-NOT-RUN"
 gate: { green: false, spec_ok: true, tasks_done: false, untested: 0, attempt: 3, failures: "FAIL in actions: Shortcut file round-trips deterministically", blocked: false }
 review: "MUST-NOT-RUN"
+full-gate: "MUST-NOT-RUN"
 escalation: { decision: reject, escalate: false, reasons: "- fix loop exhausted with gates still red: tests,tasks,stuck" }
 followup: '{"queued": true, "change": "stuck-build"}'
 ship: "MUST-NOT-RUN"

@@ -8,7 +8,7 @@ local T = H.child_set(child, child.start_bare)
 
 T["loop: Test children keep the Go build cache under .tests"] = function()
 	local cache = vim.fs.joinpath(H.root, ".tests/go/cache")
-	eq(child.lua_get("vim.env.GOCACHE"), cache)
+	eq({ child.lua_get("vim.env.GOCACHE"), child.lua_get("vim.env.GOMAXPROCS") }, { cache, "2" })
 	local out = H.system(child, { "go", "env", "GOCACHE" }, H.root)
 	eq(vim.trim(out.stdout), cache, { fail_reason = out.stderr })
 end

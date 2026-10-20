@@ -20,6 +20,7 @@ fix: "MUST-NOT-RUN"
 fix-stuck-claude: "MUST-NOT-RUN"
 gate: { green: false, spec_ok: true, tasks_done: false, untested: 0, attempt: 3, failures: "FAIL in x", blocked: false }
 review: "MUST-NOT-RUN"
+full-gate: "MUST-NOT-RUN"
 deliver__escalation: { decision: reject, escalate: false, reasons: "- fix loop exhausted with gates still red: tests,tasks,stuck" }
 deliver__followup: '{"queued": true, "change": "stuck-change"}'
 deliver__ship: "MUST-NOT-RUN"

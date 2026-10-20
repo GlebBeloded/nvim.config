@@ -315,6 +315,7 @@ T["loop: Verdict sends a Stuck section to the fix pass"] = function()
 		INPUTS_TASKS_DONE = "true",
 		INPUTS_CRITICAL = "0",
 		INPUTS_APPROVE = "true",
+		INPUTS_FULL_GREEN = "true",
 		INPUTS_ATTEMPT = "1",
 		LOOP_CHANGES_DIR = "",
 	}

@@ -21,6 +21,7 @@ import re
 import sys
 
 from blocked import blocked_text
+from flake_stats import flaky_cases
 from check_log import failed_targets, failing_cases, sections, strip_ansi, summarize
 from integrity import BASE, commit_paths, staged, CASE_CHAIN, CASE_KEY, case_names, git, hard_rule_violations, plan_edits, record_dropped
 from pinned import pinned
@@ -32,8 +33,10 @@ from tasks import tick_gate_items, unchecked
 
 change = os.environ.get("INPUTS_CHANGE", "")
 artifacts = pathlib.Path(os.environ.get("ARTIFACTS_DIR", ".")).resolve()
+# `quick` (each pass's gate node) or `full` (the full-gate node, once the quick tier is green and the review approves)
+TIER = os.environ.get("INPUTS_TIER") or "quick"
 counter = artifacts / "attempts"
-attempt = int(counter.read_text()) + 1 if counter.exists() else 1
+attempt = int(counter.read_text()) + (TIER == "quick") if counter.exists() else 1  # the full gate is the same pass
 counter.write_text(str(attempt))
 
 
@@ -131,14 +134,15 @@ def red(failures: str, blocked: bool = False, infra: str = "") -> None:
     sys.exit(0)
 
 
-if os.environ.get("INPUTS_SYNC_BASE") == "true":  # the base moved since the fork (its fixes, approved renders)
+if os.environ.get("INPUTS_SYNC_BASE") == "true":  # (the full gate passes "false") the base moved since the fork (its fixes, approved renders)
     print(sync() or "sync: base already merged", file=sys.stderr)
-blocked = blocked_text(change)
+blocked = blocked_text(change) if TIER == "quick" else ""
 if blocked:  # the next pass settles it (unblock.md), so checking or reviewing it is wasted; no attempt either
     counter.write_text(str(attempt - 1))
     red("blocked: " + blocked, blocked=True)
-record_fix_scope()
-violations = hard_rules()
+if TIER == "quick":  # the full gate checks the tree this pass's quick gate already held to the rules
+    record_fix_scope()
+violations = hard_rules() if TIER == "quick" else []
 if violations:  # never shipped: a full make check and a review would be wasted on it
     red("\n".join(f"hard rule: {v}" for v in violations))
 
@@ -252,12 +256,15 @@ KNOWN_RERUNS = 3
 
 
 def known_flaky() -> list[str]:
-    """The `<file> | <case>` lines of tests/flaky.txt: known timing-sensitive cases, rerun up to KNOWN_RERUNS times."""
+    """Known timing-sensitive cases, rerun up to KNOWN_RERUNS times: the `<file> | <case>` lines of tests/flaky.txt and
+    the cases the gates' own history shows flaky (flake_stats.py over the sibling run dirs of ARTIFACTS_DIR)."""
     try:
         lines = pathlib.Path("tests/flaky.txt").read_text().splitlines()
     except OSError:
-        return []
-    return [line.strip() for line in lines if " | " in line and not line.lstrip().startswith("#")]
+        lines = []
+    listed = [line.strip() for line in lines if " | " in line and not line.lstrip().startswith("#")]
+    history = flaky_cases(artifacts.parent) if artifacts.parent.name == "runs" else []  # Archon's artifacts/runs only
+    return listed + [case for case in history if case not in listed]
 
 
 def rerun_flaky(out: str, log: str) -> tuple[list[str], str, list[str]]:
@@ -362,8 +369,8 @@ def affected() -> tuple[str | None, bool] | None:
     known = test_caps()
     for path in paths:
         parts = path.split("/")
-        if FULL_ONLY.match(path):
-            return None
+        if FULL_ONLY.match(path):  # nothing quick tests it: the full gate does
+            continue
         if path.startswith(("openspec/", "docs/")) or path.endswith(".md"):
             continue
         if path.startswith(LOOP_PATHS):  # loop-test runs these and the loop's Lua tests (tests/runner.lua LOOP_FILES)
@@ -389,7 +396,7 @@ def affected() -> tuple[str | None, bool] | None:
 
 def timed_out(out: str, log: str) -> None:
     if TIMED_OUT in out:  # not the change's failure: no fix pass, no attempt; the loop stops as infra
-        counter.write_text(str(attempt - 1))
+        counter.write_text(str(attempt - (TIER == "quick")))
         red(f"infra: make check timed out after {CHECK_TIMEOUT_S} s\nfull log: {artifacts / log}", infra="check timed out")
 
 
@@ -402,34 +409,43 @@ def checked(cmd: list[str], log: str, extra: dict[str, str] | None = None, note:
     timed_out(out, log)
     flaky, infra, owned = ([], "", []) if green else rerun_flaky(out, log)
     if infra:  # the host failed twice, not the change: the loop stops with no fix pass, and this pass is no attempt
-        counter.write_text(str(attempt - 1))
+        counter.write_text(str(attempt - (TIER == "quick")))
         red(f"infra: e2e did not run (sandbox failed twice): {infra}\nfull log: {artifacts / log}", infra=infra)
     return green or (bool(flaky) and not owned), out, flaky, owned
 
 
 def check() -> tuple[bool, str, list[str], list[str]]:
-    """(green, output, flaky, owned) of the gate's check, its log `check-<attempt>.log`. A gate first runs the
-    quick tier on the capabilities the branch touches (`affected`: lint, types, trace, specs, their tests,
-    loop-test for loop files; no e2e): red ends the gate there, and only a green quick tier (kept as
-    `quick-<attempt>.log`) runs the full `make check E2E=1`."""
-    log, quick_flaky = f"check-{attempt}.log", []
-    tier = affected()
-    if tier is not None:
-        caps, loop = tier
-        targets = (QUICK_TARGETS if caps is not None else QUICK_TARGETS.removesuffix(" test")) + (" loop-test" if loop else "")
-        shown = "(none)" if caps is None else caps or "(all)"
-        note = f"quick tier: {targets} with CAPS={shown}; the full make check E2E=1 runs once it is green\n"
-        cmd = ["make", "check", f"CHECK_TARGETS={targets}"]
-        green, out, quick_flaky, owned = checked(cmd, log, {"CAPS": caps or ""}, note)
-        if not green:
-            return green, out, quick_flaky, owned
-        (artifacts / log).rename(artifacts / f"quick-{attempt}.log")
-    # E2E=1: e2e runs in the sandbox VM and boots it when it is down (docs/testing.md, Sandbox VM)
+    """(green, output, flaky, owned) of the pass's quick tier, its log `check-<attempt>.log`: the capabilities the
+    branch touches (`affected`: lint, types, trace, specs, their tests, loop-test for loop files; no e2e), or only the
+    static targets when no test maps (docs, smoke or terminal paths). The full `make check E2E=1` runs once per
+    approved pass in the full-gate node (`full_check`), not on every pass (6-7 min each, Oct 2026)."""
+    tier = affected() or (None, False)
+    caps, loop = tier
+    targets = (QUICK_TARGETS if caps is not None else QUICK_TARGETS.removesuffix(" test")) + (" loop-test" if loop else "")
+    shown = "(none)" if caps is None else caps or "(all)"
+    note = f"quick tier: {targets} with CAPS={shown}; the full make check E2E=1 runs after an approving review\n"
+    cmd = ["make", "check", f"CHECK_TARGETS={targets}"]
+    return checked(cmd, f"check-{attempt}.log", {"CAPS": caps or ""}, note)
+
+
+def full_check() -> None:
+    """The full-gate node: `make check E2E=1` (e2e in the sandbox VM, booted when down) with the usual reruns, as
+    `full-<attempt>.log`; prints the gate JSON (green, failures, flaky, infra) and exits."""
+    log = f"full-{attempt}.log"
     green, out, flaky, owned = checked(["make", "check", "E2E=1"], log)
-    return green, out, quick_flaky + [f for f in flaky if f not in quick_flaky], owned
+    failures = "" if green else "full make check E2E=1 is red:\n" + summarize(out, str(artifacts / log))
+    if not green and owned and flaky:
+        failures += "\n\npassed on rerun (flaky, not this change's): " + ", ".join(flaky)
+    out = {"green": green, "spec_ok": True, "tasks_done": True, "untested": 0, "attempt": attempt}
+    print(json.dumps({**out, "failures": failures, "flaky": flaky if green else [], "infra": "", "blocked": False}))
+    sys.exit(0)
 
 
 change_dir = pathlib.Path("openspec/changes") / change
+if TIER == "full":
+    full_check()
+
+
 check_log = f"check-{attempt}.log"
 green, check_out, flaky, owned = check()
 spec_ok, spec_tail = True, ""

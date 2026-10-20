@@ -18,6 +18,7 @@ implement: "MUST-NOT-RUN"
 fix: "MUST-NOT-RUN"
 gate: { green: false, spec_ok: true, tasks_done: false, untested: 0, attempt: 0, failures: "blocked: tasks.md: ## Blocked", blocked: true }
 review: "MUST-NOT-RUN"
+full-gate: "MUST-NOT-RUN"
 escalation: { decision: reject, escalate: false, reasons: "- blocked: tasks.md: ## Blocked\nloop: fixture tooling failure the fix step cannot repair\nfixture bound conflict the fix step cannot resolve: pick (A) or (B)" }
 followup: '{"queued": true, "change": "blocked-build"}'
 ship: "MUST-NOT-RUN"
