@@ -63,3 +63,4 @@ Scenarios: `folding: Collapse Fold key folds the group under the tree cursor`, `
 - Cache each attached tree's last rendered rows and renderer, so redraws recover the old cursor id and shared actions can redraw without feature-specific dispatch.
 - Keep `references.fold`'s existing `Fold Group` title by adjusting that factory result locally, avoiding a shared factory API change for one label.
 - Use an operation-level project-tree expansion adapter for unfold-all because its row limit and warning apply to the whole traversal.
+- Run feature layout work through an optional post-redraw hook so shared fold verbs can resize owning views without feature dispatch.

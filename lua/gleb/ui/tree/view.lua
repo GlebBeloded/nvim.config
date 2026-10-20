@@ -6,11 +6,13 @@ local model = require("gleb.ui.tree.model")
 
 ---@alias gleb.ui.tree.Render fun(buf: integer, rows: gleb.ui.tree.Row[])
 ---@alias gleb.ui.tree.Fallback fun(buf: integer, rows: gleb.ui.tree.Row[])
+---@alias gleb.ui.tree.AfterRedraw fun()
 
 ---@class gleb.ui.tree.ViewOptions
 ---@field expand? gleb.ui.tree.Expand
 ---@field expand_all? gleb.ui.tree.ExpandAll
 ---@field fallback? gleb.ui.tree.Fallback
+---@field after_redraw? gleb.ui.tree.AfterRedraw
 
 ---@class gleb.ui.tree.View
 ---@field buf integer
@@ -148,7 +150,11 @@ end
 ---@return gleb.ui.tree.Row[] rows
 function M.redraw(tree, selected_id)
 	local view = assert(M.state.by_tree[tree], "tree is not attached")
-	return M.draw(tree, assert(view.render, "tree has not been drawn"), selected_id)
+	local rows = M.draw(tree, assert(view.render, "tree has not been drawn"), selected_id)
+	if view.options.after_redraw then
+		view.options.after_redraw()
+	end
+	return rows
 end
 
 return M

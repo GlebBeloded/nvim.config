@@ -232,9 +232,12 @@ end
 
 T["references: zM and zR fold every group"] = function()
 	open_format()
+	child.o.columns = 70
+	child.cmd("doautocmd VimResized")
 	select_row("invoice.go:23")
 	local unfolded = tree_lines()
 	eq(#unfolded, 11)
+	eq(child.api.nvim_win_get_height(0), 11)
 	child.type_keys("zM")
 
 	local folded = tree_lines()
@@ -242,10 +245,12 @@ T["references: zM and zR fold every group"] = function()
 	eq(folded[1]:find("Production  3", 1, true) ~= nil, true)
 	eq(folded[2]:find("Test  1", 1, true) ~= nil, true)
 	eq(cursor_line():find("Production  3", 1, true) ~= nil, true)
+	eq(child.api.nvim_win_get_height(0), 2)
 
 	child.type_keys("zR")
 	eq(tree_lines(), unfolded)
 	eq(cursor_line():find("Production  3", 1, true) ~= nil, true)
+	eq(child.api.nvim_win_get_height(0), 11)
 end
 
 T["references: Arrow keys and zc zo fold groups without an error"] = function()

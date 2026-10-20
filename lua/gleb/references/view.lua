@@ -294,7 +294,7 @@ function M.open(title, usages, classifying)
 		classifying = classifying == true,
 		id = view_id,
 	}
-	tree_view.attach(tree_buf, M.state.shared_tree)
+	tree_view.attach(tree_buf, M.state.shared_tree, { after_redraw = apply_layout })
 	local group = vim.api.nvim_create_augroup("gleb_references_view", { clear = true })
 	preview.follow(M.state, group)
 	vim.api.nvim_create_autocmd("WinClosed", { group = group, pattern = tostring(tree_win), callback = M.close })
