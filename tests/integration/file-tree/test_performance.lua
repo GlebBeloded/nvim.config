@@ -389,6 +389,12 @@ local function wait_for_idle_tree()
 				local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
 				local git = require("gleb.file_tree.git")
 				local state = assert(git.state.roots[view.root])
+				local watch_state = assert(require("gleb.tree.watch").state.roots[view.root])
+				for _, timer in pairs(watch_state.timers) do
+					if timer:is_active() then
+						return false
+					end
+				end
 				return state.timer == nil
 					and not state.in_flight
 					and not view.dirty
@@ -461,7 +467,12 @@ local function wait_for_watch_debounce()
 			[=[(function()
 				local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
 				local state = assert(require("gleb.tree.watch").state.roots[view.root])
-				return next(state.timers) ~= nil
+				for _, timer in pairs(state.timers) do
+					if type(timer) == "table" and timer.due_ms ~= nil then
+						return true
+					end
+				end
+				return false
 			end)()]=],
 			math.ceil(1000 * H.load_factor())
 		),
@@ -575,9 +586,9 @@ end
 
 T["file-tree: Project tree coalesces a save burst"] = function()
 	change_tracked_file()
-	wait_for_idle_tree()
 	wait_for_changed_folder_watch()
 	wait_for_live_watch_stream()
+	wait_for_idle_tree()
 	install_replacement_counter()
 	install_cpu_measurement()
 	install_manual_debounce()
@@ -596,9 +607,9 @@ end
 
 T["file-tree: Project tree save burst observes both debounce deadlines"] = function()
 	change_tracked_file()
-	wait_for_idle_tree()
 	wait_for_changed_folder_watch()
 	wait_for_live_watch_stream()
+	wait_for_idle_tree()
 	install_replacement_counter()
 	install_manual_debounce()
 	local baseline_runs = child.lua_get([[require("gleb.file_tree.git").state.runs]])
@@ -643,9 +654,9 @@ T["file-tree: Project tree save leaves the main path promptly"] = function()
 	]=])
 	eq(child.lua_get([[#require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()].rows]]), 5000)
 	change_tracked_file()
-	wait_for_idle_tree()
 	wait_for_changed_folder_watch()
 	wait_for_live_watch_stream()
+	wait_for_idle_tree()
 	install_replacement_counter()
 	install_cpu_measurement()
 	install_manual_debounce()
