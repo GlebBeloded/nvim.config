@@ -2,9 +2,9 @@
 
 Scenarios: `git: Committed signs kinds and mapping follow the unit table`, `git: Committed signs map a large buffer quickly`
 
-- [ ] 1.1 Write the rows of design.md Decision 4 and the 10 000-line timing case in tests/unit/git/test_committed_map.lua (bare child), and see them fail.
-- [ ] 1.2 Add `lua/gleb/git/committed_signs/map.lua`: `kinds(base_lines, head_lines)` and `to_buffer(head_lines, buf_lines, kinds)`, both with the diff options of Decision 3. It is pure and typed (rule 1.3).
-- [ ] 1.3 Run `make test FILE=tests/unit/git/test_committed_map.lua` and see it pass.
+- [x] 1.1 Write the rows of design.md Decision 4 and the 10 000-line timing case in tests/unit/git/test_committed_map.lua (bare child), and see them fail.
+- [x] 1.2 Add `lua/gleb/git/committed_signs/map.lua`: `kinds(base_lines, head_lines)` and `to_buffer(head_lines, buf_lines, kinds)`, both with the diff options of Decision 3. It is pure and typed (rule 1.3).
+- [x] 1.3 Run `make test FILE=tests/unit/git/test_committed_map.lua` and see it pass.
 
 ## 2. Signs in buffers
 
