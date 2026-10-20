@@ -1,6 +1,7 @@
 ## Why
 
 Kind: feature
+Adopt: loop/pr-review-threads
 Depends: git-changes-tabs
 
 The user wants the pull request's review comments in the editor: "Also, I need to see pr comments." The
@@ -113,3 +114,13 @@ This change adds that data layer with no UI beyond one Find Action entry and its
 - Don't guess the GitHub API: the agent may call the real API on this repo's own PRs (GlebBeloded/nvim.config, through
   `gh`) to learn the exact request and response shapes, then record those responses as fixtures and test against the
   mocked responses. Tests never call the network.
+
+## Rejected run
+Run on `loop/pr-review-threads` was rejected by the judge:
+- fix loop exhausted with gates still red: review
+- review findings:
+  [must-fix] lua/gleb/pr/init.lua:313 + tasks.md `## Agent decisions` line 3. The `review and` guard was added in 47773b20, after pass 4, and narrows the cache SHALL in spec.md:86 ("a `GlebGitBaseChanged` event with a new `headRefOid` SHALL drop the cache and fetch again"). If the head changes while the first fetch is in flight and nothing is cached yet, base_changed bumps the generation (line 311), so the fetch's result is dropped as stale (lines 123-128), and nothing fetches again. Repro with `make probe`: stub `gh.fetch_threads`, run `pr.refresh(root, {force=true})`, fire `GlebGitBaseChanged` with a new head_ref_oid, then complete the callback. Result: `{fetches=1, cached=false, notes={}}`. The threads stay empty until the next trigger, and the forced `pr.refresh` never sends its INFO or WARN, which breaks "pr.refresh SHALL notify" (spec.md:101). The same lost notification already happens when a review is cached: `queue_refresh(root, {})` from base_changed carries no `force`. Fix: in base_changed, also refresh when `M.state.in_flight[root]` is set (it queues). When a forced fetch's result is dropped as stale, carry `force` into `M.state.pending[root]`. Initial base discovery (no review, nothing in flight) still fetches nothing. Then reword the agent decision to match. Add an integration case where the fake gh head changes during a `FAKE_GH_SLEEP` forced refresh. Earlier passes missed this because the guard is new and no scenario changes the head during a fetch.
+  [minor] lua/gleb/pr/init.lua:104-106: still open from passes 3 and 4. A forced `pr.refresh` whose PR URL does not parse returns without notifying.
+  [minor] proposal.md Impact still omits lua/gleb/git/base/init.lua:98,171 (the head_ref_oid comparison), tests/e2e/find-action/screens.lua:92,106 (count 49→50) and tests/fixtures.lua:23 (`commits` field). The gate needed all three.
+  [minor] spec.md:115 adds the scenario `Writing a file fetches threads before any manual refresh`, and fix-scope.md lists the edit. Pass 4's must-fix asked for this case and the test name matches the scenario title. It only adds; nothing was weakened.
+- note: flaky test cases (failed, then passed on rerun): tests/integration/file-tree/test_performance.lua | file-tree: Project tree coalesces a save burst
