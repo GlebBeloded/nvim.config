@@ -566,7 +566,10 @@ e2e() {
 	for v in CASE E2E_FOCUS; do
 		[ -n "${!v:-}" ] && vars="$vars $v=$(printf %q "${!v}")"
 	done
-	gui "make -s e2e-local$vars"
+	# the guest's own marker once its session runs: tests/check.sh holds the heavy layers until then, as a load
+	# spike made Lume refuse this very lume ssh (gate logs, Oct 2026)
+	rm -f "$SHARE/e2e.running"
+	gui "touch '$GSHARE/e2e.running'; make -s e2e-local$vars"
 }
 
 cmd=${1:-status}

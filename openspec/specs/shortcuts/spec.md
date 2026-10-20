@@ -231,10 +231,10 @@ Every `tests/sandbox/sandbox.sh` command that changes the guest (`up`, `provisio
 - **THEN** no `rsync` is logged while the holder lives, stderr says `sandbox: waiting for`, and after the holder exits the run syncs, restores and runs `make -s e2e-local`, then exits 0
 
 ### Requirement: make check sets up the e2e sandbox before the other targets
-A `tests/check.sh` target prefixed `^` SHALL start first, and the other parallel targets SHALL start once it ends, its tests start (for `e2e`, a fresh `$SANDBOX_STATE/e2e.started`; a stale one is removed first) or `CHECK_LEAD_S` (default 300) passes. `make check` SHALL lead with `^e2e`, so the VM boots and syncs on an idle host.
+A `tests/check.sh` target prefixed `^` SHALL start first, and the other parallel targets SHALL start once it ends, its tests start (for `e2e`, a fresh `$SANDBOX_STATE/share/e2e.running`, which the guest writes once its e2e session runs; a stale one is removed first) or `CHECK_LEAD_S` (default 300) passes. `make check` SHALL lead with `^e2e`, so the VM boots and syncs on an idle host.
 
 #### Scenario: make check starts the other targets once the e2e sandbox is set up
-- **WHEN** `tests/check.sh ^e2e a b` runs with the `make` stub, whose `e2e` writes `$SANDBOX_STATE/e2e.started` after 1 s and ends 2 s later, and a stale marker already exists
+- **WHEN** `tests/check.sh ^e2e a b` runs with the `make` stub, whose `e2e` writes `$SANDBOX_STATE/share/e2e.running` after 1 s and ends 2 s later, and a stale marker already exists
 - **THEN** it exits 0 and prints `ok   e2e`; `e2e` starts first, and `a` starts after the marker is written and before `e2e` ends
 
 ### Requirement: Concurrent make check runs on one host run one at a time

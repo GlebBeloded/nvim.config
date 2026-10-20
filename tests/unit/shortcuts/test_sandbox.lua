@@ -696,7 +696,7 @@ end
 
 --- `make` stub for tests/check.sh: `deps` passes; every other target appends "<target> start
 --- <held>" and "<target> end" to $MAKE_LOG, held = whether $CHECK_LOCK_DIR exists. Target `slow`
---- lasts 2 s; `e2e` writes $SANDBOX_STATE/e2e.started after 1 s (logging "e2e ready") and ends 2 s later;
+--- lasts 2 s; `e2e` writes $SANDBOX_STATE/share/e2e.running after 1 s (logging "e2e ready") and ends 2 s later;
 --- `nested` runs tests/check.sh `inner` with CHECK_LOCK_TIMEOUT=1 and returns its code.
 local MAKE_STUB = [[#!/bin/sh
 target=$2
@@ -707,7 +707,7 @@ echo "$target start $held" >>"$MAKE_LOG"
 rc=0
 case "$target" in
 slow) sleep 2 ;;
-e2e) sleep 1; touch "$SANDBOX_STATE/e2e.started"; echo "e2e ready" >>"$MAKE_LOG"; sleep 2 ;;
+e2e) sleep 1; mkdir -p "$SANDBOX_STATE/share"; touch "$SANDBOX_STATE/share/e2e.running"; echo "e2e ready" >>"$MAKE_LOG"; sleep 2 ;;
 nested) CHECK_LOCK_TIMEOUT=1 "$CHECK_SH" inner >>"$MAKE_LOG.nested" 2>&1 || rc=$? ;;
 esac
 echo "$target end" >>"$MAKE_LOG"
@@ -764,7 +764,8 @@ end
 
 T["shortcuts: make check starts the other targets once the e2e sandbox is set up"] = function()
 	local env = vim.tbl_extend("force", check_env(), { SANDBOX_STATE = tempdir() })
-	child.fn.writefile({}, vim.fs.joinpath(env.SANDBOX_STATE, "e2e.started")) -- a previous run's marker
+	child.fn.mkdir(vim.fs.joinpath(env.SANDBOX_STATE, "share"), "p")
+	child.fn.writefile({}, vim.fs.joinpath(env.SANDBOX_STATE, "share/e2e.running")) -- a previous run's marker
 
 	local run = system({ "tests/check.sh", "^e2e", "a", "b" }, H.root, env)
 
