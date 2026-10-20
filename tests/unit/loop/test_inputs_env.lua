@@ -7,7 +7,7 @@ local T = MiniTest.new_set()
 
 T["loop: Tests never see an Archon node's inputs"] = function()
 	local root = H.root
-	local script = "local name = 'INPUTS_CANCEL_ON_REJECT'; io.write(tostring(vim.env[name]))"
+	local script = "io.write(tostring(vim.env.INPUTS_CANCEL_ON_REJECT), ' ', tostring(vim.env.BASE_BRANCH))"
 	local result = vim.system({
 		vim.v.progpath,
 		"--headless",
@@ -18,11 +18,11 @@ T["loop: Tests never see an Archon node's inputs"] = function()
 		"-c",
 		"qa!",
 	}, {
-		env = { INPUTS_CANCEL_ON_REJECT = "false", TEST_DEPS_DIR = vim.fs.joinpath(root, ".tests/deps") },
+		env = { INPUTS_CANCEL_ON_REJECT = "false", BASE_BRANCH = "loop/x", TEST_DEPS_DIR = vim.fs.joinpath(root, ".tests/deps") },
 		text = true,
 	}):wait()
 	eq(result.code, 0, { fail_reason = result.stderr })
-	eq(result.stdout .. result.stderr, "nil")
+	eq(result.stdout .. result.stderr, "nil nil")
 end
 
 return T

@@ -1126,8 +1126,8 @@ The private data prepared for a plugin update SHALL retain installed plugins, pa
 - **THEN** it returns the FAIL lines of `check-2.log` and does not fail on the unnumbered log
 
 ### Requirement: Tests never see an Archon node's inputs
-`tests/minimal_init.lua` SHALL unset every `INPUTS_*` environment variable, so a loop script a test runs sees only the inputs the test passes, not the ones of the Archon node that ran `make check` (plugin-update sets `INPUTS_CANCEL_ON_REJECT=false`).
+`tests/minimal_init.lua` SHALL unset every `INPUTS_*` environment variable and `BASE_BRANCH`, so a loop script a test runs sees only the inputs the test passes, not the ones of the Archon node that ran `make check` (plugin-update sets `INPUTS_CANCEL_ON_REJECT=false`).
 
 #### Scenario: Tests never see an Archon node's inputs
-- **WHEN** Neovim starts with `tests/minimal_init.lua` and `INPUTS_CANCEL_ON_REJECT=false` in its environment
-- **THEN** `vim.env.INPUTS_CANCEL_ON_REJECT` is nil
+- **WHEN** Neovim starts with `tests/minimal_init.lua` and `INPUTS_CANCEL_ON_REJECT=false` and `BASE_BRANCH=loop/x` in its environment
+- **THEN** `vim.env.INPUTS_CANCEL_ON_REJECT` and `vim.env.BASE_BRANCH` are nil
