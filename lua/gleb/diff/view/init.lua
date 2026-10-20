@@ -35,6 +35,7 @@ local M = {
 ---@field root? string
 ---@field filetype? string
 ---@field actionable? boolean
+---@field committed? boolean
 ---@field head_final_newline? boolean
 ---@field on_next_file? function
 
@@ -47,6 +48,7 @@ local M = {
 ---@field labels { left: string, right: string }
 ---@field filetype string
 ---@field actionable boolean
+---@field committed boolean
 ---@field head_final_newline boolean
 ---@field right_buf integer
 ---@field left_buf integer
@@ -273,6 +275,7 @@ local function build(spec)
 		labels = spec.labels,
 		filetype = spec.filetype or "",
 		actionable = spec.actionable ~= false,
+		committed = spec.committed == true,
 		head_final_newline = spec.head_final_newline == true,
 		right_buf = right_buf,
 		on_next_file = spec.on_next_file,

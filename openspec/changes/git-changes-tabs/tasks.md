@@ -27,9 +27,9 @@ Scenarios: `git: Commit ages are short relative times`
 
 Scenarios: `diff: Diff view draws a committed spec in purple`, `diff: Diff view committed colours`, `diff: Diff view without committed keeps its kind colours`
 
-- [ ] 4.1 Write the scenarios in tests/integration/diff/test_committed.lua and run `make test FILE=tests/integration/diff/test_committed.lua` to see them fail
-- [ ] 4.2 Add `committed?: boolean` to `gleb.diff.view.Spec` and its view state; in lua/gleb/diff/view/render.lua use the `Committed` suffix for added, changed and deleted rows and `DiffViewCommittedWord` for words, keep moved groups and leave the checkbox column blank; define the four palette-derived groups in lua/gleb/diff/view/highlights.lua as design.md Decision 6 requires
-- [ ] 4.3 Run `make test FILE=tests/integration/diff/test_committed.lua` and tests/integration/diff/ and see them pass
+- [x] 4.1 Write the scenarios in tests/integration/diff/test_committed.lua and run `make test FILE=tests/integration/diff/test_committed.lua` to see them fail
+- [x] 4.2 Add `committed?: boolean` to `gleb.diff.view.Spec` and its view state; in lua/gleb/diff/view/render.lua use the `Committed` suffix for added, changed and deleted rows and `DiffViewCommittedWord` for words, keep moved groups and leave the checkbox column blank; define the four palette-derived groups in lua/gleb/diff/view/highlights.lua as design.md Decision 6 requires
+- [x] 4.3 Run `make test FILE=tests/integration/diff/test_committed.lua` and tests/integration/diff/ and see them pass
 
 ## 5. Tab strip availability and colours
 
