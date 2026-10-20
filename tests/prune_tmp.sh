@@ -23,7 +23,7 @@ removed=0
 while IFS= read -r dir; do
 	name=${dir##*/}
 	grep -qxF "$name" "$live" && continue
-	chmod -R u+w "$dir" 2>/dev/null || true # read-only fixtures (the `billing` repo) block rm
+	chmod -R u+rwX "$dir" 2>/dev/null || true # read-only fixtures (the `billing` repo) and write-only dirs block rm
 	rm -rf "$dir"
 	removed=$((removed + 1))
 done < <(find "$root" -mindepth 1 -maxdepth 1 -type d -mmin "+$minutes")
