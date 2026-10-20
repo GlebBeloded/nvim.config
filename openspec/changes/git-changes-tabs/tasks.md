@@ -207,11 +207,5 @@ Scenarios: `git: Local tab matches the approved render`, `git: Branch tab matche
 - Branch commit loading captures its generation after file rows arrive, so an early commit-view action remains current.
 - The changes panel uses colorizer's native filetype exclusion so pull-request numbers keep their semantic highlight.
 - Branch diffs replace the panel-owned diff in its right window, because committed panes are read-only and no editor-eligible window would otherwise receive the next diff.
-
-## Stuck
-
-- Finding 4's full-width Branch screen regressions remain red. The saved clipping attempt was reapplied first; it fixes the commits text comparison, but its forced final left-winbar cell fails at row 2, column 61 because the design requires `DiffViewHeader` there.
-- Probe output: a real split gives its inner seam one `WinSeparator` highlight for every row, while the approved render requires `Normal` on the winbar seam and `DiffViewPadding` on every content-row seam. A one-cell float at `left_position + left_width` does cover that split boundary and can use `DiffViewPadding` independently.
-- Attempt 1 kept width-aware label clipping, restored the full left `DiffViewHeader`, and overlaid the seam with a non-focusable one-cell float. The Branch case then failed only at row 2, column 62: expected `Normal`, drawn `DiffViewPadding`.
-- Attempt 2 made the overlay span the winbar plus content and highlighted its first buffer row as `Normal`. Neovim resolved that extmark through the float's `Normal:DiffViewPadding` window mapping, so the same observable assertion remained red.
-- The second attempt is saved at `/Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/3563abe7-93aa-4527-bc0b-9df98db0c768/stuck-attempt-4b.diff`; the probe is `/Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/3563abe7-93aa-4527-bc0b-9df98db0c768/probe.lua`. The unsuccessful production changes were reverted; the red full-width ANSI and colour-mask regressions remain.
+- Diff winbar labels are clipped to their window width at the end and re-clipped on resize, because Neovim otherwise truncates a long right label from the left with `<`, unlike the approved commits render.
+- The Branch files and commits masks mark the diff seam's winbar cell (row 2, column 62) `f` [WinSeparator]: every approved `renders/*.ansi` real-colour copy draws that cell, like the content-row seam, in bg3, and the main-spec diff view render names it [WinSeparator].

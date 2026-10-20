@@ -104,7 +104,7 @@ local BRANCH_FILES_LEGEND = {
 
 local BRANCH_FILES_MASK = {
 	"....................................abbaaaaaaaaaaaaccccccccccccccccccccccccccccccccccccccccccccccccc",
-	".ddddddddd.eeeeeeeeee..............fggggggggggggggggggggggggg.gggggggggggggggggggggggggggggggggggggg",
+	".ddddddddd.eeeeeeeeee..............fgggggggggggggggggggggggggfgggggggggggggggggggggggggggggggggggggg",
 	".hhhhhhiiiiiiiiiiiiiiii............fjjkkkkkkkkkkkkkkkkkkkjjjjljjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjj",
 	".iiiiiiiiiiiiiiiiiiiiiiiiiiiiii....f.........................l.kkkk.....kkkk........................",
 	"...................................f...mmmmmmmmmmmmmmmmmmmmmml.kkkk.....kkkk........................",
@@ -181,7 +181,7 @@ local BRANCH_COMMITS_LEGEND = {
 
 local BRANCH_COMMITS_MASK = {
 	"....................................abbaaaaaaaaaaaaccccccccccccccccccccccccccccccccccccccccccccccccc",
-	".ddddddddd.eeeeeeeeee..............fggggggggggggggggggggggggg.gggggggggggggggggggggggggggggggggggggg",
+	".ddddddddd.eeeeeeeeee..............fgggggggggggggggggggggggggfgggggggggggggggggggggggggggggggggggggg",
 	".hhhhhhiiiiiiiiiiiiiiii............fjjkkkkkkkkkkkkkkkkkkkjjjjljjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjj",
 	"...................................f.........................l.kkkk.....kkkk........................",
 	".m.n.ooooooooooo...........iiiiiii.f...ppppppppppppppppppppppl.kkkk.....kkkk........................",
