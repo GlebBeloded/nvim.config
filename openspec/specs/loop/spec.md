@@ -115,11 +115,11 @@ After a judge reject, `.archon/scripts/followup.py` SHALL re-queue the work on `
 - **THEN** it exits 0, no Archon call gets `--detach`, and the run's output and `completed` status appear in drain's output
 
 ### Requirement: Drains run lanes in parallel
-`make drains [LANES=2]` SHALL run that many drains at once with output lines prefixed `[lane <k>]`, never start one change in two lanes (a pick lock held until the run is recorded, a shared skip list), let a lane whose pick is empty wait while a live run works a change the remaining changes depend on, and first print each `Depends:` edge whose two changes share no `## Impact` path.
+`make drains [LANES=2]` SHALL run that many drains at once with output lines prefixed `[lane <k>]`, never start one change in two lanes (a pick lock held until the run is recorded, a shared skip list), let a lane whose pick is empty wait while a live run works a change the remaining changes depend on, and first print each `Depends:` edge whose two changes share no `## Impact` path. More than `DRAIN_MAX_LANES` (default 2) lanes SHALL be refused.
 
 #### Scenario: Drains run two lanes and never take one change twice
 - **WHEN** `make drains` runs with the drain stubs on `t-a` (a 3 s run recorded `running` first, then `failed`, Impact `lua/gleb/a/{x,y}.lua`), `t-b`, `t-c`, and `t-d` (`Depends: t-a`, Impact `lua/gleb/d/z.lua`)
-- **THEN** it exits 0, `t-a`, `t-b` and `t-c` each run once, lane 1 starts `t-a` while lane 2 starts `t-b`, both lanes end on an empty queue, and the output names `t-d Depends: t-a` as sharing no Impact path
+- **THEN** it exits 0, `t-a`, `t-b` and `t-c` each run once, lane 1 starts `t-a` while lane 2 starts `t-b`, both lanes end on an empty queue, and the output names `t-d Depends: t-a` as sharing no Impact path; `make drains LANES=3` exits non-zero with `at most 2 lanes`
 
 ### Requirement: Done loop runs are cleaned up
 `.archon/scripts/loop_clean.py` SHALL remove the worktree and branch of each `loop/*` branch whose tip is on `auto` (shipped or superseded), and keep and list `auto`/`main`, branches with commits not on `auto` or at its tip, branches a running or paused Archon run holds, and dirty worktrees. `make loop-clean` is a dry run unless `APPLY=1`; ship starts the cleanup of its own run.
@@ -1126,8 +1126,8 @@ The private data prepared for a plugin update SHALL retain installed plugins, pa
 - **THEN** it returns the FAIL lines of `check-2.log` and does not fail on the unnumbered log
 
 ### Requirement: Tests never see an Archon node's inputs
-`tests/minimal_init.lua` SHALL unset every `INPUTS_*` environment variable, so a loop script a test runs sees only the inputs the test passes, not the ones of the Archon node that ran `make check` (plugin-update sets `INPUTS_CANCEL_ON_REJECT=false`).
+`tests/minimal_init.lua` SHALL unset every `INPUTS_*` environment variable and `BASE_BRANCH`, so a loop script a test runs sees only the inputs the test passes, not the ones of the Archon node that ran `make check` (plugin-update sets `INPUTS_CANCEL_ON_REJECT=false`).
 
 #### Scenario: Tests never see an Archon node's inputs
-- **WHEN** Neovim starts with `tests/minimal_init.lua` and `INPUTS_CANCEL_ON_REJECT=false` in its environment
-- **THEN** `vim.env.INPUTS_CANCEL_ON_REJECT` is nil
+- **WHEN** Neovim starts with `tests/minimal_init.lua` and `INPUTS_CANCEL_ON_REJECT=false` and `BASE_BRANCH=loop/x` in its environment
+- **THEN** `vim.env.INPUTS_CANCEL_ON_REJECT` and `vim.env.BASE_BRANCH` are nil

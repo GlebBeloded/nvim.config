@@ -86,8 +86,9 @@ wait_all() {
 # shellcheck source=.archon/scripts/loop_changed.sh
 source "$ROOT/.archon/scripts/loop_changed.sh"
 
-# the sandbox's "tests run from here" marker (Makefile E2E_STARTED): the setup before it is what a loaded host breaks
-E2E_STARTED=${SANDBOX_STATE:-$HOME/.cache/nvim-e2e-sandbox}/e2e.started
+# written by the guest once its e2e session runs (sandbox.sh e2e): the setup and the lume ssh before it are what
+# a loaded host breaks
+E2E_STARTED=${SANDBOX_STATE:-$HOME/.cache/nvim-e2e-sandbox}/share/e2e.running
 
 # $1 lead target: started alone; the rest wait until its tests run (e2e: the VM booted, synced and answered),
 # it ends, or CHECK_LEAD_S (default 300) passes. Under the full check's load Lume stopped answering during

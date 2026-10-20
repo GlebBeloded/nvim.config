@@ -128,8 +128,19 @@ gssh() {
 	local script rc=0
 	script=$(mktemp "$SHARE/cmd/XXXXXX")
 	printf '%s\n' "$*" >"$script"
-	lume ssh "$VM" -u "$GUEST_USER" -p "$GUEST_PASS" -t 0 "bash '$GSHARE/cmd/${script##*/}'" || rc=$?
-	rm -f "$script"
+	local err try
+	err=$(mktemp "$STATE/gssh-err.XXXXXX")
+	for try in 1 2 3 4; do
+		rc=0
+		lume ssh "$VM" -u "$GUEST_USER" -p "$GUEST_PASS" -t 0 "bash '$GSHARE/cmd/${script##*/}'" 2>"$err" || rc=$?
+		cat "$err" >&2
+		# a loaded Lume refuses a live VM before connecting (it cannot verify its session marker in time; gate
+		# logs, Oct 2026): nothing ran in the guest, so the same command is safe to send again
+		[ "$rc" != 0 ] && grep -q "is not running" "$err" && run_alive && [ "$try" -lt 4 ] || break
+		log "lume ssh refused a live $VM (try $try/4); retrying"
+		sleep $((try * 3))
+	done
+	rm -f "$script" "$err"
 	return "$rc"
 }
 
@@ -555,7 +566,10 @@ e2e() {
 	for v in CASE E2E_FOCUS; do
 		[ -n "${!v:-}" ] && vars="$vars $v=$(printf %q "${!v}")"
 	done
-	gui "make -s e2e-local$vars"
+	# the guest's own marker once its session runs: tests/check.sh holds the heavy layers until then, as a load
+	# spike made Lume refuse this very lume ssh (gate logs, Oct 2026)
+	rm -f "$SHARE/e2e.running"
+	gui "touch '$GSHARE/e2e.running'; make -s e2e-local$vars"
 }
 
 cmd=${1:-status}

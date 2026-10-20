@@ -18,7 +18,7 @@ printf '%s\t%s\n' "$line" "$held" >>"$LOCK_LOG"
 --- whether the locker writing $HOLDER_LOG had left by then, and the VM reports stopped afterwards.
 --- `lume run` leaves a live run process ($SANDBOX_STATE/run-alive, seen by the pgrep stub); its first
 --- $LUME_MISMATCH_RUNS runs leave the VM reported stopped (Lume lost track), later ones running.
---- `lume ssh` refuses while the VM is reported stopped.
+--- `lume ssh` refuses while the VM is reported stopped, and its next $SANDBOX_STATE/ssh-refuse guest scripts (a loaded Lume).
 local LUME_STUB = [[#!/bin/sh
 echo "lume $*" >>"$GUEST_LOG"
 case "$1" in
@@ -48,6 +48,12 @@ run)
 ssh)
 	[ -f "$SANDBOX_STATE/stopped" ] && { echo "Error: VM 'nvim-e2e' is not running" >&2; exit 1; }
 	for last; do :; done
+	refuse=$(cat "$SANDBOX_STATE/ssh-refuse" 2>/dev/null || echo 0)
+	case "$last" in "bash '"*) [ "$refuse" -gt 0 ] && {
+		echo $((refuse - 1)) >"$SANDBOX_STATE/ssh-refuse"
+		echo "Error: VM 'nvim-e2e' is not running" >&2
+		exit 1
+	} ;; esac
 	case "$last" in *"test -d"*SHARED*) echo SHARED; exit 0 ;; esac
 	script=$(printf '%s' "$last" | sed -n "s|^bash '/Volumes/My Shared Files/share/\([^']*\)'.*|\1|p")
 	[ -n "$script" ] || exit 0
@@ -528,7 +534,8 @@ end
 T["shortcuts: sandbox.sh e2e waits while another checkout holds the sandbox lock"] = function()
 	local env = sandbox_env()
 	local dir = vim.fs.joinpath(env.SANDBOX_STATE, "lock")
-	local holder = start_locker("holder", dir, 2)
+	-- held past sandbox.sh's start even on a loaded check, so it always meets the held lock (a 2 s hold ran out first under 12 workers)
+	local holder = start_locker("holder", dir, math.ceil(5 * H.load_factor()))
 	wait_owner(dir, holder.pid)
 
 	child.lua("_G.e2e_run = vim.system(..., { cwd = select(2, ...), env = select(3, ...), text = true })", {
@@ -542,7 +549,7 @@ T["shortcuts: sandbox.sh e2e waits while another checkout holds the sandbox lock
 	local run = child.lua_get("_G.e2e_run:wait(...)", { math.ceil(60000 * H.load_factor()) })
 
 	eq({ synced_early = synced_early, code = run.code }, { synced_early = false, code = 0 })
-	eq(run.stderr:find("sandbox: waiting for", 1, true) ~= nil, true)
+	eq(run.stderr:find("sandbox: waiting for", 1, true) ~= nil, true, { fail_reason = run.stderr })
 	expect_sync_restore_e2e(read_lines(env.GUEST_LOG))
 	eq(wait_locker("holder").code, 0)
 end
@@ -626,6 +633,26 @@ T["shortcuts: sandbox.sh never restarts a booting VM while Lume answers nothing"
 	eq(first_index(read_lines(env.GUEST_LOG), is_e2e_layer) ~= nil, true)
 end
 
+T["shortcuts: sandbox.sh resends a guest command a loaded Lume refused"] = function()
+	local env = sandbox_env()
+	child.fn.writefile({}, vim.fs.joinpath(env.SANDBOX_STATE, "run-alive"))
+	child.fn.writefile({ "2" }, vim.fs.joinpath(env.SANDBOX_STATE, "ssh-refuse"))
+
+	local run = system({ "tests/sandbox/sandbox.sh", "e2e" }, H.root, env)
+
+	eq(run.code, 0, { fail_reason = run.stderr })
+	-- the first guest script (bootstrap_guest's, its stderr discarded) is sent again after each refusal
+	local log = read_lines(env.GUEST_LOG)
+	local first = log[first_index(log, function(line)
+		return line:find("-t 0 bash '", 1, true) ~= nil
+	end)]
+	eq(#vim.tbl_filter(function(line)
+		return line == first
+	end, log), 3, { fail_reason = table.concat(log, "\n") })
+	eq(run_and_kill_lines(log), {})
+	eq(first_index(read_lines(env.GUEST_LOG), is_e2e_layer) ~= nil, true)
+end
+
 T["shortcuts: sandbox.sh gives up when Lume loses track of the VM again after one restart"] = function()
 	local env = vim.tbl_extend("force", sandbox_env(), { SANDBOX_MISMATCH_S = "1", LUME_MISMATCH_RUNS = "2" })
 	child.fn.writefile({}, vim.fs.joinpath(env.SANDBOX_STATE, "stopped"))
@@ -669,7 +696,7 @@ end
 
 --- `make` stub for tests/check.sh: `deps` passes; every other target appends "<target> start
 --- <held>" and "<target> end" to $MAKE_LOG, held = whether $CHECK_LOCK_DIR exists. Target `slow`
---- lasts 2 s; `e2e` writes $SANDBOX_STATE/e2e.started after 1 s (logging "e2e ready") and ends 2 s later;
+--- lasts 2 s; `e2e` writes $SANDBOX_STATE/share/e2e.running after 1 s (logging "e2e ready") and ends 2 s later;
 --- `nested` runs tests/check.sh `inner` with CHECK_LOCK_TIMEOUT=1 and returns its code.
 local MAKE_STUB = [[#!/bin/sh
 target=$2
@@ -680,7 +707,7 @@ echo "$target start $held" >>"$MAKE_LOG"
 rc=0
 case "$target" in
 slow) sleep 2 ;;
-e2e) sleep 1; touch "$SANDBOX_STATE/e2e.started"; echo "e2e ready" >>"$MAKE_LOG"; sleep 2 ;;
+e2e) sleep 1; mkdir -p "$SANDBOX_STATE/share"; touch "$SANDBOX_STATE/share/e2e.running"; echo "e2e ready" >>"$MAKE_LOG"; sleep 2 ;;
 nested) CHECK_LOCK_TIMEOUT=1 "$CHECK_SH" inner >>"$MAKE_LOG.nested" 2>&1 || rc=$? ;;
 esac
 echo "$target end" >>"$MAKE_LOG"
@@ -737,7 +764,8 @@ end
 
 T["shortcuts: make check starts the other targets once the e2e sandbox is set up"] = function()
 	local env = vim.tbl_extend("force", check_env(), { SANDBOX_STATE = tempdir() })
-	child.fn.writefile({}, vim.fs.joinpath(env.SANDBOX_STATE, "e2e.started")) -- a previous run's marker
+	child.fn.mkdir(vim.fs.joinpath(env.SANDBOX_STATE, "share"), "p")
+	child.fn.writefile({}, vim.fs.joinpath(env.SANDBOX_STATE, "share/e2e.running")) -- a previous run's marker
 
 	local run = system({ "tests/check.sh", "^e2e", "a", "b" }, H.root, env)
 

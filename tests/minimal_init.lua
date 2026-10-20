@@ -17,6 +17,8 @@ for name in pairs(vim.fn.environ()) do
 		vim.env[name] = nil
 	end
 end
+-- the same for the gate's BASE_BRANCH: loop scripts default to auto, which every fixture repo uses
+vim.env.BASE_BRANCH = nil
 
 vim.o.swapfile = false
 vim.o.shadafile = "NONE"
