@@ -5,6 +5,7 @@ local eq = MiniTest.expect.equality
 local child = H.new_child()
 
 local ASYNC_MS = 5000
+local DIFFVIEW_TIMEOUT_MS = ASYNC_MS * H.load_factor()
 --- current_line_blame_opts.delay of the config (the spec's 300 ms).
 local BLAME_DELAY_MS = 300
 
@@ -130,14 +131,25 @@ local function path(name)
 	return vim.fs.joinpath(repo, name)
 end
 
---- `:DiffviewOpen` and wait until its file panel and the window showing
---- `first` are drawn.
+--- `:DiffviewOpen` and wait until its final left-panel layout and the window
+--- showing `first` are drawn.
 ---@param first string repo-relative file shown in the diff windows
 local function open_diffview(first)
 	child.lua(WINDOW_PROBES_LUA)
 	child.cmd("DiffviewOpen")
-	assert(child.wait("WindowWithFt('DiffviewFiles') ~= nil", ASYNC_MS), "no DiffviewFiles window")
-	assert(child.wait(("WindowWithFile(%q) ~= nil"):format(path(first)), ASYNC_MS), "diff of " .. first .. " not shown")
+	local ready = ([[(function()
+		local panel = TopLeftWindow()
+		return panel.filetype == "DiffviewFiles"
+			and panel.width == 35
+			and WindowWithFile(%q) ~= nil
+	end)()]]):format(path(first))
+	assert(
+		child.wait(ready, DIFFVIEW_TIMEOUT_MS),
+		("Diffview layout did not settle for %s; top-left=%s"):format(
+			first,
+			vim.inspect(child.lua_get("TopLeftWindow()"))
+		)
+	)
 end
 
 --- Focus the diff window showing `name` once diffview has mapped `lhs` in it

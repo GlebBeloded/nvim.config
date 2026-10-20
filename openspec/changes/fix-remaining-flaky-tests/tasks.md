@@ -30,9 +30,9 @@ Scenarios: `loop: Known flaky cases use deterministic readiness`, `diff: Diff vi
 
 ## 6. Wait for the final Diffview layout
 Scenarios: `loop: Known flaky cases use deterministic readiness`, `git: Diffview file panel on the left`
-- [ ] 6.1 Treat the proposal's 3 rerun passes as the failing evidence; tighten `tests/integration/git/test_git.lua` to preserve the leftmost `DiffviewFiles` and width-35 assertions while diagnosing incomplete layout readiness
-- [ ] 6.2 Scale the unavoidable Diffview timeout with `H.load_factor()` and wait for the final leftmost panel tuple, not merely separate window existence
-- [ ] 6.3 Run `make test FILE=tests/integration/git/test_git.lua CASE="Diffview file panel on the left"` and see it pass
+- [x] 6.1 Treat the proposal's 3 rerun passes as the failing evidence; tighten `tests/integration/git/test_git.lua` to preserve the leftmost `DiffviewFiles` and width-35 assertions while diagnosing incomplete layout readiness
+- [x] 6.2 Scale the unavoidable Diffview timeout with `H.load_factor()` and wait for the final leftmost panel tuple, not merely separate window existence
+- [x] 6.3 Run `make test FILE=tests/integration/git/test_git.lua CASE="Diffview file panel on the left"` and see it pass
 
 ## 7. Observe the pending tree refresh after toggle
 Scenarios: `loop: Known flaky cases use deterministic readiness`, `keymaps: Toggle wins over a pending tree refresh`
@@ -50,3 +50,4 @@ Scenarios: `loop: Known flaky cases use deterministic readiness`, `keymaps: Togg
 - The file-tree initial-status hook pauses the initial-draw boundary and suppresses its fallback only while the test controls completion, leaving the production 300 ms deadline unchanged.
 - Project-tree burst readiness uses existing view, Git-root, and watcher state so the run-count assertion is sampled only after every debounce and refresh is quiescent.
 - Diff render readiness requires the fixture's complete 24-row layout and Treesitter captures in both real diff buffers before a forced redraw.
+- Diffview readiness is the final `{leftmost filetype, width, target diff window}` tuple, sampled with a load-scaled deadline so intermediate split layouts cannot satisfy it.
