@@ -89,9 +89,9 @@ Scenarios: `git: Branch tab shows the merge-base diff`, `git: Branch tab shows a
 
 Scenarios: `git: Branch tab ignores staging keys`
 
-- [ ] 12.1 Write `git: Branch tab ignores staging keys` in tests/integration/git/test_changes_tabs.lua against the real Branch tab mappings and run `make test FILE=tests/integration/git/test_changes_tabs.lua CASE="Branch tab ignores staging keys"` to see it fail
-- [ ] 12.2 Make `<Space>`, `A` and `X` no-ops on the Branch tab
-- [ ] 12.3 Run `make test FILE=tests/integration/git/test_changes_tabs.lua CASE="Branch tab ignores staging keys"` and see it pass
+- [x] 12.1 Write `git: Branch tab ignores staging keys` in tests/integration/git/test_changes_tabs.lua against the real Branch tab mappings and run `make test FILE=tests/integration/git/test_changes_tabs.lua CASE="Branch tab ignores staging keys"` to see it fail
+- [x] 12.2 Make `<Space>`, `A` and `X` no-ops on the Branch tab
+- [x] 12.3 Run `make test FILE=tests/integration/git/test_changes_tabs.lua CASE="Branch tab ignores staging keys"` and see it pass
 
 ## 13. Branch refresh
 

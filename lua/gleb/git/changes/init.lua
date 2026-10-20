@@ -175,7 +175,7 @@ end
 ---@return nil
 function M.toggle_stage()
 	local current = M.state.by_tab[vim.api.nvim_get_current_tabpage()]
-	if not current then
+	if not current or current.active_tab ~= "local" then
 		return
 	end
 	local row = current.rows[vim.api.nvim_win_get_cursor(current.win)[1]]
@@ -205,7 +205,7 @@ end
 ---@return nil
 function M.stage_all()
 	local current = M.state.by_tab[vim.api.nvim_get_current_tabpage()]
-	if not current then
+	if not current or current.active_tab ~= "local" then
 		return
 	end
 	git.stage_all(current.root, function(result)
@@ -244,7 +244,7 @@ end
 ---@return nil
 function M.revert()
 	local current = M.state.by_tab[vim.api.nvim_get_current_tabpage()]
-	if not current then
+	if not current or current.active_tab ~= "local" then
 		return
 	end
 	local row = current.rows[vim.api.nvim_win_get_cursor(current.win)[1]]

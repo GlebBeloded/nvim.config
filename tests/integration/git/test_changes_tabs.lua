@@ -785,6 +785,49 @@ T["git: Branch tab Enter opens the working file"] = function()
 	})
 end
 
+T["git: Branch tab ignores staging keys"] = function()
+	local root = open_branch_tab()
+	select_row("branch:file:internal/billing/invoice.go")
+	local paths = {
+		"internal/billing/invoice.go",
+		"web/src/price.ts",
+		"notes.md",
+	}
+	local before = vim.iter(paths)
+		:map(function(path)
+			return vim.fn.readfile(vim.fs.joinpath(root, path))
+		end)
+		:totable()
+	local cached = H.git(root, { "diff", "--cached", "--name-only" })
+	child.lua([[
+		BranchStagingPrompts = 0
+		vim.ui.input = function()
+			BranchStagingPrompts = BranchStagingPrompts + 1
+		end
+	]])
+
+	child.type_keys("<Space>", "A", "X")
+	child.lua([[
+		vim.wait(1000, function()
+			local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+			return BranchStagingPrompts > 0 or vim.iter(panel.local_rows):any(function(row)
+				return row.kind == "file" and row.staged
+			end)
+		end, 10)
+	]])
+
+	eq(H.git(root, { "diff", "--cached", "--name-only" }), cached)
+	eq(child.lua_get("BranchStagingPrompts"), 0)
+	eq(
+		vim.iter(paths)
+			:map(function(path)
+				return vim.fn.readfile(vim.fs.joinpath(root, path))
+			end)
+			:totable(),
+		before
+	)
+end
+
 T["git: Branch tab hint names the commit view key"] = function()
 	child.o.lines = 30
 	child.o.columns = 100
