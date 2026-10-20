@@ -29,10 +29,6 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 
 ## Loop lessons
 
-- An aggregate expansion bound needs an operation-level tree adapter so unfold-all warns once instead of retrying every node left folded by the bound.
-- Shared tree redraws need an owner lifecycle hook when visible-row count controls the owning window's geometry.
-- Resolve repository roots canonically before exercising root-keyed cache and refresh APIs on macOS.
-- Wait for asynchronous refresh completion before asserting retained cache state; subprocess-start logs can precede callback resolution.
 - When a fix broadens a shared callback contract, name the owning module and contract change in both Impact and its implementation task.
 - Below-EOF virtual lines do not extend Neovim's scroll range; add a cursor-clamped sentinel row when a floating footer must leave the final content row visible.
 - Cancel and invalidate a debounced selection before opening its file, or the queued diff can replace the file immediately afterward.
@@ -44,6 +40,10 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - Bind debounced selection callbacks to the tab that scheduled them, and defer only data-dependent review work so tab focus changes synchronously without stale rows.
 - Name every main-spec contract pinned by newly shared symbols in Impact, with the concrete reason its behavior remains unchanged.
 - When a base-change event invalidates an in-flight forced fetch, queue the replacement and carry its force intent so the stale callback cannot lose both the refetch and notification.
+- Screen tests of approved Go captures must keep gopls off (an in-process fake client gives the "LSP ok" chip): its semantic tokens recolour Tree-sitter's groups once it loads the module, so masks fail only on runs where gopls is fast.
+- `:edit` of the file a window already shows re-reads it (BufRead, LSP reattach, ufo refold) and moves the view after the cursor was placed; edit only when the window shows another file.
+- Guard renderer window IDs as well as buffers because WinEnter can run after a pane closes but before its scheduled view teardown.
+- Serve branch-specific review-thread fixtures through the fake API so integration tests exercise the intended parser and preview path.
 
 ## The loop
 
