@@ -1086,8 +1086,8 @@ a test child SHALL exit when its test worker is gone, `make test FILE=<directory
 `make check` SHALL first remove Neovim temp dirs (`$TMPDIR/nvim.$USER/<name>`) older than 12 hours that no running process names in its arguments or holds open (`tests/prune_tmp.sh`), so dirs of killed test children never fill the disk.
 
 #### Scenario: Check prunes stale Neovim temp dirs
-- **WHEN** `tests/prune_tmp.sh` runs on a root holding an old unused dir, a young dir, and an old dir a running process names
-- **THEN** only the old unused dir is removed and the script reports one removal
+- **WHEN** `tests/prune_tmp.sh` runs on a root holding an old unused dir (with a read-only and a write-only dir inside), a young dir, and an old dir a running process names
+- **THEN** only the old unused dir is removed, the script reports one removal and prints nothing on stderr
 
 ### Requirement: Test bootstrap ignores a leaked GIT_DIR
 `tests/bootstrap.sh` and `tests/fixtures/build.sh` SHALL unset Git's local environment (`git rev-parse --local-env-vars`) before any git command, so a `make test` run from `git bisect run` or a hook never re-initializes the real repository, and `followup.py` SHALL refuse to move the base branch while the repository reads as bare.
