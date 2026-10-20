@@ -30,9 +30,9 @@ Scenarios: `pr: Thread window keys come from the shortcut file`
 
 ## 6. Reply confirmation
 Scenarios: `pr: Enter asks before sending a reply`, `pr: y sends the reply`, `pr: n keeps editing`, `pr: A failed reply keeps the draft`, `pr: The reply goes to gh as one argument`
-- [ ] 6.1 Write the five tests in `tests/integration/pr/test_thread_window.lua`, driving the real reply area and fake `gh` with populated `AddReply` responses; run each with `make test FILE=tests/integration/pr/test_thread_window.lua CASE="<scenario title>"` and see it fail
-- [ ] 6.2 Add the `gleb-pr-confirm` send state, `pr.confirm_yes` and `pr.confirm_no` actions and mappings, call the existing `gh.reply`, silently refresh on success, and preserve the draft on cancellation or failure
-- [ ] 6.3 Run each scenario with `make test FILE=tests/integration/pr/test_thread_window.lua CASE="<scenario title>"` and see it pass
+- [x] 6.1 Write the five tests in `tests/integration/pr/test_thread_window.lua`, driving the real reply area and fake `gh` with populated `AddReply` responses; run each with `make test FILE=tests/integration/pr/test_thread_window.lua CASE="<scenario title>"` and see it fail
+- [x] 6.2 Add the `gleb-pr-confirm` send state, `pr.confirm_yes` and `pr.confirm_no` actions and mappings, call the existing `gh.reply`, silently refresh on success, and preserve the draft on cancellation or failure
+- [x] 6.3 Run each scenario with `make test FILE=tests/integration/pr/test_thread_window.lua CASE="<scenario title>"` and see it pass
 
 ## 7. Reply confirmation render
 Scenarios: `pr: Send confirmation matches the approved render`

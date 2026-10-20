@@ -2,6 +2,7 @@ local MiniTest = require("mini.test")
 local F = require("tests.fixtures")
 local H = require("tests.helpers")
 local pr482 = require("tests.fixtures.gh.pr482")
+local mutations = require("tests.fixtures.gh.mutations")
 
 local eq = MiniTest.expect.equality
 local child = H.new_child()
@@ -88,6 +89,33 @@ local function open_thread_at(line)
 	child.lua([[vim.api.nvim_win_set_cursor(0, { ..., 0 })]], { line })
 	run_action("pr.open_thread")
 	assert(child.wait([[vim.bo.filetype == "gleb-pr-thread"]], timeout()), "thread reply did not take focus")
+end
+
+local REPLY = "Defaulting to Rate(0) now, see e325463."
+
+---@param text? string
+local function ask_to_send(text)
+	open_thread_at(22)
+	child.type_keys("<CR>", text or REPLY, "<Esc><CR>")
+	assert(child.wait([[vim.bo.filetype == "gleb-pr-confirm"]], timeout()), "send confirmation did not open")
+end
+
+---@param gh_log string
+---@param needle string
+---@return string[]
+local function log_lines(gh_log, needle)
+	return vim.tbl_filter(function(line)
+		return line:find(needle, 1, true) ~= nil
+	end, vim.fn.readfile(gh_log))
+end
+
+local function wait_unblocked()
+	assert(
+		vim.wait(timeout(), function()
+			return not child.is_blocked()
+		end, 20),
+		"thread action did not return"
+	)
 end
 
 T["pr: Thread window colours"] = function()
@@ -276,6 +304,101 @@ T["pr: Thread window keys come from the shortcut file"] = function()
 		{ "q", "Git | Pull Request: Close Thread", "pr.thread_close" },
 	})
 	eq(vim.endswith(thread_windows()[3].lines[1], " Reply ↩ · Resolve R · Open on web gx · Close q "), true)
+end
+
+T["pr: Enter asks before sending a reply"] = function()
+	local _, gh_log = open_review(function(files)
+		files["AddReply.json"] = mutations.reply
+	end)
+	ask_to_send()
+
+	local windows = thread_windows()
+	eq(vim.startswith(windows[3].lines[1], " Send this reply to maria.k on pgw.dev?"), true)
+	eq(vim.endswith(windows[3].lines[1], "Send y · Keep editing n "), true)
+	eq(child.lua_get([[vim.bo.filetype]]), "gleb-pr-confirm")
+	eq(child.lua_get([[vim.bo.modifiable]]), false)
+	eq(child.lua_get([[vim.fn.maparg("y", "n", false, true).desc]]), "Git | Pull Request: Confirm")
+	eq(child.lua_get([[vim.fn.maparg("n", "n", false, true).desc]]), "Git | Pull Request: Cancel")
+	eq(child.lua_get([[vim.fn.maparg("<Esc>", "n", false, true).desc]]), "Git | Pull Request: Cancel")
+	eq(log_lines(gh_log, "mutation"), {})
+end
+
+T["pr: y sends the reply"] = function()
+	local _, gh_log = open_review(function(files)
+		files["AddReply.json"] = mutations.reply
+	end)
+	local notifications = H.record_notify(child)
+	ask_to_send()
+	child.type_keys("y")
+	wait_unblocked()
+
+	assert(
+		child.wait(
+			[[#Notifications == 1 and #vim.tbl_filter(function(line)
+				return line:find("query ReviewThreads", 1, true) ~= nil
+			end, vim.fn.readfile(vim.env.FAKE_GH_LOG)) == 2]],
+			timeout()
+		),
+		"reply mutation and refresh did not finish"
+	)
+	eq(#log_lines(gh_log, "mutation AddReply"), 1)
+	eq(log_lines(gh_log, "mutation AddReply")[1]:find("-f id=PRRT_t1", 1, true) ~= nil, true)
+	eq(log_lines(gh_log, "mutation AddReply")[1]:find("-f body=" .. REPLY, 1, true) ~= nil, true)
+	eq(notifications(), { { msg = "Reply sent", level = vim.log.levels.INFO } })
+	eq(thread_windows()[2].lines, { "", "", "" })
+	eq(child.lua_get([[vim.bo.filetype]]), "gleb-pr-thread")
+	eq(vim.endswith(thread_windows()[3].lines[1], " Reply ↩ · Resolve R · Open on web gx · Close q "), true)
+end
+
+T["pr: n keeps editing"] = function()
+	local _, gh_log = open_review(function(files)
+		files["AddReply.json"] = mutations.reply
+	end)
+	ask_to_send()
+	child.type_keys("n")
+
+	assert(child.wait([[vim.fn.mode() == "i"]], timeout()), "reply editing did not resume")
+	eq(child.lua_get([[vim.bo.filetype]]), "gleb-pr-thread")
+	eq(child.lua_get([[vim.api.nvim_win_get_cursor(0)]]), { 1, #REPLY - 1 })
+	eq(thread_windows()[2].lines[1], REPLY)
+	eq(vim.endswith(thread_windows()[3].lines[1], " Reply ↩ · Resolve R · Open on web gx · Close q "), true)
+	eq(log_lines(gh_log, "mutation"), {})
+end
+
+T["pr: A failed reply keeps the draft"] = function()
+	open_review(function(files)
+		files["AddReply.json"] = mutations.reply
+		files["AddReply.json.stderr"] = "HTTP 502: Bad Gateway\n"
+		files["AddReply.json.code"] = "1\n"
+	end)
+	local notifications = H.record_notify(child)
+	ask_to_send()
+	child.type_keys("y")
+	wait_unblocked()
+
+	assert(child.wait([[#Notifications == 1]], timeout()), "reply failure was not reported")
+	eq(notifications(), { { msg = "Reply failed: HTTP 502: Bad Gateway", level = vim.log.levels.ERROR } })
+	eq(thread_windows()[2].lines[1], REPLY)
+	eq(child.lua_get([[vim.bo.filetype]]), "gleb-pr-thread")
+	eq(child.lua_get([[vim.bo.modifiable]]), true)
+	eq(vim.endswith(thread_windows()[3].lines[1], " Reply ↩ · Resolve R · Open on web gx · Close q "), true)
+end
+
+T["pr: The reply goes to gh as one argument"] = function()
+	local body = [[it's "fine" $(touch /tmp/pwned) @notes.md]]
+	eq(vim.uv.fs_stat("/tmp/pwned"), nil)
+	local _, gh_log = open_review(function(files)
+		files["AddReply.json"] = mutations.reply
+	end)
+	ask_to_send(body)
+	child.type_keys("y")
+	wait_unblocked()
+
+	assert(child.wait([[#vim.fn.readfile(vim.env.FAKE_GH_LOG) >= 3]], timeout()), "reply did not refresh")
+	local lines = log_lines(gh_log, "mutation AddReply")
+	eq(#lines, 1)
+	eq(lines[1]:find("-f body=" .. body, 1, true) ~= nil, true)
+	eq(vim.uv.fs_stat("/tmp/pwned"), nil)
 end
 
 return T

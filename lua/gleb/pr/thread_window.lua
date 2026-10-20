@@ -20,6 +20,7 @@ local action_rows = require("gleb.find_action.rows")
 ---@field hint_win integer
 ---@field group integer
 ---@field closing boolean
+---@field mode "normal"|"confirm_send"|"running"
 
 ---@class gleb.pr.ThreadWindowState
 ---@field by_tab table<integer, gleb.pr.ThreadWindow>
@@ -140,6 +141,11 @@ local function current()
 	return M.state.by_tab[vim.api.nvim_get_current_tabpage()]
 end
 
+---@type fun(state: gleb.pr.ThreadWindow)
+local layout
+---@type fun(buf: integer, lines: string[], modifiable: boolean)
+local fill
+
 ---@param state gleb.pr.ThreadWindow
 ---@return boolean
 local function reply_is_empty(state)
@@ -148,15 +154,89 @@ local function reply_is_empty(state)
 	end)
 end
 
+---@param state gleb.pr.ThreadWindow
+---@return string
+local function reply_text(state)
+	local lines = vim.api.nvim_buf_get_lines(state.reply_buf, 0, -1, false)
+	while #lines > 0 and lines[#lines] == "" do
+		table.remove(lines)
+	end
+	return table.concat(lines, "\n")
+end
+
+---@param state gleb.pr.ThreadWindow
+---@param resume_insert boolean
+local function restore_editing(state, resume_insert)
+	state.mode = "normal"
+	vim.bo[state.reply_buf].filetype = "gleb-pr-thread"
+	vim.bo[state.reply_buf].modifiable = true
+	layout(state)
+	vim.api.nvim_set_current_win(state.reply_win)
+	local lines = vim.api.nvim_buf_get_lines(state.reply_buf, 0, -1, false)
+	local last = #lines
+	while last > 1 and lines[last] == "" do
+		last = last - 1
+	end
+	local line = vim.api.nvim_buf_get_lines(state.reply_buf, last - 1, last, false)[1]
+	vim.api.nvim_win_set_cursor(state.reply_win, { last, #line })
+	if resume_insert then
+		vim.cmd.startinsert()
+	end
+end
+
 ---@return nil
 function M.send()
 	local state = current()
-	if not state or not state.thread.can_reply or not reply_is_empty(state) then
+	if not state or state.mode ~= "normal" or not state.thread.can_reply then
 		return
 	end
-	vim.api.nvim_set_current_win(state.reply_win)
-	vim.api.nvim_win_set_cursor(state.reply_win, { 1, 0 })
-	vim.cmd.startinsert()
+	if reply_is_empty(state) then
+		vim.api.nvim_set_current_win(state.reply_win)
+		vim.api.nvim_win_set_cursor(state.reply_win, { 1, 0 })
+		vim.cmd.startinsert()
+		return
+	end
+	state.mode = "confirm_send"
+	vim.bo[state.reply_buf].modifiable = false
+	vim.bo[state.reply_buf].filetype = "gleb-pr-confirm"
+	layout(state)
+end
+
+---@return nil
+function M.confirm_no()
+	local state = current()
+	if not state or state.mode ~= "confirm_send" then
+		return
+	end
+	restore_editing(state, true)
+end
+
+---@return nil
+function M.confirm_yes()
+	local state = current()
+	if not state or state.mode ~= "confirm_send" then
+		return
+	end
+	local body = reply_text(state)
+	state.mode = "running"
+	layout(state)
+	require("gleb.pr.gh").reply(state.review, state.thread.id, body, nil, function(ok, message)
+		if ok then
+			M.state.drafts[state.thread.id] = nil
+			if M.state.by_tab[state.tab] == state and vim.api.nvim_buf_is_valid(state.reply_buf) then
+				vim.bo[state.reply_buf].modifiable = true
+				fill(state.reply_buf, { "", "", "" }, true)
+				restore_editing(state, false)
+			end
+			vim.notify("Reply sent", vim.log.levels.INFO)
+			require("gleb.pr").refresh(state.review.root, { force = true, silent = true })
+			return
+		end
+		if M.state.by_tab[state.tab] == state and vim.api.nvim_buf_is_valid(state.reply_buf) then
+			restore_editing(state, false)
+		end
+		vim.notify("Reply failed: " .. (message or "Unknown error"), vim.log.levels.ERROR)
+	end)
 end
 
 ---@return nil
@@ -191,7 +271,7 @@ end
 ---@param buf integer
 ---@param lines string[]
 ---@param modifiable boolean
-local function fill(buf, lines, modifiable)
+fill = function(buf, lines, modifiable)
 	vim.bo[buf].modifiable = true
 	vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
 	vim.bo[buf].modifiable = modifiable
@@ -210,7 +290,7 @@ end
 
 ---@param state gleb.pr.ThreadWindow
 ---@return nil
-local function layout(state)
+layout = function(state)
 	if not vim.api.nvim_win_is_valid(state.messages_win) then
 		return
 	end
@@ -228,22 +308,46 @@ local function layout(state)
 	local outer_height = #messages + reply_height + 5
 	local row = math.floor((vim.o.lines - 1 - outer_height) / 2)
 	local col = math.floor((vim.o.columns - outer_width) / 2)
-	local hints = {}
-	if state.thread.can_reply then
-		hints[#hints + 1] = "Reply " .. shortcut("pr.thread_send")
+	local line
+	local hint_start
+	if state.mode == "confirm_send" then
+		local question = " Send this reply to " .. state.thread.comments[1].author .. " on " .. state.review.host .. "?"
+		local hint = "Send " .. shortcut("pr.confirm_yes") .. " · Keep editing " .. shortcut("pr.confirm_no") .. " "
+		local padding = math.max(inner_width - vim.fn.strdisplaywidth(question) - vim.fn.strdisplaywidth(hint), 1)
+		line = question .. string.rep(" ", padding) .. hint
+		hint_start = #question + padding
+	elseif state.mode == "running" then
+		line = " Sending..." .. string.rep(" ", math.max(inner_width - 11, 0))
+	else
+		local hints = {}
+		if state.thread.can_reply then
+			hints[#hints + 1] = "Reply " .. shortcut("pr.thread_send")
+		end
+		local can_change_resolution = state.thread.resolved and state.thread.can_unresolve or state.thread.can_resolve
+		if can_change_resolution then
+			local label = state.thread.resolved and "Unresolve " or "Resolve "
+			hints[#hints + 1] = label .. shortcut("pr.thread_resolve")
+		end
+		vim.list_extend(hints, {
+			"Open on web " .. shortcut("pr.thread_open_web"),
+			"Close " .. shortcut("pr.thread_close"),
+		})
+		local normal = " " .. table.concat(hints, " · ") .. " "
+		line = string.rep(" ", math.max(inner_width - vim.fn.strdisplaywidth(normal), 0)) .. normal
 	end
-	local can_change_resolution = state.thread.resolved and state.thread.can_unresolve or state.thread.can_resolve
-	if can_change_resolution then
-		local label = state.thread.resolved and "Unresolve " or "Resolve "
-		hints[#hints + 1] = label .. shortcut("pr.thread_resolve")
+	fill(state.hint_buf, { line }, false)
+	vim.api.nvim_buf_clear_namespace(state.hint_buf, namespace, 0, -1)
+	if state.mode == "normal" then
+		vim.wo[state.hint_win].winhighlight = "Normal:PickerHint,FloatBorder:FloatBorder"
+	else
+		vim.wo[state.hint_win].winhighlight = "Normal:PrConfirm,FloatBorder:FloatBorder"
+		if hint_start then
+			vim.api.nvim_buf_set_extmark(state.hint_buf, namespace, 0, hint_start, {
+				end_col = #line,
+				hl_group = "PrConfirmHint",
+			})
+		end
 	end
-	vim.list_extend(hints, {
-		"Open on web " .. shortcut("pr.thread_open_web"),
-		"Close " .. shortcut("pr.thread_close"),
-	})
-	local line = " " .. table.concat(hints, " · ") .. " "
-	local padding = math.max(inner_width - vim.fn.strdisplaywidth(line), 0)
-	fill(state.hint_buf, { string.rep(" ", padding) .. line }, false)
 
 	vim.api.nvim_win_set_config(state.messages_win, {
 		relative = "editor",
@@ -361,6 +465,7 @@ function M.open(review, thread)
 		hint_win = hint_win,
 		group = group,
 		closing = false,
+		mode = "normal",
 	}
 	M.state.by_tab[tab] = state
 	vim.api.nvim_create_autocmd("VimResized", {
@@ -389,6 +494,25 @@ function M.open(review, thread)
 					M.close(state)
 				end
 			end)
+		end,
+	})
+	vim.api.nvim_create_autocmd("User", {
+		group = group,
+		pattern = "GlebPrThreads",
+		callback = function(event)
+			if state.closing or not event.data or event.data.root ~= state.review.root then
+				return
+			end
+			local review = require("gleb.pr").get(state.review.root)
+			local thread = review
+				and vim.iter(review.threads):find(function(candidate)
+					return candidate.id == state.thread.id
+				end)
+			if review and thread then
+				state.review = review
+				state.thread = thread
+				layout(state)
+			end
 		end,
 	})
 	layout(state)

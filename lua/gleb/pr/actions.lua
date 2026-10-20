@@ -28,7 +28,7 @@ local function open_thread(ctx)
 	require("gleb.pr.thread_window").open_at_cursor(ctx.win, ctx.buf)
 end
 
----@param name "send"|"resolve"|"open_web"|"close_current"
+---@param name "send"|"resolve"|"open_web"|"close_current"|"confirm_yes"|"confirm_no"
 ---@return fun()
 local function thread_action(name)
 	return function()
@@ -89,6 +89,20 @@ local actions = {
 		category = "Git | Pull Request",
 		ft = "gleb-pr-thread",
 		run = thread_action("close_current"),
+	},
+	{
+		id = "pr.confirm_yes",
+		title = "Confirm",
+		category = "Git | Pull Request",
+		ft = "gleb-pr-confirm",
+		run = thread_action("confirm_yes"),
+	},
+	{
+		id = "pr.confirm_no",
+		title = "Cancel",
+		category = "Git | Pull Request",
+		ft = "gleb-pr-confirm",
+		run = thread_action("confirm_no"),
 	},
 }
 
