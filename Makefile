@@ -22,12 +22,12 @@ ifneq ($(wildcard .tests/xdg/data/nvim/lazy),)
 export NVIM_TEST_DATA_DIR ?= $(CURDIR)/.tests/xdg/data/nvim
 endif
 
-.PHONY: check quick install deps fmt lint types test test-unit test-integration test-screen test-readiness \
+.PHONY: check quick install deps fmt lint types test test-unit test-integration test-screen test-readiness perf \
 	screenshots smoke smoke-health smoke-startup trace probe specs render colorize clean
 
 # timing-sensitive layers run alone after the rest, so other layers do not skew them;
 # CHECK_TARGETS narrows the run (the gate's quick tier: .archon/scripts/gate.py)
-CHECK_TARGETS ?= ^e2e lint types test trace specs chain stack smoke-health loop-test +smoke-startup +test-readiness
+CHECK_TARGETS ?= ^e2e lint types test trace specs chain stack smoke-health loop-test +smoke-startup +test-readiness +perf
 check:
 	@SANDBOX_START=$${E2E:-0} tests/check.sh $(CHECK_TARGETS)
 
@@ -66,6 +66,15 @@ test-screen: deps
 
 test-readiness: deps
 	@FILE=tests/integration/lsp/test_readiness.lua $(call MINITEST,integration)
+
+perf: deps
+	@PERF=1 FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree redraw meets the large-tree bound" $(call MINITEST,integration)
+	@PERF=1 FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree expansion meets the large-tree bound" $(call MINITEST,integration)
+	@PERF=1 FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree save leaves the main path promptly" $(call MINITEST,integration)
+	@PERF=1 FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree follows an already listed row promptly" $(call MINITEST,integration)
+	@PERF=1 FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree re-roots without waiting for repository discovery" $(call MINITEST,integration)
+	@PERF=1 FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree persists folds off the action path" $(call MINITEST,integration)
+	@PERF=1 FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree unfold all meets the large-tree bound" $(call MINITEST,integration)
 
 screenshots: deps
 	@UPDATE_SCREENSHOTS=1 $(call MINITEST,screen)

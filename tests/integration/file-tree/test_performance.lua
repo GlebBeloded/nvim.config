@@ -96,6 +96,29 @@ local T = H.child_set(child, start)
 
 local unfold_child = H.new_child()
 
+local function install_cpu_measurement(target_child)
+	target_child = target_child or child
+	target_child.lua([=[
+		local function process_cpu_ms(usage)
+			return (usage.utime.sec + usage.stime.sec) * 1000 + (usage.utime.usec + usage.stime.usec) / 1000
+		end
+
+		FileTreeStartMeasurement = function()
+			return {
+				cpu_ms = process_cpu_ms(vim.uv.getrusage()),
+				elapsed_ns = vim.uv.hrtime(),
+			}
+		end
+
+		FileTreeFinishMeasurement = function(started)
+			return {
+				cpu_ms = process_cpu_ms(vim.uv.getrusage()) - started.cpu_ms,
+				elapsed_ms = (vim.uv.hrtime() - started.elapsed_ns) / 1e6,
+			}
+		end
+	]=])
+end
+
 local function create_unfold_tree()
 	unfold_root = vim.fn.tempname() .. "/unfold-tree"
 	vim.fn.mkdir(unfold_root, "p")
@@ -165,18 +188,28 @@ T["file-tree: Project tree unfold all meets the large-tree bound"]["stops prompt
 		),
 		0
 	)
-	unfold_child.lua([[FileTreeUnfoldStarted = vim.uv.hrtime()]])
+	install_cpu_measurement(unfold_child)
+	unfold_child.lua([[FileTreeUnfoldStarted = FileTreeStartMeasurement()]])
 
 	unfold_child.type_keys("zR")
+	assert(
+		unfold_child.wait([[#Notifications > 0]], math.ceil(500 * H.load_factor())),
+		"unfold all did not reach the row limit"
+	)
 
 	local result = unfold_child.lua_get([[(function()
 		local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+		local measurement = FileTreeFinishMeasurement(FileTreeUnfoldStarted)
 		return {
-			elapsed_ms = (vim.uv.hrtime() - FileTreeUnfoldStarted) / 1e6,
+			cpu_ms = measurement.cpu_ms,
+			elapsed_ms = measurement.elapsed_ms,
 			rows = #view.rows,
 		}
 	end)()]])
-	assert(result.elapsed_ms <= 500 * H.load_factor(), ("unfold all took %.2f ms"):format(result.elapsed_ms))
+	assert(result.cpu_ms <= 500, ("unfold all consumed %.2f ms process CPU"):format(result.cpu_ms))
+	if vim.env.PERF == "1" then
+		assert(result.elapsed_ms <= 500 * H.load_factor(), ("unfold all took %.2f ms"):format(result.elapsed_ms))
+	end
 	assert(result.rows <= 5001, "unfold all exceeded the row limit")
 	eq(notifications(), {
 		{ msg = "Unfold all stopped at 5000 rows", level = vim.log.levels.WARN },
@@ -201,6 +234,32 @@ local function install_replacement_counter()
 			return FileTreeOriginalSetLines(buf, ...)
 		end
 	]=])
+end
+
+local function hold_next_repository_discovery(path)
+	child.lua(
+		[=[
+		(function(expected)
+		local original = vim.system
+		vim.system = function(cmd, opts, callback)
+			if callback and vim.deep_equal(cmd, { "git", "-C", expected, "rev-parse", "--show-toplevel", "--absolute-git-dir" }) then
+				vim.system = original
+				local system = original(cmd, opts, function(result)
+					FileTreeRepositoryDiscoveryResult = result
+				end)
+				FileTreeFinishRepositoryDiscovery = function()
+					local result = FileTreeRepositoryDiscoveryResult or system:wait()
+					callback(result)
+					FileTreeFinishRepositoryDiscovery = nil
+				end
+				return system
+			end
+			return original(cmd, opts, callback)
+		end
+		end)(...)
+	]=],
+		{ path }
+	)
 end
 
 local function make_next_git_refresh_immediate()
@@ -315,27 +374,154 @@ local function wait_for_save_result(baseline_runs)
 	)
 end
 
+local function install_manual_debounce()
+	child.lua([[require("gleb.util.debounce").use_test_scheduler()]])
+end
+
+local function wait_for_idle_tree()
+	assert(
+		child.wait(
+			[=[(function()
+				local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+				local git = require("gleb.file_tree.git")
+				local state = assert(git.state.roots[view.root])
+				return state.timer == nil
+					and not state.in_flight
+					and not view.dirty
+					and view.dirty_timer == nil
+					and not view.git_pending
+			end)()]=],
+			math.ceil(1000 * H.load_factor())
+		),
+		"project tree did not settle after the edit"
+	)
+end
+
+local function wait_for_changed_folder_watch()
+	assert(
+		child.wait(
+			[=[(function()
+				local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+				local state = assert(require("gleb.tree.watch").state.roots[view.root])
+				local path = vim.fs.joinpath(view.root, "directory-0001")
+				return state.handles[path] ~= nil or state.tree_handle ~= nil
+			end)()]=],
+			math.ceil(3000 * H.load_factor())
+		),
+		"filesystem watch coverage did not settle"
+	)
+end
+
+-- libuv rebuilds its single macOS FSEvents stream after each watch start and drops events meanwhile; a sentinel
+-- event on a later-started watch proves the stream carrying every tree watch is live before the write.
+local function wait_for_live_watch_stream()
+	assert(
+		child.wait(
+			[=[(function()
+				local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+				local state = assert(require("gleb.tree.watch").state.roots[view.root])
+				return state.settle_passes == 0 and not state.sync_scheduled
+			end)()]=],
+			math.ceil(3000 * H.load_factor())
+		),
+		"filesystem watch reconciliation did not settle"
+	)
+	child.lua([=[
+		local directory = vim.fn.tempname()
+		vim.fn.mkdir(directory, "p")
+		FileTreeWatchSentinel = { path = vim.fs.joinpath(directory, "sentinel"), seen = false }
+		FileTreeWatchSentinel.handle = assert(vim.uv.new_fs_event())
+		assert(FileTreeWatchSentinel.handle:start(directory, {}, function()
+			FileTreeWatchSentinel.seen = true
+		end))
+	]=])
+	assert(
+		child.wait(
+			[=[(function()
+				vim.fn.writefile({ tostring(vim.uv.hrtime()) }, FileTreeWatchSentinel.path)
+				return FileTreeWatchSentinel.seen
+			end)()]=],
+			math.ceil(3000 * H.load_factor())
+		),
+		"filesystem watch stream did not deliver its sentinel event"
+	)
+end
+
+local function advance_debounce(delay_ms)
+	child.lua([[require("gleb.util.debounce").advance(...) ]], { delay_ms })
+end
+
+local function wait_for_watch_debounce()
+	assert(
+		child.wait(
+			[=[(function()
+				local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+				local state = assert(require("gleb.tree.watch").state.roots[view.root])
+				return next(state.timers) ~= nil
+			end)()]=],
+			math.ceil(1000 * H.load_factor())
+		),
+		"filesystem watch debounce was not scheduled"
+	)
+end
+
+local function advance_save_debounce(baseline_runs)
+	wait_for_watch_debounce()
+	advance_debounce(149)
+	eq(child.lua_get([[require("gleb.file_tree.git").state.runs]]), baseline_runs)
+	eq(child.lua_get([[FileTreeReplacementCount]]), 0)
+	advance_debounce(1)
+	assert(
+		child.wait(
+			([=[(function()
+				local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+				local git = require("gleb.file_tree.git")
+				local state = assert(git.state.roots[view.root])
+				return git.state.runs > %d and state.timer == nil and not state.in_flight and view.dirty_timer ~= nil
+			end)()]=]):format(baseline_runs),
+			math.ceil(1000 * H.load_factor())
+		),
+		"git refresh did not schedule the final draw"
+	)
+	advance_debounce(49)
+	eq(child.lua_get([[FileTreeReplacementCount]]), 0)
+	advance_debounce(1)
+end
+
+local function write_with_measurement()
+	return child.lua_get([[(function()
+		local started = FileTreeStartMeasurement()
+		vim.cmd.write()
+		return FileTreeFinishMeasurement(started)
+	end)()]])
+end
+
 T["file-tree: Project tree redraw meets the large-tree bound"] = function()
 	eq(child.lua_get([[#require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()].rows]]), 4900)
 	install_replacement_counter()
+	install_cpu_measurement()
 
 	local result = child.lua_get([=[(function()
 		local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
 		local lines = vim.api.nvim_buf_get_lines(view.buf, 0, -1, false)
 		local selected = view.rows[vim.api.nvim_win_get_cursor(view.win)[1]].path
-		local started = vim.uv.hrtime()
+		local started = FileTreeStartMeasurement()
 		require("gleb.file_tree.view").redraw_all()
-		local elapsed_ms = (vim.uv.hrtime() - started) / 1e6
+		local measurement = FileTreeFinishMeasurement(started)
 		vim.api.nvim_buf_set_lines = FileTreeOriginalSetLines
 		return {
-			elapsed_ms = elapsed_ms,
+			cpu_ms = measurement.cpu_ms,
+			elapsed_ms = measurement.elapsed_ms,
 			replacements = FileTreeReplacementCount,
 			rows_preserved = vim.deep_equal(lines, vim.api.nvim_buf_get_lines(view.buf, 0, -1, false)),
 			selection_preserved = selected == view.rows[vim.api.nvim_win_get_cursor(view.win)[1]].path,
 		}
 	end)()]=])
 
-	assert(result.elapsed_ms <= 100 * H.load_factor(), ("redraw took %.2f ms"):format(result.elapsed_ms))
+	assert(result.cpu_ms <= 100, ("redraw consumed %.2f ms process CPU"):format(result.cpu_ms))
+	if vim.env.PERF == "1" then
+		assert(result.elapsed_ms <= 100 * H.load_factor(), ("redraw took %.2f ms"):format(result.elapsed_ms))
+	end
 	eq(result.replacements, 1)
 	eq(result.rows_preserved, true)
 	eq(result.selection_preserved, true)
@@ -356,23 +542,28 @@ T["file-tree: Project tree expansion meets the large-tree bound"] = function()
 	end)()]=])
 	eq(found, true)
 	install_replacement_counter()
-	child.lua([[FileTreeExpansionStarted = vim.uv.hrtime()]])
+	install_cpu_measurement()
+	child.lua([[FileTreeExpansionStarted = FileTreeStartMeasurement()]])
 
 	child.type_keys("<CR>")
 
 	local result = child.lua_get([=[(function()
 		local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
-		local elapsed_ms = (vim.uv.hrtime() - FileTreeExpansionStarted) / 1e6
+		local measurement = FileTreeFinishMeasurement(FileTreeExpansionStarted)
 		vim.api.nvim_buf_set_lines = FileTreeOriginalSetLines
 		return {
-			elapsed_ms = elapsed_ms,
+			cpu_ms = measurement.cpu_ms,
+			elapsed_ms = measurement.elapsed_ms,
 			replacements = FileTreeReplacementCount,
 			rows = #view.rows,
 			expanded = view.expanded["expand-me"] == true,
 		}
 	end)()]=])
 
-	assert(result.elapsed_ms <= 100 * H.load_factor(), ("expansion took %.2f ms"):format(result.elapsed_ms))
+	assert(result.cpu_ms <= 100, ("expansion consumed %.2f ms process CPU"):format(result.cpu_ms))
+	if vim.env.PERF == "1" then
+		assert(result.elapsed_ms <= 100 * H.load_factor(), ("expansion took %.2f ms"):format(result.elapsed_ms))
+	end
 	eq(result.replacements, 1)
 	eq(result.rows, 5000)
 	eq(result.expanded, true)
@@ -380,12 +571,20 @@ end
 
 T["file-tree: Project tree coalesces a save burst"] = function()
 	change_tracked_file()
+	wait_for_idle_tree()
+	wait_for_changed_folder_watch()
+	wait_for_live_watch_stream()
 	install_replacement_counter()
+	install_cpu_measurement()
+	install_manual_debounce()
 	local baseline_runs = child.lua_get([[require("gleb.file_tree.git").state.runs]])
 
-	child.cmd("write")
+	local measurement = write_with_measurement()
+	advance_save_debounce(baseline_runs)
 	local result = wait_for_save_result(baseline_runs)
+	child.lua([[require("gleb.util.debounce").reset()]])
 
+	assert(measurement.cpu_ms <= 100, ("write consumed %.2f ms process CPU"):format(measurement.cpu_ms))
 	assert(result.complete, vim.inspect(result))
 	eq(result.replacements, 1)
 	eq(result.runs, 1)
@@ -420,17 +619,23 @@ T["file-tree: Project tree save leaves the main path promptly"] = function()
 	]=])
 	eq(child.lua_get([[#require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()].rows]]), 5000)
 	change_tracked_file()
+	wait_for_idle_tree()
+	wait_for_changed_folder_watch()
+	wait_for_live_watch_stream()
 	install_replacement_counter()
+	install_cpu_measurement()
+	install_manual_debounce()
 	local baseline_runs = child.lua_get([[require("gleb.file_tree.git").state.runs]])
 
-	local elapsed_ms = child.lua_get([=[(function()
-		local started = vim.uv.hrtime()
-		vim.cmd.write()
-		return (vim.uv.hrtime() - started) / 1e6
-	end)()]=])
+	local measurement = write_with_measurement()
+	advance_save_debounce(baseline_runs)
 	local result = wait_for_save_result(baseline_runs)
+	child.lua([[require("gleb.util.debounce").reset()]])
 
-	assert(elapsed_ms <= 100 * H.load_factor(), ("write took %.2f ms"):format(elapsed_ms))
+	assert(measurement.cpu_ms <= 100, ("write consumed %.2f ms process CPU"):format(measurement.cpu_ms))
+	if vim.env.PERF == "1" then
+		assert(measurement.elapsed_ms <= 100 * H.load_factor(), ("write took %.2f ms"):format(measurement.elapsed_ms))
+	end
 	assert(result.complete, vim.inspect(result))
 end
 
@@ -442,6 +647,7 @@ T["file-tree: Project tree follows an already listed row promptly"] = function()
 	]=])
 	eq(child.lua_get([[#require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()].rows]]), 5000)
 	install_replacement_counter()
+	install_cpu_measurement()
 
 	local target = assert(vim.uv.fs_realpath(vim.fs.joinpath(root, "root-file-050")))
 	local result = child.lua_get(
@@ -450,13 +656,14 @@ T["file-tree: Project tree follows an already listed row promptly"] = function()
 			local view = assert(view_module.state.by_tab[vim.api.nvim_get_current_tabpage()])
 			local editor = assert(view_module.state.last_editor_by_tab[view.tab])
 			vim.api.nvim_set_current_win(editor)
-			local started = vim.uv.hrtime()
+			local started = FileTreeStartMeasurement()
 			vim.cmd.edit(vim.fn.fnameescape(path))
-			local elapsed_ms = (vim.uv.hrtime() - started) / 1e6
+			local measurement = FileTreeFinishMeasurement(started)
 			local selected = view.rows[vim.api.nvim_win_get_cursor(view.win)[1]]
 			vim.api.nvim_buf_set_lines = FileTreeOriginalSetLines
 			return {
-				elapsed_ms = elapsed_ms,
+				cpu_ms = measurement.cpu_ms,
+				elapsed_ms = measurement.elapsed_ms,
 				focused = vim.api.nvim_get_current_win() == editor,
 				replacements = FileTreeReplacementCount,
 				selected = selected and selected.path,
@@ -465,7 +672,10 @@ T["file-tree: Project tree follows an already listed row promptly"] = function()
 		{ target }
 	)
 
-	assert(result.elapsed_ms <= 50 * H.load_factor(), ("follow took %.2f ms"):format(result.elapsed_ms))
+	assert(result.cpu_ms <= 50, ("follow consumed %.2f ms process CPU"):format(result.cpu_ms))
+	if vim.env.PERF == "1" then
+		assert(result.elapsed_ms <= 50 * H.load_factor(), ("follow took %.2f ms"):format(result.elapsed_ms))
+	end
 	eq(result.replacements, 0)
 	eq(result.selected, target)
 	eq(result.focused, true)
@@ -512,17 +722,33 @@ end
 
 T["file-tree: Project tree re-roots without waiting for repository discovery"] = function()
 	create_second_worktree()
+	hold_next_repository_discovery(second_root)
+	install_cpu_measurement()
 
 	local result = child.lua_get(
 		[=[(function(path)
-			local started = vim.uv.hrtime()
+			local started = FileTreeStartMeasurement()
 			vim.cmd.cd(vim.fn.fnameescape(path))
-			return (vim.uv.hrtime() - started) / 1e6
+			local measurement = FileTreeFinishMeasurement(started)
+			return {
+				cpu_ms = measurement.cpu_ms,
+				discovery_pending = not require("gleb.file_tree.watch").state.roots[path].discovery_complete,
+				elapsed_ms = measurement.elapsed_ms,
+			}
 		end)(...)]=],
 		{ second_root }
 	)
 
-	assert(result <= 100 * H.load_factor(), ("re-root took %.2f ms"):format(result))
+	eq(result.discovery_pending, true)
+	assert(result.cpu_ms <= 100, ("re-root consumed %.2f ms process CPU"):format(result.cpu_ms))
+	if vim.env.PERF == "1" then
+		assert(result.elapsed_ms <= 100 * H.load_factor(), ("re-root took %.2f ms"):format(result.elapsed_ms))
+	end
+	assert(
+		child.wait([[FileTreeRepositoryDiscoveryResult ~= nil]], math.ceil(1000 * H.load_factor())),
+		"repository discovery did not finish"
+	)
+	child.lua([[FileTreeFinishRepositoryDiscovery()]])
 	assert(
 		child.wait(
 			([=[(function(path)
@@ -530,7 +756,7 @@ T["file-tree: Project tree re-roots without waiting for repository discovery"] =
 				local watched = require("gleb.file_tree.watch").state.roots[path]
 				return view and view.root == path and watched and watched.git_handle ~= nil
 			end)(%q)]=]):format(second_root),
-			1000
+			math.ceil(1000 * H.load_factor())
 		),
 		"re-rooted tree did not settle with a git-directory watch"
 	)
@@ -588,12 +814,16 @@ T["file-tree: Project tree persists folds off the action path"] = function()
 		return false
 	end)()]=])
 	eq(found, true)
-	child.lua([[FileTreeFoldStarted = vim.uv.hrtime()]])
+	install_cpu_measurement()
+	child.lua([[FileTreeFoldStarted = FileTreeStartMeasurement()]])
 
 	child.type_keys("za")
 
-	local elapsed_ms = child.lua_get([[(vim.uv.hrtime() - FileTreeFoldStarted) / 1e6]])
-	assert(elapsed_ms <= 100 * H.load_factor(), ("fold took %.2f ms"):format(elapsed_ms))
+	local measurement = child.lua_get([[FileTreeFinishMeasurement(FileTreeFoldStarted)]])
+	assert(measurement.cpu_ms <= 100, ("fold consumed %.2f ms process CPU"):format(measurement.cpu_ms))
+	if vim.env.PERF == "1" then
+		assert(measurement.elapsed_ms <= 100 * H.load_factor(), ("fold took %.2f ms"):format(measurement.elapsed_ms))
+	end
 	local normalized_root = assert(vim.uv.fs_realpath(root))
 	assert(
 		child.wait(
@@ -611,7 +841,7 @@ T["file-tree: Project tree persists folds off the action path"] = function()
 				end
 				return not vim.tbl_contains(stored[expected_root], "directory-0001")
 			end)(%q)]=]):format(normalized_root),
-			1000
+			math.ceil(1000 * H.load_factor())
 		),
 		"collapsed expansion state was not persisted"
 	)

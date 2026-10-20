@@ -22,11 +22,15 @@ are not load-scaled.
   correctness assertions. `child.wait`'s default timeout and the unscaled waits scale with load.
 - No bound is loosened without a load-scaled reason.
 
+## Capabilities
+
+- `file-tree`: make large-tree, coalescing and deferred-maintenance performance checks deterministic while preserving their bounds.
+- `shortcuts`: extend the shared test-harness deadline policy to child-Neovim waits.
+
 ## Impact
 
 - `tests/integration/file-tree/test_performance.lua`, `tests/helpers.lua`, `lua/gleb/util/debounce.lua` (a test hook),
   `Makefile`/`tests/check.sh` (the `perf` layer).
-
 ## Rejected run
 Run on `loop/deterministic-perf-tests` was rejected by the judge:
 - fix loop exhausted with gates still red: full
@@ -53,3 +57,9 @@ Run on `loop/deterministic-perf-tests` was rejected by the judge:
 - note: loop: FAIL in tests/integration/file-tree/test_performance.lua | file-tree: Unchanged git status does not redraw the project tree: tests/integration/file-tree/test_performance.lua:431: unchanged git status did not finish
 - note: loop: FileNotFoundError: [Errno 2] No such file or directory: '/var/folders/9c/yg1yg4td727dkq_blbwbwn1w0000gn/T/tmptbvjg5xt/check-1.log'
 - note: loop: ERROR: test_check_past_the_timeout_is_infra_with_its_log (test_gate_timeout.GateTimeout.test_check_past_the_timeout_is_infra_with_its_log)
+
+- `tests/integration/lsp/test_typecheck.lua`; `lsp: Type-check toggle reattaches every Python buffer without reloading` still holds because only its wait budget changes, not the command or attachment assertions.
+- `file-tree: Expanded ignored folder lists ignored children` still holds because manual debounce control changes when the existing callback runs, not ignored-folder expansion, colouring or git calls.
+- `statusline: Statusline pull request component runs nothing on redraw` still holds because the shared wait and performance-test changes do not touch statusline redraw code.
+- No plugin dependency is added, removed or upgraded. Core keymaps do not change.
+- Out of scope: changing project-tree behavior or its numeric performance bounds, changing LSP behavior, and changing editor UI.
