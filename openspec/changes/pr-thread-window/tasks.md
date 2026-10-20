@@ -61,3 +61,10 @@ Scenarios: `pr: Thread window matches the approved render`
 ## Agent decisions
 
 - Pass an ephemeral LEFT-side thread copy after unmapped navigation so the existing thread renderer uses its diff-hunk path without changing cached review data.
+
+## Stuck
+
+- Task 7: `pr: Send confirmation matches the approved render` remains red after two production attempts; the second attempt is saved in `stuck-attempt-7.diff`.
+- Probe: empty reply `{ "", "", "" }` had one placeholder extmark; multibyte source rendered `{ "  22 \tif café.税 == nil {" }`; resizing to 60 columns produced message `col=2`, `width=54`, display width 25; `:close` cleared the tab-local window state.
+- Attempt 1: added visual inner padding, cleared the stale placeholder, restored the editor statusline, highlighted the confirmation ends and tried a reply-border title; this fixed those cells, but the reply rule was still absent and the editor background remained one row low.
+- Attempt 2: gave the reply float a real top border and restored the editor view after opening; the border then overlaid the hint row, its title lacked the approved leading border cell, and the background still remained one row low.
