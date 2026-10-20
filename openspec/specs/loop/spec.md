@@ -1093,6 +1093,14 @@ a test child SHALL exit when its test worker is gone, `make test FILE=<directory
 - **WHEN** `tests/prune_tmp.sh` runs on a root holding an old unused dir (with a read-only and a write-only dir inside), a young dir, and an old dir a running process names
 - **THEN** only the old unused dir is removed, the script reports one removal and prints nothing on stderr
 
+#### Scenario: Check stops orphaned test processes
+- **WHEN** `tests/prune_tmp.sh <root>/` runs while a Neovim reparented to launchd has `XDG_DATA_HOME` under `<root>`, and the caller has a live child of its own
+- **THEN** it exits 0 with no stderr, prints `stopped 1 orphaned test processes`, the orphan exits and the caller's child lives
+
+#### Scenario: Test children keep the Go build cache under .tests
+- **WHEN** a test child starts through `tests/helpers.lua` and runs `go env GOCACHE`
+- **THEN** its `GOCACHE` and the `go` answer are `<repo>/.tests/go/cache` (`tests/check.sh` empties it past `CHECK_GOCACHE_GB`, default 5)
+
 ### Requirement: Test bootstrap ignores a leaked GIT_DIR
 `tests/bootstrap.sh` and `tests/fixtures/build.sh` SHALL unset Git's local environment (`git rev-parse --local-env-vars`) before any git command, so a `make test` run from `git bisect run` or a hook never re-initializes the real repository, and `followup.py` SHALL refuse to move the base branch while the repository reads as bare.
 

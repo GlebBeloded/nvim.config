@@ -30,4 +30,28 @@ T["loop: Check prunes stale Neovim temp dirs"] = function()
 	eq(result.stdout:find("removed 1 stale Neovim temp dirs", 1, true) ~= nil, true, { fail_reason = result.stdout })
 end
 
+T["loop: Check stops orphaned test processes"] = function()
+	local root = vim.fs.joinpath(vim.fn.tempname(), "nvim.orphantest")
+	vim.fn.mkdir(vim.fs.joinpath(root, "Live", "data"), "p")
+	-- a language server whose test child died: its shell exits, so it is reparented to launchd
+	local env = { XDG_DATA_HOME = vim.fs.joinpath(root, "Live", "data") }
+	local pid_file = vim.fs.joinpath(root, "pid")
+	-- a Neovim, not /bin/sleep: macOS hides a system binary's env from `ps eww`
+	local server = ("%q --clean --headless -c 'sleep 300' </dev/null >/dev/null 2>&1 &"):format(vim.v.progpath)
+	H.system(child, { "sh", "-c", server .. (" echo $! > %q"):format(pid_file) }, root, env)
+	local pid = tonumber(vim.fn.readfile(pid_file)[1])
+	local other = vim.system({ "sleep", "300" }) -- this process's own child: not an orphan, not under root
+	local result = H.system(child, { vim.fs.joinpath(H.root, "tests/prune_tmp.sh"), root .. "/" }, root)
+	eq({ result.code, result.stderr }, { 0, "" }, { fail_reason = result.stdout .. result.stderr })
+	eq(result.stdout:find("stopped 1 orphaned test processes", 1, true) ~= nil, true, { fail_reason = result.stdout })
+	eq(
+		vim.wait(5000, function()
+			return vim.uv.kill(pid, 0) ~= 0
+		end, 50),
+		true
+	)
+	eq(vim.uv.kill(other.pid, 0), 0)
+	other:kill(9)
+end
+
 return T

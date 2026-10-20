@@ -6,6 +6,13 @@ local child = H.new_child()
 
 local T = H.child_set(child, child.start_bare)
 
+T["loop: Test children keep the Go build cache under .tests"] = function()
+	local cache = vim.fs.joinpath(H.root, ".tests/go/cache")
+	eq(child.lua_get("vim.env.GOCACHE"), cache)
+	local out = H.system(child, { "go", "env", "GOCACHE" }, H.root)
+	eq(vim.trim(out.stdout), cache, { fail_reason = out.stderr })
+end
+
 T["loop: A test directory runs its files"] = function()
 	local dir = vim.fn.tempname()
 	vim.fn.mkdir(vim.fs.joinpath(dir, "area/nested"), "p")

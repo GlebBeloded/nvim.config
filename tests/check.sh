@@ -36,6 +36,11 @@ check_lock() {
 
 check_lock
 "$ROOT/tests/prune_tmp.sh" || true # stale temp dirs of killed test children (prune_tmp.sh)
+# the tests' Go build cache (tests/helpers.lua isolate): emptied past CHECK_GOCACHE_GB (default 5), gopls refills it
+gocache=$ROOT/.tests/go/cache
+if [ -d "$gocache" ] && [ "$(du -sk "$gocache" | cut -f1)" -gt $((${CHECK_GOCACHE_GB:-5} * 1048576)) ]; then
+	GOCACHE=$gocache go clean -cache && echo "check: emptied the tests' Go build cache (over ${CHECK_GOCACHE_GB:-5} GB)"
+fi
 logs=$(mktemp -d "${TMPDIR:-/tmp}/check.XXXXXX")
 trap 'lock_release; rm -rf "$logs"' EXIT
 trap 'exit 130' INT
