@@ -52,7 +52,7 @@ local function picker_line()
 	]])
 end
 
-local T = H.child_set(child, start, { reuse = true })
+local T = H.child_set(child, start)
 
 T["picker: Input prompt submits its query"] = function()
 	open_input()

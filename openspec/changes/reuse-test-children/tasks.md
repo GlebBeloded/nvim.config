@@ -8,7 +8,7 @@ Scenarios: `loop: Reusable child resets case state`, `loop: Fresh child remains 
 
 - Opt in with `H.child_set(child, start, { reuse = true })` so existing callers retain fresh children without changes.
 - Reuse children in ownership, assign, and hidden; keep apply, plugin-ownership, open, adapters, context, and run fresh because the isolation trials exposed one-shot events, terminated children, stale picker callbacks, retained invocation history, a deleted startup fixture, and stale MiniPick buffers respectively.
-- Reuse children in paste, dashboard, input, and PR statusline; keep core keymaps and the main statusline fresh because child restarts remove the installed reset and a later statusline case requires the startup dashboard.
+- Reuse children in paste, dashboard, and PR statusline; keep input, core keymaps, and the main statusline fresh because input retains mutable globals and an active blank-query picker, child restarts remove the installed reset, and a later statusline case requires the startup dashboard.
 - Measure the gate-shaped integration layer with `JOBS=12`: base `d60a6e5f` ran 767 cases in 247.09 s with 759 full-config starts; after the safe opt-ins `31e8c375` ran 768 cases in 252.30 s with 757 starts.
 
 ## 2. Enable cached Lua loading before configuration imports
