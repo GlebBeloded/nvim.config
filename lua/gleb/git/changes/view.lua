@@ -21,6 +21,7 @@ local DIFF_DEBOUNCE_MS = 50
 local forget
 local cleanup
 local request_diff
+local expand_branch_node
 local augroup = vim.api.nvim_create_augroup("gleb_changes", { clear = true })
 
 ---@class ChangesView
@@ -52,6 +53,10 @@ local augroup = vim.api.nvim_create_augroup("gleb_changes", { clear = true })
 ---@field branch_generation integer
 ---@field branch_info? gleb.git.base.Info
 ---@field branch_nodes? gleb.ui.tree.Node[]
+---@field commit_nodes? gleb.ui.tree.Node[]
+---@field commit_files table<string, gleb.ui.tree.Node[]>
+---@field commit_view boolean
+---@field commit_generation integer
 ---@field local_ready boolean
 ---@field tabs_ready boolean
 ---@field on_ready? fun(view: ChangesView)
@@ -641,11 +646,17 @@ function M.open(root, selected_path, review, on_ready)
 		branch_available = false,
 		branch_request = 0,
 		branch_generation = 0,
+		commit_files = {},
+		commit_view = false,
+		commit_generation = 0,
 		local_ready = false,
 		tabs_ready = false,
 		on_ready = on_ready,
 	}
 	tree_view.attach(buf, view.tree, {
+		expand = function(node)
+			return expand_branch_node(view, node)
+		end,
 		fallback = function()
 			select_file(view, "")
 		end,
@@ -656,6 +667,47 @@ function M.open(root, selected_path, review, on_ready)
 	resolve_tabs(view)
 	refresh_now(view)
 	return view
+end
+
+---@param panel ChangesView
+---@return boolean current
+local function commit_request_current(panel, generation)
+	return require("gleb.git.changes").state.by_tab[panel.tab] == panel
+		and panel.commit_generation == generation
+		and panel.commit_view
+		and panel.active_tab == "branch"
+end
+
+---@param panel ChangesView
+---@param node gleb.ui.tree.Node
+---@return boolean expanded
+expand_branch_node = function(panel, node)
+	local row = node.data
+	if panel.active_tab ~= "branch" or not panel.commit_view or not row or row.kind ~= "commit" then
+		return true
+	end
+	local hash = assert(row.full_hash, "Branch commit has no hash")
+	local cached = panel.commit_files[hash]
+	if cached then
+		node.children = cached
+		return true
+	end
+	panel.commit_generation = panel.commit_generation + 1
+	local generation = panel.commit_generation
+	branch.load_commit_files(panel.root, hash, generation, function(candidate)
+		return commit_request_current(panel, candidate)
+	end, function(files)
+		panel.commit_files[hash] = files
+		local current = panel.tree.nodes[node.id]
+		if not current then
+			return
+		end
+		current.children = files
+		tree_model.rebuild(panel.tree, assert(panel.commit_nodes, "Branch commits have not loaded"))
+		tree_model.set_open(panel.tree, node.id, true)
+		draw(panel, node.id)
+	end)
+	return false
 end
 
 --- Return the ordered tabs currently available in a Changes panel.
@@ -682,6 +734,9 @@ end
 ---@return nil
 function M.activate_tab(panel, id)
 	panel.active_tab = id
+	if id ~= "branch" then
+		panel.commit_view = false
+	end
 	draw_tabs(panel)
 	if id == "local" then
 		tree_model.rebuild(panel.tree, tree_nodes(panel.local_rows))
@@ -704,6 +759,50 @@ function M.activate_tab(panel, id)
 		end)
 	end
 	M.review(panel)
+end
+
+--- Toggle the Branch tab between its files and commits views.
+---@param panel ChangesView
+---@return nil
+function M.toggle_commits(panel)
+	if panel.active_tab ~= "branch" then
+		return
+	end
+	panel.commit_generation = panel.commit_generation + 1
+	if panel.commit_view then
+		panel.commit_view = false
+		tree_model.rebuild(panel.tree, assert(panel.branch_nodes, "Branch files have not loaded"))
+		draw(panel)
+		return
+	end
+	panel.commit_view = true
+	if panel.commit_nodes then
+		tree_model.rebuild(panel.tree, panel.commit_nodes)
+		local first = panel.commit_nodes[4]
+		local selected = first and first.children and first.children[1] and first.children[1].id or nil
+		draw(panel, selected)
+		return
+	end
+	local generation = panel.commit_generation
+	branch.load_commits(
+		panel.root,
+		assert(panel.branch_info, "Branch tab has no base"),
+		assert(panel.branch_nodes, "Branch files have not loaded"),
+		generation,
+		function(candidate)
+			return commit_request_current(panel, candidate)
+		end,
+		function(nodes)
+			panel.commit_nodes = nodes
+			local newest = nodes[4]
+			if newest and newest.data and newest.data.full_hash then
+				panel.commit_files[newest.data.full_hash] = newest.children or {}
+			end
+			tree_model.rebuild(panel.tree, nodes)
+			local selected = newest and newest.children and newest.children[1] and newest.children[1].id or nil
+			draw(panel, selected)
+		end
+	)
 end
 
 --- Focus a Changes panel and show its selected file without debounce.

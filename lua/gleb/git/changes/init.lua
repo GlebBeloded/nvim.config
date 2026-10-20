@@ -119,6 +119,15 @@ function M.toggle_fold()
 	end
 end
 
+--- Toggle the current Branch tab between files and commits.
+---@return nil
+function M.toggle_commits()
+	local current = M.state.by_tab[vim.api.nvim_get_current_tabpage()]
+	if current then
+		view.toggle_commits(current)
+	end
+end
+
 --- Open a file row, or fold a structural row.
 ---@return nil
 function M.open_selected()

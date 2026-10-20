@@ -156,6 +156,82 @@ local function branch_panel()
 	end)()]])
 end
 
+---@return table
+local function current_panel()
+	return child.lua_get([[(function()
+		local view = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		local rows = vim.iter(view.rows):map(function(row)
+			return {
+				id = row.id,
+				kind = row.kind,
+				label = row.label,
+				depth = row.depth,
+				added = row.added,
+				removed = row.removed,
+				hash = row.hash,
+				age = row.age,
+			}
+		end):totable()
+		return {
+			active = view.active_tab,
+			commit_view = view.commit_view,
+			lines = vim.api.nvim_buf_get_lines(view.buf, 0, -1, false),
+			rows = rows,
+			cursor = vim.api.nvim_win_get_cursor(view.win)[1],
+		}
+	end)()]])
+end
+
+---@param id string
+local function select_row(id)
+	child.lua(
+		[[(function(target)
+		local view = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		for index, row in ipairs(view.rows) do
+			if row.id == target then
+				vim.api.nvim_win_set_cursor(view.win, { index, 0 })
+				return
+			end
+		end
+		error("row not found: " .. target)
+	end)(...)]],
+		{ id }
+	)
+end
+
+---@return string root
+local function open_branch_tab()
+	child.wait_very_lazy()
+	local root = F.copy("billing-branch", vim.fn.tempname() .. "/billing-branch")
+	report_pull_request(root)
+	local invoice = vim.fs.joinpath(root, "internal/billing/invoice.go")
+	child.cmd("cd " .. vim.fn.fnameescape(root))
+	child.cmd("edit " .. vim.fn.fnameescape(invoice))
+	child.lua([[require("gleb.git.changes.branch").now = function() return 1767315600 end]])
+	review_changes()
+	wait_for_tab("local", true)
+	review_changes()
+	branch_panel()
+	return root
+end
+
+local function wait_for_commits()
+	assert(
+		child.wait(
+			[[
+		(function()
+			local view = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+			return view.commit_view
+				and view.rows[5]
+				and view.rows[5].id == "branch:commit:e325463:file:internal/billing/invoice.go"
+		end)()
+	]],
+			3000
+		),
+		"Branch commits did not load"
+	)
+end
+
 ---@param items table
 ---@param key string
 ---@return table
@@ -369,6 +445,178 @@ T["git: Branch tab colours committed files"] = function()
 			:totable(),
 		{}
 	)
+end
+
+T["git: c shows the branch commits"] = function()
+	open_branch_tab()
+
+	child.type_keys("c", "<Esc>")
+	wait_for_commits()
+	local panel = current_panel()
+
+	eq(panel.rows, {
+		{ id = "branch:header", kind = "header", label = "#482 feat/tax → main", depth = 0 },
+		{ id = "branch:blank", kind = "blank", label = "", depth = 0 },
+		{ id = "branch:all", kind = "all", label = "All changes", depth = 0 },
+		{
+			id = "branch:commit:e325463",
+			kind = "commit",
+			label = "wire tax into Total",
+			depth = 0,
+			hash = "e325463",
+			age = "1h",
+		},
+		{
+			id = "branch:commit:e325463:file:internal/billing/invoice.go",
+			kind = "file",
+			label = "invoice.go",
+			depth = 1,
+			added = 11,
+			removed = 2,
+		},
+		{
+			id = "branch:commit:07cb52e",
+			kind = "commit",
+			label = "add Rate and tax tests",
+			depth = 0,
+			hash = "07cb52e",
+			age = "3h",
+		},
+		{
+			id = "branch:commit:b5435c5",
+			kind = "commit",
+			label = "add tax.go",
+			depth = 0,
+			hash = "b5435c5",
+			age = "1d",
+		},
+	})
+	assert(panel.lines[4]:find("e325463 wire tax into Tot…", 1, true), "newest commit subject was not truncated")
+	assert(panel.lines[4]:match("1h%s*$"), "newest commit age was not right-aligned")
+	eq(panel.cursor, 5)
+end
+
+T["git: c again shows the branch files"] = function()
+	open_branch_tab()
+	child.type_keys("c", "<Esc>")
+	wait_for_commits()
+
+	child.type_keys("c", "<Esc>")
+	assert(
+		child.wait(
+			[[require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()].commit_view == false]],
+			3000
+		)
+	)
+	local panel = current_panel()
+
+	eq(values_for(panel.rows, "label"), {
+		"#482 feat/tax → main",
+		"3 commits · merge-base 4ccefde",
+		"",
+		"internal/billing",
+		"invoice.go",
+		"invoice_test.go",
+		"tax.go",
+		"tax_test.go",
+	})
+	eq(panel.rows[panel.cursor].label, "invoice.go")
+end
+
+T["git: Expanding a commit lists its files"] = function()
+	open_branch_tab()
+	child.type_keys("c", "<Esc>")
+	wait_for_commits()
+	select_row("branch:commit:07cb52e")
+
+	child.type_keys("za")
+	assert(
+		child.wait(
+			[[
+		(function()
+			local rows = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()].rows
+			return vim.iter(rows):any(function(row)
+				return row.id == "branch:commit:07cb52e:file:internal/billing/tax_test.go"
+			end)
+		end)()
+	]],
+			3000
+		),
+		"Commit files did not load"
+	)
+	local panel = current_panel()
+	local commit
+	for index, row in ipairs(panel.rows) do
+		if row.id == "branch:commit:07cb52e" then
+			commit = index
+			break
+		end
+	end
+	assert(commit, "Commit row disappeared")
+	eq({ panel.rows[commit + 1], panel.rows[commit + 2] }, {
+		{
+			id = "branch:commit:07cb52e:file:internal/billing/invoice_test.go",
+			kind = "file",
+			label = "invoice_test.go",
+			depth = 1,
+			added = 20,
+			removed = 1,
+		},
+		{
+			id = "branch:commit:07cb52e:file:internal/billing/tax_test.go",
+			kind = "file",
+			label = "tax_test.go",
+			depth = 1,
+			added = 33,
+			removed = 0,
+		},
+	})
+end
+
+T["git: Expanding All changes shows every branch file"] = function()
+	open_branch_tab()
+	child.type_keys("c", "<Esc>")
+	wait_for_commits()
+	select_row("branch:all")
+
+	child.type_keys("za")
+	local panel = current_panel()
+	eq(vim.list_slice(values_for(panel.rows, "label"), 3, 7), {
+		"All changes",
+		"internal/billing",
+		"invoice.go",
+		"invoice_test.go",
+		"tax.go",
+	})
+	eq(panel.rows[8].label, "tax_test.go")
+	eq(panel.rows[4].depth, 1)
+	eq(panel.rows[5].depth, 2)
+end
+
+T["git: c on the Local tab does nothing"] = function()
+	child.wait_very_lazy()
+	open_fixture("billing-branch")
+	assert(
+		child.wait(
+			[[
+		(function()
+			local view = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+			return view and view.local_ready and #view.rows > 0
+		end)()
+	]],
+			3000
+		),
+		"Local rows did not load"
+	)
+	local notifications = H.record_notify(child)
+	local before = current_panel()
+
+	child.type_keys("c", "<Esc>")
+	local after = current_panel()
+
+	eq(after.lines, before.lines)
+	eq(after.active, "local")
+	eq(notifications(), {})
 end
 
 return T

@@ -23,6 +23,13 @@ local actions = {
 		run = run("review"),
 	},
 	{
+		id = "changes.toggle_commits",
+		title = "Toggle Commits",
+		category = "Changes",
+		ft = "gleb-changes",
+		run = run("toggle_commits"),
+	},
+	{
 		id = "changes.toggle_stage",
 		title = "Toggle Stage",
 		category = "Changes",

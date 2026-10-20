@@ -11,6 +11,7 @@ local FILE = ""
 local ELLIPSIS = "…"
 local RIGHT_MARGIN = 1
 local PR_ICON = ""
+local COMMIT_ICON = "◆"
 
 ---@type table<string, string>
 local STATUS_GROUPS = {
@@ -175,9 +176,60 @@ end
 ---@param row ChangesRow
 ---@param width integer
 ---@return ChangesRenderSegment[]
+local function all_changes_segments(row, width)
+	local count = tostring(row.count) .. (row.count == 1 and " file" or " files")
+	local segments = {
+		{ text = " " },
+		{ text = row.expanded == false and COLLAPSED or EXPANDED, group = "FileTreeExpander" },
+		{ text = " " },
+		{ text = COMMIT_ICON, group = "ChangesCommitIcon" },
+		{ text = " " },
+		{ text = row.label, group = "ChangesCommittedFile" },
+	}
+	local padding = math.max(1, width - RIGHT_MARGIN - segments_width(segments) - vim.fn.strdisplaywidth(count))
+	segments[#segments + 1] = { text = string.rep(" ", padding) }
+	segments[#segments + 1] = { text = count, group = "ChangesCount" }
+	return segments
+end
+
+---@param row ChangesRow
+---@param width integer
+---@return ChangesRenderSegment[]
+local function commit_segments(row, width)
+	local age = assert(row.age, "Commit row has no age")
+	local segments = {
+		{ text = " " },
+		{ text = row.expanded == false and COLLAPSED or EXPANDED, group = "FileTreeExpander" },
+		{ text = " " },
+		{ text = COMMIT_ICON, group = "ChangesCommitIcon" },
+		{ text = " " },
+		{ text = assert(row.hash, "Commit row has no hash"), group = "ChangesCommitHash" },
+		{ text = " " },
+	}
+	local subject_width = math.max(1, width - RIGHT_MARGIN - segments_width(segments) - vim.fn.strdisplaywidth(age) - 1)
+	local subject, cut = truncate(row.label, subject_width)
+	segments[#segments + 1] = { text = subject, group = "ChangesCommittedFile" }
+	if cut then
+		segments[#segments + 1] = { text = ELLIPSIS, group = "ChangesCount" }
+	end
+	local padding = math.max(1, width - RIGHT_MARGIN - segments_width(segments) - vim.fn.strdisplaywidth(age))
+	segments[#segments + 1] = { text = string.rep(" ", padding) }
+	segments[#segments + 1] = { text = age, group = "ChangesCount" }
+	return segments
+end
+
+---@param row ChangesRow
+---@param width integer
+---@return ChangesRenderSegment[]
 local function segments_for(row, width)
 	if row.kind == "header" or row.kind == "summary" or row.kind == "blank" then
 		return branch_fixed_segments(row)
+	end
+	if row.kind == "all" then
+		return all_changes_segments(row, width)
+	end
+	if row.kind == "commit" then
+		return commit_segments(row, width)
 	end
 	if row.kind == "root" then
 		return root_segments(row)

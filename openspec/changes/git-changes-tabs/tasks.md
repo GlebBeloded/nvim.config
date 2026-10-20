@@ -65,9 +65,9 @@ Scenarios: `git: Branch tab lists the branch files`, `git: Branch tab header wit
 
 Scenarios: `git: c shows the branch commits`, `git: c again shows the branch files`, `git: Expanding a commit lists its files`, `git: Expanding All changes shows every branch file`, `git: c on the Local tab does nothing`
 
-- [ ] 9.1 Write the scenarios in tests/integration/git/test_changes_tabs.lua against the real Branch tab and `c` mapping and run `make test FILE=tests/integration/git/test_changes_tabs.lua` to see them fail
-- [ ] 9.2 Add async commits and per-commit files with generation guards and caching to lua/gleb/git/changes/branch.lua, render commit rows with truncation and ages, add `changes.toggle_commits` to lua/gleb/git/changes/actions.lua and assign `c` in settings/keymap.json
-- [ ] 9.3 Run `make test FILE=tests/integration/git/test_changes_tabs.lua` and see the scenarios pass
+- [x] 9.1 Write the scenarios in tests/integration/git/test_changes_tabs.lua against the real Branch tab and `c` mapping and run `make test FILE=tests/integration/git/test_changes_tabs.lua` to see them fail
+- [x] 9.2 Add async commits and per-commit files with generation guards and caching to lua/gleb/git/changes/branch.lua, render commit rows with truncation and ages, add `changes.toggle_commits` to lua/gleb/git/changes/actions.lua and assign `c` in settings/keymap.json
+- [x] 9.3 Run `make test FILE=tests/integration/git/test_changes_tabs.lua` and see the scenarios pass
 
 ## 10. Branch hint row
 
@@ -199,3 +199,4 @@ Scenarios: `git: Local tab matches the approved render`, `git: Branch tab matche
 - The strip counts Branch files with a name-only merge-base diff, so drawing the pill does not load the later Branch row model.
 - Branch loading uses `git rev-list --count` alongside the two file commands, because the files view needs summary wording without loading commit details.
 - Branch directory nodes use `branch:directory:<path>` IDs, keeping their fold state distinct from the specified `branch:file:<path>` leaf IDs.
+- Commit-file caches are panel-local and keyed by full commit hash, so reopening a fold avoids Git while stale callbacks remain generation-guarded.

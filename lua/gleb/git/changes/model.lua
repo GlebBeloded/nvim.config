@@ -20,7 +20,7 @@ local CHECKBOX_MIXED = "󰡖"
 ---@field files ChangesRow[]
 
 ---@class ChangesRow
----@field kind "root"|"directory"|"file"|"header"|"summary"|"blank"
+---@field kind "root"|"directory"|"file"|"header"|"summary"|"blank"|"all"|"commit"
 ---@field root string
 ---@field id? string
 ---@field label string
@@ -40,6 +40,10 @@ local CHECKBOX_MIXED = "󰡖"
 ---@field removed? integer
 ---@field committed? boolean
 ---@field pr? boolean
+---@field hash? string
+---@field full_hash? string
+---@field parents? string[]
+---@field age? string
 
 ---@class ChangesNumstat
 ---@field added integer

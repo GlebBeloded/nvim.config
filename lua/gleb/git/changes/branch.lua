@@ -138,12 +138,12 @@ local function file_nodes(rows)
 	return roots
 end
 
----@param info gleb.git.base.Info
 ---@param name_status string
 ---@param numstat string
----@param commit_count integer
+---@param grouped boolean
+---@param id_prefix string
 ---@return gleb.ui.tree.Node[]
-local function nodes(info, name_status, numstat, commit_count)
+local function changed_file_nodes(name_status, numstat, grouped, id_prefix)
 	local stats = parse_numstat(numstat)
 	local files = vim.iter(M.parse_name_status(name_status))
 		:map(function(file)
@@ -153,7 +153,7 @@ local function nodes(info, name_status, numstat, commit_count)
 				kind = "file",
 				root = "branch",
 				label = vim.fs.basename(file.path),
-				depth = 0,
+				depth = grouped and 0 or 1,
 				path = file.path,
 				orig = file.orig,
 				status = file.status,
@@ -164,7 +164,23 @@ local function nodes(info, name_status, numstat, commit_count)
 			}
 		end)
 		:totable()
-	local rows = changes_model.group_files(files, settings.load().nesting.rules, "branch")
+	if grouped then
+		return file_nodes(changes_model.group_files(files, settings.load().nesting.rules, "branch"))
+	end
+	return vim.iter(files)
+		:map(function(row)
+			row.id = id_prefix .. assert(row.path, "Branch file has no path")
+			return { id = row.id, data = row }
+		end)
+		:totable()
+end
+
+---@param info gleb.git.base.Info
+---@param name_status string
+---@param numstat string
+---@param commit_count integer
+---@return gleb.ui.tree.Node[]
+local function file_view_nodes(info, name_status, numstat, commit_count)
 	local base_name = info.base_ref:gsub("^origin/", "")
 	local header = info.pr and ("#%d %s → %s"):format(info.pr.number, info.branch, base_name)
 		or ("%s → %s"):format(info.branch, base_name)
@@ -184,8 +200,180 @@ local function nodes(info, name_status, numstat, commit_count)
 	for _, row in ipairs(fixed) do
 		result[#result + 1] = { id = assert(row.id, "branch fixed row has no id"), data = row }
 	end
-	vim.list_extend(result, file_nodes(rows))
+	vim.list_extend(result, changed_file_nodes(name_status, numstat, true, "branch:file:"))
 	return result
+end
+
+---@param nodes gleb.ui.tree.Node[]
+---@param depth integer
+---@return gleb.ui.tree.Node[]
+local function nested_copy(nodes, depth)
+	return vim.iter(nodes)
+		:map(function(node)
+			local data = vim.deepcopy(node.data)
+			data.depth = data.depth + depth
+			return {
+				id = node.id,
+				children = nested_copy(node.children or {}, depth),
+				foldable = node.foldable,
+				open_by_default = node.open_by_default,
+				data = data,
+			}
+		end)
+		:totable()
+end
+
+---@param nodes gleb.ui.tree.Node[]
+---@return integer
+local function count_files(nodes)
+	local count = 0
+	for _, node in ipairs(nodes) do
+		if node.data and node.data.kind == "file" then
+			count = count + 1
+		end
+		count = count + count_files(node.children or {})
+	end
+	return count
+end
+
+---@param info gleb.git.base.Info
+---@param branch_nodes gleb.ui.tree.Node[]
+---@param commits ChangesBranchCommit[]
+---@param newest_files gleb.ui.tree.Node[]
+---@return gleb.ui.tree.Node[]
+local function commit_nodes(info, branch_nodes, commits, newest_files)
+	local base_name = info.base_ref:gsub("^origin/", "")
+	local header = info.pr and ("#%d %s → %s"):format(info.pr.number, info.branch, base_name)
+		or ("%s → %s"):format(info.branch, base_name)
+	---@type ChangesRow
+	local header_row =
+		{ id = "branch:header", kind = "header", root = "branch", label = header, depth = 0, pr = info.pr ~= nil }
+	---@type ChangesRow
+	local blank_row = { id = "branch:blank", kind = "blank", root = "branch", label = "", depth = 0 }
+	---@type ChangesRow
+	local all_row = {
+		id = "branch:all",
+		kind = "all",
+		root = "branch",
+		label = "All changes",
+		depth = 0,
+		count = count_files(vim.list_slice(branch_nodes, 4)),
+	}
+	local result = {
+		{ id = header_row.id, data = header_row },
+		{ id = blank_row.id, data = blank_row },
+		{
+			id = all_row.id,
+			children = nested_copy(vim.list_slice(branch_nodes, 4), 1),
+			foldable = true,
+			open_by_default = false,
+			data = all_row,
+		},
+	}
+	for index, commit in ipairs(commits) do
+		local short = commit.hash:sub(1, 7)
+		---@type ChangesRow
+		local row = {
+			id = "branch:commit:" .. short,
+			kind = "commit",
+			root = "branch",
+			label = commit.subject,
+			depth = 0,
+			hash = short,
+			full_hash = commit.hash,
+			parents = commit.parents,
+			age = M.age(math.max(0, M.now() - commit.timestamp)),
+		}
+		result[#result + 1] = {
+			id = row.id,
+			children = index == 1 and newest_files or {},
+			foldable = true,
+			open_by_default = index == 1,
+			data = row,
+		}
+	end
+	return result
+end
+
+---@param root string
+---@param commit string
+---@param generation integer
+---@param is_current fun(generation: integer): boolean
+---@param callback fun(nodes: gleb.ui.tree.Node[])
+---@return nil
+function M.load_commit_files(root, commit, generation, is_current, callback)
+	local pending = 2
+	local name_status
+	local numstat
+	local failed = false
+	---@param kind "name_status"|"numstat"
+	---@param result vim.SystemCompleted
+	local function complete(kind, result)
+		vim.schedule(function()
+			if not is_current(generation) then
+				return
+			end
+			failed = failed or result.code ~= 0
+			if kind == "name_status" then
+				name_status = result.stdout or ""
+			else
+				numstat = result.stdout or ""
+			end
+			pending = pending - 1
+			if pending == 0 and not failed then
+				callback(
+					changed_file_nodes(
+						name_status or "",
+						numstat or "",
+						false,
+						"branch:commit:" .. commit:sub(1, 7) .. ":file:"
+					)
+				)
+			end
+		end)
+	end
+	local parent = commit .. "^"
+	vim.system(
+		{ "git", "diff", "--name-status", "-z", "-M", parent, commit },
+		{ cwd = root, text = true },
+		function(result)
+			complete("name_status", result)
+		end
+	)
+	vim.system({ "git", "diff", "--numstat", "-z", "-M", parent, commit }, { cwd = root, text = true }, function(result)
+		complete("numstat", result)
+	end)
+end
+
+--- Load commits and the newest commit's files while the caller's generation is current.
+---@param root string
+---@param info gleb.git.base.Info
+---@param branch_nodes gleb.ui.tree.Node[]
+---@param generation integer
+---@param is_current fun(generation: integer): boolean
+---@param callback fun(nodes: gleb.ui.tree.Node[])
+---@return nil
+function M.load_commits(root, info, branch_nodes, generation, is_current, callback)
+	local range = info.merge_base .. "..HEAD"
+	vim.system(
+		{ "git", "log", "--format=%H%x00%P%x00%ct%x00%s%x00", "-z", range },
+		{ cwd = root, text = true },
+		function(result)
+			vim.schedule(function()
+				if not is_current(generation) or result.code ~= 0 then
+					return
+				end
+				local commits = M.parse_commits(result.stdout or "")
+				if not commits[1] then
+					callback(commit_nodes(info, branch_nodes, {}, {}))
+					return
+				end
+				M.load_commit_files(root, commits[1].hash, generation, is_current, function(files)
+					callback(commit_nodes(info, branch_nodes, commits, files))
+				end)
+			end)
+		end
+	)
 end
 
 --- Load branch files and return them only while the caller's generation is current.
@@ -219,7 +407,7 @@ function M.load_files(root, info, generation, is_current, callback)
 			end
 			pending = pending - 1
 			if pending == 0 and not failed and commit_count then
-				callback(nodes(info, name_status or "", numstat or "", commit_count))
+				callback(file_view_nodes(info, name_status or "", numstat or "", commit_count))
 			end
 		end)
 	end
