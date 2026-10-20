@@ -189,7 +189,7 @@ Scenarios: `git: Real Cmd+G presses cycle the changes tabs`
 
 Scenarios: `git: Local tab matches the approved render`, `git: Branch tab matches the approved render`, `git: Branch commits match the approved render`, `git: Real Cmd+G presses cycle the changes tabs`
 
-- [ ] 25.1 Run `make test-screen`, run `make e2e` in the sandbox VM, then run `make check`
+- [x] 25.1 Run `make test-screen`, run `make e2e` in the sandbox VM, then run `make check`
 
 ## Agent decisions
 
