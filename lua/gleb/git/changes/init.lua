@@ -190,6 +190,7 @@ function M.review()
 	end
 	replace_tree_and_open(false, function(panel)
 		apply_review_tab(panel, tabs.first(cycle_state(panel)))
+		require("gleb.pr").refresh(panel.root)
 	end)
 end
 

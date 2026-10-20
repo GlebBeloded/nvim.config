@@ -89,7 +89,7 @@ local recent = palette("█", {
 	INDENT .. "│ Increase Window Height  ⌃↑                                    Window │",
 	INDENT .. "│ Decrease Window Height  ⌃↓                                    Window │",
 	INDENT .. "│ Decrease Window Width  ⌃←                                     Window │",
-}, "49/49")
+}, "50/50")
 
 return {
 	["opened palette screen"] = full(empty_buffer, recent),
@@ -103,7 +103,7 @@ return {
 			INDENT .. "│ Focus Right Window  ⌘L                                        Window │",
 			INDENT .. "│ Find in Files...  ⌘⇧F                                    Edit | Find │",
 			INDENT .. "│ Find References  gr                                              LSP │",
-		}, "7/49")
+		}, "7/50")
 	),
 	["run action screen"] = full(empty_buffer, recent),
 	["shortcut capture screen"] = full(empty_buffer, assignment(" █")),

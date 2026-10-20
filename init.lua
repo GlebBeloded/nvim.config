@@ -21,6 +21,7 @@ require("gleb.actions").setup({
 	require("gleb.folding.actions"),
 	require("gleb.ai.actions"),
 	require("gleb.git.actions"),
+	require("gleb.pr.actions"),
 	require("gleb.diff.actions"),
 	require("gleb.file_tree.actions"),
 	require("gleb.autocommands.actions"),
@@ -44,6 +45,7 @@ require("gleb.folding") -- must be after treesitter
 require("gleb.autopairs") -- must be after treesitter
 require("gleb.comments") -- must be after treesitter
 require("gleb.git")
+require("gleb.pr")
 require("gleb.run")
 require("gleb.bufferline")
 require("gleb.indentline")
