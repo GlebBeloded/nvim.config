@@ -105,9 +105,9 @@ Scenarios: `git: Branch tab refreshes after a commit`
 
 Scenarios: `git: Tab actions are in the catalog`, `git: Show Branch Commits opens the commit view`, `git: Show Branch on the default branch`
 
-- [ ] 14.1 Write the scenarios in tests/integration/git/test_changes_tabs.lua against the real action catalog and run `make test FILE=tests/integration/git/test_changes_tabs.lua` to see them fail
-- [ ] 14.2 Add `changes.show_local`, `changes.show_branch` and `changes.show_branch_commits` to lua/gleb/git/changes/actions.lua with no keys and the default-branch WARN behaviour
-- [ ] 14.3 Run `make test FILE=tests/integration/git/test_changes_tabs.lua` and see the scenarios pass
+- [x] 14.1 Write the scenarios in tests/integration/git/test_changes_tabs.lua against the real action catalog and run `make test FILE=tests/integration/git/test_changes_tabs.lua` to see them fail
+- [x] 14.2 Add `changes.show_local`, `changes.show_branch` and `changes.show_branch_commits` to lua/gleb/git/changes/actions.lua with no keys and the default-branch WARN behaviour
+- [x] 14.3 Run `make test FILE=tests/integration/git/test_changes_tabs.lua` and see the scenarios pass
 
 ## 15. Repository-local tab state
 
@@ -200,6 +200,7 @@ Scenarios: `git: Local tab matches the approved render`, `git: Branch tab matche
 - Branch loading uses `git rev-list --count` alongside the two file commands, because the files view needs summary wording without loading commit details.
 - Branch directory nodes use `branch:directory:<path>` IDs, keeping their fold state distinct from the specified `branch:file:<path>` leaf IDs.
 - Commit-file caches are panel-local and keyed by full commit hash, so reopening a fold avoids Git while stale callbacks remain generation-guarded.
+- Branch actions resolve availability before replacing another sidebar, so unavailable tabs leave the current UI unchanged.
 
 ## Stuck
 

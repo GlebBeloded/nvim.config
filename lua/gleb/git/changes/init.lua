@@ -74,6 +74,62 @@ local function apply_review_tab(panel, id)
 	end
 end
 
+---@param root string
+---@return nil
+local function notify_no_branch(root)
+	local entry = require("gleb.git.base").state.roots[root]
+	local branch = entry and entry.branch or "current branch"
+	vim.notify("No branch changes on " .. branch, vim.log.levels.WARN)
+end
+
+---@param panel ChangesView
+---@param commit_view boolean
+---@return nil
+local function activate_branch(panel, commit_view)
+	if not panel.branch_available then
+		notify_no_branch(panel.root)
+		return
+	end
+	view.activate_tab(panel, "branch")
+	if commit_view and not panel.commit_view then
+		view.toggle_commits(panel)
+	end
+end
+
+---@param commit_view boolean
+---@return nil
+local function show_branch(commit_view)
+	local tab = vim.api.nvim_get_current_tabpage()
+	local current = M.state.by_tab[tab]
+	if current and vim.api.nvim_win_is_valid(current.win) then
+		activate_branch(current, commit_view)
+		return
+	end
+	local selected_path, dir = current_location()
+	git.resolve_root(dir, function(result, root)
+		if vim.api.nvim_get_current_tabpage() ~= tab then
+			return
+		end
+		if not root then
+			vim.notify("Git root error: " .. vim.trim(result.stderr or ""), vim.log.levels.ERROR)
+			return
+		end
+		require("gleb.git.base").resolve(root, function(info)
+			if vim.api.nvim_get_current_tabpage() ~= tab then
+				return
+			end
+			if not info then
+				notify_no_branch(root)
+				return
+			end
+			sidebar.close("file_tree")
+			view.open(root, selected_path, false, function(panel)
+				activate_branch(panel, commit_view)
+			end)
+		end)
+	end)
+end
+
 --- Toggle the current tab's Changes panel.
 ---@return nil
 function M.toggle()
@@ -101,6 +157,31 @@ function M.review()
 	replace_tree_and_open(false, function(panel)
 		apply_review_tab(panel, tabs.first(cycle_state(panel)))
 	end)
+end
+
+--- Open or focus the Local changes tab.
+---@return nil
+function M.show_local()
+	local current = M.state.by_tab[vim.api.nvim_get_current_tabpage()]
+	if current and vim.api.nvim_win_is_valid(current.win) then
+		view.activate_tab(current, "local")
+		return
+	end
+	replace_tree_and_open(false, function(panel)
+		view.activate_tab(panel, "local")
+	end)
+end
+
+--- Open or focus the Branch changes tab.
+---@return nil
+function M.show_branch()
+	show_branch(false)
+end
+
+--- Open or focus the Branch commit view.
+---@return nil
+function M.show_branch_commits()
+	show_branch(true)
 end
 
 --- Open the Changes panel for a directory.

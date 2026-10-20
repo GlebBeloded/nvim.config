@@ -23,6 +23,24 @@ local actions = {
 		run = run("review"),
 	},
 	{
+		id = "changes.show_local",
+		title = "Show Local Changes",
+		category = "View | Tool Windows",
+		run = run("show_local"),
+	},
+	{
+		id = "changes.show_branch",
+		title = "Show Branch Changes",
+		category = "View | Tool Windows",
+		run = run("show_branch"),
+	},
+	{
+		id = "changes.show_branch_commits",
+		title = "Show Branch Commits",
+		category = "View | Tool Windows",
+		run = run("show_branch_commits"),
+	},
+	{
 		id = "changes.toggle_commits",
 		title = "Toggle Commits",
 		category = "Changes",

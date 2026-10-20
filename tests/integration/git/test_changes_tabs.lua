@@ -23,6 +23,19 @@ local function review_changes()
 	]])
 end
 
+---@param id string
+local function run_action(id)
+	child.lua(
+		[[
+		local id = ...
+		local catalog = require("gleb.actions").state.applicator.catalog
+		local action = assert(catalog:get(id), id .. " is not registered")
+		action.run(require("gleb.actions.context").capture())
+	]],
+		{ id }
+	)
+end
+
 ---@param root string
 local function report_pull_request(root)
 	local output = vim.fn.tempname()
@@ -221,7 +234,8 @@ local function wait_for_commits()
 			[[
 		(function()
 			local view = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
-			return view.commit_view
+			return view
+				and view.commit_view
 				and view.rows[5]
 				and view.rows[5].id == "branch:commit:e325463:file:internal/billing/invoice.go"
 		end)()
@@ -871,6 +885,81 @@ T["git: Branch tab refreshes after a commit"] = function()
 		}
 	end)()]=])
 	eq(after, before)
+end
+
+T["git: Tab actions are in the catalog"] = function()
+	eq(
+		child.lua_get([[
+			(function()
+				local actions = require("gleb.actions")
+				local catalog = actions.state.applicator.catalog
+				local result = {}
+				for _, id in ipairs({
+					"changes.show_local",
+					"changes.show_branch",
+					"changes.show_branch_commits",
+					"changes.toggle_commits",
+				}) do
+					local action = assert(catalog:get(id), id .. " is not registered")
+					result[id] = {
+						title = action.title,
+						category = action.category,
+						ft = action.ft,
+						keys = actions.state.store.last_good[id],
+					}
+				end
+				return result
+			end)()
+		]]),
+		{
+			["changes.show_local"] = { title = "Show Local Changes", category = "View | Tool Windows" },
+			["changes.show_branch"] = { title = "Show Branch Changes", category = "View | Tool Windows" },
+			["changes.show_branch_commits"] = {
+				title = "Show Branch Commits",
+				category = "View | Tool Windows",
+			},
+			["changes.toggle_commits"] = {
+				title = "Toggle Commits",
+				category = "Changes",
+				ft = "gleb-changes",
+				keys = { "c" },
+			},
+		}
+	)
+end
+
+T["git: Show Branch Commits opens the commit view"] = function()
+	child.wait_very_lazy()
+	local root = F.copy("billing-branch", vim.fn.tempname() .. "/billing-branch")
+	report_pull_request(root)
+	local invoice = vim.fs.joinpath(root, "internal/billing/invoice.go")
+	child.cmd("cd " .. vim.fn.fnameescape(root))
+	child.cmd("edit " .. vim.fn.fnameescape(invoice))
+	child.lua([[require("gleb.git.changes.branch").now = function() return 1767315600 end]])
+
+	run_action("changes.show_branch_commits")
+	wait_for_commits()
+	local panel = current_panel()
+
+	eq(panel.active, "branch")
+	eq(panel.commit_view, true)
+	eq(panel.rows[3].id, "branch:all")
+	eq(panel_state().current, panel_state().panel)
+end
+
+T["git: Show Branch on the default branch"] = function()
+	child.wait_very_lazy()
+	open_fixture("billing")
+	wait_for_tab("local")
+	local notifications = H.record_notify(child)
+	local before = current_panel()
+
+	run_action("changes.show_branch")
+	local after = current_panel()
+
+	eq(notifications(), { { msg = "No branch changes on main", level = vim.log.levels.WARN } })
+	eq(after.active, "local")
+	eq(after.lines, before.lines)
 end
 
 T["git: Branch tab hint names the commit view key"] = function()
