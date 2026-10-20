@@ -6,9 +6,9 @@ Scenarios: `loop: Known flaky cases use deterministic readiness`, `actions: Plug
 
 ## 2. Wait for reference positions and highlights to settle
 Scenarios: `loop: Known flaky cases use deterministic readiness`, `references: Preview highlighting matches a regular buffer`, `references: UTF-16 usage columns are converted to byte columns`
-- [ ] 2.1 Treat the proposal's 6 and 3 rerun passes as the failing evidence; tighten `tests/integration/references/test_preview.lua` and `tests/integration/references/test_keys.lua` to assert explicit parser-capture and post-edit LSP readiness while preserving every capture and byte-column assertion
-- [ ] 2.2 Add the smallest test synchronization helper or read-only references hook needed to observe Treesitter parse completion and gopls acknowledgement of the rewritten source
-- [ ] 2.3 Run `make test FILE=tests/integration/references/test_preview.lua CASE="Preview highlighting matches a regular buffer"` and `make test FILE=tests/integration/references/test_keys.lua CASE="UTF-16 usage columns are converted to byte columns"` and see both pass
+- [x] 2.1 Treat the proposal's 6 and 3 rerun passes as the failing evidence; tighten `tests/integration/references/test_preview.lua` and `tests/integration/references/test_keys.lua` to assert explicit parser-capture and post-edit LSP readiness while preserving every capture and byte-column assertion
+- [x] 2.2 Add the smallest test synchronization helper or read-only references hook needed to observe Treesitter parse completion and gopls acknowledgement of the rewritten source
+- [x] 2.3 Run `make test FILE=tests/integration/references/test_preview.lua CASE="Preview highlighting matches a regular buffer"` and `make test FILE=tests/integration/references/test_keys.lua CASE="UTF-16 usage columns are converted to byte columns"` and see both pass
 
 ## 3. Drive first-paint status completion deterministically
 Scenarios: `loop: Known flaky cases use deterministic readiness`, `file-tree: First paint waits for ignored status`
@@ -46,3 +46,4 @@ Scenarios: `loop: Known flaky cases use deterministic readiness`, `keymaps: Togg
 - The proposal contains rerun counts but no literal gate `FAIL in` lines; tasks use those supplied counts as the closest available red evidence and do not search historical run artifacts or manufacture load.
 - The stale proposal label “Toggle wins over pending filesystem render” maps to the existing `keymaps: Toggle wins over a pending tree refresh` scenario located by symbol.
 - Surface timeout errors report the readiness expression and `child`/`descendants` cleanup states so a loaded-host miss identifies both the wait and teardown outcome.
+- Treesitter readiness means a capture exists at the reference position, while rewritten Go readiness requires two real gopls reference responses from that buffer.

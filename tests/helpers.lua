@@ -1181,6 +1181,27 @@ function M.wait_references_ready(child, server, opts)
 	assert(child.wait(condition, opts.timeout), "references did not become ready")
 end
 
+--- Wait until Treesitter exposes a capture at a buffer position.
+---@param child test.AsyncLspDriver
+---@param buf integer
+---@param row integer zero-based row
+---@param col integer zero-based byte column
+---@param timeout integer
+function M.wait_treesitter_captures(child, buf, row, col, timeout)
+	child.lua(
+		[[
+			local buf, row, col = ...
+			_G.treesitter_captures_ready = function()
+				local ok, captures = pcall(vim.treesitter.get_captures_at_pos, buf, row, col)
+				return ok and #captures > 0
+			end
+		]],
+		{ buf, row, col }
+	)
+	assert(child.wait("_G.treesitter_captures_ready()", timeout), "Treesitter captures did not become ready")
+	child.lua([[_G.treesitter_captures_ready = nil]])
+end
+
 --- Record rust-analyzer's quiescent status while preserving its current handler.
 ---@param child test.AsyncLspDriver
 function M.watch_rust_quiescent(child)

@@ -152,10 +152,14 @@ T["references: UTF-16 usage columns are converted to byte columns"] = function()
 	local lines = vim.fn.readfile(summary_path)
 	lines[7] = '\treturn "total: \u{20ac}" + money.Format(total)'
 	vim.fn.writefile(lines, summary_path)
+	local expected_col = assert(lines[7]:find("Format", 1, true))
+	child.cmd("edit " .. vim.fn.fnameescape(summary_path))
+	child.api.nvim_win_set_cursor(0, { 7, expected_col - 1 })
+	eq(child.wait([[#vim.lsp.get_clients({ bufnr = 0, name = "gopls" }) > 0]], TIMEOUT_MS), true)
+	H.wait_references_ready(child, "gopls", { minimum = 1, consecutive = 2, timeout = TIMEOUT_MS })
 	open_format()
 	select_row("summary.go:7")
 	eq(child.wait([[require("gleb.references.view").state.preview_usage.path == "report/summary.go"]]), true)
-	local expected_col = assert(lines[7]:find("Format", 1, true))
 
 	local marked_col = child.lua_get([[
 (function()
