@@ -29,8 +29,6 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 
 ## Loop lessons
 
-- On macOS libuv shares one FSEvents stream per loop and rebuilds it on every fs_event start or stop (a stop blocks the main loop, events during the rebuild are lost): keep watch sets stable, cover overflow with one recursive root watch, and poll listed folders briefly after watch changes instead of continuously.
-- Keep fixed readiness assertions separate from cache-warming waits: honor the gate's LSP setup timeout without scaling the measured bound.
 - A git-directory event can be dropped while macOS rebuilds its watch stream; compare the index stamp during the existing settle passes.
 - Preserve explicit branches when one branch can validly return false; Lua's and/or selection otherwise executes the fallback.
 - An aggregate expansion bound needs an operation-level tree adapter so unfold-all warns once instead of retrying every node left folded by the bound.
@@ -44,6 +42,8 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - A base-change consumer must clear cached branch models when resolution disappears and initialize them when it first appears.
 - Every Changes tab action that opens a panel must restore repository-local view and fold state before applying its requested tab.
 - When focusing a retained tab mode, rebuild from that mode's model so rendered rows cannot diverge from saved state.
+- Commit-file caches keyed by immutable full hashes should survive Branch model refreshes and be reattached to rebuilt nodes so open folds retain their children.
+- Bind debounced selection callbacks to the tab that scheduled them, and defer only data-dependent review work so tab focus changes synchronously without stale rows.
 
 ## The loop
 
