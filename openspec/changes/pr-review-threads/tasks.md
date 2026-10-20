@@ -47,10 +47,11 @@ Scenarios: `pr: pr.refresh fetches the threads again`, `pr: Opening the review p
 - [x] 8.3 Run each task scenario with `make test FILE=tests/integration/pr/test_threads.lua CASE="<scenario title>"` and see it pass
 
 ## 9. Errors
-Scenarios: `pr: PR fetch failures are classified`, `pr: A failed PR fetch warns once and keeps the threads`, `pr: pr.refresh always reports a failure`
+Scenarios: `pr: PR fetch failures are classified`, `pr: A missing gh fetch warns and clears in-flight refresh`, `pr: A failed PR fetch warns once and keeps the threads`, `pr: pr.refresh always reports a failure`
 - [x] 9.1 Write the classification table in `tests/unit/pr/test_gh.lua` and the fake-`gh` failure scenarios in `tests/integration/pr/test_threads.lua`, driving the real failure parser and refresh entry point, and see them fail
 - [x] 9.2 Implement `gh.failure`, the per-root reported-kind set, cache preservation, and reset after success
 - [x] 9.3 Run `make test FILE=tests/unit/pr/test_gh.lua CASE="PR fetch failures are classified"`, `make test FILE=tests/integration/pr/test_threads.lua CASE="A failed PR fetch warns once and keeps the threads"`, and `make test FILE=tests/integration/pr/test_threads.lua CASE="pr.refresh always reports a failure"` and see them pass
+- [x] 9.4 Guard the default runner when `gh` leaves `PATH`, and verify refresh warns, clears in-flight state, and recovers
 
 ## 10. Refresh action
 Scenarios: `pr: pr.refresh is an unbound Find Action entry`

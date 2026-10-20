@@ -438,6 +438,23 @@ T["pr: pr.refresh without a pull request"] = function()
 	eq(graphql_calls(log), 0)
 end
 
+T["pr: A missing gh fetch warns and clears in-flight refresh"] = function()
+	local root = billing_branch(true)
+	local notifications = H.record_notify(child)
+	refresh_and_open_invoice(root)
+	local path = child.lua_get("vim.env.PATH")
+
+	child.lua([[vim.env.PATH = ""; require("gleb.pr").refresh(...)]], { root })
+	eq(child.wait("next(require('gleb.pr').state.in_flight) == nil", 3000), true)
+	eq(notifications(), {
+		{ msg = "PR comments unavailable: gh not found", level = vim.log.levels.WARN },
+	})
+
+	child.lua([[vim.env.PATH = select(2, ...); require("gleb.pr").refresh(...)]], { root, path })
+	wait_for_refreshes(2)
+	eq(#child.lua_get([[require("gleb.pr").get(...).threads]], { root }), 4)
+end
+
 T["pr: A failed PR fetch warns once and keeps the threads"] = MiniTest.new_set()
 
 T["pr: A failed PR fetch warns once and keeps the threads"]["retains cached threads and the changes panel"] = function()

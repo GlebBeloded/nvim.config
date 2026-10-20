@@ -16,6 +16,12 @@ M.THREAD_COMMENTS_QUERY =
 ---@param opts table
 ---@param callback fun(result: vim.SystemCompleted)
 local function system_runner(argv, opts, callback)
+	if vim.fn.executable("gh") == 0 then
+		vim.schedule(function()
+			callback({ code = 127, signal = 0, stdout = "", stderr = "" })
+		end)
+		return
+	end
 	vim.system(argv, opts, function(result)
 		vim.schedule(function()
 			callback(result)

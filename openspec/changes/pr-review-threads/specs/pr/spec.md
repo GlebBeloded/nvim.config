@@ -127,6 +127,10 @@ A failed fetch SHALL keep the cached threads and notify at WARN once per root an
 - **WHEN** `require("gleb.pr.gh").failure(result, host)` runs for a missing `gh`; exit 4 with `To get started with GitHub CLI, please run:  gh auth login`; exit 1 with `HTTP 401: Bad credentials (https://pgw.dev/api/graphql)`; exit 1 with `error connecting to pgw.dev` and a second line; exit 0 with `{"errors":[{"message":"Could not resolve to a PullRequest with the number of 482."}]}`
 - **THEN** the messages are `PR comments unavailable: gh not found`, `PR comments unavailable: gh is not authenticated for pgw.dev` twice, `PR comments unavailable: error connecting to pgw.dev` and `PR comments unavailable: Could not resolve to a PullRequest with the number of 482.`
 
+#### Scenario: A missing gh fetch warns and clears in-flight refresh
+- **WHEN** a cached `pr482` root loses `gh` from `PATH` and `require("gleb.pr").refresh(root)` runs
+- **THEN** `PR comments unavailable: gh not found` is notified at WARN, the root has no in-flight refresh, and a later refresh completes after `gh` returns
+
 #### Scenario: A failed PR fetch warns once and keeps the threads
 - **WHEN** after a `pr482` refresh the fake `gh` answers `query ReviewThreads` with exit 1 and `error connecting to pgw.dev`, and `require("gleb.pr").refresh(root)` runs twice
 - **THEN** `PR comments unavailable: error connecting to pgw.dev` is notified at WARN once, `get(root).threads` still holds four threads, and `changes.toggle` opens the panel with the `Changes 2 files` row
