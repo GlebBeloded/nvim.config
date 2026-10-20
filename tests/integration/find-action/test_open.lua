@@ -9,7 +9,7 @@ local function start()
 	child.wait_very_lazy()
 end
 
-local T = H.child_set(child, start, { reuse = true })
+local T = H.child_set(child, start)
 
 local function expect_find_action(editor_win)
 	assert(child.wait("MiniPick.is_picker_active()", 5000), "Find Action picker did not open")
