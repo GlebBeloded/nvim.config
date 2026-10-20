@@ -36,9 +36,9 @@ Scenarios: `loop: Known flaky cases use deterministic readiness`, `git: Diffview
 
 ## 7. Observe the pending tree refresh after toggle
 Scenarios: `loop: Known flaky cases use deterministic readiness`, `keymaps: Toggle wins over a pending tree refresh`
-- [ ] 7.1 Treat the proposal's 3 rerun passes as the failing evidence; tighten `tests/integration/keymaps/test_keymaps.lua` to retain the absent-tree and editor-focus assertions while making a controlled real refresh pending before `<A-e>`
-- [ ] 7.2 Replace the fixed 1000 ms sleep with a test-driven refresh completion event or state and then assert the closed panel was not recreated
-- [ ] 7.3 Run `make test FILE=tests/integration/keymaps/test_keymaps.lua CASE="Toggle wins over a pending tree refresh"` and see it pass
+- [x] 7.1 Treat the proposal's 3 rerun passes as the failing evidence; tighten `tests/integration/keymaps/test_keymaps.lua` to retain the absent-tree and editor-focus assertions while making a controlled real refresh pending before `<A-e>`
+- [x] 7.2 Replace the fixed 1000 ms sleep with a test-driven refresh completion event or state and then assert the closed panel was not recreated
+- [x] 7.3 Run `make test FILE=tests/integration/keymaps/test_keymaps.lua CASE="Toggle wins over a pending tree refresh"` and see it pass
 
 ## Agent decisions
 
@@ -51,3 +51,4 @@ Scenarios: `loop: Known flaky cases use deterministic readiness`, `keymaps: Togg
 - Project-tree burst readiness uses existing view, Git-root, and watcher state so the run-count assertion is sampled only after every debounce and refresh is quiescent.
 - Diff render readiness requires the fixture's complete 24-row layout and Treesitter captures in both real diff buffers before a forced redraw.
 - Diffview readiness is the final `{leftmost filetype, width, target diff window}` tuple, sampled with a load-scaled deadline so intermediate split layouts cannot satisfy it.
+- Pending tree-refresh readiness uses the real filesystem watch plus the manual debounce scheduler, so the test controls callback completion without sleeping.
