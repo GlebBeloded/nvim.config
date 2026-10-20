@@ -19,9 +19,9 @@ Scenarios: `git: Branch summary wording`
 
 Scenarios: `git: Commit ages are short relative times`
 
-- [ ] 3.1 Write `git: Commit ages are short relative times` in tests/unit/git/test_changes_tabs.lua and run `make test FILE=tests/unit/git/test_changes_tabs.lua CASE="Commit ages are short relative times"` to see it fail
-- [ ] 3.2 Add typed `age`, `now` and commit parsing helpers to lua/gleb/git/changes/branch.lua
-- [ ] 3.3 Run `make test FILE=tests/unit/git/test_changes_tabs.lua CASE="Commit ages are short relative times"` and see it pass
+- [x] 3.1 Write `git: Commit ages are short relative times` in tests/unit/git/test_changes_tabs.lua and run `make test FILE=tests/unit/git/test_changes_tabs.lua CASE="Commit ages are short relative times"` to see it fail
+- [x] 3.2 Add typed `age`, `now` and commit parsing helpers to lua/gleb/git/changes/branch.lua
+- [x] 3.3 Run `make test FILE=tests/unit/git/test_changes_tabs.lua CASE="Commit ages are short relative times"` and see it pass
 
 ## 4. Committed layer in the diff view
 
@@ -195,3 +195,4 @@ Scenarios: `git: Local tab matches the approved render`, `git: Branch tab matche
 
 - The fixture manifest uses `branch_files` and `local_files` string arrays, keeping committed and worktree expectations explicit for later scenarios.
 - `parse_name_status` returns normalized status names and keeps a rename's source in `orig`, matching the existing changes-row vocabulary for later tree and diff consumers.
+- `parse_commits` keeps every parent in an ordered array so later commit diffs can use the first parent without losing merge ancestry.

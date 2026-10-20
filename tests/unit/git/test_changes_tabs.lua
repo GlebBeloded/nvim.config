@@ -42,4 +42,49 @@ T["git: Branch summary wording"]["parses added modified deleted and renamed path
 	})
 end
 
+T["git: Commit ages are short relative times"] = MiniTest.new_set()
+
+T["git: Commit ages are short relative times"]["formats each age range at its boundary"] = function()
+	local branch = require("gleb.git.changes.branch")
+	local seconds = { 30, 3599, 3600, 86399, 86400, 1209599, 1209600, 5183999, 5184000, 31536000 }
+	local ages = {}
+	for _, value in ipairs(seconds) do
+		table.insert(ages, branch.age(value))
+	end
+
+	eq(ages, { "now", "59m", "1h", "23h", "1d", "13d", "2w", "8w", "2mo", "1y" })
+end
+
+T["git: Commit ages are short relative times"]["parses the commit fields used to calculate ages"] = function()
+	local branch = require("gleb.git.changes.branch")
+	local output = table.concat({
+		"e3254630123456789",
+		"07cb52e0123456789",
+		"1767312000",
+		"wire tax into Total",
+		"",
+		"07cb52e0123456789",
+		"b5435c50123456789 deadbee0123456789",
+		"1767301200",
+		"add Rate and tax tests",
+		"",
+	}, "\0")
+
+	eq(branch.parse_commits(output), {
+		{
+			hash = "e3254630123456789",
+			parents = { "07cb52e0123456789" },
+			timestamp = 1767312000,
+			subject = "wire tax into Total",
+		},
+		{
+			hash = "07cb52e0123456789",
+			parents = { "b5435c50123456789", "deadbee0123456789" },
+			timestamp = 1767301200,
+			subject = "add Rate and tax tests",
+		},
+	})
+	eq(type(branch.now()), "number")
+end
+
 return T
