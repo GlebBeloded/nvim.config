@@ -305,6 +305,33 @@ function M.toggle_commits()
 	end
 end
 
+local function notify_commit_url_unavailable()
+	vim.notify("Could not copy commit URL: origin remote is unavailable", vim.log.levels.ERROR)
+end
+
+--- Copy the selected Branch commit's GitHub-style URL.
+---@param ctx gleb.ActionContext
+---@return nil
+function M.copy_commit_url(ctx)
+	local current = M.state.by_tab[vim.api.nvim_get_current_tabpage()]
+	local row = current and current.rows[ctx.cursor[1]]
+	if not current or current.win ~= ctx.win or not row or row.kind ~= "commit" or not row.full_hash then
+		return
+	end
+	local hash = row.full_hash
+	vim.system({ "git", "-C", current.root, "remote", "get-url", "origin" }, { text = true }, function(result)
+		vim.schedule(function()
+			local base = result.code == 0
+				and require("gleb.git.base.rules").remote_web_base(vim.trim(result.stdout or ""))
+			if not base then
+				notify_commit_url_unavailable()
+				return
+			end
+			vim.fn.setreg("+", base .. "/commit/" .. hash)
+		end)
+	end)
+end
+
 --- Open a file or review-thread row, or fold a structural row.
 ---@return nil
 function M.open_selected()
