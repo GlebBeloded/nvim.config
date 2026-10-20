@@ -2,11 +2,13 @@
 local MiniTest = require("mini.test")
 local F = require("tests.fixtures")
 local H = require("tests.helpers")
+local pr482 = require("tests.fixtures.gh.pr482")
 
 local eq = MiniTest.expect.equality
 local child = H.new_child()
 
 local PANEL_COLUMNS = 36
+local fixture_manifest
 
 local PANEL_LEGEND = {
 	d = "ChangesTabLocal",
@@ -30,7 +32,7 @@ local function panel_mask(prefixes)
 end
 
 local LOCAL_MASK = panel_mask({
-	".ddddddddd.eeeeeeeeee..............f",
+	".ddddddddd.eeeeeeeeee.eeeeeeeeeeee.f",
 	".h.h.iiiiiii.hhhhhhh...............f",
 	"...h.m..................h..........f",
 	"nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnf",
@@ -104,7 +106,7 @@ local BRANCH_FILES_LEGEND = {
 
 local BRANCH_FILES_MASK = {
 	"....................................abbaaaaaaaaaaaaccccccccccccccccccccccccccccccccccccccccccccccccc",
-	".ddddddddd.eeeeeeeeee..............fgggggggggggggggggggggggggfgggggggggggggggggggggggggggggggggggggg",
+	".ddddddddd.eeeeeeeeee.dddddddddddd.fgggggggggggggggggggggggggfgggggggggggggggggggggggggggggggggggggg",
 	".hhhhhhiiiiiiiiiiiiiiii............fjjkkkkkkkkkkkkkkkkkkkjjjjljjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjj",
 	".iiiiiiiiiiiiiiiiiiiiiiiiiiiiii....f.........................l.kkkk.....kkkk........................",
 	"...................................f...mmmmmmmmmmmmmmmmmmmmmml.kkkk.....kkkk........................",
@@ -181,7 +183,7 @@ local BRANCH_COMMITS_LEGEND = {
 
 local BRANCH_COMMITS_MASK = {
 	"....................................abbaaaaaaaaaaaaccccccccccccccccccccccccccccccccccccccccccccccccc",
-	".ddddddddd.eeeeeeeeee..............fgggggggggggggggggggggggggfgggggggggggggggggggggggggggggggggggggg",
+	".ddddddddd.eeeeeeeeee.dddddddddddd.fgggggggggggggggggggggggggfgggggggggggggggggggggggggggggggggggggg",
 	".hhhhhhiiiiiiiiiiiiiiii............fjjkkkkkkkkkkkkkkkkkkkjjjjljjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjj",
 	"...................................f.........................l.kkkk.....kkkk........................",
 	".m.n.ooooooooooo...........iiiiiii.f...ppppppppppppppppppppppl.kkkk.....kkkk........................",
@@ -220,7 +222,7 @@ local function report_pull_request(root)
 	vim.fn.writefile({
 		vim.json.encode({
 			number = 482,
-			url = "https://example.test/pull/482",
+			url = "https://example.test/owner/repo/pull/482",
 			state = "OPEN",
 			baseRefName = "main",
 			baseRefOid = base,
@@ -233,7 +235,8 @@ end
 
 local function start()
 	local home = vim.fn.tempname()
-	local root = F.copy("billing-branch", vim.fs.joinpath(home, "work", "billing-branch"))
+	local root
+	root, fixture_manifest = F.copy("billing-branch", vim.fs.joinpath(home, "work", "billing-branch"))
 	child.start_config()
 	child.o.lines, child.o.columns = 30, 100
 	child.wait_very_lazy()
@@ -322,13 +325,42 @@ local function screen_text(columns)
 	end, vim.list_slice(child.get_screenshot().text, 2, 29))
 end
 
+---@param name string
+---@param columns integer
+---@return string[]
+local function approved_text_with_comments(name, columns)
+	local expected = approved_text(name, columns)
+	expected[1] = "  Local 3   Branch 4   Comments 0  ┃" .. vim.fn.strcharpart(expected[1], PANEL_COLUMNS)
+	return expected
+end
+
 local T = H.child_set(child, start)
 
 T["git: Local tab matches the approved render"] = function()
 	review_changes()
 	wait_for_local_panel()
 	H.expect_screen_colors(child, 2, LOCAL_MASK, PANEL_LEGEND, { columns = PANEL_COLUMNS })
-	eq(screen_text(PANEL_COLUMNS), approved_text("local_tab", PANEL_COLUMNS))
+	eq(screen_text(PANEL_COLUMNS), approved_text_with_comments("local_tab", PANEL_COLUMNS))
+
+	local gh_dir = vim.fn.tempname()
+	H.write_files(gh_dir, pr482(fixture_manifest))
+	child.lua(
+		[[vim.env.FAKE_GH_STDOUT = nil; vim.env.FAKE_GH_DIR = ...
+		local view = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		require("gleb.pr").refresh(view.root)]],
+		{ gh_dir }
+	)
+	assert(
+		child.wait(
+			[[(function()
+				local view = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+				return view and vim.api.nvim_eval_statusline(vim.wo[view.win].winbar, { winid = view.win }).str
+					:find("Comments 3", 1, true) ~= nil
+			end)()]],
+			5000
+		),
+		"Comments tab count did not follow review threads"
+	)
 end
 
 T["git: Branch tab matches the approved render"] = function()
@@ -336,7 +368,7 @@ T["git: Branch tab matches the approved render"] = function()
 	wait_for_local_panel()
 	review_changes()
 	wait_for_branch_panel(false)
-	eq(screen_text(100), approved_text("branch_files", 100))
+	eq(screen_text(100), approved_text_with_comments("branch_files", 100))
 	H.expect_screen_colors(child, 2, vim.list_slice(BRANCH_FILES_MASK, 2, 29), BRANCH_FILES_LEGEND)
 end
 
@@ -347,7 +379,7 @@ T["git: Branch commits match the approved render"] = function()
 	wait_for_branch_panel(false)
 	child.type_keys("c", "<Esc>")
 	wait_for_branch_panel(true)
-	eq(screen_text(100), approved_text("branch_commits", 100))
+	eq(screen_text(100), approved_text_with_comments("branch_commits", 100))
 	H.expect_screen_colors(child, 2, vim.list_slice(BRANCH_COMMITS_MASK, 2, 29), BRANCH_COMMITS_LEGEND)
 end
 

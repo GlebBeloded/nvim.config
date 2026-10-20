@@ -104,6 +104,7 @@ local function draw_tabs(view)
 	local parts = { " " }
 	---@type gleb.git.changes.TabView
 	local tab_view = {
+		root = view.root,
 		local_count = view.local_count,
 		branch_count = view.branch_count,
 		branch_available = view.branch_available,
@@ -666,6 +667,16 @@ local function add_refresh_sources(view)
 			end
 		end,
 	})
+	view.autocmds[#view.autocmds + 1] = vim.api.nvim_create_autocmd("User", {
+		group = augroup,
+		pattern = "GlebPrThreads",
+		callback = function(args)
+			local root = args.data and args.data.root
+			if root and workspace.normalize(root) == view.root then
+				draw_tabs(view)
+			end
+		end,
+	})
 	view.autocmds[#view.autocmds + 1] = vim.api.nvim_create_autocmd("WinClosed", {
 		group = augroup,
 		pattern = tostring(view.win),
@@ -892,7 +903,9 @@ end
 ---@return string[]
 function M.available_tabs(view)
 	local available = {}
+	---@type gleb.git.changes.TabView
 	local tab_view = {
+		root = view.root,
 		local_count = view.local_count,
 		branch_count = view.branch_count,
 		branch_available = view.branch_available,
