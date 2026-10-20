@@ -30,6 +30,29 @@ function M.remote_host(url)
 	return authority:match("^([^:]+)")
 end
 
+--- Normalize a GitHub remote to its HTTPS repository base.
+---@param url string
+---@return string?
+function M.remote_web_base(url)
+	local authority, path = url:match("^https://([^/]+)/(.+)$")
+	if not authority then
+		authority, path = url:match("^ssh://([^/]+)/(.+)$")
+	end
+	if authority then
+		authority = authority:gsub("^.*@", "")
+	else
+		authority, path = url:match("^[^/@]+@([^:/]+):(.+)$")
+	end
+	if not authority or authority == "" or not path then
+		return nil
+	end
+	path = path:gsub("/+$", ""):gsub("%.git$", "")
+	if not path:match("^[^/]+/.+") then
+		return nil
+	end
+	return "https://" .. authority .. "/" .. path
+end
+
 ---@param branch? string
 ---@param head? string
 ---@param default? string
