@@ -104,6 +104,7 @@ local function draw_tabs(view)
 	local parts = { " " }
 	---@type gleb.git.changes.TabView
 	local tab_view = {
+		root = view.root,
 		local_count = view.local_count,
 		branch_count = view.branch_count,
 		branch_available = view.branch_available,
@@ -453,6 +454,19 @@ local function diff_target(view)
 end
 
 ---@param view ChangesView
+---@return nil
+local function close_owned_diff(view)
+	if not view.diff_view then
+		return
+	end
+	require("gleb.diff.view").close(view.diff_view)
+	view.diff_view = nil
+	view.diff_path = nil
+	view.diff_pending_path = nil
+	view.editor_win = windows.eligible_editor(view, true)
+end
+
+---@param view ChangesView
 ---@param row ChangesRow
 ---@param generation integer
 ---@param selection_generation integer
@@ -556,6 +570,10 @@ local function schedule_diff(view)
 	drop_pending_diff(view, row)
 	view.diff_timer = debounce.schedule(view.diff_timer, DIFF_DEBOUNCE_MS, function()
 		if not vim.api.nvim_win_is_valid(view.win) or view.active_tab ~= active_tab then
+			return
+		end
+		if active_tab == "comments" then
+			require("gleb.pr.comments_tab").preview(view, row, false)
 			return
 		end
 		request_diff(view, row, false)
@@ -663,6 +681,21 @@ local function add_refresh_sources(view)
 			load_branch_count(view, info)
 			if view.active_tab == "branch" or view.branch_nodes then
 				refresh_branch(view, info)
+			end
+		end,
+	})
+	view.autocmds[#view.autocmds + 1] = vim.api.nvim_create_autocmd("User", {
+		group = augroup,
+		pattern = "GlebPrThreads",
+		callback = function(args)
+			local root = args.data and args.data.root
+			if root and workspace.normalize(root) == view.root then
+				draw_tabs(view)
+				if view.active_tab == "comments" then
+					local selected = tree_view.selected_id(view.tree)
+					tree_model.rebuild(view.tree, require("gleb.pr.comments_tab").nodes(view.root))
+					draw(view, selected)
+				end
 			end
 		end,
 	})
@@ -892,7 +925,9 @@ end
 ---@return string[]
 function M.available_tabs(view)
 	local available = {}
+	---@type gleb.git.changes.TabView
 	local tab_view = {
+		root = view.root,
 		local_count = view.local_count,
 		branch_count = view.branch_count,
 		branch_available = view.branch_available,
@@ -920,6 +955,16 @@ function M.activate_tab(panel, id)
 		panel.commit_view = false
 	end
 	draw_tabs(panel)
+	local descriptor = vim.iter(tabs.items):find(function(item)
+		return item.id == id
+	end)
+	if descriptor and descriptor.editor == "file" then
+		close_owned_diff(panel)
+		tree_model.rebuild(panel.tree, require("gleb.pr.comments_tab").nodes(panel.root))
+		draw(panel)
+		vim.api.nvim_set_current_win(panel.win)
+		return
+	end
 	if id == "local" then
 		tree_model.rebuild(panel.tree, tree_nodes(panel.local_rows))
 		draw(panel)
@@ -989,6 +1034,10 @@ end
 ---@return nil
 function M.review(view)
 	vim.api.nvim_set_current_win(view.win)
+	if view.active_tab == "comments" then
+		require("gleb.pr.comments_tab").preview(view, view.rows[vim.api.nvim_win_get_cursor(view.win)[1]], false)
+		return
+	end
 	request_diff(view, view.rows[vim.api.nvim_win_get_cursor(view.win)[1]], false)
 end
 

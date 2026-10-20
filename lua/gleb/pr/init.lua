@@ -27,9 +27,11 @@ local M = {
 ---@field generations table<string, integer>
 ---@field blobs table<string, string[]>
 ---@field blob_order string[]
+---@field blob_loads table<string, { item: gleb.pr.PendingLocation, callback: fun() }[]> waiters of each `git show` running
 ---@field in_flight table<string, boolean>
 ---@field pending table<string, gleb.pr.RefreshOptions>
 ---@field reported_failures table<string, table<string, boolean>>
+---@field failures table<string, string>
 ---@field last_write_fetch table<string, integer>
 ---@field write_timers table<string, uv.uv_timer_t>
 
@@ -39,9 +41,11 @@ M.state = {
 	generations = {},
 	blobs = {},
 	blob_order = {},
+	blob_loads = {},
 	in_flight = {},
 	pending = {},
 	reported_failures = {},
+	failures = {},
 	last_write_fetch = {},
 	write_timers = {},
 }
@@ -130,6 +134,7 @@ function M.refresh(root, opts)
 			review.fetched_at = M.now()
 			M.state.by_root[root] = review
 			M.state.reported_failures[root] = nil
+			M.state.failures[root] = nil
 			vim.api.nvim_exec_autocmds("User", { pattern = "GlebPrThreads", data = { root = root } })
 			if opts.force then
 				vim.notify(
@@ -139,6 +144,8 @@ function M.refresh(root, opts)
 			end
 		elseif current_result and result then
 			local failure = gh.failure(result, host)
+			M.state.failures[root] = failure.message
+			vim.api.nvim_exec_autocmds("User", { pattern = "GlebPrThreads", data = { root = root } })
 			local reported = M.state.reported_failures[root] or {}
 			if opts.force or not reported[failure.kind] then
 				vim.notify(failure.message, vim.log.levels.WARN)
@@ -226,38 +233,58 @@ local function map_locations(pending, buffer_lines)
 	return locations
 end
 
+---@param key string
+---@param missing_commit boolean
+---@return nil
+local function finish_blob_load(key, missing_commit)
+	local waiters = M.state.blob_loads[key] or {}
+	M.state.blob_loads[key] = nil
+	for _, waiter in ipairs(waiters) do
+		waiter.item.missing_commit = missing_commit
+		waiter.callback()
+	end
+end
+
+--- Load `item`'s source blob, or wait for the `git show` of it already running, so concurrent locates (the peeks and
+--- a caller) run it once.
 ---@param root string
 ---@param item gleb.pr.PendingLocation
 ---@param callback fun()
 ---@return nil
 local function load_blob(root, item, callback)
-	assert(item.oid and item.key, "pending PR location requires an anchor")
-	vim.system({ "git", "show", item.oid .. ":" .. item.thread.path }, { cwd = root, text = true }, function(result)
+	local oid = assert(item.oid, "pending PR location requires an anchor")
+	local key = assert(item.key, "pending PR location requires a blob key")
+	local waiters = M.state.blob_loads[key]
+	M.state.blob_loads[key] = vim.list_extend(waiters or {}, { { item = item, callback = callback } })
+	if waiters then
+		return
+	end
+	vim.system({ "git", "show", oid .. ":" .. item.thread.path }, { cwd = root, text = true }, function(result)
 		if result.code == 0 then
 			vim.schedule(function()
-				cache_blob(item.key, blob_lines(result.stdout or ""))
-				callback()
+				cache_blob(key, blob_lines(result.stdout or ""))
+				finish_blob_load(key, false)
 			end)
 			return
 		end
-		vim.system({ "git", "cat-file", "-e", item.oid .. "^{commit}" }, { cwd = root }, function(commit_result)
+		vim.system({ "git", "cat-file", "-e", oid .. "^{commit}" }, { cwd = root }, function(commit_result)
 			vim.schedule(function()
-				item.missing_commit = commit_result.code ~= 0
-				callback()
+				finish_blob_load(key, commit_result.code ~= 0)
 			end)
 		end)
 	end)
 end
 
----@param buf integer
----@param callback? fun(locations: gleb.pr.Location[])
----@return gleb.pr.Location[]
-function M.locate(buf, callback)
-	buf = buf == 0 and vim.api.nvim_get_current_buf() or buf
-	local path = vim.fs.normalize(vim.api.nvim_buf_get_name(buf))
-	local review, relative = review_for_path(path)
+--- Map the review threads of the file at `path` onto `lines`, that file's text in a buffer or a diff side.
+---@param path string
+---@param buffer_lines string[]
+---@param callback? fun(locations: gleb.pr.Location[]) called once missing source blobs have loaded
+---@return gleb.pr.Location[] the locations known now
+---@return boolean loading whether `callback` will be called with the rest
+function M.locate_lines(path, buffer_lines, callback)
+	local review, relative = review_for_path(vim.fs.normalize(path))
 	if not review or not relative then
-		return {}
+		return {}, false
 	end
 	local pending = {}
 	local missing = {}
@@ -276,11 +303,10 @@ function M.locate(buf, callback)
 			end
 		end
 	end
-	local buffer_lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
 	local locations = map_locations(pending, buffer_lines)
 	local remaining = vim.tbl_count(missing)
 	if remaining == 0 then
-		return locations
+		return locations, false
 	end
 	for _, item in pairs(missing) do
 		load_blob(review.root, item, function()
@@ -290,7 +316,16 @@ function M.locate(buf, callback)
 			end
 		end)
 	end
-	return locations
+	return locations, true
+end
+
+---@param buf integer
+---@param callback? fun(locations: gleb.pr.Location[])
+---@return gleb.pr.Location[]
+---@return boolean loading whether `callback` will be called with the rest
+function M.locate(buf, callback)
+	buf = buf == 0 and vim.api.nvim_get_current_buf() or buf
+	return M.locate_lines(vim.api.nvim_buf_get_name(buf), vim.api.nvim_buf_get_lines(buf, 0, -1, false), callback)
 end
 
 ---@return integer
@@ -364,6 +399,9 @@ vim.api.nvim_create_autocmd("BufWritePost", {
 	callback = written,
 })
 
+require("gleb.pr.highlights").setup()
+require("gleb.pr.peek")
+
 ---@return nil
 function M.reset()
 	for _, timer in pairs(M.state.write_timers) do
@@ -376,9 +414,11 @@ function M.reset()
 	M.state.generations = {}
 	M.state.blobs = {}
 	M.state.blob_order = {}
+	M.state.blob_loads = {}
 	M.state.in_flight = {}
 	M.state.pending = {}
 	M.state.reported_failures = {}
+	M.state.failures = {}
 	M.state.last_write_fetch = {}
 	M.state.write_timers = {}
 end

@@ -856,7 +856,7 @@ The editor gutter on a branch SHALL match the approved purple render.
 - **THEN** the screen matches the reference screenshot of design.md "Proposed — committed signs", and columns 1-6 of screen rows 2-29 match its colour mask
 
 ### Requirement: Changes panel tabs
-The panel's winbar SHALL show one pill per available tab, ` <Title> <count> `, one space apart from column 2: the active tab in `ChangesTab<Title>`, the others in `ChangesTabInactive`. `Local` (count: file rows) is always available; `Branch` (count: files changed from the merge-base to HEAD) only when `gleb.git.base` resolves a base for the current branch, never on the default branch. Tabs come from one ordered list, so a later tab is appended to it.
+The panel winbar SHALL show one pill per available tab from its ordered descriptor list. Local is always available; Branch is available when the branch has a base; Comments is appended after Branch when it has an open pull request. A pill is ` <Title> <count> `, with `ChangesTab<Title>` while active and `ChangesTabInactive` otherwise. Comments counts cached open review threads, including outdated threads, and starts at 0.
 
 #### Scenario: Changes tabs show Local and Branch on a feature branch
 - **WHEN** `internal/billing/invoice.go` of a fresh copy of the `billing-branch` fixture is edited and the `changes.toggle` action runs
@@ -872,7 +872,7 @@ The panel's winbar SHALL show one pill per available tab, ` <Title> <count> `, o
 
 #### Scenario: Local tab matches the approved render
 - **WHEN** a `100x30` screen edits `internal/billing/invoice.go` of a fresh copy of the `billing-branch` fixture and the `changes.review` action runs once
-- **THEN** columns 1-36 of screen rows 2-29 match the git-changes-tabs design.md "Proposed — Local tab", text and colour mask
+- **THEN** columns 1-36 of screen rows 2-29 match the git-changes-tabs design.md "Proposed — Local tab", text and colour mask, except its winbar is `  Local 3   Branch 4   Comments 0  ` with Local active and the other tabs inactive
 
 ### Requirement: Changes tab cycle
 With the panel closed, `changes.review` SHALL open it on Local, or on Branch when Local has no file rows and Branch is available. With the panel open in the current tab page, wherever focus is, it SHALL activate the next available tab, focus the panel and show the diff of the row under the cursor; on the last available tab it SHALL close the panel and its diff view. Local, Branch, close on a feature branch; Local, close on the default branch.
@@ -906,7 +906,7 @@ With the panel closed, `changes.review` SHALL open it on Local, or on Branch whe
 - **THEN** the first press shows the panel with `Local 3` active, the second with `Branch 4` active and the `3 commits · merge-base 4ccefde` row, and after the third no changes panel remains
 
 ### Requirement: Branch tab files
-The Branch tab SHALL show a header (`ChangesBranchHeader` PR icon and `#<n>`, then ` <branch> → <base>` in `ChangesCount`; without a PR only `<branch> → <base>`), `<n> commit(s) · merge-base <hash7>`, an empty line, then the files of `git diff --name-status -z -M <merge-base> HEAD` as a `ui/tree` tree with the Local tab's directory compaction and nesting, names in `ChangesCommittedFile`, stats from `--numstat` and no checkboxes.
+The Branch tab SHALL show its pull-request/branch header, commit summary, blank line and merge-base-to-HEAD file tree as before. When an open pull request also makes Comments available, the winbar SHALL append its cached open-thread count after Branch. File names, stats, directory compaction, nesting and the Local tab's tree conventions SHALL remain unchanged.
 
 #### Scenario: Branch tab lists the branch files
 - **WHEN** the Branch tab of a fresh copy of the `billing-branch` fixture is shown, the fake `gh` reporting pull request 482 with base `main`
@@ -926,7 +926,7 @@ The Branch tab SHALL show a header (`ChangesBranchHeader` PR icon and `#<n>`, th
 
 #### Scenario: Branch tab matches the approved render
 - **WHEN** a `100x30` screen edits `internal/billing/invoice.go` of a fresh copy of the `billing-branch` fixture with pull request 482 and the `changes.review` action runs twice
-- **THEN** columns 1-100 of screen rows 2-29 match the git-changes-tabs design.md "Proposed — Branch tab, files", text and colour mask
+- **THEN** columns 1-100 of screen rows 2-29 match the git-changes-tabs design.md "Proposed — Branch tab, files", text and colour mask, except its winbar is `  Local 3   Branch 4   Comments 0  ` with Branch active and the other tabs inactive
 
 ### Requirement: Branch tab commit view
 `changes.toggle_commits` SHALL switch the Branch tab between files and commits, and do nothing on another tab. The commit view SHALL show the header, an empty line, a collapsed `All changes` row with `<n> files` (expanding to the files tree), then `git log <merge-base>..HEAD` newest first as `<hash7> <subject> <age>`, subject cut with `…`, age right-aligned; the newest commit starts expanded, the cursor on its first file. A commit lists its files flat with stats.

@@ -6,6 +6,7 @@ local autocmds = require("gleb.diff.view.autocmds")
 local layout = require("gleb.diff.view.layout")
 local mappings = require("gleb.diff.view.mappings")
 local patch = require("gleb.diff.patch")
+local providers = require("gleb.diff.view.providers")
 local render = require("gleb.diff.view.render")
 local settings = require("gleb.diff.settings").load()
 local stage = require("gleb.diff.stage")
@@ -533,6 +534,22 @@ function M.close(view)
 	windows.restore_ufo(view)
 	if vim.api.nvim_win_is_valid(view.origin_win) then
 		vim.api.nvim_set_current_win(view.origin_win)
+	end
+end
+
+--- Register a decoration provider: virtual lines under right lines, called on every render of every view.
+---@param provider gleb.diff.view.Provider
+---@return nil
+function M.add_provider(provider)
+	providers.add(provider)
+end
+
+--- Draw `view` again from its current layout, e.g. after its providers' decorations changed.
+---@param view gleb.diff.view.View
+---@return nil
+function M.redecorate(view)
+	if not view.closing and vim.api.nvim_buf_is_valid(view.left_buf) and vim.api.nvim_buf_is_valid(view.right_buf) then
+		render.draw(view)
 	end
 end
 

@@ -64,10 +64,12 @@ end
 ---@return table<string, table>
 local function locate_invoice()
 	child.lua([[LocateDone = false
-		Locations = require("gleb.pr").locate(0, function(locations)
+		local loading
+		Locations, loading = require("gleb.pr").locate(0, function(locations)
 			Locations = locations
 			LocateDone = true
-		end)]])
+		end)
+		LocateDone = LocateDone or not loading]])
 	eq(child.wait("LocateDone == true", 3000), true)
 	local locations = child.lua_get("Locations")
 	local by_id = {}
@@ -92,10 +94,12 @@ local function refresh_and_locate(root, path)
 	eq(child.wait("PrReady == true", 3000), true)
 	child.cmd("edit " .. vim.fn.fnameescape(vim.fs.joinpath(root, path)))
 	child.lua([[LocateDone = false
-		Locations = require("gleb.pr").locate(0, function(locations)
+		local loading
+		Locations, loading = require("gleb.pr").locate(0, function(locations)
 			Locations = locations
 			LocateDone = true
-		end)]])
+		end)
+		LocateDone = LocateDone or not loading]])
 	eq(child.wait("LocateDone == true", 3000), true)
 	local by_id = {}
 	for _, location in ipairs(child.lua_get("Locations")) do
@@ -278,7 +282,7 @@ end
 
 T["pr: PR threads are cached per head"] = function()
 	local root, log = billing_branch(true)
-	refresh_and_open_invoice(root)
+	-- counted from before the file opens: its peeks locate the threads too
 	child.lua([[RealSystem = vim.system
 		GitShowCalls = 0
 		vim.system = function(cmd, ...)
@@ -287,6 +291,7 @@ T["pr: PR threads are cached per head"] = function()
 			end
 			return RealSystem(cmd, ...)
 		end]])
+	refresh_and_open_invoice(root)
 
 	child.lua_get([[require("gleb.pr").get(...)]], { root })
 	child.lua_get([[require("gleb.pr").get(...)]], { root })

@@ -3,6 +3,7 @@
 local M = {}
 
 ---@class gleb.git.changes.TabView
+---@field root string
 ---@field local_count integer
 ---@field branch_count integer
 ---@field branch_available boolean
@@ -13,6 +14,7 @@ local M = {}
 ---@field group string
 ---@field available fun(view: gleb.git.changes.TabView): boolean
 ---@field count fun(view: gleb.git.changes.TabView): integer
+---@field editor? "file"
 
 ---@class gleb.git.changes.TabCycleState
 ---@field active string
@@ -41,6 +43,20 @@ M.items = {
 		end,
 		count = function(view)
 			return view.branch_count
+		end,
+	},
+	{
+		id = "comments",
+		title = "Comments",
+		group = "ChangesTabComments",
+		editor = "file",
+		available = function(view)
+			local info = require("gleb.git.base").get(view.root)
+			return info ~= nil and info.pr ~= nil
+		end,
+		count = function(view)
+			local review = require("gleb.pr").get(view.root)
+			return review and require("gleb.pr.threads").open_count(review.threads) or 0
 		end,
 	},
 }

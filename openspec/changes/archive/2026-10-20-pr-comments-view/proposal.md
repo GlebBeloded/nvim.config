@@ -47,6 +47,7 @@ bar").
 - none
 
 ### Modified Capabilities
+- `git`: the existing changes-panel tabs and Branch render append Comments when a pull request is open.
 - `pr`: added "Comments tab", "Comments tab rows", "Comments tab selection", "Comments tab Enter", "Thread
   peeks", "Peek text cut", "Diff view peeks", "Thread navigation" and "Review highlight colours".
 - `statusline`: added "Pull request component".
@@ -62,6 +63,7 @@ bar").
     - `lua/gleb/diff/view/{init,render}.lua` (a decoration provider for the right side, with left padding);
     - `lua/gleb/statusline/lualine.lua` (the component in section b, after the branch).
 - Tests:
+  - existing `tests/integration/git/test_changes_tabs.lua` and `tests/screen/git/test_changes_tabs.lua`;
   - unit `tests/unit/pr/test_peek.lua` (cut, peek lines, row text);
   - integration `tests/integration/pr/test_comments_tab.lua`, `tests/integration/pr/test_peek.lua`,
     `tests/integration/statusline/test_pr.lua`;
@@ -71,6 +73,13 @@ bar").
 - Core keymaps: none. Cmd+G keeps `changes.review`, whose cycle gains the Comments step when a pull request
   exists. The new actions are unbound.
 - Unchanged scenarios:
+  - `git: Changes panel review replaces the dashboard` still holds: the `dirty` fixture has no pull request, so review still replaces Alpha with Local and its diff.
+  - `git: Cmd+G cycles Local, Branch, then closes` still holds: its fixture does not report a pull request, so Comments is unavailable and the three-step cycle is unchanged.
+  - `git: Async Branch activation reviews a Branch row` still holds: Comments is appended after Branch and does not alter asynchronous Branch activation.
+  - `git: First review opens Branch when nothing is uncommitted` still holds: the fixture reports no pull request, so Branch remains the only nonempty first tab and the next review closes.
+  - `git: Review on the default branch opens only Local` still holds: the default branch has no branch base or pull request, so neither Branch nor Comments is available.
+  - `git: Review from the diff window advances the tab` still holds: Comments follows Branch, so advancing from Local still activates Branch and preserves the window count.
+  - `git: Review starts the cycle again after a close` still holds: closing clears the active cycle regardless of how many tabs were available, so the next review starts at Local.
   - `git: Changes panel mappings come from the shortcut file` still holds: the Comments tab adds no panel mapping; `<CR>` stays `changes.open`.
   - `git: Changes panel entry points are actions` still holds: `changes.toggle` and `changes.review` keep their titles and category.
   - `git: Changes panel review shows the current file's diff` still holds: the first `changes.review` still opens the Local tab with its diff.
@@ -78,6 +87,14 @@ bar").
   - `git: Cmd+G opens the changes review of a dirty repo` and `git: Cmd+G with the project tree open replaces it` still hold: the `dirty` fixture has no pull request, so there is no Comments tab.
   - `git: Changes panel with the diff view matches the approved render` and `git: Changes panel matches the approved render` still hold: the `billing` fixture is on `main` with no pull request, so no peek, tab or statusline part is drawn.
   - `git: Changes panel Enter opens the file` still holds: `changes.open` on Local rows is unchanged; only Comments rows get the thread behaviour.
+  - `diff: Diff view shows in a given window without focus` still holds: providers add decorations during render without changing `show`'s target-window or focus handling.
+  - `diff: Diff view reverting the last change keeps the view open` still holds: provider decorations do not change apply or empty-fragment view lifecycle handling.
+  - `diff: Diff view draws a committed spec in purple` still holds: peeks use provider virtual lines and do not change committed row highlights or actionability.
+  - `diff: Diff view without committed keeps its kind colours` still holds: provider virtual lines do not change the existing added and changed row highlight selection.
+  - `file-tree: Requirement: File tree nest state` still holds: the Comments tree has its own model and does not read or mutate file-tree `expanded_nests` state.
+  - `find-action: Toggle changes without closing the palette` still holds: the new entries are regular actions and do not alter toggle execution or palette refresh behavior.
+  - `references: gr classifies Lua function calls and redefinitions` still holds: this change does not alter the Lua usage query, `gr`, or reference classification.
+  - `references: Lua usage types match the approved render` still holds: this change does not alter the references view or its Lua usage rendering.
   - `statusline: statusline matches reference screenshot` and `statusline: insert mode accent matches reference screenshot` still hold: their Lua file is outside any pull request, so the component draws nothing.
   - `statusline: Requirement: Global statusline layout` still holds: section b keeps the branch and diff components; the new component sits between them and is empty without a pull request.
   - `git: Requirement: Changes panel outside a repository` still holds: no Comments tab exists without a resolved root and pull request.

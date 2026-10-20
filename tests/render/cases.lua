@@ -5,6 +5,7 @@
 
 local H = require("tests.helpers")
 local F = require("tests.fixtures")
+local pr482 = require("tests.fixtures.gh.pr482")
 
 ---@class render.Driver
 ---@field lua fun(code: string, args?: any[]): any Run Lua in the Neovim and return its result.
@@ -172,6 +173,135 @@ local function changes_branch(driver)
 			5000
 		),
 		"Branch changes review did not load"
+	)
+end
+
+--- Approved Comments-tab render on the billing branch fixture.
+---@param driver render.Driver
+local function pr_comments(driver)
+	local root, manifest = F.copy("billing-branch", vim.fn.tempname() .. "/billing-branch")
+	root = vim.fs.normalize(vim.fn.resolve(root))
+	local gh_dir = vim.fn.tempname()
+	H.write_files(gh_dir, pr482(manifest))
+	driver.lua(
+		[[
+		vim.env.FAKE_GH_DIR = ...
+		vim.lsp.enable("gopls", false)
+		require("null-ls").disable({})
+	]],
+		{ gh_dir }
+	)
+	driver.cmd("cd " .. vim.fn.fnameescape(root) .. " | edit internal/billing/invoice.go")
+	H.attach_fake_lsp(driver)
+	driver.lua([[
+		vim.diagnostic.set(vim.api.nvim_create_namespace("golangci_lint_capture"), 0, {
+			{ lnum = 3, col = 0, severity = vim.diagnostic.severity.WARN, message = "typecheck: could not import fmt" },
+		})
+	]])
+	driver.lua(
+		[[
+		local root = ...
+		Ready = false
+		require("gleb.git.base").resolve(root, function()
+			vim.api.nvim_create_autocmd("User", {
+				pattern = "GlebPrThreads",
+				once = true,
+				callback = function() Ready = true end,
+			})
+			require("gleb.pr").refresh(root)
+		end)
+	]],
+		{ root }
+	)
+	assert(driver.wait("Ready == true", math.floor(5000 * H.load_factor())), "pull request threads did not load")
+	driver.lua(
+		[[require("gleb.pr").now = function() return os.time({ year = 2026, month = 1, day = 2, hour = 1 }) end]]
+	)
+	local function review()
+		driver.lua([[
+			local action = assert(require("gleb.actions").state.applicator.catalog:get("changes.review"))
+			action.run(require("gleb.actions.context").capture())
+		]])
+	end
+	review()
+	assert(
+		driver.wait(
+			[[(function()
+		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		return panel and panel.tabs_ready and panel.active_tab == "local" and panel.diff_view ~= nil
+	end)()]],
+			math.floor(5000 * H.load_factor())
+		),
+		"Local changes review did not load"
+	)
+	review()
+	assert(
+		driver.wait(
+			[[(function()
+		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		return panel and panel.active_tab == "branch" and panel.rows[8] and panel.diff_view ~= nil
+	end)()]],
+			math.floor(5000 * H.load_factor())
+		),
+		"Branch changes review did not load"
+	)
+	review()
+	assert(
+		driver.wait(
+			[[(function()
+		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		return panel and panel.active_tab == "comments"
+	end)()]],
+			math.floor(5000 * H.load_factor())
+		),
+		"Comments changes review did not load"
+	)
+	driver.lua([[
+		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		for index, line in ipairs(vim.api.nvim_buf_get_lines(panel.buf, 0, -1, false)) do
+			if line:find(":22", 1, true) then
+				vim.api.nvim_win_set_cursor(panel.win, { index, 0 })
+				break
+			end
+		end
+	]])
+	assert(
+		driver.wait(
+			[[(function()
+				local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+				if not panel then return false end
+				local buf = vim.api.nvim_win_get_buf(panel.editor_win)
+				local ns = vim.api.nvim_get_namespaces().gleb_pr_peek
+				local marks = ns and vim.api.nvim_buf_get_extmarks(buf, ns, { 21, 0 }, { 21, -1 }, { details = true }) or {}
+				return vim.api.nvim_win_get_cursor(panel.editor_win)[1] == 22
+					and marks[1] and #marks[1][4].virt_lines == 8
+			end)()]],
+			math.floor(5000 * H.load_factor())
+		),
+		"selected comment peek did not expand"
+	)
+	driver.lua([[
+		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		vim.api.nvim_win_call(panel.editor_win, function() vim.fn.winrestview({ topline = 6 }) end)
+	]])
+	assert(
+		driver.wait(
+			[[(function()
+				local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+				if not panel then return false end
+				local buf = vim.api.nvim_win_get_buf(panel.editor_win)
+				local ns = vim.api.nvim_get_namespaces().indent_blankline
+				local marks = vim.api.nvim_buf_get_extmarks(buf, ns, { 16, 0 }, { 16, -1 }, { details = true })
+				local scope = vim.iter(marks):any(function(mark)
+					return mark[4].hl_group == "@ibl.scope.underline.1"
+				end)
+				return scope and vim.o.statusline:find("feat/tax", 1, true) ~= nil
+					and vim.o.statusline:find("StatuslineLang_gleb_changes", 1, true) ~= nil
+					and not vim.o.statusline:find("\226[\160-\163]")
+			end)()]],
+			math.floor(5000 * H.load_factor())
+		),
+		"comments render did not settle"
 	)
 end
 
@@ -570,6 +700,7 @@ return {
 	["project-tree"] = { description = "approved project-tree render", setup = project_tree },
 	changes = { description = "changes panel on the billing fixture", setup = changes },
 	["changes-branch"] = { description = "approved Branch changes render", setup = changes_branch },
+	["pr-comments"] = { description = "approved Comments changes render", setup = pr_comments },
 	["f1-proposed"] = { description = "approved project-tree render", setup = project_tree },
 	["lua_l1_apply"] = { description = "Lua function usages grouped by usage type", setup = lua_l1_apply },
 	["bash_b1_rate"] = { description = "Bash variable usages grouped by usage type", setup = bash_b1_rate },

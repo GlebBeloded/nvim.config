@@ -13,6 +13,8 @@ local RIGHT_MARGIN = 1
 local PR_ICON = ""
 local ALL_CHANGES_ICON = "󰙅"
 local COMMIT_ICON = ""
+local THREAD_ICON = "󰆈"
+local RESOLVED_ICON = ""
 
 ---@type table<string, string>
 local STATUS_GROUPS = {
@@ -220,6 +222,59 @@ local function commit_segments(row, width)
 end
 
 ---@param row ChangesRow
+---@return ChangesRenderSegment[]
+local function comment_file_segments(row)
+	local icon, icon_group = file_icon(row)
+	local segments = {
+		{ text = string.rep(" ", 1 + 2 * row.depth) },
+		{ text = row.expanded == false and COLLAPSED or EXPANDED, group = "FileTreeExpander" },
+		{ text = " " },
+		{ text = icon, group = icon_group },
+		{ text = " " },
+		{ text = row.label, group = "ChangesCommittedFile" },
+	}
+	if (row.count or 0) > 0 then
+		segments[#segments + 1] = { text = " " }
+		segments[#segments + 1] = { text = tostring(row.count), group = "ChangesCount" }
+	end
+	return segments
+end
+
+---@param row ChangesRow
+---@param width integer
+---@return ChangesRenderSegment[]
+local function thread_segments(row, width)
+	local thread = assert(row.thread, "thread row has its thread")
+	local resolved = thread.resolved
+	local group = resolved and "PrThreadResolved" or nil
+	local line = thread.line or thread.original_line
+	local location = line and (":" .. line) or "file"
+	local author = thread.comments[1] and thread.comments[1].author or "ghost"
+	local prefix = string.rep(" ", 1 + 2 * row.depth)
+	local segments = {
+		{ text = prefix },
+		{ text = resolved and RESOLVED_ICON or THREAD_ICON, group = group or "PrPeekIcon" },
+		{ text = " ", group = group },
+		{ text = location, group = group or "PrPeekMeta" },
+		{ text = " ", group = group },
+		{ text = author, group = group or "PrPeekAuthor" },
+	}
+	local tag = thread.outdated and "outdated" or ""
+	local budget = math.max(0, width - 1 - segments_width(segments) - (tag ~= "" and #tag + 1 or 0) - 1)
+	local text = require("gleb.pr.peek").truncate(row.label, budget)
+	if text ~= "" then
+		segments[#segments + 1] = { text = " ", group = group }
+		segments[#segments + 1] = { text = text, group = group or "PrPeek" }
+	end
+	if tag ~= "" then
+		local padding = math.max(1, width - 1 - segments_width(segments) - #tag)
+		segments[#segments + 1] = { text = string.rep(" ", padding) }
+		segments[#segments + 1] = { text = tag, group = "PrThreadOutdated" }
+	end
+	return segments
+end
+
+---@param row ChangesRow
 ---@param width integer
 ---@return ChangesRenderSegment[]
 local function segments_for(row, width)
@@ -231,6 +286,15 @@ local function segments_for(row, width)
 	end
 	if row.kind == "commit" then
 		return commit_segments(row, width)
+	end
+	if row.kind == "comment_file" then
+		return comment_file_segments(row)
+	end
+	if row.kind == "thread" then
+		return thread_segments(row, width)
+	end
+	if row.kind == "comment_state" then
+		return { { text = " " }, { text = row.label, group = "PrPeekMeta" } }
 	end
 	if row.kind == "root" then
 		return root_segments(row)

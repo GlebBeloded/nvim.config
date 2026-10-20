@@ -108,6 +108,29 @@ local function notify_no_branch(root)
 	vim.notify("No branch changes on " .. branch, vim.log.levels.WARN)
 end
 
+---@param root string
+---@return nil
+local function notify_no_pull_request(root)
+	local entry = require("gleb.git.base").state.roots[root]
+	local branch = entry and entry.branch or "current branch"
+	vim.notify("No pull request for " .. branch, vim.log.levels.WARN)
+end
+
+---@param panel ChangesView
+---@return boolean activated
+local function activate_comments(panel)
+	local info = require("gleb.git.base").get(panel.root)
+	if not info or not info.pr then
+		notify_no_pull_request(panel.root)
+		return false
+	end
+	view.activate_tab(panel, "comments")
+	if not require("gleb.pr").get(panel.root) then
+		require("gleb.pr").refresh(panel.root)
+	end
+	return true
+end
+
 ---@param panel ChangesView
 ---@param commit_view boolean
 ---@return nil
@@ -223,6 +246,40 @@ function M.show_branch_commits()
 	show_branch(true)
 end
 
+--- Open or focus the Pull Request Comments tab.
+---@return nil
+function M.show_comments()
+	local tab = vim.api.nvim_get_current_tabpage()
+	local current = M.state.by_tab[tab]
+	if current and vim.api.nvim_win_is_valid(current.win) then
+		activate_comments(current)
+		return
+	end
+	local selected_path, dir = current_location()
+	git.resolve_root(dir, function(result, root)
+		if vim.api.nvim_get_current_tabpage() ~= tab then
+			return
+		end
+		if not root then
+			vim.notify("Git root error: " .. vim.trim(result.stderr or ""), vim.log.levels.ERROR)
+			return
+		end
+		require("gleb.git.base").resolve(root, function(info)
+			if vim.api.nvim_get_current_tabpage() ~= tab then
+				return
+			end
+			if not info or not info.pr then
+				notify_no_pull_request(root)
+				return
+			end
+			sidebar.close("file_tree")
+			view.open(root, selected_path, false, function(panel)
+				activate_comments(panel)
+			end)
+		end)
+	end)
+end
+
 --- Open the Changes panel for a directory.
 ---@param opts { root: string }
 ---@return nil
@@ -248,7 +305,7 @@ function M.toggle_commits()
 	end
 end
 
---- Open a file row, or fold a structural row.
+--- Open a file or review-thread row, or fold a structural row.
 ---@return nil
 function M.open_selected()
 	local current = M.state.by_tab[vim.api.nvim_get_current_tabpage()]
@@ -256,7 +313,9 @@ function M.open_selected()
 		return
 	end
 	local row = current.rows[vim.api.nvim_win_get_cursor(current.win)[1]]
-	if row and row.kind == "file" and (current.active_tab == "branch" or not row.fold_id) then
+	if row and row.kind == "thread" then
+		require("gleb.pr.comments_tab").open(current, row)
+	elseif row and row.kind == "file" and (current.active_tab == "branch" or not row.fold_id) then
 		view.open_file(current, row)
 	elseif row and row.fold_id then
 		view.toggle_fold(current)

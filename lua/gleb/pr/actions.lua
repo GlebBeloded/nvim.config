@@ -1,4 +1,4 @@
--- Pull request actions expose refresh through Find Action without owning a shortcut.
+-- Pull request actions expose refresh and thread navigation through Find Action without owning a shortcut.
 
 ---@param ctx gleb.ActionContext
 ---@return nil
@@ -14,6 +14,14 @@ local function refresh(ctx)
 	end)
 end
 
+---@param direction 1|-1
+---@return fun(ctx: gleb.ActionContext)
+local function thread_jumper(direction)
+	return function(ctx)
+		require("gleb.pr.navigate").jump(ctx.win, direction)
+	end
+end
+
 ---@type gleb.Action[]
 local actions = {
 	{
@@ -21,6 +29,18 @@ local actions = {
 		title = "Refresh Pull Request Comments",
 		category = "Git | Pull Request",
 		run = refresh,
+	},
+	{
+		id = "pr.next_thread",
+		title = "Next Review Thread",
+		category = "Git | Pull Request",
+		run = thread_jumper(1),
+	},
+	{
+		id = "pr.prev_thread",
+		title = "Previous Review Thread",
+		category = "Git | Pull Request",
+		run = thread_jumper(-1),
 	},
 }
 
