@@ -133,9 +133,9 @@ Scenarios: `git: Changes panel drops a stale diff result`, `git: Changes panel s
 
 Scenarios: `git: Local tab matches the approved render`
 
-- [ ] 18.1 Write the scenario in tests/screen/git/test_changes_tabs.lua from design.md "Proposed — Local tab" and run `make test FILE=tests/screen/git/test_changes_tabs.lua CASE="Local tab matches the approved render"` to see it fail
-- [ ] 18.2 Make the strip and Local panel match the approved text and colour mask
-- [ ] 18.3 Run `make test FILE=tests/screen/git/test_changes_tabs.lua CASE="Local tab matches the approved render"` and see it pass
+- [x] 18.1 Write the scenario in tests/screen/git/test_changes_tabs.lua from design.md "Proposed — Local tab" and run `make test FILE=tests/screen/git/test_changes_tabs.lua CASE="Local tab matches the approved render"` to see it fail
+- [x] 18.2 Make the strip and Local panel match the approved text and colour mask
+- [x] 18.3 Run `make test FILE=tests/screen/git/test_changes_tabs.lua CASE="Local tab matches the approved render"` and see it pass
 
 ## 19. Branch files screen
 
@@ -202,6 +202,7 @@ Scenarios: `git: Local tab matches the approved render`, `git: Branch tab matche
 - Commit-file caches are panel-local and keyed by full commit hash, so reopening a fold avoids Git while stale callbacks remain generation-guarded.
 - Branch actions resolve availability before replacing another sidebar, so unavailable tabs leave the current UI unchanged.
 - Repository state is snapshotted in the shared view close path so action, cycle and window closes retain the same tab state.
+- The Local-tab ANSI reference is copied under tests so the screen case remains valid after the change is archived.
 
 ## Stuck
 
