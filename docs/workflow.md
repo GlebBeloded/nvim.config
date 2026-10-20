@@ -29,8 +29,6 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 
 ## Loop lessons
 
-- Capture an async child request's generation when its prerequisite completes, not before a user action can advance that generation.
-- A base-change consumer must clear cached branch models when resolution disappears and initialize them when it first appears.
 - Every Changes tab action that opens a panel must restore repository-local view and fold state before applying its requested tab.
 - When focusing a retained tab mode, rebuild from that mode's model so rendered rows cannot diverge from saved state.
 - Commit-file caches keyed by immutable full hashes should survive Branch model refreshes and be reattached to rebuilt nodes so open folds retain their children.
@@ -44,6 +42,8 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - A write made while libuv rebuilds its single macOS FSEvents stream (after any watch start) emits no event; before asserting a watcher reaction, wait for watch reconciliation to settle and for a sentinel event on a later-started watch.
 - After feeding a key with MiniTest, wait within the behavior's bound for its observable effect before sampling state because `nvim_input()` only queues the key.
 - Measure synchronous mapped actions from immediately before key execution until the mapping returns so final draw work stays inside the sample.
+- Gating fallback git-index polls on a confirmed watch event loses external staging made during the start gap; poll the index on every settling pass and gate only the pass count.
+- auto-save.nvim's 1 s debounced write of a test's buffer edit races any later measured :write; turn it off before editing when a case counts writes, git runs or redraws.
 
 ## The loop
 
