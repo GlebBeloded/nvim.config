@@ -7,7 +7,7 @@
 set -euo pipefail
 
 root=${1:-${TMPDIR:-/tmp}/nvim.$USER}
-root=${root%/}
+root=$(printf '%s' "${root%/}" | tr -s /) # $TMPDIR ends in /: `T//nvim.<user>` never matches a child's `T/nvim.<user>`
 [ -d "$root" ] || exit 0
 minutes=${PRUNE_TMP_MIN:-720}
 base=$(basename "$root")
@@ -28,3 +28,13 @@ while IFS= read -r dir; do
 	removed=$((removed + 1))
 done < <(find "$root" -mindepth 1 -maxdepth 1 -type d -mmin "+$minutes")
 [ "$removed" -eq 0 ] || echo "prune-tmp: removed $removed stale Neovim temp dirs from $root"
+
+# language servers a killed test child left behind: reparented to launchd (ppid 1) with their XDG dirs under
+# $root; they live on for days, and each kept writing the Go build cache (10 gopls, Oct 2026)
+# (one `ps` for all: per-process calls took a minute; system binaries hide their env, servers do not)
+orphans=0
+for pid in $(ps eww -Ao pid=,ppid=,command= | awk -v needle="XDG_DATA_HOME=$root/" '$2 == 1 && index($0, needle) {print $1}'); do
+	pkill -P "$pid" 2>/dev/null || true
+	kill "$pid" 2>/dev/null && orphans=$((orphans + 1))
+done
+[ "$orphans" -eq 0 ] || echo "prune-tmp: stopped $orphans orphaned test processes"

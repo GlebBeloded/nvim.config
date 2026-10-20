@@ -67,6 +67,9 @@ function M.isolate()
 		vim.env.XDG_CONFIG_HOME = vim.fs.joinpath(sandbox, "config")
 		vim.env.XDG_CACHE_HOME = vim.fs.joinpath(sandbox, "cache")
 		vim.env.PATH = vim.fs.joinpath(M.root, "tests/fixtures/bin") .. ":" .. vim.env.PATH
+		-- the Go build cache of every gopls a test starts (the fixtures' too, tests/fixtures.lua): the default
+		-- ~/Library/Caches/go-build grew 17 GB in two hours of gates (Oct 2026); tests/check.sh trims this one
+		vim.env.GOCACHE = vim.fs.joinpath(M.root, ".tests/go/cache")
 		vim.env.NVIM_APPNAME = nil
 		for _, name in ipairs(MULTIPLEXER_ENV) do
 			vim.env[name] = nil
