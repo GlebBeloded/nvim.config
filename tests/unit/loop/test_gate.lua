@@ -580,12 +580,20 @@ T["loop: Gate reruns a known flaky case up to three times"] = function()
 	local plain, plain_runs = gate(2, { [file] = base[file] })
 	eq({ plain.green, plain_runs }, { false, 1 })
 	-- the gates' history: passed on rerun in 3 earlier runs (flake_stats.py), with no tests/flaky.txt line
-	local runs = vim.fs.joinpath(H.tempdir(child), "runs") -- as Archon's artifacts/runs/<run id>
-	for _, run in ipairs({ "r1", "r2", "r3" }) do
-		write(runs, { [run .. "/check-1.log"] = "===== rerun " .. file .. " | a: slow case: boom: ok =====" })
+	-- (log times set explicitly: after the test file's commit counts, before it is history a fix reset)
+	local function runs_dir(offset)
+		local runs = vim.fs.joinpath(H.tempdir(child), "runs") -- as Archon's artifacts/runs/<run id>
+		for _, run in ipairs({ "r1", "r2", "r3" }) do
+			local log = vim.fs.joinpath(runs, run, "check-1.log")
+			write(runs, { [run .. "/check-1.log"] = "===== rerun " .. file .. " | a: slow case: boom: ok =====" })
+			vim.uv.fs_utime(log, os.time() + offset, os.time() + offset)
+		end
+		return vim.fs.joinpath(runs, "now")
 	end
-	local history, history_runs = gate(3, { [file] = base[file] }, nil, vim.fs.joinpath(runs, "now"))
+	local history, history_runs = gate(3, { [file] = base[file] }, nil, runs_dir(3600))
 	eq({ history.green, history_runs }, { true, 3 })
+	local stale, stale_runs = gate(3, { [file] = base[file] }, nil, runs_dir(-3600))
+	eq({ stale.green, stale_runs }, { false, 1 })
 	local added = gate(1, { [file] = base[file] }, { ["tests/flaky.txt"] = file .. " | a: slow case" })
 	eq(added.green, false)
 	has(added.failures, "hard rule: tests/flaky.txt gains a case on this branch")

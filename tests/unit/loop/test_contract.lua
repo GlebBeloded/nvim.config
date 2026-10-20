@@ -433,4 +433,15 @@ T["loop: A blocked run never ships"] = function()
 	eq({ out.go, out.decision }, { false, "reject" })
 end
 
+T["loop: Agents keep tests robust under load"] = function()
+	local commands = vim.fs.joinpath(H.root, ".archon/commands")
+	for _, name in ipairs({ "implement.md", "fix.md" }) do
+		has(read(vim.fs.joinpath(commands, name)), "A flaky case is a bug to fix, never a rerun to rely on.")
+	end
+	has(read(vim.fs.joinpath(commands, "review.md")), "- test robustness (docs/testing.md, Robust tests):")
+	local doc = read(vim.fs.joinpath(H.root, "docs/testing.md"))
+	has(doc, "## Robust tests")
+	has(doc, "delete it together with its scenario when its intent cannot be tested deterministically")
+end
+
 return T

@@ -31,6 +31,7 @@ the diff against the conventions in docs/architecture.md and openspec/specs plus
   repairs a failed `openspec validate` or trial archive;
 - test integrity: no deleted, skipped, xfailed or weakened tests, no loosened assertions (a screen case that checks fewer mask rows or swaps a screenshot comparison for text checks is weakened; a new screen case with a screenshot but no colour mask from the approved render is untested; a tasks.md rewrite that drops a `make types`/`make check`/`make colorize` step is weakened; a test that reads a file under `openspec/changes/` at runtime breaks when the change is archived, so it is a must-fix: the file is copied under `tests/`), test
   names match scenario titles; new case names must not already exist under tests/;
+- test robustness (docs/testing.md, Robust tests): a new or edited test that waits on a fixed sleep or a bare wall-clock window, bounds wall time across RPC calls, uses an unscaled timeout, or races the product's debounce/watch timing is `[must-fix]`, with the event or count to wait on instead;
 - spec integrity: no scenario removed or weakened;
 - reuse over custom code (an existing plugin or built-in would do);
 - agent decisions (check these first): each line under tasks.md `## Agent decisions` is consistent with the spec, design.md and any `## Decision`; one that changes user-visible behaviour beyond them, or narrows, excludes or contradicts a delta SHALL, is `[must-fix]` (never `[minor]`), and its fix is the spec's behaviour, not spreading the decision;

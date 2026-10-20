@@ -40,6 +40,22 @@ To narrow a run, use `FILE=tests/unit/session/test_key.lua make test`, `CAPS=ses
 
 Run make from inside Neovim's `:terminal` as usual: the binary is `NVIM_BIN` (not `NVIM`, which Neovim sets to its server address).
 
+## Robust tests
+
+A test must pass the same way on a loaded host: the gate runs 12 workers beside language servers and the e2e VM (load
+average 25–60 on 14 cores), and a flaky case costs a fix pass, a rerun and the agent's attention on noise. So:
+
+- Wait on an event or state (a callback, a counter, an autocmd, a marker file), never a fixed sleep or a bare
+  wall-clock window; a watcher test proves its watch is live (a canary event) before the change it asserts.
+- Measure performance by operation counts or CPU time (`vim.uv.getrusage`) inside one `child.lua` call, never wall
+  time across RPC round trips; pure wall-time bounds belong in a serial layer, not the parallel one.
+- Scale every unavoidable timeout with `H.load_factor()`.
+- Drive the product's own debounce, watch or poll timing through a test hook instead of racing it; read-only git
+  polls run with `GIT_OPTIONAL_LOCKS=0`.
+- A flaky case (`.archon/scripts/flake_stats.py`: passed on rerun in 3+ recent runs) is a bug: make it deterministic,
+  or delete it together with its scenario when its intent cannot be tested deterministically. Reruns and
+  `tests/flaky.txt` only keep the gate moving until that fix lands.
+
 ## Layout
 
 ```

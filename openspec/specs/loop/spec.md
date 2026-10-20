@@ -616,6 +616,13 @@ nvim-deliver's `full-gate` node SHALL run `gate.py` with `tier: full` (only `mak
 - **WHEN** verdict.py runs on an approving pass with `full_green` false and full failures, with `full_green` `skipped`, with `full_green` true, and on a quick-red pass
 - **THEN** the first is not passed with `failed_gates` `full` and the failures in its feedback, the second fails `full` too, the third passes, and the last fails only `tests`
 
+### Requirement: Tests are robust under load
+Every test SHALL pass the same way on a loaded host: event or state waits, never fixed sleeps or bare wall-clock windows; performance by operation counts or CPU time inside one call; load-scaled timeouts; product timing driven through test hooks. implement.md and fix.md SHALL state it, review.md SHALL make a violating new or edited test `[must-fix]`, and a flaky case SHALL be fixed or deleted with its scenario, never kept on reruns.
+
+#### Scenario: Agents keep tests robust under load
+- **WHEN** implement.md, fix.md, review.md and docs/testing.md are read
+- **THEN** implement.md and fix.md say a flaky case is a bug to fix, never a rerun to rely on; review.md lists test robustness as a check; docs/testing.md has a `Robust tests` section that allows deleting a case with its scenario only when its intent cannot be tested deterministically
+
 ### Requirement: Gate runs a quick tier first
 gate.py SHALL first run `make check CHECK_TARGETS="lint types trace specs test"` with `CAPS` the touched capabilities: `lua/gleb/<area>` and the areas requiring it, `tests/<layer>/<cap>` (shortcut layers too), those whose tests name any other file, all for a shared or unnamed file; `loop-test` for the loop's paths. Red (after reruns) ends the gate; green runs `make check E2E=1`. Docs only, or a smoke or terminal path, runs the full check alone.
 
@@ -624,11 +631,11 @@ gate.py SHALL first run `make check CHECK_TARGETS="lint types trace specs test"`
 - **THEN** the red quick tier is the only call (`CAPS=pr`, noted in the check log); green adds `make check E2E=1` and keeps `quick-1.log`; `.archon/` runs `lint types trace specs loop-test` with no `test`; `init.lua` runs `CAPS=` empty; docs only runs only the full check; the e2e branch runs `CAPS=find-action,pr`, the used fixture `CAPS=pr`, the unused fixture and the plugin spec `CAPS=` empty, the sandbox branch `CAPS=pr` plus `loop-test`, a smoke branch only the full check, and a change to `lua/gleb/git/base.lua` that `lua/gleb/pr/` requires `CAPS=git,pr`
 
 ### Requirement: Gate reruns known flaky cases up to three times
-A failing case listed in `tests/flaky.txt` (`<file> | <case>`, by name prefix), or one that passed on rerun in 3 or more runs of the last 14 days (`flake_stats.py` over Archon's `artifacts/runs`), that gate.py would rerun SHALL rerun up to 3 times, serially, and count as flaky on its first pass; other cases rerun once. A branch adding a case to `tests/flaky.txt` SHALL be a hard rule.
+A failing case listed in `tests/flaky.txt` (`<file> | <case>`, by name prefix), or one that passed on rerun in 3 or more runs of the last 14 days after its file last changed (`flake_stats.py` over Archon's `artifacts/runs`), that gate.py would rerun SHALL rerun up to 3 times, serially, and count as flaky on its first pass; other cases rerun once. A branch adding a case to `tests/flaky.txt` SHALL be a hard rule.
 
 #### Scenario: Gate reruns a known flaky case up to three times
-- **WHEN** gate.py runs with a `make` stub whose check fails one case listed in the base's `tests/flaky.txt`, its rerun passing on the 3rd try, then never; then the case unlisted, passing on the 2nd try; then unlisted but passed on rerun in 3 sibling runs of an `artifacts/runs` dir, then a branch adding it to `tests/flaky.txt`
-- **THEN** the first is green after 3 reruns with the case in `flaky`; the second red after 3; the third red after 1; the history one green after 3; the last red with `hard rule: tests/flaky.txt gains a case on this branch`
+- **WHEN** gate.py runs with a `make` stub whose check fails one case listed in the base's `tests/flaky.txt`, its rerun passing on the 3rd try, then never; then the case unlisted, passing on the 2nd try; then unlisted but passed on rerun in 3 sibling runs of an `artifacts/runs` dir after its file's last commit, then the same runs from before that commit, then a branch adding it to `tests/flaky.txt`
+- **THEN** the first is green after 3 reruns with the case in `flaky`; the second red after 3; the third red after 1; the history one green after 3; the pre-commit history red after 1; the last red with `hard rule: tests/flaky.txt gains a case on this branch`
 
 ### Requirement: Gate reruns failed test cases once
 When `make check` fails only in `test`, `test-readiness` or `e2e`, gate.py SHALL rerun each `FAIL in` case once, serially (`make test FILE=<file> CASE=<name>`, `make test-readiness CASE=<name>`); e2e only when its log has no `FAIL in` and only sandbox/Lume infra lines (`make e2e E2E=1`). All passing: green, listed in `flaky` and the check log, a judge note. A rerun failing stays red; other targets never rerun.

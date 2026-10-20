@@ -1,5 +1,6 @@
 """Known flaky test cases from the gates' own history: a case whose failure passed on its serial rerun
-(`===== rerun <case>: ok =====` in a run's check log) in FLAKY_MIN runs or more within FLAKY_DAYS days.
+(`===== rerun <case>: ok =====` in a run's check log) in FLAKY_MIN runs or more within FLAKY_DAYS days, counting only
+runs after its test file last changed (a fix starts its count over).
 gate.py reruns these up to KNOWN_RERUNS times, like the hand-kept tests/flaky.txt (rerun statistics, as flaky-test
 tools score them; the hand list missed half the repeat offenders, Oct 2026).
   flake_stats.py [runs dir]   prints `<count>  <file> | <case>`, most frequent first
@@ -8,6 +9,7 @@ tools score them; the hand list missed half the repeat offenders, Oct 2026).
 import os
 import pathlib
 import re
+import subprocess
 import sys
 import time
 
@@ -25,14 +27,28 @@ def case_key(file: str, label: str) -> str:
     return f"{file} | {cap}: {title}" if rest else f"{file} | {label}"
 
 
+def changed_at(file: str, cache: dict[str, float]) -> float:
+    """When the test file last changed on this checkout (its newest commit): a fix resets its case's history."""
+    if file not in cache:
+        out = subprocess.run(["git", "log", "-1", "--format=%ct", "--", file], capture_output=True, text=True).stdout
+        cache[file] = float(out.strip() or 0)
+    return cache[file]
+
+
 def counts(runs: pathlib.Path) -> dict[str, int]:
-    """Runs (not log lines) in which each case passed on rerun, within FLAKY_DAYS."""
-    cutoff, seen = time.time() - FLAKY_DAYS * 86400, {}
+    """Runs (not log lines) in which each case passed on rerun, within FLAKY_DAYS and after its file last changed."""
+    cutoff, seen, changed = time.time() - FLAKY_DAYS * 86400, {}, {}
     for run in runs.iterdir() if runs.is_dir() else []:
         logs = [log for log in run.glob("*.log") if log.name.startswith(("check-", "full-", "quick-"))]
-        if not logs or max(log.stat().st_mtime for log in logs) < cutoff:
+        newest = max((log.stat().st_mtime for log in logs), default=0)
+        if newest < cutoff:
             continue
-        keys = {case_key(f, label) for log in logs for f, label in RERUN_OK.findall(log.read_text(errors="replace"))}
+        keys = {
+            case_key(f, label)
+            for log in logs
+            for f, label in RERUN_OK.findall(log.read_text(errors="replace"))
+            if log.stat().st_mtime > changed_at(f, changed)
+        }
         for key in keys:
             seen[key] = seen.get(key, 0) + 1
     return seen
