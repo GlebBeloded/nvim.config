@@ -16,7 +16,7 @@ local function start()
 	child.cmd("cd " .. vim.fn.fnameescape(repo) .. " | edit sample.go")
 end
 
-local T = H.child_set(child, start)
+local T = H.child_set(child, start, { reuse = true })
 
 --- Child-side `PluginMapped(filetype, lhs, mode)`: does the loaded `filetype` buffer map `lhs` itself?
 local PLUGIN_MAPPED = [[

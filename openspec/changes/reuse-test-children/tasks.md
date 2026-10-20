@@ -7,6 +7,7 @@ Scenarios: `loop: Reusable child resets case state`, `loop: Fresh child remains 
 ## Agent decisions
 
 - Opt in with `H.child_set(child, start, { reuse = true })` so existing callers retain fresh children without changes.
+- Reuse children in apply, ownership, plugin-ownership, assign, hidden, and open; keep adapters, context, and run fresh because the isolation trial exposed retained invocation history, a deleted startup fixture, and stale MiniPick buffers respectively.
 
 ## 2. Enable cached Lua loading before configuration imports
 Scenarios: `loop: Cached loader precedes configuration modules`
@@ -16,9 +17,9 @@ Scenarios: `loop: Cached loader precedes configuration modules`
 
 ## 3. Reuse children in actions and find-action suites
 Scenarios: `actions: Invocation captures editor state`, `actions: Global bindings exist after VeryLazy`, `find-action: Find Action opens from its shortcut`, `find-action: Catalog rows use standalone Title Case labels`, `find-action: Assign float captures a free shortcut`
-- [ ] 3.1 Run the named cases through their real mappings and pickers; temporarily disable the reusable lifecycle's case reset, opt the candidate files into reuse, run `make test FILE=tests/integration/actions` and `make test FILE=tests/integration/find-action`, see state-leak failures, record them, then restore the reset
-- [ ] 3.2 Opt safe files in `tests/integration/actions/` and `tests/integration/find-action/` into the reusable lifecycle, leaving any file that touches non-resettable state on fresh children
-- [ ] 3.3 Run `make test FILE=tests/integration/actions` and `make test FILE=tests/integration/find-action` and see them pass
+- [x] 3.1 Run the named cases through their real mappings and pickers; temporarily disable the reusable lifecycle's case reset, opt the candidate files into reuse, run `make test FILE=tests/integration/actions` and `make test FILE=tests/integration/find-action`, see state-leak failures, record them, then restore the reset
+- [x] 3.2 Opt safe files in `tests/integration/actions/` and `tests/integration/find-action/` into the reusable lifecycle, leaving any file that touches non-resettable state on fresh children
+- [x] 3.3 Run `make test FILE=tests/integration/actions` and `make test FILE=tests/integration/find-action` and see them pass
 
 ## 4. Reuse children in keymaps, picker and statusline suites
 Scenarios: `keymaps: Core mappings resolve through actions`, `keymaps: Terminal paste edits a normal buffer`, `picker: Dashboard opens shared list pickers`, `picker: Input prompt submits its query`, `statusline: statusline is global`

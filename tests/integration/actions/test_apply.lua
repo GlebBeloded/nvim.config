@@ -29,7 +29,7 @@ local function start()
 	]])
 end
 
-local T = H.child_set(child, start)
+local T = H.child_set(child, start, { reuse = true })
 
 ---@param shortcuts table<string, string[]>
 local function write_shortcuts(shortcuts)
