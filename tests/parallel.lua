@@ -133,6 +133,9 @@ local function spawn(layer, indices, out, on_exit)
 		vim.v.progpath,
 		"--headless",
 		"--noplugin",
+		-- a worker whose run was killed exits too (24 workers outlived theirs by a day, Oct 2026)
+		"--cmd",
+		require("tests.helpers").WATCHDOG,
 		"-u",
 		"tests/minimal_init.lua",
 		"-c",

@@ -1074,6 +1074,10 @@ a test child SHALL exit when its test worker is gone, `make test FILE=<directory
 - **WHEN** a worker Neovim starts a test child through `tests/helpers.lua` and the worker is killed with SIGKILL
 - **THEN** the child process exits within 10 s
 
+#### Scenario: A test worker outlives no killed run
+- **WHEN** `tests/parallel.lua` runs one worker (`JOBS=1`) on a test file whose case waits forever, and the run is killed with SIGKILL
+- **THEN** the worker process exits within 10 s
+
 #### Scenario: A test directory runs its files
 - **WHEN** `tests/runner.lua` collects with `FILE` set to a directory holding a nested test file and a non-test file
 - **THEN** it returns the test files under it, sorted, and not the other file
