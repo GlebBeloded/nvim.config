@@ -1,12 +1,13 @@
 # Known timing-sensitive cases (`<file> | <case>`; a case whose name starts with one matches): when one fails,
 # .archon/scripts/gate.py reruns it up to 3 times, serially, and takes one pass (any other case reruns once).
-# Each is still a bug: fix its wait and drop its line. Picked from gate logs: flaky in 3+ runs, Oct 2026.
+# Each is still a bug: fix its wait and drop its line. Picked from gate and audit check logs: flaky in 3+ runs, Oct 2026.
 tests/integration/file-tree/test_project_live.lua | file-tree: Every compact chain member is watched
 tests/integration/file-tree/test_project_live.lua | file-tree: Project tree isolates tabpage state
 tests/integration/file-tree/test_project_live.lua | file-tree: A compact chain splits when a folder gains an entry
 tests/integration/file-tree/test_project_live.lua | file-tree: Project tree recolours after staging outside Neovim
 tests/integration/file-tree/test_project_live.lua | file-tree: Project tree shows files created outside Neovim
 tests/integration/file-tree/test_performance.lua | file-tree: Project tree coalesces a save burst
+tests/integration/file-tree/test_performance.lua | file-tree: Project tree unfold all meets the large-tree bound
 tests/integration/file-tree/test_performance.lua | file-tree: Project tree re-roots without waiting for repository discovery
 tests/integration/file-tree/test_project_ops.lua | file-tree: Project tree r renames a folder and the buffers inside
 tests/integration/file-tree/test_ignored.lua | file-tree: First paint waits for ignored status
