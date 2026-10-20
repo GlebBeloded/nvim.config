@@ -786,6 +786,8 @@ end
 T["git: Branch tab Enter opens the working file"] = function()
 	observe_diff_shows()
 	local root = open_branch_tab()
+	select_row("branch:file:internal/billing/invoice.go")
+	wait_for_branch_diff("internal/billing/invoice.go")
 	select_row("branch:file:internal/billing/tax.go")
 	wait_for_branch_diff("internal/billing/tax.go")
 

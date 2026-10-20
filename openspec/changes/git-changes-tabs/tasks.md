@@ -81,9 +81,9 @@ Scenarios: `git: Branch tab hint names the commit view key`, `git: Branch tab hi
 
 Scenarios: `git: Branch tab shows the merge-base diff`, `git: Branch tab shows a commit's diff`, `git: Branch tab shows an added file`, `git: Branch tab ]f steps through the branch files`, `git: Branch tab Enter opens the working file`
 
-- [ ] 11.1 Write the scenarios in tests/integration/git/test_changes_tabs.lua against the real picker rows, `<CR>` and `]f`, then run `make test FILE=tests/integration/git/test_changes_tabs.lua` to see them fail
-- [ ] 11.2 Add the branch variant of `git.load_diff` in lua/gleb/git/changes/git.lua as design.md Decision 5 requires and route selection, `]f` and `<CR>` by active tab with the labels of Decision 10
-- [ ] 11.3 Run `make test FILE=tests/integration/git/test_changes_tabs.lua` and see the scenarios pass
+- [x] 11.1 Write the scenarios in tests/integration/git/test_changes_tabs.lua against the real picker rows, `<CR>` and `]f`, then run `make test FILE=tests/integration/git/test_changes_tabs.lua` to see them fail
+- [x] 11.2 Add the branch variant of `git.load_diff` in lua/gleb/git/changes/git.lua as design.md Decision 5 requires and route selection, `]f` and `<CR>` by active tab with the labels of Decision 10
+- [x] 11.3 Run `make test FILE=tests/integration/git/test_changes_tabs.lua` and see the scenarios pass
 
 ## 12. Branch staging keys are inert
 
@@ -142,16 +142,16 @@ Scenarios: `git: Local tab matches the approved render`
 Scenarios: `git: Branch tab matches the approved render`
 
 - [x] 19.1 Write the scenario in tests/screen/git/test_changes_tabs.lua from design.md "Proposed — Branch tab, files" and run `make test FILE=tests/screen/git/test_changes_tabs.lua CASE="Branch tab matches the approved render"` to see it fail
-- [ ] 19.2 Add a `changes-branch` case to tests/render/cases.lua with the `billing-branch` fixture, fake `gh` and stubbed clock and make the Branch files screen match the approved text and colour mask
-- [ ] 19.3 Run `make test FILE=tests/screen/git/test_changes_tabs.lua CASE="Branch tab matches the approved render"` and compare `make render CASE=changes-branch COLUMNS=100 LINES=30` with renders/branch_files.ansi
+- [x] 19.2 Add a `changes-branch` case to tests/render/cases.lua with the `billing-branch` fixture, fake `gh` and stubbed clock and make the Branch files screen match the approved text and colour mask
+- [x] 19.3 Run `make test FILE=tests/screen/git/test_changes_tabs.lua CASE="Branch tab matches the approved render"` and compare `make render CASE=changes-branch COLUMNS=100 LINES=30` with renders/branch_files.ansi
 
 ## 20. Branch commits screen
 
 Scenarios: `git: Branch commits match the approved render`
 
 - [x] 20.1 Write the scenario in tests/screen/git/test_changes_tabs.lua from design.md "Proposed — Branch tab, commits" and run `make test FILE=tests/screen/git/test_changes_tabs.lua CASE="Branch commits match the approved render"` to see it fail
-- [ ] 20.2 Make the Branch commit screen match the approved text and colour mask
-- [ ] 20.3 Run `make test FILE=tests/screen/git/test_changes_tabs.lua CASE="Branch commits match the approved render"` and see it pass
+- [x] 20.2 Make the Branch commit screen match the approved text and colour mask
+- [x] 20.3 Run `make test FILE=tests/screen/git/test_changes_tabs.lua CASE="Branch commits match the approved render"` and see it pass
 
 ## 21. Existing Local diff screen
 
@@ -206,10 +206,4 @@ Scenarios: `git: Local tab matches the approved render`, `git: Branch tab matche
 - The Branch footer uses a cursor-clamped sentinel row because below-EOF virtual lines do not extend Neovim's scroll range.
 - Branch commit loading captures its generation after file rows arrive, so an early commit-view action remains current.
 - The changes panel uses colorizer's native filetype exclusion so pull-request numbers keep their semantic highlight.
-
-## Stuck
-
-- Task 11: the Branch diff navigation regression is still intermittent after two production attempts; the saved second attempt is `stuck-attempt-11b.diff`.
-- Probe: before `<CR>` the real Branch panel was current with its owned diff at windows 1005/1000; afterward the panel remained current, the working file was not open and an `invoice.go` `gleb-diff` window remained beside blank editor windows.
-- Attempt 1: restored committed `git show` comparisons, tab-qualified diff identity and Branch-file `<CR>` routing; the content and navigation cases passed repeatedly, but the strengthened Enter assertion later caught the owned diff remaining open.
-- Attempt 2: stopped the selection debounce and invalidated its generation before closing the diff; a later five-run audit still failed on run 3 with `Branch Enter did not open the working file`.
+- Branch diffs replace the panel-owned diff in its right window, because committed panes are read-only and no editor-eligible window would otherwise receive the next diff.

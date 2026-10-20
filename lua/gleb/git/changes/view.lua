@@ -402,12 +402,61 @@ end
 
 ---@param view ChangesView
 ---@param row ChangesRow
+---@return string
+local function diff_key(view, row)
+	return view.active_tab .. ":" .. (row.id or assert(row.path, "file row path missing"))
+end
+
+---@param view ChangesView
+---@param row ChangesRow
+---@return ChangesBranchDiffContext
+local function branch_diff_context(view, row)
+	local info = assert(view.branch_info, "Branch tab has no base")
+	local context = {
+		merge_base = info.merge_base,
+		base_name = info.base_ref:gsub("^origin/", ""),
+		head = info.head,
+	}
+	local commit_hash = row.id and row.id:match("^branch:commit:([^:]+):file:") or nil
+	if not commit_hash then
+		return context
+	end
+	local commit = vim.iter(view.rows):find(function(candidate)
+		return candidate.kind == "commit" and candidate.hash == commit_hash
+	end)
+	assert(commit, "Commit row missing for file")
+	context.commit = assert(commit.full_hash, "Commit hash missing")
+	context.parent = assert(commit.parents, "Commit parents missing")[1] or context.commit .. "^"
+	context.subject = commit.label
+	return context
+end
+
+--- Replace the panel's own diff in place: a committed diff has no editor-eligible pane to reuse.
+---@param view ChangesView
+---@return integer
+local function diff_target(view)
+	local owned = view.diff_view
+	if owned and vim.api.nvim_win_is_valid(owned.right_win) then
+		return owned.right_win
+	end
+	return windows.eligible_editor(view, true)
+end
+
+---@param view ChangesView
+---@param row ChangesRow
 ---@param generation integer
 ---@param selection_generation integer
 ---@param focus_right boolean
 ---@return nil
 local function show_diff(view, row, generation, selection_generation, focus_right)
-	git.load_diff(view.root, row, function(spec, loaded_buf)
+	local load = view.active_tab == "branch"
+			and function(callback)
+				git.load_branch_diff(view.root, row, branch_diff_context(view, row), callback)
+			end
+		or function(callback)
+			git.load_diff(view.root, row, callback)
+		end
+	load(function(spec, loaded_buf)
 		local changes = require("gleb.git.changes")
 		local selected = changes.state.by_tab[view.tab] == view
 			and selection_generation == view.selection_generation
@@ -426,7 +475,7 @@ local function show_diff(view, row, generation, selection_generation, focus_righ
 			view.loaded_buffers[loaded_buf] = true
 		end
 		local diff = require("gleb.diff.view")
-		local editor = windows.eligible_editor(view, true)
+		local editor = diff_target(view)
 		view.editor_win = editor
 		spec.on_next_file = function()
 			M.next_file(view)
@@ -443,7 +492,7 @@ local function show_diff(view, row, generation, selection_generation, focus_righ
 			return
 		end
 		view.diff_view = shown
-		view.diff_path = row.path
+		view.diff_path = diff_key(view, row)
 		if focus_right and vim.api.nvim_win_is_valid(shown.right_win) then
 			vim.api.nvim_set_current_win(shown.right_win)
 		end
@@ -462,17 +511,18 @@ request_diff = function(view, row, focus_right)
 		vim.notify("No file content: " .. row.label, vim.log.levels.INFO)
 		return
 	end
-	if row.path == view.diff_pending_path then
+	local key = diff_key(view, row)
+	if key == view.diff_pending_path then
 		return
 	end
-	if row.path == view.diff_path then
+	if key == view.diff_path then
 		if focus_right and view.diff_view and vim.api.nvim_win_is_valid(view.diff_view.right_win) then
 			vim.api.nvim_set_current_win(view.diff_view.right_win)
 		end
 		return
 	end
 	view.selection_generation = view.selection_generation + 1
-	view.diff_pending_path = row.path
+	view.diff_pending_path = key
 	show_diff(view, row, view.generation, view.selection_generation, focus_right)
 end
 
@@ -482,7 +532,7 @@ end
 ---@param row ChangesRow?
 ---@return nil
 local function drop_pending_diff(view, row)
-	if view.diff_pending_path and (not row or row.path ~= view.diff_pending_path) then
+	if view.diff_pending_path and (not row or diff_key(view, row) ~= view.diff_pending_path) then
 		view.selection_generation = view.selection_generation + 1
 		view.diff_pending_path = nil
 	end
@@ -513,9 +563,13 @@ end
 ---@return nil
 local function close_if_orphaned(view)
 	local changes = require("gleb.git.changes")
+	local owns_diff = view.diff_view
+		and vim.api.nvim_win_is_valid(view.diff_view.left_win)
+		and vim.api.nvim_win_is_valid(view.diff_view.right_win)
 	if
 		vim.api.nvim_tabpage_is_valid(view.tab)
 		and changes.state.by_tab[view.tab] == view
+		and not owns_diff
 		and eligible_editor_count(view.tab) == 0
 	then
 		M.close(view)
@@ -684,6 +738,9 @@ function M.open_file(view, row)
 	if not row.path or not row.diffable then
 		return
 	end
+	view.diff_timer:stop()
+	view.selection_generation = view.selection_generation + 1
+	view.diff_pending_path = nil
 	if view.diff_view then
 		require("gleb.diff.view").close(view.diff_view)
 		view.diff_view = nil

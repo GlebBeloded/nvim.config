@@ -245,10 +245,10 @@ function M.open_selected()
 		return
 	end
 	local row = current.rows[vim.api.nvim_win_get_cursor(current.win)[1]]
-	if row and row.fold_id then
-		view.toggle_fold(current)
-	elseif row and row.kind == "file" then
+	if row and row.kind == "file" and (current.active_tab == "branch" or not row.fold_id) then
 		view.open_file(current, row)
+	elseif row and row.fold_id then
+		view.toggle_fold(current)
 	end
 end
 
