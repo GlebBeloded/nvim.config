@@ -51,9 +51,12 @@ T["loop: A test worker outlives no killed run"] = function()
 	local dir = vim.fn.tempname()
 	vim.fn.mkdir(dir, "p")
 	local file = vim.fs.joinpath(dir, "test_hang.lua")
+	local started = vim.fs.joinpath(dir, "started")
 	vim.fn.writefile({
 		"local T = require('mini.test').new_set()",
-		"T['x: hangs'] = function() vim.wait(120000, function() return false end) end",
+		("T['x: hangs'] = function() vim.fn.writefile({}, %q) vim.wait(120000, function() return false end) end"):format(
+			started
+		),
 		"return T",
 	}, file)
 	local run = vim.system(
@@ -67,6 +70,13 @@ T["loop: A test worker outlives no killed run"] = function()
 		return worker ~= nil
 	end, 100)
 	eq(type(worker), "number")
+	-- the worker runs its case (a loaded host starts it slowly)
+	eq(
+		vim.wait(math.ceil(30000 * H.load_factor()), function()
+			return vim.fn.filereadable(started) == 1
+		end, 100),
+		true
+	)
 	run:kill(9)
 	eq(
 		vim.wait(10000, function()
