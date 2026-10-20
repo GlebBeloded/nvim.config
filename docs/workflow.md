@@ -29,8 +29,6 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 
 ## Loop lessons
 
-- Assert structured failure diagnostics at the regression boundary so phase and live subprocess evidence cannot silently disappear.
-- An algorithm fallback change must preserve independent upstream eligibility guards; here exact LCS still applies only when at least one line is at most 300 characters.
 - Complete per-view pending state on every current asynchronous result, including failures and first-paint callbacks, so later invalidations cannot deadlock.
 - Merge traversal discoveries into retained UI state when the traversal intentionally skips user-expandable nodes.
 - Preserve polling semantics when extracting asynchronous readiness helpers: recording an LSP error must not make the wait return before readiness.
@@ -44,6 +42,8 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - Preserve explicit branches when one branch can validly return false; Lua's and/or selection otherwise executes the fallback.
 - An aggregate expansion bound needs an operation-level tree adapter so unfold-all warns once instead of retrying every node left folded by the bound.
 - Shared tree redraws need an owner lifecycle hook when visible-row count controls the owning window's geometry.
+- Resolve repository roots canonically before exercising root-keyed cache and refresh APIs on macOS.
+- Wait for asynchronous refresh completion before asserting retained cache state; subprocess-start logs can precede callback resolution.
 
 ## The loop
 
