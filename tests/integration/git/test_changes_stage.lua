@@ -5,7 +5,7 @@ local H = require("tests.helpers")
 local eq = MiniTest.expect.equality
 local child = H.new_child()
 
-local ASYNC_MS = 3000
+local ASYNC_MS = 10000 * H.load_factor()
 
 local function start()
 	child.start_config()
@@ -89,8 +89,18 @@ local function record_system_calls()
 		SystemCalls = {}
 		local original_system = vim.system
 		vim.system = function(command, opts, callback)
-			table.insert(SystemCalls, { command = vim.deepcopy(command), stdin = opts and opts.stdin or nil })
-			return original_system(command, opts, callback)
+			local call = {
+				command = vim.deepcopy(command),
+				stdin = opts and opts.stdin or nil,
+				completed = false,
+			}
+			table.insert(SystemCalls, call)
+			local process = original_system(command, opts, function(result)
+				call.completed = true
+				if callback then callback(result) end
+			end)
+			call.process = process
+			return process
 		end
 	]])
 end
@@ -102,7 +112,24 @@ local function action_calls(operation)
 		return call.command[1] == "git"
 			and call.command[2] == "--literal-pathspecs"
 			and call.command[3] == %q
+	end):map(function(call)
+		return { command = call.command, stdin = call.stdin }
 	end):totable()]]):format(operation))
+end
+
+---@param mode "all"|"paths"
+---@return boolean
+local function wait_stage_process(mode)
+	return child.wait(
+		([[vim.iter(SystemCalls):any(function(call)
+			return call.command[1] == "git"
+				and call.command[2] == "--literal-pathspecs"
+				and call.command[3] == "add"
+				and (call.command[4] == "-A") == (%q == "all")
+				and call.completed
+		end)]]):format(mode),
+		ASYNC_MS
+	)
 end
 
 ---@param dir string
@@ -126,8 +153,17 @@ end
 ---@return boolean
 local function wait_worktree_clean(dir, path)
 	return vim.wait(ASYNC_MS, function()
-		return vim.system({ "git", "diff", "--quiet", "--", path }, { cwd = dir }):wait().code == 0
+		return vim.system({ "git", "diff", "--quiet", "--", path }, { cwd = dir, env = { GIT_OPTIONAL_LOCKS = "0" } })
+			:wait().code == 0
 	end, 50)
+end
+
+---@param dir string
+---@param path string
+---@return boolean
+local function worktree_clean(dir, path)
+	return vim.system({ "git", "diff", "--quiet", "--", path }, { cwd = dir, env = { GIT_OPTIONAL_LOCKS = "0" } })
+		:wait().code == 0
 end
 
 ---@param path string
@@ -305,14 +341,9 @@ stage_root["stages the dirty fixture in one add call"] = function()
 
 	press_space_on_root("changes")
 
-	eq(
-		vim.wait(ASYNC_MS, function()
-			return vim.deep_equal(staged(dir), { "a.txt", "b.txt", "d.txt", "lib/c.lua" })
-		end, 50),
-		true
-	)
+	eq(wait_stage_process("paths"), true)
 	eq(staged(dir), { "a.txt", "b.txt", "d.txt", "lib/c.lua" })
-	eq(wait_worktree_clean(dir, "."), true)
+	eq(worktree_clean(dir, "."), true)
 	eq(wait_root_checkbox("changes", "󰄲"), true)
 	eq(action_calls("add"), {
 		{
@@ -345,7 +376,8 @@ stage_root["uses NUL pathspec input above 100 paths"] = function()
 
 	press_space_on_root("changes")
 
-	eq(wait_worktree_clean(dir, "."), true)
+	eq(wait_stage_process("paths"), true)
+	eq(worktree_clean(dir, "."), true)
 	local calls = action_calls("add")
 	eq(#calls, 1)
 	eq(calls[1].command, {
@@ -368,10 +400,10 @@ T["git: Changes panel stages literal metacharacter paths"] = function()
 
 	eq(wait_staged(dir, "[ab].txt", true), true)
 	eq(staged(dir), { "[ab].txt" })
-	local calls = child.lua_get([[vim.iter(SystemCalls):filter(function(call)
+	local call_count = child.lua_get([[#vim.iter(SystemCalls):filter(function(call)
 		return call.command[1] == "git" and call.command[2] == "--literal-pathspecs"
 	end):totable()]])
-	eq(#calls >= 2, true)
+	eq(call_count >= 2, true)
 end
 
 T["git: Changes panel refuses to stage an unmerged file"] = function()
@@ -436,7 +468,8 @@ T["git: Changes panel A stages everything"] = function()
 
 	child.type_keys("A")
 
-	eq(wait_worktree_clean(dir, "."), true)
+	eq(wait_stage_process("all"), true)
+	eq(worktree_clean(dir, "."), true)
 	eq(vim.trim(H.git(dir, { "ls-files", "--others", "--exclude-standard" })), "")
 	eq(
 		child.wait(
