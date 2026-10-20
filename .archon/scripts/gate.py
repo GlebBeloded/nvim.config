@@ -52,7 +52,10 @@ TIMED_OUT = "check: TIMEOUT"
 def run(cmd: list[str], log: str, timeout: int | None = None, extra: dict[str, str] | None = None) -> tuple[bool, str]:
     """Runs `cmd` writing its output to the log as it goes (a killed gate still leaves evidence); past
     `timeout` s the whole process group is killed and the output ends with a TIMED_OUT line."""
-    env = {**os.environ, "LSP_TIMEOUT_MS": os.environ.get("LSP_TIMEOUT_MS") or LSP_TIMEOUT_MS, **(extra or {})}
+    # the node's own inputs stay out of the check: loop scripts its tests run read INPUTS_* (the full gate's
+    # INPUTS_TIER=full sent test_gate_timeout's gate down the full path, run 2ef37bd9)
+    env = {k: v for k, v in os.environ.items() if not k.startswith("INPUTS_")}
+    env.update({"LSP_TIMEOUT_MS": os.environ.get("LSP_TIMEOUT_MS") or LSP_TIMEOUT_MS, **(extra or {})})
     path = artifacts / log
     with path.open("w") as f:
         proc = subprocess.Popen(cmd, stdout=f, stderr=subprocess.STDOUT, text=True, env=env, start_new_session=True)

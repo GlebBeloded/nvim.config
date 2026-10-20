@@ -1166,7 +1166,7 @@ The private data prepared for a plugin update SHALL retain installed plugins, pa
 - **THEN** it returns the FAIL lines of `check-2.log` and does not fail on the unnumbered log
 
 ### Requirement: Tests never see an Archon node's inputs
-`tests/minimal_init.lua` SHALL unset every `INPUTS_*` environment variable, `BASE_BRANCH`, `DRAIN_SKIP_FILE` and `DRAIN_PICK_LOCK`, so a loop script a test runs sees only the inputs the test passes, not the ones of the Archon node that ran `make check` (plugin-update sets `INPUTS_CANCEL_ON_REJECT=false`).
+`tests/minimal_init.lua` SHALL unset every `INPUTS_*` environment variable, `BASE_BRANCH`, `DRAIN_SKIP_FILE` and `DRAIN_PICK_LOCK`, so a loop script a test runs sees only the inputs the test passes, not the ones of the Archon node that ran `make check` (plugin-update sets `INPUTS_CANCEL_ON_REJECT=false`); gate.py SHALL run its checks without any `INPUTS_*` (the full gate's `INPUTS_TIER=full`).
 
 #### Scenario: Tests never see an Archon node's inputs
 - **WHEN** Neovim starts with `tests/minimal_init.lua` and `INPUTS_CANCEL_ON_REJECT=false` `BASE_BRANCH=loop/x` and `DRAIN_SKIP_FILE=/tmp/drain-skip-x` in its environment
