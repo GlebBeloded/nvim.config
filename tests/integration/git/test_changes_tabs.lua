@@ -232,6 +232,49 @@ local function wait_for_commits()
 	)
 end
 
+local function observe_diff_shows()
+	child.lua([[
+		BranchDiffShows = {}
+		local diff = require("gleb.diff.view")
+		local show = diff.show
+		diff.show = function(win, spec)
+			BranchDiffShows[#BranchDiffShows + 1] = {
+				relpath = spec.relpath,
+				left = spec.left,
+				right = spec.right,
+				labels = spec.labels,
+				committed = spec.committed,
+				actionable = spec.actionable,
+				right_buf = spec.right_buf,
+			}
+			return show(win, spec)
+		end
+	]])
+end
+
+---@param path string
+local function wait_for_branch_diff(path)
+	assert(
+		child.wait(
+			([[(function()
+				local shows = BranchDiffShows or {}
+				local shown = shows[#shows]
+				return shown and shown.relpath == %q and shown.committed == true
+			end)()]]):format(path),
+			3000
+		),
+		"Branch diff did not load: " .. path
+	)
+end
+
+---@param root string
+---@param rev_path string
+---@return string[]
+local function git_lines(root, rev_path)
+	local output = H.git(root, { "show", rev_path })
+	return vim.split(output:gsub("\n$", ""), "\n", { plain = true })
+end
+
 ---@param items table
 ---@param key string
 ---@return table
@@ -625,6 +668,121 @@ T["git: c on the Local tab does nothing"] = function()
 	eq(after.lines, before.lines)
 	eq(after.active, "local")
 	eq(notifications(), {})
+end
+
+T["git: Branch tab shows the merge-base diff"] = function()
+	observe_diff_shows()
+	local root = open_branch_tab()
+	select_row("branch:file:internal/billing/invoice.go")
+	wait_for_branch_diff("internal/billing/invoice.go")
+
+	local shown = child.lua_get("BranchDiffShows[#BranchDiffShows]")
+	eq(shown.left, git_lines(root, "4ccefde:internal/billing/invoice.go"))
+	eq(shown.right, git_lines(root, "HEAD:internal/billing/invoice.go"))
+	eq({ shown.labels, shown.committed, shown.actionable }, {
+		{ left = "4ccefde · main", right = "e325463 · HEAD" },
+		true,
+		false,
+	})
+	eq(shown.right_buf, nil)
+	local buffers = child.lua_get([=[(function()
+		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		return {
+			left = vim.api.nvim_buf_get_name(panel.diff_view.left_buf),
+			right = vim.api.nvim_buf_get_name(panel.diff_view.right_buf),
+			working = vim.fs.joinpath(panel.root, "internal/billing/invoice.go"),
+		}
+	end)()]=])
+	assert(buffers.left ~= buffers.working and buffers.right ~= buffers.working, "Branch diff used the working buffer")
+end
+
+T["git: Branch tab shows a commit's diff"] = function()
+	observe_diff_shows()
+	local root = open_branch_tab()
+	child.type_keys("c", "<Esc>")
+	wait_for_commits()
+	select_row("branch:commit:e325463:file:internal/billing/invoice.go")
+	wait_for_branch_diff("internal/billing/invoice.go")
+
+	local shown = child.lua_get("BranchDiffShows[#BranchDiffShows]")
+	eq(shown.left, git_lines(root, "e325463^:internal/billing/invoice.go"))
+	eq(shown.right, git_lines(root, "e325463:internal/billing/invoice.go"))
+	eq(shown.labels, { left = "07cb52e · parent", right = "e325463 · wire tax into Total" })
+end
+
+T["git: Branch tab shows an added file"] = function()
+	observe_diff_shows()
+	local root = open_branch_tab()
+	select_row("branch:file:internal/billing/tax.go")
+	wait_for_branch_diff("internal/billing/tax.go")
+
+	local shown = child.lua_get("BranchDiffShows[#BranchDiffShows]")
+	eq(shown.left, {})
+	eq(shown.right, git_lines(root, "HEAD:internal/billing/tax.go"))
+end
+
+T["git: Branch tab ]f steps through the branch files"] = function()
+	observe_diff_shows()
+	open_branch_tab()
+	select_row("branch:file:internal/billing/invoice.go")
+	wait_for_branch_diff("internal/billing/invoice.go")
+	child.lua([[
+		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		vim.api.nvim_set_current_win(panel.diff_view.right_win)
+	]])
+
+	for _, path in ipairs({
+		"internal/billing/invoice_test.go",
+		"internal/billing/tax.go",
+		"internal/billing/tax_test.go",
+	}) do
+		child.type_keys("]f")
+		wait_for_branch_diff(path)
+	end
+
+	local result = child.lua_get([=[(function()
+		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		return {
+			shown = vim.iter(BranchDiffShows):map(function(item) return item.relpath end):totable(),
+			row = panel.rows[vim.api.nvim_win_get_cursor(panel.win)[1]].path,
+		}
+	end)()]=])
+	eq(result, {
+		shown = {
+			"internal/billing/invoice.go",
+			"internal/billing/invoice_test.go",
+			"internal/billing/tax.go",
+			"internal/billing/tax_test.go",
+		},
+		row = "internal/billing/tax_test.go",
+	})
+end
+
+T["git: Branch tab Enter opens the working file"] = function()
+	observe_diff_shows()
+	local root = open_branch_tab()
+	select_row("branch:file:internal/billing/tax.go")
+	wait_for_branch_diff("internal/billing/tax.go")
+
+	child.type_keys("<CR>")
+	local result = child.lua_get([=[(function()
+		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		local diff_windows = vim.iter(vim.api.nvim_tabpage_list_wins(0)):filter(function(win)
+			return vim.bo[vim.api.nvim_win_get_buf(win)].filetype == "gleb-diff"
+		end):totable()
+		return {
+			current = vim.api.nvim_buf_get_name(0),
+			panel_open = vim.api.nvim_win_is_valid(panel.win),
+			active = panel.active_tab,
+			diff_windows = #diff_windows,
+		}
+	end)()]=])
+	eq(result, {
+		current = vim.fs.joinpath(root, "internal/billing/tax.go"),
+		panel_open = true,
+		active = "branch",
+		diff_windows = 0,
+	})
 end
 
 T["git: Branch tab hint names the commit view key"] = function()
