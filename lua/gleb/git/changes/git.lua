@@ -19,10 +19,11 @@ M.state = {}
 ---@param args ChangesGitArgs
 ---@param cwd string
 ---@param callback fun(result: vim.SystemCompleted)
+---@param env? table<string, string>
 ---@return nil
-local function run_git(args, cwd, callback)
+local function run_git(args, cwd, callback, env)
 	local command = vim.list_slice(args)
-	vim.system(command, { cwd = workspace.normalize(cwd), text = true, stdin = args.stdin }, function(result)
+	vim.system(command, { cwd = workspace.normalize(cwd), text = true, stdin = args.stdin, env = env }, function(result)
 		vim.schedule(function()
 			callback(result)
 		end)
@@ -70,14 +71,15 @@ function M.refresh(root, callback)
 	end
 
 	M.state.last_cmd = command
+	local lock_free_env = { GIT_OPTIONAL_LOCKS = "0" }
 	run_git(command, cwd, function(result)
 		status_result = result
 		finish()
-	end)
+	end, lock_free_env)
 	run_git(numstat_command, cwd, function(result)
 		numstat_result = result
 		finish()
-	end)
+	end, lock_free_env)
 end
 
 ---@param text string

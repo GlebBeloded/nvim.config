@@ -332,6 +332,55 @@ T["git: Changes panel status avoids optional locks"]["refreshes with the lock-fr
 	assert(child.lua_get([[_G.changes_status_result.stdout:find("tracked.txt", 1, true) ~= nil]]))
 end
 
+T["git: Changes panel refresh reads avoid optional locks"] = function()
+	child.lua(
+		[[
+		_G.changes_refresh_calls = {}
+		_G.changes_refresh_result = nil
+		local original_system = vim.system
+		vim.system = function(command, opts, callback)
+			table.insert(_G.changes_refresh_calls, {
+				command = vim.deepcopy(command),
+				env = vim.deepcopy(opts.env),
+			})
+			return original_system(command, opts, callback)
+		end
+		require("gleb.git.changes.git").refresh(..., function(result)
+			_G.changes_refresh_result = result
+		end)
+	]],
+		{ repo }
+	)
+	assert(child.wait("_G.changes_refresh_result ~= nil"), "Changes refresh did not finish")
+
+	eq(child.lua_get("_G.changes_refresh_calls"), {
+		{
+			command = {
+				"git",
+				"--no-optional-locks",
+				"status",
+				"--porcelain=v2",
+				"-z",
+				"--untracked-files=all",
+			},
+			env = { GIT_OPTIONAL_LOCKS = "0" },
+		},
+		{
+			command = {
+				"git",
+				"--no-optional-locks",
+				"--literal-pathspecs",
+				"diff-index",
+				"-M",
+				"--numstat",
+				"-z",
+				"HEAD",
+			},
+			env = { GIT_OPTIONAL_LOCKS = "0" },
+		},
+	})
+end
+
 T["git: Changes panel highlight colours"] = MiniTest.new_set()
 
 T["git: Changes panel highlight colours"]["come from the palette after a colorscheme change"] = function()

@@ -219,7 +219,7 @@ When no git root can be resolved, `changes.toggle` and `changes.review` SHALL no
 - **THEN** a notification starting with `Git root error:` at ERROR is emitted and no window with filetype `gleb-changes` exists
 
 ### Requirement: Changes panel rows
-The panel SHALL run `git --no-optional-locks status --porcelain=v2 -z --untracked-files=all` in the root and consume shared status records in one grouping pass. It SHALL draw `Changes <n> files` and an optional `Unversioned Files <n> files`, group by compacted directories, sort directories before files by name, and cap rows at the project tree's row limit.
+The panel SHALL disable optional Git locks for its non-mutating status and line-stat refresh reads. It SHALL run `git --no-optional-locks status --porcelain=v2 -z --untracked-files=all` in the root and consume shared status records in one grouping pass. It SHALL draw `Changes <n> files` and an optional `Unversioned Files <n> files`, group by compacted directories, sort directories before files by name, and cap rows at the project tree's row limit.
 
 #### Scenario: Changes panel lists the dirty fixture
 - **WHEN** the changes panel is opened on a fresh copy of the `dirty` fixture
@@ -244,6 +244,10 @@ The panel SHALL run `git --no-optional-locks status --porcelain=v2 -z --untracke
 #### Scenario: Changes panel status avoids optional locks
 - **WHEN** the Changes panel refreshes in a repository
 - **THEN** its status command starts with `git --no-optional-locks status --porcelain=v2 -z --untracked-files=all`
+
+#### Scenario: Changes panel refresh reads avoid optional locks
+- **WHEN** the Changes panel refreshes in a repository
+- **THEN** the status and line-stat processes run with `GIT_OPTIONAL_LOCKS=0`
 
 #### Scenario: Changes panel caps rows
 - **WHEN** grouping status records would produce more rows than the project tree row limit

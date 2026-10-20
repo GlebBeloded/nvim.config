@@ -5,7 +5,7 @@ local H = require("tests.helpers")
 local eq = MiniTest.expect.equality
 local child = H.new_child()
 
-local ASYNC_MS = 10000
+local ASYNC_MS = 10000 * H.load_factor()
 
 local function start()
 	child.start_config()
@@ -104,7 +104,7 @@ local function wait_for_commit_popup()
 			:filter(function(win) return win ~= vim.api.nvim_get_current_win() and vim.api.nvim_win_get_config(win).relative ~= "" end)
 			:map(function(win) return vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(win), 0, 1, false)[1] end)
 			:any(function(line) return line:find(" Commit Message ", 1, true) ~= nil end)]],
-		ASYNC_MS * H.load_factor()
+		ASYNC_MS
 	)
 end
 
