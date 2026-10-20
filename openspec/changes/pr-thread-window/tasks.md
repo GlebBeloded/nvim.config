@@ -19,13 +19,13 @@ Scenarios: `pr: Enter on an empty reply starts writing`, `pr: gx opens the threa
 ## 4. Reply confirmation and mutation
 Scenarios: `pr: Enter asks before sending a reply`, `pr: y sends the reply`, `pr: n keeps editing`, `pr: A failed reply keeps the draft`, `pr: The reply goes to gh as one argument`, `pr: A mutation shows progress and ignores keys`
 - [ ] 4.1 Write the scenarios in `tests/integration/pr/test_thread_window.lua` with `AddReply.json`, `AddReply.code` and `AddReply.stderr` in `FAKE_GH_DIR`, and the argv case in `tests/unit/pr/test_gh.lua`, and see them fail
-- [ ] 4.2 Implement the confirm states (Decision 4) with the `gleb-pr-confirm` filetype and the `pr.confirm_yes`/`pr.confirm_no` actions, the `AddReply` mutation (Decision 5) and the silent refresh
+- [ ] 4.2 Implement the confirm states (Decision 4) with the `gleb-pr-confirm` filetype and the `pr.confirm_yes`/`pr.confirm_no` actions, the send through `gh.reply` (from `pr-thread-mutations`) and the silent refresh
 - [ ] 4.3 Run both files and see them pass
 
 ## 5. Resolve confirmation
 Scenarios: `pr: R asks before resolving`, `pr: y resolves the thread`, `pr: y unresolves a resolved thread`, `pr: A failed resolve is reported`
 - [ ] 5.1 Write the scenarios in `tests/integration/pr/test_thread_window.lua`, switching the served page between calls where a scenario says so, and see them fail
-- [ ] 5.2 Implement the resolve questions and the `ResolveThread`/`UnresolveThread` mutations with title updates on `GlebPrThreads`
+- [ ] 5.2 Implement the resolve questions through `gh.set_resolved` (from `pr-thread-mutations`) with title updates on `GlebPrThreads`
 - [ ] 5.3 Run the file and see it pass
 
 ## 6. Screens

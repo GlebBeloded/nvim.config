@@ -1,7 +1,7 @@
 ## Why
 
 Kind: feature
-Depends: pr-comments-view
+Depends: pr-comments-view, pr-thread-mutations
 
 `pr-comments-view` shows review threads in the Comments tab and as peeks in the code, but they can only be
 read there. The user wants to act on them in the editor: "I want Open thread action to read/reply in a
@@ -30,6 +30,8 @@ thread. Or to resolve thread. With hints on which button does what. Also that sh
 - **Mutations** (design.md, Decision 5): `addPullRequestReviewThreadReply`, `resolveReviewThread` and
   `unresolveReviewThread` through `gh api graphql`, as argument lists, with the PR host. They are the only
   writes this config makes to GitHub.
+  The requests themselves (`gh.reply`, `gh.set_resolved`) ship first in `pr-thread-mutations` (split out,
+  user 2026-10-20); this change calls them.
 - **Highlight groups**: `PrConfirm`, `PrConfirmHint`, `PrReplyPlaceholder`. The frame reuses `FloatBorder`,
   `FloatTitle` and `PickerHint`.
 
