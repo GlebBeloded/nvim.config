@@ -271,6 +271,10 @@ A `tests/check.sh` target prefixed `^` SHALL start first, and the other parallel
 - **WHEN** `tests/sandbox/sandbox.sh e2e` runs with a live `lume run` process, the guest's SSH port closed for its first checks and `lume get` failing for its first 24 calls (a busy Lume)
 - **THEN** it exits 0 with no `killing it and booting once more`, no `pkill` and no second `lume run`, and runs the e2e layer
 
+#### Scenario: sandbox.sh resends a guest command a loaded Lume refused
+- **WHEN** `tests/sandbox/sandbox.sh e2e` runs with a live `lume run` process and stubs whose next 2 `lume ssh` calls fail with `is not running`
+- **THEN** it sends that guest script 3 times, never kills or reboots the VM, runs the e2e layer and exits 0
+
 #### Scenario: sandbox.sh gives up when Lume loses track of the VM again after one restart
 - **WHEN** `tests/sandbox/sandbox.sh e2e` runs with the VM stopped and stubs where every `lume run` stays alive while Lume reports the VM stopped
 - **THEN** it runs `lume run`, kills it, runs `lume run` once more, then exits non-zero with `after one restart; giving up` and no e2e layer

@@ -18,7 +18,7 @@ printf '%s\t%s\n' "$line" "$held" >>"$LOCK_LOG"
 --- whether the locker writing $HOLDER_LOG had left by then, and the VM reports stopped afterwards.
 --- `lume run` leaves a live run process ($SANDBOX_STATE/run-alive, seen by the pgrep stub); its first
 --- $LUME_MISMATCH_RUNS runs leave the VM reported stopped (Lume lost track), later ones running.
---- `lume ssh` refuses while the VM is reported stopped.
+--- `lume ssh` refuses while the VM is reported stopped, and its next $SANDBOX_STATE/ssh-refuse guest scripts (a loaded Lume).
 local LUME_STUB = [[#!/bin/sh
 echo "lume $*" >>"$GUEST_LOG"
 case "$1" in
@@ -48,6 +48,12 @@ run)
 ssh)
 	[ -f "$SANDBOX_STATE/stopped" ] && { echo "Error: VM 'nvim-e2e' is not running" >&2; exit 1; }
 	for last; do :; done
+	refuse=$(cat "$SANDBOX_STATE/ssh-refuse" 2>/dev/null || echo 0)
+	case "$last" in "bash '"*) [ "$refuse" -gt 0 ] && {
+		echo $((refuse - 1)) >"$SANDBOX_STATE/ssh-refuse"
+		echo "Error: VM 'nvim-e2e' is not running" >&2
+		exit 1
+	} ;; esac
 	case "$last" in *"test -d"*SHARED*) echo SHARED; exit 0 ;; esac
 	script=$(printf '%s' "$last" | sed -n "s|^bash '/Volumes/My Shared Files/share/\([^']*\)'.*|\1|p")
 	[ -n "$script" ] || exit 0
@@ -624,6 +630,26 @@ T["shortcuts: sandbox.sh never restarts a booting VM while Lume answers nothing"
 	eq(run.code, 0, { fail_reason = run.stderr })
 	eq(run.stderr:find("killing it and booting once more", 1, true), nil, { fail_reason = run.stderr })
 	eq(run_and_kill_lines(read_lines(env.GUEST_LOG)), {})
+	eq(first_index(read_lines(env.GUEST_LOG), is_e2e_layer) ~= nil, true)
+end
+
+T["shortcuts: sandbox.sh resends a guest command a loaded Lume refused"] = function()
+	local env = sandbox_env()
+	child.fn.writefile({}, vim.fs.joinpath(env.SANDBOX_STATE, "run-alive"))
+	child.fn.writefile({ "2" }, vim.fs.joinpath(env.SANDBOX_STATE, "ssh-refuse"))
+
+	local run = system({ "tests/sandbox/sandbox.sh", "e2e" }, H.root, env)
+
+	eq(run.code, 0, { fail_reason = run.stderr })
+	-- the first guest script (bootstrap_guest's, its stderr discarded) is sent again after each refusal
+	local log = read_lines(env.GUEST_LOG)
+	local first = log[first_index(log, function(line)
+		return line:find("-t 0 bash '", 1, true) ~= nil
+	end)]
+	eq(#vim.tbl_filter(function(line)
+		return line == first
+	end, log), 3, { fail_reason = table.concat(log, "\n") })
+	eq(run_and_kill_lines(log), {})
 	eq(first_index(read_lines(env.GUEST_LOG), is_e2e_layer) ~= nil, true)
 end
 
