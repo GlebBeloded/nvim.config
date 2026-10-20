@@ -12,9 +12,9 @@ Scenarios: `pr: Open thread shows the thread centred`, `pr: Open thread without 
 
 ## 3. Comments tab Enter
 Scenarios: `pr: Enter on a thread opens its line`, `pr: Enter on an unmapped thread shows its diff hunk`
-- [ ] 3.1 Tighten the existing cases in `tests/integration/pr/test_comments_tab.lua` to press `<CR>` on populated Comments rows and assert the thread window; run each with `make test FILE=tests/integration/pr/test_comments_tab.lua CASE="<scenario title>"` and see it fail
-- [ ] 3.2 Change `lua/gleb/pr/comments_tab.lua` so mapped and unmapped thread rows open and focus their thread after preserving the existing editor or `diffHunk` navigation
-- [ ] 3.3 Run each scenario with `make test FILE=tests/integration/pr/test_comments_tab.lua CASE="<scenario title>"` and see it pass
+- [x] 3.1 Tighten the existing cases in `tests/integration/pr/test_comments_tab.lua` to press `<CR>` on populated Comments rows and assert the thread window; run each with `make test FILE=tests/integration/pr/test_comments_tab.lua CASE="<scenario title>"` and see it fail
+- [x] 3.2 Change `lua/gleb/pr/comments_tab.lua` so mapped and unmapped thread rows open and focus their thread after preserving the existing editor or `diffHunk` navigation
+- [x] 3.3 Run each scenario with `make test FILE=tests/integration/pr/test_comments_tab.lua CASE="<scenario title>"` and see it pass
 
 ## 4. Thread keys, hints and drafts
 Scenarios: `pr: Enter on an empty reply starts writing`, `pr: gx opens the thread on the web`, `pr: q keeps the draft for the next open`, `pr: Resolved thread offers Unresolve`, `pr: Resolve is hidden without permission`
@@ -57,3 +57,7 @@ Scenarios: `pr: Thread window matches the approved render`
 - [ ] 10.1 Write the test `pr: Thread window matches the approved render` in `tests/screen/pr/test_thread_window.lua`, driving `<CR>` from the populated Comments tab; run `make test FILE=tests/screen/pr/test_thread_window.lua CASE="Thread window matches the approved render"` and see it fail
 - [ ] 10.2 Match the text and colour mask of design.md's approved `r3_thread_center` render
 - [ ] 10.3 Run `make test FILE=tests/screen/pr/test_thread_window.lua CASE="Thread window matches the approved render"` and see it pass, then run `make check`
+
+## Agent decisions
+
+- Pass an ephemeral LEFT-side thread copy after unmapped navigation so the existing thread renderer uses its diff-hunk path without changing cached review data.
