@@ -446,9 +446,48 @@ local function git_hunk(driver)
 	assert(driver.wait(GITSIGNS_LINE2_LUA, 3000), "no gitsigns sign on line 2")
 end
 
+--- Branch changes and one local change in the committed-signs fixture.
+---@param driver render.Driver
+local function committed_signs(driver)
+	local root = F.copy("prbranch", vim.fn.tempname() .. "/prbranch")
+	driver.lua([[
+		vim.lsp.enable("gopls", false)
+		require("null-ls").disable({})
+		vim.diagnostic.enable(false)
+	]])
+	driver.cmd("cd " .. vim.fn.fnameescape(root) .. " | edit internal/billing/invoice.go")
+	assert(driver.wait([[vim.b.gitsigns_head == "feat/tax"]], 5000), "gitsigns branch did not load")
+	assert(
+		driver.wait([[vim.b.gitsigns_status_dict and vim.b.gitsigns_status_dict.changed == 1]], 5000),
+		"gitsigns hunk did not load"
+	)
+	assert(
+		driver.wait(
+			[[(function()
+				local diff = require("lualine.components.diff.git_diff").get_sign_count()
+				return diff and diff.modified == 1
+			end)()]],
+			5000
+		),
+		"statusline diff did not load"
+	)
+	assert(
+		driver.wait(
+			[[(function()
+				local ns = vim.api.nvim_get_namespaces().gleb_git_committed_signs
+				return ns and #vim.api.nvim_buf_get_extmarks(0, ns, 0, -1, {}) == 5
+			end)()]],
+			5000
+		),
+		"committed signs did not load"
+	)
+	driver.lua([[require("lualine").refresh()]])
+end
+
 ---@type table<string, render.Case>
 return {
 	dashboard = { description = "alpha dashboard of a bare nvim", setup = dashboard },
+	["committed-signs"] = { description = "branch changes in the committed-signs fixture", setup = committed_signs },
 	["diff-view"] = { description = "aligned diff of the changed Go controller fixture", setup = diff_view },
 	["diff-view-staged"] = { description = "aligned diff with its first change staged", setup = diff_view_staged },
 	["diff-view-moved"] = { description = "aligned diff of a moved Go block", setup = diff_view_moved },

@@ -27,8 +27,13 @@ Scenarios: `git: Committed signs move with unsaved edits`, `git: Committed signs
 
 Scenarios: `git: Committed signs match the approved render`
 
-- [ ] 4.1 Add the `committed-signs` case to tests/render/cases.lua (Decision 10). Write tests/screen/git/test_committed_signs_screen.lua: text screenshot plus `H.expect_screen_colors` on columns 1-6 of rows 2-29 with the mask and legend of "Proposed — committed signs". See it fail.
-- [ ] 4.2 Make it pass. Review the new reference screenshot against the Proposed text (real glyphs where the render has stand-ins), and compare `make render CASE=committed-signs COLUMNS=100 LINES=30` with `renders/proposed-committed-signs.ansi`.
+- [x] 4.1 Add the `committed-signs` case to tests/render/cases.lua (Decision 10). Write tests/screen/git/test_committed_signs_screen.lua: text screenshot plus `H.expect_screen_colors` on columns 1-6 of rows 2-29 with the mask and legend of "Proposed — committed signs". See it fail.
+- [x] 4.2 Make it pass. Review the new reference screenshot against the Proposed text (real glyphs where the render has stand-ins), and compare `make render CASE=committed-signs COLUMNS=100 LINES=30` with `renders/proposed-committed-signs.ansi`.
+
+## Agent decisions
+
+- Encode the gutter mask using Neovim's full sign and number-column cell attributes; this preserves the approved visible colours while covering padding cells consistently with the existing git screen test.
+- Wait for lualine's own diff source and refresh it before capture, because it updates independently of the gitsigns extmarks.
 
 ## 5. Gate
 
