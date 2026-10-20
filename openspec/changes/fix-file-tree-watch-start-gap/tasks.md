@@ -11,14 +11,16 @@ Scenarios: `file-tree: A compact chain splits when a folder gains an entry`, `fi
 
 ## 3. Observe copied nest rows before renaming
 Scenarios: `file-tree: Renaming a nest parent migrates its state`, `file-tree: Renaming a folder migrates nest state in every view`
-- [ ] 3.1 Make `tests/integration/file-tree/test_nesting.lua` wait through the real tree view for each copied child's row before invoking the real `r` mapping; with a temporary fault that omits the copy, run each scenario with `make test FILE=tests/integration/file-tree/test_nesting.lua CASE="<scenario title>"`, see and record the failed row wait, then remove the fault
-- [ ] 3.2 Run each scenario with `make test FILE=tests/integration/file-tree/test_nesting.lua CASE="<scenario title>"` and see it pass
+- [x] 3.1 Make `tests/integration/file-tree/test_nesting.lua` wait through the real tree view for each copied child's row before invoking the real `r` mapping; with a temporary fault that omits the copy, run each scenario with `make test FILE=tests/integration/file-tree/test_nesting.lua CASE="<scenario title>"`, see and record the failed row wait, then remove the fault
+- [x] 3.2 Run each scenario with `make test FILE=tests/integration/file-tree/test_nesting.lua CASE="<scenario title>"` and see it pass
 
 ## 4. Confirm the restarted watcher after refresh
 Scenarios: `file-tree: Project tree R picks up changes at once`
-- [ ] 4.1 Extend `tests/integration/file-tree/test_project_ops.lua` to wait for a canary event through the restarted watcher after the real `R` mapping; with a temporary fault that suppresses the canary write, run `make test FILE=tests/integration/file-tree/test_project_ops.lua CASE="Project tree R picks up changes at once"`, see and record the failed canary wait, then remove the fault
-- [ ] 4.2 Run `make test FILE=tests/integration/file-tree/test_project_ops.lua CASE="Project tree R picks up changes at once"` and see it pass
+- [x] 4.1 Extend `tests/integration/file-tree/test_project_ops.lua` to wait for a canary event through the restarted watcher after the real `R` mapping; with a temporary fault that suppresses the canary write, run `make test FILE=tests/integration/file-tree/test_project_ops.lua CASE="Project tree R picks up changes at once"`, see and record the failed canary wait, then remove the fault
+- [x] 4.2 Run `make test FILE=tests/integration/file-tree/test_project_ops.lua CASE="Project tree R picks up changes at once"` and see it pass
 
 ## Agent decisions
 
 - Track event confirmation per root because libuv rebuilds one shared stream for that root's folder, git, and recursive handles.
+- Put the refresh canary in the already-expanded billing folder so its row directly proves the restarted folder watcher delivered an event.
+- Wait for copied rows inside the child process with a load-scaled bound so loaded-host RPC scheduling cannot consume the observation window.

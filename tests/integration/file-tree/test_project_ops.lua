@@ -1414,11 +1414,15 @@ T["file-tree: Project tree R picks up changes at once"] = function()
 
 	refresh()
 
-	eq(tree_has_path("internal/billing/fee.go"), true)
+	assert(wait_for_tree_path("internal/billing/fee.go", true), "refresh did not show fee.go")
 	assert(
 		child.wait(([[require("gleb.file_tree.git").state.runs == %d]]):format(before + 1)),
 		"refresh did not start exactly one git status run"
 	)
+	local canary = "internal/billing/watch-canary.go"
+	local result = H.system(child, { "touch", vim.fs.joinpath(tree_root, canary) }, tree_root)
+	eq(result.code, 0)
+	assert(wait_for_tree_path(canary, true), "watch canary row did not appear")
 end
 
 T["file-tree: Project tree R starts at least one git status run"] = function()
