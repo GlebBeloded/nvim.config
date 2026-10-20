@@ -194,21 +194,17 @@ T["git: Branch base works without gh"] = function()
 end
 
 T["git: Branch base gives up on a slow gh"] = function()
-	local root = prbranch()
-	local pid_file = vim.fn.tempname()
-	child.lua(
-		[[vim.env.FAKE_GH_SLEEP = "30"; vim.env.FAKE_GH_PID_FILE = ...
-		require("gleb.git.base").GH_TIMEOUT_MS = 200]],
-		{ pid_file }
-	)
+	local root, _, log = prbranch()
+	child.lua([[vim.env.FAKE_GH_SLEEP = "30.4817"
+		require("gleb.git.base").GH_TIMEOUT_MS = 200]])
 	local before = vim.uv.hrtime()
 	eq(resolve(root).base_ref, "origin/main")
 	eq((vim.uv.hrtime() - before) / 1e9 < 2, true)
 	eq(child.lua_get([[require("gleb.git.base").state.roots[...].process == nil]], { root }), true)
-	if vim.fn.filereadable(pid_file) == 1 then
-		local pid = tonumber(vim.fn.readfile(pid_file)[1])
-		eq(vim.system({ "kill", "-0", tostring(pid) }):wait().code ~= 0, true)
-	end
+	eq(vim.fn.readfile(log), {
+		"pgw.dev\tpr view --json number,url,state,baseRefName,baseRefOid,headRefName,headRefOid",
+	})
+	eq(vim.system({ "pgrep", "-f", "sleep 30[.]4817$" }):wait().code ~= 0, true)
 end
 
 T["git: Branch base keeps the last pull request when gh fails"] = function()
