@@ -209,3 +209,10 @@ Scenarios: `git: Local tab matches the approved render`, `git: Branch tab matche
 - Branch diffs replace the panel-owned diff in its right window, because committed panes are read-only and no editor-eligible window would otherwise receive the next diff.
 - Diff winbar labels are clipped to their window width at the end and re-clipped on resize, because Neovim otherwise truncates a long right label from the left with `<`, unlike the approved commits render.
 - The Branch files and commits masks mark the diff seam's winbar cell (row 2, column 62) `f` [WinSeparator]: every approved `renders/*.ansi` real-colour copy draws that cell, like the content-row seam, in bg3, and the main-spec diff view render names it [WinSeparator].
+
+## Stuck
+
+- Finding 2, async Branch activation: the regression recorded Branch diff requests for `web/src/price.ts` and then `internal/billing/invoice.go`, proving the Local row is requested after `active_tab` becomes `branch`.
+- Attempt 1 deferred the direct review until Branch rows were drawn. It passed alone, but the required repeated run exposed a queued Local `CursorMoved` review making the stale request.
+- Attempt 2 also invalidated pending selection work on tab changes and rejected rows from the inactive model. The new regression passed five times, but `git: Review from the diff window advances the tab` then retained 4 windows instead of 3 and did not settle within the integration async budget.
+- The saved second attempt is `/Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/867b9d70-b93e-4a7a-95f9-c982c35ee005/stuck-attempt-2.diff`. The next attempt should preserve the existing owned diff windows while deferring the Branch review.

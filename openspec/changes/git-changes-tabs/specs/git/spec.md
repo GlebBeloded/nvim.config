@@ -26,6 +26,10 @@ With the panel closed, `changes.review` SHALL open it on Local, or on Branch whe
 - **WHEN** `internal/billing/invoice.go` of a fresh copy of the `billing-branch` fixture is edited and the `changes.review` action runs three times, waiting for the diff view after each of the first two
 - **THEN** after the first run the Local tab is active and the diff view's right side is the working-tree `invoice.go`; after the second the Branch tab is active, the panel is current and the diff view shows `invoice.go` from `4ccefde` to `e325463`; after the third no `gleb-changes` or `gleb-diff` window remains
 
+#### Scenario: Async Branch activation reviews a Branch row
+- **WHEN** `web/src/price.ts` is current in the `billing-branch` fixture and `changes.review` opens Local then activates Branch before Branch rows have loaded
+- **THEN** the Branch tab reviews its selected Branch file without requesting a Branch diff for the previous Local row
+
 #### Scenario: First review opens Branch when nothing is uncommitted
 - **WHEN** in a fresh copy of the `billing-branch` fixture `git checkout -- .` runs and `notes.md` is deleted, `:enew` is current and the `changes.review` action runs twice
 - **THEN** after the first run the Branch tab is active with its cursor on the `invoice.go` row; after the second no `gleb-changes` window remains
@@ -152,6 +156,10 @@ The Branch tab SHALL rebuild with the Local tab's refresh triggers and whenever 
 #### Scenario: Branch tab refreshes after a commit
 - **WHEN** the Branch tab of the `billing-branch` fixture is shown and `git add notes.md && git commit -m "notes"` runs in the repository, followed by `:checktime`
 - **THEN** within the integration async wait budget the strip reads `Local 2` and `Branch 5`, the summary row reads `4 commits · merge-base 4ccefde`, and `notes.md` is a file row of the Branch tab
+
+#### Scenario: Branch refresh preserves expanded commit files
+- **WHEN** an older commit is expanded in the Branch commit view and `FocusGained` refreshes the panel
+- **THEN** the commit stays expanded with all of its file rows
 
 #### Scenario: Branch tab follows the current branch base
 - **WHEN** the Branch tab of the `billing-branch` fixture is shown, changes are stashed, `main` is checked out and `:checktime` runs, then `feat/tax` is checked out and `:checktime` runs again

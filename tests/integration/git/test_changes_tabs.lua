@@ -393,6 +393,42 @@ T["git: Cmd+G cycles Local, Branch, then closes"] = function()
 	eq(child.wait([[require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()] == nil]], 1000), true)
 end
 
+T["git: Async Branch activation reviews a Branch row"] = function()
+	local root = F.copy("billing-branch", vim.fn.tempname() .. "/billing-branch")
+	local price = vim.fs.joinpath(root, "web/src/price.ts")
+	child.cmd("cd " .. vim.fn.fnameescape(root))
+	child.cmd("edit " .. vim.fn.fnameescape(price))
+	local notifications = H.record_notify(child)
+
+	review_changes()
+	wait_for_tab("local", true)
+	child.lua([[
+		BranchDiffLoads = {}
+		local git = require("gleb.git.changes.git")
+		local load_branch_diff = git.load_branch_diff
+		git.load_branch_diff = function(root_dir, row, context, callback)
+			BranchDiffLoads[#BranchDiffLoads + 1] = row.path
+			return load_branch_diff(root_dir, row, context, callback)
+		end
+	]])
+	review_changes()
+	assert(
+		child.wait(
+			[=[(function()
+				local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+				if not panel or panel.active_tab ~= "branch" or not panel.diff_view then return false end
+				local row = panel.rows[vim.api.nvim_win_get_cursor(panel.win)[1]]
+				return row and row.id == "branch:file:internal/billing/invoice.go"
+					and panel.diff_path == "branch:branch:file:internal/billing/invoice.go"
+			end)()]=],
+			async_timeout()
+		),
+		"Branch activation did not review the selected Branch row"
+	)
+	eq(child.lua_get("BranchDiffLoads"), { "internal/billing/invoice.go" })
+	eq(notifications(), {})
+end
+
 T["git: First review opens Branch when nothing is uncommitted"] = function()
 	local root = F.copy("billing-branch", vim.fn.tempname() .. "/billing-branch")
 	H.git(root, { "checkout", "--", "." })
@@ -911,6 +947,47 @@ T["git: Branch tab refreshes after a commit"] = function()
 		}
 	end)()]=])
 	eq(after, before)
+end
+
+T["git: Branch refresh preserves expanded commit files"] = function()
+	open_branch_tab()
+	child.type_keys("c", "<Esc>")
+	wait_for_commits()
+	select_row("branch:commit:07cb52e")
+	child.type_keys("za")
+	assert(
+		child.wait(
+			[[vim.iter(require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()].rows):any(function(row)
+				return row.id == "branch:commit:07cb52e:file:internal/billing/tax_test.go"
+			end)]],
+			async_timeout()
+		),
+		"Older commit files did not load"
+	)
+
+	child.lua([[
+		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		RefreshGeneration = panel.branch_generation
+		OldCommitNodes = panel.commit_nodes
+	]])
+	child.api.nvim_exec_autocmds("FocusGained", {})
+	assert(
+		child.wait(
+			[[(function()
+				local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+				return panel.branch_generation > RefreshGeneration
+					and panel.commit_nodes ~= nil
+					and panel.commit_nodes ~= OldCommitNodes
+					and vim.iter(panel.rows):any(function(row)
+					return row.id == "branch:commit:07cb52e:file:internal/billing/invoice_test.go"
+				end) and vim.iter(panel.rows):any(function(row)
+					return row.id == "branch:commit:07cb52e:file:internal/billing/tax_test.go"
+				end)
+			end)()]],
+			async_timeout()
+		),
+		"Branch refresh dropped an expanded commit's files"
+	)
 end
 
 T["git: Branch tab follows the current branch base"] = function()

@@ -281,7 +281,6 @@ local function refresh_branch(view, info)
 	view.branch_generation = view.branch_generation + 1
 	view.commit_generation = view.commit_generation + 1
 	view.commit_nodes = nil
-	view.commit_files = {}
 	local branch_generation = view.branch_generation
 	branch.load_files(view.root, info, branch_generation, function(candidate)
 		return require("gleb.git.changes").state.by_tab[view.tab] == view and view.branch_generation == candidate
@@ -303,6 +302,12 @@ local function refresh_branch(view, info)
 				and view.active_tab == "branch"
 		end, function(commit_nodes)
 			view.commit_nodes = commit_nodes
+			for _, commit_node in ipairs(commit_nodes) do
+				local hash = commit_node.data and commit_node.data.full_hash
+				if hash and view.commit_files[hash] then
+					commit_node.children = view.commit_files[hash]
+				end
+			end
 			local newest = commit_nodes[4]
 			if newest and newest.data and newest.data.full_hash then
 				view.commit_files[newest.data.full_hash] = newest.children or {}
