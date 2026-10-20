@@ -29,7 +29,6 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 
 ## Loop lessons
 
-- Cancel and invalidate a debounced selection before opening its file, or the queued diff can replace the file immediately afterward.
 - Capture an async child request's generation when its prerequisite completes, not before a user action can advance that generation.
 - A base-change consumer must clear cached branch models when resolution disappears and initialize them when it first appears.
 - Every Changes tab action that opens a panel must restore repository-local view and fold state before applying its requested tab.
@@ -44,6 +43,7 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - Serve branch-specific review-thread fixtures through the fake API so integration tests exercise the intended parser and preview path.
 - A write made while libuv rebuilds its single macOS FSEvents stream (after any watch start) emits no event; before asserting a watcher reaction, wait for watch reconciliation to settle and for a sentinel event on a later-started watch.
 - After feeding a key with MiniTest, wait within the behavior's bound for its observable effect before sampling state because `nvim_input()` only queues the key.
+- Measure synchronous mapped actions from immediately before key execution until the mapping returns so final draw work stays inside the sample.
 
 ## The loop
 
