@@ -1,28 +1,26 @@
 -- Find Usages actions are scoped to its buffers; later controls share the same registry ownership.
-local view = require("gleb.references.view")
-
 local function close()
-	view.close()
+	require("gleb.references.view").close()
 end
 
 local function open()
-	view.open_selected()
+	require("gleb.references.view").open_selected()
 end
 
 local function cycle_tests()
-	view.cycle_tests()
+	require("gleb.references.view").cycle_tests()
 end
 
 local function toggle_folders()
-	view.toggle_folders()
+	require("gleb.references.view").toggle_folders()
 end
 
 local function toggle_preview()
-	view.toggle_preview()
+	require("gleb.references.view").toggle_preview()
 end
 
 local function toggle_usage_type()
-	view.toggle_usage_type()
+	require("gleb.references.view").toggle_usage_type()
 end
 
 ---@type gleb.Action[]

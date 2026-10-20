@@ -4,12 +4,6 @@
 ---@type gleb.Languages
 local languages = require("gleb.languages")
 
-languages.register_facet("treesitter", function(config, language)
-	if not vim.islist(config.parsers) then
-		return ("languages: %s has invalid treesitter facet"):format(language.name)
-	end
-end)
-
 ---@type string[]
 local parsers = {
 	"markdown",

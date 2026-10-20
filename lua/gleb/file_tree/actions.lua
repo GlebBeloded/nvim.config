@@ -1,7 +1,13 @@
 -- File-tree actions own the project-tree entry points and local behavior.
 
+---@return table
+local function view()
+	require("gleb.file_tree")
+	return require("gleb.file_tree.view")
+end
+
 local function project_open()
-	require("gleb.file_tree.view").open()
+	view().open()
 end
 
 local function project_close()
@@ -75,7 +81,7 @@ local actions = {
 		title = "Toggle Project Tree",
 		category = "Project",
 		run = function()
-			require("gleb.file_tree.view").toggle()
+			view().toggle()
 		end,
 	},
 	{
@@ -94,7 +100,7 @@ local actions = {
 		title = "Reveal in Project Tree",
 		category = "Project",
 		run = function()
-			require("gleb.file_tree.view").reveal()
+			view().reveal()
 		end,
 	},
 	{
