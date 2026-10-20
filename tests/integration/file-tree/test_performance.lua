@@ -225,6 +225,32 @@ local function install_cpu_measurement()
 	]=])
 end
 
+local function hold_next_repository_discovery(path)
+	child.lua(
+		[=[
+		(function(expected)
+		local original = vim.system
+		vim.system = function(cmd, opts, callback)
+			if callback and vim.deep_equal(cmd, { "git", "-C", expected, "rev-parse", "--show-toplevel", "--absolute-git-dir" }) then
+				vim.system = original
+				local system = original(cmd, opts, function(result)
+					FileTreeRepositoryDiscoveryResult = result
+				end)
+				FileTreeFinishRepositoryDiscovery = function()
+					local result = FileTreeRepositoryDiscoveryResult or system:wait()
+					callback(result)
+					FileTreeFinishRepositoryDiscovery = nil
+				end
+				return system
+			end
+			return original(cmd, opts, callback)
+		end
+		end)(...)
+	]=],
+		{ path }
+	)
+end
+
 local function make_next_git_refresh_immediate()
 	child.lua(
 		[=[
@@ -610,17 +636,33 @@ end
 
 T["file-tree: Project tree re-roots without waiting for repository discovery"] = function()
 	create_second_worktree()
+	hold_next_repository_discovery(second_root)
+	install_cpu_measurement()
 
 	local result = child.lua_get(
 		[=[(function(path)
-			local started = vim.uv.hrtime()
+			local started = FileTreeStartMeasurement()
 			vim.cmd.cd(vim.fn.fnameescape(path))
-			return (vim.uv.hrtime() - started) / 1e6
+			local measurement = FileTreeFinishMeasurement(started)
+			return {
+				cpu_ms = measurement.cpu_ms,
+				discovery_pending = not require("gleb.file_tree.watch").state.roots[path].discovery_complete,
+				elapsed_ms = measurement.elapsed_ms,
+			}
 		end)(...)]=],
 		{ second_root }
 	)
 
-	assert(result <= 100 * H.load_factor(), ("re-root took %.2f ms"):format(result))
+	eq(result.discovery_pending, true)
+	assert(result.cpu_ms <= 100, ("re-root consumed %.2f ms process CPU"):format(result.cpu_ms))
+	if vim.env.PERF == "1" then
+		assert(result.elapsed_ms <= 100 * H.load_factor(), ("re-root took %.2f ms"):format(result.elapsed_ms))
+	end
+	assert(
+		child.wait([[FileTreeRepositoryDiscoveryResult ~= nil]], math.ceil(1000 * H.load_factor())),
+		"repository discovery did not finish"
+	)
+	child.lua([[FileTreeFinishRepositoryDiscovery()]])
 	assert(
 		child.wait(
 			([=[(function(path)
@@ -628,7 +670,7 @@ T["file-tree: Project tree re-roots without waiting for repository discovery"] =
 				local watched = require("gleb.file_tree.watch").state.roots[path]
 				return view and view.root == path and watched and watched.git_handle ~= nil
 			end)(%q)]=]):format(second_root),
-			1000
+			math.ceil(1000 * H.load_factor())
 		),
 		"re-rooted tree did not settle with a git-directory watch"
 	)
@@ -686,12 +728,16 @@ T["file-tree: Project tree persists folds off the action path"] = function()
 		return false
 	end)()]=])
 	eq(found, true)
-	child.lua([[FileTreeFoldStarted = vim.uv.hrtime()]])
+	install_cpu_measurement()
+	child.lua([[FileTreeFoldStarted = FileTreeStartMeasurement()]])
 
 	child.type_keys("za")
 
-	local elapsed_ms = child.lua_get([[(vim.uv.hrtime() - FileTreeFoldStarted) / 1e6]])
-	assert(elapsed_ms <= 100 * H.load_factor(), ("fold took %.2f ms"):format(elapsed_ms))
+	local measurement = child.lua_get([[FileTreeFinishMeasurement(FileTreeFoldStarted)]])
+	assert(measurement.cpu_ms <= 100, ("fold consumed %.2f ms process CPU"):format(measurement.cpu_ms))
+	if vim.env.PERF == "1" then
+		assert(measurement.elapsed_ms <= 100 * H.load_factor(), ("fold took %.2f ms"):format(measurement.elapsed_ms))
+	end
 	local normalized_root = assert(vim.uv.fs_realpath(root))
 	assert(
 		child.wait(
@@ -709,7 +755,7 @@ T["file-tree: Project tree persists folds off the action path"] = function()
 				end
 				return not vim.tbl_contains(stored[expected_root], "directory-0001")
 			end)(%q)]=]):format(normalized_root),
-			1000
+			math.ceil(1000 * H.load_factor())
 		),
 		"collapsed expansion state was not persisted"
 	)

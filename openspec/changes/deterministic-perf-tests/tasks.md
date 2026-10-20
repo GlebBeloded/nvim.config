@@ -30,9 +30,9 @@ Scenarios: `file-tree: Project tree follows an already listed row promptly`
 
 ## 6. Prove maintenance work is deferred
 Scenarios: `file-tree: Project tree re-roots without waiting for repository discovery`, `file-tree: Project tree persists folds off the action path`
-- [ ] 6.1 Update `tests/integration/file-tree/test_performance.lua` to hold real repository discovery across `:cd` and to measure child-side CPU for real `:cd` and `za`; temporarily complete discovery synchronously, run `make test FILE=tests/integration/file-tree/test_performance.lua CASE="re-roots without waiting for repository discovery"`, see it fail and record the failure, then remove the fault
-- [ ] 6.2 Assert discovery is pending when `DirChanged` returns, retain the 100 ms CPU/wall bounds, and load-scale both existing 1000 ms settle waits
-- [ ] 6.3 Run `make test FILE=tests/integration/file-tree/test_performance.lua CASE="re-roots without waiting for repository discovery"` and `make test FILE=tests/integration/file-tree/test_performance.lua CASE="persists folds off the action path"` and see them pass
+- [x] 6.1 Update `tests/integration/file-tree/test_performance.lua` to hold real repository discovery across `:cd` and to measure child-side CPU for real `:cd` and `za`; temporarily complete discovery synchronously, run `make test FILE=tests/integration/file-tree/test_performance.lua CASE="re-roots without waiting for repository discovery"`, see it fail and record the failure, then remove the fault
+- [x] 6.2 Assert discovery is pending when `DirChanged` returns, retain the 100 ms CPU/wall bounds, and load-scale both existing 1000 ms settle waits
+- [x] 6.3 Run `make test FILE=tests/integration/file-tree/test_performance.lua CASE="re-roots without waiting for repository discovery"` and `make test FILE=tests/integration/file-tree/test_performance.lua CASE="persists folds off the action path"` and see them pass
 
 ## 7. Measure unfold work without scheduler noise
 Scenarios: `file-tree: Project tree unfold all meets the large-tree bound`
@@ -57,3 +57,4 @@ Scenarios: `file-tree: Project tree persists folds off the action path`, `file-t
 - Round a scaled default deadline up to the next millisecond so host-load scaling never shortens the intended wait.
 - Use `PERF=1` to enable retained wall-clock assertions because the later serial target can pass it directly to the existing test process.
 - Expose `use_test_scheduler`, `advance` and `reset` on the debounce utility so tests control its clock without adding user configuration.
+- Hold the real repository-discovery process result at its callback boundary so the re-root test observes pending state without replacing Git discovery.
