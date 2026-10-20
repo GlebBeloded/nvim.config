@@ -101,9 +101,19 @@ end
 ---@param head string
 ---@return string? oid
 ---@return integer? line
+---@return "left side"|"file"? reason
 function M.anchor(thread, head)
+	if thread.subject == "file" then
+		return nil, nil, "file"
+	end
+	if thread.side == "LEFT" then
+		return nil, nil, "left side"
+	end
 	if thread.line then
 		return head, thread.line
+	end
+	if thread.outdated and thread.original_commit and thread.original_line then
+		return thread.original_commit, thread.original_line
 	end
 end
 

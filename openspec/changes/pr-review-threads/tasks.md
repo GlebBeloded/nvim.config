@@ -30,9 +30,9 @@ Scenarios: `pr: PR threads map onto the working file`, `pr: PR threads follow un
 
 ## 6. Exceptional anchors
 Scenarios: `pr: An outdated PR thread anchors at its original commit`, `pr: A PR thread at a missing commit is unmapped`, `pr: Left-side and file PR threads are unmapped`
-- [ ] 6.1 Write the scenarios in `tests/integration/pr/test_threads.lua`, driving `require("gleb.pr").locate(0)` with the served thread variants, and see them fail
-- [ ] 6.2 Complete `anchor` and `locate` for original commits, missing commits, left-side threads, and file threads
-- [ ] 6.3 Run `make test FILE=tests/integration/pr/test_threads.lua CASE="An outdated PR thread anchors at its original commit"`, `make test FILE=tests/integration/pr/test_threads.lua CASE="A PR thread at a missing commit is unmapped"`, and `make test FILE=tests/integration/pr/test_threads.lua CASE="Left-side and file PR threads are unmapped"` and see them pass
+- [x] 6.1 Write the scenarios in `tests/integration/pr/test_threads.lua`, driving `require("gleb.pr").locate(0)` with the served thread variants, and see them fail
+- [x] 6.2 Complete `anchor` and `locate` for original commits, missing commits, left-side threads, and file threads
+- [x] 6.3 Run `make test FILE=tests/integration/pr/test_threads.lua CASE="An outdated PR thread anchors at its original commit"`, `make test FILE=tests/integration/pr/test_threads.lua CASE="A PR thread at a missing commit is unmapped"`, and `make test FILE=tests/integration/pr/test_threads.lua CASE="Left-side and file PR threads are unmapped"` and see them pass
 
 ## 7. Cache and update event
 Scenarios: `pr: PR threads are cached per head`, `pr: A new PR head fetches the threads again`, `pr: PR thread updates fire an event`

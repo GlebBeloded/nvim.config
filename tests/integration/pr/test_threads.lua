@@ -9,15 +9,19 @@ local child = H.new_child()
 local T = H.child_set(child, child.start_config)
 
 ---@param with_pr boolean
+---@param mutate? fun(files: table<string, string>)
 ---@return string root
 ---@return string log
-local function billing_branch(with_pr)
+local function billing_branch(with_pr, mutate)
 	local root, manifest = F.copy("billing-branch", vim.fn.tempname() .. "/billing-branch")
 	root = vim.fs.normalize(vim.fn.resolve(root))
 	local dir = vim.fn.tempname()
 	local files = pr482(manifest)
 	if not with_pr then
 		files["pr.json"] = nil
+	end
+	if mutate then
+		mutate(files)
 	end
 	H.write_files(dir, files)
 	local log = vim.fn.tempname()
@@ -30,6 +34,15 @@ local function billing_branch(with_pr)
 	eq(child.wait("BaseDone == true", 3000), true)
 	vim.fn.writefile({}, log)
 	return root, log
+end
+
+---@param files table<string, string>
+---@param mutate fun(nodes: table[])
+---@return nil
+local function mutate_threads(files, mutate)
+	local response = vim.json.decode(files["ReviewThreads.json"])
+	mutate(response.data.repository.pullRequest.reviewThreads.nodes)
+	files["ReviewThreads.json"] = vim.json.encode(response)
 end
 
 ---@param root string
@@ -58,6 +71,33 @@ local function locate_invoice()
 	local locations = child.lua_get("Locations")
 	local by_id = {}
 	for _, location in ipairs(locations) do
+		by_id[location.thread.id] = location
+	end
+	return by_id
+end
+
+---@param root string
+---@param path string
+---@return table<string, table>
+local function refresh_and_locate(root, path)
+	child.lua(
+		[[PrReady = false
+		vim.api.nvim_create_autocmd("User", { pattern = "GlebPrThreads", once = true, callback = function()
+			PrReady = true
+		end })
+		require("gleb.pr").refresh(...)]],
+		{ root }
+	)
+	eq(child.wait("PrReady == true", 3000), true)
+	child.cmd("edit " .. vim.fn.fnameescape(vim.fs.joinpath(root, path)))
+	child.lua([[LocateDone = false
+		Locations = require("gleb.pr").locate(0, function(locations)
+			Locations = locations
+			LocateDone = true
+		end)]])
+	eq(child.wait("LocateDone == true", 3000), true)
+	local by_id = {}
+	for _, location in ipairs(child.lua_get("Locations")) do
 		by_id[location.thread.id] = location
 	end
 	return by_id
@@ -137,6 +177,46 @@ T["pr: A PR thread on a removed line is unmapped"] = function()
 	eq(locations.PRRT_t1.line, nil)
 	eq(locations.PRRT_t1.reason, "removed")
 	eq(locations.PRRT_t2.line, 13)
+end
+
+T["pr: An outdated PR thread anchors at its original commit"] = function()
+	local root = billing_branch(true)
+	local locations = refresh_and_locate(root, "internal/billing/tax.go")
+
+	eq(locations.PRRT_t3 and locations.PRRT_t3.line, 18)
+	eq(locations.PRRT_t3 and locations.PRRT_t3.thread.outdated, true)
+end
+
+T["pr: A PR thread at a missing commit is unmapped"] = function()
+	local root = billing_branch(true, function(files)
+		mutate_threads(files, function(nodes)
+			nodes[3].comments.nodes[1].originalCommit.oid = string.rep("f", 40)
+		end)
+	end)
+	local notifications = H.record_notify(child)
+	local locations = refresh_and_locate(root, "internal/billing/tax.go")
+
+	eq(locations.PRRT_t3 and locations.PRRT_t3.reason, "missing commit")
+	eq(notifications(), {})
+end
+
+T["pr: Left-side and file PR threads are unmapped"] = function()
+	local root = billing_branch(true, function(files)
+		mutate_threads(files, function(nodes)
+			local left = vim.deepcopy(nodes[2])
+			left.id = "PRRT_left"
+			left.diffSide = "LEFT"
+			table.insert(nodes, left)
+			local file = vim.deepcopy(nodes[2])
+			file.id = "PRRT_file"
+			file.subjectType = "FILE"
+			table.insert(nodes, file)
+		end)
+	end)
+	local locations = refresh_and_locate(root, "internal/billing/invoice.go")
+
+	eq(locations.PRRT_left and locations.PRRT_left.reason, "left side")
+	eq(locations.PRRT_file and locations.PRRT_file.reason, "file")
 end
 
 return T

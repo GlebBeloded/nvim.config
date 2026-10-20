@@ -68,7 +68,7 @@ function M.refresh(root)
 		if not fetched_threads then
 			return
 		end
-		review.threads = fetched_threads
+		review.threads = threads.parse(fetched_threads)
 		review.fetched_at = M.now()
 		M.state.by_root[root] = review
 		vim.api.nvim_exec_autocmds("User", { pattern = "GlebPrThreads", data = { root = root } })
@@ -119,9 +119,11 @@ end
 
 ---@class gleb.pr.PendingLocation
 ---@field thread gleb.pr.Thread
----@field oid string
----@field source_line integer
----@field key string
+---@field oid? string
+---@field source_line? integer
+---@field key? string
+---@field reason? "left side"|"file"
+---@field missing_commit? boolean
 
 ---@param pending gleb.pr.PendingLocation[]
 ---@param buffer_lines string[]
@@ -129,8 +131,12 @@ end
 local function map_locations(pending, buffer_lines)
 	local locations = {}
 	for _, item in ipairs(pending) do
-		local source = M.state.blobs[item.key]
-		if source then
+		local source = item.key and M.state.blobs[item.key] or nil
+		if item.reason then
+			table.insert(locations, { thread = item.thread, reason = item.reason })
+		elseif item.missing_commit then
+			table.insert(locations, { thread = item.thread, reason = "missing commit" })
+		elseif source and item.source_line then
 			local line = threads.map_line(source, buffer_lines, item.source_line)
 			local location = { thread = item.thread, line = line }
 			if not line then
@@ -147,12 +153,20 @@ end
 ---@param callback fun()
 ---@return nil
 local function load_blob(root, item, callback)
+	assert(item.oid and item.key, "pending PR location requires an anchor")
 	vim.system({ "git", "show", item.oid .. ":" .. item.thread.path }, { cwd = root, text = true }, function(result)
-		vim.schedule(function()
-			if result.code == 0 then
+		if result.code == 0 then
+			vim.schedule(function()
 				cache_blob(item.key, blob_lines(result.stdout or ""))
-			end
-			callback()
+				callback()
+			end)
+			return
+		end
+		vim.system({ "git", "cat-file", "-e", item.oid .. "^{commit}" }, { cwd = root }, function(commit_result)
+			vim.schedule(function()
+				item.missing_commit = commit_result.code ~= 0
+				callback()
+			end)
 		end)
 	end)
 end
@@ -171,7 +185,7 @@ function M.locate(buf, callback)
 	local missing = {}
 	for _, thread in ipairs(review.threads) do
 		if thread.path == relative then
-			local oid, source_line = threads.anchor(thread, review.head)
+			local oid, source_line, reason = threads.anchor(thread, review.head)
 			if oid and source_line then
 				local key = oid .. ":" .. thread.path
 				local item = { thread = thread, oid = oid, source_line = source_line, key = key }
@@ -179,6 +193,8 @@ function M.locate(buf, callback)
 				if not M.state.blobs[key] then
 					missing[key] = item
 				end
+			elseif reason then
+				table.insert(pending, { thread = thread, reason = reason })
 			end
 		end
 	end
