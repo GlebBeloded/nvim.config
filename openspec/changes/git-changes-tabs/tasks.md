@@ -11,9 +11,9 @@ Scenarios: `git: Cycle rules`
 
 Scenarios: `git: Branch summary wording`
 
-- [ ] 2.1 Write `git: Branch summary wording` in tests/unit/git/test_changes_tabs.lua and run `make test FILE=tests/unit/git/test_changes_tabs.lua CASE="Branch summary wording"` to see it fail
-- [ ] 2.2 Add the typed pure summary and name-status parsing parts of lua/gleb/git/changes/branch.lua
-- [ ] 2.3 Run `make test FILE=tests/unit/git/test_changes_tabs.lua CASE="Branch summary wording"` and see it pass
+- [x] 2.1 Write `git: Branch summary wording` in tests/unit/git/test_changes_tabs.lua and run `make test FILE=tests/unit/git/test_changes_tabs.lua CASE="Branch summary wording"` to see it fail
+- [x] 2.2 Add the typed pure summary and name-status parsing parts of lua/gleb/git/changes/branch.lua
+- [x] 2.3 Run `make test FILE=tests/unit/git/test_changes_tabs.lua CASE="Branch summary wording"` and see it pass
 
 ## 3. Commit age rules
 
@@ -194,3 +194,4 @@ Scenarios: `git: Local tab matches the approved render`, `git: Branch tab matche
 ## Agent decisions
 
 - The fixture manifest uses `branch_files` and `local_files` string arrays, keeping committed and worktree expectations explicit for later scenarios.
+- `parse_name_status` returns normalized status names and keeps a rename's source in `orig`, matching the existing changes-row vocabulary for later tree and diff consumers.
