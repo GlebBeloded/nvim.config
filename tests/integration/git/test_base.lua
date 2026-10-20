@@ -225,6 +225,7 @@ T["git: Branch base keeps the last pull request when gh fails"] = function()
 		end, 20),
 		true
 	)
+	eq(child.wait(([[not require("gleb.git.base").state.roots[%q].running]]):format(root), 3000), true)
 	local info = child.lua_get([[require("gleb.git.base").get(...)]], { root })
 	eq({ info.pr.number, info.base_ref }, { 482, "origin/release/1.4" })
 end
