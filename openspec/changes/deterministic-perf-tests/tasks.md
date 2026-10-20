@@ -24,9 +24,9 @@ Scenarios: `file-tree: Project tree coalesces a save burst`, `file-tree: Project
 
 ## 5. Measure listed-row following inside the child
 Scenarios: `file-tree: Project tree follows an already listed row promptly`
-- [ ] 5.1 Change `tests/integration/file-tree/test_performance.lua` to assert process CPU and operation counts for the real `:edit`; temporarily force one tree-buffer replacement, run `make test FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree follows an already listed row promptly"`, see it fail and record the failure, then remove the fault
-- [ ] 5.2 Keep the 50 ms CPU/wall bounds and the existing focus, selection and zero-replacement assertions
-- [ ] 5.3 Run `make test FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree follows an already listed row promptly"` and see it pass
+- [x] 5.1 Change `tests/integration/file-tree/test_performance.lua` to assert process CPU and operation counts for the real `:edit`; temporarily force one tree-buffer replacement, run `make test FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree follows an already listed row promptly"`, see it fail and record the failure, then remove the fault
+- [x] 5.2 Keep the 50 ms CPU/wall bounds and the existing focus, selection and zero-replacement assertions
+- [x] 5.3 Run `make test FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree follows an already listed row promptly"` and see it pass
 
 ## 6. Prove maintenance work is deferred
 Scenarios: `file-tree: Project tree re-roots without waiting for repository discovery`, `file-tree: Project tree persists folds off the action path`
