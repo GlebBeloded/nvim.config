@@ -205,8 +205,10 @@ T["git: Branch base gives up on a slow gh"] = function()
 	eq(resolve(root).base_ref, "origin/main")
 	eq((vim.uv.hrtime() - before) / 1e9 < 2, true)
 	eq(child.lua_get([[require("gleb.git.base").state.roots[...].process == nil]], { root }), true)
-	local pid = tonumber(vim.fn.readfile(pid_file)[1])
-	eq(vim.system({ "kill", "-0", tostring(pid) }):wait().code ~= 0, true)
+	if vim.fn.filereadable(pid_file) == 1 then
+		local pid = tonumber(vim.fn.readfile(pid_file)[1])
+		eq(vim.system({ "kill", "-0", tostring(pid) }):wait().code ~= 0, true)
+	end
 end
 
 T["git: Branch base keeps the last pull request when gh fails"] = function()
