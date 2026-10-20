@@ -9,10 +9,6 @@ local function open()
 	view.open_selected()
 end
 
-local function fold()
-	view.fold()
-end
-
 local function cycle_tests()
 	view.cycle_tests()
 end
@@ -30,20 +26,13 @@ local function toggle_usage_type()
 end
 
 ---@type gleb.Action[]
-return {
+local actions = {
 	{
 		id = "references.open",
 		title = "Open Usage",
 		category = "References",
 		ft = "gleb-references",
 		run = open,
-	},
-	{
-		id = "references.fold",
-		title = "Fold Group",
-		category = "References",
-		ft = "gleb-references",
-		run = fold,
 	},
 	{
 		id = "references.cycle_tests",
@@ -75,3 +64,14 @@ return {
 	},
 	{ id = "references.close", title = "Close", category = "References", ft = "gleb-references", run = close },
 }
+
+local fold_actions = require("gleb.ui.tree.actions").fold_actions({
+	area = "references",
+	category = "References",
+	ft = "gleb-references",
+	toggle_id = "references.fold",
+})
+fold_actions[3].title = "Fold Group"
+vim.list_extend(actions, fold_actions)
+
+return actions

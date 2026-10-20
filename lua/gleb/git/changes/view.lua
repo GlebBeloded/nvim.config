@@ -10,6 +10,8 @@ local render = require("gleb.git.changes.render")
 local settings = require("gleb.tree.settings")
 local watch = require("gleb.tree.watch")
 local windows = require("gleb.tree.windows")
+local tree_model = require("gleb.ui.tree.model")
+local tree_view = require("gleb.ui.tree.view")
 
 local WIDTH = 35
 local REFRESH_DEBOUNCE_MS = 50
@@ -27,7 +29,7 @@ local augroup = vim.api.nvim_create_augroup("gleb_changes", { clear = true })
 ---@field editor_win integer
 ---@field rows ChangesRow[]
 ---@field all_rows ChangesRow[]
----@field collapsed table<string, boolean>
+---@field tree gleb.ui.tree.Model
 ---@field timer uv.uv_timer_t
 ---@field diff_timer uv.uv_timer_t
 ---@field generation integer
@@ -97,50 +99,51 @@ local function row_key(row)
 	return row.root .. ":" .. (row.path or row.fold_id or row.label)
 end
 
----@param view ChangesView
----@param selected_key string?
----@return nil
-local function select_row(view, selected_key)
-	for index, row in ipairs(view.rows) do
-		if row_key(row) == selected_key then
-			vim.api.nvim_win_set_cursor(view.win, { index, 0 })
-			return
+---@param rows ChangesRow[]
+---@return gleb.ui.tree.Node[]
+local function tree_nodes(rows)
+	local roots = {}
+	local parents = {}
+	for _, row in ipairs(rows) do
+		local node = {
+			id = assert(row_key(row)),
+			children = {},
+			foldable = row.fold_id ~= nil,
+			open_by_default = true,
+			data = row,
+		}
+		local parent = parents[row.depth - 1]
+		if parent then
+			parent.children[#parent.children + 1] = node
+		else
+			roots[#roots + 1] = node
+		end
+		parents[row.depth] = node
+		for depth = row.depth + 1, #parents do
+			parents[depth] = nil
 		end
 	end
-	select_file(view, "")
-end
-
----@param view ChangesView
----@return ChangesRow[]
-local function visible_rows(view)
-	local rows = {}
-	local hidden_depth
-	for _, row in ipairs(view.all_rows) do
-		if hidden_depth and row.depth <= hidden_depth then
-			hidden_depth = nil
-		end
-		if not hidden_depth then
-			if row.fold_id then
-				row.expanded = not view.collapsed[row.fold_id]
-			end
-			rows[#rows + 1] = row
-			if row.fold_id and view.collapsed[row.fold_id] then
-				hidden_depth = row.depth
-			end
-		end
-	end
-	return rows
+	return roots
 end
 
 ---@param view ChangesView
 ---@param selected_key string?
 ---@return nil
 local function draw(view, selected_key)
-	view.rows = visible_rows(view)
-	render.draw(view.buf, view.rows, WIDTH)
-	if vim.api.nvim_win_is_valid(view.win) then
-		select_row(view, selected_key)
-	end
+	tree_view.draw(view.tree, function(buf, rows)
+		local visible = {}
+		for _, tree_row in ipairs(rows) do
+			local row = tree_row.node.data
+			if tree_row.node.foldable then
+				row.expanded = not view.tree.folds[tree_row.id]
+			else
+				row.expanded = nil
+			end
+			visible[#visible + 1] = row
+		end
+		view.rows = visible
+		render.draw(buf, visible, WIDTH)
+	end, selected_key)
 end
 
 ---@param view ChangesView
@@ -166,6 +169,7 @@ local function refresh_now(view)
 		end
 		local current = view.rows[vim.api.nvim_win_get_cursor(view.win)[1]]
 		view.all_rows = model.rows(result.stdout or "", settings.load().nesting.rules, numstat_z)
+		tree_model.rebuild(view.tree, tree_nodes(view.all_rows))
 		draw(view, row_key(current))
 		if view.initial_selected_path then
 			select_file(view, view.initial_selected_path)
@@ -508,7 +512,7 @@ function M.open(root, selected_path, review)
 		editor_win = editor_win,
 		rows = {},
 		all_rows = {},
-		collapsed = {},
+		tree = tree_model.new({}),
 		timer = assert(vim.uv.new_timer()),
 		diff_timer = assert(vim.uv.new_timer()),
 		generation = 0,
@@ -518,6 +522,11 @@ function M.open(root, selected_path, review)
 		initial_selected_path = workspace.normalize(selected_path),
 		review_on_refresh = review == true,
 	}
+	tree_view.attach(buf, view.tree, {
+		fallback = function()
+			select_file(view, "")
+		end,
+	})
 	changes.state.by_tab[tab] = view
 	add_refresh_sources(view)
 	refresh_now(view)
@@ -558,12 +567,7 @@ end
 ---@param view ChangesView
 ---@return nil
 function M.toggle_fold(view)
-	local row = view.rows[vim.api.nvim_win_get_cursor(view.win)[1]]
-	if not row or not row.fold_id then
-		return
-	end
-	view.collapsed[row.fold_id] = not view.collapsed[row.fold_id] or nil
-	draw(view, row_key(row))
+	require("gleb.ui.tree").toggle(view.tree)
 end
 
 return M

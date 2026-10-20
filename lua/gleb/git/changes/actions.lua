@@ -72,13 +72,15 @@ local actions = {
 		ft = "gleb-changes",
 		run = run("close"),
 	},
-	{
-		id = "changes.toggle_fold",
-		title = "Toggle Fold",
+}
+
+vim.list_extend(
+	actions,
+	require("gleb.ui.tree.actions").fold_actions({
+		area = "changes",
 		category = "Changes",
 		ft = "gleb-changes",
-		run = run("toggle_fold"),
-	},
-}
+	})
+)
 
 return actions

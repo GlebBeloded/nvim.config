@@ -34,6 +34,19 @@ local function tree_lines()
 	return child.api.nvim_buf_get_lines(0, 0, -1, false)
 end
 
+---@param text string
+---@return boolean
+local function tree_has(text)
+	return vim.iter(tree_lines()):any(function(line)
+		return line:find(text, 1, true) ~= nil
+	end)
+end
+
+---@return string
+local function cursor_line()
+	return tree_lines()[child.api.nvim_win_get_cursor(0)[1]]
+end
+
 ---@return string
 local function hint_line()
 	return child.lua_get([[
@@ -171,6 +184,94 @@ T["references: za folds a group"] = function()
 	eq(unfolded:find("invoice.go:23", 1, true) ~= nil, true)
 end
 
+T["references: h folds a group and l unfolds it"] = function()
+	open_format()
+	select_row("billing  2")
+	child.type_keys("h")
+	eq(tree_has("invoice.go:16"), false)
+	eq(tree_has("invoice.go:23"), false)
+
+	child.type_keys("l")
+	eq(tree_has("invoice.go:16"), true)
+	eq(tree_has("invoice.go:23"), true)
+	eq(cursor_line():find("billing  2", 1, true) ~= nil, true)
+end
+
+T["references: h on a usage folds its group"] = function()
+	open_format()
+	select_row("summary.go:7")
+	child.type_keys("h")
+
+	eq(tree_has("summary.go:7"), false)
+	eq(cursor_line():find("report  1", 1, true) ~= nil, true)
+	eq(child.bo.filetype, "gleb-references")
+end
+
+T["references: l on an open group moves to its first child"] = function()
+	open_format()
+	local before = tree_lines()
+	select_row("Production  3")
+	child.type_keys("l")
+
+	eq(tree_lines(), before)
+	eq(cursor_line():find("Call  3", 1, true) ~= nil, true)
+end
+
+T["references: l on a usage keeps the view open"] = function()
+	open_format()
+	select_row("summary.go:7")
+	local before = tree_lines()
+	local cursor = child.api.nvim_win_get_cursor(0)
+	local tree_buf = child.api.nvim_get_current_buf()
+	child.type_keys("l")
+
+	eq(tree_lines(), before)
+	eq(child.api.nvim_win_get_cursor(0), cursor)
+	eq(child.api.nvim_get_current_buf(), tree_buf)
+end
+
+T["references: zM and zR fold every group"] = function()
+	open_format()
+	child.o.columns = 70
+	child.cmd("doautocmd VimResized")
+	select_row("invoice.go:23")
+	local unfolded = tree_lines()
+	eq(#unfolded, 11)
+	eq(child.api.nvim_win_get_height(0), 11)
+	child.type_keys("zM")
+
+	local folded = tree_lines()
+	eq(#folded, 2)
+	eq(folded[1]:find("Production  3", 1, true) ~= nil, true)
+	eq(folded[2]:find("Test  1", 1, true) ~= nil, true)
+	eq(cursor_line():find("Production  3", 1, true) ~= nil, true)
+	eq(child.api.nvim_win_get_height(0), 2)
+
+	child.type_keys("zR")
+	eq(tree_lines(), unfolded)
+	eq(cursor_line():find("Production  3", 1, true) ~= nil, true)
+	eq(child.api.nvim_win_get_height(0), 11)
+end
+
+T["references: Arrow keys and zc zo fold groups without an error"] = function()
+	open_format()
+	select_row("billing  2")
+	child.lua([[vim.v.errmsg = ""]])
+
+	local results = {}
+	for _, key in ipairs({ "<Left>", "<Right>", "zc", "zo" }) do
+		local ok = pcall(child.type_keys, key)
+		results[#results + 1] = { tree_has("invoice.go:16"), ok, child.lua_get([[vim.v.errmsg]]) }
+	end
+
+	eq(results, {
+		{ false, true, "" },
+		{ true, true, "" },
+		{ false, true, "" },
+		{ true, true, "" },
+	})
+end
+
 T["references: Escape returns to the origin window"] = function()
 	local declaration = manifest.references.Format[1]
 	open_format()
@@ -208,7 +309,10 @@ T["references: View keys come from the keymap file"] = function()
 	open_format()
 	local actual = child.lua_get([[
 (function()
-	local wanted = { "<CR>", "za", "t", "f", "u", "P", "q", "<Esc>" }
+	local wanted = {
+		"<CR>", "za", "h", "<Left>", "zc", "l", "<Right>", "zo", "zM", "zR",
+		"t", "f", "u", "P", "q", "<Esc>",
+	}
 	local maps = {}
 	for _, map in ipairs(vim.api.nvim_buf_get_keymap(0, "n")) do maps[map.lhs] = map.desc end
 	local shortcuts = vim.json.decode(table.concat(vim.fn.readfile(
@@ -227,6 +331,14 @@ end)()
 	local expected = {
 		["<CR>"] = "Open Usage",
 		za = "Fold Group",
+		h = "Collapse Node",
+		["<Left>"] = "Collapse Node",
+		zc = "Collapse Node",
+		l = "Expand Node",
+		["<Right>"] = "Expand Node",
+		zo = "Expand Node",
+		zM = "Fold All",
+		zR = "Unfold All",
 		t = "Cycle Tests",
 		f = "Toggle Folders",
 		u = "Toggle Usage Type",
@@ -239,6 +351,10 @@ end)()
 	end
 	eq(actual[2]["references.open"], { "<CR>" })
 	eq(actual[2]["references.fold"], { "za" })
+	eq(actual[2]["references.close_node"], { "h", "<Left>", "zc" })
+	eq(actual[2]["references.expand_node"], { "l", "<Right>", "zo" })
+	eq(actual[2]["references.fold_all"], { "zM" })
+	eq(actual[2]["references.unfold_all"], { "zR" })
 	eq(actual[2]["references.cycle_tests"], { "t" })
 	eq(actual[2]["references.toggle_folders"], { "f" })
 	eq(actual[2]["references.toggle_usage_type"], { "u" })

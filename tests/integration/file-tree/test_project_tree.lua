@@ -647,6 +647,124 @@ T["file-tree: Project tree Enter toggles a folder"] = function()
 	)
 end
 
+T["file-tree: Project tree l expands a folder"] = function()
+	edit("README.md")
+	run_toggle()
+	focus_tree_row("internal")
+	if has_tree_line(" billing") then
+		child.type_keys("<CR>")
+		focus_tree_row("internal")
+	end
+
+	child.type_keys("l")
+
+	eq(has_tree_line(" billing"), true)
+	eq(has_tree_line(" money"), true)
+	eq(child.lua_get([[vim.api.nvim_get_current_line():find("", 1, true) ~= nil]]), true)
+	eq(child.lua_get([[vim.api.nvim_get_current_line():find("internal", 1, true) ~= nil]]), true)
+end
+
+T["file-tree: Project tree l on an open folder moves to its first child"] = function()
+	edit("README.md")
+	run_toggle()
+	focus_tree_row("internal")
+	if not has_tree_line(" billing") then
+		child.type_keys("<CR>")
+		focus_tree_row("internal")
+	end
+	local before = child.api.nvim_buf_get_lines(0, 0, -1, false)
+
+	child.type_keys("l")
+
+	eq(child.api.nvim_buf_get_lines(0, 0, -1, false), before)
+	eq(child.lua_get([[vim.api.nvim_get_current_line():find("billing", 1, true) ~= nil]]), true)
+end
+
+T["file-tree: Project tree l on a file does nothing"] = function()
+	edit("go.mod")
+	run_toggle()
+	local tree_win = child.api.nvim_get_current_win()
+	focus_tree_row("Makefile")
+	local before = {
+		lines = child.api.nvim_buf_get_lines(0, 0, -1, false),
+		cursor = child.api.nvim_win_get_cursor(0),
+		buffers = child.lua_get([[vim.iter(vim.api.nvim_tabpage_list_wins(0)):map(function(win)
+			return vim.api.nvim_buf_get_name(vim.api.nvim_win_get_buf(win))
+		end):totable()]]),
+	}
+
+	child.type_keys("l")
+
+	eq(child.api.nvim_buf_get_lines(0, 0, -1, false), before.lines)
+	eq(child.api.nvim_win_get_cursor(0), before.cursor)
+	eq(child.api.nvim_get_current_win(), tree_win)
+	eq(
+		child.lua_get([[vim.iter(vim.api.nvim_tabpage_list_wins(0)):map(function(win)
+			return vim.api.nvim_buf_get_name(vim.api.nvim_win_get_buf(win))
+		end):totable()]]),
+		before.buffers
+	)
+end
+
+T["file-tree: Project tree l opens a nest"] = function()
+	enable_file_tree_nesting()
+	edit("README.md")
+	run_toggle()
+	focus_tree_row("internal")
+	child.type_keys("<CR>")
+	focus_tree_row(" billing")
+	child.type_keys("<CR>")
+	focus_tree_row("invoice.go")
+
+	child.type_keys("l")
+
+	eq(has_tree_line("invoice_test.go"), true)
+	eq(child.lua_get([[vim.api.nvim_get_current_line():find("invoice.go", 1, true) ~= nil]]), true)
+	eq(
+		child.lua_get([[vim.api.nvim_buf_get_name(vim.api.nvim_win_get_buf(vim.fn.win_getid(2)))]]),
+		real_path("README.md")
+	)
+end
+
+T["file-tree: Project tree arrow keys fold and unfold a folder"] = function()
+	edit("README.md")
+	run_toggle()
+	focus_tree_row("internal")
+	if has_tree_line(" billing") then
+		child.type_keys("<CR>")
+		focus_tree_row("internal")
+	end
+
+	child.type_keys("<Right>")
+	eq({ has_tree_line(" billing"), has_tree_line(" money") }, { true, true })
+	child.type_keys("<Left>")
+
+	eq({ has_tree_line(" billing"), has_tree_line(" money") }, { false, false })
+	eq(child.lua_get([[vim.api.nvim_get_current_line():find("", 1, true) ~= nil]]), true)
+	eq(child.lua_get([[vim.api.nvim_get_current_line():find("internal", 1, true) ~= nil]]), true)
+end
+
+T["file-tree: Project tree zo and zc fold without an error"] = function()
+	edit("README.md")
+	run_toggle()
+	focus_tree_row("internal")
+	if has_tree_line(" billing") then
+		child.type_keys("<CR>")
+		focus_tree_row("internal")
+	end
+	child.lua([[vim.v.errmsg = ""]])
+
+	local open_ok = pcall(child.type_keys, "zo")
+	local after_open = { has_tree_line(" billing"), open_ok, child.lua_get([[vim.v.errmsg]]) }
+	local close_ok = pcall(child.type_keys, "zc")
+	local after_close = { has_tree_line(" billing"), close_ok, child.lua_get([[vim.v.errmsg]]) }
+
+	eq({ after_open, after_close }, {
+		{ true, true, "" },
+		{ false, true, "" },
+	})
+end
+
 T["file-tree: Project tree Enter opens a file in the editor window"] = function()
 	edit("go.mod")
 	run_toggle()
@@ -759,12 +877,29 @@ T["file-tree: Project tree keys come from the keymap file"] = function()
 	end
 	local shortcuts = vim.json.decode(table.concat(vim.fn.readfile(
 		vim.fs.joinpath(vim.fn.stdpath("config"), "settings/keymap.json")), "\n"))
-	return { maps = maps, keys = shortcuts["file_tree.open"] }
+	return {
+		maps = maps,
+		keys = {
+			["Project: Open"] = shortcuts["file_tree.open"],
+			["Project: Expand Node"] = shortcuts["file_tree.expand_node"],
+			["Project: Close Node"] = shortcuts["file_tree.close_node"],
+			["Project: Toggle Fold"] = shortcuts["file_tree.toggle_fold"],
+			["Project: Fold All"] = shortcuts["file_tree.fold_all"],
+			["Project: Unfold All"] = shortcuts["file_tree.unfold_all"],
+		},
+	}
 end)()
 ]])
-	eq(actual.keys, { "<CR>", "o", "l" })
-	for _, lhs in ipairs(actual.keys) do
-		eq(actual.maps[lhs] or actual.maps[vim.keycode(lhs)], "Project: Open")
+	eq(actual.keys["Project: Open"], { "<CR>", "o" })
+	eq(actual.keys["Project: Expand Node"], { "l", "<Right>", "zo" })
+	eq(actual.keys["Project: Close Node"], { "h", "<Left>", "zc", "<BS>" })
+	eq(actual.keys["Project: Toggle Fold"], { "za" })
+	eq(actual.keys["Project: Fold All"], { "zM" })
+	eq(actual.keys["Project: Unfold All"], { "zR" })
+	for desc, keys in pairs(actual.keys) do
+		for _, lhs in ipairs(keys) do
+			eq(actual.maps[lhs] or actual.maps[vim.keycode(lhs)], desc)
+		end
 	end
 	H.expect_no_neo_tree(child)
 
@@ -803,7 +938,7 @@ end)()
 		require("gleb.find_action.assign").open(assert(catalog:get("file_tree.open")))
 	]])
 	assert(
-		child.wait([[require("gleb.actions").state.store.last_good["file_tree.open"][4] == "<F23>"]], 5000),
+		child.wait([[require("gleb.actions").state.store.last_good["file_tree.open"][3] == "<F23>"]], 5000),
 		"Project Open shortcut was not saved"
 	)
 	child.type_keys("<Esc>")

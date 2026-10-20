@@ -34,6 +34,9 @@ the cursor put on the `lib` group row, once expanded and once collapsed, and eac
 | `<M-->`, `<M-=>` (`fold.close_one`, `fold.open_one`) | nothing (native `zc`/`zo` error swallowed) | nothing | nothing |
 | `<S-D-->`, `<S-D-=>` (`fold.close_all`, `fold.open_all`) | nothing, `v:errmsg` E490 (ufo) | nothing, E490 | nothing, E490 |
 
+Task 1 reproduction with the real mappings differed for Find Usages only: `zc` and `zo` left the rows unchanged
+but also left `v:errmsg` empty, rather than setting E490. All other tested results matched this table.
+
 Code: `git/changes/view.lua` (`visible_rows`, `toggle_fold`), `references/view.lua` (`visible_nodes`, `fold`)
 and `file_tree/view.lua` (`close_node`, `toggle_fold`, `fold_all`, `unfold_all`) each flatten rows and track fold
 state separately (`collapsed[fold_id]`, `folded[node.id]`, `expanded[path]`); `folding/actions.lua` runs native
@@ -112,6 +115,8 @@ state separately (`collapsed[fold_id]`, `folded[node.id]`, `expanded[path]`); `f
     unchanged: diffview's panel is not one of the three trees.
   - `diff: Diff view zo opens a fold in both windows` still holds: `diff.expand_fold` is scoped to `gleb-diff`,
     which is not a tree buffer.
+  - `diff: Diff view reverting the last change keeps the view open` still holds: shared tree folding does not
+    change diff application or the diff view's empty-fragment lifecycle.
   - `diff: Diff view keys stay native outside view windows` still holds: the new `zo` bindings are buffer-local to
     the three tree filetypes, so native `zo` in a file window is untouched.
   - `picker: Input prompt ignores a blank query` still holds: `<CR>` bindings change in no picker or prompt; only

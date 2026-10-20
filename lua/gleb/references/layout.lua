@@ -110,25 +110,6 @@ local function close_preview(state)
 end
 
 ---@param state gleb.references.ViewState
----@param selected_id? string
-local function place_cursor(state, selected_id)
-	if #state.visible_nodes == 0 then
-		vim.api.nvim_win_set_cursor(state.tree_win, { 1, 0 })
-		return
-	end
-	for index, node in ipairs(state.visible_nodes) do
-		if node.id == selected_id then
-			vim.api.nvim_win_set_cursor(state.tree_win, { index, 0 })
-			return
-		end
-	end
-	vim.api.nvim_win_set_cursor(
-		state.tree_win,
-		{ math.min(vim.api.nvim_win_get_cursor(state.tree_win)[1], #state.visible_nodes), 0 }
-	)
-end
-
----@param state gleb.references.ViewState
 ---@param size gleb.references.Geometry
 local function show_preview(state, size)
 	if not state.preview_buf then
@@ -166,10 +147,9 @@ end
 
 ---Apply the joined tree, preview, and hint layout while preserving the selected node.
 ---@param state gleb.references.ViewState
----@param selected_id string?
 ---@param callbacks gleb.references.LayoutCallbacks
 ---@return nil
-function M.apply(state, selected_id, callbacks)
+function M.apply(state, callbacks)
 	callbacks.render_tree()
 	local visible = state.preview_visible == true and vim.o.columns >= WIDE_MIN_COLUMNS
 	local size = geometry(state, visible, callbacks.hint)
@@ -192,9 +172,6 @@ function M.apply(state, selected_id, callbacks)
 	})
 	vim.wo[state.tree_win].statuscolumn = TREE_PADDING
 	callbacks.render_tree(size.tree_width - 2)
-	if selected_id then
-		place_cursor(state, selected_id)
-	end
 
 	if visible then
 		show_preview(state, size)

@@ -16,6 +16,9 @@ local sidebar = require("gleb.tree.sidebar")
 local state = require("gleb.file_tree.state")
 local watch = require("gleb.tree.watch")
 local debounce = require("gleb.util.debounce")
+local ui_tree = require("gleb.ui.tree")
+local tree_model = require("gleb.ui.tree.model")
+local tree_view = require("gleb.ui.tree.view")
 
 local IGNORE_WAIT_MS = 300
 local INVALIDATION_WINDOW_MS = 50
@@ -29,6 +32,8 @@ local INVALIDATION_WINDOW_MS = 50
 ---@field expanded_nests table<string, boolean>
 ---@field rows FileTreeRow[]
 ---@field rows_by_path table<string, integer>
+---@field tree gleb.ui.tree.Model
+---@field tree_watched table<string, boolean>
 ---@field autocmds integer[]
 ---@field watching boolean
 ---@field directory_hijacks table<integer, boolean>
@@ -260,17 +265,8 @@ local schedule_dirty
 local request_git
 
 ---@param view FileTreeView
----@param path string
----@param prepared? FileTreePreparedDraw
-local function draw(view, path, prepared)
-	local rows_before = view.rows
-	local cursor_line = vim.api.nvim_win_get_cursor(view.win)[1]
-	prepared = prepared or prepare_draw(view, path)
-	view.rows = prepared.rows
-	view.rows_by_path = prepared.rows_by_path
-	render.draw(view.buf, view.rows)
-	restore_cursor(view, path, rows_before, cursor_line)
-	watch.sync(view.root, view.tab, prioritize_watches(view, prepared.watched), function(changed_path)
+local function finish_draw(view)
+	watch.sync(view.root, view.tab, prioritize_watches(view, view.tree_watched), function(changed_path)
 		if M.state.by_tab[view.tab] ~= view or not vim.api.nvim_buf_is_valid(view.buf) then
 			return
 		end
@@ -289,6 +285,38 @@ local function draw(view, path, prepared)
 		request_git(view)
 	end)
 	expanded.save(view.root, view.expanded)
+end
+
+---@param view FileTreeView
+---@param buf integer
+---@param rows gleb.ui.tree.Row[]
+local function render_tree_rows(view, buf, rows)
+	folds.sync_expansions(view)
+	local visible = {}
+	for _, tree_row in ipairs(rows) do
+		visible[#visible + 1] = tree_row.node.data
+	end
+	view.rows = visible
+	view.rows_by_path = index_rows(visible)
+	render.draw(buf, visible)
+	finish_draw(view)
+end
+
+---@param view FileTreeView
+---@param path string
+---@param prepared? FileTreePreparedDraw
+local function draw(view, path, prepared)
+	local rows_before = view.rows
+	local cursor_line = vim.api.nvim_win_get_cursor(view.win)[1]
+	prepared = prepared or prepare_draw(view, path)
+	view.tree_watched = prepared.watched
+	folds.rebuild_tree(view, prepared.rows)
+	tree_view.draw(view.tree, function(buf, rows)
+		render_tree_rows(view, buf, rows)
+	end, path)
+	if not view.rows_by_path[path] then
+		restore_cursor(view, path, rows_before, cursor_line)
+	end
 end
 
 ---@type FileTreeFoldHooks
@@ -522,7 +550,17 @@ function M.close_node()
 	if not view then
 		return
 	end
-	folds.close_node(view, fold_hooks)
+	ui_tree.close(view.tree)
+end
+
+--- Expand the selected directory or nest, or enter its first child.
+---@return nil
+function M.expand_node()
+	local view = M.state.by_tab[vim.api.nvim_get_current_tabpage()]
+	if not view then
+		return
+	end
+	ui_tree.open(view.tree)
 end
 
 --- Toggle the selected directory, or collapse the selected file's displayed parent.
@@ -532,7 +570,7 @@ function M.toggle_fold()
 	if not view then
 		return
 	end
-	folds.toggle(view, fold_hooks)
+	ui_tree.toggle(view.tree)
 end
 
 --- Collapse every project-tree directory while keeping the root visible.
@@ -542,7 +580,7 @@ function M.fold_all()
 	if not view then
 		return
 	end
-	folds.fold_all(view, fold_hooks)
+	ui_tree.close_all(view.tree)
 end
 
 --- Expand project-tree directories depth-first up to the visible-row safety limit.
@@ -552,7 +590,7 @@ function M.unfold_all()
 	if not view then
 		return
 	end
-	folds.unfold_all(view, fold_hooks)
+	ui_tree.open_all(view.tree)
 end
 
 --- Close the current tab page's project tree.
@@ -636,6 +674,8 @@ local function open_view(path, requested_root)
 		expanded_nests = {},
 		rows = {},
 		rows_by_path = {},
+		tree = tree_model.new({}),
+		tree_watched = {},
 		autocmds = {},
 		watching = true,
 		directory_hijacks = {},
@@ -646,6 +686,14 @@ local function open_view(path, requested_root)
 		initial_source_ready = false,
 		initial_expansions_loaded = false,
 	}
+	tree_view.attach(buf, view.tree, {
+		expand = function(node)
+			return folds.expand_shared(view, node, fold_hooks)
+		end,
+		expand_all = function()
+			folds.expand_all_shared(view, fold_hooks)
+		end,
+	})
 	M.state.by_tab[tab] = view
 	editor.state.last_editor_by_tab[tab] = editor_win
 	initial_path = reveal_target(view, path, true) or root
