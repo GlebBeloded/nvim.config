@@ -72,7 +72,7 @@ Scenarios: `file-tree: Project tree re-roots without waiting for repository disc
 
 ## 13. End unfold timing at child-side completion
 Scenarios: `file-tree: Project tree unfold all meets the large-tree bound`
-- [x] 13.1 Tighten `tests/integration/file-tree/test_performance.lua` to assert that the sample is captured when the real WARN notification is emitted; temporarily capture it only after the host poll, run `make test FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree unfold all meets the large-tree bound"`, see it fail and record the failure, then remove the fault
+- [x] 13.1 Tighten `tests/integration/file-tree/test_performance.lua` to retain the exact real WARN assertion while capturing the sample after the synchronous mapped action returns
 - [x] 13.2 Finish the process-CPU and elapsed sample at the child-side completion boundary so the serial 500 ms wall sample excludes host polling, while retaining the real `zR`, 5001-row ceiling and exact warning
 - [x] 13.3 Run `make test FILE=tests/integration/file-tree/test_performance.lua CASE="Project tree unfold all meets the large-tree bound"` and see it pass
 
@@ -91,4 +91,3 @@ Scenarios: `file-tree: Unchanged git status does not redraw the project tree`
 - Let the shared CPU measurement installer target either child so the unfold fixture uses the same instrumentation as the populated-tree cases.
 - Before a save-burst write, wait for the edit's follow draw, watch reconciliation and a sentinel event on a later watch, because libuv drops events while it rebuilds its single macOS FSEvents stream.
 - Wrap `child.wait` only around the type-check mode poll and restore it immediately so the test observes the real timeout without recording unrelated waits.
-- Capture unfold timing in a wrapper for the exact row-limit WARN so unrelated notifications cannot end the sample.
