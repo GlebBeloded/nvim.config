@@ -52,15 +52,13 @@ thread. Or to resolve thread. With hints on which button does what. Also that sh
 - Code:
   - New: `lua/gleb/pr/thread_window.lua`.
   - Changed:
-    - `lua/gleb/pr/{gh,actions,comments_tab,highlights}.lua` (mutations, the window and confirm actions,
-      Enter);
+    - `lua/gleb/pr/{actions,comments_tab,highlights}.lua` (the window and confirm actions, Enter, colours);
     - `settings/keymap.json`: `pr.thread_send` Enter, `pr.thread_resolve` R, `pr.thread_open_web` gx,
       `pr.thread_close` q, `pr.confirm_yes` y, and `pr.confirm_no` n and Esc, all view-scoped.
 - Tests:
   - integration `tests/integration/pr/test_thread_window.lua`;
+  - changed integration cases in `tests/integration/pr/test_comments_tab.lua`;
   - screen `tests/screen/pr/test_thread_window.lua`;
-  - unit cases for the mutation argv and the hint text in `tests/unit/pr/test_gh.lua` and
-    `tests/unit/pr/test_peek.lua`.
 - Plugins: none added, removed or upgraded. octo.nvim, gh-review.nvim and snacks.nvim's `gh` all reply and
   resolve from their own buffers, with no confirmation step; the user chose our own build (R2.7).
 - Core keymaps: none. The new keys are local to the thread window (`gleb-pr-thread`, `gleb-pr-confirm`), and
@@ -72,6 +70,7 @@ thread. Or to resolve thread. With hints on which button does what. Also that sh
   - `actions: Exact and prefix overlaps conflict in one scope` still holds: `gx`, `q`, `R` and Enter are unique within `gleb-pr-thread`, and `y`, `n` and Esc within `gleb-pr-confirm`.
   - `picker: Input prompt cancels with Esc` and `picker: Input prompt Esc restores tree focus and cursor state` still hold: Esc is mapped only in the `gleb-pr-confirm` buffer, never in the picker.
   - `git: Enter confirms message` and `git: q discards popup` still hold: the AI commit popup keeps its own filetype and keys.
+  - `git: Requirement: Branch tab hint row` still holds: the thread window reuses `PickerHint` without changing the Branch tab's hint text, keys, rule or scrolling.
 - Out of scope:
   - Starting a new thread, editing or deleting a comment, suggestions, reactions, pending reviews and review
     submission.
