@@ -12,6 +12,7 @@ local T = H.child_set(child, child.start_config)
 ---@param mutate? fun(files: table<string, string>)
 ---@return string root
 ---@return string log
+---@return string gh_dir
 local function billing_branch(with_pr, mutate)
 	local root, manifest = F.copy("billing-branch", vim.fn.tempname() .. "/billing-branch")
 	root = vim.fs.normalize(vim.fn.resolve(root))
@@ -33,7 +34,7 @@ local function billing_branch(with_pr, mutate)
 	)
 	eq(child.wait("BaseDone == true", 3000), true)
 	vim.fn.writefile({}, log)
-	return root, log
+	return root, log, dir
 end
 
 ---@param files table<string, string>
@@ -217,6 +218,75 @@ T["pr: Left-side and file PR threads are unmapped"] = function()
 
 	eq(locations.PRRT_left and locations.PRRT_left.reason, "left side")
 	eq(locations.PRRT_file and locations.PRRT_file.reason, "file")
+end
+
+T["pr: PR threads are cached per head"] = function()
+	local root, log = billing_branch(true)
+	refresh_and_open_invoice(root)
+	child.lua([[RealSystem = vim.system
+		GitShowCalls = 0
+		vim.system = function(cmd, ...)
+			if cmd[1] == "git" and cmd[2] == "show" then
+				GitShowCalls = GitShowCalls + 1
+			end
+			return RealSystem(cmd, ...)
+		end]])
+
+	child.lua_get([[require("gleb.pr").get(...)]], { root })
+	child.lua_get([[require("gleb.pr").get(...)]], { root })
+	locate_invoice()
+	child.lua([[Locations = require("gleb.pr").locate(0)]])
+
+	eq(child.lua_get("GitShowCalls"), 1)
+	eq(#vim.fn.readfile(log), 1)
+end
+
+T["pr: A new PR head fetches the threads again"] = function()
+	local root, log, gh_dir = billing_branch(true)
+	refresh_and_open_invoice(root)
+	local pr_file = vim.fs.joinpath(gh_dir, "pr.json")
+	local response = vim.json.decode(table.concat(vim.fn.readfile(pr_file), "\n"))
+	local new_head = string.rep("a", 40)
+	response.headRefOid = new_head
+	vim.fn.writefile({ vim.json.encode(response) }, pr_file)
+
+	child.lua(
+		[[ExpectedRoot, ExpectedHead = ...
+		require("gleb.git.base").refresh(ExpectedRoot, { force = true })]],
+		{ root, new_head }
+	)
+	eq(child.wait([[require("gleb.git.base").get(ExpectedRoot).pr.head_ref_oid == ExpectedHead]], 3000), true)
+	eq(
+		child.wait(
+			[[#vim.tbl_filter(function(line) return line:find("query ReviewThreads", 1, true) ~= nil end, vim.fn.readfile(vim.env.FAKE_GH_LOG)) == 2]],
+			3000
+		),
+		true
+	)
+	eq(
+		child.wait(
+			[[require("gleb.pr").get(ExpectedRoot) ~= nil and require("gleb.pr").get(ExpectedRoot).head == ExpectedHead]],
+			3000
+		),
+		true
+	)
+	eq(#vim.tbl_filter(function(line)
+		return line:find("query ReviewThreads", 1, true) ~= nil
+	end, vim.fn.readfile(log)), 2)
+end
+
+T["pr: PR thread updates fire an event"] = function()
+	local root = billing_branch(true)
+	child.lua(
+		[[PrEvents = {}
+		vim.api.nvim_create_autocmd("User", { pattern = "GlebPrThreads", callback = function(args)
+			table.insert(PrEvents, args.data.root)
+		end })
+		require("gleb.pr").refresh(...)]],
+		{ root }
+	)
+	eq(child.wait("#PrEvents == 1", 3000), true)
+	eq(child.lua_get("PrEvents"), { root })
 end
 
 return T

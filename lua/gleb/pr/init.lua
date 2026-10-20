@@ -21,11 +21,12 @@ local M = {
 
 ---@class gleb.pr.State
 ---@field by_root table<string, gleb.pr.Review>
+---@field generations table<string, integer>
 ---@field blobs table<string, string[]>
 ---@field blob_order string[]
 
 ---@type gleb.pr.State
-M.state = { by_root = {}, blobs = {}, blob_order = {} }
+M.state = { by_root = {}, generations = {}, blobs = {}, blob_order = {} }
 
 ---@class gleb.pr.Location
 ---@field thread gleb.pr.Thread
@@ -53,6 +54,8 @@ function M.refresh(root)
 	if not host or not owner or not name then
 		return
 	end
+	local generation = (M.state.generations[root] or 0) + 1
+	M.state.generations[root] = generation
 	---@type gleb.pr.Review
 	local review = {
 		root = root,
@@ -65,7 +68,15 @@ function M.refresh(root)
 		timeout = M.GH_TIMEOUT_MS,
 	}
 	gh.fetch_threads(review, nil, function(fetched_threads)
-		if not fetched_threads then
+		local current = require("gleb.git.base").get(root)
+		if
+			not fetched_threads
+			or M.state.generations[root] ~= generation
+			or not current
+			or not current.pr
+			or current.pr.number ~= review.pr.number
+			or current.pr.head_ref_oid ~= review.head
+		then
 			return
 		end
 		review.threads = threads.parse(fetched_threads)
@@ -220,9 +231,37 @@ function M.now()
 	return vim.uv.now()
 end
 
+---@param args table
+---@return nil
+local function base_changed(args)
+	local root = args.data and args.data.root
+	if not root then
+		return
+	end
+	root = vim.fs.normalize(root)
+	local info = require("gleb.git.base").get(root)
+	local review = M.state.by_root[root]
+	if info and info.pr and review and review.pr.number == info.pr.number and review.head == info.pr.head_ref_oid then
+		return
+	end
+	M.state.generations[root] = (M.state.generations[root] or 0) + 1
+	M.state.by_root[root] = nil
+	if info and info.pr then
+		M.refresh(root)
+	end
+end
+
+local group = vim.api.nvim_create_augroup("gleb_pr", { clear = true })
+vim.api.nvim_create_autocmd("User", {
+	group = group,
+	pattern = "GlebGitBaseChanged",
+	callback = base_changed,
+})
+
 ---@return nil
 function M.reset()
 	M.state.by_root = {}
+	M.state.generations = {}
 	M.state.blobs = {}
 	M.state.blob_order = {}
 end

@@ -95,6 +95,7 @@ local function same_info(left, right)
 		and left.base_oid == right.base_oid
 		and left.merge_base == right.merge_base
 		and (left.pr and left.pr.number or nil) == (right.pr and right.pr.number or nil)
+		and (left.pr and left.pr.head_ref_oid or nil) == (right.pr and right.pr.head_ref_oid or nil)
 end
 
 ---@param root string
@@ -167,6 +168,7 @@ local function resolve_base(root, entry, branch, head, default_branch, refs, pr,
 			and old.head == head
 			and old.base_oid == base_oid
 			and (old.pr and old.pr.number or nil) == (pr and pr.number or nil)
+			and (old.pr and old.pr.head_ref_oid or nil) == (pr and pr.head_ref_oid or nil)
 		then
 			entry.dirty = false
 			finish_refresh(root, entry)

@@ -36,9 +36,9 @@ Scenarios: `pr: An outdated PR thread anchors at its original commit`, `pr: A PR
 
 ## 7. Cache and update event
 Scenarios: `pr: PR threads are cached per head`, `pr: A new PR head fetches the threads again`, `pr: PR thread updates fire an event`
-- [ ] 7.1 Write the scenarios in `tests/integration/pr/test_threads.lua`, driving `get`, `locate`, and a forced `gleb.git.base` refresh against the populated fixture, and see them fail
-- [ ] 7.2 Implement the per-root, per-head cache, generation checks, blob reuse, the `GlebGitBaseChanged` listener, and `User GlebPrThreads`
-- [ ] 7.3 Run `make test FILE=tests/integration/pr/test_threads.lua CASE="PR threads are cached per head"`, `make test FILE=tests/integration/pr/test_threads.lua CASE="A new PR head fetches the threads again"`, and `make test FILE=tests/integration/pr/test_threads.lua CASE="PR thread updates fire an event"` and see them pass
+- [x] 7.1 Write the scenarios in `tests/integration/pr/test_threads.lua`, driving `get`, `locate`, and a forced `gleb.git.base` refresh against the populated fixture, and see them fail
+- [x] 7.2 Implement the per-root, per-head cache, generation checks, blob reuse, the `GlebGitBaseChanged` listener, and `User GlebPrThreads`
+- [x] 7.3 Run `make test FILE=tests/integration/pr/test_threads.lua CASE="PR threads are cached per head"`, `make test FILE=tests/integration/pr/test_threads.lua CASE="A new PR head fetches the threads again"`, and `make test FILE=tests/integration/pr/test_threads.lua CASE="PR thread updates fire an event"` and see them pass
 
 ## 8. Refresh triggers
 Scenarios: `pr: pr.refresh fetches the threads again`, `pr: Opening the review panel fetches the threads`, `pr: Writing a file fetches the threads once`, `pr: A trigger during a fetch queues one more`, `pr: pr.refresh without a pull request`
