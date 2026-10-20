@@ -200,3 +200,10 @@ Scenarios: `git: Local tab matches the approved render`, `git: Branch tab matche
 - Branch loading uses `git rev-list --count` alongside the two file commands, because the files view needs summary wording without loading commit details.
 - Branch directory nodes use `branch:directory:<path>` IDs, keeping their fold state distinct from the specified `branch:file:<path>` leaf IDs.
 - Commit-file caches are panel-local and keyed by full commit hash, so reopening a fold avoids Git while stale callbacks remain generation-guarded.
+
+## Stuck
+
+- Task 10: the Branch hint regression test is red after two production attempts; the saved second attempt is `stuck-attempt-10.diff`.
+- Probe: an empty Branch diff retained three structural rows and two trailing `virt_lines`; the multibyte hint was 38 bytes and 35 cells; `VimResized` kept the valid 35-column footer across the layout breakpoint; `:close` invalidated both panel and hint windows.
+- Attempt 1: added the panel-relative float, live action-store glyphs, resize/close lifecycle and two virtual lines; the rule rendered one screen row too low and `G` left `tax_test.go` under the float.
+- Attempt 2: compensated for the winbar offset and adjusted the panel topline on `CursorMoved`; the naming, reassigned-key and Local-tab scenarios passed, but `G` still left `tax_test.go` hidden because below-EOF virtual lines did not affect its scroll result.

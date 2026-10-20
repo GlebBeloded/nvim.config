@@ -243,6 +243,14 @@ local function values_for(items, key)
 		:totable()
 end
 
+---@param row integer
+---@param count? integer
+---@return string
+local function screen_line(row, count)
+	local cells = H.screen_rows(child, row, row).text[1]
+	return table.concat(count and vim.list_slice(cells, 1, count) or cells)
+end
+
 T["git: Changes tabs show Local and Branch on a feature branch"] = function()
 	open_fixture("billing-branch")
 	assert(
@@ -617,6 +625,70 @@ T["git: c on the Local tab does nothing"] = function()
 	eq(after.lines, before.lines)
 	eq(after.active, "local")
 	eq(notifications(), {})
+end
+
+T["git: Branch tab hint names the commit view key"] = function()
+	child.o.lines = 30
+	child.o.columns = 100
+	open_branch_tab()
+
+	eq(screen_line(28, 35), ("─"):rep(35))
+	eq(screen_line(29, 35), "           Commits c · Next tab ⌘G ")
+
+	child.type_keys("c", "<Esc>")
+	wait_for_commits()
+	eq(screen_line(29, 35), "             Files c · Next tab ⌘G ")
+end
+
+T["git: Branch tab hint follows a reassigned key"] = function()
+	child.wait_very_lazy()
+	child.o.lines = 30
+	child.o.columns = 100
+	child.lua([[
+		local actions = require("gleb.actions")
+		local shortcuts = vim.deepcopy(actions.state.store.last_good)
+		shortcuts["changes.toggle_commits"] = { "C" }
+		local path = vim.fn.tempname()
+		vim.fn.writefile({ vim.json.encode(shortcuts) }, path)
+		actions.state.store.path = path
+		assert(actions.apply())
+	]])
+	open_branch_tab()
+
+	eq(screen_line(29, 35), "           Commits C · Next tab ⌘G ")
+	child.type_keys("C", "<Esc>")
+	wait_for_commits()
+	eq(current_panel().commit_view, true)
+end
+
+T["git: Branch tab keeps the last row above the hint"] = function()
+	child.o.lines = 12
+	child.o.columns = 100
+	open_branch_tab()
+
+	child.type_keys("G", "<Esc>")
+	local rows = H.screen_rows(child, 1, 12).text
+	local rule
+	local last
+	for index, cells in ipairs(rows) do
+		local line = table.concat(vim.list_slice(cells, 1, 35))
+		if line == ("─"):rep(35) then
+			rule = index
+		elseif line:find("tax_test.go", 1, true) then
+			last = index
+		end
+	end
+	assert(rule, "Branch hint rule was not drawn")
+	assert(last and last < rule, "last Branch row was not visible above the hint")
+end
+
+T["git: Local tab has no hint row"] = function()
+	child.o.lines = 30
+	child.o.columns = 100
+	open_fixture("billing-branch")
+
+	assert(not screen_line(28, 35):find("─", 1, true), "Local tab drew the Branch hint rule")
+	assert(not screen_line(29, 35):find("Next tab", 1, true), "Local tab drew the Branch hint")
 end
 
 return T
