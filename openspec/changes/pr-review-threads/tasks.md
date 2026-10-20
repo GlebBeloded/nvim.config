@@ -12,9 +12,9 @@ Scenarios: `pr: PR thread model keeps the GraphQL fields`, `pr: PR thread author
 
 ## 3. Pagination
 Scenarios: `pr: PR thread pages follow the end cursor`, `pr: Long PR threads load every comment`
-- [ ] 3.1 Write the scenarios in `tests/unit/pr/test_gh.lua`, driving `require("gleb.pr.gh").fetch_threads(pr, run)` with a stub runner, and see them fail
-- [ ] 3.2 Implement thread paging and the `ThreadComments` query in `lua/gleb/pr/gh.lua`
-- [ ] 3.3 Run `make test FILE=tests/unit/pr/test_gh.lua CASE="PR thread pages follow the end cursor"` and `make test FILE=tests/unit/pr/test_gh.lua CASE="Long PR threads load every comment"` and see them pass
+- [x] 3.1 Write the scenarios in `tests/unit/pr/test_gh.lua`, driving `require("gleb.pr.gh").fetch_threads(pr, run)` with a stub runner, and see them fail
+- [x] 3.2 Implement thread paging and the `ThreadComments` query in `lua/gleb/pr/gh.lua`
+- [x] 3.3 Run `make test FILE=tests/unit/pr/test_gh.lua CASE="PR thread pages follow the end cursor"` and `make test FILE=tests/unit/pr/test_gh.lua CASE="Long PR threads load every comment"` and see them pass
 
 ## 4. Line mapping
 Scenarios: `pr: Thread line shifts below inserted lines`, `pr: Thread line inside a replaced block keeps its offset`, `pr: Thread line on a removed line is unmapped`
