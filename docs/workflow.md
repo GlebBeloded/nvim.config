@@ -29,7 +29,6 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 
 ## Loop lessons
 
-- Every Changes tab action that opens a panel must restore repository-local view and fold state before applying its requested tab.
 - When focusing a retained tab mode, rebuild from that mode's model so rendered rows cannot diverge from saved state.
 - Commit-file caches keyed by immutable full hashes should survive Branch model refreshes and be reattached to rebuilt nodes so open folds retain their children.
 - Bind debounced selection callbacks to the tab that scheduled them, and defer only data-dependent review work so tab focus changes synchronously without stale rows.
@@ -44,6 +43,7 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - Measure synchronous mapped actions from immediately before key execution until the mapping returns so final draw work stays inside the sample.
 - Gating fallback git-index polls on a confirmed watch event loses external staging made during the start gap; poll the index on every settling pass and gate only the pass count.
 - auto-save.nvim's 1 s debounced write of a test's buffer edit races any later measured :write; turn it off before editing when a case counts writes, git runs or redraws.
+- Rebuild async UI expectations inside the screen poll so queued physical keys cannot freeze pre-transition child state.
 
 ## The loop
 

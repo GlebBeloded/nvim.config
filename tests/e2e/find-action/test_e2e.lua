@@ -2,6 +2,7 @@
 -- including a shortcut saved to the sandbox checkout and loaded by a fresh stack.
 local MiniTest = require("mini.test")
 local E = require("tests.e2e.alacritty")
+local H = require("tests.helpers")
 local S = require("tests.shortcuts.stack")
 local approved_screens = require("tests.e2e.find-action.screens")
 
@@ -33,6 +34,14 @@ end
 
 local T = MiniTest.new_set({ hooks = { pre_once = start, post_once = stop } })
 
+local PALETTE_SCREENS = {
+	["opened palette screen"] = true,
+	["searched palette screen"] = true,
+	["run action screen"] = true,
+	["assigned shortcut screen"] = true,
+	["persisted shortcut screen"] = true,
+}
+
 ---@param s e2e.Stack
 ---@return string
 local function screen(s)
@@ -42,11 +51,50 @@ local function screen(s)
 end
 
 ---@param s e2e.Stack
+---@return table?
+local function live_palette(s)
+	return s:lua([[
+		local pick = require("mini.pick")
+		local items = pick.get_picker_items()
+		local matches = pick.get_picker_matches()
+		if not items or not matches then
+			return nil
+		end
+		local rows = {}
+		local current = 0
+		local total = 0
+		for _, item in ipairs(items) do
+			if not item.section then
+				total = total + 1
+			end
+		end
+		for _, index in ipairs(matches.all_inds) do
+			local item = items[index]
+			if not item.section then
+				current = current + 1
+			end
+			table.insert(rows, {
+				text = item.text,
+				secondary = item.secondary,
+				category = item.category,
+				glyph = item.glyph,
+				section = item.section or false,
+			})
+		end
+		return { rows = rows, count = string.format("%d/%d", current, total) }
+	]])
+end
+
+---@param s e2e.Stack
 ---@param title string
 local function expect_screen(s, title)
-	local expected = assert(approved_screens[title], "missing approved screen: " .. title)
 	local captured
-	local matched = vim.wait(3000, function()
+	local matched = vim.wait(math.ceil(3000 * H.load_factor()), function()
+		local palette = PALETTE_SCREENS[title] and live_palette(s) or nil
+		if PALETTE_SCREENS[title] and not palette then
+			return false
+		end
+		local expected = approved_screens.build(title, palette)
 		captured = screen(s)
 		return captured == expected
 	end, 50)
