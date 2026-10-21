@@ -502,4 +502,54 @@ T["pr: A failed resolve is reported"] = function()
 	eq(vim.endswith(thread_windows()[3].lines[1], " Reply ↩ · Resolve R · Open on web gx · Close q "), true)
 end
 
+T["pr: A mutation shows progress and ignores keys"] = function()
+	local _, gh_log = open_review(function(files)
+		files["AddReply.json"] = mutations.reply
+	end)
+	child.lua([[vim.env.FAKE_GH_SLEEP = "1"]])
+	ask_to_send()
+	child.lua([[
+		MutationProgress = {}
+		local function wait_for_ignored_key()
+			local state = require("gleb.pr.thread_window").state.by_tab[vim.api.nvim_get_current_tabpage()]
+			if vim.api.nvim_win_get_cursor(0)[2] < MutationProgress.cursor then
+				MutationProgress.mode = state.mode
+				MutationProgress.after = vim.api.nvim_buf_get_lines(state.hint_buf, 0, 1, false)[1]
+				vim.env.FAKE_GH_SLEEP = nil
+				return
+			end
+			if state.mode ~= "running" then
+				MutationProgress.mode = state.mode
+				vim.env.FAKE_GH_SLEEP = nil
+				return
+			end
+			vim.schedule(wait_for_ignored_key)
+		end
+		local function wait_for_running()
+			local state = require("gleb.pr.thread_window").state.by_tab[vim.api.nvim_get_current_tabpage()]
+			if state.mode == "running" then
+				MutationProgress.before = vim.api.nvim_buf_get_lines(state.hint_buf, 0, 1, false)[1]
+				MutationProgress.cursor = vim.api.nvim_win_get_cursor(0)[2]
+				vim.api.nvim_input("yh")
+				vim.schedule(wait_for_ignored_key)
+				return
+			end
+			if state.mode ~= "confirm_send" then
+				MutationProgress.mode = state.mode
+				vim.env.FAKE_GH_SLEEP = nil
+				return
+			end
+			vim.schedule(wait_for_running)
+		end
+		vim.schedule(wait_for_running)
+	]])
+	child.type_keys("y")
+	wait_unblocked()
+	assert(child.wait([[vim.bo.filetype == "gleb-pr-thread"]], timeout()), "reply mutation did not finish")
+	eq(child.lua_get([[MutationProgress.mode]]), "running")
+	eq(vim.startswith(child.lua_get([[MutationProgress.before]]), " Sending..."), true)
+	eq(child.lua_get([[MutationProgress.after]]), child.lua_get([[MutationProgress.before]]))
+	eq(#log_lines(gh_log, "mutation AddReply"), 1)
+end
+
 return T

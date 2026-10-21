@@ -272,12 +272,12 @@ end
 ---@return nil
 function M.open(view, row)
 	view.diff_timer:stop()
-	---@param show_hunk boolean
-	local function open_thread(show_hunk)
+	---@param use_diff_hunk boolean
+	local function open_thread(use_diff_hunk)
 		local review = require("gleb.pr").get(view.root)
 		if review and row.thread then
-			local thread = row.thread
-			if show_hunk and thread.side ~= "LEFT" and thread.subject ~= "file" then
+			local thread = assert(row.thread, "thread row must have a thread")
+			if use_diff_hunk and thread.side ~= "LEFT" and thread.subject ~= "file" then
 				thread = vim.deepcopy(thread)
 				thread.side = "LEFT"
 			end

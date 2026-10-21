@@ -64,6 +64,10 @@ thread. Or to resolve thread. With hints on which button does what. Also that sh
 - Core keymaps: none. The new keys are local to the thread window (`gleb-pr-thread`, `gleb-pr-confirm`), and
   `pr.open_thread` is unbound.
 - Unchanged scenarios:
+  - `diff: Diff view of a file absent from HEAD` still holds: opening a review thread does not change how `diff.open_file` builds an empty left buffer or its fragments for a file absent from HEAD.
+  - `find-action: Toggle changes without closing the palette` still holds: `pr.open_thread` is a regular action, and no toggle action or palette retention behaviour changes.
+  - `git: Requirement: AI commit message popup` still holds: the thread window has its own buffers, filetypes and actions and does not change the AI commit popup.
+  - `git: Commit ages are short relative times` still holds: thread comment ages reuse the existing PR age formatter and do not change the branch commit age function or its bounds.
   - `git: Changes panel mappings come from the shortcut file` still holds: the new keys are scoped to the thread window's filetypes, not `gleb-changes`.
   - `git: Changes panel Enter opens the file` still holds: Enter on Local and Branch rows is unchanged; only Comments thread rows open the thread window.
   - `actions: Every configured mapping is action-owned` still holds: every thread-window key is a `pr.*` action in `settings/keymap.json`.

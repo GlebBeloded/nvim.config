@@ -537,14 +537,14 @@ function M.open(review, thread)
 			if state.closing or not event.data or event.data.root ~= state.review.root then
 				return
 			end
-			local review = require("gleb.pr").get(state.review.root)
-			local thread = review
-				and vim.iter(review.threads):find(function(candidate)
+			local refreshed_review = require("gleb.pr").get(state.review.root)
+			local refreshed_thread = refreshed_review
+				and vim.iter(refreshed_review.threads):find(function(candidate)
 					return candidate.id == state.thread.id
 				end)
-			if review and thread then
-				state.review = review
-				state.thread = thread
+			if refreshed_review and refreshed_thread then
+				state.review = refreshed_review
+				state.thread = refreshed_thread
 				layout(state)
 			end
 		end,

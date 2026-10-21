@@ -48,9 +48,9 @@ Scenarios: `pr: R asks before resolving`, `pr: y resolves the thread`, `pr: y un
 
 ## 9. Mutation progress
 Scenarios: `pr: A mutation shows progress and ignores keys`
-- [ ] 9.1 Write the test `pr: A mutation shows progress and ignores keys` in `tests/integration/pr/test_thread_window.lua` with delayed fake `gh`; run `make test FILE=tests/integration/pr/test_thread_window.lua CASE="A mutation shows progress and ignores keys"` and see it fail
-- [ ] 9.2 Add the running state that draws progress and ignores confirm keys until the mutation callback returns
-- [ ] 9.3 Run `make test FILE=tests/integration/pr/test_thread_window.lua CASE="A mutation shows progress and ignores keys"` and see it pass
+- [x] 9.1 Write the test `pr: A mutation shows progress and ignores keys` in `tests/integration/pr/test_thread_window.lua` with delayed fake `gh`; run `make test FILE=tests/integration/pr/test_thread_window.lua CASE="A mutation shows progress and ignores keys"` and see it fail
+- [x] 9.2 Add the running state that draws progress and ignores confirm keys until the mutation callback returns
+- [x] 9.3 Run `make test FILE=tests/integration/pr/test_thread_window.lua CASE="A mutation shows progress and ignores keys"` and see it pass
 
 ## 10. Thread window render
 Scenarios: `pr: Thread window matches the approved render`
@@ -61,6 +61,7 @@ Scenarios: `pr: Thread window matches the approved render`
 ## Agent decisions
 
 - Pass an ephemeral LEFT-side thread copy after unmapped navigation so the existing thread renderer uses its diff-hunk path without changing cached review data.
+- Observe delayed mutation progress inside the child because the real mapping keeps MiniTest's RPC channel blocked while `gh` is pending.
 
 ## Stuck
 

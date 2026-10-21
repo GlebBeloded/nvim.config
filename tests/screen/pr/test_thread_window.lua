@@ -115,7 +115,7 @@ local CONFIRM_TEXT = padded({
 	"              │ Send this reply to maria.k on pgw.dev?       Send y · Keep editing n │",
 	"              ╰──────────────────────────────────────────────────────────────────────╯",
 	"                                   ┃    7 func (i Invoice) Due() string {",
-	"                                   ┃    8 ▏ return fmt.Sprintf(\"due %s\", money.Format(i.Total()))",
+	'                                   ┃    8 ▏ return fmt.Sprintf("due %s", money.Format(i.Total()))',
 	"                                   ┃    9 }",
 	"                                   ┃   10",
 	"                                   ┃   11 // Paid reports whether nothing is due.",
