@@ -477,6 +477,16 @@ local function place_first_change(view)
 	vim.api.nvim_win_set_cursor(view.left_win, { left_line, 0 })
 end
 
+--- Place both cursors at the first change and focus the right window.
+---@param view gleb.diff.view.View
+---@return nil
+function M.focus_first_change(view)
+	place_first_change(view)
+	if vim.api.nvim_win_is_valid(view.right_win) then
+		vim.api.nvim_set_current_win(view.right_win)
+	end
+end
+
 ---@param spec gleb.diff.view.Spec
 ---@return gleb.diff.view.View?
 function M.open(spec)
