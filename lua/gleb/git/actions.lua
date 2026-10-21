@@ -11,6 +11,18 @@ local function git_output(cwd, args, callback)
 	end)
 end
 
+---@param input string
+local function notify_unavailable(input)
+	vim.notify(input .. " unavailable", vim.log.levels.ERROR)
+end
+
+---@param buf integer
+---@param file string
+---@return boolean
+local function captured_file_is_valid(buf, file)
+	return vim.api.nvim_buf_is_valid(buf) and vim.api.nvim_buf_get_name(buf) == file
+end
+
 ---@param ctx gleb.ActionContext
 local function copy_file_url(ctx)
 	if not vim.api.nvim_buf_is_valid(ctx.buf) then
@@ -22,29 +34,39 @@ local function copy_file_url(ctx)
 	local last_line = ctx.selection and ctx.selection.finish[1] or ctx.cursor[1]
 	git_output(cwd, { "rev-parse", "--show-toplevel" }, function(root)
 		if not root then
+			notify_unavailable("Repository")
 			return
 		end
 		git_output(root, { "remote", "get-url", "origin" }, function(remote)
 			if not remote then
+				notify_unavailable("Origin remote")
 				return
 			end
 			git_output(root, { "symbolic-ref", "--short", "HEAD" }, function(branch)
 				if not branch then
+					notify_unavailable("Attached branch")
 					return
 				end
 				local relative = vim.fs.relpath(root, file)
+				if not relative then
+					notify_unavailable("Repository-relative file")
+					return
+				end
 				git_output(root, { "ls-files", "--error-unmatch", "--full-name", "--", relative }, function(path)
-					if
-						not path
-						or not vim.api.nvim_buf_is_valid(ctx.buf)
-						or vim.api.nvim_buf_get_name(ctx.buf) ~= file
-					then
+					if not path then
+						notify_unavailable("Tracked file")
+						return
+					end
+					if not captured_file_is_valid(ctx.buf, file) then
+						notify_unavailable("File buffer")
 						return
 					end
 					local url = require("gleb.git.file_url").build(remote, branch, path, first_line, last_line)
-					if url then
-						vim.fn.setreg("+", url)
+					if not url then
+						notify_unavailable("Origin remote")
+						return
 					end
+					vim.fn.setreg("+", url)
 				end)
 			end)
 		end)

@@ -137,6 +137,17 @@ local function choose_file_url(expected)
 	eq(child.fn.getreg("+"), expected)
 end
 
+---@param expected string
+local function choose_unavailable_file_url(expected)
+	local notifications = H.record_notify(child)
+	child.fn.setreg("+", "unchanged")
+	open_file_url_picker()
+	child.type_keys("<CR>")
+	assert(child.wait([[#Notifications == 1]], async_timeout()), "File URL error was not reported")
+	eq(child.fn.getreg("+"), "unchanged")
+	eq(notifications(), { { msg = expected, level = vim.log.levels.ERROR } })
+end
+
 ---@return string[]
 local function matched_action_ids()
 	return child.lua_get([[
@@ -241,6 +252,37 @@ T["git: A branch without an upstream is copied"] = function()
 	open_repo_file({ ["a.txt"] = "one" }, "ssh://git@github.com/owner/repo.git", "topic/local-only", "a.txt")
 
 	choose_file_url("https://github.com/owner/repo/blob/topic/local-only/a.txt#L1")
+end
+
+T["git: Unavailable file URL input preserves the clipboard"] = MiniTest.new_set()
+
+T["git: Unavailable file URL input preserves the clipboard"]["without origin"] = function()
+	local root = H.git_repo({ ["a.txt"] = "one" })
+	child.wait_very_lazy()
+	child.cmd("cd " .. vim.fn.fnameescape(root))
+	child.cmd("edit " .. vim.fn.fnameescape(vim.fs.joinpath(root, "a.txt")))
+
+	choose_unavailable_file_url("Origin remote unavailable")
+end
+
+T["git: Unavailable file URL input preserves the clipboard"]["at detached HEAD"] = function()
+	local root = H.git_repo({ ["a.txt"] = "one" }, { remote = "git@github.com:owner/repo.git" })
+	H.git(root, { "checkout", "-q", "--detach" })
+	child.wait_very_lazy()
+	child.cmd("cd " .. vim.fn.fnameescape(root))
+	child.cmd("edit " .. vim.fn.fnameescape(vim.fs.joinpath(root, "a.txt")))
+
+	choose_unavailable_file_url("Attached branch unavailable")
+end
+
+T["git: Unavailable file URL input preserves the clipboard"]["on an untracked file"] = function()
+	local root = H.git_repo({ ["a.txt"] = "one" }, { remote = "git@github.com:owner/repo.git" })
+	H.write_files(root, { ["new.txt"] = "new" })
+	child.wait_very_lazy()
+	child.cmd("cd " .. vim.fn.fnameescape(root))
+	child.cmd("edit " .. vim.fn.fnameescape(vim.fs.joinpath(root, "new.txt")))
+
+	choose_unavailable_file_url("Tracked file unavailable")
 end
 
 T["git: Copy Commit URL is offered for a commit row"] = function()

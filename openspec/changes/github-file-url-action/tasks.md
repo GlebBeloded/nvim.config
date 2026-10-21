@@ -18,10 +18,11 @@ Scenarios: `git: github.com current-line branch URL is copied`, `git: Enterprise
 
 ## 4. Preserve the clipboard when a branch file URL is unavailable
 Scenarios: `git: Unavailable file URL input preserves the clipboard`
-- [ ] 4.1 Write `git: Unavailable file URL input preserves the clipboard` in `tests/integration/git/test_file_url.lua`, invoking the real picker without `origin`, at detached HEAD, and on an untracked file; run `make test FILE=tests/integration/git/test_file_url.lua CASE="Unavailable file URL input preserves the clipboard"` and see it fail
-- [ ] 4.2 Add short ERROR notifications for each unavailable input and validate the captured buffer before async completion without changing register `+`
-- [ ] 4.3 Run `make test FILE=tests/integration/git/test_file_url.lua CASE="Unavailable file URL input preserves the clipboard"` and see it pass
+- [x] 4.1 Write `git: Unavailable file URL input preserves the clipboard` in `tests/integration/git/test_file_url.lua`, invoking the real picker without `origin`, at detached HEAD, and on an untracked file; run `make test FILE=tests/integration/git/test_file_url.lua CASE="Unavailable file URL input preserves the clipboard"` and see it fail
+- [x] 4.2 Add short ERROR notifications for each unavailable input and validate the captured buffer before async completion without changing register `+`
+- [x] 4.3 Run `make test FILE=tests/integration/git/test_file_url.lua CASE="Unavailable file URL input preserves the clipboard"` and see it pass
 
 ## Agent decisions
 
 - URL encoding uses uppercase byte-wise percent escapes so UTF-8 and reserved characters have deterministic GitHub-compatible output.
+- Unavailable-input notifications name the failed resolution stage so errors stay short while distinguishing origin, branch, and file failures.
