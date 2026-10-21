@@ -1,7 +1,7 @@
 ## Why
 
 Kind: feature
-Adopt: loop/pr-thread-window
+Adopt: loop/pr-thread-window-20261021-103039
 Depends: pr-comments-view, pr-thread-mutations
 
 `pr-comments-view` shows review threads in the Comments tab and as peeks in the code, but they can only be
@@ -111,20 +111,45 @@ thread. Or to resolve thread. With hints on which button does what. Also that sh
   mocked responses. Tests never call the network.
 
 ## Rejected run
-Run on `loop/pr-thread-window` was rejected by the judge:
-- fix loop exhausted with gates still red: tests,stuck
-- stuck: tasks.md `## Stuck` (earlier attempts, kept on the branch: not quoted here)
+Run on `loop/pr-thread-window-20261021-103039` was rejected by the judge:
+- fix loop exhausted with gates still red: full
 - last failures:
-  make check is red:
-  full log: /Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/26a3825a-4f88-49ad-b0f9-e1004f03a842/check-2.log
-  ok   lint             0.5 s
-  ok   types            0.9 s
-  ok   trace            0.6 s
-  ok   specs            2.1 s
-  FAIL test           615.9 s
-  check: FAILED: test (616.1 s)
-  ===== test (head) =====
-  tests/integration/file-tree/test_performance.lua | file-tree: Project tree save leaves the main path promptly: x
-  tests/integration/file-tree/test_performance.lua | file-tree: Project tree re-roots without waiting for repository discovery: x
-  tests/integration/file-tree/test_performance.lua | file-tree: Project tree re-roots once with saved expansion: x
-- note: loop: FAIL in tests/integration/file-tree/test_performance.lua | file-tree: Project tree re-roots without waiting for repository discovery: hung: no progress for 300 s (waiting for input or a never-met condition?) — host fseventsd still degraded (needs sudo to restart), fails every FSEvents-dependent case; tests/parallel.lua also left 3 orphaned child nvims (parent pid 1) from the deleted pr-comments-view-20261020-141615 worktree.
+  full make check E2E=1 is red:
+  full log: /Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/ea3ef0c8-63ad-4e54-835d-a05fa83940b1/full-4.log
+  FAIL e2e             34.2 s
+  ok   trace            0.5 s
+  ok   lint             1.5 s
+  ok   types            3.0 s
+  ok   specs            3.7 s
+  ok   chain            5.6 s
+  ok   smoke-health    13.9 s
+  ok   stack           26.5 s
+  ok   test           285.3 s
+  ok   smoke-startup    1.4 s
+- review findings:
+  Commit 9f3fc995 fixes both must-fix findings from pass 3, and gate check-4 is green.
+  - **Mapped line:** `M.open` now takes the mapped line from `open_at_cursor` (`matching[1].line`) and from comments-tab Enter (`location.line`). It reads that line from the buffer and uses it in the title. When a thread has no mapped line, the window falls back to its diffHunk.
+  - **Panel focused:** `open_thread` (actions.lua:27-41) uses the first editor or diff window in the tab when the focused window is neither.
+  
+  Both fixes have new tests, and their names match the new scenarios.
+  
+  [minor] openspec/changes/pr-thread-window/specs/pr/spec.md:10-16: the last fix pass edited the spec delta. fix-scope.md lists the file, and the edit adds two scenarios, `Mapped thread window shows the commented buffer line` and `Open thread uses the first editor when the panel is focused`. This is more than a validate repair. It is not a must-fix: pass 3 asked for these tests, test names must match scenario titles, both scenarios are short, and none was weakened.
+  
+  [minor] lua/gleb/pr/navigate.lua:55-61: `is_editor` is now public and also requires `buftype == ""`. That changes `M.jump` (line 132): the fallback to the next or previous file is now skipped in special buffers such as help or terminal, where it used to be tried. navigate.lua is outside proposal.md Impact. The change is a side effect of reusing the editor check for pass 3's finding.
+  
+  [minor] lua/gleb/pr/thread_window.lua:618-753: `M.open` is still about 135 lines with five inline autocmd callbacks, which goes against the CLAUDE.md "small named functions" convention. Carried over from passes 2 and 3.
+  
+  [minor] lua/gleb/pr/comments_tab.lua:263-266: the cold-cache preview no longer runs the partial `show`, and design.md does not name this change. Carried over from pass 3.
+  
+  [minor] These edits are outside proposal.md, but each is justified:
+  - tests/integration/file-tree/{test_performance,test_project_live,test_project_tree}.lua: the gate needed them to go green (tasks.md `## Agent decisions`).
+  - docs/workflow.md `## Loop lessons`: the loop's own lesson rotation.
+  
+  No other findings:
+  - Agent decisions match the spec and the `## Decision` sections.
+  - Keys come from settings/keymap.json.
+  - Screen cases keep their colour masks.
+  - New waits are event-based and use `timeout()`.
+  - No test reads `openspec/changes/` at runtime.
+  - No scenario was removed or weakened.
+- note: loop: No test cases matched
