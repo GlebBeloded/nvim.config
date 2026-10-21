@@ -2,6 +2,7 @@
 -- including a shortcut saved to the sandbox checkout and loaded by a fresh stack.
 local MiniTest = require("mini.test")
 local E = require("tests.e2e.alacritty")
+local H = require("tests.helpers")
 local S = require("tests.shortcuts.stack")
 local approved_screens = require("tests.e2e.find-action.screens")
 
@@ -54,8 +55,11 @@ end
 local function live_palette(s)
 	return s:lua([[
 		local pick = require("mini.pick")
-		local items = assert(pick.get_picker_items(), "Find Action items are missing")
-		local matches = assert(pick.get_picker_matches(), "Find Action matches are missing")
+		local items = pick.get_picker_items()
+		local matches = pick.get_picker_matches()
+		if not items or not matches then
+			return nil
+		end
 		local rows = {}
 		local current = 0
 		local total = 0
@@ -84,10 +88,13 @@ end
 ---@param s e2e.Stack
 ---@param title string
 local function expect_screen(s, title)
-	local palette = PALETTE_SCREENS[title] and live_palette(s) or nil
-	local expected = approved_screens.build(title, palette)
 	local captured
-	local matched = vim.wait(3000, function()
+	local matched = vim.wait(math.ceil(3000 * H.load_factor()), function()
+		local palette = PALETTE_SCREENS[title] and live_palette(s) or nil
+		if PALETTE_SCREENS[title] and not palette then
+			return false
+		end
+		local expected = approved_screens.build(title, palette)
 		captured = screen(s)
 		return captured == expected
 	end, 50)
