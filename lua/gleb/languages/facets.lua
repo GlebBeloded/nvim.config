@@ -2,6 +2,10 @@
 
 local languages = require("gleb.languages")
 
+-- Keep parser resolution available before the deferred nvim-treesitter plugin sources its filetype aliases.
+vim.treesitter.language.register("javascript", "javascriptreact")
+vim.treesitter.language.register("tsx", "typescriptreact")
+
 languages.register_facet("lsp", function(config, language)
 	if not vim.islist(config.servers) or not vim.islist(config.mason) then
 		return ("languages: %s has invalid lsp facet"):format(language.name)

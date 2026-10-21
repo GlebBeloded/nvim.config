@@ -1,7 +1,5 @@
 -- if ever lost, user :help lua-guide
 
-vim.loader.enable()
-
 -- before lazy.nvim: plugins bind their leader maps while loading
 vim.g.mapleader = " "
 vim.g.maplocalleader = "\\"
@@ -16,6 +14,7 @@ require("gleb.options")
 require("gleb.colors")
 require("gleb.diff.view.highlights")
 require("gleb.file_tree.render").setup()
+require("gleb.git.committed_signs.highlights").setup()
 require("gleb.file_tree.loader")
 require("gleb.select")
 require("gleb.keymaps") -- after plugins: needs smart-splits

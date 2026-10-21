@@ -196,6 +196,7 @@ local plugins = {
 	-- git
 	{
 		"lewis6991/gitsigns.nvim",
+		cmd = "Gitsigns",
 		event = { "BufReadPre", "BufNewFile" },
 		config = function()
 			require("gleb.git.gitsigns")

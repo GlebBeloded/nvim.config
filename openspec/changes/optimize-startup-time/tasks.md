@@ -21,3 +21,12 @@ Scenarios: `plugins: Warm real-config startup stays within budget`
 - Initialize the shared picker from direct text-input actions so those entry points do not depend on an earlier picker action.
 - Initialize shared picker highlights when the references view first opens because it owns that frame palette without opening a picker.
 - Bootstrap the file-tree lifecycle on its directory `BufEnter` entry point, then replay that event to the installed hijack handler.
+- Register the JavaScript React and TypeScript React parser aliases synchronously because parser-backed contracts run before deferred Treesitter setup.
+
+## Stuck
+
+- `file-tree: Project tree shows files created outside Neovim` remains red at the observable `fee.go` `FileTreeGitUntracked` assertion.
+- Probe: watcher reconciliation reached 256 handles with `sync_scheduled=false` and `event_confirmed=false`; after a pre-reconciliation sentinel and tree canary it reached `event_confirmed=true`, `settle_passes=0`, zero active debounce timers, and clean view/git state.
+- Attempt 1 started the sentinel before reconciliation, waited for reconciliation, then confirmed the sentinel and tree canary; the case advanced past readiness but failed to colour `fee.go`.
+- Attempt 2 additionally waited for every canary redraw, fallback scan, and git refresh to settle before creating `fee.go`; the same observable assertion failed.
+- Saved attempt: `/Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/694c1dc1-5061-460f-bab9-c598588b8951/stuck-attempt-watch.diff`.

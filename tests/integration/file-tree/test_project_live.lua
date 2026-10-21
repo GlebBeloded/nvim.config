@@ -157,9 +157,46 @@ local function wait_for_tree_row(name)
 end
 
 local function wait_for_live_stream()
-	local result = H.system(child, { "touch", vim.fs.joinpath(root, "watch-canary.lua") }, root)
-	eq(result.code, 0)
+	local confirmed = child.lua_get(
+		[[(function(path, timeout)
+			local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+			local state = assert(require("gleb.file_tree.watch").state.roots[view.root])
+			return vim.wait(timeout, function()
+				if state.event_confirmed then
+					return true
+				end
+				if state.discovery_complete and not state.sync_scheduled then
+					vim.fn.writefile({ tostring(vim.uv.hrtime()) }, path)
+				end
+				return false
+			end, 20)
+		end)(...)]],
+		{ vim.fs.joinpath(root, "watch-canary.lua"), math.ceil(3000 * H.load_factor()) }
+	)
+	assert(confirmed, "watch event stream was not confirmed")
 	assert(wait_for_tree_row("watch-canary.lua"), "watch canary row did not appear")
+	assert(
+		child.wait(
+			[[(function()
+				local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+				local watch_state = assert(require("gleb.file_tree.watch").state.roots[view.root])
+				local git_state = assert(require("gleb.file_tree.git").state.roots[view.root])
+				for _, timer in pairs(watch_state.timers) do
+					if timer:is_active() then
+						return false
+					end
+				end
+				return not watch_state.fallback_scanning
+					and not view.dirty
+					and view.dirty_timer == nil
+					and not view.git_pending
+					and git_state.timer == nil
+					and not git_state.in_flight
+			end)()]],
+			math.ceil(3000 * H.load_factor())
+		),
+		"watch canary work did not settle"
+	)
 end
 
 ---@param name string
@@ -456,17 +493,7 @@ T["file-tree: Project tree shows files created outside Neovim"] = function()
 	)
 	eq(child.lua_get([[require("gleb.file_tree.watch").state.roots[_G.fallback_root].fallback_timer ~= nil]]), true)
 
-	local canary = H.system(child, { "touch", vim.fs.joinpath(root, "internal/billing/invoice.go") }, root)
-	eq(canary.code, 0)
-	assert(
-		child.wait(
-			[[
-			require("gleb.file_tree.watch").state.roots[_G.fallback_root].event_confirmed
-		]],
-			math.ceil(1000 * H.load_factor())
-		),
-		"watch event stream was not confirmed"
-	)
+	wait_for_live_stream()
 
 	local result = H.system(child, { "touch", vim.fs.joinpath(root, "internal/billing/fee.go") }, root)
 	eq(result.code, 0)
