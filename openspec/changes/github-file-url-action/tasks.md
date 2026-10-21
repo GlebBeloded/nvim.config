@@ -1,8 +1,8 @@
 ## 1. Remove the Changes-panel commit URL action
 Scenarios: `git: Tab actions are in the catalog`, `git: Show Branch Commits opens the commit view`, `git: Show Branch on the default branch`, `git: Copy Commit URL is offered for a commit row`, `git: Copy Commit URL is absent away from commit rows`
-- [x] 1.1 Restate `git: Copy Commit URL is offered for a commit row` and keep `git: Copy Commit URL is absent away from commit rows` in `tests/integration/git/test_file_url.lua`, driving `<M-A>` from the populated Branch contexts, and tighten `git: Tab actions are in the catalog` in `tests/integration/git/test_changes_tabs.lua`; run `make test FILE=tests/integration/git/test_file_url.lua CASE="Copy Commit URL is offered for a commit row"` and see the catalog/picker absence assertion fail
-- [x] 1.2 Remove `changes.copy_commit_url` and its runner from `lua/gleb/git/changes/actions.lua` and `lua/gleb/git/changes/init.lua`; remove the obsolete commit-URL cases and delete `tests/integration/git/test_changes_commit_url.lua` because no cases remain
-- [x] 1.3 Run `make test FILE=tests/integration/git/test_file_url.lua` and `make test FILE=tests/integration/git/test_changes_tabs.lua` and see all five scenarios pass
+- [x] 1.1 Restate `git: Copy Commit URL is offered for a commit row` and keep `git: Copy Commit URL is absent away from commit rows` in `tests/integration/git/test_changes_commit_url.lua`, driving `<M-A>` from the populated Branch contexts, and tighten `git: Tab actions are in the catalog` in `tests/integration/git/test_changes_tabs.lua`; run `make test FILE=tests/integration/git/test_changes_commit_url.lua CASE="Copy Commit URL is offered for a commit row"` and see the catalog/picker absence assertion fail
+- [x] 1.2 Remove `changes.copy_commit_url` and its runner from `lua/gleb/git/changes/actions.lua` and `lua/gleb/git/changes/init.lua`; remove the obsolete positive commit-URL cases while preserving `tests/integration/git/test_changes_commit_url.lua`
+- [x] 1.3 Run `make test FILE=tests/integration/git/test_changes_commit_url.lua` and `make test FILE=tests/integration/git/test_changes_tabs.lua` and see all five scenarios pass
 
 ## 2. Register the file URL action in every file-buffer context
 Scenarios: `git: Copy File URL remains listed with and without a shortcut`
