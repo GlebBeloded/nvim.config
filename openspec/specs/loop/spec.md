@@ -623,6 +623,10 @@ Every test SHALL pass the same way on a loaded host: event or state waits, never
 - **WHEN** implement.md, fix.md, review.md and docs/testing.md are read
 - **THEN** implement.md and fix.md say a flaky case is a bug to fix, never a rerun to rely on; review.md lists test robustness as a check; docs/testing.md has a `Robust tests` section that allows deleting a case with its scenario only when its intent cannot be tested deterministically
 
+#### Scenario: Known flaky cases use deterministic readiness
+- **WHEN** the scenario-named actions, references, file-tree, diff, git, and keymaps cases in this change run under the parallel gate's loaded-host conditions
+- **THEN** every case passes by observing its required event or settled state with load-scaled unavoidable timeouts, without fixed sleeps, bare wall-clock windows, rerun dependence, or weakened assertions
+
 ### Requirement: Gate runs a quick tier first
 gate.py SHALL first run `make check CHECK_TARGETS="lint types trace specs test"` with `CAPS` the touched capabilities: `lua/gleb/<area>` and the areas requiring it, `tests/<layer>/<cap>` (shortcut layers too), those whose tests name any other file, all for a shared or unnamed file; `loop-test` for the loop's paths. Red (after reruns) ends the gate; green runs `make check E2E=1`. Docs only, or a smoke or terminal path, runs the full check alone.
 
