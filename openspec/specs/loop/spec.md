@@ -1100,7 +1100,7 @@ The context pack SHALL hold only what the next task needs, and the prompts and t
 - **THEN** it says a Visual, Insert or operator-pending behaviour is tested through the real mapping with the mode still active, never after `<Esc>`
 
 ### Requirement: Test tooling the agents run is exact
-a test child SHALL exit when its test worker is gone, `make test FILE=<directory>` SHALL run that directory's test files, and the hard-rule checks (`.archon/scripts/integrity.py`) SHALL stage into a private index, leaving the worktree's index as the agent left it.
+a test child SHALL exit when its test worker is gone, `make test FILE=<directory>` SHALL run that directory's test files, and the hard-rule checks (`.archon/scripts/integrity.py`) SHALL stage into a private index, leaving the worktree's index as the agent left it. Test sets SHALL start a fresh child per case by default and MAY explicitly reuse one child when the harness restores buffers, tabs, cwd and test globals before every later case.
 
 #### Scenario: A test child outlives no killed worker
 - **WHEN** a worker Neovim starts a test child through `tests/helpers.lua` and the worker is killed with SIGKILL
@@ -1117,6 +1117,14 @@ a test child SHALL exit when its test worker is gone, `make test FILE=<directory
 #### Scenario: Hard-rule checks leave the real index alone
 - **WHEN** `integrity.py` diffs a repo with a new untracked test file
 - **THEN** the diff includes the new file and `git diff --cached` in the repo stays empty
+
+#### Scenario: Reusable child resets case state
+- **WHEN** a test set opts into one child per file and its first case opens buffers and tabs, changes cwd, and sets test globals
+- **THEN** its next case runs in the same child process with the original cwd, one clean tab and buffer, and no globals left by the first case
+
+#### Scenario: Fresh child remains the default
+- **WHEN** two cases run in a test set that does not opt into child reuse
+- **THEN** each case runs in a different child process
 
 ### Requirement: Check prunes stale Neovim temp dirs
 `make check` SHALL first remove Neovim temp dirs (`$TMPDIR/nvim.$USER/<name>`) older than 12 hours that no running process names in its arguments or holds open (`tests/prune_tmp.sh`), so dirs of killed test children never fill the disk.
@@ -1175,3 +1183,10 @@ The private data prepared for a plugin update SHALL retain installed plugins, pa
 #### Scenario: Tests never see an Archon node's inputs
 - **WHEN** Neovim starts with `tests/minimal_init.lua` and `INPUTS_CANCEL_ON_REJECT=false` `BASE_BRANCH=loop/x` and `DRAIN_SKIP_FILE=/tmp/drain-skip-x` in its environment
 - **THEN** `vim.env.INPUTS_CANCEL_ON_REJECT`, `vim.env.BASE_BRANCH` and `vim.env.DRAIN_SKIP_FILE` are nil
+
+### Requirement: Config enables cached Lua loading first
+The configuration SHALL enable Neovim's cached Lua loader before it requires any configuration module.
+
+#### Scenario: Cached loader precedes configuration modules
+- **WHEN** a full-config child records cached-loader activation and the first configuration module load during startup
+- **THEN** cached-loader activation is recorded first
