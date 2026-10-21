@@ -18,6 +18,16 @@ counts" commits (f4a51568, fba2631f). The e2e layer runs only in the full gate, 
   not from a hard-coded list; the exact palette look stays covered by the screen layer (`tests/screen/find-action`).
 - No assertion about the key path is weakened.
 
+## Evidence
+
+- `tests/e2e/find-action/test_e2e.lua:46-53` loads a named fixture and retries until the complete terminal dump equals
+  that fixed string.
+- `tests/e2e/find-action/screens.lua:75-106` embeds concrete action rows and the `53/53` and `7/53` totals, so a live
+  catalog change fails the e2e workflow before any physical-key or persistence assertion changes.
+
 ## Impact
 
 - `tests/e2e/find-action/test_e2e.lua`, `tests/e2e/find-action/screens.lua`.
+- No plugin dependency is added, removed, or upgraded.
+- Core keymaps do not change.
+- Out of scope: changing the Find Action UI or its screen-layer reference screenshots.

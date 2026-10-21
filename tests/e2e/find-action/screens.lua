@@ -2,6 +2,7 @@ local INDENT = "              "
 local EMPTY_ROW = INDENT .. "│                                                                      │"
 local QUERY_DASHES = { ["█"] = 54, ["find█"] = 50 }
 local KEY_PADDING = { [" █"] = 44, ["⌘D █"] = 42 }
+local CONTENT_WIDTH = 68
 
 local function full(background, palette, statusline, below)
 	local lines = vim.list_extend(vim.deepcopy(background), palette)
@@ -12,8 +13,38 @@ local function full(background, palette, statusline, below)
 	return table.concat(lines, "\n") .. "\n"
 end
 
+local function fit(text, width)
+	local characters = vim.fn.strchars(text)
+	while characters > 0 and vim.fn.strdisplaywidth(text) > width do
+		characters = characters - 1
+		text = vim.fn.strcharpart(text, 0, characters)
+	end
+	return text .. string.rep(" ", math.max(width - vim.fn.strdisplaywidth(text), 0))
+end
+
+local function render_row(row)
+	local text
+	if row.section then
+		local remaining = math.max(CONTENT_WIDTH - vim.fn.strdisplaywidth(row.text) - 1, 0)
+		text = row.text .. (remaining > 0 and (" " .. string.rep("─", remaining)) or "")
+	else
+		local left = row.text .. (row.secondary and ("  " .. row.secondary) or "")
+		local right = row.glyph ~= nil and (row.glyph and "●" or "○") or ""
+		if row.category then
+			right = right == "" and row.category or (right .. " " .. row.category)
+		end
+		local padding = right == "" and 0
+			or math.max(CONTENT_WIDTH - vim.fn.strdisplaywidth(left) - vim.fn.strdisplaywidth(right), 1)
+		text = left .. string.rep(" ", padding) .. right
+	end
+	return INDENT .. "│ " .. fit(text, CONTENT_WIDTH) .. " │"
+end
+
 local function palette(query, rows, count)
-	local body = vim.deepcopy(rows)
+	local body = {}
+	for index = 1, math.min(#rows, 14) do
+		table.insert(body, render_row(rows[index]))
+	end
 	while #body < 14 do
 		table.insert(body, EMPTY_ROW)
 	end
@@ -72,47 +103,27 @@ local dashboard = {
 	[[                           ___     ___    ___   __  __ /\_\    ___ ___]],
 	[[                          / _ `\  / __`\ / __`\/\ \/\ \\/\ \  / __` __`\]],
 }
-local recent = palette("█", {
-	INDENT
-		.. "│ recently used ────────────────────────────────────────────────────── │",
-	INDENT .. "│ Find Action...  ⌘⇧A                                             Help │",
-	INDENT
-		.. "│ other actions ────────────────────────────────────────────────────── │",
-	INDENT .. "│ Soft Wrap                                            ○ View | Editor │",
-	INDENT .. "│ Spell Check                                          ○ View | Editor │",
-	INDENT .. "│ Focus Left Window  ⌘H                                         Window │",
-	INDENT .. "│ Focus Down Window  ⌘⇧J                                        Window │",
-	INDENT .. "│ Focus Up Window  ⌘⇧K                                          Window │",
-	INDENT .. "│ Focus Right Window  ⌘L                                        Window │",
-	INDENT .. "│ Navigate Back  gb                                               Jump │",
-	INDENT .. "│ Navigate Forward  gB                                            Jump │",
-	INDENT .. "│ Increase Window Height  ⌃↑                                    Window │",
-	INDENT .. "│ Decrease Window Height  ⌃↓                                    Window │",
-	INDENT .. "│ Decrease Window Width  ⌃←                                     Window │",
-}, "53/53")
 
-return {
-	["opened palette screen"] = full(empty_buffer, recent),
-	["searched palette screen"] = full(
-		empty_buffer,
-		palette("find█", {
-			INDENT .. "│ Find Action...  ⌘⇧A                                             Help │",
-			INDENT .. "│ Focus Left Window  ⌘H                                         Window │",
-			INDENT .. "│ Focus Down Window  ⌘⇧J                                        Window │",
-			INDENT .. "│ Focus Up Window  ⌘⇧K                                          Window │",
-			INDENT .. "│ Focus Right Window  ⌘L                                        Window │",
-			INDENT .. "│ Find in Files...  ⌘⇧F                                    Edit | Find │",
-			INDENT .. "│ Find References  gr                                              LSP │",
-		}, "7/53")
-	),
-	["run action screen"] = full(empty_buffer, recent),
+local fixed = {
 	["shortcut capture screen"] = full(empty_buffer, assignment(" █")),
 	["captured shortcut screen"] = full(captured_buffer, assignment("⌘D █"), statusline),
-	["assigned shortcut screen"] = full(empty_buffer, recent),
-	["persisted shortcut screen"] = full(
-		dashboard,
-		recent,
-		nil,
-		string.rep(" ", 35) .. "https://github.com/GlebBeloded"
-	),
 }
+
+local M = {}
+
+---@param title string
+---@param state? { rows: table[], count: string }
+---@return string
+function M.build(title, state)
+	if fixed[title] then
+		return fixed[title]
+	end
+	assert(state, "missing live palette state: " .. title)
+	local query = title == "searched palette screen" and "find█" or "█"
+	local background = title == "persisted shortcut screen" and dashboard or empty_buffer
+	local below = title == "persisted shortcut screen" and string.rep(" ", 35) .. "https://github.com/GlebBeloded"
+		or nil
+	return full(background, palette(query, state.rows, state.count), nil, below)
+end
+
+return M
