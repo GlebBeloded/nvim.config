@@ -57,22 +57,26 @@ local function copy_file_url(ctx)
 					notify_unavailable("Repository-relative file")
 					return
 				end
-				git_output(root, { "ls-files", "--error-unmatch", "--full-name", "--", relative }, function(path)
-					if not path then
-						notify_unavailable("Tracked file")
-						return
+				git_output(
+					root,
+					{ "-c", "core.quotePath=false", "ls-files", "--error-unmatch", "--full-name", "--", relative },
+					function(path)
+						if not path then
+							notify_unavailable("Tracked file")
+							return
+						end
+						if not captured_file_is_valid(ctx.buf, file) then
+							notify_unavailable("File buffer")
+							return
+						end
+						local url = require("gleb.git.file_url").build(remote, branch, path, first_line, last_line)
+						if not url then
+							notify_unavailable("Origin remote")
+							return
+						end
+						vim.fn.setreg("+", url)
 					end
-					if not captured_file_is_valid(ctx.buf, file) then
-						notify_unavailable("File buffer")
-						return
-					end
-					local url = require("gleb.git.file_url").build(remote, branch, path, first_line, last_line)
-					if not url then
-						notify_unavailable("Origin remote")
-						return
-					end
-					vim.fn.setreg("+", url)
-				end)
+				)
 			end)
 		end)
 	end)

@@ -115,6 +115,9 @@ T["git: github.com current-line branch URL is copied"] = function()
 	child.api.nvim_win_set_cursor(0, { 2, 0 })
 
 	choose_file_url("https://github.com/owner/repo/blob/feature/share/a.txt#L2")
+
+	open_repo_file({ ["ü.txt"] = "one" }, "git@github.com:owner/repo.git", "feature/share", "ü.txt")
+	choose_file_url("https://github.com/owner/repo/blob/feature/share/%C3%BC.txt#L1")
 end
 
 T["git: Enterprise GitHub current-line branch URL is copied"] = function()
