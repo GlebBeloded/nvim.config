@@ -601,18 +601,24 @@ T["git: Changes panel Enter while the diff loads enters it once shown"] = functi
 		local load_diff = git.load_diff
 		git.load_diff = function(load_root, row, callback)
 			load_diff(load_root, row, function(...)
-				table.insert(HeldDiffLoads, { callback = callback, args = vim.F.pack_len(...) })
+				table.insert(HeldDiffLoads, { callback = callback, args = vim.F.pack_len(...), path = row.path })
 			end)
 		end
 	]])
-	cursor_before("b.txt")
+	cursor_before("lib/c.lua")
 	child.type_keys("j")
 	eq(child.wait("#HeldDiffLoads == 1", async_timeout()), true)
 
+	cursor_before("b.txt")
+	child.type_keys("j")
+	eq(child.wait("#HeldDiffLoads == 2", async_timeout()), true)
+
 	child.type_keys("<CR>")
 	child.lua([[
-		local held = HeldDiffLoads[1]
-		held.callback(vim.F.unpack_len(held.args))
+		local stale = assert(vim.iter(HeldDiffLoads):find(function(load) return load.path == "lib/c.lua" end))
+		local current = assert(vim.iter(HeldDiffLoads):find(function(load) return load.path == "b.txt" end))
+		stale.callback(vim.F.unpack_len(stale.args))
+		current.callback(vim.F.unpack_len(current.args))
 	]])
 	wait_for_shows(1)
 

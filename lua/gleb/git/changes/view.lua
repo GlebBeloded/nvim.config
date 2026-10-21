@@ -510,8 +510,8 @@ local function show_diff(view, row, generation, selection_generation, focus_righ
 			if loaded_buf then
 				unload_clean_buffer(loaded_buf)
 			end
-			clear_pending_diff(view)
 			if selected then
+				clear_pending_diff(view)
 				reload_outdated_diff(view, focus_right)
 			end
 			return
