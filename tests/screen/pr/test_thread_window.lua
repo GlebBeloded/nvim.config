@@ -123,6 +123,29 @@ local CONFIRM_TEXT = padded({
 	" NORMAL  ⎇ feat/tax  ◆ #482  ◆ 3                                                    ◆ 0 ◆ 1 ◆ ◆ go ◆",
 })
 
+local THREAD_LEGEND = vim.deepcopy(CONFIRM_LEGEND)
+THREAD_LEGEND.B = "PrReplyPlaceholder"
+THREAD_LEGEND.C = "PickerHint"
+
+local THREAD_MASK = vim.deepcopy(CONFIRM_MASK)
+THREAD_MASK[18] = "..............s.BBBBBBBBBBBBBB.......................................................s.............."
+THREAD_MASK[22] = "..............s.......................CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC.s.............."
+
+local THREAD_TEXT = vim.deepcopy(CONFIRM_TEXT)
+THREAD_TEXT[18] = padded({ "              │ Write a reply…                                                       │              " })[1]
+THREAD_TEXT[22] = padded({ "              │                       Reply ↩ · Resolve R · Open on web gx · Close q │              " })[1]
+
+T["pr: Thread window matches the approved render"] = function()
+	child.type_keys("<CR>")
+	assert(child.wait([[vim.bo.filetype == "gleb-pr-thread"]], math.floor(5000 * H.load_factor())))
+
+	local text = vim.tbl_map(function(cells)
+		return H.design_text(table.concat(cells))
+	end, H.screen_rows(child, 1, 30).text)
+	eq(text, THREAD_TEXT)
+	H.expect_screen_colors(child, 1, THREAD_MASK, THREAD_LEGEND)
+end
+
 T["pr: Send confirmation matches the approved render"] = function()
 	child.type_keys("<CR>")
 	assert(child.wait([[vim.bo.filetype == "gleb-pr-thread"]], math.floor(5000 * H.load_factor())))
