@@ -552,30 +552,42 @@ T["git: Changes panel ]f keeps diff focus"] = function()
 end
 
 T["git: Changes panel Enter opens the file"] = function()
-	local root = F.copy("dirty", vim.fn.tempname() .. "/dirty")
+	local root, manifest = F.copy("dirty", vim.fn.tempname() .. "/dirty")
 	open_changes(root, "a.txt")
 	observe_show()
 	cursor_before("b.txt")
 	child.type_keys("j")
 	wait_for_shows(1)
+	child.lua([[
+		local diff = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()].diff_view
+		vim.api.nvim_win_set_cursor(diff.left_win, { vim.api.nvim_buf_line_count(diff.left_buf), 0 })
+		vim.api.nvim_win_set_cursor(diff.right_win, { vim.api.nvim_buf_line_count(diff.right_buf), 0 })
+	]])
 
 	child.type_keys("<CR>")
 
 	local result = child.lua_get([[(function()
+		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
 		local filetypes = {}
 		for _, win in ipairs(vim.api.nvim_list_wins()) do
 			filetypes[vim.bo[vim.api.nvim_win_get_buf(win)].filetype] = true
 		end
 		return {
 			current = vim.fs.normalize(vim.api.nvim_buf_get_name(0)),
+			current_win = vim.api.nvim_get_current_win(),
+			right_win = panel.diff_view.right_win,
+			cursor = vim.api.nvim_win_get_cursor(panel.diff_view.right_win)[1],
 			changes = filetypes["gleb-changes"] or false,
 			diff = filetypes["gleb-diff"] or false,
 		}
 	end)()]])
 	eq(result, {
 		current = assert(vim.uv.fs_realpath(vim.fs.joinpath(root, "b.txt"))),
+		current_win = result.right_win,
+		right_win = result.right_win,
+		cursor = manifest.hunks["b.txt"][1],
 		changes = true,
-		diff = false,
+		diff = true,
 	})
 end
 

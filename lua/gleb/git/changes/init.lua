@@ -342,8 +342,8 @@ function M.open_selected()
 	local row = current.rows[vim.api.nvim_win_get_cursor(current.win)[1]]
 	if row and row.kind == "thread" then
 		require("gleb.pr.comments_tab").open(current, row)
-	elseif row and row.kind == "file" and (current.active_tab == "branch" or not row.fold_id) then
-		view.open_file(current, row)
+	elseif row and row.kind == "file" then
+		view.enter_diff(current, row)
 	elseif row and row.fold_id then
 		view.toggle_fold(current)
 	end

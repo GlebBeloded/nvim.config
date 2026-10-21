@@ -670,6 +670,47 @@ T["git: Changes panel Enter folds a directory"] = function()
 	)
 end
 
+T["git: Changes panel Enter on a nest parent enters the diff"] = function()
+	open_fixture("billing")
+	find_panel_line("invoice.go")
+	assert(
+		child.wait(
+			[[(function()
+				local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+				return panel.diff_view and panel.diff_view.relpath == "internal/billing/invoice.go"
+			end)()]],
+			math.floor(3000 * H.load_factor())
+		),
+		"invoice.go diff did not open"
+	)
+	local first_change = child.lua_get([[(function()
+		local diff = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()].diff_view
+		local cursor = vim.api.nvim_win_get_cursor(diff.right_win)[1]
+		vim.api.nvim_win_set_cursor(diff.left_win, { vim.api.nvim_buf_line_count(diff.left_buf), 0 })
+		vim.api.nvim_win_set_cursor(diff.right_win, { vim.api.nvim_buf_line_count(diff.right_buf), 0 })
+		return cursor
+	end)()]])
+
+	child.type_keys("<CR>")
+
+	local result = child.lua_get([[(function()
+		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		return {
+			current = vim.api.nvim_get_current_win(),
+			right = panel.diff_view.right_win,
+			cursor = vim.api.nvim_win_get_cursor(panel.diff_view.right_win)[1],
+			paths = vim.iter(panel.rows):map(function(row) return row.path end):totable(),
+		}
+	end)()]])
+	eq({ result.current, result.cursor }, { result.right, first_change })
+	assert(
+		vim.iter(result.paths):any(function(path)
+			return path == "internal/billing/invoice_test.go"
+		end),
+		"invoice_test.go was hidden after Enter"
+	)
+end
+
 T["git: Changes panel arrow keys and zc zo fold without an error"] = function()
 	open_fixture("billing")
 	find_panel_line("web/src 1")

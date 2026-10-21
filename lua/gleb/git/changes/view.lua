@@ -454,6 +454,18 @@ local function diff_target(view)
 end
 
 ---@param view ChangesView
+---@param shown gleb.diff.view.View
+---@return nil
+local function enter_shown_diff(view, shown)
+	local right_buf = shown.right_buf
+	if vim.bo[right_buf].buftype == "" then
+		vim.bo[right_buf].buflisted = true
+		view.loaded_buffers[right_buf] = nil
+	end
+	require("gleb.diff.view").focus_first_change(shown)
+end
+
+---@param view ChangesView
 ---@return nil
 function M.close_diff(view)
 	if not view.diff_view then
@@ -471,8 +483,9 @@ end
 ---@param generation integer
 ---@param selection_generation integer
 ---@param focus_right boolean
+---@param enter_diff? boolean
 ---@return nil
-local function show_diff(view, row, generation, selection_generation, focus_right)
+local function show_diff(view, row, generation, selection_generation, focus_right, enter_diff)
 	local load = view.active_tab == "branch"
 			and function(callback)
 				git.load_branch_diff(view.root, row, branch_diff_context(view, row), callback)
@@ -517,7 +530,9 @@ local function show_diff(view, row, generation, selection_generation, focus_righ
 		end
 		view.diff_view = shown
 		view.diff_path = diff_key(view, row)
-		if focus_right and vim.api.nvim_win_is_valid(shown.right_win) then
+		if enter_diff then
+			enter_shown_diff(view, shown)
+		elseif focus_right and vim.api.nvim_win_is_valid(shown.right_win) then
 			vim.api.nvim_set_current_win(shown.right_win)
 		end
 	end)
@@ -526,8 +541,9 @@ end
 ---@param view ChangesView
 ---@param row ChangesRow?
 ---@param focus_right boolean
+---@param enter_diff? boolean
 ---@return nil
-request_diff = function(view, row, focus_right)
+request_diff = function(view, row, focus_right, enter_diff)
 	if not row or row.kind ~= "file" then
 		return
 	end
@@ -540,14 +556,16 @@ request_diff = function(view, row, focus_right)
 		return
 	end
 	if key == view.diff_path then
-		if focus_right and view.diff_view and vim.api.nvim_win_is_valid(view.diff_view.right_win) then
+		if enter_diff and view.diff_view then
+			enter_shown_diff(view, view.diff_view)
+		elseif focus_right and view.diff_view and vim.api.nvim_win_is_valid(view.diff_view.right_win) then
 			vim.api.nvim_set_current_win(view.diff_view.right_win)
 		end
 		return
 	end
 	view.selection_generation = view.selection_generation + 1
 	view.diff_pending_path = key
-	show_diff(view, row, view.generation, view.selection_generation, focus_right)
+	show_diff(view, row, view.generation, view.selection_generation, focus_right, enter_diff)
 end
 
 --- Drop an in-flight diff once the cursor leaves its row: waiting for the debounce
@@ -810,6 +828,15 @@ function M.open_file(view, row)
 	vim.api.nvim_set_current_win(editor)
 	vim.cmd("edit " .. vim.fn.fnameescape(vim.fs.joinpath(view.root, row.path)))
 	view.loaded_buffers[vim.api.nvim_get_current_buf()] = nil
+end
+
+--- Enter the selected diff at its first change.
+---@param view ChangesView
+---@param row ChangesRow
+---@return nil
+function M.enter_diff(view, row)
+	view.diff_timer:stop()
+	request_diff(view, row, true, true)
 end
 
 --- Close the panel-owned diff and jump to its working-tree source.

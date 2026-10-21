@@ -217,6 +217,17 @@ local function select_row(id)
 	)
 end
 
+---@return integer first_change
+local function disturb_diff_cursors()
+	return child.lua_get([[(function()
+		local diff = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()].diff_view
+		local first_change = vim.api.nvim_win_get_cursor(diff.right_win)[1]
+		vim.api.nvim_win_set_cursor(diff.left_win, { vim.api.nvim_buf_line_count(diff.left_buf), 0 })
+		vim.api.nvim_win_set_cursor(diff.right_win, { vim.api.nvim_buf_line_count(diff.right_buf), 0 })
+		return first_change
+	end)()]])
+end
+
 ---@return string root
 local function open_branch_tab()
 	child.wait_very_lazy()
@@ -831,38 +842,62 @@ T["git: Branch tab Enter opens the working file"] = function()
 	wait_for_branch_diff("internal/billing/invoice.go")
 	select_row("branch:file:internal/billing/tax.go")
 	wait_for_branch_diff("internal/billing/tax.go")
+	local first_change = disturb_diff_cursors()
 
 	child.type_keys("<CR>")
 	local expected_path = vim.fs.joinpath(assert(vim.uv.fs_realpath(root)), "internal/billing/tax.go")
-	assert(
-		child.wait(
-			([[(function()
-				if vim.api.nvim_buf_get_name(0) ~= %q then return false end
-				return vim.iter(vim.api.nvim_tabpage_list_wins(0)):all(function(win)
-					return vim.bo[vim.api.nvim_win_get_buf(win)].filetype ~= "gleb-diff"
-				end)
-			end)()]]):format(expected_path),
-			async_timeout()
-		),
-		"Branch Enter did not open the working file"
-	)
 	local result = child.lua_get([=[(function()
 		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
-		local diff_windows = vim.iter(vim.api.nvim_tabpage_list_wins(0)):filter(function(win)
-			return vim.bo[vim.api.nvim_win_get_buf(win)].filetype == "gleb-diff"
-		end):totable()
 		return {
 			current = vim.api.nvim_buf_get_name(0),
+			current_win = vim.api.nvim_get_current_win(),
+			right_win = panel.diff_view.right_win,
+			cursor = vim.api.nvim_win_get_cursor(panel.diff_view.right_win)[1],
 			panel_open = vim.api.nvim_win_is_valid(panel.win),
 			active = panel.active_tab,
-			diff_windows = #diff_windows,
 		}
 	end)()]=])
 	eq(result, {
 		current = expected_path,
+		current_win = result.right_win,
+		right_win = result.right_win,
+		cursor = first_change,
 		panel_open = true,
 		active = "branch",
-		diff_windows = 0,
+	})
+end
+
+T["git: Branch commit Enter enters the diff"] = function()
+	observe_diff_shows()
+	open_branch_tab()
+	child.type_keys("c", "<Esc>")
+	wait_for_commits()
+	select_row("branch:commit:e325463:file:internal/billing/invoice.go")
+	wait_for_branch_diff("internal/billing/invoice.go", "e325463 · wire tax into Total")
+	local first_change = disturb_diff_cursors()
+
+	child.type_keys("<CR>")
+
+	local result = child.lua_get([[(function()
+		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		return {
+			current = vim.api.nvim_get_current_win(),
+			right = panel.diff_view.right_win,
+			cursor = vim.api.nvim_win_get_cursor(panel.diff_view.right_win)[1],
+			modifiable = vim.bo[panel.diff_view.right_buf].modifiable,
+			active = panel.active_tab,
+			commit_view = panel.commit_view,
+			panel_open = vim.api.nvim_win_is_valid(panel.win),
+		}
+	end)()]])
+	eq(result, {
+		current = result.right,
+		right = result.right,
+		cursor = first_change,
+		modifiable = false,
+		active = "branch",
+		commit_view = true,
+		panel_open = true,
 	})
 end
 
