@@ -29,9 +29,6 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 
 ## Loop lessons
 
-- Every Changes tab action that opens a panel must restore repository-local view and fold state before applying its requested tab.
-- When focusing a retained tab mode, rebuild from that mode's model so rendered rows cannot diverge from saved state.
-- Commit-file caches keyed by immutable full hashes should survive Branch model refreshes and be reattached to rebuilt nodes so open folds retain their children.
 - Bind debounced selection callbacks to the tab that scheduled them, and defer only data-dependent review work so tab focus changes synchronously without stale rows.
 - Name every main-spec contract pinned by newly shared symbols in Impact, with the concrete reason its behavior remains unchanged.
 - When a base-change event invalidates an in-flight forced fetch, queue the replacement and carry its force intent so the stale callback cannot lose both the refetch and notification.
@@ -44,6 +41,9 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - Measure synchronous mapped actions from immediately before key execution until the mapping returns so final draw work stays inside the sample.
 - Gating fallback git-index polls on a confirmed watch event loses external staging made during the start gap; poll the index on every settling pass and gate only the pass count.
 - auto-save.nvim's 1 s debounced write of a test's buffer edit races any later measured :write; turn it off before editing when a case counts writes, git runs or redraws.
+- Load lightweight highlight ownership and parser aliases synchronously when their contracts must hold before deferred plugin setup.
+- Before deferring a feature module, list the autocmds it registers when required (BufWritePost, BufWinEnter, ColorScheme, FileType) and load it on the earliest of those events, or its behaviour silently stops until some unrelated entry point loads it.
+- Plugins deferred to VeryLazy create their globals (plenary's _PlenaryLeafTable) after a reused child's case-reset snapshot, which then wipes them; such child sets wait for VeryLazy in their start.
 
 ## The loop
 
