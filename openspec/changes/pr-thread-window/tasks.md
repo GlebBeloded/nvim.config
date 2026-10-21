@@ -67,3 +67,10 @@ Scenarios: `pr: Thread window matches the approved render`
 - Pad the messages and reply floats with a one-cell `foldcolumn` (as `Normal`), so the reply text needs no leading space.
 - Keep the commented line's tab in the buffer and shift its stops with `vartabstop`, so it spans the cells it has in the editor.
 - The renders' editor rows 26–29 gain the committed signs of `f358a315` (merged after the capture), and two blank cells drop a hidden capture colour (see design.md).
+
+## Stuck
+
+- Check file-tree watcher cases remain red under the required 12-worker file run after two attempts; the second production attempt is saved in `/Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/eb1d4856-73b8-4fbd-985a-e2bb6918df25/stuck-attempt-check-file-tree.diff`.
+- Probe: after a missed folder deletion, `expanded["internal/billing"]` remained true, matching rows remained, and the folder handle was not closing; after attempt 2, both affected cases passed five isolated runs, but the full file still failed `Project tree prunes a deleted expanded folder` and `Project tree updates the last folder beyond the legacy watch limit`.
+- Attempt 1 waited for watch reconciliation and a later-started sentinel before each mutation; it failed because the helper itself rebuilt the macOS FSEvents stream and nested-folder events still disappeared.
+- Attempt 2 re-armed the existing two fallback settle passes on each confirmed event and drove folder-local visible canaries; isolated runs passed, but parallel full-file coverage still lost deletion and unwatched-folder updates, so the production change was reverted while the red regression hardening remains.
