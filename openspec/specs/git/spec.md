@@ -1037,7 +1037,7 @@ The Branch tab SHALL rebuild with the Local tab's refresh triggers and whenever 
 - **THEN** the panel switches to Local and removes Branch on `main`, then makes Branch available with its current count on `feat/tax`
 
 ### Requirement: Changes tab actions
-The three Show actions SHALL remain unbound `View | Tool Windows` actions that open their named tab, with Branch actions warning when unavailable. `changes.toggle_commits` SHALL remain `Toggle Commits` on `c`. `changes.copy_commit_url` SHALL be an unbound `Changes` action named `Copy Commit URL`, scoped to `gleb-changes` and available only when a Branch commit row is selected.
+The three Show actions SHALL remain unbound `View | Tool Windows` actions that open their named tab, with Branch actions warning when unavailable. `changes.toggle_commits` SHALL remain `Toggle Commits` on `c`. The Changes-panel action catalog SHALL NOT contain `changes.copy_commit_url`.
 
 #### Scenario: Tab actions are in the catalog
 - **WHEN** the action catalog is read after startup
@@ -1052,8 +1052,8 @@ The three Show actions SHALL remain unbound `View | Tool Windows` actions that o
 - **THEN** `No branch changes on main` is notified at WARN, the Local tab is still active and the panel's lines are unchanged
 
 #### Scenario: Copy Commit URL is offered for a commit row
-- **WHEN** Find Action opens from the `e325463` row in the populated Branch commit view
-- **THEN** it offers `changes.copy_commit_url` as `Copy Commit URL` in category `Changes` with no assigned shortcut
+- **WHEN** the populated action catalog is read after startup and Find Action opens from the `e325463` row in the populated Branch commit view
+- **THEN** `changes.copy_commit_url` is absent from the catalog and the picker
 
 #### Scenario: Copy Commit URL is absent away from commit rows
 - **WHEN** Find Action opens from a file row or from the Branch files view
@@ -1073,21 +1073,6 @@ While Neovim runs, the active tab, the Branch tab's view (files or commits) and 
 #### Scenario: Tab actions reopen saved state
 - **WHEN** a commit is collapsed in the commit view of the `billing-branch` fixture, `q` closes the panel and each Changes tab action reopens it
 - **THEN** `changes.show_branch` and `changes.show_branch_commits` reuse the commit view and collapsed commit, while `changes.show_local` reuses the saved folds on the Local tab
-
-### Requirement: Commit URL copying
-`changes.copy_commit_url` SHALL read the selected commit's full hash and the repository's `origin`, normalize HTTPS, `ssh://` and SCP-like remotes to `https://<host>[:port]/<owner>/<repo>`, append `/commit/<full-sha>`, and copy the result to register `+`. Hostnames SHALL not be allowlisted. If `origin` is absent or unsupported, it SHALL notify at ERROR and leave register `+` unchanged.
-
-#### Scenario: github.com commit URL is copied
-- **WHEN** `changes.copy_commit_url` runs on a commit row in a repository whose `origin` is `git@github.com:octo/example.git`
-- **THEN** register `+` is `https://github.com/octo/example/commit/<full-sha>` for that row
-
-#### Scenario: Enterprise GitHub commit URL is copied
-- **WHEN** `changes.copy_commit_url` runs on the `e325463` row of the `billing-branch` fixture whose `origin` is `git@pgw.dev:finteqhub/billing.git`
-- **THEN** register `+` is `https://pgw.dev/finteqhub/billing/commit/<full-sha>` for that row
-
-#### Scenario: Missing origin preserves the clipboard
-- **WHEN** `changes.copy_commit_url` runs on a commit row in a repository without an `origin` remote
-- **THEN** register `+` is unchanged and an ERROR notification explains that the commit URL could not be copied
 
 ### Requirement: Changes diff interaction
 A diff shown from the panel (Local, Branch or commit row, `]f`) SHALL open with the right window's cursor on the first line of the first change and the left window's cursor on its transferred line, focus staying where it was. The window keys SHALL move between panel and both panes; motion in a pane SHALL move both. A Local or Branch right pane SHALL be the working-tree file buffer: editable, savable, re-diffed. A commit diff SHALL be read-only but navigable.
@@ -1139,3 +1124,36 @@ A diff shown from the panel (Local, Branch or commit row, `]f`) SHALL open with 
 #### Scenario: gf in a Branch diff preserves the working file after panel close
 - **WHEN** a file that was not already open is reviewed on the Branch tab, `gf` opens its working-tree buffer, and the Changes panel is closed
 - **THEN** the editor window and working-tree buffer opened by `gf` remain valid, loaded and current
+
+### Requirement: File URL action
+The catalog SHALL contain an unbound `git.copy_file_url` action titled `Copy File URL` in category `Git`. Find Action SHALL list it in normal and visual file-buffer contexts whether it has no shortcut or an assigned shortcut.
+
+#### Scenario: Copy File URL remains listed with and without a shortcut
+- **WHEN** `<M-A>` opens Find Action from a normal or visual file buffer before and after a shortcut is assigned to `git.copy_file_url`
+- **THEN** the picker lists `git.copy_file_url` as `Copy File URL` in category `Git` and shows the assigned shortcut only when present
+
+### Requirement: Branch file URL copying
+`git.copy_file_url` SHALL copy to register `+` an `origin` GitHub-style blob URL for the current repository-relative file, attached local branch, and current line or inclusive visual line range. It SHALL normalize HTTPS, `ssh://`, and SCP-like remotes without allowlisting hosts and SHALL preserve `/` separators while URL-encoding unsafe branch and path bytes.
+
+#### Scenario: github.com current-line branch URL is copied
+- **WHEN** `git.copy_file_url` runs through the real picker in normal mode on line 2 of tracked file `a.txt`, on branch `feature/share`, with `origin` set to `git@github.com:owner/repo.git`
+- **THEN** register `+` is `https://github.com/owner/repo/blob/feature/share/a.txt#L2`
+
+#### Scenario: Enterprise GitHub current-line branch URL is copied
+- **WHEN** `git.copy_file_url` runs through the real picker in normal mode on line 10 of tracked file `internal/billing/invoice.go`, on branch `feat/tax`, with `origin` set to `git@pgw.dev:finteqhub/billing.git`
+- **THEN** register `+` is `https://pgw.dev/finteqhub/billing/blob/feat/tax/internal/billing/invoice.go#L10`
+
+#### Scenario: Visual selection copies an ordered line range
+- **WHEN** lines 5 through 3 of a tracked file are selected in visual mode and `git.copy_file_url` runs through the real picker
+- **THEN** register `+` contains the attached-branch blob URL ending in `#L3-L5`
+
+#### Scenario: A branch without an upstream is copied
+- **WHEN** `git.copy_file_url` runs on attached local branch `topic/local-only` with an `origin` remote but no configured upstream
+- **THEN** register `+` contains a blob URL whose branch component is `topic/local-only`
+
+### Requirement: Unavailable branch file URL
+If `origin`, an attached branch, the repository-relative file, or a tracked file is unavailable, `git.copy_file_url` SHALL notify at ERROR with the unavailable input, leave register `+` unchanged, and SHALL NOT require or create an upstream.
+
+#### Scenario: Unavailable file URL input preserves the clipboard
+- **WHEN** `git.copy_file_url` runs through the real picker with register `+` set, once without `origin`, once at detached HEAD, and once on an untracked file
+- **THEN** each run leaves register `+` unchanged and emits an ERROR notification identifying the unavailable input
