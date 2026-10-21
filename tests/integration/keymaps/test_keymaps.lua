@@ -800,9 +800,90 @@ T["keymaps: Toggle wins over a pending tree refresh"] = function()
 		)
 		child.type_keys("<CR>")
 	end
+	eq(
+		child.wait(
+			[[(function()
+				local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+				local root = view.root
+				local watch = assert(require("gleb.tree.watch").state.roots[root])
+				local git = assert(require("gleb.file_tree.git").state.roots[root])
+				if not watch.event_confirmed then
+					local now = vim.uv.clock_gettime("realtime")
+					local stamp = now.sec + now.nsec / 1e9
+					vim.uv.fs_utime(vim.fs.joinpath(root, "README.md"), stamp, stamp)
+					return false
+				end
+				for _, timer in pairs(watch.timers) do
+					if timer:is_active() then
+						return false
+					end
+				end
+				return watch.settle_passes == 0
+					and not watch.sync_scheduled
+					and not watch.fallback_scanning
+					and watch.handles[vim.fs.joinpath(root, "internal/billing")] ~= nil
+					and git.timer == nil
+					and not git.in_flight
+					and not view.dirty
+					and view.dirty_timer == nil
+					and not view.git_pending
+			end)()]],
+			async_ms()
+		),
+		true
+	)
+	child.lua([[
+		local directory = vim.fn.tempname()
+		vim.fn.mkdir(directory, "p")
+		PendingTreeSentinel = { path = vim.fs.joinpath(directory, "sentinel"), seen = false }
+		PendingTreeSentinel.handle = assert(vim.uv.new_fs_event())
+		assert(PendingTreeSentinel.handle:start(directory, {}, function()
+			PendingTreeSentinel.seen = true
+		end))
+	]])
+	eq(
+		child.wait(
+			[[(function()
+			vim.fn.writefile({ tostring(vim.uv.hrtime()) }, PendingTreeSentinel.path)
+			return PendingTreeSentinel.seen
+		end)()]],
+			async_ms()
+		),
+		true
+	)
+	child.lua([[require("gleb.util.debounce").use_test_scheduler()]])
 	vim.system({ "touch", vim.fs.joinpath(repo, "internal/billing/fee.go") }):wait()
+	eq(
+		child.wait(
+			[[(function()
+				local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+				local root = view.root
+				local watch = assert(require("gleb.tree.watch").state.roots[root])
+				local pending = false
+				for _, timer in pairs(watch.timers) do
+					pending = pending or (type(timer) == "table" and timer.due_ms ~= nil)
+				end
+				if not pending then
+					local now = vim.uv.clock_gettime("realtime")
+					local stamp = now.sec + now.nsec / 1e9
+					vim.uv.fs_utime(vim.fs.joinpath(root, "internal/billing/fee.go"), stamp, stamp)
+				end
+				return pending
+			end)()]],
+			async_ms()
+		),
+		true
+	)
+	child.lua([[require("gleb.util.debounce").advance(100)]])
+	eq(
+		child.lua_get([[(function()
+			local view = require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()]
+			return view.dirty and view.dirty_timer ~= nil
+		end)()]]),
+		true
+	)
 	child.type_keys("<M-e>")
-	child.lua([[vim.wait(1000)]])
+	child.lua([[require("gleb.util.debounce").advance(1000)]])
 
 	eq(
 		child.lua_get([[vim.iter(vim.api.nvim_list_wins()):all(function(win)

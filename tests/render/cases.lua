@@ -305,6 +305,33 @@ local function pr_comments(driver)
 	)
 end
 
+--- Wait for both sides of the diff to be parsed, then draw their highlights.
+---@param driver render.Driver
+local function wait_for_diff_render(driver)
+	assert(
+		driver.wait(
+			[[(function()
+				local view = require("gleb.diff.view").current()
+				if not view or #view.layout.rows ~= 24 then return false end
+				if not vim.api.nvim_win_is_valid(view.left_win) or not vim.api.nvim_win_is_valid(view.right_win) then
+					return false
+				end
+				local function highlighted(buf)
+					local ok, captures = pcall(vim.treesitter.get_captures_at_pos, buf, 1, 0)
+					return ok and #captures > 0
+				end
+				return vim.api.nvim_buf_line_count(view.left_buf) == #view.left
+					and vim.api.nvim_buf_line_count(view.right_buf) == #view.right
+					and highlighted(view.left_buf)
+					and highlighted(view.right_buf)
+			end)()]],
+			math.floor(5000 * H.load_factor())
+		),
+		"diff render did not populate its layout and highlights"
+	)
+	driver.cmd("redraw!")
+end
+
 --- Owned aligned diff of the changed Go controller fixture.
 ---@param driver render.Driver
 local function diff_view(driver)
@@ -317,7 +344,7 @@ local actions = require("gleb.actions")
 local action = assert(actions.state.applicator.catalog:get("diff.open_file"))
 assert(require("gleb.actions.context").execute(action, require("gleb.actions.context").capture()))
 ]])
-	assert(driver.wait([[require("gleb.diff.view").current() ~= nil]]))
+	wait_for_diff_render(driver)
 end
 
 --- Owned aligned diff after staging the changed return line.

@@ -100,10 +100,12 @@ end
 T["references: Preview highlighting matches a regular buffer"] = function()
 	local invoice = manifest.references.Format[3]
 	edit(invoice.path, invoice.line, invoice.col)
-	eq(child.wait([[vim.treesitter.highlighter.active[vim.api.nvim_get_current_buf()] ~= nil]]), true)
+	H.wait_treesitter_captures(child, child.api.nvim_get_current_buf(), invoice.line - 1, invoice.col - 1, TIMEOUT_MS)
 	child.lua([[RegularInvoiceBuffer = vim.api.nvim_get_current_buf()]])
 	open_format()
 	eq(child.wait([[(require("gleb.references.view").state.preview_usage or {}).path == "billing/invoice.go"]]), true)
+	local preview_buf = child.lua_get([[require("gleb.references.view").state.preview_buf]])
+	H.wait_treesitter_captures(child, preview_buf, invoice.line - 1, invoice.col - 1, TIMEOUT_MS)
 
 	local captures = child.lua_get([[(function()
 local function captures(buf, first, last)

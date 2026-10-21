@@ -444,4 +444,21 @@ T["loop: Agents keep tests robust under load"] = function()
 	has(doc, "delete it together with its scenario when its intent cannot be tested deterministically")
 end
 
+T["loop: Known flaky cases use deterministic readiness"] = function()
+	local checks = {
+		{ "tests/helpers.lua", "math.ceil((spec.timeout or 10000) * M.load_factor())" },
+		{ "tests/integration/actions/test_plugin_ownership.lua", "cleanup: child=stopped, descendants=stopped" },
+		{ "tests/integration/references/test_preview.lua", "H.wait_treesitter_captures" },
+		{ "tests/integration/references/test_keys.lua", 'H.wait_references_ready(child, "gopls"' },
+		{ "tests/integration/file-tree/test_ignored.lua", "file_tree_release_initial_status" },
+		{ "tests/integration/file-tree/test_project_git.lua", "active_watch_timers == 0" },
+		{ "tests/render/cases.lua", "wait_for_diff_render(driver)" },
+		{ "tests/integration/git/test_git.lua", "ASYNC_MS * H.load_factor()" },
+		{ "tests/integration/keymaps/test_keymaps.lua", 'require("gleb.util.debounce").advance(1000)' },
+	}
+	for _, check in ipairs(checks) do
+		has(read(vim.fs.joinpath(H.root, check[1])), check[2])
+	end
+end
+
 return T

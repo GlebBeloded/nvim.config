@@ -233,11 +233,14 @@ T["file-tree: Project tree runs git status once per burst"] = function()
 	)
 
 	local result = child.lua_get(
-		[[(function(baseline)
+		[[(function(baseline, timeout)
 		local git = require("gleb.file_tree.git")
-		local complete = vim.wait(1000, function()
+		local watch = require("gleb.tree.watch")
+		local snapshot = {}
+		local complete = vim.wait(timeout, function()
 			local view = require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()]
 			if not view then
+				snapshot = { view = false }
 				return false
 			end
 			local found = 0
@@ -246,14 +249,48 @@ T["file-tree: Project tree runs git status once per burst"] = function()
 					found = found + 1
 				end
 			end
+			local git_state = git.state.roots[view.root]
+			local watch_state = watch.state.roots[view.root]
+			local active_watch_timers = 0
+			for _, timer in pairs(watch_state and watch_state.timers or {}) do
+				if timer:is_active() then
+					active_watch_timers = active_watch_timers + 1
+				end
+			end
+			snapshot = {
+				rows = found,
+				git_timer = git_state and git_state.timer ~= nil or false,
+				git_in_flight = git_state and git_state.in_flight or false,
+				git_dirty = git_state and git_state.dirty or false,
+				view_dirty = view.dirty,
+				view_dirty_timer = view.dirty_timer ~= nil,
+				view_git_pending = view.git_pending,
+				active_watch_timers = active_watch_timers,
+				watch_sync_scheduled = watch_state and watch_state.sync_scheduled or false,
+				watch_fallback_scanning = watch_state and watch_state.fallback_scanning or false,
+			}
 			return found == 20
+				and git_state ~= nil
+				and git_state.timer == nil
+				and not git_state.in_flight
+				and not git_state.dirty
+				and not view.dirty
+				and view.dirty_timer == nil
+				and not view.git_pending
+				and watch_state ~= nil
+				and active_watch_timers == 0
+				and not watch_state.sync_scheduled
+				and not watch_state.fallback_scanning
 		end, 20)
-		return { complete = complete, runs = git.state.runs - baseline }
+		snapshot.complete = complete
+		snapshot.runs = git.state.runs - baseline
+		return snapshot
 	end)(...)]],
-		{ baseline }
+		{ baseline, math.ceil(3000 * H.load_factor()) }
 	)
 
-	eq(result.complete, true)
+	assert(result.complete, "project-tree burst did not settle: " .. vim.inspect(result))
+	eq(result.rows, 20)
 	assert(result.runs <= 2, ("expected at most 2 git runs, got %d"):format(result.runs))
 end
 
