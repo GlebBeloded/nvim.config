@@ -58,8 +58,8 @@ Scenarios: `git: Branch tab matches the approved render`, `git: Branch commits m
 
 Scenarios: `git: Real key presses move, scroll and edit in the Branch diff`
 
-- [ ] 8.1 Write the scenario in `tests/e2e/git/` (real key presses through Alacritty and zellij, as the existing git e2e cases do) and see it fail on the current code; if it passes before the fix, record what differs from the user's report under `## Agent decisions`
-- [ ] 8.2 Run `make e2e` (sandbox VM only) after tasks 2-4 and see it pass
+- [x] 8.1 Write the scenario in `tests/e2e/git/` (real key presses through Alacritty and zellij, as the existing git e2e cases do) and see it fail on the current code; if it passes before the fix, record what differs from the user's report under `## Agent decisions`
+- [x] 8.2 Run `make e2e` (sandbox VM only) after tasks 2-4 and see it pass
 
 ## Agent decisions
 
@@ -67,3 +67,4 @@ Scenarios: `git: Real key presses move, scroll and edit in the Branch diff`
 - Clamp `layout.transfer_line` to the peer's line count, so synchronization and callers agree at an unequal-length file's end.
 - Match a diff view against the Changes panels to select panel-owned teardown, so the action clears panel state without coupling the diff view to its owner.
 - Use the approved ANSI captures for the internal divider colour; their `#45403d` cell corrects the printed masks' `Normal` typo.
+- The real-terminal interaction passed after tasks 2-5: unlike the user's report, Cmd+L entered the panes and the Branch right side was a modifiable working-file buffer.
