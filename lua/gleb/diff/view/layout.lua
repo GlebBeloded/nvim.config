@@ -250,23 +250,27 @@ function M.transfer_line(layout, side, line)
 	local source_end = side == "left" and "end1" or "end2"
 	local target_start = side == "left" and "start2" or "start1"
 	local target_end = side == "left" and "end2" or "end1"
+	local target_line_count = side == "left" and layout.line_count2 or layout.line_count1
+	local function clamp_target(target_line)
+		return math.max(1, math.min(target_line, target_line_count))
+	end
 	local delta = 0
 	for _, fragment in ipairs(layout.fragments) do
 		local source_count = fragment[source_end] - fragment[source_start]
 		local target_count = fragment[target_end] - fragment[target_start]
 		if line <= fragment[source_start] then
-			return line + delta
+			return clamp_target(line + delta)
 		end
 		if line <= fragment[source_end] then
 			if target_count == 0 then
-				return fragment[target_start] + 1
+				return clamp_target(fragment[target_start] + 1)
 			end
 			local offset = math.min(line - fragment[source_start] - 1, target_count - 1)
-			return fragment[target_start] + offset + 1
+			return clamp_target(fragment[target_start] + offset + 1)
 		end
 		delta = delta + target_count - source_count
 	end
-	return line + delta
+	return clamp_target(line + delta)
 end
 
 ---@param row gleb.diff.view.Row

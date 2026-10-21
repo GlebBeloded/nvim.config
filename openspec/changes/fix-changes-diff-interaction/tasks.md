@@ -35,9 +35,9 @@ Scenarios: `git: Branch tab shows the merge-base diff`, `git: Branch tab shows a
 
 Scenarios: `git: Window keys enter the diff panes`, `git: Branch diff panes move together`, `git: Commit diff is read-only and navigable`
 
-- [ ] 5.1 Write the scenarios in `tests/integration/git/test_changes_diff_interaction.lua` with `child.type_keys`, waiting for each key's effect, and see any that fail
-- [ ] 5.2 Fix whatever the tests show (focus, sync or read-only handling) without new panel keys (Decision 7)
-- [ ] 5.3 Run `make test FILE=tests/integration/git/test_changes_diff_interaction.lua` and see it pass
+- [x] 5.1 Write the scenarios in `tests/integration/git/test_changes_diff_interaction.lua` with `child.type_keys`, waiting for each key's effect, and see any that fail
+- [x] 5.2 Fix whatever the tests show (focus, sync or read-only handling) without new panel keys (Decision 7)
+- [x] 5.3 Run `make test FILE=tests/integration/git/test_changes_diff_interaction.lua` and see it pass
 
 ## 6. Jump to Source
 
@@ -64,3 +64,4 @@ Scenarios: `git: Real key presses move, scroll and edit in the Branch diff`
 ## Agent decisions
 
 - Detect a Branch working-tree binary with `git diff --numstat <merge-base> -- <path>`, so the read-only fallback covers both committed and uncommitted content.
+- Clamp `layout.transfer_line` to the peer's line count, so synchronization and callers agree at an unequal-length file's end.

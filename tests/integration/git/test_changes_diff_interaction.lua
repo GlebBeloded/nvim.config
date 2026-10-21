@@ -130,6 +130,70 @@ local function view_state()
 	end)()]])
 end
 
+---@param key string
+---@param condition string
+---@param message string
+local function type_and_wait(key, condition, message)
+	child.type_keys(key)
+	assert(child.wait(condition, async_timeout()), message)
+end
+
+---@param key string
+---@param previous_line integer
+---@param expected_line? integer
+---@param check_topline? boolean
+local function move_right_and_wait(key, previous_line, expected_line, check_topline)
+	child.type_keys(key)
+	local expected = expected_line and tostring(expected_line) or "nil"
+	local check_top = tostring(check_topline == true)
+	local moved = child.wait(
+		string.format(
+			[[(function(previous, expected, check_top)
+				local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+				local view = panel and panel.diff_view
+				if not view then return false end
+				local right = vim.api.nvim_win_get_cursor(view.right_win)[1]
+				local left = vim.api.nvim_win_get_cursor(view.left_win)[1]
+				local right_top = vim.api.nvim_win_call(view.right_win, function()
+					return vim.fn.winsaveview().topline
+				end)
+				local left_top = vim.api.nvim_win_call(view.left_win, function()
+					return vim.fn.winsaveview().topline
+				end)
+				return right ~= previous and (expected == nil or right == expected)
+					and left == require("gleb.diff.view.layout").transfer_line(view.layout, "right", right)
+					and (not check_top
+						or left_top == require("gleb.diff.view.layout").transfer_line(view.layout, "right", right_top))
+			end)(%d, %s, %s)]],
+			previous_line,
+			expected,
+			check_top
+		),
+		async_timeout()
+	)
+	if not moved then
+		local observed = child.lua_get([[(function()
+			local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+			local view = panel.diff_view
+			local right = vim.api.nvim_win_get_cursor(view.right_win)[1]
+			local right_top = vim.api.nvim_win_call(view.right_win, function() return vim.fn.winsaveview().topline end)
+			return {
+				right = right,
+				left = vim.api.nvim_win_get_cursor(view.left_win)[1],
+				expected_left = require("gleb.diff.view.layout").transfer_line(view.layout, "right", right),
+				right_top = right_top,
+				left_top = vim.api.nvim_win_call(view.left_win, function() return vim.fn.winsaveview().topline end),
+				expected_left_top = require("gleb.diff.view.layout").transfer_line(view.layout, "right", right_top),
+			}
+		end)()]])
+		error(("Diff panes did not move together after %s: %s"):format(key, vim.inspect(observed)))
+	end
+	return child.lua_get([[(function()
+		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		return vim.api.nvim_win_get_cursor(panel.diff_view.right_win)[1]
+	end)()]])
+end
+
 T["git: Changes Local diff starts on the first change"] = function()
 	child.type_keys("<A-g>")
 	wait_for_diff("local")
@@ -252,6 +316,87 @@ T["git: Branch diff edits are saved and re-diffed"] = function()
 	)
 end
 
+T["git: Window keys enter the diff panes"] = function()
+	child.type_keys("<A-g>")
+	wait_for_diff("local")
+	local before = child.lua_get([[(function()
+		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		local view = panel.diff_view
+		return {
+			panel_win = panel.win,
+			panel_cursor = vim.api.nvim_win_get_cursor(panel.win),
+			left_win = view.left_win,
+			right_win = view.right_win,
+			right_buf = view.right_buf,
+			fragments = vim.deepcopy(view.fragments),
+		}
+	end)()]])
+
+	type_and_wait(
+		"<C-l>",
+		("vim.api.nvim_get_current_win() == %d"):format(before.left_win),
+		"First window-right key did not enter the left diff pane"
+	)
+	type_and_wait(
+		"<C-l>",
+		("vim.api.nvim_get_current_win() == %d and vim.api.nvim_win_get_cursor(%d)[1] == 11"):format(
+			before.right_win,
+			before.right_win
+		),
+		"Second window-right key did not enter the right diff pane"
+	)
+	type_and_wait(
+		"<C-h>",
+		("vim.api.nvim_get_current_win() == %d"):format(before.left_win),
+		"First window-left key did not return to the left diff pane"
+	)
+	type_and_wait(
+		"<C-h>",
+		("vim.api.nvim_get_current_win() == %d"):format(before.panel_win),
+		"Second window-left key did not return to the Changes panel"
+	)
+
+	local after = child.lua_get([[(function()
+		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		return {
+			panel_cursor = vim.api.nvim_win_get_cursor(panel.win),
+			right_buf = panel.diff_view.right_buf,
+			fragments = panel.diff_view.fragments,
+		}
+	end)()]])
+	eq(after.panel_cursor, before.panel_cursor)
+	eq(after.right_buf, before.right_buf)
+	eq(after.fragments, before.fragments)
+end
+
+T["git: Branch diff panes move together"] = function()
+	open_branch_diff()
+	local state = view_state()
+	type_and_wait(
+		"<C-w>l",
+		("vim.api.nvim_get_current_win() == %d"):format(state.left_win),
+		"First native window-right key did not enter the left diff pane"
+	)
+	type_and_wait(
+		"<C-w>l",
+		("vim.api.nvim_get_current_win() == %d"):format(state.right_win),
+		"Second native window-right key did not enter the right diff pane"
+	)
+
+	local line = state.right_cursor
+	for _, movement in ipairs({
+		{ "gg", 1 },
+		{ "j" },
+		{ "j" },
+		{ "<C-d>" },
+		{ "G", 37 },
+		{ "k", 36 },
+	}) do
+		line = move_right_and_wait(movement[1], line, movement[2], true)
+	end
+	eq(line, 36)
+end
+
 T["git: Commit diff is read-only and navigable"] = function()
 	open_commit_diff()
 	local before = child.lua_get([[(function()
@@ -259,11 +404,21 @@ T["git: Commit diff is read-only and navigable"] = function()
 		return vim.api.nvim_buf_get_lines(panel.diff_view.right_buf, 0, -1, false)
 	end)()]])
 
-	child.type_keys("<C-l>")
-	child.type_keys("<C-l>")
-	child.type_keys("j")
-	child.type_keys("G")
-	child.type_keys("gg")
+	local view = view_state()
+	type_and_wait(
+		"<C-l>",
+		("vim.api.nvim_get_current_win() == %d"):format(view.left_win),
+		"First window-right key did not enter the commit's left pane"
+	)
+	type_and_wait(
+		"<C-l>",
+		("vim.api.nvim_get_current_win() == %d"):format(view.right_win),
+		"Second window-right key did not enter the commit's right pane"
+	)
+	local line = view.right_cursor
+	line = move_right_and_wait("j", line)
+	line = move_right_and_wait("G", line)
+	move_right_and_wait("gg", line, 1)
 	local edited, edit_error = pcall(function()
 		child.type_keys("x")
 	end)
