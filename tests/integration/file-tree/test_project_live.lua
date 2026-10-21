@@ -456,21 +456,26 @@ T["file-tree: Project tree shows files created outside Neovim"] = function()
 	)
 	eq(child.lua_get([[require("gleb.file_tree.watch").state.roots[_G.fallback_root].fallback_timer ~= nil]]), true)
 
-	local canary = H.system(child, { "touch", vim.fs.joinpath(root, "internal/billing/invoice.go") }, root)
-	eq(canary.code, 0)
 	local canary_ready = child.lua_get(
-		[[(function(path, timeout)
+		[[(function(root, timeout)
+			root = require("gleb.file_tree.fs").normalize(root)
+			local folder = root .. "/internal/billing"
+			local path = folder .. "/invoice.go"
 			return vim.wait(timeout, function()
-				local now = vim.uv.clock_gettime("realtime")
-				local stamp = now.sec + now.nsec / 1e9
-				vim.uv.fs_utime(path, stamp, stamp)
-				local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
-				return vim.iter(view.rows):any(function(row)
-					return row.label == "invoice.go"
-				end)
+				local state = assert(require("gleb.file_tree.watch").state.roots[root])
+				if state.event_confirmed then
+					return true
+				end
+				local timer = state.timers[folder]
+				if not (timer and timer:is_active()) then
+					local now = vim.uv.clock_gettime("realtime")
+					local stamp = now.sec + now.nsec / 1e9
+					vim.uv.fs_utime(path, stamp, stamp)
+				end
+				return false
 			end, 20)
 		end)(...)]],
-		{ vim.fs.joinpath(root, "internal/billing/invoice.go"), math.ceil(10000 * H.load_factor()) }
+		{ root, math.ceil(10000 * H.load_factor()) }
 	)
 	eq(canary_ready, true)
 

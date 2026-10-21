@@ -153,7 +153,16 @@ T["pr: Thread window colours"] = function()
 end
 
 T["pr: Open thread shows the thread centred"] = function()
-	open_review()
+	open_review(function(files)
+		local response = vim.json.decode(files["ReviewThreads.json"])
+		local nodes = response.data.repository.pullRequest.reviewThreads.nodes
+		for index = 4, 6 do
+			local thread = vim.deepcopy(nodes[1])
+			thread.id = "PRRT_t" .. index
+			nodes[#nodes + 1] = thread
+		end
+		files["ReviewThreads.json"] = vim.json.encode(response)
+	end)
 	child.lua([[vim.api.nvim_win_set_cursor(0, { 22, 0 })]])
 	run_action("pr.open_thread")
 	assert(child.wait([[vim.bo.filetype == "gleb-pr-thread"]], timeout()), "thread reply did not take focus")
@@ -400,7 +409,7 @@ T["pr: n keeps editing"] = function()
 
 	assert(child.wait([[vim.fn.mode() == "i"]], timeout()), "reply editing did not resume")
 	eq(child.lua_get([[vim.bo.filetype]]), "gleb-pr-thread")
-	eq(child.lua_get([[vim.api.nvim_win_get_cursor(0)]]), { 1, #REPLY - 1 })
+	eq(child.lua_get([[vim.api.nvim_win_get_cursor(0)]]), { 1, #REPLY })
 	eq(thread_windows()[2].lines[1], REPLY)
 	eq(vim.endswith(thread_windows()[3].lines[1], " Reply ↩ · Resolve R · Open on web gx · Close q "), true)
 	eq(log_lines(gh_log, "mutation"), {})

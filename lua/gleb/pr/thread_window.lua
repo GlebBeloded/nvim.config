@@ -272,7 +272,7 @@ local function restore_editing(state, resume_insert)
 	local line = vim.api.nvim_buf_get_lines(state.reply_buf, last - 1, last, false)[1]
 	vim.api.nvim_win_set_cursor(state.reply_win, { last, #line })
 	if resume_insert then
-		vim.cmd.startinsert()
+		vim.cmd.startinsert({ bang = true })
 	end
 end
 
@@ -768,7 +768,7 @@ function M.open_at_cursor(win, buf)
 			return location.line == cursor_line
 		end, locations)
 		table.sort(matching, function(left, right)
-			return left.thread.resolved == right.thread.resolved and false or not left.thread.resolved
+			return not left.thread.resolved and right.thread.resolved
 		end)
 		if review and matching[1] then
 			M.open(review, matching[1].thread)
