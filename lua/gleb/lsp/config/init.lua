@@ -10,12 +10,6 @@ end
 ---@type gleb.Languages
 local languages = require("gleb.languages")
 
-languages.register_facet("lsp", function(config, language)
-	if not vim.islist(config.servers) or not vim.islist(config.mason) then
-		return ("languages: %s has invalid lsp facet"):format(language.name)
-	end
-end)
-
 local language_configs = vim.iter(languages.facet("lsp"))
 	:map(function(facet)
 		return facet.config

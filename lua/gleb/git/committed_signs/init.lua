@@ -3,7 +3,6 @@
 local base = require("gleb.git.base")
 local debounce = require("gleb.util.debounce")
 local map = require("gleb.git.committed_signs.map")
-local palette = require("gleb.colors.gruvbox-material.palette")
 local sign_text = require("gleb.git.sign_text")
 
 local M = {
@@ -338,16 +337,11 @@ local function refresh(buf)
 	end)
 end
 
-local function apply_highlight()
-	vim.api.nvim_set_hl(0, "GitCommittedSign", { fg = palette.foreground.purple })
-end
-
 --- Configure committed branch signs for normal file buffers.
 ---@return nil
 function M.setup()
-	apply_highlight()
+	require("gleb.git.committed_signs.highlights").setup()
 	local group = vim.api.nvim_create_augroup("gleb_git_committed_signs", { clear = true })
-	vim.api.nvim_create_autocmd("ColorScheme", { group = group, callback = apply_highlight })
 	vim.api.nvim_create_autocmd({ "BufReadPost", "BufEnter" }, {
 		group = group,
 		callback = function(args)

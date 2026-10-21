@@ -57,8 +57,8 @@ end
 ---@param view gleb.diff.view.View
 ---@param open_ranges? { start: integer, finish: integer }[]
 function M.add_folds(view, open_ranges)
-	local has_ufo, ufo = pcall(require, "ufo")
-	if has_ufo then
+	local ufo = package.loaded.ufo
+	if ufo then
 		if view.ufo_attached == nil then
 			view.ufo_attached = ufo.hasAttached(view.right_buf) == true
 		end

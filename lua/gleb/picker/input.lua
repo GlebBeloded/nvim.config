@@ -142,6 +142,9 @@ end
 ---@param opts gleb.picker.InputOpts
 ---@return nil
 function M.open(opts)
+	if not _G.MiniPick then
+		frame.setup()
+	end
 	local origin_win = vim.api.nvim_get_current_win()
 	local origin_guicursor = vim.o.guicursor
 	local statusline_win = open_origin_statusline(origin_win)

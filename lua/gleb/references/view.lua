@@ -223,6 +223,9 @@ end
 ---@param classifying? boolean
 ---@return integer view_id
 function M.open(title, usages, classifying)
+	if not _G.MiniPick then
+		require("gleb.picker.frame").setup()
+	end
 	M.close()
 	icons.setup()
 	local origin_win = vim.api.nvim_get_current_win()
