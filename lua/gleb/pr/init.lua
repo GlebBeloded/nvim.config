@@ -66,6 +66,7 @@ end
 
 ---@class gleb.pr.RefreshOptions
 ---@field force? boolean
+---@field silent? boolean
 
 ---@param root string
 ---@param opts gleb.pr.RefreshOptions
@@ -73,6 +74,11 @@ end
 local function queue_refresh(root, opts)
 	local pending = M.state.pending[root] or {}
 	pending.force = pending.force or opts.force
+	if pending.silent == nil then
+		pending.silent = opts.silent == true
+	else
+		pending.silent = pending.silent and opts.silent == true
+	end
 	M.state.pending[root] = pending
 end
 
@@ -136,7 +142,7 @@ function M.refresh(root, opts)
 			M.state.reported_failures[root] = nil
 			M.state.failures[root] = nil
 			vim.api.nvim_exec_autocmds("User", { pattern = "GlebPrThreads", data = { root = root } })
-			if opts.force then
+			if opts.force and not opts.silent then
 				vim.notify(
 					("PR #%d: %d open threads"):format(review.pr.number, threads.open_count(review.threads)),
 					vim.log.levels.INFO

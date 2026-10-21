@@ -52,9 +52,12 @@ end
 
 ---@param win integer
 ---@return boolean
-local function is_editor(win)
-	local filetype = vim.bo[vim.api.nvim_win_get_buf(win)].filetype
-	return filetype ~= "gleb-changes" and filetype ~= "gleb-diff" and not vim.wo[win].diff
+function M.is_editor(win)
+	local buffer = vim.bo[vim.api.nvim_win_get_buf(win)]
+	return buffer.buftype == ""
+		and buffer.filetype ~= "gleb-changes"
+		and buffer.filetype ~= "gleb-diff"
+		and not vim.wo[win].diff
 end
 
 ---@param path string
@@ -126,7 +129,7 @@ function M.jump(win, direction)
 		jump_to(win, line)
 		return
 	end
-	if is_editor(win) and jump_to_file(win, direction) then
+	if M.is_editor(win) and jump_to_file(win, direction) then
 		return
 	end
 	vim.notify(direction > 0 and "No next thread" or "No previous thread", vim.log.levels.INFO)
