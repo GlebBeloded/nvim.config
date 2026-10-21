@@ -685,17 +685,26 @@ end
 T["file-tree: Project tree prunes a deleted expanded folder"] = function()
 	open_billing_folder()
 	focus_tree_path("internal/billing/invoice_test.go")
+	-- Rewrites only while no redraw is pending: each write restarts the folder's debounce.
 	local canary_ready = child.lua_get(
-		[[(function(path, timeout)
+		[[(function(root, timeout)
+			root = require("gleb.file_tree.fs").normalize(root)
+			local folder = root .. "/internal/billing"
 			return vim.wait(timeout, function()
-				vim.fn.writefile({ tostring(vim.uv.hrtime()) }, path)
 				local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
-				return vim.iter(view.rows):any(function(row)
+				if vim.iter(view.rows):any(function(row)
 					return row.label == "watch-canary.lua"
-				end)
+				end) then
+					return true
+				end
+				local timer = require("gleb.file_tree.watch").state.roots[root].timers[folder]
+				if not (timer and timer:is_active()) then
+					vim.fn.writefile({ tostring(vim.uv.hrtime()) }, folder .. "/watch-canary.lua")
+				end
+				return false
 			end, 20)
 		end)(...)]],
-		{ vim.fs.joinpath(root, "internal/billing/watch-canary.lua"), math.ceil(10000 * H.load_factor()) }
+		{ root, math.ceil(10000 * H.load_factor()) }
 	)
 	eq(canary_ready, true)
 	child.lua(
