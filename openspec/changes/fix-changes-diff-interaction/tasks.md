@@ -51,8 +51,8 @@ Scenarios: `diff: Diff view gf opens the file at the cursor line`, `diff: Diff v
 
 Scenarios: `git: Branch tab matches the approved render`, `git: Branch commits match the approved render`
 
-- [ ] 7.1 Update `tests/screen/git/test_changes_tabs.lua`: columns 37-100 of rows 2-29 compare with design.md "Proposed — Branch diff in kind colours" and "Proposed — commit diff in kind colours" (text and mask), columns 1-36 keep git-changes-tabs' panel masks; run it and see it fail
-- [ ] 7.2 Run it after tasks 2-4 and see it pass; compare `make render CASE=changes-branch COLUMNS=100 LINES=30` with `make colorize FILE=openspec/changes/fix-changes-diff-interaction/design.md` and move `renders/` out of the repo root
+- [x] 7.1 Update `tests/screen/git/test_changes_tabs.lua`: columns 37-100 of rows 2-29 compare with design.md "Proposed — Branch diff in kind colours" and "Proposed — commit diff in kind colours" (text and mask), columns 1-36 keep git-changes-tabs' panel masks; run it and see it fail
+- [x] 7.2 Run it after tasks 2-4 and see it pass; compare `make render CASE=changes-branch COLUMNS=100 LINES=30` with `make colorize FILE=openspec/changes/fix-changes-diff-interaction/design.md` and move `renders/` out of the repo root
 
 ## 8. Real terminal
 
@@ -66,3 +66,4 @@ Scenarios: `git: Real key presses move, scroll and edit in the Branch diff`
 - Detect a Branch working-tree binary with `git diff --numstat <merge-base> -- <path>`, so the read-only fallback covers both committed and uncommitted content.
 - Clamp `layout.transfer_line` to the peer's line count, so synchronization and callers agree at an unequal-length file's end.
 - Match a diff view against the Changes panels to select panel-owned teardown, so the action clears panel state without coupling the diff view to its owner.
+- Use the approved ANSI captures for the internal divider colour; their `#45403d` cell corrects the printed masks' `Normal` typo.
