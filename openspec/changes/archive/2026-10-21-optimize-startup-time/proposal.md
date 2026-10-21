@@ -52,6 +52,8 @@ Requested by the user (2026-10-20): "optimize startup time (should be snappy)".
 - `keymaps: Adopted built-in mappings are registry actions` still holds because adopted defaults retain their registered action ownership and configured assignments.
 - `picker: Requirement: Picker input prompt` still holds because direct text-input actions initialize the shared picker frame before opening it.
 - `pr: Requirement: Comments tab Enter` still holds because pull-request actions retain their synchronous IDs and load the implementation when invoked.
+- `pr: gx opens the thread on the web` still holds because the pull-request implementation loads before the thread window opens and the registered `pr.thread_open_web` action keeps the same callback behavior.
+- `pr: Thread window keys come from the shortcut file` still holds because pull-request action IDs and shortcut assignments remain registered synchronously before the deferred thread window opens.
 - `references: gr classifies Lua function calls and redefinitions` still holds because the references implementation and language facet load before the real `gr` request.
 - `references: Lua usage types match the approved render` still holds because references initializes its shared frame palette before rendering.
 - `select: Selection accepts omitted options` still holds because the synchronous wrapper forwards omitted options to the shared picker adapter.
@@ -60,7 +62,7 @@ Requested by the user (2026-10-20): "optimize startup time (should be snappy)".
 - `select: Omitted options open shared selection` still holds because the synchronous wrapper installs the adapter on first invocation.
 - `shortcuts: Neovim mappings match the table` still holds because no physical key, received key, action assignment, or mapping is changed.
 - `shortcuts: Shortcut meanings survive registry migration` still holds because deferred callbacks invoke the same action behavior through the real zellij stack.
- - Out of scope: visual changes, feature behavior changes, plugin upgrades, and cold starts that install dependencies.
+- Out of scope: visual changes, feature behavior changes, plugin upgrades, and cold starts that install dependencies.
 
 ## Rejected run
 Run on `loop/optimize-startup-time-20261021-061156` was rejected by the judge:
