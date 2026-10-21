@@ -34,6 +34,10 @@ The thread window's normal-mode keys SHALL come from `pr.thread_*` actions scope
 - **WHEN** `Draft` is typed in the reply area, `<Esc>` and `q` are pressed, then the `pr.open_thread` action runs again on line 22
 - **THEN** no `gleb-pr-thread` window existed after `q`, and the reopened reply area holds `Draft`
 
+#### Scenario: Focus leaving keeps the draft and closes the thread window
+- **WHEN** `Draft` is typed in the reply area and focus moves to the editor window, then the `pr.open_thread` action runs again on line 22
+- **THEN** no `gleb-pr-thread` window existed after focus left, and the reopened reply area holds `Draft`
+
 #### Scenario: Resolved thread offers Unresolve
 - **WHEN** the cursor is on line 11 and the `pr.open_thread` action runs
 - **THEN** the title ends with `· resolved` and the hint row reads `Reply ↩ · Unresolve R · Open on web gx · Close q`
@@ -93,7 +97,7 @@ The thread window's normal-mode keys SHALL come from `pr.thread_*` actions scope
 - **THEN** `Resolve failed: Resource not accessible by integration` is notified at ERROR, the title still ends with `· open` and the normal hint row is back
 
 ### Requirement: Thread mutations
-Replies and resolve changes SHALL run as `gh api graphql` argument lists (`-f query=mutation <AddReply|ResolveThread|UnresolveThread>…`, `-f id=<thread id>`, and `-f body=<draft>` for a reply) with `GH_HOST` set to the PR host and no shell. While one runs the hint row SHALL read `Sending...` or `Resolving...` and `y`/`n` do nothing. They SHALL be the only writes to GitHub.
+After explicit confirmation, the thread window SHALL call `gh.reply` or `gh.set_resolved` with the current review and thread. While its callback is pending, the hint row SHALL read `Sending...` or `Resolving...` and `y`/`n` SHALL do nothing. These SHALL be the thread window's only paths that write to GitHub.
 
 #### Scenario: A mutation shows progress and ignores keys
 - **WHEN** `FAKE_GH_SLEEP` is 1, `y` is pressed on the send question, then `y` again within 500 ms
@@ -114,3 +118,7 @@ Replies and resolve changes SHALL run as `gh api graphql` argument lists (`-f qu
 #### Scenario: Enter on a thread opens its line
 - **WHEN** the panel cursor is on the `:22` row of the Comments tab and `<CR>` is pressed in normal mode
 - **THEN** the editor window edits `internal/billing/invoice.go` with its cursor on line 22, the current window is the reply area of the `PRRT_t1` thread window, and the `gleb-changes` window is still open on the Comments tab
+
+#### Scenario: Enter on an unmapped thread shows its diff hunk
+- **WHEN** line 22 is removed from the edited `invoice.go`, the panel cursor is on its `:22` thread and `<CR>` is pressed in normal mode
+- **THEN** the thread window is focused on its reply area, its first lines contain that thread's `diffHunk`, and the panel stays open on Comments

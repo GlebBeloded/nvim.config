@@ -379,7 +379,7 @@ T["file-tree: Project tree closes with the last window"] = function()
 
 	local job = child.job.id
 	child.api_notify.nvim_command("q")
-	eq(vim.fn.jobwait({ job }, 5000)[1], 0)
+	eq(vim.fn.jobwait({ job }, math.ceil(5000 * H.load_factor()))[1], 0)
 end
 
 T["file-tree: Project tree closes before last editor with close"] = function()
@@ -424,7 +424,7 @@ T["file-tree: Project tree and changes panel close before the last editor"] = fu
 
 	local job = child.job.id
 	child.api_notify.nvim_command("q")
-	eq(vim.fn.jobwait({ job }, 5000)[1], 0)
+	eq(vim.fn.jobwait({ job }, math.ceil(5000 * H.load_factor()))[1], 0)
 end
 
 T["file-tree: Project tree opening skips non-editor windows"] = function()

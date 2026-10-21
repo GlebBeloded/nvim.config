@@ -212,11 +212,18 @@ end
 ---@param view ChangesView
 ---@param row ChangesRow
 ---@param focus boolean
+---@param on_shown? fun(show_hunk: boolean)
 ---@return nil
-function M.preview(view, row, focus)
+function M.preview(view, row, focus, on_shown)
 	local thread = row.thread
 	if not thread then
 		return
+	end
+	---@param used_hunk boolean
+	local function finish(used_hunk)
+		if on_shown then
+			on_shown(used_hunk)
+		end
 	end
 	view.selection_generation = view.selection_generation + 1
 	local generation = view.selection_generation
@@ -226,6 +233,7 @@ function M.preview(view, row, focus)
 	end
 	if thread.side == "LEFT" or thread.subject == "file" then
 		show_hunk(thread, editor, focus)
+		finish(true)
 		return
 	end
 	show_file(editor, vim.fs.joinpath(view.root, thread.path))
@@ -240,6 +248,7 @@ function M.preview(view, row, focus)
 		if location then
 			if not location.line then
 				show_hunk(thread, editor, focus)
+				finish(true)
 				return
 			end
 			vim.api.nvim_win_set_cursor(editor, { location.line, 0 })
@@ -248,9 +257,12 @@ function M.preview(view, row, focus)
 			vim.api.nvim_set_current_win(editor)
 		end
 		require("gleb.pr.peek").redraw(buf)
+		finish(false)
 	end
-	local locations = require("gleb.pr").locate(buf, show)
-	show(locations)
+	local locations, loading = require("gleb.pr").locate(buf, show)
+	if not loading then
+		show(locations)
+	end
 end
 
 --- `<CR>` on a thread row: drop the pending debounced selection, which would show the row again after the focus
@@ -260,7 +272,19 @@ end
 ---@return nil
 function M.open(view, row)
 	view.diff_timer:stop()
-	M.preview(view, row, true)
+	---@param use_diff_hunk boolean
+	local function open_thread(use_diff_hunk)
+		local review = require("gleb.pr").get(view.root)
+		if review and row.thread then
+			local thread = assert(row.thread, "thread row must have a thread")
+			if use_diff_hunk and thread.side ~= "LEFT" and thread.subject ~= "file" then
+				thread = vim.deepcopy(thread)
+				thread.side = "LEFT"
+			end
+			require("gleb.pr.thread_window").open(review, thread)
+		end
+	end
+	M.preview(view, row, true, open_thread)
 	view.loaded_buffers[vim.api.nvim_win_get_buf(view.editor_win)] = nil
 end
 
