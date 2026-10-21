@@ -3,6 +3,8 @@
 local languages = require("gleb.languages")
 
 -- Keep parser resolution available before the deferred nvim-treesitter plugin sources its filetype aliases.
+vim.treesitter.language.register("bash", "sh")
+vim.treesitter.language.register("json", "jsonc")
 vim.treesitter.language.register("javascript", "javascriptreact")
 vim.treesitter.language.register("tsx", "typescriptreact")
 

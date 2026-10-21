@@ -34,7 +34,12 @@ local function setup(with_pr, with_threads)
 	return root
 end
 
-local T = H.child_set(child, child.start_config, { reuse = true })
+local function start()
+	child.start_config()
+	child.wait_very_lazy() -- plugins deferred to VeryLazy set their globals before the case reset snapshots them
+end
+
+local T = H.child_set(child, start, { reuse = true })
 
 T["statusline: Statusline shows the pull request and its open threads"] = function()
 	setup(true, true)

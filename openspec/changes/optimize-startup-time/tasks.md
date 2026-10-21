@@ -22,11 +22,16 @@ Scenarios: `plugins: Warm real-config startup stays within budget`
 - Initialize shared picker highlights when the references view first opens because it owns that frame palette without opening a picker.
 - Bootstrap the file-tree lifecycle on its directory `BufEnter` entry point, then replay that event to the installed hijack handler.
 - Register the JavaScript React and TypeScript React parser aliases synchronously because parser-backed contracts run before deferred Treesitter setup.
+- Also register the `sh` and `jsonc` parser aliases synchronously: they are the other configured filetypes whose parser comes from a deferred nvim-treesitter alias.
+- Register Changes highlight ownership synchronously because colorscheme reloads expose its tab groups before the panel opens.
+- Load nvim-ufo on `FileType` as well as file events so scratch buffers given a filetype get their fold text.
+- Load the pull-request implementation on the first `BufReadPre`, `BufNewFile` or `BufWritePre` so thread peeks and write-triggered fetches see that buffer.
 
 ## Stuck
 
-- `file-tree: Project tree shows files created outside Neovim` remains red at the observable `fee.go` `FileTreeGitUntracked` assertion.
-- Probe: watcher reconciliation reached 256 handles with `sync_scheduled=false` and `event_confirmed=false`; after a pre-reconciliation sentinel and tree canary it reached `event_confirmed=true`, `settle_passes=0`, zero active debounce timers, and clean view/git state.
-- Attempt 1 started the sentinel before reconciliation, waited for reconciliation, then confirmed the sentinel and tree canary; the case advanced past readiness but failed to colour `fee.go`.
-- Attempt 2 additionally waited for every canary redraw, fallback scan, and git refresh to settle before creating `fee.go`; the same observable assertion failed.
-- Saved attempt: `/Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/694c1dc1-5061-460f-bab9-c598588b8951/stuck-attempt-watch.diff`.
+- `file-tree: Project tree shows files created outside Neovim` stays intermittently red, and not from this change: alone it failed 2 of 5 runs on this branch (`test_project_live.lua:494`, no fallback timer after two fallback scans) and 4 of 6 runs on base `auto` (its lines 457 and 461).
+- Cause is the host: `fseventsd` runs at 108% CPU with 7.8 GB RSS after 16 h of CPU time. A clean `nvim --clean -l` probe measured 30-860 ms per FSEvents `fs_event:stop()` (libuv blocks the main loop until its stream is rebuilt) and 312 ms event delivery, so late events confirm the stream early (line 494) or the `fee.go` colour misses its 1000 ms bound.
+- Same cause behind the hung `file-tree: Project tree re-roots once with saved expansion` (fails alone on base `auto` too): a 1999-folder re-root probe blocked the main loop for 18.5 s while it closed 256 watch handles, so the saved expansion read finished after the case's bound.
+- Whole-file runs of `test_project_live.lua`: 3 failures on this branch, 4 on base `auto`. The `tests/integration/file-tree` run failed 25 cases, all on watch readiness or delivery, or killed with the hung re-root worker. The git cases that failed only under load (`Branch base refreshes after a commit`, `Committed signs refresh after a commit`) use the same FSEvents `.git` watch and pass alone.
+- No production attempt: the watch code is unchanged by this change and meets the scenarios under a healthy FSEvents service; restart `fseventsd` (root) or reboot the host, then rerun the gate.
+- Earlier saved attempt `/Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/694c1dc1-5061-460f-bab9-c598588b8951/stuck-attempt-watch.diff` is already contained in HEAD.

@@ -15,7 +15,9 @@ require("gleb.colors")
 require("gleb.diff.view.highlights")
 require("gleb.file_tree.render").setup()
 require("gleb.git.committed_signs.highlights").setup()
+require("gleb.git.changes.highlights").setup()
 require("gleb.file_tree.loader")
+require("gleb.pr.loader")
 require("gleb.select")
 require("gleb.keymaps") -- after plugins: needs smart-splits
 require("gleb.actions").setup({

@@ -99,7 +99,7 @@ local plugins = {
 	-- folding
 	{
 		"kevinhwang91/nvim-ufo",
-		event = { "BufReadPre", "BufNewFile" },
+		event = { "BufReadPre", "BufNewFile", "FileType" }, -- FileType: scratch buffers given a filetype fold too
 		dependencies = "kevinhwang91/promise-async", -- Better folding
 		config = function()
 			require("gleb.folding")
