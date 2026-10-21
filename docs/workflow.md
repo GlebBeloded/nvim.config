@@ -29,16 +29,6 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 
 ## Loop lessons
 
-- When focusing a retained tab mode, rebuild from that mode's model so rendered rows cannot diverge from saved state.
-- Commit-file caches keyed by immutable full hashes should survive Branch model refreshes and be reattached to rebuilt nodes so open folds retain their children.
-- Bind debounced selection callbacks to the tab that scheduled them, and defer only data-dependent review work so tab focus changes synchronously without stale rows.
-- Name every main-spec contract pinned by newly shared symbols in Impact, with the concrete reason its behavior remains unchanged.
-- When a base-change event invalidates an in-flight forced fetch, queue the replacement and carry its force intent so the stale callback cannot lose both the refetch and notification.
-- Screen tests of approved Go captures must keep gopls off (an in-process fake client gives the "LSP ok" chip): its semantic tokens recolour Tree-sitter's groups once it loads the module, so masks fail only on runs where gopls is fast.
-- `:edit` of the file a window already shows re-reads it (BufRead, LSP reattach, ufo refold) and moves the view after the cursor was placed; edit only when the window shows another file.
-- Guard renderer window IDs as well as buffers because WinEnter can run after a pane closes but before its scheduled view teardown.
-- Serve branch-specific review-thread fixtures through the fake API so integration tests exercise the intended parser and preview path.
-- A write made while libuv rebuilds its single macOS FSEvents stream (after any watch start) emits no event; before asserting a watcher reaction, wait for watch reconciliation to settle and for a sentinel event on a later-started watch.
 - After feeding a key with MiniTest, wait within the behavior's bound for its observable effect before sampling state because `nvim_input()` only queues the key.
 - Measure synchronous mapped actions from immediately before key execution until the mapping returns so final draw work stays inside the sample.
 - Gating fallback git-index polls on a confirmed watch event loses external staging made during the start gap; poll the index on every settling pass and gate only the pass count.
@@ -52,6 +42,8 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - Load lightweight highlight ownership and parser aliases synchronously when their contracts must hold before deferred plugin setup.
 - Before deferring a feature module, list the autocmds it registers when required (BufWritePost, BufWinEnter, ColorScheme, FileType) and load it on the earliest of those events, or its behaviour silently stops until some unrelated entry point loads it.
 - Plugins deferred to VeryLazy create their globals (plenary's _PlenaryLeafTable) after a reused child's case-reset snapshot, which then wipes them; such child sets wait for VeryLazy in their start.
+- Keep a real plugin-path behavior assertion when adding fallback coverage; isolate fallback setup in a sibling case.
+- Preserve the populated real-plugin path when adding fallback coverage; add the fallback as a separate child case.
 
 ## The loop
 
