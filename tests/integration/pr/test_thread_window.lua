@@ -191,6 +191,42 @@ T["pr: Open thread shows the thread centred"] = function()
 	eq(vim.fn.strdisplaywidth(windows[3].lines[1]), 70)
 end
 
+T["pr: Mapped thread window shows the commented buffer line"] = function()
+	open_review()
+	child.lua([[vim.api.nvim_buf_set_lines(0, 0, 0, false, { "new1", "new2" })]])
+	open_thread_at(24)
+
+	local messages = thread_windows()[1]
+	eq(messages.title, " invoice.go:24 · PR #482 · open ")
+	eq(messages.lines[1], "  24 \tif i.Tax == nil {")
+end
+
+T["pr: Open thread uses the first editor when the panel is focused"] = function()
+	open_review()
+	child.lua([[vim.api.nvim_win_set_cursor(0, { 22, 0 })]])
+	run_action("changes.show_comments")
+	assert(
+		child.wait(
+			[[(function()
+			local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+			return panel and panel.tabs_ready and panel.active_tab == "comments"
+		end)()]],
+			timeout()
+		),
+		"Comments tab did not open"
+	)
+	child.lua([[(function()
+		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		vim.api.nvim_set_current_win(panel.win)
+	end)()]])
+	run_action("pr.open_thread")
+	assert(child.wait([[vim.bo.filetype == "gleb-pr-thread"]], timeout()), "thread reply did not take focus")
+
+	local messages = thread_windows()[1]
+	eq(messages.title, " invoice.go:22 · PR #482 · open ")
+	eq(messages.lines[1], "  22 \tif i.Tax == nil {")
+end
+
 T["pr: Open thread without a thread on the line"] = function()
 	open_review()
 	local notifications = H.record_notify(child)

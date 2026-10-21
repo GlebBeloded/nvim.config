@@ -7,6 +7,14 @@
 - **WHEN** a `100x30` screen edits `internal/billing/invoice.go` of the `billing-branch` fixture with the `pr482` responses fetched, the cursor is on line 22 and the `pr.open_thread` action runs
 - **THEN** the thread window spans screen rows 6 to 23 and columns 15 to 86, its top border holds ` invoice.go:22 · PR #482 · open `, its text holds `maria.k · 2h`, `Should a nil rate mean no tax at all?` and `gleb-beloded · 1h`, and the current window is its empty reply area, filetype `gleb-pr-thread`, in normal mode
 
+#### Scenario: Mapped thread window shows the commented buffer line
+- **WHEN** two lines are inserted above the comment on line 22 and `pr.open_thread` runs on its mapped line 24
+- **THEN** the window title and commented line use line 24 and show the original commented text
+
+#### Scenario: Open thread uses the first editor when the panel is focused
+- **WHEN** the editor cursor is on line 22, the Changes panel is focused and `pr.open_thread` runs
+- **THEN** the thread from editor line 22 opens
+
 #### Scenario: Open thread without a thread on the line
 - **WHEN** the cursor is on line 1 of that file and the `pr.open_thread` action runs
 - **THEN** `No thread on this line` is notified at INFO and no `gleb-pr-thread` window exists

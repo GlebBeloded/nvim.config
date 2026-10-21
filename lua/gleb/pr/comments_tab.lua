@@ -212,7 +212,7 @@ end
 ---@param view ChangesView
 ---@param row ChangesRow
 ---@param focus boolean
----@param on_shown? fun(show_hunk: boolean)
+---@param on_shown? fun(show_hunk: boolean, line?: integer)
 ---@return nil
 function M.preview(view, row, focus, on_shown)
 	local thread = row.thread
@@ -220,9 +220,10 @@ function M.preview(view, row, focus, on_shown)
 		return
 	end
 	---@param used_hunk boolean
-	local function finish(used_hunk)
+	---@param line? integer
+	local function finish(used_hunk, line)
 		if on_shown then
-			on_shown(used_hunk)
+			on_shown(used_hunk, line)
 		end
 	end
 	view.selection_generation = view.selection_generation + 1
@@ -257,7 +258,7 @@ function M.preview(view, row, focus, on_shown)
 			vim.api.nvim_set_current_win(editor)
 		end
 		require("gleb.pr.peek").redraw(buf)
-		finish(false)
+		finish(false, location and location.line or nil)
 	end
 	local locations, loading = require("gleb.pr").locate(buf, show)
 	if not loading then
@@ -273,7 +274,8 @@ end
 function M.open(view, row)
 	view.diff_timer:stop()
 	---@param use_diff_hunk boolean
-	local function open_thread(use_diff_hunk)
+	---@param line? integer
+	local function open_thread(use_diff_hunk, line)
 		local review = require("gleb.pr").get(view.root)
 		if review and row.thread then
 			local thread = assert(row.thread, "thread row must have a thread")
@@ -281,7 +283,7 @@ function M.open(view, row)
 				thread = vim.deepcopy(thread)
 				thread.side = "LEFT"
 			end
-			require("gleb.pr.thread_window").open(review, thread)
+			require("gleb.pr.thread_window").open(review, thread, line)
 		end
 	end
 	M.preview(view, row, true, open_thread)

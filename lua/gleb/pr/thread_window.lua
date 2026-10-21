@@ -12,6 +12,7 @@ local action_rows = require("gleb.find_action.rows")
 ---@field tab integer
 ---@field review gleb.pr.Review
 ---@field thread gleb.pr.Thread
+---@field line? integer mapped buffer line of the thread
 ---@field messages_buf integer
 ---@field messages_win integer
 ---@field reply_buf integer
@@ -95,15 +96,16 @@ end
 
 ---@param review gleb.pr.Review
 ---@param thread gleb.pr.Thread
+---@param mapped_line? integer
 ---@return string?
 ---@return integer?
 ---@return integer? buf the loaded buffer the line comes from
-local function source_line(review, thread)
+local function source_line(review, thread, mapped_line)
 	if thread.side == "LEFT" or thread.subject == "file" then
 		return nil, nil, nil
 	end
 	local path = vim.fs.joinpath(review.root, thread.path)
-	local line = thread.line or thread.original_line
+	local line = mapped_line
 	if not line then
 		return nil, nil, nil
 	end
@@ -169,10 +171,11 @@ end
 
 ---@param review gleb.pr.Review
 ---@param thread gleb.pr.Thread
+---@param mapped_line? integer
 ---@param width integer
 ---@return gleb.pr.ThreadMessages
-local function message_lines(review, thread, width)
-	local line, lnum, buf = source_line(review, thread)
+local function message_lines(review, thread, mapped_line, width)
+	local line, lnum, buf = source_line(review, thread, mapped_line)
 	local result = { lines = {}, highlights = {}, vartabstop = "" }
 	if line and lnum then
 		local number = ("%4d "):format(lnum)
@@ -544,7 +547,7 @@ layout = function(state)
 	local inner_width = outer_width - 2
 	local reply_height =
 		math.min(MAX_REPLY_HEIGHT, math.max(MIN_REPLY_HEIGHT, vim.api.nvim_buf_line_count(state.reply_buf)))
-	local messages = message_lines(state.review, state.thread, math.max(1, outer_width - 4))
+	local messages = message_lines(state.review, state.thread, state.line, math.max(1, outer_width - 4))
 	local max_outer_height = math.max(8, vim.o.lines - 4)
 	local max_messages = math.max(1, max_outer_height - reply_height - 5)
 	if #messages.lines > max_messages then
@@ -573,7 +576,7 @@ layout = function(state)
 		height = message_height,
 		title = (" %s:%d · PR #%d · %s "):format(
 			vim.fs.basename(state.thread.path),
-			state.thread.line or state.thread.original_line or 0,
+			state.line or state.thread.line or state.thread.original_line or 0,
 			state.review.pr.number,
 			state_label(state.thread)
 		),
@@ -612,8 +615,9 @@ end
 
 ---@param review gleb.pr.Review
 ---@param thread gleb.pr.Thread
+---@param mapped_line? integer
 ---@return nil
-function M.open(review, thread)
+function M.open(review, thread, mapped_line)
 	local tab = vim.api.nvim_get_current_tabpage()
 	local previous = M.state.by_tab[tab]
 	if previous then
@@ -673,6 +677,7 @@ function M.open(review, thread)
 		tab = tab,
 		review = review,
 		thread = thread,
+		line = mapped_line,
 		messages_buf = messages_buf,
 		messages_win = messages_win,
 		reply_buf = reply_buf,
@@ -771,7 +776,7 @@ function M.open_at_cursor(win, buf)
 			return not left.thread.resolved and right.thread.resolved
 		end)
 		if review and matching[1] then
-			M.open(review, matching[1].thread)
+			M.open(review, matching[1].thread, matching[1].line)
 		elseif not notified then
 			notified = true
 			vim.notify("No thread on this line", vim.log.levels.INFO)

@@ -25,7 +25,20 @@ end
 ---@param ctx gleb.ActionContext
 ---@return nil
 local function open_thread(ctx)
-	require("gleb.pr.thread_window").open_at_cursor(ctx.win, ctx.buf)
+	local navigate = require("gleb.pr.navigate")
+	local function usable(win)
+		local filetype = vim.bo[vim.api.nvim_win_get_buf(win)].filetype
+		return navigate.is_editor(win) or filetype == "gleb-diff" or vim.wo[win].diff
+	end
+	local win = ctx.win
+	if not usable(win) then
+		win = vim.iter(vim.api.nvim_tabpage_list_wins(vim.api.nvim_win_get_tabpage(ctx.win))):find(usable)
+	end
+	if not win then
+		vim.notify("No thread on this line", vim.log.levels.INFO)
+		return
+	end
+	require("gleb.pr.thread_window").open_at_cursor(win, vim.api.nvim_win_get_buf(win))
 end
 
 ---@param name "send"|"resolve"|"open_web"|"close_current"|"confirm_yes"|"confirm_no"
