@@ -12,7 +12,7 @@ local function start()
 	child.wait_very_lazy()
 end
 
-local T = H.child_set(child, start)
+local T = H.child_set(child, start, { reuse = true })
 
 local function open_project_tree()
 	child.cmd("cd " .. vim.fn.fnameescape(project))
