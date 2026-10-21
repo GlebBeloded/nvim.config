@@ -1,7 +1,7 @@
 ## Why
 
 Kind: feature
-Adopt: loop/pr-thread-window-20261021-024223
+Adopt: loop/pr-thread-window
 Depends: pr-comments-view, pr-thread-mutations
 
 `pr-comments-view` shows review threads in the Comments tab and as peeks in the code, but they can only be
@@ -111,20 +111,20 @@ thread. Or to resolve thread. With hints on which button does what. Also that sh
   mocked responses. Tests never call the network.
 
 ## Rejected run
-Run on `loop/pr-thread-window-20261021-024223` was rejected by the judge:
+Run on `loop/pr-thread-window` was rejected by the judge:
 - fix loop exhausted with gates still red: tests,stuck
 - stuck: tasks.md `## Stuck` (earlier attempts, kept on the branch: not quoted here)
 - last failures:
   make check is red:
-  full log: /Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/eb1d4856-73b8-4fbd-985a-e2bb6918df25/check-6.log
-  ok   lint             0.4 s
-  ok   trace            0.5 s
-  ok   types            1.4 s
+  full log: /Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/26a3825a-4f88-49ad-b0f9-e1004f03a842/check-2.log
+  ok   lint             0.5 s
+  ok   types            0.9 s
+  ok   trace            0.6 s
   ok   specs            2.1 s
-  FAIL test           576.6 s
-  check: FAILED: test (576.9 s)
+  FAIL test           615.9 s
+  check: FAILED: test (616.1 s)
   ===== test (head) =====
-  tests/integration/file-tree/test_performance.lua | file-tree: Project tree coalesces a save burst: x
+  tests/integration/file-tree/test_performance.lua | file-tree: Project tree save leaves the main path promptly: x
   tests/integration/file-tree/test_performance.lua | file-tree: Project tree re-roots without waiting for repository discovery: x
   tests/integration/file-tree/test_performance.lua | file-tree: Project tree re-roots once with saved expansion: x
-- note: loop: FAIL in tests/integration/file-tree/test_project_live.lua | file-tree: Project tree prunes a deleted expanded folder: — host fseventsd degraded (101.6 % CPU, 2.6 GB RSS, up 1 d 20 h; a lone fs_event gets events 0.7–2.5 s late at load 3), failing every FSEvents-dependent case (file-tree watchers, git base watcher, child exits); restart fseventsd before the next gate.
+- note: loop: FAIL in tests/integration/file-tree/test_performance.lua | file-tree: Project tree re-roots without waiting for repository discovery: hung: no progress for 300 s (waiting for input or a never-met condition?) — host fseventsd still degraded (needs sudo to restart), fails every FSEvents-dependent case; tests/parallel.lua also left 3 orphaned child nvims (parent pid 1) from the deleted pr-comments-view-20261020-141615 worktree.
