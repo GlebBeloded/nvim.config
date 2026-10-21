@@ -79,14 +79,20 @@ local M = {
 ---@field ufo_attached? boolean
 
 ---@param lines string[]
+---@param filetype string
 ---@return integer
-local function readonly_buffer(lines)
+local function readonly_buffer(lines, filetype)
 	local buf = vim.api.nvim_create_buf(false, true)
 	vim.bo[buf].modifiable = true
 	vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
 	vim.bo[buf].modifiable = false
 	vim.bo[buf].buftype = "nofile"
 	vim.bo[buf].bufhidden = "wipe"
+	vim.bo[buf].filetype = "gleb-diff"
+	local language = vim.treesitter.language.get_lang(filetype)
+	if language then
+		pcall(vim.treesitter.start, buf, language)
+	end
 	return buf
 end
 
@@ -266,7 +272,7 @@ local function build(spec)
 	local path = vim.fs.normalize(spec.path)
 	local relpath = spec.relpath or vim.fs.basename(path)
 	local index = spec.root and stage.read(spec.root, relpath) or nil
-	local right_buf = spec.right_buf or readonly_buffer(spec.right)
+	local right_buf = spec.right_buf or readonly_buffer(spec.right, spec.filetype or "")
 	---@type gleb.diff.view.View
 	---@diagnostic disable-next-line: missing-fields -- windows initializes the handles as one lifecycle step.
 	local view = {
@@ -277,7 +283,7 @@ local function build(spec)
 		right = spec.right,
 		labels = spec.labels,
 		filetype = spec.filetype or "",
-		actionable = spec.actionable ~= false,
+		actionable = spec.actionable ~= false and spec.committed ~= true,
 		committed = spec.committed == true,
 		head_final_newline = spec.head_final_newline == true,
 		right_buf = right_buf,
@@ -457,6 +463,20 @@ function M.navigate(view, win, step)
 	vim.api.nvim_win_set_cursor(win, { math.min(fragment[start_key] + 1, count), 0 })
 end
 
+---@param view gleb.diff.view.View
+local function place_first_change(view)
+	local first = view.fragments[1]
+	if not first then
+		return
+	end
+	local right_count = vim.api.nvim_buf_line_count(view.right_buf)
+	local right_line = math.min(first.start2 + 1, right_count)
+	local left_count = vim.api.nvim_buf_line_count(view.left_buf)
+	local left_line = math.max(1, math.min(layout.transfer_line(view.layout, "right", right_line), left_count))
+	vim.api.nvim_win_set_cursor(view.right_win, { right_line, 0 })
+	vim.api.nvim_win_set_cursor(view.left_win, { left_line, 0 })
+end
+
 ---@param spec gleb.diff.view.Spec
 ---@return gleb.diff.view.View?
 function M.open(spec)
@@ -474,11 +494,7 @@ function M.open(spec)
 	end
 	windows.open(view)
 	register(view)
-	local first = view.fragments[1]
-	if first then
-		local line = math.min(first.start2 + 1, math.max(#spec.right, 1))
-		vim.api.nvim_win_set_cursor(view.right_win, { line, 0 })
-	end
+	place_first_change(view)
 	return view
 end
 
@@ -496,6 +512,7 @@ function M.show(win, spec)
 	end
 	windows.show(view, win)
 	register(view)
+	place_first_change(view)
 	return view
 end
 

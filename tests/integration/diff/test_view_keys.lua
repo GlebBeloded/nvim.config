@@ -100,6 +100,65 @@ T["diff: Diff view maps the cursor across changes"] = function()
 	eq(child.api.nvim_win_get_cursor(view.right_win)[1], 66)
 end
 
+T["diff: Diff view gf opens the file at the cursor line"] = function()
+	open_controller()
+	local view = child.lua_get([[require("gleb.diff.view").current()]])
+	child.api.nvim_set_current_win(view.left_win)
+	child.api.nvim_win_set_cursor(view.left_win, { 65, 0 })
+
+	child.type_keys("gf")
+
+	eq(child.api.nvim_list_tabpages(), { child.api.nvim_get_current_tabpage() })
+	eq(
+		vim.uv.fs_realpath(child.api.nvim_buf_get_name(0)),
+		vim.uv.fs_realpath(vim.fs.joinpath(root, manifest.controller))
+	)
+	eq(child.api.nvim_win_get_cursor(0)[1], 66)
+	eq(
+		child.lua_get([[vim.iter(vim.api.nvim_list_wins()):any(function(win)
+		return vim.bo[vim.api.nvim_win_get_buf(win)].filetype == "gleb-diff"
+	end)]]),
+		false
+	)
+end
+
+T["diff: Diff view gf on a read-only right side"] = function()
+	local path = vim.fs.joinpath(root, "c.txt")
+	vim.fn.writefile({ "one", "two" }, path)
+	local view = child.lua_get(
+		[[(function(path)
+		vim.cmd("only")
+		local first = vim.api.nvim_get_current_win()
+		vim.cmd("vsplit")
+		local second = vim.api.nvim_get_current_win()
+		vim.api.nvim_set_current_win(first)
+		local view = assert(require("gleb.diff.view").show(second, {
+			path = path,
+			left = { "one", "two" },
+			right = { "one", "too", "three" },
+			labels = { left = "parent", right = "commit" },
+			committed = true,
+		}))
+		vim.api.nvim_set_current_win(view.right_win)
+		vim.api.nvim_win_set_cursor(view.right_win, { 3, 0 })
+		return { right_win = view.right_win }
+	end)(...)]],
+		{ path }
+	)
+
+	child.type_keys("gf")
+
+	eq(child.api.nvim_get_current_win(), view.right_win)
+	eq(vim.uv.fs_realpath(child.api.nvim_buf_get_name(0)), vim.uv.fs_realpath(path))
+	eq(child.api.nvim_win_get_cursor(0)[1], 2)
+	eq(
+		child.lua_get([[vim.iter(vim.api.nvim_list_wins()):any(function(win)
+		return vim.bo[vim.api.nvim_win_get_buf(win)].filetype == "gleb-diff"
+	end)]]),
+		false
+	)
+end
+
 T["diff: Diff view keys stay native outside view windows"] = function()
 	edit(manifest.controller)
 	child.lua([[vim.keymap.set("n", "]c", function() vim.g.shadowed_next_change = true end, { buffer = true })]])

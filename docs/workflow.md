@@ -29,7 +29,6 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 
 ## Loop lessons
 
-- After feeding a key with MiniTest, wait within the behavior's bound for its observable effect before sampling state because `nvim_input()` only queues the key.
 - Measure synchronous mapped actions from immediately before key execution until the mapping returns so final draw work stays inside the sample.
 - Gating fallback git-index polls on a confirmed watch event loses external staging made during the start gap; poll the index on every settling pass and gate only the pass count.
 - auto-save.nvim's 1 s debounced write of a test's buffer edit races any later measured :write; turn it off before editing when a case counts writes, git runs or redraws.
@@ -44,6 +43,7 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - Plugins deferred to VeryLazy create their globals (plenary's _PlenaryLeafTable) after a reused child's case-reset snapshot, which then wipes them; such child sets wait for VeryLazy in their start.
 - Keep a real plugin-path behavior assertion when adding fallback coverage; isolate fallback setup in a sibling case.
 - Preserve the populated real-plugin path when adding fallback coverage; add the fallback as a separate child case.
+- Panel-owned Jump to Source must relinquish loaded-buffer ownership before panel teardown so the source window survives.
 
 ## The loop
 
