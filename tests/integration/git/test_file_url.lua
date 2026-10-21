@@ -181,4 +181,20 @@ T["git: Unavailable file URL input preserves the clipboard"]["on an untracked fi
 	choose_unavailable_file_url("Tracked file unavailable")
 end
 
+T["git: Unavailable file URL input preserves the clipboard"]["in a missing directory"] = function()
+	child.wait_very_lazy()
+	child.cmd("edit " .. vim.fn.fnameescape(vim.fs.joinpath(vim.fn.tempname(), "missing", "file.txt")))
+
+	choose_unavailable_file_url("Repository-relative file unavailable")
+end
+
+T["git: Unavailable file URL input preserves the clipboard"]["in a non-file buffer"] = function()
+	child.wait_very_lazy()
+	child.cmd("enew")
+	child.bo.buftype = "nofile"
+	child.api.nvim_buf_set_name(0, "oil:///tmp")
+
+	choose_unavailable_file_url("Repository-relative file unavailable")
+end
+
 return T

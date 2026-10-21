@@ -30,6 +30,11 @@ local function copy_file_url(ctx)
 	end
 	local file = vim.api.nvim_buf_get_name(ctx.buf)
 	local cwd = vim.fs.dirname(file)
+	local cwd_stat = vim.uv.fs_stat(cwd)
+	if file == "" or vim.bo[ctx.buf].buftype ~= "" or not cwd_stat or cwd_stat.type ~= "directory" then
+		notify_unavailable("Repository-relative file")
+		return
+	end
 	local first_line = ctx.selection and ctx.selection.start[1] or ctx.cursor[1]
 	local last_line = ctx.selection and ctx.selection.finish[1] or ctx.cursor[1]
 	git_output(cwd, { "rev-parse", "--show-toplevel" }, function(root)
