@@ -281,7 +281,9 @@ T["git: Branch diff right pane is the working file"] = function()
 	eq(state.modifiable, true)
 	eq(state.filetype, "go")
 	eq(state.lines, vim.fn.readfile(vim.fs.joinpath(root, "internal/billing/invoice.go")))
+	assert(vim.tbl_contains(state.starts, 9), "first committed change was absent")
 	assert(vim.tbl_contains(state.starts, 11), "uncommitted change was absent")
+	assert(vim.tbl_contains(state.starts, 18), "second committed change was absent")
 end
 
 T["git: Branch diff edits are saved and re-diffed"] = function()
@@ -475,6 +477,65 @@ T["git: gf in a commit diff opens the working file"] = function()
 	eq(state.panel_open, true)
 	eq(state.diff_cleared, true)
 	eq(state.has_diff, false)
+end
+
+T["git: gf in a Branch diff preserves the working file after panel close"] = function()
+	open_branch_diff()
+	local path = vim.fs.joinpath(root, "internal/billing/tax.go")
+	eq(child.fn.bufloaded(path), 0)
+	child.lua([[BranchJumpPath = ...]], { "internal/billing/tax.go" })
+	local movement = child.lua_get(
+		[[(function(wanted)
+			local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+			local current = vim.api.nvim_win_get_cursor(panel.win)[1]
+			for index, row in ipairs(panel.rows) do
+				if row.kind == "file" and row.path == wanted then
+					return { key = index > current and "j" or "k", count = math.abs(index - current) }
+				end
+			end
+			error("file row not found: " .. wanted)
+		end)(...)]],
+		{ "internal/billing/tax.go" }
+	)
+	for _ = 1, movement.count do
+		child.type_keys(movement.key)
+	end
+	assert(
+		child.wait(
+			[[(function()
+				local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+				return panel and panel.diff_view and panel.diff_view.relpath == BranchJumpPath
+			end)()]],
+			async_timeout()
+		),
+		"Branch diff for an unopened file did not load"
+	)
+	local view = child.lua_get([[(function()
+		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		return { right_win = panel.diff_view.right_win, right_buf = panel.diff_view.right_buf }
+	end)()]])
+	child.api.nvim_set_current_win(view.right_win)
+
+	child.type_keys("gf")
+
+	local panel_win = child.lua_get(
+		[[(function(expected_buf)
+		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		assert(panel.diff_view == nil)
+		assert(vim.api.nvim_get_current_buf() == expected_buf)
+		vim.api.nvim_set_current_win(panel.win)
+		return panel.win
+	end)(...)]],
+		{ view.right_buf }
+	)
+	child.type_keys("q")
+
+	eq(child.api.nvim_win_is_valid(panel_win), false)
+	eq(child.api.nvim_win_is_valid(view.right_win), true)
+	eq(child.api.nvim_get_current_win(), view.right_win)
+	eq(child.api.nvim_get_current_buf(), view.right_buf)
+	eq(child.fn.bufloaded(path), 1)
+	eq(vim.uv.fs_realpath(child.api.nvim_buf_get_name(view.right_buf)), vim.uv.fs_realpath(path))
 end
 
 return T

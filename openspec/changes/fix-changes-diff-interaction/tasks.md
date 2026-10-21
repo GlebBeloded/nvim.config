@@ -66,5 +66,6 @@ Scenarios: `git: Real key presses move, scroll and edit in the Branch diff`
 - Detect a Branch working-tree binary with `git diff --numstat <merge-base> -- <path>`, so the read-only fallback covers both committed and uncommitted content.
 - Clamp `layout.transfer_line` to the peer's line count, so synchronization and callers agree at an unequal-length file's end.
 - Match a diff view against the Changes panels to select panel-owned teardown, so the action clears panel state without coupling the diff view to its owner.
+- Route a panel-owned Jump to Source through the Changes view, so it relinquishes loaded-buffer ownership before later panel teardown.
 - Use the approved ANSI captures for the internal divider colour; their `#45403d` cell corrects the printed masks' `Normal` typo.
 - The real-terminal interaction passed after tasks 2-5: unlike the user's report, Cmd+L entered the panes and the Branch right side was a modifiable working-file buffer.

@@ -812,6 +812,28 @@ function M.open_file(view, row)
 	view.loaded_buffers[vim.api.nvim_get_current_buf()] = nil
 end
 
+--- Close the panel-owned diff and jump to its working-tree source.
+---@param view ChangesView
+---@param path string
+---@param line integer
+---@param target integer
+---@return nil
+function M.jump_to_source(view, path, line, target)
+	M.close_diff(view)
+	if not vim.api.nvim_win_is_valid(target) then
+		return
+	end
+	view.editor_win = target
+	vim.api.nvim_set_current_win(target)
+	vim.api.nvim_win_call(target, function()
+		vim.cmd("edit " .. vim.fn.fnameescape(path))
+	end)
+	local buf = vim.api.nvim_win_get_buf(target)
+	view.loaded_buffers[buf] = nil
+	local count = vim.api.nvim_buf_line_count(buf)
+	vim.api.nvim_win_set_cursor(target, { math.max(1, math.min(line, count)), 0 })
+end
+
 --- Open and populate a Changes view in the current tab.
 ---@param root string
 ---@param selected_path string

@@ -355,7 +355,9 @@ T["git: Real key presses move, scroll and edit in the Branch diff"] = function()
 	S.wait_for(function()
 		return s:lua([[return (function()
 			local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
-			return panel and panel.diff_view ~= nil
+			return panel and panel.diff_view ~= nil and panel.diff_path ~= nil
+				and panel.diff_path:sub(1, 7) == "branch:"
+				and panel.diff_view.relpath == "internal/billing/invoice.go"
 		end)()]]) == true
 	end, "Branch diff after selecting its first file")
 
@@ -370,6 +372,7 @@ T["git: Real key presses move, scroll and edit in the Branch diff"] = function()
 			right_buf = view.right_buf,
 			first_change = view.fragments[1].start2 + 1,
 			right_cursor = vim.api.nvim_win_get_cursor(view.right_win)[1],
+			changedtick = view.changedtick,
 			name = vim.api.nvim_buf_get_name(view.right_buf),
 			modifiable = vim.bo[view.right_buf].modifiable,
 		}
@@ -393,60 +396,94 @@ T["git: Real key presses move, scroll and edit in the Branch diff"] = function()
 			return vim.api.nvim_get_current_win() == panel.diff_view.right_win
 		end)()]]) == true
 	end, "second Cmd+L entered the right diff pane")
-	local entered = s:lua([[return (function()
-		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
-		local view = panel.diff_view
+	local entered = s:lua("return vim.api.nvim_win_get_cursor(0)[1]")
+	eq(entered, initial.first_change)
+	for step = 1, 2 do
+		E.press(s, "j")
+		local cursor_state
+		S.wait_for(function()
+			cursor_state = s:lua(
+				[[return (function(previous_line)
+				local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+				local view = panel.diff_view
+				local right = vim.api.nvim_win_get_cursor(view.right_win)[1]
+				local left = vim.api.nvim_win_get_cursor(view.left_win)[1]
+				return {
+					right = right,
+					moved = right > previous_line,
+					synced = left == require("gleb.diff.view.layout").transfer_line(view.layout, "right", right),
+				}
+			end)(...)]],
+				{ entered + step - 1 }
+			)
+			return cursor_state.moved and cursor_state.synced
+		end, ("j press %d moved the Branch cursor"):format(step))
+		eq(cursor_state.right, entered + step)
+	end
+
+	local edit = s:lua([[return (function()
+		local cursor = vim.api.nvim_win_get_cursor(0)
+		local line = vim.api.nvim_get_current_line()
 		return {
-			right_buf = view.right_buf,
-			right_cursor = vim.api.nvim_win_get_cursor(view.right_win)[1],
+			line = cursor[1],
+			col = cursor[2],
+			before = line,
+			expected = line:sub(1, cursor[2]) .. line:sub(cursor[2] + 2),
 		}
 	end)()]])
-
-	E.press(s, "j")
-	S.wait_for(function()
-		return s:lua(
-			[[return (function(previous_line)
-			local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
-			local view = panel.diff_view
-			local right = vim.api.nvim_win_get_cursor(view.right_win)[1]
-			local left = vim.api.nvim_win_get_cursor(view.left_win)[1]
-			return right > previous_line
-				and left == require("gleb.diff.view.layout").transfer_line(view.layout, "right", right)
-		end)(...)]],
-			{ entered.right_cursor }
-		) == true
-	end, "j moved both Branch diff panes")
-
-	local top = s:lua("return vim.fn.winsaveview().topline")
-	E.press(s, "ctrl+d")
-	S.wait_for(function()
-		return s:lua(
-			[[return (function(previous_top)
-			local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
-			local view = panel.diff_view
-			local right = vim.api.nvim_win_get_cursor(view.right_win)[1]
-			local left = vim.api.nvim_win_get_cursor(view.left_win)[1]
-			local right_top = vim.api.nvim_win_call(view.right_win, function()
-				return vim.fn.winsaveview().topline
-			end)
-			return right_top > previous_top
-				and left == require("gleb.diff.view.layout").transfer_line(view.layout, "right", right)
-		end)(...)]],
-			{ top }
-		) == true
-	end, "Ctrl+D scrolled the synchronized Branch diff panes")
-
-	local before = s:lua("return vim.api.nvim_get_current_line()")
-	E.press(s, { "i", "x", "escape" })
+	E.press(s, "x")
 	S.wait_for(function()
 		return s:lua(
 			[[
-			return vim.bo.modified and vim.api.nvim_get_current_line() ~= ...
-		]],
-			{ before }
+			return vim.bo.modified and vim.api.nvim_get_current_line() == ...
+			]],
+			{ edit.expected }
 		) == true
-	end, "Insert mode edited the Branch working-file buffer")
-	eq(s:lua("return vim.api.nvim_get_current_buf()"), entered.right_buf)
+	end, "x deleted the character under the Branch cursor")
+	E.press(s, { "shift+;", "w", "return" })
+	S.wait_for(function()
+		return s:lua(
+			[[return (function(path, line, expected, previous_tick)
+				local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+				return panel and panel.diff_view and panel.diff_view.changedtick > previous_tick
+					and panel.diff_view.changedtick == vim.api.nvim_buf_get_changedtick(panel.diff_view.right_buf)
+					and not vim.bo[panel.diff_view.right_buf].modified
+					and vim.fn.readfile(path)[line] == expected
+			end)(...)]],
+			{ initial.name, edit.line, edit.expected, initial.changedtick }
+		) == true
+	end, ":w saved the deletion and redrew the Branch diff")
+
+	local screen = s:lua(
+		[[return (function(expected_line)
+		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		local view = panel.diff_view
+		local cursor = vim.api.nvim_win_get_cursor(view.right_win)
+		local position = vim.fn.screenpos(view.right_win, cursor[1], cursor[2] + 1)
+		return {
+			current_win = vim.api.nvim_get_current_win(),
+			right_win = view.right_win,
+			cursor_line = cursor[1],
+			row = position.row,
+			col = position.col,
+			right_col = vim.fn.win_screenpos(view.right_win)[2],
+			line = vim.api.nvim_buf_get_lines(view.right_buf, cursor[1] - 1, cursor[1], false)[1],
+			expected = expected_line,
+		}
+	end)(...)]],
+		{ edit.expected }
+	)
+	local dump = s:zellij("dump-screen")
+	local rows = vim.split(dump, "\n", { plain = true })
+	eq(screen.current_win, screen.right_win)
+	eq(screen.cursor_line, initial.first_change + 2)
+	assert(screen.col >= screen.right_col, "cursor was not inside the right diff pane")
+	eq(screen.line, screen.expected)
+	local visible = screen.expected:sub(1, 18)
+	assert(
+		rows[screen.row] and rows[screen.row]:find(visible, 1, true),
+		("screen dump omitted row %d (%s):\n%s"):format(screen.row, screen.expected, dump)
+	)
 end
 
 return T

@@ -153,6 +153,12 @@ local function jump_to_source(ctx)
 	end
 	local target = view.owns_tab and view.origin_win or view.right_win
 	local path = view.path
+	for _, panel in pairs(require("gleb.git.changes").state.by_tab) do
+		if panel.diff_view == view then
+			require("gleb.git.changes.view").jump_to_source(panel, path, line, target)
+			return
+		end
+	end
 	close_view(view)
 	if not vim.api.nvim_win_is_valid(target) then
 		return

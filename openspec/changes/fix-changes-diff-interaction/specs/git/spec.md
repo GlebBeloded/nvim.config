@@ -47,6 +47,10 @@ A diff shown from the panel (Local, Branch or commit row, `]f`) SHALL open with 
 - **WHEN** the right window of the commit diff of `invoice.go` under `e325463` is current with its cursor on line 18 and `gf` is pressed in normal mode
 - **THEN** no `gleb-diff` window remains, the current window edits the working-tree `internal/billing/invoice.go` with the cursor on line 18, and the `gleb-changes` window is still open on the Branch tab
 
+#### Scenario: gf in a Branch diff preserves the working file after panel close
+- **WHEN** a file that was not already open is reviewed on the Branch tab, `gf` opens its working-tree buffer, and the Changes panel is closed
+- **THEN** the editor window and working-tree buffer opened by `gf` remain valid, loaded and current
+
 ## MODIFIED Requirements
 
 ### Requirement: Branch tab files
