@@ -9,7 +9,7 @@ local function start()
 	assert(child.wait("vim.v.vim_did_enter == 1", 5000), "VimEnter did not fire")
 end
 
-local T = H.child_set(child, start)
+local T = H.child_set(child, start, { reuse = true })
 
 T["picker: Dashboard opens shared list pickers"] = function()
 	child.type_keys("<CR>")
