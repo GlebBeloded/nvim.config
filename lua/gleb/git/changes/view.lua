@@ -455,7 +455,7 @@ end
 
 ---@param view ChangesView
 ---@return nil
-local function close_owned_diff(view)
+function M.close_diff(view)
 	if not view.diff_view then
 		return
 	end
@@ -959,7 +959,7 @@ function M.activate_tab(panel, id)
 		return item.id == id
 	end)
 	if descriptor and descriptor.editor == "file" then
-		close_owned_diff(panel)
+		M.close_diff(panel)
 		tree_model.rebuild(panel.tree, require("gleb.pr.comments_tab").nodes(panel.root))
 		draw(panel)
 		vim.api.nvim_set_current_win(panel.win)

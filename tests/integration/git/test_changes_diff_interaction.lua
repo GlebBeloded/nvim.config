@@ -446,4 +446,35 @@ T["git: Commit diff is read-only and navigable"] = function()
 	eq(child.lua_get("vim.bo[vim.fn.bufnr(...)].modified", { invoice }), false)
 end
 
+T["git: gf in a commit diff opens the working file"] = function()
+	open_commit_diff()
+	local view = view_state()
+	child.api.nvim_set_current_win(view.right_win)
+	child.api.nvim_win_set_cursor(view.right_win, { 18, 0 })
+
+	child.type_keys("gf")
+
+	local state = child.lua_get([[(function()
+		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		return {
+			active_tab = panel and panel.active_tab,
+			current = vim.api.nvim_get_current_win(),
+			name = vim.api.nvim_buf_get_name(0),
+			line = vim.api.nvim_win_get_cursor(0)[1],
+			panel_open = panel ~= nil and vim.api.nvim_win_is_valid(panel.win),
+			diff_cleared = panel ~= nil and panel.diff_view == nil,
+			has_diff = vim.iter(vim.api.nvim_list_wins()):any(function(win)
+				return vim.bo[vim.api.nvim_win_get_buf(win)].filetype == "gleb-diff"
+			end),
+		}
+	end)()]])
+	eq(state.active_tab, "branch")
+	eq(state.current, view.right_win)
+	eq(vim.uv.fs_realpath(state.name), vim.uv.fs_realpath(vim.fs.joinpath(root, "internal/billing/invoice.go")))
+	eq(state.line, 18)
+	eq(state.panel_open, true)
+	eq(state.diff_cleared, true)
+	eq(state.has_diff, false)
+end
+
 return T

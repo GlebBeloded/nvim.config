@@ -43,9 +43,9 @@ Scenarios: `git: Window keys enter the diff panes`, `git: Branch diff panes move
 
 Scenarios: `diff: Diff view gf opens the file at the cursor line`, `diff: Diff view gf on a read-only right side`, `git: gf in a commit diff opens the working file`
 
-- [ ] 6.1 Write the diff scenarios in `tests/integration/diff/test_view_keys.lua` and the git one in `tests/integration/git/test_changes_diff_interaction.lua`; see them fail
-- [ ] 6.2 Add `diff.jump_to_source` (`Jump to Source`, `Git | Diff`, plugin `gleb-diff`) to `lua/gleb/diff/actions.lua` and `"diff.jump_to_source": ["gf"]` to `settings/keymap.json`; close a panel-owned view through the panel so its diff state clears, then edit `spec.path` in the right side's window at the mapped, clamped line and focus it (Decision 6)
-- [ ] 6.3 Run the test files and `tests/integration/diff/test_view_keys.lua` ("Diff view mappings come from diff actions") and see them pass
+- [x] 6.1 Write the diff scenarios in `tests/integration/diff/test_view_keys.lua` and the git one in `tests/integration/git/test_changes_diff_interaction.lua`; see them fail
+- [x] 6.2 Add `diff.jump_to_source` (`Jump to Source`, `Git | Diff`, plugin `gleb-diff`) to `lua/gleb/diff/actions.lua` and `"diff.jump_to_source": ["gf"]` to `settings/keymap.json`; close a panel-owned view through the panel so its diff state clears, then edit `spec.path` in the right side's window at the mapped, clamped line and focus it (Decision 6)
+- [x] 6.3 Run the test files and `tests/integration/diff/test_view_keys.lua` ("Diff view mappings come from diff actions") and see them pass
 
 ## 7. Approved renders
 
@@ -65,3 +65,4 @@ Scenarios: `git: Real key presses move, scroll and edit in the Branch diff`
 
 - Detect a Branch working-tree binary with `git diff --numstat <merge-base> -- <path>`, so the read-only fallback covers both committed and uncommitted content.
 - Clamp `layout.transfer_line` to the peer's line count, so synchronization and callers agree at an unequal-length file's end.
+- Match a diff view against the Changes panels to select panel-owned teardown, so the action clears panel state without coupling the diff view to its owner.

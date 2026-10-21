@@ -130,6 +130,41 @@ local function jump_move(ctx)
 	end
 end
 
+---@param view gleb.diff.view.View
+local function close_view(view)
+	for _, panel in pairs(require("gleb.git.changes").state.by_tab) do
+		if panel.diff_view == view then
+			require("gleb.git.changes.view").close_diff(panel)
+			return
+		end
+	end
+	require("gleb.diff.view").close(view)
+end
+
+---@param ctx gleb.ActionContext
+local function jump_to_source(ctx)
+	local view = current(ctx)
+	if not view then
+		return
+	end
+	local line = vim.api.nvim_win_get_cursor(ctx.win)[1]
+	if ctx.win == view.left_win then
+		line = require("gleb.diff.view.layout").transfer_line(view.layout, "left", line)
+	end
+	local target = view.owns_tab and view.origin_win or view.right_win
+	local path = view.path
+	close_view(view)
+	if not vim.api.nvim_win_is_valid(target) then
+		return
+	end
+	vim.api.nvim_set_current_win(target)
+	vim.api.nvim_win_call(target, function()
+		vim.cmd("edit " .. vim.fn.fnameescape(path))
+	end)
+	local count = vim.api.nvim_buf_line_count(vim.api.nvim_win_get_buf(target))
+	vim.api.nvim_win_set_cursor(target, { math.max(1, math.min(line, count)), 0 })
+end
+
 ---@param ctx gleb.ActionContext
 local function open_file(ctx)
 	require("gleb.diff")
@@ -209,6 +244,13 @@ local actions = {
 		category = "Git | Diff",
 		plugin = "gleb-diff",
 		run = jump_move,
+	},
+	{
+		id = "diff.jump_to_source",
+		title = "Jump to Source",
+		category = "Git | Diff",
+		plugin = "gleb-diff",
+		run = jump_to_source,
 	},
 	{
 		id = "diff.next_file",
