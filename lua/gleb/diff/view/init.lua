@@ -1,6 +1,8 @@
 -- Public API and state for the owned two-side diff view.
 -- Source comparison happens before opening windows so empty/error branches leave the editor untouched.
 
+require("gleb.diff.view.highlights").setup()
+
 local engine = require("gleb.diff.engine")
 local autocmds = require("gleb.diff.view.autocmds")
 local layout = require("gleb.diff.view.layout")

@@ -1,7 +1,5 @@
 -- User-facing entry actions for the owned diff viewer.
 
-local source = require("gleb.diff.view.source")
-
 ---@param ctx gleb.ActionContext
 ---@return boolean
 local function view_in_tab(ctx)
@@ -134,6 +132,8 @@ end
 
 ---@param ctx gleb.ActionContext
 local function open_file(ctx)
+	require("gleb.diff")
+	local source = require("gleb.diff.view.source")
 	local path = vim.api.nvim_buf_get_name(ctx.buf)
 	local view = require("gleb.diff.view")
 	local existing = view.state.by_path[vim.fs.normalize(path)]

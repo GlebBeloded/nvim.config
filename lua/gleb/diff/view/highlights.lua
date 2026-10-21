@@ -6,7 +6,8 @@ local util = require("gleb.colors.gruvbox-material.util")
 
 local M = {}
 
-local function apply()
+---@return nil
+function M.setup()
 	local bg = palette.background
 	local fg = palette.foreground
 	local kinds = {
@@ -38,10 +39,10 @@ local function apply()
 	vim.api.nvim_set_hl(0, "DiffViewHeader", { fg = fg.grey1, bg = bg.bg0 })
 end
 
-apply()
+M.setup()
 vim.api.nvim_create_autocmd("ColorScheme", {
 	group = vim.api.nvim_create_augroup("gleb_diff_view_highlights", { clear = true }),
-	callback = apply,
+	callback = M.setup,
 })
 
 return M

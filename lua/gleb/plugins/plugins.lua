@@ -33,9 +33,16 @@ local plugins = {
 		"sainnhe/gruvbox-material",
 		priority = 1000, -- make sure to load this before all the other start plugins
 	},
-	"NvChad/nvim-colorizer.lua",
+	{
+		"NvChad/nvim-colorizer.lua",
+		event = { "BufReadPre", "BufNewFile" },
+		config = function()
+			require("gleb.colors.colorizer")
+		end,
+	},
 	{
 		"xiyaowong/transparent.nvim",
+		event = "VeryLazy",
 		config = function()
 			require("gleb.colors.transparency")
 		end,
@@ -55,22 +62,34 @@ local plugins = {
 	{
 		"saghen/blink.cmp",
 		version = "*",
+		event = { "InsertEnter", "CmdlineEnter" },
 		dependencies = {
 			"rafamadriz/friendly-snippets", -- snippet collection
 		},
+		config = function()
+			require("gleb.cmp")
+		end,
 	},
 
 	-- yaml schema detection (kubernetes, etc.)
 	"mosheavni/yaml-companion.nvim",
 
 	-- lsp stuff
-	"neovim/nvim-lspconfig", -- Enable LSP
-	"williamboman/mason.nvim", -- Manage linters, LSP, formatters
-	"nvimtools/none-ls.nvim", -- Formatters and linters for LSP
-	"lukas-reineke/lsp-format.nvim", -- Format code on save
-	"kosayoda/nvim-lightbulb", -- Show lightbulb for code actions
-	"ray-x/lsp_signature.nvim", -- Fancy function completion plugin
-	"yioneko/nvim-vtsls", -- vtsls commands (organize imports, rename file, etc.)
+	{
+		"neovim/nvim-lspconfig", -- Enable LSP
+		event = { "BufReadPre", "BufNewFile", "VeryLazy" },
+		dependencies = {
+			"williamboman/mason.nvim", -- Manage linters, LSP, formatters
+			"nvimtools/none-ls.nvim", -- Formatters and linters for LSP
+			"lukas-reineke/lsp-format.nvim", -- Format code on save
+			"kosayoda/nvim-lightbulb", -- Show lightbulb for code actions
+			"ray-x/lsp_signature.nvim", -- Fancy function completion plugin
+			"yioneko/nvim-vtsls", -- vtsls commands (organize imports, rename file, etc.)
+		},
+		config = function()
+			require("gleb.lsp")
+		end,
+	},
 	{
 		"dmmulroy/tsc.nvim", -- Project-wide TypeScript type checking
 		cmd = "TSC",
@@ -80,9 +99,13 @@ local plugins = {
 	-- folding
 	{
 		"kevinhwang91/nvim-ufo",
+		event = { "BufReadPre", "BufNewFile", "FileType" }, -- FileType: scratch buffers given a filetype fold too
 		dependencies = "kevinhwang91/promise-async", -- Better folding
+		config = function()
+			require("gleb.folding")
+		end,
 	},
-	"lewis6991/foldsigns.nvim", -- Show LSP signs on folds
+	{ "lewis6991/foldsigns.nvim", lazy = true }, -- Show LSP signs on folds
 
 	-- debugging plugins: load on the first :Dap* command (or require("dap"))
 	{
@@ -129,7 +152,7 @@ local plugins = {
 	},
 
 	-- snippets
-	"L3MON4D3/LuaSnip", -- Snippet engine
+	{ "L3MON4D3/LuaSnip", lazy = true }, -- Snippet engine
 
 	-- picker UI
 	"nvim-mini/mini.nvim", -- Shared picker UI and list sources
@@ -138,11 +161,12 @@ local plugins = {
 	"nvim-tree/nvim-web-devicons",
 
 	-- buffer line (bottom line)
-	"nvim-lualine/lualine.nvim",
+	{ "nvim-lualine/lualine.nvim", lazy = false },
 
 	-- statusline extras
 	{
 		"SmiteshP/nvim-navic", -- LSP breadcrumb / code context (left of statusline)
+		event = "LspAttach",
 		dependencies = "neovim/nvim-lspconfig",
 		opts = {
 			lsp = { auto_attach = true }, -- attach to every LSP client automatically
@@ -156,19 +180,44 @@ local plugins = {
 		"nvim-treesitter/nvim-treesitter",
 		branch = "main", -- required for neotest-golang v2+
 		build = ":TSUpdate",
+		event = { "BufReadPre", "BufNewFile", "VeryLazy" },
+		init = function()
+			if vim.env.GLEB_TEST_SANDBOX then
+				require("gleb.treesitter")
+			end
+		end,
+		config = function()
+			require("gleb.treesitter")
+		end,
 	},
 	-- playground removed: use :InspectTree (built-in Neovim 0.10+)
 	-- textobjects removed: incompatible with treesitter main branch
 
 	-- git
-	"lewis6991/gitsigns.nvim",
+	{
+		"lewis6991/gitsigns.nvim",
+		cmd = "Gitsigns",
+		event = { "BufReadPre", "BufNewFile" },
+		config = function()
+			require("gleb.git.gitsigns")
+			require("gleb.git.committed_signs").setup()
+		end,
+	},
 	{
 		"sindrets/diffview.nvim",
+		cmd = { "DiffviewClose", "DiffviewFileHistory", "DiffviewFocusFiles", "DiffviewOpen", "DiffviewRefresh" },
 		dependencies = "nvim-lua/plenary.nvim",
+		config = function()
+			require("gleb.git.diffview")
+		end,
 	},
 	{
 		"ruifm/gitlinker.nvim", -- Generate links to code
+		cmd = "Gitlink",
 		dependencies = "nvim-lua/plenary.nvim",
+		config = function()
+			require("gleb.git.gitlink")
+		end,
 	},
 
 	-- session recovery: named, zellij-aware sessions (see lua/gleb/session)
@@ -179,6 +228,7 @@ local plugins = {
 	{
 		"okuuva/auto-save.nvim",
 		version = "^1",
+		event = "InsertEnter",
 		config = function()
 			require("auto-save").setup({
 				condition = should_autosave,
@@ -198,7 +248,13 @@ local plugins = {
 	},
 
 	-- miscellaneous stuff
-	"windwp/nvim-autopairs", -- Autocomplete brace pairs
+	{
+		"windwp/nvim-autopairs", -- Autocomplete brace pairs
+		event = "InsertEnter",
+		config = function()
+			require("gleb.autopairs")
+		end,
+	},
 	{
 		"kylechui/nvim-surround",
 		version = "*", -- Use for stability; omit to use the main branch for the latest features
@@ -208,13 +264,23 @@ local plugins = {
 		end,
 		opts = {},
 	},
-	"windwp/nvim-ts-autotag", -- Autoclose HTML tags
-	"lukas-reineke/indent-blankline.nvim", -- Lines for indenting
+	{
+		"windwp/nvim-ts-autotag", -- Autoclose HTML tags
+		ft = { "html", "javascriptreact", "typescriptreact", "vue", "svelte" },
+		opts = {},
+	},
+	{
+		"lukas-reineke/indent-blankline.nvim", -- Lines for indenting
+		event = { "BufReadPost", "BufNewFile" },
+		config = function()
+			require("gleb.indentline")
+		end,
+	},
 	"goolord/alpha-nvim", -- Greeting screen
 
 	-- file tabs
-	"akinsho/bufferline.nvim",
-	"moll/vim-bbye",
+	{ "akinsho/bufferline.nvim", lazy = false },
+	{ "moll/vim-bbye", cmd = { "Bdelete", "Bwipeout" } },
 
 	-- AI: ThePrimeagen/99 — search, visual, vibe, worker via Pi
 	{

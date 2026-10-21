@@ -23,7 +23,7 @@ local HEALTH_EXCLUDE = {
 }
 
 local STARTUP_RUNS = 3
-local STARTUP_BUDGET_MS = tonumber(vim.env.STARTUP_BUDGET_MS) or 400
+local STARTUP_BUDGET_MS = tonumber(vim.env.STARTUP_BUDGET_MS) or 120
 local TIMEOUT_MS = 120000
 
 local failures = 0

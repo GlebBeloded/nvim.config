@@ -49,6 +49,9 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - Scale child-process exit waits with host load; a fixed five-second `jobwait` can report `-1` after the UI has correctly initiated shutdown.
 - Pass mapped locations through UI entry points; API line numbers cannot safely index an edited working buffer.
 - Resolve cursor-based actions from a usable tab window when their launcher is a nofile panel.
+- Load lightweight highlight ownership and parser aliases synchronously when their contracts must hold before deferred plugin setup.
+- Before deferring a feature module, list the autocmds it registers when required (BufWritePost, BufWinEnter, ColorScheme, FileType) and load it on the earliest of those events, or its behaviour silently stops until some unrelated entry point loads it.
+- Plugins deferred to VeryLazy create their globals (plenary's _PlenaryLeafTable) after a reused child's case-reset snapshot, which then wipes them; such child sets wait for VeryLazy in their start.
 
 ## The loop
 
