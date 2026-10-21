@@ -2,8 +2,8 @@
 
 Scenarios: `diff: Diff view draws a committed spec in purple`, `diff: Diff view show starts on the first change`, `git: Changes Branch diff starts on the first change`, `git: Branch diff right pane is the working file`, `git: Commit diff is read-only and navigable`
 
-- [ ] 1.1 Write the five scenarios above (`tests/integration/diff/test_committed.lua`, `tests/integration/diff/test_view.lua`, new `tests/integration/git/test_changes_diff_interaction.lua` on a fresh `billing-branch` copy with the fake `gh` reporting PR 482), typing the real keys with `child.type_keys`; run each with `make test FILE=… CASE=…` and see it fail as in proposal.md `## Evidence`: `DiffViewCommitted` extmarks (purple), right and left cursors on line 1 instead of 9/10, a `nofile` unnamed right buffer with `modifiable` off, no Tree-sitter highlighter on the commit diff's right buffer
-- [ ] 1.2 Record in proposal.md `## Evidence` any result that differs from the repro before going on
+- [x] 1.1 Write the five scenarios above (`tests/integration/diff/test_committed.lua`, `tests/integration/diff/test_view.lua`, new `tests/integration/git/test_changes_diff_interaction.lua` on a fresh `billing-branch` copy with the fake `gh` reporting PR 482), typing the real keys with `child.type_keys`; run each with `make test FILE=… CASE=…` and see it fail as in proposal.md `## Evidence`: `DiffViewCommitted` extmarks (purple), right and left cursors on line 1 instead of 9/10, a `nofile` unnamed right buffer with `modifiable` off, no Tree-sitter highlighter on the commit diff's right buffer
+- [x] 1.2 Record in proposal.md `## Evidence` any result that differs from the repro before going on
 
 ## 2. Committed layer in kind colours
 

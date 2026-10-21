@@ -191,6 +191,32 @@ T["diff: Diff view highlights changed words"] = function()
 	eq(marks, { { { 9, 14 }, { 17, 18 } }, {}, {} })
 end
 
+T["diff: Diff view show starts on the first change"] = function()
+	child.cmd("edit a.txt | rightbelow vnew")
+	local target = child.api.nvim_get_current_win()
+	child.cmd("wincmd p")
+	local current = child.api.nvim_get_current_win()
+	local lines = { "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l" }
+	local right = vim.deepcopy(lines)
+	right[10] = "J"
+
+	local view = child.lua_get(
+		[[(function(win, left, right)
+		return require("gleb.diff.view").show(win, {
+			path = "d.txt",
+			left = left,
+			right = right,
+			labels = { left = "HEAD", right = "Working tree" },
+		})
+	end)(...)]],
+		{ target, lines, right }
+	)
+
+	eq(child.api.nvim_get_current_win(), current)
+	eq(child.api.nvim_win_get_cursor(view.right_win)[1], 10)
+	eq(child.api.nvim_win_get_cursor(view.left_win)[1], 10)
+end
+
 T["diff: Diff view highlight colours"] = function()
 	child.cmd("colorscheme gruvbox-material")
 	local colours = child.lua_get([[(function()
