@@ -1,6 +1,8 @@
 -- Find Action registers its own palette entry so it is discoverable alongside other actions.
 
-local open = require("gleb.find_action").open
+local function open()
+	require("gleb.find_action").open()
+end
 
 ---@type gleb.Action[]
 local actions = {

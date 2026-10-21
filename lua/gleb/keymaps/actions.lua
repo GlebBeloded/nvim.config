@@ -50,6 +50,10 @@ local function references()
 	return require("gleb.references").open()
 end
 
+local function grep_live()
+	require("gleb.picker").grep_live()
+end
+
 ---@param diagnostic vim.Diagnostic?
 ---@param bufnr integer
 local function open_float_on_jump(diagnostic, bufnr)
@@ -217,8 +221,8 @@ local actions = {
 		id = "search.live_grep",
 		title = "Find in Files...",
 		category = "Edit | Find",
-		run = require("gleb.picker").grep_live,
-		mapping = require("gleb.picker").grep_live,
+		run = grep_live,
+		mapping = grep_live,
 	},
 	{
 		id = "lsp.code_action",
