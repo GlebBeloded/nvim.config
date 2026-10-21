@@ -329,6 +329,27 @@ local function delay_next_expansion_read()
 	]=])
 end
 
+local function hold_second_expansion_read()
+	child.lua([=[
+		local original = vim.uv.fs_open
+		local reads = 0
+		vim.uv.fs_open = function(path, flags, mode, callback)
+			if callback and flags == "r" and vim.endswith(path, "/file_tree/expanded.json") then
+				reads = reads + 1
+				if reads == 2 then
+					vim.uv.fs_open = original
+					FileTreeFinishExpansionRead = function()
+						FileTreeFinishExpansionRead = nil
+						original(path, flags, mode, callback)
+					end
+					return
+				end
+			end
+			return original(path, flags, mode, callback)
+		end
+	]=])
+end
+
 local function change_tracked_file()
 	child.lua(
 		[=[(function(path)
@@ -826,10 +847,13 @@ T["file-tree: Project tree re-roots once with saved expansion"] = function()
 		"second-root expansion state did not persist"
 	)
 	child.lua([[require("gleb.file_tree.expanded").reset()]])
-	delay_next_expansion_read()
+	hold_second_expansion_read()
 	install_replacement_counter()
 
 	child.cmd("cd " .. vim.fn.fnameescape(second_root))
+	eq(child.lua_get([[FileTreeFinishExpansionRead ~= nil]]), true)
+	eq(child.lua_get([[FileTreeReplacementCount]]), 0)
+	child.lua([[FileTreeFinishExpansionRead()]])
 
 	assert(
 		child.wait(

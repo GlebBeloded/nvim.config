@@ -458,15 +458,21 @@ T["file-tree: Project tree shows files created outside Neovim"] = function()
 
 	local canary = H.system(child, { "touch", vim.fs.joinpath(root, "internal/billing/invoice.go") }, root)
 	eq(canary.code, 0)
-	assert(
-		child.wait(
-			[[
-			require("gleb.file_tree.watch").state.roots[_G.fallback_root].event_confirmed
-		]],
-			math.ceil(1000 * H.load_factor())
-		),
-		"watch event stream was not confirmed"
+	local canary_ready = child.lua_get(
+		[[(function(path, timeout)
+			return vim.wait(timeout, function()
+				local now = vim.uv.clock_gettime("realtime")
+				local stamp = now.sec + now.nsec / 1e9
+				vim.uv.fs_utime(path, stamp, stamp)
+				local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+				return vim.iter(view.rows):any(function(row)
+					return row.label == "invoice.go"
+				end)
+			end, 20)
+		end)(...)]],
+		{ vim.fs.joinpath(root, "internal/billing/invoice.go"), math.ceil(10000 * H.load_factor()) }
 	)
+	eq(canary_ready, true)
 
 	local result = H.system(child, { "touch", vim.fs.joinpath(root, "internal/billing/fee.go") }, root)
 	eq(result.code, 0)
@@ -679,6 +685,19 @@ end
 T["file-tree: Project tree prunes a deleted expanded folder"] = function()
 	open_billing_folder()
 	focus_tree_path("internal/billing/invoice_test.go")
+	local canary_ready = child.lua_get(
+		[[(function(path, timeout)
+			return vim.wait(timeout, function()
+				vim.fn.writefile({ tostring(vim.uv.hrtime()) }, path)
+				local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+				return vim.iter(view.rows):any(function(row)
+					return row.label == "watch-canary.lua"
+				end)
+			end, 20)
+		end)(...)]],
+		{ vim.fs.joinpath(root, "internal/billing/watch-canary.lua"), math.ceil(10000 * H.load_factor()) }
+	)
+	eq(canary_ready, true)
 	child.lua(
 		[[(function(root)
 		root = require("gleb.file_tree.fs").normalize(root)
