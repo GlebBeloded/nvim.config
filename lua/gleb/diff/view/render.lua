@@ -26,12 +26,15 @@ local function highlighted(text, group)
 	return "%#" .. group .. "#" .. text .. "%*"
 end
 
----@param view gleb.diff.view.View
 ---@param row gleb.diff.view.Row
 ---@return string
-local function row_suffix(view, row)
-	if view.committed and row.kind ~= "Moved" then
-		return "Committed"
+local function row_suffix(row)
+	if row.kind == "Change" then
+		if not row.left then
+			return "Add"
+		elseif not row.right then
+			return "Delete"
+		end
 	end
 	return assert(row.kind, "diff row requires a kind")
 end
@@ -45,7 +48,6 @@ local function gutter(view, row)
 	end
 	local kind = row.kind
 	local arrow = row.first and "»" or " "
-	local arrow_kind = view.committed and kind ~= "Moved" and "Committed" or row.arrow_kind or kind
 	local left = row.left and string.format("%3d ", row.left) or "╱╱╱╱"
 	local right = row.right and string.format("%3d ", row.right) or "╱╱╱╱"
 	local checkbox = not view.committed
@@ -60,7 +62,8 @@ local function gutter(view, row)
 			.. highlighted(right, "DiffViewLineNr")
 			.. highlighted(checkbox .. " ", "Normal")
 	end
-	local suffix = row_suffix(view, row)
+	local arrow_kind = row.arrow_kind or row_suffix(row)
+	local suffix = row_suffix(row)
 	local strip = row.move_marker and highlighted(row.move_marker, "DiffViewMovedMarker")
 		or highlighted("     ", "DiffView" .. suffix)
 	return highlighted(arrow, row.first and ("DiffViewArrow" .. arrow_kind) or "Normal")
@@ -74,10 +77,10 @@ end
 ---@param view gleb.diff.view.View
 ---@return table[]
 local function padding_gutter(view, row)
-	local kind = assert(row.kind, "padding gutter requires a diff row")
-	local suffix = "DiffView" .. row_suffix(view, row)
-	local gutter_suffix = "DiffViewGutter" .. row_suffix(view, row)
-	local arrow_kind = view.committed and kind ~= "Moved" and "Committed" or row.arrow_kind or kind
+	assert(row.kind, "padding gutter requires a diff row")
+	local suffix = "DiffView" .. row_suffix(row)
+	local gutter_suffix = "DiffViewGutter" .. row_suffix(row)
+	local arrow_kind = row.arrow_kind or row_suffix(row)
 	local checkbox = not view.committed
 			and row.first
 			and row.checkbox
@@ -117,7 +120,7 @@ function M.statuscolumn()
 		if row.fold then
 			return highlighted("~", "DiffViewFold")
 		end
-		return highlighted(" ", row.kind and ("DiffView" .. row_suffix(view, row)) or "Normal")
+		return highlighted(" ", row.kind and ("DiffView" .. row_suffix(row)) or "Normal")
 	end
 	return gutter(view, row)
 end
@@ -202,14 +205,7 @@ local function decorate_line(buf, ns, row, kind, words)
 		if col < word.col_start then
 			add_range(buf, ns, row, "DiffView" .. kind, col, word.col_start)
 		end
-		add_range(
-			buf,
-			ns,
-			row,
-			kind == "Committed" and "DiffViewCommittedWord" or "DiffViewWord",
-			word.col_start,
-			word.col_end
-		)
+		add_range(buf, ns, row, "DiffViewWord", word.col_start, word.col_end)
 		col = math.max(col, word.col_end)
 	end
 	add_range(buf, ns, row, "DiffView" .. kind, col, -1)
@@ -255,7 +251,7 @@ local function decorate_side(view, side, lines, decorations)
 			padding = {}
 		end
 		if line and row.kind then
-			decorate_line(buf, view.ns, line - 1, row_suffix(view, row), words_by_row[line - 1] or {})
+			decorate_line(buf, view.ns, line - 1, row_suffix(row), words_by_row[line - 1] or {})
 		elseif not line and row.change then
 			padding[#padding + 1] = row
 		end

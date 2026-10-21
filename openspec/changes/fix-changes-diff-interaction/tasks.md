@@ -9,10 +9,10 @@ Scenarios: `diff: Diff view draws a committed spec in purple`, `diff: Diff view 
 
 Scenarios: `diff: Diff view draws a committed spec in purple`, `diff: Diff view committed colours`, `diff: Diff view without committed keeps its kind colours`, `diff: Diff view committed spec keeps a given buffer editable`, `diff: Diff view committed read-only side has syntax`
 
-- [ ] 2.1 Update the three existing scenarios in `tests/integration/diff/test_committed.lua` to the new bodies (keep their names) and add the two new ones; run `make test FILE=tests/integration/diff/test_committed.lua` and see them fail
-- [ ] 2.2 In `lua/gleb/diff/view/render.lua` drop the `Committed` suffix, arrow kind and word group (kind groups for every spec) while a committed spec still leaves the checkbox cell blank; delete the four `DiffViewCommitted*` definitions in `lua/gleb/diff/view/highlights.lua`; keep `committed` on the view as "not actionable" (design.md Decisions 2 and 3)
-- [ ] 2.3 Start Tree-sitter for `spec.filetype` on a read-only right buffer (`lua/gleb/diff/view/init.lua` `readonly_buffer` or `windows.lua`), as `left_buffer` does (Decision 5)
-- [ ] 2.4 Run `make test FILE=tests/integration/diff/test_committed.lua` and `tests/integration/diff/` and see them pass
+- [x] 2.1 Update the three existing scenarios in `tests/integration/diff/test_committed.lua` to the new bodies (keep their names) and add the two new ones; run `make test FILE=tests/integration/diff/test_committed.lua` and see them fail
+- [x] 2.2 In `lua/gleb/diff/view/render.lua` drop the `Committed` suffix, arrow kind and word group (kind groups for every spec) while a committed spec still leaves the checkbox cell blank; delete the four `DiffViewCommitted*` definitions in `lua/gleb/diff/view/highlights.lua`; keep `committed` on the view as "not actionable" (design.md Decisions 2 and 3)
+- [x] 2.3 Start Tree-sitter for `spec.filetype` on a read-only right buffer (`lua/gleb/diff/view/init.lua` `readonly_buffer` or `windows.lua`), as `left_buffer` does (Decision 5)
+- [x] 2.4 Run `make test FILE=tests/integration/diff/test_committed.lua` and `tests/integration/diff/` and see them pass
 
 ## 3. Cursor on the first change
 
