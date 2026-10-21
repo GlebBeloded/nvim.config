@@ -36,9 +36,9 @@ Scenarios: `pr: Enter asks before sending a reply`, `pr: y sends the reply`, `pr
 
 ## 7. Reply confirmation render
 Scenarios: `pr: Send confirmation matches the approved render`
-- [ ] 7.1 Write the test `pr: Send confirmation matches the approved render` in `tests/screen/pr/test_thread_window.lua`, driving the real thread window and reply mappings; run `make test FILE=tests/screen/pr/test_thread_window.lua CASE="Send confirmation matches the approved render"` and see it fail
-- [ ] 7.2 Match the text and colour mask of design.md's approved `r3_confirm_footer` render
-- [ ] 7.3 Run `make test FILE=tests/screen/pr/test_thread_window.lua CASE="Send confirmation matches the approved render"` and see it pass
+- [x] 7.1 Write the test `pr: Send confirmation matches the approved render` in `tests/screen/pr/test_thread_window.lua`, driving the real thread window and reply mappings; run `make test FILE=tests/screen/pr/test_thread_window.lua CASE="Send confirmation matches the approved render"` and see it fail
+- [x] 7.2 Match the text and colour mask of design.md's approved `r3_confirm_footer` render
+- [x] 7.3 Run `make test FILE=tests/screen/pr/test_thread_window.lua CASE="Send confirmation matches the approved render"` and see it pass
 
 ## 8. Resolve confirmation
 Scenarios: `pr: R asks before resolving`, `pr: y resolves the thread`, `pr: y unresolves a resolved thread`, `pr: A failed resolve is reported`
@@ -54,23 +54,16 @@ Scenarios: `pr: A mutation shows progress and ignores keys`
 
 ## 10. Thread window render
 Scenarios: `pr: Thread window matches the approved render`
-- [ ] 10.1 Write the test `pr: Thread window matches the approved render` in `tests/screen/pr/test_thread_window.lua`, driving `<CR>` from the populated Comments tab; run `make test FILE=tests/screen/pr/test_thread_window.lua CASE="Thread window matches the approved render"` and see it fail
-- [ ] 10.2 Match the text and colour mask of design.md's approved `r3_thread_center` render
-- [ ] 10.3 Run `make test FILE=tests/screen/pr/test_thread_window.lua CASE="Thread window matches the approved render"` and see it pass, then run `make check`
+- [x] 10.1 Write the test `pr: Thread window matches the approved render` in `tests/screen/pr/test_thread_window.lua`, driving `<CR>` from the populated Comments tab; run `make test FILE=tests/screen/pr/test_thread_window.lua CASE="Thread window matches the approved render"` and see it fail
+- [x] 10.2 Match the text and colour mask of design.md's approved `r3_thread_center` render
+- [x] 10.3 Run `make test FILE=tests/screen/pr/test_thread_window.lua CASE="Thread window matches the approved render"` and see it pass, then run `make check`
 
 ## Agent decisions
 
 - Pass an ephemeral LEFT-side thread copy after unmapped navigation so the existing thread renderer uses its diff-hunk path without changing cached review data.
 - Observe delayed mutation progress inside the child because the real mapping keeps MiniTest's RPC channel blocked while `gh` is pending.
-
-## Stuck
-
-- Task 7: `pr: Send confirmation matches the approved render` remains red after two production attempts; the second attempt is saved in `stuck-attempt-7.diff`.
-- Probe: empty reply `{ "", "", "" }` had one placeholder extmark; multibyte source rendered `{ "  22 \tif café.税 == nil {" }`; resizing to 60 columns produced message `col=2`, `width=54`, display width 25; `:close` cleared the tab-local window state.
-- Attempt 1: added visual inner padding, cleared the stale placeholder, restored the editor statusline, highlighted the confirmation ends and tried a reply-border title; this fixed those cells, but the reply rule was still absent and the editor background remained one row low.
-- Attempt 2: gave the reply float a real top border and restored the editor view after opening; the border then overlaid the hint row, its title lacked the approved leading border cell, and the background still remained one row low.
-
-- Task 10: `pr: Thread window matches the approved render` remains red after two production attempts; the second attempt is saved in `stuck-attempt-10.diff`.
-- Probe: opening from Comments changed the editor `topline` from 10 to 11 and lualine from the active Changes statusline to the reply float's inactive `invoice.go` statusline; Neovim retained the messages footer config, but the equal-z-index reply float covered that shared border.
-- Attempt 1: used one-cell fold columns for inner padding, a messages footer for `Reply`, restored the editor view, and restored the captured statusline; padding matched, but the reply float covered the footer, the view still moved, and lualine replaced the restored statusline.
-- Attempt 2: raised the messages float over the reply, adjusted the source gap and collapsed editor view, and assigned the origin's active lualine statusline to the reply; Neovim rendered the footer as `├ Reply` instead of `├─ Reply`, hid the placeholder on the shared row, replaced the statusline again, and shifted the lower editor background too far.
+- Pin the origin window's local 'scrolloff' to 0 while the thread window is open (restored on close): its peek collapses when focus leaves it, and scrolloff 15 re-centres it on the next redraw, scrolling the code behind the window.
+- Give the floats the origin window's focused lualine statusline (redrawn on `ModeChanged`), as lualine skips floats and the global statusline shows the current window's.
+- Pad the messages and reply floats with a one-cell `foldcolumn` (as `Normal`), so the reply text needs no leading space.
+- Keep the commented line's tab in the buffer and shift its stops with `vartabstop`, so it spans the cells it has in the editor.
+- The renders' editor rows 26–29 gain the committed signs of `f358a315` (merged after the capture), and two blank cells drop a hidden capture colour (see design.md).

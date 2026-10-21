@@ -49,6 +49,7 @@ local CONFIRM_LEGEND = {
 	K = "StatuslineLangText",
 	L = "StatuslineLang_go",
 	M = "StatuslineLangEdge",
+	N = "GitCommittedSign",
 }
 
 local CONFIRM_MASK = {
@@ -57,8 +58,8 @@ local CONFIRM_MASK = {
 	".jjjjjjkkkkkkkkkkkkkkkk............fllggggggii....mmmmmm.nnnnnnnnnnnnnnnnn..........................",
 	".kkkkkkkkkkkkkkkkkkk...............f..gggg..ooooooooooooooooooooooooooooooooooooooooooooooooooooo...",
 	"...................................f..ggggggiiiii...mmm.............................................",
-	".p.q.rrrrrrrrrsttttttttttttttttttttttttttttttsssssssssssssssssssssssssssssssssssssss..............",
-	"...p.b.uuuuuuus.ggggg.ghh.ivwww.hh.www...............................................s..............",
+	".p.q.rrrrrrrrrsttttttttttttttttttttttttttttttttsssssssssssssssssssssssssssssssssssssss..............",
+	"...p.b.uuuuuuus.ggggg..hh.ivwww.hh.www...............................................s..............",
 	".....v.xxx.yyys......................................................................s..............",
 	"zzzzzvzxxxzyyys.yyyyyyyxxxxx.........................................................s..............",
 	".....ooooooooos.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA................................snnnnn.........",
@@ -77,11 +78,11 @@ local CONFIRM_MASK = {
 	"..............ssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss..............",
 	"...................................f..gggghhhh....mmmmmmm..lll...mmmmmm.............................",
 	"...................................f..gggggghhhhhh.iiivlllllll.vvvvvvvvv.iiiiivllllll.ivlllll.......",
-	"...................................f..gggg..........................................................",
-	"...................................f..gggg..........................................................",
-	"...................................f..ggggnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn...................",
-	"...................................f..gggghhhh....mmmmmmm..llll...mmmm..............................",
-	"DDDDDDDDEEEEEEEEEEEEEFFFFFFEEGGGEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEHHHHIIIIJKLKKKKM",
+	"...................................fNNgggg..........................................................",
+	"...................................fNNgggg..........................................................",
+	"...................................fNNggggnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn...................",
+	"...................................fNNgggghhhh....mmmmmmm..llll...mmmm..............................",
+	"DDDDDDDDEEEEEEEEEEEEEFFFFFFEEGGGEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEHHHHHIIIIJKLKKKKM",
 }
 
 local function padded(lines)
@@ -116,10 +117,10 @@ local CONFIRM_TEXT = padded({
 	"              ╰──────────────────────────────────────────────────────────────────────╯",
 	"                                   ┃    7 func (i Invoice) Due() string {",
 	'                                   ┃    8 ▏ return fmt.Sprintf("due %s", money.Format(i.Total()))',
-	"                                   ┃    9 }",
-	"                                   ┃   10",
-	"                                   ┃   11 // Paid reports whether nothing is due.",
-	"                                   ┃   12 func (i Invoice) Paid() bool {",
+	"                                   ┃┃   9 }",
+	"                                   ┃┃  10",
+	"                                   ┃┃  11 // Paid reports whether nothing is due.",
+	"                                   ┃┃  12 func (i Invoice) Paid() bool {",
 	" NORMAL  ⎇ feat/tax  ◆ #482  ◆ 3                                                    ◆ 0 ◆ 1 ◆ ◆ go ◆",
 })
 
@@ -132,8 +133,12 @@ THREAD_MASK[18] = "..............s.BBBBBBBBBBBBBB...............................
 THREAD_MASK[22] = "..............s.......................CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC.s.............."
 
 local THREAD_TEXT = vim.deepcopy(CONFIRM_TEXT)
-THREAD_TEXT[18] = padded({ "              │ Write a reply…                                                       │              " })[1]
-THREAD_TEXT[22] = padded({ "              │                       Reply ↩ · Resolve R · Open on web gx · Close q │              " })[1]
+THREAD_TEXT[18] = padded({
+	"              │ Write a reply…                                                       │              ",
+})[1]
+THREAD_TEXT[22] = padded({
+	"              │                       Reply ↩ · Resolve R · Open on web gx · Close q │              ",
+})[1]
 
 T["pr: Thread window matches the approved render"] = function()
 	child.type_keys("<CR>")
