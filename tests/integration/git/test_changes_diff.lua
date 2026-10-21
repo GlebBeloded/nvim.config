@@ -591,6 +591,50 @@ T["git: Changes panel Enter opens the file"] = function()
 	})
 end
 
+T["git: Changes panel Enter while the diff loads enters it once shown"] = function()
+	local root, manifest = F.copy("dirty", vim.fn.tempname() .. "/dirty")
+	open_changes(root, "a.txt")
+	observe_show()
+	child.lua([[
+		HeldDiffLoads = {}
+		local git = require("gleb.git.changes.git")
+		local load_diff = git.load_diff
+		git.load_diff = function(load_root, row, callback)
+			load_diff(load_root, row, function(...)
+				table.insert(HeldDiffLoads, { callback = callback, args = vim.F.pack_len(...) })
+			end)
+		end
+	]])
+	cursor_before("b.txt")
+	child.type_keys("j")
+	eq(child.wait("#HeldDiffLoads == 1", async_timeout()), true)
+
+	child.type_keys("<CR>")
+	child.lua([[
+		local held = HeldDiffLoads[1]
+		held.callback(vim.F.unpack_len(held.args))
+	]])
+	wait_for_shows(1)
+
+	local result = child.lua_get([[(function()
+		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		return {
+			current = vim.fs.normalize(vim.api.nvim_buf_get_name(0)),
+			current_win = vim.api.nvim_get_current_win(),
+			right_win = panel.diff_view.right_win,
+			cursor = vim.api.nvim_win_get_cursor(panel.diff_view.right_win)[1],
+			shows = #DiffShows,
+		}
+	end)()]])
+	eq(result, {
+		current = assert(vim.uv.fs_realpath(vim.fs.joinpath(root, "b.txt"))),
+		current_win = result.right_win,
+		right_win = result.right_win,
+		cursor = manifest.hunks["b.txt"][1],
+		shows = 1,
+	})
+end
+
 T["git: Changes panel file is an independent normal buffer"] = function()
 	local root = F.copy("dirty", vim.fn.tempname() .. "/dirty")
 	open_changes(root, "a.txt")

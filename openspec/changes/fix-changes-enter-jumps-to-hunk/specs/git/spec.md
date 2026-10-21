@@ -30,6 +30,10 @@ Under one root and directory, a changed file that the file-tree nesting rules (`
 - **WHEN** the diff view shows `b.txt` of the `dirty` fixture and `<CR>` is pressed in normal mode on the `b.txt` panel row
 - **THEN** the `gleb-diff` view remains, its right window editing `b.txt` is current with its cursor on the first line of the first change, and the `gleb-changes` window is still open
 
+#### Scenario: Changes panel Enter while the diff loads enters it once shown
+- **WHEN** the Local tab starts loading the diff of `b.txt` and `<CR>` is pressed in normal mode on its file row before that load finishes
+- **THEN** once the diff is shown, its right window editing `b.txt` is current with its cursor on the first line of the first change
+
 #### Scenario: Changes panel file is an independent normal buffer
 - **WHEN** the diff view shows `b.txt` of the `dirty` fixture and `<CR>` is pressed in normal mode on the `b.txt` panel row
 - **THEN** the current buffer is listed, has empty `buftype`, has the absolute path of `b.txt`, and remains a valid file buffer after the Changes panel closes

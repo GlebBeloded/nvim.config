@@ -43,6 +43,7 @@ local augroup = vim.api.nvim_create_augroup("gleb_changes", { clear = true })
 ---@field diff_view? gleb.diff.view.View
 ---@field diff_path? string
 ---@field diff_pending_path? string
+---@field diff_pending_enter? boolean
 ---@field initial_selected_path? string
 ---@field review_on_refresh boolean
 ---@field loaded_buffers table<integer, boolean>
@@ -467,6 +468,13 @@ end
 
 ---@param view ChangesView
 ---@return nil
+local function clear_pending_diff(view)
+	view.diff_pending_path = nil
+	view.diff_pending_enter = nil
+end
+
+---@param view ChangesView
+---@return nil
 function M.close_diff(view)
 	if not view.diff_view then
 		return
@@ -474,7 +482,7 @@ function M.close_diff(view)
 	require("gleb.diff.view").close(view.diff_view)
 	view.diff_view = nil
 	view.diff_path = nil
-	view.diff_pending_path = nil
+	clear_pending_diff(view)
 	view.editor_win = windows.eligible_editor(view, true)
 end
 
@@ -502,8 +510,8 @@ local function show_diff(view, row, generation, selection_generation, focus_righ
 			if loaded_buf then
 				unload_clean_buffer(loaded_buf)
 			end
+			clear_pending_diff(view)
 			if selected then
-				view.diff_pending_path = nil
 				reload_outdated_diff(view, focus_right)
 			end
 			return
@@ -518,7 +526,8 @@ local function show_diff(view, row, generation, selection_generation, focus_righ
 			M.next_file(view)
 		end
 		local shown = diff.show(editor, spec)
-		view.diff_pending_path = nil
+		local enter_pending = enter_diff or view.diff_pending_enter
+		clear_pending_diff(view)
 		if not shown then
 			if view.diff_view then
 				diff.close(view.diff_view)
@@ -530,7 +539,7 @@ local function show_diff(view, row, generation, selection_generation, focus_righ
 		end
 		view.diff_view = shown
 		view.diff_path = diff_key(view, row)
-		if enter_diff then
+		if enter_pending then
 			enter_shown_diff(view, shown)
 		elseif focus_right and vim.api.nvim_win_is_valid(shown.right_win) then
 			vim.api.nvim_set_current_win(shown.right_win)
@@ -553,6 +562,9 @@ request_diff = function(view, row, focus_right, enter_diff)
 	end
 	local key = diff_key(view, row)
 	if key == view.diff_pending_path then
+		if enter_diff then
+			view.diff_pending_enter = true
+		end
 		return
 	end
 	if key == view.diff_path then
@@ -565,6 +577,7 @@ request_diff = function(view, row, focus_right, enter_diff)
 	end
 	view.selection_generation = view.selection_generation + 1
 	view.diff_pending_path = key
+	view.diff_pending_enter = enter_diff or nil
 	show_diff(view, row, view.generation, view.selection_generation, focus_right, enter_diff)
 end
 
@@ -576,7 +589,7 @@ end
 local function drop_pending_diff(view, row)
 	if view.diff_pending_path and (not row or diff_key(view, row) ~= view.diff_pending_path) then
 		view.selection_generation = view.selection_generation + 1
-		view.diff_pending_path = nil
+		clear_pending_diff(view)
 	end
 end
 
@@ -787,8 +800,8 @@ function M.close(view)
 		require("gleb.diff.view").close(view.diff_view)
 		view.diff_view = nil
 		view.diff_path = nil
-		view.diff_pending_path = nil
 	end
+	clear_pending_diff(view)
 	for buf in pairs(view.loaded_buffers) do
 		unload_clean_buffer(buf)
 	end
@@ -817,7 +830,7 @@ function M.open_file(view, row)
 	end
 	view.diff_timer:stop()
 	view.selection_generation = view.selection_generation + 1
-	view.diff_pending_path = nil
+	clear_pending_diff(view)
 	if view.diff_view then
 		require("gleb.diff.view").close(view.diff_view)
 		view.diff_view = nil
@@ -997,7 +1010,7 @@ function M.activate_tab(panel, id)
 	if panel.active_tab ~= id then
 		panel.diff_timer:stop()
 		panel.selection_generation = panel.selection_generation + 1
-		panel.diff_pending_path = nil
+		clear_pending_diff(panel)
 	end
 	panel.active_tab = id
 	if id ~= "branch" then

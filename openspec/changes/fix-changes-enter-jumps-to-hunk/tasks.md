@@ -16,6 +16,13 @@ Scenarios: `git: Branch tab Enter opens the working file`, `git: Branch commit E
 - [x] 3.2 Route Branch and commit file rows through the same diff-entry operation without changing their editable or read-only buffers
 - [x] 3.3 Run `make test FILE=tests/integration/git/test_changes_tabs.lua CASE="Branch.*Enter"` and see both scenarios pass
 
+## 4. Preserve Enter while a diff is loading
+Scenarios: `git: Changes panel Enter while the diff loads enters it once shown`
+- [x] 4.1 Add a deterministic Local-tab regression that holds the diff callback, presses the real `<CR>` mapping, and waits for the show event
+- [x] 4.2 Carry the Enter intent through the matching in-flight request and clear it whenever that request is dropped
+- [x] 4.3 Run the owned case five times, its file once, and its directory once
+
 ## Agent decisions
 
 - Treat only a right buffer with empty `buftype` as an independent working-tree buffer, preserving commit-side read-only buffers unchanged.
+- Store Enter as a boolean on the matching pending diff request so Local, Branch and commit loads share one race-safe path.
