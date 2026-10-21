@@ -270,6 +270,21 @@ T["pr: q keeps the draft for the next open"] = function()
 	eq(thread_windows()[2].lines, { "Draft", "", "" })
 end
 
+T["pr: Focus leaving keeps the draft and closes the thread window"] = function()
+	open_review()
+	open_thread_at(22)
+	child.type_keys("<CR>Draft<Esc>")
+	child.lua([[(function()
+		local state = require("gleb.pr.thread_window").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		vim.api.nvim_set_current_win(state.origin_win)
+	end)()]])
+	assert(child.wait([[#vim.api.nvim_list_wins() == 1]], timeout()), "focus leaving did not close the thread window")
+	eq(#thread_windows(), 0)
+
+	open_thread_at(22)
+	eq(thread_windows()[2].lines, { "Draft", "", "" })
+end
+
 T["pr: Resolved thread offers Unresolve"] = function()
 	open_review()
 	open_thread_at(11)

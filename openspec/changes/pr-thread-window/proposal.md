@@ -53,6 +53,7 @@ thread. Or to resolve thread. With hints on which button does what. Also that sh
   - New: `lua/gleb/pr/thread_window.lua`.
   - Changed:
     - `lua/gleb/pr/{actions,comments_tab,highlights}.lua` (the window and confirm actions, Enter, colours);
+    - `lua/gleb/pr/init.lua` (silent forced refresh after a confirmed thread mutation);
     - `settings/keymap.json`: `pr.thread_send` Enter, `pr.thread_resolve` R, `pr.thread_open_web` gx,
       `pr.thread_close` q, `pr.confirm_yes` y, and `pr.confirm_no` n and Esc, all view-scoped.
 - Tests:

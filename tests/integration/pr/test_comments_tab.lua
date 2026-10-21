@@ -458,6 +458,14 @@ T["pr: Enter on an unmapped thread shows its diff hunk"] = function()
 	)
 	eq(
 		child.lua_get([[(function()
+			local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+			local hunk_buf = vim.api.nvim_win_get_buf(panel.editor_win)
+			return vim.api.nvim_buf_get_lines(hunk_buf, 0, -1, false)
+		end)()]]),
+		vim.split(diff_hunk, "\n", { plain = true })
+	)
+	eq(
+		child.lua_get([[(function()
 			local thread = require("gleb.pr.thread_window").state.by_tab[vim.api.nvim_get_current_tabpage()]
 			return vim.api.nvim_buf_get_lines(thread.messages_buf, 0, 3, false)
 		end)()]]),

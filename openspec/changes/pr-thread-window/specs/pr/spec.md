@@ -34,6 +34,10 @@ The thread window's normal-mode keys SHALL come from `pr.thread_*` actions scope
 - **WHEN** `Draft` is typed in the reply area, `<Esc>` and `q` are pressed, then the `pr.open_thread` action runs again on line 22
 - **THEN** no `gleb-pr-thread` window existed after `q`, and the reopened reply area holds `Draft`
 
+#### Scenario: Focus leaving keeps the draft and closes the thread window
+- **WHEN** `Draft` is typed in the reply area and focus moves to the editor window, then the `pr.open_thread` action runs again on line 22
+- **THEN** no `gleb-pr-thread` window existed after focus left, and the reopened reply area holds `Draft`
+
 #### Scenario: Resolved thread offers Unresolve
 - **WHEN** the cursor is on line 11 and the `pr.open_thread` action runs
 - **THEN** the title ends with `· resolved` and the hint row reads `Reply ↩ · Unresolve R · Open on web gx · Close q`

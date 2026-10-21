@@ -714,7 +714,6 @@ function M.open(review, thread)
 	})
 	vim.api.nvim_create_autocmd("WinLeave", {
 		group = group,
-		pattern = vim.tbl_map(tostring, { messages_win, reply_win, hint_win }),
 		callback = function()
 			vim.schedule(function()
 				if state.closing then
