@@ -216,6 +216,7 @@ T["find-action: Catalog rows use standalone Title Case labels"] = function()
 		["diff.close"] = { "Close Diff", "Git | Diff" },
 		["diff.expand_fold"] = { "Expand Fold", "Git | Diff" },
 		["diff.jump_move"] = { "Jump to Other End of Move", "Git | Diff" },
+		["diff.jump_to_source"] = { "Jump to Source", "Git | Diff" },
 		["diff.next_change"] = { "Next Change", "Git | Diff" },
 		["diff.next_file"] = { "Next File", "Git | Diff" },
 		["diff.prev_change"] = { "Previous Change", "Git | Diff" },
