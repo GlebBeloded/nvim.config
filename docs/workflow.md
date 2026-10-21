@@ -29,8 +29,6 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 
 ## Loop lessons
 
-- Bind debounced selection callbacks to the tab that scheduled them, and defer only data-dependent review work so tab focus changes synchronously without stale rows.
-- Name every main-spec contract pinned by newly shared symbols in Impact, with the concrete reason its behavior remains unchanged.
 - When a base-change event invalidates an in-flight forced fetch, queue the replacement and carry its force intent so the stale callback cannot lose both the refetch and notification.
 - Screen tests of approved Go captures must keep gopls off (an in-process fake client gives the "LSP ok" chip): its semantic tokens recolour Tree-sitter's groups once it loads the module, so masks fail only on runs where gopls is fast.
 - `:edit` of the file a window already shows re-reads it (BufRead, LSP reattach, ufo refold) and moves the view after the cursor was placed; edit only when the window shows another file.
@@ -44,6 +42,8 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - Use an unpatterned WinLeave autocmd with a scheduled focused-window containment check; WinLeave patterns match buffer names, not window IDs.
 - When re-rooting flushes outgoing expansion state before loading incoming state, hold the second state-file read to test first-paint ordering deterministically.
 - Scale child-process exit waits with host load; a fixed five-second `jobwait` can report `-1` after the UI has correctly initiated shutdown.
+- Pass mapped locations through UI entry points; API line numbers cannot safely index an edited working buffer.
+- Resolve cursor-based actions from a usable tab window when their launcher is a nofile panel.
 
 ## The loop
 
