@@ -1079,7 +1079,7 @@ T["git: Tab actions are in the catalog"] = function()
 			(function()
 				local actions = require("gleb.actions")
 				local catalog = actions.state.applicator.catalog
-				local result = {}
+				local result = { copy_commit_url_absent = catalog:get("changes.copy_commit_url") == nil }
 				for _, id in ipairs({
 					"changes.show_local",
 					"changes.show_branch",
@@ -1098,6 +1098,7 @@ T["git: Tab actions are in the catalog"] = function()
 			end)()
 		]]),
 		{
+			copy_commit_url_absent = true,
 			["changes.show_local"] = { title = "Show Local Changes", category = "View | Tool Windows" },
 			["changes.show_branch"] = { title = "Show Branch Changes", category = "View | Tool Windows" },
 			["changes.show_branch_commits"] = {

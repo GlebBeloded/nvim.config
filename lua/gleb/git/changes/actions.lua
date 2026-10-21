@@ -8,19 +8,6 @@ local function run(name)
 	end
 end
 
----@param ctx gleb.ActionContext
----@return boolean
-local function branch_commit_selected(ctx)
-	local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
-	local row = panel and panel.rows[ctx.cursor[1]]
-	return panel ~= nil
-		and panel.win == ctx.win
-		and panel.active_tab == "branch"
-		and panel.commit_view
-		and row ~= nil
-		and row.kind == "commit"
-end
-
 ---@type gleb.Action[]
 local actions = {
 	{
@@ -65,14 +52,6 @@ local actions = {
 		category = "Changes",
 		ft = "gleb-changes",
 		run = run("toggle_commits"),
-	},
-	{
-		id = "changes.copy_commit_url",
-		title = "Copy Commit URL",
-		category = "Changes",
-		ft = "gleb-changes",
-		when = branch_commit_selected,
-		run = run("copy_commit_url"),
 	},
 	{
 		id = "changes.toggle_stage",
