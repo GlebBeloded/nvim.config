@@ -442,7 +442,7 @@ local function branch_diff_context(view, row)
 	return context
 end
 
---- Replace the panel's own diff in place: a committed diff has no editor-eligible pane to reuse.
+--- Replace the panel's owned diff in place, including one whose right side is a working buffer.
 ---@param view ChangesView
 ---@return integer
 local function diff_target(view)

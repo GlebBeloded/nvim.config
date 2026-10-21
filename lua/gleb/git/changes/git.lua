@@ -181,11 +181,11 @@ end
 ---@field parent? string
 ---@field subject? string
 
---- Load a committed Branch-tab comparison without using a working-tree buffer.
+--- Load a Branch-tab comparison, using the working-tree buffer for a Branch file row.
 ---@param root string
 ---@param row ChangesRow
 ---@param context ChangesBranchDiffContext
----@param callback fun(spec: gleb.diff.view.Spec)
+---@param callback fun(spec: gleb.diff.view.Spec, loaded_buf: integer?)
 ---@return nil
 function M.load_branch_diff(root, row, context, callback)
 	local relpath = assert(row.path, "file row path missing")
@@ -193,15 +193,37 @@ function M.load_branch_diff(root, row, context, callback)
 	local left_path = row.orig or relpath
 	local left_revision = context.parent or context.merge_base
 	local right_revision = context.commit or "HEAD"
+	local working_tree = context.commit == nil
 	local left_result = row.status == "added" and { code = 0, stdout = "" } or nil
-	local right_result = row.status == "deleted" and { code = 0, stdout = "" } or nil
+	local right_result = not working_tree and row.status == "deleted" and { code = 0, stdout = "" } or nil
 
 	local function finish()
 		if not left_result or not right_result then
 			return
 		end
 		local left_text = left_result.stdout or ""
-		local right_text = right_result.stdout or ""
+		local right = working_tree and {} or text_lines(right_result.stdout or "")
+		local right_buf
+		local loaded_buf
+		if working_tree then
+			local deleted = row.status == "deleted"
+			local binary = (right_result.stdout or ""):match("^%-\t%-\t") ~= nil
+			if not deleted then
+				if binary then
+					right = readonly_file_lines(path)
+				else
+					right_buf = vim.fn.bufnr(path, false)
+					if right_buf == -1 then
+						right_buf = vim.fn.bufadd(path)
+					end
+					if not vim.api.nvim_buf_is_loaded(right_buf) then
+						loaded_buf = right_buf
+					end
+					vim.fn.bufload(right_buf)
+					right = vim.api.nvim_buf_get_lines(right_buf, 0, -1, false)
+				end
+			end
+		end
 		local left_label
 		local right_label
 		if context.commit then
@@ -209,20 +231,21 @@ function M.load_branch_diff(root, row, context, callback)
 			right_label = context.commit:sub(1, 7) .. " · " .. assert(context.subject, "Commit subject missing")
 		else
 			left_label = context.merge_base:sub(1, 7) .. " · " .. context.base_name
-			right_label = context.head:sub(1, 7) .. " · HEAD"
+			right_label = "Your version"
 		end
 		callback({
 			path = path,
 			root = root,
 			relpath = relpath,
 			left = text_lines(left_text),
-			right = text_lines(right_text),
+			right = right,
+			right_buf = right_buf,
 			actionable = false,
 			committed = true,
 			head_final_newline = left_text:sub(-1) == "\n",
 			filetype = vim.filetype.match({ filename = path }) or "",
 			labels = { left = left_label, right = right_label },
-		})
+		}, loaded_buf)
 	end
 
 	if not left_result then
@@ -232,7 +255,10 @@ function M.load_branch_diff(root, row, context, callback)
 		end)
 	end
 	if not right_result then
-		run_git({ "git", "show", right_revision .. ":" .. relpath }, root, function(result)
+		local command = working_tree
+				and { "git", "--literal-pathspecs", "diff", "--numstat", left_revision, "--", relpath }
+			or { "git", "show", right_revision .. ":" .. relpath }
+		run_git(command, root, function(result)
 			right_result = result
 			finish()
 		end)

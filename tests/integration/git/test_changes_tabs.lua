@@ -740,13 +740,13 @@ T["git: Branch tab shows the merge-base diff"] = function()
 
 	local shown = child.lua_get("BranchDiffShows[#BranchDiffShows]")
 	eq(shown.left, git_lines(root, "4ccefde:internal/billing/invoice.go"))
-	eq(shown.right, git_lines(root, "HEAD:internal/billing/invoice.go"))
+	eq(shown.right, vim.fn.readfile(vim.fs.joinpath(root, "internal/billing/invoice.go")))
 	eq({ shown.labels, shown.committed, shown.actionable }, {
-		{ left = "4ccefde · main", right = "e325463 · HEAD" },
+		{ left = "4ccefde · main", right = "Your version" },
 		true,
 		false,
 	})
-	eq(shown.right_buf, nil)
+	eq(shown.right_buf, child.lua_get("vim.fn.bufnr(...)", { vim.fs.joinpath(root, "internal/billing/invoice.go") }))
 	local buffers = child.lua_get([=[(function()
 		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
 		return {
@@ -755,7 +755,8 @@ T["git: Branch tab shows the merge-base diff"] = function()
 			working = vim.fs.joinpath(panel.root, "internal/billing/invoice.go"),
 		}
 	end)()]=])
-	assert(buffers.left ~= buffers.working and buffers.right ~= buffers.working, "Branch diff used the working buffer")
+	assert(buffers.left ~= buffers.working, "Branch diff used the working buffer on the left")
+	eq(buffers.right, buffers.working)
 end
 
 T["git: Branch tab shows a commit's diff"] = function()
@@ -770,6 +771,7 @@ T["git: Branch tab shows a commit's diff"] = function()
 	eq(shown.left, git_lines(root, "e325463^:internal/billing/invoice.go"))
 	eq(shown.right, git_lines(root, "e325463:internal/billing/invoice.go"))
 	eq(shown.labels, { left = "07cb52e · parent", right = "e325463 · wire tax into Total" })
+	eq(shown.right_buf, nil)
 end
 
 T["git: Branch tab shows an added file"] = function()
@@ -780,7 +782,9 @@ T["git: Branch tab shows an added file"] = function()
 
 	local shown = child.lua_get("BranchDiffShows[#BranchDiffShows]")
 	eq(shown.left, {})
-	eq(shown.right, git_lines(root, "HEAD:internal/billing/tax.go"))
+	eq(shown.right, vim.fn.readfile(vim.fs.joinpath(root, "internal/billing/tax.go")))
+	eq(shown.right_buf, child.lua_get("vim.fn.bufnr(...)", { vim.fs.joinpath(root, "internal/billing/tax.go") }))
+	eq(shown.labels.right, "Your version")
 end
 
 T["git: Branch tab ]f steps through the branch files"] = function()

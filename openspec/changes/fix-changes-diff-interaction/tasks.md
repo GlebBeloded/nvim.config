@@ -26,10 +26,10 @@ Scenarios: `diff: Diff view show starts on the first change`, `diff: Diff view s
 
 Scenarios: `git: Branch tab shows the merge-base diff`, `git: Branch tab shows a commit's diff`, `git: Branch tab shows an added file`, `git: Branch tab ]f steps through the branch files`, `git: Branch tab Enter opens the working file`, `git: Branch tab ignores staging keys`, `git: Branch diff right pane is the working file`, `git: Branch diff edits are saved and re-diffed`
 
-- [ ] 4.1 Update the Branch tab diff scenarios in `tests/integration/git/test_changes_tabs.lua` to the new bodies (keep their names) and write the two new ones in `tests/integration/git/test_changes_diff_interaction.lua`; see them fail
-- [ ] 4.2 In `lua/gleb/git/changes/git.lua` build a Branch file spec from the merge-base text and the working-tree file loaded as `load_diff` loads it (return the loaded buffer; deleted or binary as read-only lines), right label `Your version`, `committed = true`, not actionable; commit rows keep `<commit>^` → `<commit>` lines (Decision 1)
-- [ ] 4.3 In `lua/gleb/git/changes/view.lua` record a Branch-loaded buffer in `loaded_buffers` like a Local one and keep `diff_target` reusing the owned view
-- [ ] 4.4 Run `tests/integration/git/test_changes_tabs.lua` and `tests/integration/git/test_changes_diff_interaction.lua` and see them pass
+- [x] 4.1 Update the Branch tab diff scenarios in `tests/integration/git/test_changes_tabs.lua` to the new bodies (keep their names) and write the two new ones in `tests/integration/git/test_changes_diff_interaction.lua`; see them fail
+- [x] 4.2 In `lua/gleb/git/changes/git.lua` build a Branch file spec from the merge-base text and the working-tree file loaded as `load_diff` loads it (return the loaded buffer; deleted or binary as read-only lines), right label `Your version`, `committed = true`, not actionable; commit rows keep `<commit>^` → `<commit>` lines (Decision 1)
+- [x] 4.3 In `lua/gleb/git/changes/view.lua` record a Branch-loaded buffer in `loaded_buffers` like a Local one and keep `diff_target` reusing the owned view
+- [x] 4.4 Run `tests/integration/git/test_changes_tabs.lua` and `tests/integration/git/test_changes_diff_interaction.lua` and see them pass
 
 ## 5. Moving and editing in the panes
 
@@ -60,3 +60,7 @@ Scenarios: `git: Real key presses move, scroll and edit in the Branch diff`
 
 - [ ] 8.1 Write the scenario in `tests/e2e/git/` (real key presses through Alacritty and zellij, as the existing git e2e cases do) and see it fail on the current code; if it passes before the fix, record what differs from the user's report under `## Agent decisions`
 - [ ] 8.2 Run `make e2e` (sandbox VM only) after tasks 2-4 and see it pass
+
+## Agent decisions
+
+- Detect a Branch working-tree binary with `git diff --numstat <merge-base> -- <path>`, so the read-only fallback covers both committed and uncommitted content.

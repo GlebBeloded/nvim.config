@@ -52,8 +52,11 @@ local function wait_for_diff(active, right_label)
 				[[(function()
 					local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
 					return panel and panel.tabs_ready and panel.active_tab == %q and panel.diff_view ~= nil
+						and panel.diff_path ~= nil and panel.diff_path:sub(1, #%q + 1) == %q .. ":"
 						and (%q == "" or panel.diff_view.labels.right == %q)
 				end)()]],
+				active,
+				active,
 				active,
 				right_label or "",
 				right_label or ""
@@ -68,7 +71,7 @@ local function open_branch_diff()
 	child.type_keys("<A-g>")
 	wait_for_diff("local")
 	child.type_keys("<A-g>")
-	wait_for_diff("branch", "e325463 · HEAD")
+	wait_for_diff("branch", "Your version")
 end
 
 ---@param id string
@@ -215,6 +218,38 @@ T["git: Branch diff right pane is the working file"] = function()
 	eq(state.filetype, "go")
 	eq(state.lines, vim.fn.readfile(vim.fs.joinpath(root, "internal/billing/invoice.go")))
 	assert(vim.tbl_contains(state.starts, 11), "uncommitted change was absent")
+end
+
+T["git: Branch diff edits are saved and re-diffed"] = function()
+	open_branch_diff()
+	local before = view_state()
+	child.api.nvim_set_current_win(before.right_win)
+	child.lua([[BranchEditPath, BranchEditRightWin, BranchExpectedHead = ...]], {
+		vim.fs.joinpath(root, "internal/billing/invoice.go"),
+		before.right_win,
+		vim.split(H.git(root, { "show", "HEAD:internal/billing/invoice.go" }):gsub("\n$", ""), "\n", { plain = true }),
+	})
+	child.cmd([[11s/ \/\/ invoice number//]])
+	child.cmd("write")
+
+	assert(
+		child.wait(
+			[[(function()
+				local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+				if not panel or panel.active_tab ~= "branch" or panel.diff_view.right_win ~= BranchEditRightWin then
+					return false
+				end
+				local disk = vim.fn.readfile(BranchEditPath)
+				local starts = vim.iter(panel.diff_view.fragments):map(function(fragment)
+					return fragment.start2 + 1
+				end):totable()
+				return vim.deep_equal(disk, BranchExpectedHead)
+					and vim.deep_equal(starts, { 9, 18, 22, 32 })
+			end)() ]],
+			async_timeout()
+		),
+		"Saved Branch edit did not refresh its owned diff"
+	)
 end
 
 T["git: Commit diff is read-only and navigable"] = function()
