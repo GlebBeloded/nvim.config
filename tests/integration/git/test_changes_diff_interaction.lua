@@ -91,6 +91,26 @@ local function open_row(id)
 	end
 end
 
+local function open_commit_diff()
+	open_branch_diff()
+	child.type_keys("c", "<Esc>")
+	assert(
+		child.wait(
+			[[(function()
+				local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+				return panel and panel.commit_view
+					and vim.iter(panel.rows):any(function(row)
+						return row.id == "branch:commit:e325463:file:internal/billing/invoice.go"
+					end)
+			end)()]],
+			async_timeout()
+		),
+		"Branch commits did not load"
+	)
+	open_row("branch:commit:e325463:file:internal/billing/invoice.go")
+	wait_for_diff("branch", "e325463 · wire tax into Total")
+end
+
 local function view_state()
 	return child.lua_get([[(function()
 		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
@@ -107,6 +127,16 @@ local function view_state()
 	end)()]])
 end
 
+T["git: Changes Local diff starts on the first change"] = function()
+	child.type_keys("<A-g>")
+	wait_for_diff("local")
+
+	local state = view_state()
+	eq(state.current_win, state.panel_win)
+	eq(state.right_cursor, 11)
+	eq(state.left_cursor, 11)
+end
+
 T["git: Changes Branch diff starts on the first change"] = function()
 	open_branch_diff()
 
@@ -114,6 +144,46 @@ T["git: Changes Branch diff starts on the first change"] = function()
 	eq(state.current_win, state.panel_win)
 	eq(state.right_cursor, 9)
 	eq(state.left_cursor, 9)
+end
+
+T["git: Changes commit diff starts on the first change"] = function()
+	open_commit_diff()
+
+	local state = view_state()
+	eq(state.current_win, state.panel_win)
+	eq(state.right_cursor, 9)
+	eq(state.left_cursor, 9)
+end
+
+T["git: Changes ]f starts the next file on its first change"] = function()
+	open_branch_diff()
+	local right_win = view_state().right_win
+	child.api.nvim_set_current_win(right_win)
+	child.type_keys("]f")
+	assert(
+		child.wait(
+			[[(function()
+				local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+				return panel and panel.diff_view
+					and panel.diff_view.relpath == "internal/billing/invoice_test.go"
+			end)()]],
+			async_timeout()
+		),
+		"Next Branch file did not load"
+	)
+
+	local state = child.lua_get([[(function()
+		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
+		local view = panel.diff_view
+		return {
+			current_win = vim.api.nvim_get_current_win(),
+			right_win = view.right_win,
+			right_cursor = vim.api.nvim_win_get_cursor(view.right_win)[1],
+			first_change = view.fragments[1].start2 + 1,
+		}
+	end)()]])
+	eq(state.current_win, state.right_win)
+	eq(state.right_cursor, state.first_change)
 end
 
 T["git: Branch diff right pane is the working file"] = function()
@@ -148,23 +218,7 @@ T["git: Branch diff right pane is the working file"] = function()
 end
 
 T["git: Commit diff is read-only and navigable"] = function()
-	open_branch_diff()
-	child.type_keys("c", "<Esc>")
-	assert(
-		child.wait(
-			[[(function()
-				local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
-				return panel and panel.commit_view
-					and vim.iter(panel.rows):any(function(row)
-						return row.id == "branch:commit:e325463:file:internal/billing/invoice.go"
-					end)
-			end)()]],
-			async_timeout()
-		),
-		"Branch commits did not load"
-	)
-	open_row("branch:commit:e325463:file:internal/billing/invoice.go")
-	wait_for_diff("branch", "e325463 · wire tax into Total")
+	open_commit_diff()
 	local before = child.lua_get([[(function()
 		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
 		return vim.api.nvim_buf_get_lines(panel.diff_view.right_buf, 0, -1, false)

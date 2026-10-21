@@ -18,9 +18,9 @@ Scenarios: `diff: Diff view draws a committed spec in purple`, `diff: Diff view 
 
 Scenarios: `diff: Diff view show starts on the first change`, `diff: Diff view shows in a given window without focus`, `git: Changes Local diff starts on the first change`, `git: Changes Branch diff starts on the first change`, `git: Changes commit diff starts on the first change`, `git: Changes ]f starts the next file on its first change`
 
-- [ ] 3.1 Write the scenarios (diff ones in `tests/integration/diff/test_view.lua`, git ones in `tests/integration/git/test_changes_diff_interaction.lua`) and see the new ones fail
-- [ ] 3.2 In `lua/gleb/diff/view/init.lua` `show`, place the right cursor on the first change as `navigate` would and the left on `layout.transfer_line`, without changing the current window (Decision 4); share the placement with `open`
-- [ ] 3.3 Run the two test files and `tests/integration/git/test_changes_diff.lua` and see them pass
+- [x] 3.1 Write the scenarios (diff ones in `tests/integration/diff/test_view.lua`, git ones in `tests/integration/git/test_changes_diff_interaction.lua`) and see the new ones fail
+- [x] 3.2 In `lua/gleb/diff/view/init.lua` `show`, place the right cursor on the first change as `navigate` would and the left on `layout.transfer_line`, without changing the current window (Decision 4); share the placement with `open`
+- [x] 3.3 Run the two test files and `tests/integration/git/test_changes_diff.lua` and see them pass
 
 ## 4. Branch diffs on the working-tree buffer
 

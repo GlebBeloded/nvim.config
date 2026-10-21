@@ -463,6 +463,20 @@ function M.navigate(view, win, step)
 	vim.api.nvim_win_set_cursor(win, { math.min(fragment[start_key] + 1, count), 0 })
 end
 
+---@param view gleb.diff.view.View
+local function place_first_change(view)
+	local first = view.fragments[1]
+	if not first then
+		return
+	end
+	local right_count = vim.api.nvim_buf_line_count(view.right_buf)
+	local right_line = math.min(first.start2 + 1, right_count)
+	local left_count = vim.api.nvim_buf_line_count(view.left_buf)
+	local left_line = math.max(1, math.min(layout.transfer_line(view.layout, "right", right_line), left_count))
+	vim.api.nvim_win_set_cursor(view.right_win, { right_line, 0 })
+	vim.api.nvim_win_set_cursor(view.left_win, { left_line, 0 })
+end
+
 ---@param spec gleb.diff.view.Spec
 ---@return gleb.diff.view.View?
 function M.open(spec)
@@ -480,11 +494,7 @@ function M.open(spec)
 	end
 	windows.open(view)
 	register(view)
-	local first = view.fragments[1]
-	if first then
-		local line = math.min(first.start2 + 1, math.max(#spec.right, 1))
-		vim.api.nvim_win_set_cursor(view.right_win, { line, 0 })
-	end
+	place_first_change(view)
 	return view
 end
 
@@ -502,6 +512,7 @@ function M.show(win, spec)
 	end
 	windows.show(view, win)
 	register(view)
+	place_first_change(view)
 	return view
 end
 
