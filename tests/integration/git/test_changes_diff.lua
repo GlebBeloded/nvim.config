@@ -5,7 +5,10 @@ local H = require("tests.helpers")
 local eq = MiniTest.expect.equality
 local child = H.new_child()
 
-local ASYNC_MS = 3000
+---@return integer
+local function async_timeout()
+	return math.floor(3000 * H.load_factor())
+end
 
 local function start()
 	child.start_config()
@@ -33,7 +36,7 @@ local function open_changes(root, selected)
 			local view = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
 			return view ~= nil and #view.rows > 0
 		end)()]],
-			ASYNC_MS
+			async_timeout()
 		),
 		true
 	)
@@ -79,7 +82,7 @@ local function cursor_before(path)
 end
 
 local function wait_for_shows(count)
-	eq(child.wait(("#DiffShows == %d"):format(count), ASYNC_MS), true)
+	eq(child.wait(("#DiffShows == %d"):format(count), async_timeout()), true)
 end
 
 ---@param path string
@@ -268,7 +271,7 @@ T["git: Changes panel submodule row has no diff"] = function()
 	cursor_before("vendor/library")
 
 	child.type_keys("j")
-	eq(child.wait("#Notifications == 1", ASYNC_MS), true)
+	eq(child.wait("#Notifications == 1", async_timeout()), true)
 
 	eq(child.lua_get("#DiffShows"), 0)
 	eq(child.lua_get("vim.fn.bufnr(..., false)", { vim.fs.joinpath(root, "vendor/library") }), -1)
@@ -337,7 +340,7 @@ T["git: Changes panel drops a stale diff result"] = function()
 	]])
 	cursor_before("a.txt")
 	child.type_keys("j")
-	eq(child.wait("#PendingDiffLoads == 1", ASYNC_MS), true)
+	eq(child.wait("#PendingDiffLoads == 1", async_timeout()), true)
 
 	child.lua([[
 		local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
@@ -347,14 +350,17 @@ T["git: Changes panel drops a stale diff result"] = function()
 	eq(
 		child.wait(
 			[[require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()].rows ~= RowsBeforeRefresh]],
-			ASYNC_MS
+			async_timeout()
 		),
 		true
 	)
 	cursor_before("b.txt")
 	child.type_keys("j")
 	eq(
-		child.wait([[vim.iter(PendingDiffLoads):any(function(load) return load.spec.relpath == "b.txt" end)]], ASYNC_MS),
+		child.wait(
+			[[vim.iter(PendingDiffLoads):any(function(load) return load.spec.relpath == "b.txt" end)]],
+			async_timeout()
+		),
 		true
 	)
 	child.lua([[vim.wait(100)]])
@@ -395,7 +401,7 @@ T["git: Changes panel skips an unchanged selection"] = function()
 			("require('gleb.git.changes').state.by_tab[vim.api.nvim_get_current_tabpage()].generation > %d"):format(
 				generation
 			),
-			ASYNC_MS
+			async_timeout()
 		),
 		true
 	)
@@ -462,7 +468,7 @@ T["git: Changes panel review replaces the dashboard"] = function()
 				local panel = require("gleb.git.changes").state.by_tab[vim.api.nvim_get_current_tabpage()]
 				return panel ~= nil and panel.diff_view ~= nil
 			end)()]],
-			ASYNC_MS
+			async_timeout()
 		),
 		true
 	)
@@ -687,7 +693,7 @@ T["git: Changes panel close preserves another diff view"] = function()
 		vim.api.nvim_set_current_win(panel.win)
 		return { other_left = other.left_win, other_right = other.right_win }
 	end)()]])
-	eq(child.wait("#HeldDiffLoads == 1", ASYNC_MS), true)
+	eq(child.wait("#HeldDiffLoads == 1", async_timeout()), true)
 	observe_show()
 	cursor_before("b.txt")
 	child.type_keys("j")
@@ -738,7 +744,7 @@ T["git: Project tree replaces the changes panel"] = function()
 		local action = assert(require("gleb.actions").state.applicator.catalog:get("file_tree.toggle"))
 		action.run(require("gleb.actions.context").capture())
 	]])
-	eq(child.wait([[vim.bo.filetype == "gleb-file-tree"]], ASYNC_MS), true)
+	eq(child.wait([[vim.bo.filetype == "gleb-file-tree"]], async_timeout()), true)
 
 	local result = child.lua_get([[(function()
 		local filetypes = {}
@@ -772,7 +778,7 @@ T["git: Project tree replaces a last-window changes panel"] = function()
 		local action = assert(require("gleb.actions").state.applicator.catalog:get("file_tree.toggle"))
 		action.run(require("gleb.actions.context").capture())
 	]])
-	eq(child.wait([[vim.bo.filetype == "gleb-file-tree"]], ASYNC_MS), true)
+	eq(child.wait([[vim.bo.filetype == "gleb-file-tree"]], async_timeout()), true)
 
 	local result = child.lua_get([[(function()
 		local filetypes = {}

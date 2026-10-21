@@ -348,6 +348,8 @@ T["git: Changes panel refresh reads avoid optional locks"] = function()
 		require("gleb.git.changes.git").refresh(..., function(result)
 			_G.changes_refresh_result = result
 		end)
+		-- refresh spawns its reads synchronously; plugins set up at VeryLazy (blink.cmp's checksum) spawn their own later
+		vim.system = original_system
 	]],
 		{ repo }
 	)

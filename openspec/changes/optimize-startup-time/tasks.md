@@ -26,12 +26,4 @@ Scenarios: `plugins: Warm real-config startup stays within budget`
 - Register Changes highlight ownership synchronously because colorscheme reloads expose its tab groups before the panel opens.
 - Load nvim-ufo on `FileType` as well as file events so scratch buffers given a filetype get their fold text.
 - Load the pull-request implementation on the first `BufReadPre`, `BufNewFile` or `BufWritePre` so thread peeks and write-triggered fetches see that buffer.
-
-## Stuck
-
-- `file-tree: Project tree shows files created outside Neovim` stays intermittently red, and not from this change: alone it failed 2 of 5 runs on this branch (`test_project_live.lua:494`, no fallback timer after two fallback scans) and 4 of 6 runs on base `auto` (its lines 457 and 461).
-- Cause is the host: `fseventsd` runs at 108% CPU with 7.8 GB RSS after 16 h of CPU time. A clean `nvim --clean -l` probe measured 30-860 ms per FSEvents `fs_event:stop()` (libuv blocks the main loop until its stream is rebuilt) and 312 ms event delivery, so late events confirm the stream early (line 494) or the `fee.go` colour misses its 1000 ms bound.
-- Same cause behind the hung `file-tree: Project tree re-roots once with saved expansion` (fails alone on base `auto` too): a 1999-folder re-root probe blocked the main loop for 18.5 s while it closed 256 watch handles, so the saved expansion read finished after the case's bound.
-- Whole-file runs of `test_project_live.lua`: 3 failures on this branch, 4 on base `auto`. The `tests/integration/file-tree` run failed 25 cases, all on watch readiness or delivery, or killed with the hung re-root worker. The git cases that failed only under load (`Branch base refreshes after a commit`, `Committed signs refresh after a commit`) use the same FSEvents `.git` watch and pass alone.
-- No production attempt: the watch code is unchanged by this change and meets the scenarios under a healthy FSEvents service; restart `fseventsd` (root) or reboot the host, then rerun the gate.
-- Earlier saved attempt `/Users/hlebbeladzed/.archon/workspaces/GlebBeloded/nvim.config/artifacts/runs/694c1dc1-5061-460f-bab9-c598588b8951/stuck-attempt-watch.diff` is already contained in HEAD.
+- Register pull-request highlight ownership synchronously because colorscheme reloads expose its thread-window groups before the deferred implementation loads.
