@@ -9,7 +9,8 @@ border is drawn in full, the title is the only border text, and the hints are ri
 last inner row under a joined rule. The picker's frame (`gleb.picker.frame`) already joins a hint band to its
 border, and the AI commit popup closes when focus leaves it.
 
-Mutations, verified by introspection on pgw.dev (GHES 3.22.1):
+The `pr-thread-mutations` dependency provides the mutation APIs, verified by introspection on pgw.dev
+(GHES 3.22.1):
 
 - `addPullRequestReviewThreadReply(input: { pullRequestReviewThreadId, body })` returns `comment`.
 - `resolveReviewThread(input: { threadId })` and `unresolveReviewThread(input: { threadId })` return `thread`.
@@ -94,16 +95,13 @@ octo.nvim (`lua/octo/gh/mutations.lua`) uses the same three, as data.
        after a reply, and `Reply sent`, `Thread resolved` or `Thread unresolved` at INFO;
      - on failure: `Reply failed: <message>`, `Resolve failed: <message>` or `Unresolve failed: <message>` at
        ERROR, the draft kept, and back to `normal`.
-5. **Mutations** (`gh.lua`, one-line documents like the queries):
-   - `mutation AddReply($id:ID!,$body:String!){addPullRequestReviewThreadReply(input:{pullRequestReviewThreadId:$id,body:$body}){comment{id}}}`
-   - `mutation ResolveThread($id:ID!){resolveReviewThread(input:{threadId:$id}){thread{id isResolved}}}`
-   - `mutation UnresolveThread($id:ID!){unresolveReviewThread(input:{threadId:$id}){thread{id isResolved}}}`
-
-   - argv: `gh api graphql -f query=<doc> -f id=<thread id>`, plus `-f body=<draft>` for a reply. The draft
-     is the reply buffer's lines joined with `\n`, trailing blank lines dropped.
-   - `-f` passes the text raw, so `@`, quotes and `$(…)` reach GitHub as typed. There is no shell.
-   - The env and timeout are the same as for the queries.
-   - The message is `gh.failure`'s text without its `PR comments unavailable: ` prefix.
+5. **Mutations** (the existing `gh.reply` and `gh.set_resolved` APIs from `pr-thread-mutations`).
+   - The draft is the reply buffer's lines joined with `\n`, with trailing blank lines dropped, and is passed
+     unchanged to `gh.reply(review, thread.id, draft, nil, callback)`.
+   - Resolve and unresolve pass the desired boolean to `gh.set_resolved(review, thread.id, resolved, nil,
+     callback)`.
+   - The helpers own GraphQL documents, argument-list transport, host selection, timeout and normalized failure
+     messages; this window owns confirmation, progress and refresh state.
    - `refresh` gains `opts.silent` (no INFO), used after a mutation.
 6. **Colours** (`pr/highlights.lua`, palette helpers): `PrConfirm` = yellow, bold, on `blend(yellow, bg0,
    0.8)`; `PrConfirmHint` = fg1 on the same; `PrReplyPlaceholder` = grey0, italic.
