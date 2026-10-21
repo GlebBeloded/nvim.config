@@ -29,7 +29,6 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 
 ## Loop lessons
 
-- Measure synchronous mapped actions from immediately before key execution until the mapping returns so final draw work stays inside the sample.
 - Gating fallback git-index polls on a confirmed watch event loses external staging made during the start gap; poll the index on every settling pass and gate only the pass count.
 - auto-save.nvim's 1 s debounced write of a test's buffer edit races any later measured :write; turn it off before editing when a case counts writes, git runs or redraws.
 - Rebuild async UI expectations inside the screen poll so queued physical keys cannot freeze pre-transition child state.
@@ -44,6 +43,7 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - Keep a real plugin-path behavior assertion when adding fallback coverage; isolate fallback setup in a sibling case.
 - Preserve the populated real-plugin path when adding fallback coverage; add the fallback as a separate child case.
 - Panel-owned Jump to Source must relinquish loaded-buffer ownership before panel teardown so the source window survives.
+- Pass `core.quotePath=false` when Git porcelain output supplies UTF-8 paths for subsequent byte-wise URL encoding.
 
 ## The loop
 
