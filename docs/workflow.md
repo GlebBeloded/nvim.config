@@ -44,6 +44,11 @@ and their layers are in [testing](testing.md). The loop's stages and gates are d
 - Gating fallback git-index polls on a confirmed watch event loses external staging made during the start gap; poll the index on every settling pass and gate only the pass count.
 - auto-save.nvim's 1 s debounced write of a test's buffer edit races any later measured :write; turn it off before editing when a case counts writes, git runs or redraws.
 - Rebuild async UI expectations inside the screen poll so queued physical keys cannot freeze pre-transition child state.
+- Use an unpatterned WinLeave autocmd with a scheduled focused-window containment check; WinLeave patterns match buffer names, not window IDs.
+- When re-rooting flushes outgoing expansion state before loading incoming state, hold the second state-file read to test first-paint ordering deterministically.
+- Scale child-process exit waits with host load; a fixed five-second `jobwait` can report `-1` after the UI has correctly initiated shutdown.
+- Pass mapped locations through UI entry points; API line numbers cannot safely index an edited working buffer.
+- Resolve cursor-based actions from a usable tab window when their launcher is a nofile panel.
 
 ## The loop
 

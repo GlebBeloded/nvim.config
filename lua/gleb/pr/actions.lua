@@ -22,6 +22,33 @@ local function thread_jumper(direction)
 	end
 end
 
+---@param ctx gleb.ActionContext
+---@return nil
+local function open_thread(ctx)
+	local navigate = require("gleb.pr.navigate")
+	local function usable(win)
+		local filetype = vim.bo[vim.api.nvim_win_get_buf(win)].filetype
+		return navigate.is_editor(win) or filetype == "gleb-diff" or vim.wo[win].diff
+	end
+	local win = ctx.win
+	if not usable(win) then
+		win = vim.iter(vim.api.nvim_tabpage_list_wins(vim.api.nvim_win_get_tabpage(ctx.win))):find(usable)
+	end
+	if not win then
+		vim.notify("No thread on this line", vim.log.levels.INFO)
+		return
+	end
+	require("gleb.pr.thread_window").open_at_cursor(win, vim.api.nvim_win_get_buf(win))
+end
+
+---@param name "send"|"resolve"|"open_web"|"close_current"|"confirm_yes"|"confirm_no"
+---@return fun()
+local function thread_action(name)
+	return function()
+		require("gleb.pr.thread_window")[name]()
+	end
+end
+
 ---@type gleb.Action[]
 local actions = {
 	{
@@ -41,6 +68,54 @@ local actions = {
 		title = "Previous Review Thread",
 		category = "Git | Pull Request",
 		run = thread_jumper(-1),
+	},
+	{
+		id = "pr.open_thread",
+		title = "Open Review Thread",
+		category = "Git | Pull Request",
+		run = open_thread,
+	},
+	{
+		id = "pr.thread_send",
+		title = "Reply to Thread",
+		category = "Git | Pull Request",
+		ft = "gleb-pr-thread",
+		run = thread_action("send"),
+	},
+	{
+		id = "pr.thread_resolve",
+		title = "Resolve or Unresolve Thread",
+		category = "Git | Pull Request",
+		ft = "gleb-pr-thread",
+		run = thread_action("resolve"),
+	},
+	{
+		id = "pr.thread_open_web",
+		title = "Open Thread on Web",
+		category = "Git | Pull Request",
+		ft = "gleb-pr-thread",
+		run = thread_action("open_web"),
+	},
+	{
+		id = "pr.thread_close",
+		title = "Close Thread",
+		category = "Git | Pull Request",
+		ft = "gleb-pr-thread",
+		run = thread_action("close_current"),
+	},
+	{
+		id = "pr.confirm_yes",
+		title = "Confirm",
+		category = "Git | Pull Request",
+		ft = "gleb-pr-confirm",
+		run = thread_action("confirm_yes"),
+	},
+	{
+		id = "pr.confirm_no",
+		title = "Cancel",
+		category = "Git | Pull Request",
+		ft = "gleb-pr-confirm",
+		run = thread_action("confirm_no"),
 	},
 }
 

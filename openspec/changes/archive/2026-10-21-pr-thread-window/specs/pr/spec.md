@@ -7,6 +7,14 @@
 - **WHEN** a `100x30` screen edits `internal/billing/invoice.go` of the `billing-branch` fixture with the `pr482` responses fetched, the cursor is on line 22 and the `pr.open_thread` action runs
 - **THEN** the thread window spans screen rows 6 to 23 and columns 15 to 86, its top border holds ` invoice.go:22 · PR #482 · open `, its text holds `maria.k · 2h`, `Should a nil rate mean no tax at all?` and `gleb-beloded · 1h`, and the current window is its empty reply area, filetype `gleb-pr-thread`, in normal mode
 
+#### Scenario: Mapped thread window shows the commented buffer line
+- **WHEN** two lines are inserted above the comment on line 22 and `pr.open_thread` runs on its mapped line 24
+- **THEN** the window title and commented line use line 24 and show the original commented text
+
+#### Scenario: Open thread uses the first editor when the panel is focused
+- **WHEN** the editor cursor is on line 22, the Changes panel is focused and `pr.open_thread` runs
+- **THEN** the thread from editor line 22 opens
+
 #### Scenario: Open thread without a thread on the line
 - **WHEN** the cursor is on line 1 of that file and the `pr.open_thread` action runs
 - **THEN** `No thread on this line` is notified at INFO and no `gleb-pr-thread` window exists
@@ -33,6 +41,10 @@ The thread window's normal-mode keys SHALL come from `pr.thread_*` actions scope
 #### Scenario: q keeps the draft for the next open
 - **WHEN** `Draft` is typed in the reply area, `<Esc>` and `q` are pressed, then the `pr.open_thread` action runs again on line 22
 - **THEN** no `gleb-pr-thread` window existed after `q`, and the reopened reply area holds `Draft`
+
+#### Scenario: Focus leaving keeps the draft and closes the thread window
+- **WHEN** `Draft` is typed in the reply area and focus moves to the editor window, then the `pr.open_thread` action runs again on line 22
+- **THEN** no `gleb-pr-thread` window existed after focus left, and the reopened reply area holds `Draft`
 
 #### Scenario: Resolved thread offers Unresolve
 - **WHEN** the cursor is on line 11 and the `pr.open_thread` action runs
@@ -93,7 +105,7 @@ The thread window's normal-mode keys SHALL come from `pr.thread_*` actions scope
 - **THEN** `Resolve failed: Resource not accessible by integration` is notified at ERROR, the title still ends with `· open` and the normal hint row is back
 
 ### Requirement: Thread mutations
-Replies and resolve changes SHALL run as `gh api graphql` argument lists (`-f query=mutation <AddReply|ResolveThread|UnresolveThread>…`, `-f id=<thread id>`, and `-f body=<draft>` for a reply) with `GH_HOST` set to the PR host and no shell. While one runs the hint row SHALL read `Sending...` or `Resolving...` and `y`/`n` do nothing. They SHALL be the only writes to GitHub.
+After explicit confirmation, the thread window SHALL call `gh.reply` or `gh.set_resolved` with the current review and thread. While its callback is pending, the hint row SHALL read `Sending...` or `Resolving...` and `y`/`n` SHALL do nothing. These SHALL be the thread window's only paths that write to GitHub.
 
 #### Scenario: A mutation shows progress and ignores keys
 - **WHEN** `FAKE_GH_SLEEP` is 1, `y` is pressed on the send question, then `y` again within 500 ms
@@ -114,3 +126,7 @@ Replies and resolve changes SHALL run as `gh api graphql` argument lists (`-f qu
 #### Scenario: Enter on a thread opens its line
 - **WHEN** the panel cursor is on the `:22` row of the Comments tab and `<CR>` is pressed in normal mode
 - **THEN** the editor window edits `internal/billing/invoice.go` with its cursor on line 22, the current window is the reply area of the `PRRT_t1` thread window, and the `gleb-changes` window is still open on the Comments tab
+
+#### Scenario: Enter on an unmapped thread shows its diff hunk
+- **WHEN** line 22 is removed from the edited `invoice.go`, the panel cursor is on its `:22` thread and `<CR>` is pressed in normal mode
+- **THEN** the thread window is focused on its reply area, its first lines contain that thread's `diffHunk`, and the panel stays open on Comments

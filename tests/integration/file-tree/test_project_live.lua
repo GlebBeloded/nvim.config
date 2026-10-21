@@ -456,17 +456,28 @@ T["file-tree: Project tree shows files created outside Neovim"] = function()
 	)
 	eq(child.lua_get([[require("gleb.file_tree.watch").state.roots[_G.fallback_root].fallback_timer ~= nil]]), true)
 
-	local canary = H.system(child, { "touch", vim.fs.joinpath(root, "internal/billing/invoice.go") }, root)
-	eq(canary.code, 0)
-	assert(
-		child.wait(
-			[[
-			require("gleb.file_tree.watch").state.roots[_G.fallback_root].event_confirmed
-		]],
-			math.ceil(1000 * H.load_factor())
-		),
-		"watch event stream was not confirmed"
+	local canary_ready = child.lua_get(
+		[[(function(root, timeout)
+			root = require("gleb.file_tree.fs").normalize(root)
+			local folder = root .. "/internal/billing"
+			local path = folder .. "/invoice.go"
+			return vim.wait(timeout, function()
+				local state = assert(require("gleb.file_tree.watch").state.roots[root])
+				if state.event_confirmed then
+					return true
+				end
+				local timer = state.timers[folder]
+				if not (timer and timer:is_active()) then
+					local now = vim.uv.clock_gettime("realtime")
+					local stamp = now.sec + now.nsec / 1e9
+					vim.uv.fs_utime(path, stamp, stamp)
+				end
+				return false
+			end, 20)
+		end)(...)]],
+		{ root, math.ceil(10000 * H.load_factor()) }
 	)
+	eq(canary_ready, true)
 
 	local result = H.system(child, { "touch", vim.fs.joinpath(root, "internal/billing/fee.go") }, root)
 	eq(result.code, 0)
@@ -679,6 +690,28 @@ end
 T["file-tree: Project tree prunes a deleted expanded folder"] = function()
 	open_billing_folder()
 	focus_tree_path("internal/billing/invoice_test.go")
+	-- Rewrites only while no redraw is pending: each write restarts the folder's debounce.
+	local canary_ready = child.lua_get(
+		[[(function(root, timeout)
+			root = require("gleb.file_tree.fs").normalize(root)
+			local folder = root .. "/internal/billing"
+			return vim.wait(timeout, function()
+				local view = assert(require("gleb.file_tree.view").state.by_tab[vim.api.nvim_get_current_tabpage()])
+				if vim.iter(view.rows):any(function(row)
+					return row.label == "watch-canary.lua"
+				end) then
+					return true
+				end
+				local timer = require("gleb.file_tree.watch").state.roots[root].timers[folder]
+				if not (timer and timer:is_active()) then
+					vim.fn.writefile({ tostring(vim.uv.hrtime()) }, folder .. "/watch-canary.lua")
+				end
+				return false
+			end, 20)
+		end)(...)]],
+		{ root, math.ceil(10000 * H.load_factor()) }
+	)
+	eq(canary_ready, true)
 	child.lua(
 		[[(function(root)
 		root = require("gleb.file_tree.fs").normalize(root)
