@@ -40,6 +40,13 @@ end
 ---@type gleb.Action[]
 local actions = {
 	{
+		id = "git.copy_file_url",
+		title = "Copy File URL",
+		category = "Git",
+		modes = { "n", "x" },
+		run = function() end,
+	},
+	{
 		id = "git.confirm_commit_popup",
 		title = "Confirm Commit Message",
 		category = "Git",

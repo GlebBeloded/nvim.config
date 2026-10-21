@@ -105,6 +105,17 @@ local function open_commit_url_picker()
 	child.type_keys("commit url")
 end
 
+---@param keys? string
+local function open_file_url_picker(keys)
+	child.type_keys(keys or "<M-A>")
+	assert(child.wait([[require("mini.pick").is_picker_active()]], async_timeout()), "Find Action did not open")
+	child.type_keys("file url")
+	assert(
+		child.wait([[#require("mini.pick").get_picker_matches().all == 1]], async_timeout()),
+		"File URL did not match"
+	)
+end
+
 ---@return string[]
 local function matched_action_ids()
 	return child.lua_get([[
@@ -113,6 +124,62 @@ local function matched_action_ids()
 			:map(function(row) return row.action.id end)
 			:totable()
 	]])
+end
+
+---@return table
+local function matched_file_url_row()
+	return child.lua_get([[(function()
+		local row = require("mini.pick").get_picker_matches().all[1]
+		return { id = row.action.id, title = row.text, category = row.category, shortcut = row.secondary }
+	end)()]])
+end
+
+T["git: Copy File URL remains listed with and without a shortcut"] = function()
+	child.wait_very_lazy()
+	child.lua([[
+		local actions = require("gleb.actions")
+		actions.state.store.path = vim.fn.tempname()
+		local shortcuts = vim.deepcopy(actions.state.store.last_good)
+		shortcuts["git.copy_file_url"] = nil
+		assert(actions.state.store:save(shortcuts))
+		actions.state.applicator:apply(actions.state.store.last_good)
+	]])
+	local path = child.lua_get([[vim.fn.tempname()]])
+	child.lua([[vim.fn.writefile({ "one", "two", "three" }, ...)]], { path })
+	child.cmd("edit " .. vim.fn.fnameescape(path))
+
+	open_file_url_picker()
+	eq(matched_file_url_row(), { id = "git.copy_file_url", title = "Copy File URL", category = "Git" })
+	child.type_keys("<Esc>")
+
+	open_file_url_picker("vjj<M-A>")
+	eq(matched_file_url_row(), { id = "git.copy_file_url", title = "Copy File URL", category = "Git" })
+	child.type_keys("<Esc>")
+
+	open_file_url_picker()
+	child.type_keys("<M-}>", "<F23>", "<CR>")
+	assert(
+		child.wait(
+			[[require("gleb.actions").state.store.last_good["git.copy_file_url"][1] == "<F23>"]],
+			async_timeout()
+		),
+		"File URL shortcut was not assigned"
+	)
+	eq(matched_file_url_row(), {
+		id = "git.copy_file_url",
+		title = "Copy File URL",
+		category = "Git",
+		shortcut = "<F23>",
+	})
+	child.type_keys("<Esc>")
+
+	open_file_url_picker("vjj<M-A>")
+	eq(matched_file_url_row(), {
+		id = "git.copy_file_url",
+		title = "Copy File URL",
+		category = "Git",
+		shortcut = "<F23>",
+	})
 end
 
 T["git: Copy Commit URL is offered for a commit row"] = function()

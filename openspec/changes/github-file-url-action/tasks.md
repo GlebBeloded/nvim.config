@@ -6,9 +6,9 @@ Scenarios: `git: Tab actions are in the catalog`, `git: Show Branch Commits open
 
 ## 2. Register the file URL action in every file-buffer context
 Scenarios: `git: Copy File URL remains listed with and without a shortcut`
-- [ ] 2.1 Write `git: Copy File URL remains listed with and without a shortcut` in `tests/integration/git/test_file_url.lua`, opening the real picker with `<M-A>` from normal and visual modes before and after assigning a shortcut, and run `make test FILE=tests/integration/git/test_file_url.lua CASE="Copy File URL remains listed with and without a shortcut"` to see it fail
-- [ ] 2.2 Add the unbound `git.copy_file_url` action to `lua/gleb/git/actions.lua` with normal and visual modes and no filetype restriction
-- [ ] 2.3 Run `make test FILE=tests/integration/git/test_file_url.lua CASE="Copy File URL remains listed with and without a shortcut"` and see it pass
+- [x] 2.1 Write `git: Copy File URL remains listed with and without a shortcut` in `tests/integration/git/test_file_url.lua`, opening the real picker with `<M-A>` from normal and visual modes before and after assigning a shortcut, and run `make test FILE=tests/integration/git/test_file_url.lua CASE="Copy File URL remains listed with and without a shortcut"` to see it fail
+- [x] 2.2 Add the unbound `git.copy_file_url` action to `lua/gleb/git/actions.lua` with normal and visual modes and no filetype restriction
+- [x] 2.3 Run `make test FILE=tests/integration/git/test_file_url.lua CASE="Copy File URL remains listed with and without a shortcut"` and see it pass
 
 ## 3. Copy branch URLs for lines and visual ranges
 Scenarios: `git: github.com current-line branch URL is copied`, `git: Enterprise GitHub current-line branch URL is copied`, `git: Visual selection copies an ordered line range`, `git: A branch without an upstream is copied`
