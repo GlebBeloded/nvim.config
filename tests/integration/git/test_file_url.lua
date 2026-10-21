@@ -116,6 +116,27 @@ local function open_file_url_picker(keys)
 	)
 end
 
+---@param files table<string, string>
+---@param remote string
+---@param branch string
+---@param path string
+local function open_repo_file(files, remote, branch, path)
+	local root = H.git_repo(files, { remote = remote })
+	H.git(root, { "switch", "-q", "-c", branch })
+	child.wait_very_lazy()
+	child.cmd("cd " .. vim.fn.fnameescape(root))
+	child.cmd("edit " .. vim.fn.fnameescape(vim.fs.joinpath(root, path)))
+end
+
+---@param expected string
+local function choose_file_url(expected)
+	child.fn.setreg("+", "unchanged")
+	open_file_url_picker()
+	child.type_keys("<CR>")
+	assert(child.wait(([[vim.fn.getreg("+") == %q]]):format(expected), async_timeout()), "File URL was not copied")
+	eq(child.fn.getreg("+"), expected)
+end
+
 ---@return string[]
 local function matched_action_ids()
 	return child.lua_get([[
@@ -180,6 +201,46 @@ T["git: Copy File URL remains listed with and without a shortcut"] = function()
 		category = "Git",
 		shortcut = "<F23>",
 	})
+end
+
+T["git: github.com current-line branch URL is copied"] = function()
+	open_repo_file({ ["a.txt"] = "one\ntwo\nthree" }, "git@github.com:owner/repo.git", "feature/share", "a.txt")
+	child.api.nvim_win_set_cursor(0, { 2, 0 })
+
+	choose_file_url("https://github.com/owner/repo/blob/feature/share/a.txt#L2")
+end
+
+T["git: Enterprise GitHub current-line branch URL is copied"] = function()
+	open_repo_file(
+		{ ["internal/billing/invoice.go"] = "1\n2\n3\n4\n5\n6\n7\n8\n9\n10" },
+		"git@pgw.dev:finteqhub/billing.git",
+		"feat/tax",
+		"internal/billing/invoice.go"
+	)
+	child.api.nvim_win_set_cursor(0, { 10, 0 })
+
+	choose_file_url("https://pgw.dev/finteqhub/billing/blob/feat/tax/internal/billing/invoice.go#L10")
+end
+
+T["git: Visual selection copies an ordered line range"] = function()
+	open_repo_file(
+		{ ["a.txt"] = "one\ntwo\nthree\nfour\nfive" },
+		"https://github.com/owner/repo.git",
+		"feature/share",
+		"a.txt"
+	)
+	child.fn.setreg("+", "unchanged")
+	open_file_url_picker("5GV3G<M-A>")
+	child.type_keys("<CR>")
+	local expected = "https://github.com/owner/repo/blob/feature/share/a.txt#L3-L5"
+	assert(child.wait(([[vim.fn.getreg("+") == %q]]):format(expected), async_timeout()), "File URL was not copied")
+	eq(child.fn.getreg("+"), expected)
+end
+
+T["git: A branch without an upstream is copied"] = function()
+	open_repo_file({ ["a.txt"] = "one" }, "ssh://git@github.com/owner/repo.git", "topic/local-only", "a.txt")
+
+	choose_file_url("https://github.com/owner/repo/blob/topic/local-only/a.txt#L1")
 end
 
 T["git: Copy Commit URL is offered for a commit row"] = function()

@@ -12,12 +12,16 @@ Scenarios: `git: Copy File URL remains listed with and without a shortcut`
 
 ## 3. Copy branch URLs for lines and visual ranges
 Scenarios: `git: github.com current-line branch URL is copied`, `git: Enterprise GitHub current-line branch URL is copied`, `git: Visual selection copies an ordered line range`, `git: A branch without an upstream is copied`
-- [ ] 3.1 Write the four scenarios in `tests/integration/git/test_file_url.lua`, invoking `git.copy_file_url` through the real picker in populated repositories and asserting register `+`; run each scenario with `make test FILE=tests/integration/git/test_file_url.lua CASE="<scenario title>"` and see it fail
-- [ ] 3.2 Add typed pure remote/path/ref encoding and blob URL construction in `lua/gleb/git/file_url.lua`, then have `lua/gleb/git/actions.lua` asynchronously resolve `origin`, root, tracked repository-relative path, and attached local branch from the captured buffer and copy the current line or captured ordered visual range
-- [ ] 3.3 Run each scenario with `make test FILE=tests/integration/git/test_file_url.lua CASE="<scenario title>"` and see all four pass
+- [x] 3.1 Write the four scenarios in `tests/integration/git/test_file_url.lua`, invoking `git.copy_file_url` through the real picker in populated repositories and asserting register `+`; run each scenario with `make test FILE=tests/integration/git/test_file_url.lua CASE="<scenario title>"` and see it fail
+- [x] 3.2 Add typed pure remote/path/ref encoding and blob URL construction in `lua/gleb/git/file_url.lua`, then have `lua/gleb/git/actions.lua` asynchronously resolve `origin`, root, tracked repository-relative path, and attached local branch from the captured buffer and copy the current line or captured ordered visual range
+- [x] 3.3 Run each scenario with `make test FILE=tests/integration/git/test_file_url.lua CASE="<scenario title>"` and see all four pass
 
 ## 4. Preserve the clipboard when a branch file URL is unavailable
 Scenarios: `git: Unavailable file URL input preserves the clipboard`
 - [ ] 4.1 Write `git: Unavailable file URL input preserves the clipboard` in `tests/integration/git/test_file_url.lua`, invoking the real picker without `origin`, at detached HEAD, and on an untracked file; run `make test FILE=tests/integration/git/test_file_url.lua CASE="Unavailable file URL input preserves the clipboard"` and see it fail
 - [ ] 4.2 Add short ERROR notifications for each unavailable input and validate the captured buffer before async completion without changing register `+`
 - [ ] 4.3 Run `make test FILE=tests/integration/git/test_file_url.lua CASE="Unavailable file URL input preserves the clipboard"` and see it pass
+
+## Agent decisions
+
+- URL encoding uses uppercase byte-wise percent escapes so UTF-8 and reserved characters have deterministic GitHub-compatible output.

@@ -1,4 +1,55 @@
--- Git actions own diffview and the changes panel.
+-- Git actions own repository operations, diffview, and the changes panel.
+
+---@param cwd string
+---@param args string[]
+---@param callback fun(output: string?)
+local function git_output(cwd, args, callback)
+	vim.system(vim.list_extend({ "git" }, args), { cwd = cwd, text = true }, function(result)
+		vim.schedule(function()
+			callback(result.code == 0 and vim.trim(result.stdout or "") or nil)
+		end)
+	end)
+end
+
+---@param ctx gleb.ActionContext
+local function copy_file_url(ctx)
+	if not vim.api.nvim_buf_is_valid(ctx.buf) then
+		return
+	end
+	local file = vim.api.nvim_buf_get_name(ctx.buf)
+	local cwd = vim.fs.dirname(file)
+	local first_line = ctx.selection and ctx.selection.start[1] or ctx.cursor[1]
+	local last_line = ctx.selection and ctx.selection.finish[1] or ctx.cursor[1]
+	git_output(cwd, { "rev-parse", "--show-toplevel" }, function(root)
+		if not root then
+			return
+		end
+		git_output(root, { "remote", "get-url", "origin" }, function(remote)
+			if not remote then
+				return
+			end
+			git_output(root, { "symbolic-ref", "--short", "HEAD" }, function(branch)
+				if not branch then
+					return
+				end
+				local relative = vim.fs.relpath(root, file)
+				git_output(root, { "ls-files", "--error-unmatch", "--full-name", "--", relative }, function(path)
+					if
+						not path
+						or not vim.api.nvim_buf_is_valid(ctx.buf)
+						or vim.api.nvim_buf_get_name(ctx.buf) ~= file
+					then
+						return
+					end
+					local url = require("gleb.git.file_url").build(remote, branch, path, first_line, last_line)
+					if url then
+						vim.fn.setreg("+", url)
+					end
+				end)
+			end)
+		end)
+	end)
+end
 
 ---@param id string
 ---@param title string
@@ -44,7 +95,7 @@ local actions = {
 		title = "Copy File URL",
 		category = "Git",
 		modes = { "n", "x" },
-		run = function() end,
+		run = copy_file_url,
 	},
 	{
 		id = "git.confirm_commit_popup",
