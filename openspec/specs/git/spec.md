@@ -361,7 +361,7 @@ A changed tracked file SHALL show right-aligned `+<added> -<removed>` from `git 
 - **THEN** the `a.txt` row has no line stats and no numstat error is notified
 
 ### Requirement: Changes panel nesting
-Under one root and directory, a changed file that the file-tree nesting rules (`settings/file_tree.json`) nest under another listed file SHALL be a child row of it, one level deeper; the parent gets an expander and the nest starts expanded. `za` and `<CR>` on a root, directory or nest parent row SHALL toggle its fold, kept across refreshes.
+Under one root and directory, a changed file that the file-tree nesting rules (`settings/file_tree.json`) nest under another listed file SHALL be its child row. The parent gets an expander and starts expanded. `za` on a root, directory or nest parent, and `<CR>` on a structural root or directory, SHALL toggle its fold across refreshes. `<CR>` on a file SHALL enter its diff even when it is a nest parent.
 
 #### Scenario: Changes panel nests tests under their file
 - **WHEN** the changes panel is opened on a fresh copy of the `billing` fixture
@@ -378,6 +378,10 @@ Under one root and directory, a changed file that the file-tree nesting rules (`
 #### Scenario: Changes panel Enter folds a directory
 - **WHEN** the cursor is on the `web/src 1` row of the changes panel on the `billing` fixture and `<CR>` is pressed in normal mode
 - **THEN** no row shows `price.ts` and no file is opened
+
+#### Scenario: Changes panel Enter on a nest parent enters the diff
+- **WHEN** the Local tab shows the diff of `invoice.go` on the `billing` fixture and `<CR>` is pressed in normal mode on its foldable file row
+- **THEN** the diff stays open and expanded, its right window is current with its cursor on the first line of the first change, and `invoice_test.go` remains visible
 
 ### Requirement: Changes panel diff view
 After a 50 ms debounce, the panel SHALL asynchronously build a full `gleb.diff.view.Spec` for the selected file, with normalized root, repo-relative path, filetype, final-newline state and left text from `HEAD:<orig or path>`. Root and selection generations SHALL drop stale results. One panel-owned view SHALL be reused without changing focus or tab; other rows keep the last diff.
@@ -460,11 +464,15 @@ While the diff view shows a panel file, `diff.next_file` SHALL move the panel cu
 - **THEN** focus moves to the new diff view's `right_win`, not to the panel or the replaced window
 
 ### Requirement: Changes panel open and close
-`<CR>` on an actionable file row SHALL close the panel-owned diff view, edit the file in the editor window and focus it as a listed normal file buffer independent of the panel, keeping the panel open. `q` SHALL close the panel and only its view; editor restoration SHALL remain in `windows.restore`. Buffers loaded only by the panel SHALL be unloaded on close when unmodified.
+`<CR>` on an actionable file row SHALL keep the panel-owned diff open and focus its right window at the first change. Its working-tree buffer SHALL become independent and survive panel close. `q` SHALL close only the panel and its view; editor restoration SHALL remain in `windows.restore`. Other buffers loaded only by the panel SHALL be unloaded on close when unmodified.
 
 #### Scenario: Changes panel Enter opens the file
 - **WHEN** the diff view shows `b.txt` of the `dirty` fixture and `<CR>` is pressed in normal mode on the `b.txt` panel row
-- **THEN** no window with filetype `gleb-diff` remains, the current window edits `b.txt`, and the `gleb-changes` window is still open
+- **THEN** the `gleb-diff` view remains, its right window editing `b.txt` is current with its cursor on the first line of the first change, and the `gleb-changes` window is still open
+
+#### Scenario: Changes panel Enter while the diff loads enters it once shown
+- **WHEN** the Local tab starts loading the diff of `b.txt` and `<CR>` is pressed in normal mode on its file row before that load finishes
+- **THEN** once the diff is shown, its right window editing `b.txt` is current with its cursor on the first line of the first change
 
 #### Scenario: Changes panel file is an independent normal buffer
 - **WHEN** the diff view shows `b.txt` of the `dirty` fixture and `<CR>` is pressed in normal mode on the `b.txt` panel row
@@ -983,7 +991,7 @@ While the Branch tab is active, the panel's last two screen rows SHALL show a `�
 - **THEN** columns 1-35 of screen row 28 hold no `─` and columns 1-35 of screen row 29 hold no `Next tab`
 
 ### Requirement: Branch tab diffs
-A Branch file row SHALL show `<merge-base>:<orig or path>` against the working-tree file loaded as the Local tab loads it (its own buffer; deleted or binary: read-only lines), labels `<hash7> · <base>` and `Your version`. A commit's file row SHALL show `<commit>^` against `<commit>`, read-only, labels `<parent7> · parent` and `<hash7> · <subject>`. An added or deleted side is empty. Both specs are `committed`, not actionable. `]f`, debounce, stale results and `<CR>` follow the Local tab.
+A Branch file row SHALL compare `<merge-base>:<orig or path>` with the working-tree file; a commit file row SHALL compare `<commit>^` with `<commit>`. Their labels, added/deleted sides, read-only state and actionability SHALL remain as specified. `]f`, debounce and stale-result handling SHALL follow Local. `<CR>` SHALL focus the shown right pane at its first change for Branch and commit rows.
 
 #### Scenario: Branch tab shows the merge-base diff
 - **WHEN** the cursor moves onto the `invoice.go` row of the Branch tab of the `billing-branch` fixture and 100 ms pass
@@ -1003,7 +1011,11 @@ A Branch file row SHALL show `<merge-base>:<orig or path>` against the working-t
 
 #### Scenario: Branch tab Enter opens the working file
 - **WHEN** the Branch tab shows the diff of `tax.go` and `<CR>` is pressed in normal mode on the `tax.go` row
-- **THEN** no `gleb-diff` window remains, the current window edits the working-tree `internal/billing/tax.go`, and the `gleb-changes` window is still open on the Branch tab
+- **THEN** the `gleb-diff` view remains, its right window editing the working-tree `internal/billing/tax.go` is current with its cursor on the first line of the first change, and the `gleb-changes` window is still open on the Branch tab
+
+#### Scenario: Branch commit Enter enters the diff
+- **WHEN** the Branch tab commit view shows the diff of `invoice.go` under `e325463` and `<CR>` is pressed in normal mode on its file row
+- **THEN** the read-only diff remains open, its right window is current with its cursor on the first line of the first change, and the panel remains open on the Branch tab
 
 #### Scenario: Branch tab ignores staging keys
 - **WHEN** the cursor is on the `invoice.go` row of the Branch tab and `<Space>`, `A` and `X` are pressed in normal mode
